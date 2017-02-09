@@ -972,7 +972,7 @@ class Suite(object):
         @param result: A result, encapsulating the status of the failed job.
         @return: True if we should report this failure.
         """
-        if self._job_retry and self._retry_handler.has_following_retry(result):
+        if self._has_retry(result):
             return False
 
         is_not_experimental = (
@@ -983,6 +983,17 @@ class Suite(object):
                 (is_not_experimental or self._file_experimental_bugs) and
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
+
+
+    def _has_retry(self, result):
+        """
+        Return True if this result gets to retry.
+
+        @param result: A result, encapsulating the status of the failed job.
+        @return: bool
+        """
+        return (self._job_retry
+                and self._retry_handler.has_following_retry(result))
 
 
     def wait(self, record, bug_template=None):
@@ -1052,7 +1063,7 @@ class Suite(object):
         result.record_all(record)
         self._remember_job_keyval(result)
 
-        if self._job_retry and self._retry_handler.should_retry(result):
+        if self._has_retry(result):
             new_job = self._schedule_test(
                     record=record, test=self._jobs_to_tests[result.id],
                     retry_for=result.id, ignore_errors=True)
