@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_ExternalUsbPeripherals.stress"
+NAME = "platform_ExternalUsbPeripherals"
 PURPOSE = "Servo based USB boot stress test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "LONG"
