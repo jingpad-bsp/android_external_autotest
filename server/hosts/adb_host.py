@@ -100,15 +100,6 @@ AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
         '%(build_target)s-autotest_server_package-%(build_id)s.tar.bz2')
 ADB_DEVICE_PREFIXES = ['product:', 'model:', 'device:']
 
-# Map of product names to build target name.
-PRODUCT_TARGET_MAP = {'bat' : 'bat_land',
-                      'dragon' : 'ryu',
-                      'flo' : 'razor',
-                      'flo_lte' : 'razorg',
-                      'gm4g_sprout' : 'seed_l8150',
-                      'flounder' : 'volantis',
-                      'flounder_lte' : 'volantisg'}
-
 # Command to provision a Brillo device.
 # os_image_dir: The full path of the directory that contains all the Android image
 # files (from the image zip file).
@@ -432,11 +423,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return ''
 
 
+    def get_device_aliases(self):
+        """Get all aliases for this device."""
+        product = self.get_product_name()
+        return android_utils.AndroidAliases.get_product_aliases(product)
+
+    def get_product_name(self):
+        """Get the product name of the device, eg., shamu, bat"""
+        return self.run_output('getprop %s' % BOARD_FILE)
+
     def get_board_name(self):
-        """Get the name of the board, e.g., shamu, dragonboard etc.
+        """Get the name of the board, e.g., shamu, bat_land etc.
         """
-        product = self.run_output('getprop %s' % BOARD_FILE)
-        return PRODUCT_TARGET_MAP.get(product, product)
+        product = self.get_product_name()
+        return android_utils.AndroidAliases.get_board_name(product)
 
 
     @label_decorator()
