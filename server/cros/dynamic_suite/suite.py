@@ -106,11 +106,11 @@ class RetryHandler(object):
                              if max_retries is not None else sys.maxint)
         for job_id, test in initial_jobs_to_tests.items():
             if test.job_retries > 0:
-                self.add_job(new_job_id=job_id,
-                             retry_max=test.job_retries)
+                self._add_job(new_job_id=job_id,
+                              retry_max=test.job_retries)
 
 
-    def add_job(self, new_job_id, retry_max):
+    def _add_job(self, new_job_id, retry_max):
         """Add a newly-created job to the retry map.
 
         @param new_job_id: The afe_job_id of a newly created job.
@@ -185,8 +185,8 @@ class RetryHandler(object):
                     'We have already retried or attempted to retry job %d' %
                     old_job_id)
         old_record['state'] = self.States.RETRIED
-        self.add_job(new_job_id=new_job_id,
-                     retry_max=old_record['retry_max'] - 1)
+        self._add_job(new_job_id=new_job_id,
+                      retry_max=old_record['retry_max'] - 1)
         self._max_retries -= 1
 
 
