@@ -90,9 +90,9 @@ class _RetryHandlerShouldRetryMeta(type):
             @param spec: _ShouldRetryTestSpec instance.
             @returns: test method function.
             """
-            with mock.patch.multiple(handler, suite_max_reached=mock.DEFAULT,
+            with mock.patch.multiple(handler, _suite_max_reached=mock.DEFAULT,
                                      _retry_map=spec.retry_map) as mocks:
-                mocks['suite_max_reached'].return_value = spec.max_reached
+                mocks['_suite_max_reached'].return_value = spec.max_reached
                 yield mocks
 
         for i, spec in enumerate(dct['tests']):
