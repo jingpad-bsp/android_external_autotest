@@ -250,21 +250,6 @@ def drone_servers():
     return _scrape_from_instances('SCHEDULER', 'drones')
 
 
-def devserver_servers():
-    """
-    Generate a list of all devservers.
-
-    @returns: An iterable of all hosts.
-    """
-    zone = global_config.global_config.get_config_value(
-            'CLIENT', 'dns_zone')
-    servers = _scrape_from_instances('CROS', 'dev_server_hosts')
-    # The default text we get back here isn't something you can ssh into unless
-    # you've set up your /etc/resolve.conf to automatically try .cros, so we
-    # append the zone to try and make this more in line with everything else.
-    return set([server+'.'+zone for server in servers])
-
-
 def shard_servers():
     """
     Generate a list of all shard servers.
