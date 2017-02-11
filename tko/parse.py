@@ -24,7 +24,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import sponge_utils
 from autotest_lib.tko import db as tko_db, utils as tko_utils
-from autotest_lib.tko import models, status_lib
+from autotest_lib.tko import models, parser_lib
 from autotest_lib.tko.perf_upload import perf_uploader
 
 
@@ -269,7 +269,7 @@ def parse_one(db, jobname, path, parse_options):
     status_version = job_keyval.get("status_version", 0)
 
     # parse out the job
-    parser = status_lib.parser(status_version)
+    parser = parser_lib.parser(status_version)
     job = parser.make_job(path)
     status_log = os.path.join(path, "status.log")
     if not os.path.exists(status_log):
