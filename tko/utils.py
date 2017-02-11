@@ -7,7 +7,7 @@ import sys
 _debug_logger = sys.stderr
 def dprint(msg):
     #pylint: disable-msg=C0111
-    print >> _debug_logger, msg
+    print >> _debug_logger, 'tko parser: %s' % msg
 
 
 def redirect_parser_debugging(ostream):
