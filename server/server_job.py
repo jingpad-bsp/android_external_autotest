@@ -47,6 +47,7 @@ from autotest_lib.server.hosts import host_info
 from autotest_lib.tko import db as tko_db
 from autotest_lib.tko import models as tko_models
 from autotest_lib.tko import status_lib
+from autotest_lib.tko import parser_lib
 from autotest_lib.tko import utils as tko_utils
 
 
@@ -406,7 +407,7 @@ class base_server_job(base_job.base_job):
         tko_utils.redirect_parser_debugging(parse_log)
         # create a job model object and set up the db
         self.results_db = tko_db.db(autocommit=True)
-        self.parser = status_lib.parser(self._STATUS_VERSION)
+        self.parser = parser_lib.parser(self._STATUS_VERSION)
         self.job_model = self.parser.make_job(self.resultdir)
         self.parser.start(self.job_model)
         # check if a job already exists in the db and insert it if
@@ -658,7 +659,7 @@ class base_server_job(base_job.base_job):
         status_version = job_keyval.get("status_version", 0)
 
         # parse out the job
-        parser = status_lib.parser(status_version)
+        parser = parser_lib.parser(status_version)
         job = parser.make_job(path)
         status_log = os.path.join(path, "status.log")
         if not os.path.exists(status_log):
