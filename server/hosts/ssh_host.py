@@ -209,7 +209,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
                         continue
                 else:
                     if ssh_failure_retry_count == 2:
-                        logging.debug('retrying ssh command after ',
+                        logging.debug('retrying ssh command after %s',
                                        failure_name)
                         ssh_failure_retry_count -= 1
                         continue
