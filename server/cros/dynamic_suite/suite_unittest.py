@@ -369,6 +369,12 @@ class SuiteTest(mox.MoxTestBase):
 
     def testScheduleTestsAndRecord(self):
         """Should schedule stable and experimental tests with the AFE."""
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven', 'experimental_name-data_one']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
@@ -378,6 +384,9 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ResetAll()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True, suite=suite)
+
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(self.tmpdir, keyval_dict)
         self.mox.ReplayAll()
         suite.schedule(recorder.record_entry, True)
         for job in suite._jobs:

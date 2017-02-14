@@ -598,7 +598,8 @@ class Suite(object):
             job_retry=False,
             max_retries=sys.maxint,
             offload_failures_only=False,
-            test_source_build=None
+            test_source_build=None,
+            job_keyvals=None
     ):
         """
         Constructor
@@ -646,6 +647,8 @@ class Suite(object):
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
         @param test_source_build: Build that contains the server-side test code.
+        @param job_keyvals: General job keyvals to be inserted into keyval file,
+                            which will be used by tko/parse later.
 
         """
         if extra_deps is None:
@@ -689,6 +692,7 @@ class Suite(object):
         self.wait_for_results = wait_for_results
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
+        self._job_keyvals = job_keyvals
 
 
     @property
@@ -917,6 +921,10 @@ class Suite(object):
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         scheduled_test_names = []
         try:
+            # Write job_keyvals into keyval file.
+            if self._job_keyvals:
+                utils.write_keyval(self._results_dir, self._job_keyvals)
+
             for test in self._get_tests_to_schedule(add_experimental):
                 scheduled_job = self._schedule_test(record, test)
                 if scheduled_job is not None:
