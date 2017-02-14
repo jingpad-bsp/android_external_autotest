@@ -48,7 +48,8 @@ class graphics_dEQP(test.test):
         'dEQP-EGL': 'egl',
         'dEQP-GLES2': 'gles2',
         'dEQP-GLES3': 'gles3',
-        'dEQP-GLES31': 'gles31'
+        'dEQP-GLES31': 'gles31',
+        'dEQP-VK': 'vk',
     }
 
     def initialize(self):
@@ -68,6 +69,13 @@ class graphics_dEQP(test.test):
             self._can_run_executables.append('gles3/deqp-gles3')
             if major > 3 or minor >= 1:
                 self._can_run_executables.append('gles31/deqp-gles31')
+
+        # If libvulkan is installed, then assume the board supports vulkan.
+        # TODO(chadversary): Use correct libdir for ARM boards.
+        if (os.path.exists('/usr/local/deqp/external/vulkancts/modules/vulkan/deqp-vk') and
+                os.path.exists('/usr/lib64/libvulkan.so')):
+            self._can_run_executables.append('external/vulkancts/modules/vulkan/deqp-vk')
+
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
         # Valid choices are fbo and pbuffer. The latter avoids dEQP assumptions.
         self._surface = 'pbuffer'
@@ -153,11 +161,14 @@ class graphics_dEQP(test.test):
             module = self.DEQP_MODULES[test_prefix]
         else:
             raise error.TestFail('Failed: Invalid test name: %s' % name)
-        executable = os.path.join(self.DEQP_BASEDIR, 'modules', module,
-                                  'deqp-%s' % module)
-        # Must be in the executable directory when running for it to find it's
-        # test data files!
-        os.chdir(os.path.dirname(executable))
+
+        if module == 'vk':
+            executable = os.path.join(self.DEQP_BASEDIR,
+                    'external/vulkancts/modules/vulkan/deqp-vk')
+        else:
+            executable = os.path.join(os.path.join(self.DEQP_BASEDIR,
+                'modules', module, 'deqp-%s' % module))
+
         return executable
 
     def _can_run(self, executable):
@@ -181,6 +192,10 @@ class graphics_dEQP(test.test):
         executable = self._get_executable(test_filter)
         if not self._can_run(executable):
             return test_cases
+
+        # Must be in the executable directory when running for it to find it's
+        # test data files!
+        os.chdir(os.path.dirname(executable))
 
         not_passing_cases = self._load_not_passing_cases(test_filter)
         # We did not find passing cases in expectations. Assume everything else
@@ -310,6 +325,11 @@ class graphics_dEQP(test.test):
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
             else:
                 logging.debug('Running single: %s', command)
+
+                # Must be in the executable directory when running for it to find it's
+                # test data files!
+                os.chdir(os.path.dirname(executable))
+
                 # Must initialize because some errors don't repopulate
                 # run_result, leaving old results.
                 run_result = {}
@@ -428,6 +448,11 @@ class graphics_dEQP(test.test):
                 logging.info('Running tests %d...%d out of %d:\n%s\n%s',
                              batch + 1, batch_to, num_test_cases, command,
                              batch_cases)
+
+                # Must be in the executable directory when running for it to find it's
+                # test data files!
+                os.chdir(os.path.dirname(executable))
+
                 try:
                     utils.run(command,
                               timeout=batch_timeout,
