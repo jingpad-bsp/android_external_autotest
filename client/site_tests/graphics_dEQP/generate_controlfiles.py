@@ -53,6 +53,13 @@ tests = [
     Test('dEQP-GLES31.functional', Suite.bvtpb, shards=10, hasty=True,  notpass=False, time='FAST'),
     Test('dEQP-GLES31.info',       Suite.bvtcq, shards=1,  hasty=False, notpass=False, time='FAST'),
     Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, notpass=False, time='LONG'),
+    Test('dEQP-VK.api',            Suite.none,  shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-VK.api.smoke',      Suite.bvtcq, shards=1,  hasty=False, notpass=False, time='FAST'),
+    Test('dEQP-VK.binding_model',  Suite.none,  shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-VK.glsl',           Suite.none,  shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-VK.info',           Suite.bvtcq, shards=1,  hasty=False, notpass=False, time='FAST'),
+    Test('dEQP-VK.pipeline',       Suite.none,  shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-VK.spirv_assembly', Suite.none,  shards=1,  hasty=True,  notpass=False, time='SHORT'),
 ]
 
 CONTROLFILE_TEMPLATE = (
