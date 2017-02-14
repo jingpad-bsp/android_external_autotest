@@ -11,7 +11,6 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -59,27 +58,6 @@ def get_labels(host, prefix=None):
 
     return [label for label in host._afe_host.labels
             if label.startswith(prefix)]
-
-
-def get_build(host):
-    """Retrieve the current build for a given host stored inside host._afe_host.
-
-    Looks through a host's labels in host._afe_host.labels to determine
-    its build.
-
-    @param host: Host object to get build.
-
-    @returns The current build or None if it could not find it or if there
-             were multiple build labels assigned to the host.
-    """
-    for label_prefix in [provision.CROS_VERSION_PREFIX,
-                         provision.ANDROID_BUILD_VERSION_PREFIX,
-                         provision.TESTBED_BUILD_VERSION_PREFIX]:
-        full_label_prefix = label_prefix + ':'
-        build_labels = get_labels(host, full_label_prefix)
-        if build_labels:
-            return build_labels[0][len(full_label_prefix):]
-    return None
 
 
 def get_boards(host):
