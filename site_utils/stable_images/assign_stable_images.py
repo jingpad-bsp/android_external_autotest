@@ -302,13 +302,15 @@ def _read_gs_json_data(gs_uri):
 
     @return A JSON object parsed from `gs_uri`.
     """
-    sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
-                          stdout=subprocess.PIPE)
-    try:
-        json_object = json.load(sp.stdout)
-    finally:
-        sp.stdout.close()
-        sp.wait()
+    with open('/dev/null', 'w') as ignore_errors:
+        sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
+                              stdout=subprocess.PIPE,
+                              stderr=ignore_errors)
+        try:
+            json_object = json.load(sp.stdout)
+        finally:
+            sp.stdout.close()
+            sp.wait()
     return json_object
 
 
@@ -414,10 +416,22 @@ def _get_firmware_version(updater, board, cros_version):
     @return The version string of the firmware for `board` bundled with
             `cros_version`.
     """
-    uri = (_BUILD_METADATA_PATTERN
-            % updater.get_cros_image_name(board, cros_version))
-    key_path = ['board-metadata', board, 'main-firmware-version']
-    return _get_by_key_path(_read_gs_json_data(uri), key_path)
+    try:
+        uri = (_BUILD_METADATA_PATTERN
+                % updater.get_cros_image_name(board, cros_version))
+        key_path = ['board-metadata', board, 'main-firmware-version']
+        return _get_by_key_path(_read_gs_json_data(uri), key_path)
+    except:
+        # TODO(jrbarnette): If we get here, it likely means that
+        # the repair build for our board doesn't exist.  That can
+        # happen if a board doesn't release on the Beta channel for
+        # at least 6 months.
+        #
+        # We can't allow this error to propogate up the call chain
+        # because that will kill assigning versions to all the other
+        # boards that are still OK, so for now we ignore it.  We
+        # really should do better.
+        return None
 
 
 def _get_firmware_upgrades(afe_versions, cros_versions):
