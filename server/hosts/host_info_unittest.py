@@ -68,7 +68,7 @@ class HostInfoTest(unittest.TestCase):
         """Use proper prefix to search for os information."""
         self.info.labels = ['something_else', 'cros-version:hana',
                             'os_without_colon']
-        self.assertIsNone(self.info.os)
+        self.assertEqual(self.info.os, '')
 
     def test_os_returns_first_match(self):
         """Return the first matching os label."""
@@ -80,7 +80,7 @@ class HostInfoTest(unittest.TestCase):
         """Use proper prefix to search for board information."""
         self.info.labels = ['something_else', 'cros-version:hana', 'os:blah',
                             'board_my_board_no_colon']
-        self.assertIsNone(self.info.board)
+        self.assertEqual(self.info.board, '')
 
 
     def test_board_returns_first_match(self):
