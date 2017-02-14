@@ -70,7 +70,7 @@ class HostInfo(object):
         @returns: The (stripped) board label, or None if no label is found.
         """
         boards = self._get_stripped_labels_with_prefix(self._BOARD_PREFIX)
-        return boards[0] if boards else None
+        return boards[0] if boards else ''
 
 
     @property
@@ -81,7 +81,7 @@ class HostInfo(object):
                 matching os if mutiple labels are found.
         """
         os_list = self._get_stripped_labels_with_prefix(self._OS_PREFIX)
-        return os_list[0] if os_list else None
+        return os_list[0] if os_list else ''
 
 
     def _get_stripped_labels_with_prefix(self, prefix):
