@@ -8,7 +8,6 @@ import unittest
 import common
 from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils
-from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 
 
@@ -58,23 +57,6 @@ class AfeUtilsUnittest(unittest.TestCase):
         got_labels = afe_utils.get_labels(host)
 
         self.assertItemsEqual(got_labels, all_labels)
-
-
-    def testGetBuild(self):
-      """
-      Test method get_build returns expected labels.
-      """
-      expected_build = '1.2.3.4'
-      for label_prefix in [provision.CROS_VERSION_PREFIX,
-                           provision.ANDROID_BUILD_VERSION_PREFIX,
-                           provision.TESTBED_BUILD_VERSION_PREFIX]:
-          build_label = label_prefix + ':' + expected_build
-          all_labels = [build_label]
-          all_labels += [str(i) for i in range(5)]
-          host = MockHost(labels=all_labels)
-
-          got_build = afe_utils.get_build(host)
-          self.assertEqual(got_build, expected_build)
 
 
     def testGetBoard(self):
