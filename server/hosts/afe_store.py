@@ -61,8 +61,10 @@ class AfeStore(host_info.CachingHostInfoStore):
         # based on that. If another user tries to commit it's changes in
         # parallel, we'll end up with corrupted labels / attributes.
         old_info = self._refresh_impl()
-        self._remove_labels_on_afe(set(old_info.labels) - set(new_info.labels))
-        self._add_labels_on_afe(set(new_info.labels) - set(old_info.labels))
+        self._remove_labels_on_afe(
+                list(set(old_info.labels) - set(new_info.labels)))
+        self._add_labels_on_afe(
+                list(set(new_info.labels) - set(old_info.labels)))
 
         # TODO(pprabhu) Also commit attributes when we first replace a direct
         # AFE call for attribute update.

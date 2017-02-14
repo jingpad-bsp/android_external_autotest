@@ -151,6 +151,48 @@ class HostInfoTest(unittest.TestCase):
                          "HostInfo [Labels: ['a'], Attributes: {'b': 2}]")
 
 
+    def test_clear_version_labels_no_labels(self):
+        """When no version labels exit, do nothing for clear_version_labels."""
+        original_labels = ['board:something', 'os:something_else',
+                           'pool:mypool', 'ab-version-corrupted:blah',
+                           'cros-version']
+        self.info.labels = list(original_labels)
+        self.info.clear_version_labels()
+        self.assertListEqual(self.info.labels, original_labels)
+
+
+    def test_clear_all_version_labels(self):
+        """Clear each recognized type of version label."""
+        original_labels = ['extra_label', 'cros-version:cr1', 'ab-version:ab1',
+                           'testbed-version:tb1']
+        self.info.labels = list(original_labels)
+        self.info.clear_version_labels()
+        self.assertListEqual(self.info.labels, ['extra_label'])
+
+    def test_clear_all_version_label_prefixes(self):
+        """Clear each recognized type of version label with empty value."""
+        original_labels = ['extra_label', 'cros-version:', 'ab-version:',
+                           'testbed-version:']
+        self.info.labels = list(original_labels)
+        self.info.clear_version_labels()
+        self.assertListEqual(self.info.labels, ['extra_label'])
+
+
+    def test_set_version_labels_updates_in_place(self):
+        """Update version label in place if prefix already exists."""
+        self.info.labels = ['extra', 'cros-version:X', 'ab-version:Y']
+        self.info.set_version_label('cros-version', 'Z')
+        self.assertListEqual(self.info.labels, ['extra', 'cros-version:Z',
+                                                'ab-version:Y'])
+
+    def test_set_version_labels_appends(self):
+        """Append a new version label if the prefix doesn't exist."""
+        self.info.labels = ['extra', 'ab-version:Y']
+        self.info.set_version_label('cros-version', 'Z')
+        self.assertListEqual(self.info.labels, ['extra', 'ab-version:Y',
+                                                'cros-version:Z'])
+
+
 class InMemoryHostInfoStoreTest(unittest.TestCase):
     """Basic tests for CachingHostInfoStore using InMemoryHostInfoStore."""
 
