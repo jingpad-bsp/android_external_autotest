@@ -117,14 +117,20 @@ class security_ProfilePermissions(test.test):
                     device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER):
                 # Also check the permissions of the underlying vault and
                 # supporting directory structure.
-                vaultpath = cryptohome.get_mounted_vault_devices(username)[0]
+                mountpath = cryptohome.get_mounted_vault_path(username)
 
-                passes.append(self.check_owner_mode(vaultpath, "root", 0700))
-                passes.append(self.check_owner_mode(vaultpath + "/../master.0",
+                # On ecryptfs backend, there's a 'vault' directory storing the
+                # encrypted data. If it exists, check its ownership as well.
+                vaultpath = os.path.join(mountpath, '../vault')
+                if os.path.exists(vaultpath):
+                    passes.append(self.check_owner_mode(vaultpath,
+                                                        "root", 0700))
+                passes.append(self.check_owner_mode(mountpath, "root", 0700))
+                passes.append(self.check_owner_mode(mountpath + "/../master.0",
                                                     "root", 0600))
-                passes.append(self.check_owner_mode(vaultpath + "/../",
+                passes.append(self.check_owner_mode(mountpath + "/../",
                                                     "root", 0700))
-                passes.append(self.check_owner_mode(vaultpath + "/../../",
+                passes.append(self.check_owner_mode(mountpath + "/../../",
                                                     "root", 0700))
 
             if False in passes:
