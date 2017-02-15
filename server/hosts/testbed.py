@@ -237,31 +237,32 @@ class TestBed(object):
             return serial_build_pairs
 
         # serials grouped by the board of duts.
-        duts_by_board = {}
+        duts_by_name = {}
         for serial, host in self.get_adb_devices().iteritems():
             # Excluding duts already assigned to a build.
             if serial in serial_build_pairs:
                 continue
-            board = host.get_board_name()
-            duts_by_board.setdefault(board, []).append(serial)
+            aliases = host.get_device_aliases()
+            for alias in aliases:
+                duts_by_name.setdefault(alias, []).append(serial)
 
         # Builds grouped by the board name.
-        builds_by_board = {}
+        builds_by_name = {}
         for build in builds_without_serial:
             match = re.match(adb_host.BUILD_REGEX, build)
             if not match:
                 raise error.InstallError('Build %s is invalid. Failed to parse '
                                          'the board name.' % build)
-            board = match.group('BUILD_TARGET')
-            builds_by_board.setdefault(board, []).append(build)
+            name = match.group('BUILD_TARGET')
+            builds_by_name.setdefault(name, []).append(build)
 
         # Pair build with dut with matching board.
-        for board, builds in builds_by_board.iteritems():
-            duts = duts_by_board.get(board, None)
-            if not duts or len(duts) != len(builds):
+        for name, builds in builds_by_name.iteritems():
+            duts = duts_by_name.get(name, [])
+            if len(duts) != len(builds):
                 raise error.InstallError(
-                        'Expected number of DUTs for board %s is %d, got %d' %
-                        (board, len(builds), len(duts) if duts else 0))
+                        'Expected number of DUTs for name %s is %d, got %d' %
+                        (name, len(builds), len(duts) if duts else 0))
             serial_build_pairs.update(dict(zip(duts, builds)))
         return serial_build_pairs
 
