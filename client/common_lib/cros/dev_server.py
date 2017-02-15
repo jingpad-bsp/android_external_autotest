@@ -100,15 +100,13 @@ _EXCEPTION_PATTERNS = [
         (r".*Devserver portfile does not exist!.*$",
          '(1) Devserver portfile does not exist on host'),
         # Raised when devserver cannot copy packages to host.
-        (r".*CrOS auto-update failed .* Could not copy .* to device.*$",
+        (r".*Could not copy .* to device.*$",
          '(2) Cannot copy packages to host'),
         # Raised when devserver fails to run specific commands on host.
-        (r".*CrOS auto-update failed .* cwd=None, "
-         "extra env=\{'LC_MESSAGES': 'C'\}.*$",
+        (r".*cwd=None, extra env=\{'LC_MESSAGES': 'C'\}.*$",
          '(3) Fail to run specific command on host'),
         # Raised when new build fails to boot on the host.
-        (r'.*CrOS auto-update failed for host .* RootfsUpdateError: '
-         'Build .* failed to boot on.*$',
+        (r'.*RootfsUpdateError: Build .* failed to boot on.*$',
          '(4) Build failed to boot on host'),
         # Raised when the auto-update process is timed out.
         (r'.*The CrOS auto-update process is timed out, '
@@ -126,12 +124,10 @@ _EXCEPTION_PATTERNS = [
         (r'.*No JSON object could be decoded.*$',
          '(8) Devserver returned non-json object'),
         # Raised when devserver loses host's ssh connection
-        (r'.*CrOS auto-update failed for host .* SSHConnectionError\: .* '
-         'port 22\: Connection timed out.*$',
+        (r'.*SSHConnectionError\: .* port 22\: Connection timed out.*$',
          "(9) Devserver lost host's ssh connection"),
         # Raised when error happens in writing files to host
-        (r'.*CrOS auto-update failed for host .* '
-         'Write failed\: Broken pipe.*$',
+        (r'.*Write failed\: Broken pipe.*$',
          "(10) Broken pipe while writing or connecting to host")]
 
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
