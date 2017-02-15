@@ -4,14 +4,18 @@
 import re, os, sys, traceback, time, glob, tempfile
 import logging
 
-from chromite.lib import metrics
-
 import common
 from autotest_lib.server import installable_object, prebuild, utils
 from autotest_lib.client.common_lib import base_job, error, autotemp
 from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils as client_utils
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = client_utils.metrics_mock
+
 
 AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'

@@ -1,9 +1,13 @@
 import sys
 
-from chromite.lib import metrics
-
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 DURATION_METRIC = 'chromeos/autotest/autoserv/reset_duration'
 

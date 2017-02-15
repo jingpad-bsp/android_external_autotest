@@ -40,7 +40,11 @@ except ImportError as e:
 # of a sys.path war between chromite and autotest crbug.com/622988
 from autotest_lib.server import utils as server_utils
 from chromite.lib import retry_util
-from chromite.lib import metrics
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = site_utils.metrics_mock
 
 
 DEFAULT_CREDS_FILE = global_config.global_config.get_config_value(

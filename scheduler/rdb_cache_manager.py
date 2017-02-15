@@ -81,10 +81,15 @@ import collections
 import logging
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.scheduler import rdb_utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 MEMOIZE_KEY = 'memoized_hosts'
 

@@ -7,13 +7,17 @@ import logging
 import random
 import time
 
-from chromite.lib import metrics
-
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_protections
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 class PeriodicCleanup(object):

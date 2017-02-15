@@ -20,7 +20,11 @@ Goobuntu 12.04.
 import subprocess
 
 from autotest_lib.server import site_utils
-from chromite.lib import metrics
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = site_utils.metrics_mock
 
 
 PROGRAM_TO_CHECK_SET = set(['gsutil', 'autoserv'])
