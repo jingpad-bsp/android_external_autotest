@@ -27,8 +27,9 @@ from autotest_lib.server import utils as server_utils
 
 try:
     from chromite.lib import metrics
-except:
-    metrics = None
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 CONFIG = global_config.global_config
 # This file is generated at build time and specifies, per suite and per test,
@@ -1972,41 +1973,39 @@ class ImageServer(ImageServerBase):
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
 
-        if metrics:
-            try:
-                board, build_type, milestone, _ = server_utils.ParseBuildName(
-                    build_name)
-            except server_utils.ParseBuildNameException:
-                logging.warning('Unable to parse build name %s for metrics. '
-                                'Continuing anyway.', build_name)
-                board, build_type, milestone = ('', '', '')
+        # Upload data to metrics
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(
+                build_name)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s for metrics. '
+                            'Continuing anyway.', build_name)
+            board, build_type, milestone = ('', '', '')
 
-            # Note: To avoid reaching or exceeding the monarch field cardinality
-            # limit, we avoid a metric that includes both dut hostname and other
-            # high cardinality fields.
-            # Per-devserver cros_update metric.
-            c = metrics.Counter(
-                    'chromeos/autotest/provision/cros_update_by_devserver')
-            # Add a field |error| here. Current error's pattern is manually
-            # specified in _EXCEPTION_PATTERNS.
-            raised_error = self._classify_exceptions(error_list)
-            f = {'dev_server': self.resolved_hostname,
-                 'success': is_au_success,
-                 'board': board,
-                 'build_type': build_type,
-                 'milestone': milestone,
-                 'error': raised_error}
-            c.increment(fields=f)
+        # Note: To avoid reaching or exceeding the monarch field cardinality
+        # limit, we avoid a metric that includes both dut hostname and other
+        # high cardinality fields.
+        # Per-devserver cros_update metric.
+        c = metrics.Counter(
+                'chromeos/autotest/provision/cros_update_by_devserver')
+        # Add a field |error| here. Current error's pattern is manually
+        # specified in _EXCEPTION_PATTERNS.
+        raised_error = self._classify_exceptions(error_list)
+        f = {'dev_server': self.resolved_hostname,
+             'success': is_au_success,
+             'board': board,
+             'build_type': build_type,
+             'milestone': milestone,
+             'error': raised_error}
+        c.increment(fields=f)
 
-            # Per-DUT cros_update metric.
-            c = metrics.Counter(
-                    'chromeos/autotest/provision/cros_update_per_dut')
-            f = {'success': is_au_success,
-                 'board': board,
-                 'error': raised_error,
-                 'dut_host_name': host_name}
-            c.increment(fields=f)
-
+        # Per-DUT cros_update metric.
+        c = metrics.Counter('chromeos/autotest/provision/cros_update_per_dut')
+        f = {'success': is_au_success,
+             'board': board,
+             'error': raised_error,
+             'dut_host_name': host_name}
+        c.increment(fields=f)
 
         if not is_au_success:
             # If errors happen in the CrOS AU process, report the first error

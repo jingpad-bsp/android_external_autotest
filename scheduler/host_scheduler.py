@@ -62,10 +62,8 @@ import time
 import common
 from autotest_lib.frontend import setup_django_environment
 
-from chromite.lib import metrics
-from chromite.lib import ts_mon_config
-
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
@@ -75,6 +73,14 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
+
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = utils.metrics_mock
+    ts_mon_config = utils.metrics_mock
+
 
 _db_manager = None
 _shutdown = False

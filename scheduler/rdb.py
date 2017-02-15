@@ -19,7 +19,11 @@ from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.server import utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 _rdb_timer_name = 'chromeos/autotest/scheduler/rdb/durations/%s'
 _is_master = not utils.is_shard()

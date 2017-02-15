@@ -14,7 +14,10 @@ from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
 from autotest_lib.server.crashcollect import collect_log_file
 from autotest_lib.server import utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = client_utils.metrics_mock
 
 
 def generate_minidump_stacktrace(minidump_path):

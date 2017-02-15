@@ -16,10 +16,15 @@ import time
 
 import common
 
-from chromite.lib import ts_mon_config
-from chromite.lib import metrics
-
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
+
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = utils.metrics_mock
+    ts_mon_config = utils.metrics_mock
 
 
 AT_DIR='/usr/local/autotest'
