@@ -78,11 +78,6 @@ class MoblabHost(cros_host.CrosHost):
         # _repair_strategy, and now we're re-initializing it here.
         # That's awkward, if not actually wrong.
         self._repair_strategy = cros_repair.create_moblab_repair_strategy()
-
-        # Clear the Moblab Image Storage so that staging an image is properly
-        # tested.
-        if dargs.get('retain_image_storage') is not True:
-            self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
         self.web_address = dargs.get('web_address', self.hostname)
         self._use_tunnel = (ENABLE_SSH_TUNNEL_FOR_MOBLAB and
                             self.web_address == self.hostname)
