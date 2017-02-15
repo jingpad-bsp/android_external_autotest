@@ -118,6 +118,7 @@ class FlashromHandler(object):
             self.fv_sections = {
                 'a': FvSection('VBOOTA', 'FVMAIN'),
                 'b': FvSection('VBOOTB', 'FVMAINB'),
+                'rec': FvSection(None, 'RECOVERY_MRC_CACHE'),
                 'ec_a': FvSection(None, 'ECMAINA'),
                 'ec_b': FvSection(None, 'ECMAINB'),
                 }
