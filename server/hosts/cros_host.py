@@ -46,8 +46,9 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 # older chromite version.
 try:
     from chromite.lib import metrics
-except:
-    metrics = None
+except ImportError:
+    metrics =  utils.metrics_mock
+
 
 CONFIG = global_config.global_config
 ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = CONFIG.get_config_value(
@@ -393,22 +394,24 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 'branch': branch,
                 'devserver': devserver.replace('.', '_'),
             }
-            if metrics:
-                monarch_fields = {
-                    'board': board,
-                    'build_type': build_type,
-                    # TODO(akeshet): To be consistent with most other metrics,
-                    # consider changing the following field to be named
-                    # 'milestone'.
-                    'branch': branch,
-                    'dev_server': devserver,
-                }
-                metrics.Counter(
-                        'chromeos/autotest/provision/verify_url'
-                        ).increment(fields=monarch_fields)
-                metrics.SecondsDistribution(
-                        'chromeos/autotest/provision/verify_url_duration'
-                        ).add(stage_time, fields=monarch_fields)
+
+            monarch_fields = {
+                'board': board,
+                'build_type': build_type,
+                # TODO(akeshet): To be consistent with most other metrics,
+                # consider changing the following field to be named
+                # 'milestone'.
+                'branch': branch,
+                'dev_server': devserver,
+            }
+            metrics.Counter(
+                    'chromeos/autotest/provision/verify_url'
+                    ).increment(fields=monarch_fields)
+            metrics.SecondsDistribution(
+                    'chromeos/autotest/provision/verify_url_duration'
+                    ).add(stage_time, fields=monarch_fields)
+
+
     def stage_server_side_package(self, image=None):
         """Stage autotest server-side package on devserver.
 
@@ -701,17 +704,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                             server_name)
               logging.info('Staging build for AU: %s', update_url)
               devserver.trigger_download(build, synchronous=False)
-              if metrics:
-                  c = metrics.Counter(
-                      'chromeos/autotest/provision/failover_download')
-                  c.increment(fields=monarch_fields)
+              c = metrics.Counter(
+                  'chromeos/autotest/provision/failover_download')
+              c.increment(fields=monarch_fields)
         else:
             logging.info('Staging build for AU: %s', update_url)
             devserver.trigger_download(build, synchronous=False)
-            if metrics:
-                c = metrics.Counter(
-                        'chromeos/autotest/provision/trigger_download')
-                c.increment(fields=monarch_fields)
+            c = metrics.Counter('chromeos/autotest/provision/trigger_download')
+            c.increment(fields=monarch_fields)
 
         # Report provision stats.
         (metrics.Counter('chromeos/autotest/provision/install_with_devserver')
@@ -719,9 +719,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Resolved devserver for auto-update: %s', devserver.url())
 
         # and other metrics from this function.
-        if metrics:
-            metrics.Counter('chromeos/autotest/provision/resolve',
-                            ).increment(fields=monarch_fields)
+        metrics.Counter('chromeos/autotest/provision/resolve'
+                        ).increment(fields=monarch_fields)
 
         devserver.auto_update(self.hostname, build,
                               log_dir=self.job.resultdir,
@@ -1378,16 +1377,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise
         finally:
             duration = int(time.time() - t0)
-            if metrics:
-                metrics.Counter(
-                        'chromeos/autotest/autoserv/reboot_count').increment(
-                        fields=metric_fields)
-                metrics.Counter(
-                        'chromeos/autotest/autoserv/reboot_debug').increment(
-                        fields=metric_debug_fields)
-                metrics.SecondsDistribution(
-                        'chromeos/autotest/autoserv/reboot_duration').add(
-                        duration, fields=metric_fields)
+            metrics.Counter(
+                    'chromeos/autotest/autoserv/reboot_count').increment(
+                    fields=metric_fields)
+            metrics.Counter(
+                    'chromeos/autotest/autoserv/reboot_debug').increment(
+                    fields=metric_debug_fields)
+            metrics.SecondsDistribution(
+                    'chromeos/autotest/autoserv/reboot_duration').add(
+                    duration, fields=metric_fields)
 
 
     def suspend(self, **dargs):

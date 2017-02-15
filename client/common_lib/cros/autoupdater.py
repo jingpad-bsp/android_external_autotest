@@ -18,8 +18,8 @@ from chromite.lib import retry_util
 
 try:
     from chromite.lib import metrics
-except:
-    metrics = None
+except ImportError:
+    metrics = utils.metrics_mock
 
 # Local stateful update path is relative to the CrOS source directory.
 LOCAL_STATEFUL_UPDATE_PATH = 'src/platform/dev/stateful_update'
@@ -221,24 +221,23 @@ class BaseUpdater(object):
             self._base_update_handler(run_args, err_prefix)
         except Exception as e:
             to_raise = e
-        if metrics:
-            build_name = url_to_image_name(self.update_url)
-            try:
-                board, build_type, milestone, _ = server_utils.ParseBuildName(
-                    build_name)
-            except server_utils.ParseBuildNameException:
-                logging.warning('Unable to parse build name %s for metrics. '
-                                'Continuing anyway.', build_name)
-                board, build_type, milestone = ('', '', '')
-            c = metrics.Counter(
-                'chromeos/autotest/autoupdater/trigger')
-            f = {'dev_server':
-                 dev_server.get_hostname(self.update_url),
-                 'success': to_raise is None,
-                 'board': board,
-                 'build_type': build_type,
-                 'milestone': milestone}
-            c.increment(fields=f)
+
+        build_name = url_to_image_name(self.update_url)
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(
+                build_name)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s for metrics. '
+                            'Continuing anyway.', build_name)
+            board, build_type, milestone = ('', '', '')
+        c = metrics.Counter('chromeos/autotest/autoupdater/trigger')
+        f = {'dev_server':
+             dev_server.get_hostname(self.update_url),
+             'success': to_raise is None,
+             'board': board,
+             'build_type': build_type,
+             'milestone': milestone}
+        c.increment(fields=f)
         if to_raise:
             raise to_raise
 
@@ -271,24 +270,23 @@ class BaseUpdater(object):
             self._base_update_handler(run_args, err_prefix)
         except Exception as e:
             to_raise = e
-        if metrics:
-            build_name = url_to_image_name(self.update_url)
-            try:
-                board, build_type, milestone, _ = server_utils.ParseBuildName(
-                    build_name)
-            except server_utils.ParseBuildNameException:
-                logging.warning('Unable to parse build name %s for metrics. '
-                                'Continuing anyway.', build_name)
-                board, build_type, milestone = ('', '', '')
-            c = metrics.Counter(
-                'chromeos/autotest/autoupdater/update')
-            f = {'dev_server':
-                 dev_server.get_hostname(self.update_url),
-                 'success': to_raise is None,
-                 'board': board,
-                 'build_type': build_type,
-                 'milestone': milestone}
-            c.increment(fields=f)
+
+        build_name = url_to_image_name(self.update_url)
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(
+                build_name)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s for metrics. '
+                            'Continuing anyway.', build_name)
+            board, build_type, milestone = ('', '', '')
+        c = metrics.Counter('chromeos/autotest/autoupdater/update')
+        f = {'dev_server':
+             dev_server.get_hostname(self.update_url),
+             'success': to_raise is None,
+             'board': board,
+             'build_type': build_type,
+             'milestone': milestone}
+        c.increment(fields=f)
         if to_raise:
             raise to_raise
         self._verify_update_completed()

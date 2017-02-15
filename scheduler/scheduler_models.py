@@ -38,7 +38,10 @@ from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import afe_urls
 from autotest_lib.server.cros import provision
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 _notify_email_statuses = []

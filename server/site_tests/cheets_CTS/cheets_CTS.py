@@ -21,10 +21,11 @@ import subprocess
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.cros import tradefed_test
+
 try:
     from chromite.lib import metrics
-except:
-    metrics = None
+except ImportError:
+    metrics = utils.metrics_mock
 
 # Notice if there are only a few failures each RETRY step currently (08/01/2016)
 # takes a bit more than 6 minutes (mostly for reboot, login, starting ARC).
@@ -165,12 +166,9 @@ class cheets_CTS(tradefed_test.TradefedTest):
         m = 'chromeos/autotest/infra_benchmark/cheets/push_media/duration'
         fields = {'success': False,
                   'dut_host_name': self._host.hostname}
-        if metrics:
-            with metrics.SecondsTimer(m, fields=fields) as c:
-                self._copy_media(media)
-                c['success'] = True
-        else:
+        with metrics.SecondsTimer(m, fields=fields) as c:
             self._copy_media(media)
+            c['success'] = True
         if not self._verify_media(media):
             raise error.TestFail('Error: saw corruption pushing media files.')
 

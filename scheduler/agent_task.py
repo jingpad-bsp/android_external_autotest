@@ -112,8 +112,6 @@ import os
 import urllib
 import time
 
-from chromite.lib import metrics
-
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models
@@ -123,6 +121,12 @@ from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import system_utils
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 CONFIG = global_config.global_config
 AUTOSERV_NICE_LEVEL = 10

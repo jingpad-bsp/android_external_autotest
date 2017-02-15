@@ -38,7 +38,11 @@ from autotest_lib.server.hosts import servo_repair
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 # Names of the host attributes in the database that represent the values for
 # the servo_host and servo_port for a servo connected to the DUT.

@@ -2,14 +2,20 @@ import heapq
 import os
 import logging
 
-from chromite.lib import metrics
-
 import common
-from autotest_lib.client.common_lib import error, global_config, utils
-from autotest_lib.scheduler import drone_utility, drones
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
+from autotest_lib.scheduler import drones
+from autotest_lib.scheduler import drone_utility
 from autotest_lib.scheduler import drone_task_queue
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import thread_lib
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 # results on drones will be placed under the drone_installation_directory in a
