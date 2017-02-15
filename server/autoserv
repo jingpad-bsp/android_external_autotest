@@ -562,12 +562,19 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                             # Ignore any error as the user may not have root
                             # permission to run sudo command.
                             pass
-                    job.run(install_before, install_after,
-                            verify_job_repo_url=verify_job_repo_url,
-                            only_collect_crashinfo=collect_crashinfo,
-                            skip_crash_collection=skip_crash_collection,
-                            job_labels=job_labels,
-                            use_packaging=(not no_use_packaging))
+                    metric_name = ('chromeos/autotest/experimental/'
+                                   'autoserv_job_run_duration')
+                    f = {'in_container': utils.is_in_container(),
+                         'success': False}
+                    with metrics.SecondsTimer(metric_name, fields=f) as c:
+                        job.run(install_before, install_after,
+                                verify_job_repo_url=verify_job_repo_url,
+                                only_collect_crashinfo=collect_crashinfo,
+                                skip_crash_collection=skip_crash_collection,
+                                job_labels=job_labels,
+                                use_packaging=(not no_use_packaging))
+                        c['success'] = True
+
         finally:
             while job.hosts:
                 host = job.hosts.pop()
