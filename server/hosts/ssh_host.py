@@ -13,7 +13,8 @@ You should import the "hosts" package instead of importing each type of host.
 import inspect
 import logging
 import re
-from autotest_lib.client.common_lib import error, pxssh
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import pxssh
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import abstract_ssh
 
@@ -21,8 +22,8 @@ from autotest_lib.server.hosts import abstract_ssh
 # older chromite version.
 try:
     from chromite.lib import metrics
-except:
-    metrics = None
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 class SSHHost(abstract_ssh.AbstractSSHHost):
@@ -130,24 +131,22 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             @param counter_name: string indicating which counter to use
             @param failure_name: string indentifying an error, or 'success'
             """
-            if metrics:
-                if counter_name == 'call':
-                    # ssh_counter records the outcome of each ssh invocation
-                    # inside _run(), including exceptions.
-                    ssh_counter = metrics.Counter('chromeos/autotest/ssh/calls')
-                    fields = {'error' : failure_name or 'success',
-                              'attempt' : ssh_call_count}
-                    ssh_counter.increment(fields=fields)
+            if counter_name == 'call':
+                # ssh_counter records the outcome of each ssh invocation
+                # inside _run(), including exceptions.
+                ssh_counter = metrics.Counter('chromeos/autotest/ssh/calls')
+                fields = {'error' : failure_name or 'success',
+                          'attempt' : ssh_call_count}
+                ssh_counter.increment(fields=fields)
 
-                if counter_name == 'run':
-                    # run_counter records each call to _run() with its result
-                    # and how many tries were made.  Calls are recorded when
-                    # _run() exits (including exiting with an exception)
-                    run_counter = metrics.Counter('chromeos/autotest/ssh/runs')
-                    fields = {'error' : failure_name or 'success',
-                              'attempt' : ssh_call_count}
-                    run_counter.increment(fields=fields)
-
+            if counter_name == 'run':
+                # run_counter records each call to _run() with its result
+                # and how many tries were made.  Calls are recorded when
+                # _run() exits (including exiting with an exception)
+                run_counter = metrics.Counter('chromeos/autotest/ssh/runs')
+                fields = {'error' : failure_name or 'success',
+                          'attempt' : ssh_call_count}
+                run_counter.increment(fields=fields)
 
         # If ssh_failure_retry_ok is True, retry twice on timeouts and generic
         # error 255: if a simple retry doesn't work, kill the ssh master

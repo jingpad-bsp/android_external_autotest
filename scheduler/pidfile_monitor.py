@@ -10,13 +10,16 @@ import traceback
 
 import common
 
-from chromite.lib import metrics
-
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import drone_manager
 from autotest_lib.scheduler import scheduler_config
 
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 def _get_pidfile_timeout_secs():

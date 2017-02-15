@@ -7,14 +7,12 @@ import cgi
 import collections
 import HTMLParser
 import logging
-import os
 import re
 import textwrap
 
 from xml.parsers import expat
 
 import common
-from chromite.lib import metrics
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -25,6 +23,12 @@ from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils  import gmail_lib
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = site_utils.metrics_mock
+
 
 # Try importing the essential bug reporting libraries.
 try:

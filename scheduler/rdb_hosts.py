@@ -20,9 +20,9 @@ import logging
 import time
 
 from django.core import exceptions as django_exceptions
-from chromite.lib import metrics
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
@@ -30,6 +30,11 @@ from autotest_lib.scheduler import rdb_utils
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils.suite_scheduler import constants
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 class RDBHost(object):

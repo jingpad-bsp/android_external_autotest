@@ -24,10 +24,16 @@ from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import utils as server_utils
-from chromite.lib import metrics
-from chromite.lib import ts_mon_config
 from chromite.lib import timeout_util
 from django.db import transaction
+
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = server_utils.metrics_mock
+    ts_mon_config = server_utils.metrics_mock
+
 
 """
 Autotest shard client

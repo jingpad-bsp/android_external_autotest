@@ -10,13 +10,18 @@ if necessary.
 
 import os
 
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import agent_task, drones, drone_manager
 from autotest_lib.scheduler import email_manager, pidfile_monitor
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import autoserv_utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 _parser_path = os.path.join(drones.AUTOTEST_INSTALL_DIR, 'tko', 'parse')
 

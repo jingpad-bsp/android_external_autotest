@@ -38,7 +38,11 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import lxc_config
 from autotest_lib.site_utils import lxc_utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 config = global_config.global_config
 
