@@ -264,6 +264,7 @@ class platform_ExternalUsbPeripherals(test.test):
         """Disconnect servo hub"""
         self.set_hub_power(False)
         self.host.servo.set('usb_mux_sel3', 'servo_sees_usbkey')
+        self.host.reboot()
 
 
     def run_once(self, host, client_autotest, action_sequence, repeat,
@@ -286,6 +287,8 @@ class platform_ExternalUsbPeripherals(test.test):
             self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         else:
             self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.host.servo.set('usb_mux_oe2', 'off')
+            self.host.servo.set('usb_mux_oe4', 'off')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
         time.sleep(_WAIT_DELAY)
 
@@ -310,7 +313,6 @@ class platform_ExternalUsbPeripherals(test.test):
         board = host.get_board().split(':')[1]
         action_sequence = action_sequence.upper()
         actions = action_sequence.split(',')
-        actions.append('REBOOT')
         boot_id = 0
         self.remove_crash_data()
 
