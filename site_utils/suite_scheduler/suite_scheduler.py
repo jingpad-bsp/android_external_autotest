@@ -40,6 +40,7 @@ import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
 import manifest_versions, sanity, task
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 try:
@@ -51,7 +52,11 @@ except ImportError:
     server_manager_utils = None
     logging.debug('Could not load server_manager_utils module, expected '
                   'if you are running sanity check or pre-submit hook')
-from chromite.lib import ts_mon_config
+
+try:
+    from chromite.lib import ts_mon_config
+except ImportError:
+    ts_mon_config = utils.metrics_mock
 
 
 CONFIG_SECTION = 'SCHEDULER'

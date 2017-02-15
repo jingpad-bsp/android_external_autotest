@@ -21,7 +21,6 @@ import os
 import re
 import shutil
 import signal
-import socket
 import subprocess
 import sys
 import tempfile
@@ -38,14 +37,21 @@ from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
 
-from chromite.lib import metrics
-from chromite.lib import parallel
-from chromite.lib import ts_mon_config
+# Autotest requires the psutil module from site-packages, so it must be imported
+# after "import common" 
 try:
     # Does not exist, nor is needed, on moblab.
     import psutil
 except ImportError:
     psutil = None
+
+from chromite.lib import parallel
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = site_utils.metrics_mock
+    ts_mon_config = site_utils.metrics_mock
 
 
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
@@ -270,7 +276,7 @@ def limit_file_count(dir_entry):
                       ignore_status=True).stdout.strip()
     try:
         count = int(count)
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         logging.warning('Fail to get the file count in folder %s.', dir_entry)
         return
     if count < MAX_FILE_COUNT:

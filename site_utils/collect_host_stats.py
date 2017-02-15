@@ -15,13 +15,19 @@ from datetime import datetime
 from datetime import timedelta
 
 import common
-from chromite.lib import metrics
-from chromite.lib import ts_mon_config
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import host_history_utils
 from autotest_lib.site_utils import host_label_utils
+
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = utils.metrics_mock
+    ts_mon_config = utils.metrics_mock
 
 
 _MACHINE_UTILIZATION_RATE_HOURLY = metrics.Float(

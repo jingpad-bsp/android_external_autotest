@@ -11,8 +11,13 @@ import collections
 
 import common
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib import utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 RDB_STATS_KEY = 'rdb'
 

@@ -20,8 +20,6 @@ import common
 from autotest_lib.frontend import setup_django_environment
 
 import django.db
-from chromite.lib import metrics
-from chromite.lib import ts_mon_config
 
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
@@ -40,6 +38,13 @@ from autotest_lib.server import system_utils
 from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
+
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = utils.metrics_mock
+    ts_mon_config = utils.metrics_mock
 
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
