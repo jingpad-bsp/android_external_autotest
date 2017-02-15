@@ -19,6 +19,7 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import base_label
+from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import testbed_label
 from autotest_lib.server.hosts import teststation_host
 
@@ -41,7 +42,7 @@ class TestBed(object):
     support_devserver_provision = False
 
     def __init__(self, hostname='localhost', afe_host=None, adb_serials=None,
-                 **dargs):
+                 host_info_store=None, **dargs):
         """Initialize a TestBed.
 
         This will create the Test Station Host and connected hosts (ADBHost for
@@ -49,11 +50,14 @@ class TestBed(object):
 
         @param hostname: Hostname of the test station connected to the duts.
         @param adb_serials: List of adb device serials.
+        @param host_info_store: A CachingHostInfoStore object.
         @param afe_host: The host object attained from the AFE (get_hosts).
         """
         logging.info('Initializing TestBed centered on host: %s', hostname)
         self.hostname = hostname
         self._afe_host = afe_host or utils.EmptyAFEHost()
+        self.host_info_store = (host_info_store or
+                                host_info.InMemoryHostInfoStore())
         self.labels = base_label.LabelRetriever(testbed_label.TESTBED_LABELS)
         self.teststation = teststation_host.create_teststationhost(
                 hostname=hostname, afe_host=self._afe_host, **dargs)
