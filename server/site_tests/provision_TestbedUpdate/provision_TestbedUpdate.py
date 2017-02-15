@@ -81,7 +81,7 @@ class provision_TestbedUpdate(test.test):
             info = testbed.host_info_store.get()
             # If the host is already on the correct build, we have nothing to
             # do.
-            if self._builds_to_set(info.build) == self._builds_to_set(value):
+            if self._builds_to_set(info.build) == self._builds_to_set(value)):
                 # We can't raise a TestNA, as would make sense, as that makes
                 # job.run_test return False as if the job failed.  However, it'd
                 # still be nice to get this into the status.log, so we manually
