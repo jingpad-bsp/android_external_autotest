@@ -301,16 +301,9 @@ def is_guest_vault_mounted(allow_fail=False):
         allow_fail=allow_fail)
 
 
-def get_mounted_vault_devices(user, allow_fail=False):
-    """Get the device(s) backing the vault mounted for the given user.
-
-    Returns the devices mounted at the user's user and system mount points. If
-    no user is given, the device mounted at the shared mount point is returned.
-    """
-    return [mount_info[0]
-            for mount_info
-            in __get_user_mount_info(user=user, allow_fail=allow_fail)
-            if len(mount_info)]
+def get_mounted_vault_path(user, allow_fail=False):
+    """Get the path where the decrypted data for the user is located."""
+    return os.path.join(constants.SHADOW_ROOT, get_user_hash(user), 'mount')
 
 
 def canonicalize(credential):
