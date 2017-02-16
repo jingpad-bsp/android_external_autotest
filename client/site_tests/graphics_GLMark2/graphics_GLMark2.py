@@ -80,8 +80,6 @@ class graphics_GLMark2(test.test):
         else:
             options.append('-b :duration=2')
         cmd = glmark2 + ' ' + ' '.join(options)
-        if not utils.is_freon():
-            cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 ' + cmd
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
@@ -108,11 +106,6 @@ class graphics_GLMark2(test.test):
             raise error.TestFail('Failed: CmdError running %s' % cmd)
         except error.CmdTimeoutError:
             raise error.TestFail('Failed: CmdTimeout running %s' % cmd)
-        finally:
-            # Just sending SIGTERM to X is not enough; we must wait for it to
-            # really die before we start a new X server (ie start ui).
-            if not utils.is_freon():
-                utils.ensure_processes_are_dead_by_name('^X$')
 
         logging.info(result)
         for line in result.stderr.splitlines():
