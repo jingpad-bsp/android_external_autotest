@@ -9,7 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:platform_input"
 
 DOC = """
 Press Ctrl+F5 to create a screenshot file and verify it is present.
