@@ -52,8 +52,8 @@ def _resolve_crashserver():
         raise dev_server.DevServerException(
                 'No crash server has the capacity to symbolicate the dump.')
     else:
-        metrics.Counter('chromeos/autotest/crashcollect/resolved',
-                        fields={'crash_server': crashserver_name})
+        metrics.Counter('chromeos/autotest/crashcollect/resolved'
+                        ).increment(fields={'crash_server': crashserver_name})
     return crashserver_name
 
 
