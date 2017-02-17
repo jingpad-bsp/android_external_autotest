@@ -30,9 +30,6 @@ class moblab_RunSuite(moblab_test.MoblabTest):
 
         @raises AutoservRunError if the suite does not complete successfully.
         """
-        # Clear the Moblab Image Storage so that staging an image is properly
-        # tested.
-        self.run('rm -rf %s/*' % moblab_host.MOBLAB_IMAGE_STORAGE)
         try:
             # Fetch the board of the DUT's assigned to this Moblab. There should
             # only be one type.
@@ -50,7 +47,7 @@ class moblab_RunSuite(moblab_test.MoblabTest):
         try:
             result = host.run_as_moblab(
                     "%s/site_utils/run_suite.py --pool='' "
-                    "--board=%s --build=%s --suite_name=%s --fail_if_no_tests" %
+                    "--board=%s --build=%s --suite_name=%s" %
                     (moblab_host.AUTOTEST_INSTALL_DIR, board, build,
                      suite_name), timeout=10800)
         except error.AutoservRunError as e:

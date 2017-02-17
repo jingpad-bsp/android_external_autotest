@@ -81,7 +81,7 @@ _URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 # Return code that will be sent back to autotest_rpc_server.py
 RETURN_CODES = enum.Enum(
         'OK', 'ERROR', 'WARNING', 'INFRA_FAILURE', 'SUITE_TIMEOUT',
-        'BOARD_NOT_AVAILABLE', 'INVALID_OPTIONS', 'NO_TESTS_RAN')
+        'BOARD_NOT_AVAILABLE', 'INVALID_OPTIONS')
 # The severity of return code. If multiple codes
 # apply, the script should always return the severest one.
 # E.g. if we have a test failure and the suite also timed out,
@@ -259,9 +259,6 @@ def make_parser():
     parser.add_argument(
         '--skip_duts_check', dest='skip_duts_check', action='store_true',
         default=False, help='If True, skip minimum available DUTs check')
-    parser.add_argument('--fail_if_no_tests', dest='fail_if_no_tests',
-                        default=False, action='store_true',
-                        help='Outputs a non-zero exit code if no tests run.')
     return parser
 
 
@@ -1735,8 +1732,6 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     collector.run()
     # Dump test outputs into json.
     output_dict = collector.get_results_dict()
-    if options.fail_if_no_tests and not output_dict['tests']:
-        return SuiteResult(RETURN_CODES.NO_TESTS_RAN, output_dict)
     output_dict['autotest_instance'] = instance_server
     if not options.json_dump:
         collector.output_results()
