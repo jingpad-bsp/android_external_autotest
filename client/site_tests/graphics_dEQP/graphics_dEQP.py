@@ -42,6 +42,7 @@ class graphics_dEQP(test.test):
     _debug = False  # Analyze kernel messages.
     _log_reader = None  # Reader to analyze (kernel) messages log.
     _log_filter = re.compile('.* .* kernel:')  # kernel messages filter.
+    _env = None # environment for test processes
 
     DEQP_BASEDIR = '/usr/local/deqp'
     DEQP_MODULES = {
@@ -56,6 +57,16 @@ class graphics_dEQP(test.test):
         self._board = utils.get_board()
         self._cpu_type = utils.get_cpu_soc_family()
         self._gpu_type = utils.get_gpu_family()
+
+        # deqp may depend on libraries that are present only on test images.
+        # Those libraries are installed in /usr/local.
+        self._env = os.environ.copy()
+        old_ld_path = self._env.get('LD_LIBRARY_PATH', '')
+        if old_ld_path:
+            self._env['LD_LIBRARY_PATH'] = '/usr/local/lib:/usr/local/lib64:' + old_ld_path
+        else:
+            self._env['LD_LIBRARY_PATH'] = '/usr/local/lib:/usr/local/lib64'
+
         # Determine which executable should be run. Right now never egl.
         major, minor = graphics_utils.get_gles_version()
         logging.info('Found gles%d.%d.', major, minor)
@@ -71,9 +82,13 @@ class graphics_dEQP(test.test):
                 self._can_run_executables.append('gles31/deqp-gles31')
 
         # If libvulkan is installed, then assume the board supports vulkan.
-        # TODO(chadversary): Use correct libdir for ARM boards.
-        if (os.path.exists('/usr/local/deqp/external/vulkancts/modules/vulkan/deqp-vk') and
-                os.path.exists('/usr/lib64/libvulkan.so')):
+        has_libvulkan = False
+        for libdir in ('/usr/lib', '/usr/lib64', '/usr/local/lib', '/usr/local/lib64'):
+            if os.path.exists(os.path.join(libdir, 'libvulkan.so')):
+                has_libvulkan = True
+
+        if (has_libvulkan and
+                os.path.exists('/usr/local/deqp/external/vulkancts/modules/vulkan/deqp-vk')):
             self._can_run_executables.append('external/vulkancts/modules/vulkan/deqp-vk')
 
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
@@ -220,6 +235,7 @@ class graphics_dEQP(test.test):
                                                                 self._surface))
         logging.info('Running command %s', command)
         utils.run(command,
+                  env=self._env,
                   timeout=60,
                   stderr_is_expected=False,
                   ignore_status=False,
@@ -336,6 +352,7 @@ class graphics_dEQP(test.test):
                 start_time = time.time()
                 try:
                     run_result = utils.run(command,
+                                           env=self._env,
                                            timeout=self._timeout,
                                            stderr_is_expected=False,
                                            ignore_status=True)
@@ -455,6 +472,7 @@ class graphics_dEQP(test.test):
 
                 try:
                     utils.run(command,
+                              env=self._env,
                               timeout=batch_timeout,
                               stderr_is_expected=False,
                               ignore_status=False,
