@@ -33,4 +33,5 @@ class cheets_CTSHelper(test.test):
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
             self.chrome = chrome.Chrome(
-                        arc_mode=arc.arc_common.ARC_MODE_ENABLED)
+                        arc_mode=arc.arc_common.ARC_MODE_ENABLED,
+                        init_network_controller=False)
