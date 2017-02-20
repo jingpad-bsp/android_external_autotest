@@ -48,10 +48,14 @@ class audio_Microphone(test.test):
         # Mono and stereo capturing should work fine @ 44.1KHz and 48KHz.
         if utils.get_board().lower() not in EXCLUSION_BOARDS:
             # Verify recording using ALSA utils.
-            self.verify_alsa_capture(1, 44100)
-            self.verify_alsa_capture(1, 48000)
-            self.verify_alsa_capture(2, 48000)
-            self.verify_alsa_capture(2, 44100)
+            channels = alsa_utils.get_card_preferred_record_channels()
+            if channels is None:
+                channels = [1, 2]
+
+            for c in channels:
+                self.verify_alsa_capture(c, 44100)
+                self.verify_alsa_capture(c, 48000)
+
             # Verify recording of CRAS.
             self.verify_cras_capture(1, 44100)
             self.verify_cras_capture(1, 48000)
