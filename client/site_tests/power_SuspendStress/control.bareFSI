@@ -11,14 +11,12 @@ TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-Runs 10000 iterations of bare suspend/resume cycles without additional workload.
+Runs iterations of bare suspend/resume cycles without additional workload.
 Follows this by a few short checks to make sure the system is still in a good
 state (work in progress, feel free to add some more).
-
-Test will likely take >24hrs to complete successfully.
 """
 
-job.run_test('power_SuspendStress', duration=None, iterations=10000, tag='bare')
+job.run_test('power_SuspendStress', duration=None, iterations=2500, tag='bare')
 
 job.run_test('hardware_EC', tag='power_SuspendStress')
 job.run_test('login_LoginSuccess', tag='power_SuspendStress')
