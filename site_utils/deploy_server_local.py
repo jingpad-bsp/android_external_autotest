@@ -160,8 +160,10 @@ def repo_sync(update_push_servers=False):
                                 stderr=subprocess.STDOUT)
     # Remove .pyc files via pyclean, which is a package on all ubuntu server.
     print('Removing .pyc files')
-    subprocess.check_output(['pyclean', '.', '-q'])
-
+    try:
+        subprocess.check_output(['pyclean', '.', '-q'])
+    except Exception as e:
+        print('Warning: fail to remove .pyc! %s' % e)
 
 def discover_update_commands():
     """Lookup the commands to run on this server.
@@ -467,7 +469,10 @@ def _sync_chromiumos_repo():
         ret = subprocess.call(['repo', 'sync'], stderr=subprocess.STDOUT)
         # Remove .pyc files via pyclean, which is a package on all ubuntu server
         print('Removing .pyc files')
-        subprocess.check_output(['pyclean', '.', '-q'])
+        try:
+            subprocess.check_output(['pyclean', '.', '-q'])
+        except Exception as e:
+            print('Warning: fail to remove .pyc! %s' % e)
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
 
