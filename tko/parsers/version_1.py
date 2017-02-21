@@ -306,12 +306,11 @@ class parser(base.parser):
         ignored_lines = []
         yield []   # We're ready to start running.
 
-        def print_and_reset_ignored_lines():
+        def print_ignored_lines():
             tko_utils.dprint('The following lines were ignored:')
             for line in ignored_lines:
                 tko_utils.dprint(line)
             tko_utils.dprint('---------------------------------')
-            ignored_lines = []
 
         # Create a RUNNING SERVER_JOB entry to represent the entire test.
         running_job = test.parse_partial_test(self.job, '----', 'SERVER_JOB',
@@ -323,7 +322,8 @@ class parser(base.parser):
             # Are we finished with parsing?
             if buffer.size() == 0 and self.finished:
                 if ignored_lines:
-                    print_and_reset_ignored_lines()
+                    print_ignored_lines()
+                    ignored_lines = []
                 if stack.size() == 0:
                     break
                 # We have status lines left on the stack;
@@ -364,7 +364,8 @@ class parser(base.parser):
                 ignored_lines.append(raw_line)
                 continue
             elif ignored_lines:
-                print_and_reset_ignored_lines()
+                print_ignored_lines()
+                ignored_lines = []
 
             # Do an initial sanity check of the indentation.
             expected_indent = stack.size()
