@@ -24,6 +24,7 @@ class platform_ImageLoader(test.test):
     BUS_INTERFACE = 'org.chromium.ImageLoaderInterface'
     GET_COMPONENT_VERSION = 'GetComponentVersion'
     REGISTER_COMPONENT = 'RegisterComponent'
+    LOAD_COMPONENT = 'LoadComponent'
     BAD_RESULT = ''
     USER = 'chronos'
     COMPONENT_NAME = 'PepperFlashPlayer'
@@ -53,12 +54,23 @@ class platform_ImageLoader(test.test):
             user=self.USER,
             args=args).response
 
-    def _corrupt_and_load_component(self, component, iteration, target, offset):
-        """
-        Registers a valid component and then corrupts it by writing a
-        random byte to the target file at the given offset. It then attemps
-        to load the component and returns whether or not that succeeded.
+    def _load_component(self, name):
+        args = [dbus.String(name)]
+        return dbus_send.dbus_send(
+            self.BUS_NAME,
+            self.BUS_INTERFACE,
+            self.BUS_PATH,
+            self.LOAD_COMPONENT,
+            timeout_seconds=20,
+            user=self.USER,
+            args=args).response
 
+    def _corrupt_and_load_component(self, component, iteration, target, offset):
+        """Registers a valid component and then corrupts it by writing
+        a random byte to the target file at the given offset.
+
+        It then attemps to load the component and returns whether or
+        not that succeeded.
         @component The path to the component to register.
         @iteration A prefix to append to the name of the component, so that
                    multiple registrations do not clash.
@@ -75,14 +87,10 @@ class platform_ImageLoader(test.test):
         os.system('printf \'\\xa1\' | dd conv=notrunc of=%s bs=1 seek=%s' %
                   (corrupt_path + '/' + target, offset))
 
-        return subprocess.call([
-            '/usr/sbin/imageloader', '--mount',
-            '--mount_component=' + self.CORRUPT_COMPONENT_NAME + iteration,
-            '--mount_point=/run/imageloader/' + self.CORRUPT_COMPONENT_NAME +
-            iteration
-        ]) == 0
+        return self._load_component(self.CORRUPT_COMPONENT_NAME + iteration)
 
     def initialize(self):
+        self._paths_to_unmount = []
         # Clear any existing storage before the test.
         shutil.rmtree(self.STORAGE, ignore_errors=True)
 
@@ -131,17 +139,36 @@ class platform_ImageLoader(test.test):
                                     component1):
             raise error.TestError('ImageLoader allowed a rollback')
 
-        # Now test loading the component.
+        known_mount_path = '/run/imageloader/PepperFlashPlayer_testing'
+        # Now test loading the component on the command line.
         if subprocess.call([
                 '/usr/sbin/imageloader', '--mount',
-                '--mount_component=PepperFlashPlayer',
-                '--mount_point=/run/imageloader/PepperFlashPlayer'
+                '--mount_component=PepperFlashPlayer', '--mount_point=%s' %
+            (known_mount_path)
         ]) != 0:
             raise error.TestError('Failed to mount component')
 
+        # If the component is already mounted, it should return the path again.
+        if subprocess.call([
+                '/usr/sbin/imageloader', '--mount',
+                '--mount_component=PepperFlashPlayer', '--mount_point=%s' %
+            (known_mount_path)
+        ]) != 0:
+            raise error.TestError('Failed to remount component')
+
+        self._paths_to_unmount.append(known_mount_path)
         if not os.path.exists(
-                '/run/imageloader/PepperFlashPlayer/libpepflashplayer.so'):
+                os.path.join(known_mount_path, 'libpepflashplayer.so')):
             raise error.TestError('Flash player file does not exist')
+
+        mount_path = self._load_component(self.COMPONENT_NAME)
+        if mount_path == self.BAD_RESULT:
+            raise error.TestError('Failed to mount component as dbus service.')
+        self._paths_to_unmount.append(mount_path)
+
+        if not os.path.exists(os.path.join(mount_path, 'libpepflashplayer.so')):
+            raise error.TestError('Flash player file does not exist ' +
+                                  'after loading as dbus service.')
 
         # Now test some corrupt components.
         shutil.copytree(component1, self.CORRUPT_COMPONENT_PATH)
@@ -155,14 +182,16 @@ class platform_ImageLoader(test.test):
             raise error.TestError('Registered a corrupt component')
 
         # Now register a valid component, and then corrupt it.
-        if not self._corrupt_and_load_component(component1, '1', 'image.squash',
-                                                '1000000'):
+        mount_path = self._corrupt_and_load_component(component1, '1',
+                                                      'image.squash', '1000000')
+        if mount_path == self.BAD_RESULT:
             raise error.TestError('Failed to load component with corrupt image')
+        self._paths_to_unmount.append(mount_path)
 
-        corrupt_file = ('/run/imageloader/CorruptPepperFlashPlayer1/'
-                        'libpepflashplayer.so')
+        corrupt_file = os.path.join(mount_path, 'libpepflashplayer.so')
         if not os.path.exists(corrupt_file):
-            raise error.TestError('Flash player file does not exist')
+            raise error.TestError('Flash player file does not exist ' +
+                                  'for corrupt image')
 
         # Reading the files should fail.
         # This is a critical test. We assume dm-verity works, but by default it
@@ -184,25 +213,24 @@ class platform_ImageLoader(test.test):
                 'Did not receive an I/O error while reading the corrupt image')
 
         # Modify the signature and make sure the component does not load.
-        if self._corrupt_and_load_component(component1, '2',
-                                            'imageloader.sig.1', '50'):
+        if self._corrupt_and_load_component(
+                component1, '2', 'imageloader.sig.1', '50') != self.BAD_RESULT:
             raise error.TestError('Mounted component with corrupt signature')
 
         # Modify the manifest and make sure the component does not load.
         if self._corrupt_and_load_component(component1, '3', 'imageloader.json',
-                                            '1'):
+                                            '1') != self.BAD_RESULT:
             raise error.TestError('Mounted component with corrupt manifest')
 
         # Modify the table and make sure the component does not load.
-        if self._corrupt_and_load_component(component1, '4', 'table', '1'):
+        if self._corrupt_and_load_component(component1, '4', 'table',
+                                            '1') != self.BAD_RESULT:
             raise error.TestError('Mounted component with corrupt table')
 
     def cleanup(self):
         # Clear the STORAGE after the test as well.
         shutil.rmtree(self.STORAGE, ignore_errors=True)
         shutil.rmtree(self.CORRUPT_COMPONENT_PATH, ignore_errors=True)
-        utils.system(
-            'umount /run/imageloader/PepperFlashPlayer', ignore_status=True)
-        utils.system(
-            'umount /run/imageloader/CorruptPepperFlashPlayer1',
-            ignore_status=True)
+        for path in self._paths_to_unmount:
+            utils.system('umount %s' % (path), ignore_status=True)
+            shutil.rmtree(path, ignore_errors=True)
