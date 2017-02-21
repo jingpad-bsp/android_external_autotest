@@ -359,8 +359,10 @@ class base_test(object):
                        postprocess_profiled_run, args, dargs):
         self.drop_caches_between_iterations()
         # execute iteration hooks
+        logging.debug('starting before_iteration_hooks')
         for hook in self.before_iteration_hooks:
             hook(self)
+        logging.debug('before_iteration_hooks completed')
 
         try:
             if profile_only:
@@ -373,17 +375,24 @@ class base_test(object):
                                         *args, **dargs)
             else:
                 self.before_run_once()
+                logging.debug('starting test(run_once()), test details follow'
+                              '\n%r', args)
                 self.run_once(*args, **dargs)
+                logging.debug('The test has completed successfully')
                 self.after_run_once()
 
             self.postprocess_iteration()
             self.analyze_perf_constraints(constraints)
         # Catch and re-raise to let after_iteration_hooks see the exception.
-        except:
+        except Exception as e:
+            logging.debug('Test failed due to %s. Exception log follows the '
+                          'after_iteration_hooks.', str(e))
             raise
         finally:
+            logging.debug('starting after_iteration_hooks')
             for hook in reversed(self.after_iteration_hooks):
                 hook(self)
+            logging.debug('after_iteration_hooks completed')
 
 
     def execute(self, iterations=None, test_length=None, profile_only=None,
@@ -602,12 +611,13 @@ class base_test(object):
                 # Save the exception while we run our cleanup() before
                 # reraising it, but log it to so actual time of error is known.
                 exc_info = sys.exc_info()
-                logging.warning('Autotest caught exception when running test:',
+                logging.warning('The test failed with the following exception',
                                 exc_info=True)
 
                 try:
                     try:
                         if run_cleanup:
+                            logging.debug('Running cleanup for test.')
                             _cherry_pick_call(self.cleanup, *args, **dargs)
                     except Exception:
                         logging.error('Ignoring exception during cleanup() '
@@ -617,6 +627,9 @@ class base_test(object):
                                       exc_info[0])
                     self.crash_handler_report()
                 finally:
+                    # Raise exception after running cleanup, reporting crash,
+                    # and restoring job's logging, even if the first two
+                    # actions fail.
                     self.job.logging.restore()
                     try:
                         raise exc_info[0], exc_info[1], exc_info[2]
