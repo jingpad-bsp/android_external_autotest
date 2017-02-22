@@ -259,6 +259,10 @@ def make_parser():
     parser.add_argument(
         '--skip_duts_check', dest='skip_duts_check', action='store_true',
         default=False, help='If True, skip minimum available DUTs check')
+    parser.add_argument(
+        '--job_keyvals', dest='job_keyvals', type=json.loads,
+        action='store', default=None,
+        help='A dict of job keyvals to be inject to suite control file')
     return parser
 
 
@@ -1595,6 +1599,7 @@ def create_suite(afe, options):
         offload_failures_only=options.offload_failures_only,
         run_prod_code=options.run_prod_code,
         delay_minutes=options.delay_minutes,
+        job_keyvals=options.job_keyvals,
     )
 
 
