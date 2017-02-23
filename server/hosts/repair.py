@@ -65,12 +65,13 @@ class RebootRepair(hosts.RepairAction):
     """Repair a target device by rebooting it."""
 
     def repair(self, host):
+        host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0')
         host.reboot()
 
 
     @property
     def description(self):
-        return 'Reboot the host'
+        return 'Reset GBB flags and Reboot the host'
 
 
 class RPMCycleRepair(hosts.RepairAction):
