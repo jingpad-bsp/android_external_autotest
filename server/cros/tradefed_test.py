@@ -40,17 +40,13 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
-from autotest_lib.site_utils import lxc
 
 
-_SDK_TOOLS_DIR = ('gs://chromeos-arc-images/builds/'
-        'git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341')
+# TODO(ihf): Find a home for all these paths. This is getting out of hand.
+_SDK_TOOLS_DIR_M = 'gs://chromeos-arc-images/builds/git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341'
 _SDK_TOOLS_FILES = ['aapt']
 # To stabilize adb behavior, we use dynamically linked adb.
-_ADB_DIR = ('gs://chromeos-arc-images/builds/'
-        'git_mnc-dr-arc-dev-linux-cheets_arm-user/3554341')
-# TODO(ihf): Make this the path below as it seems to work locally.
-#       'git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341')
+_ADB_DIR_M = 'gs://chromeos-arc-images/builds/git_mnc-dr-arc-dev-linux-cheets_arm-user/3554341'
 _ADB_FILES = ['adb']
 
 _ADB_POLLING_INTERVAL_SECONDS = 1
@@ -176,7 +172,9 @@ class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
 
-    def initialize(self, host=None):
+    # TODO(ihf): Remove _ABD_DIR_M/_SDK_TOOLS_DIR_M defaults once M is dead.
+    def initialize(self, host=None, adb_dir=_ADB_DIR_M,
+                   sdk_tools_dir=_SDK_TOOLS_DIR_M):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
         self._host = host
@@ -207,8 +205,8 @@ class TradefedTest(test.test):
         # Set permissions (rwxr-xr-x) to the executable binaries.
         permission = (stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
                 | stat.S_IXOTH)
-        self._install_files(_ADB_DIR, _ADB_FILES, permission)
-        self._install_files(_SDK_TOOLS_DIR, _SDK_TOOLS_FILES, permission)
+        self._install_files(adb_dir, _ADB_FILES, permission)
+        self._install_files(sdk_tools_dir, _SDK_TOOLS_FILES, permission)
 
     def cleanup(self):
         """Cleans up any dirtied state."""
@@ -592,6 +590,33 @@ class TradefedTest(test.test):
                      datetime_id)
         return datetime_id
 
+    def _parse_tradefed_datetime_N(self, result, summary=None):
+        """Get the tradefed provided result ID consisting of a datetime stamp.
+
+        Unfortunately we are unable to tell tradefed where to store the results.
+        In the lab we have multiple instances of tradefed running in parallel
+        writing results and logs to the same base directory. This function
+        finds the identifier which tradefed used during the current run and
+        returns it for further processing of result files.
+
+        @param result: The result object from utils.run.
+        @param summary: Test result summary from runs so far.
+        @return datetime_id: The result ID chosen by tradefed.
+                             Example: '2016.07.14_00.34.50'.
+        """
+        # This string is show for both 'run' and 'continue' after all tests.
+        match = re.search(r'(\d\d\d\d.\d\d.\d\d_\d\d.\d\d.\d\d)', result.stdout)
+        if not (match and match.group(1)):
+            error_msg = 'Error: Test did not complete. (Chrome or ARC crash?)'
+            if summary:
+                error_msg += (' Test summary from previous runs: %s'
+                        % summary)
+            raise error.TestFail(error_msg)
+        datetime_id = match.group(1)
+        logging.info('Tradefed identified results and logs with %s.',
+                     datetime_id)
+        return datetime_id
+
     def _parse_result(self, result, waivers=None):
         """Check the result from the tradefed output.
 
@@ -644,6 +669,68 @@ class TradefedTest(test.test):
             raise error.TestFail('Error: Internal waiver book keeping has '
                                  'become inconsistent.')
         return (tests, passed, failed, not_executed)
+
+    def _parse_result_N(self, result, waivers=None):
+        """Check the result from the tradefed output.
+
+        This extracts the test pass/fail/executed list from the output of
+        tradefed. It is up to the caller to handle inconsistencies.
+
+        @param result: The result object from utils.run.
+        @param waivers: a set() of tests which are permitted to fail.
+        """
+        # Parse the stdout to extract test status. In particular step over
+        # similar output for each ABI and just look at the final summary.
+        # I/ResultReporter: Invocation finished in 2m 9s. \
+        # PASSED: 818, FAILED: 0, NOT EXECUTED: 0, MODULES: 1 of 1
+        match = re.search(r'PASSED: (\d+), FAILED: (\d+), NOT EXECUTED: (\d+), '
+                          r'MODULES: (\d+) of (\d+)',
+                          result.stdout)
+        if not match:
+            raise error.Test('Test log does not contain a summary.')
+        passed = int(match.group(1))
+        failed = int(match.group(2))
+        not_executed = int(match.group(3))
+
+        # Starting x86 CtsUtilTestCases with 204 tests
+        match = re.search(r'Starting (?:armeabi-v7a|x86) (.*) with '
+                          r'(\d+(?:,\d+)?) tests', result.stdout)
+        if match and match.group(2):
+            tests = int(match.group(2).replace(',', ''))
+            logging.info('Found %d tests.', tests)
+        else:
+            # Unfortunately this happens. Assume it made no other mistakes.
+            logging.warning('Tradefed forgot to print number of tests.')
+            # TODO(ihf): Once b/35530394 is fixed "+ not_executed".
+            tests = passed + failed
+
+        # TODO(rohitbm): make failure parsing more robust by extracting the list
+        # of failing tests instead of searching in the result blob. As well as
+        # only parse for waivers for the running ABI.
+        waived = 0
+        if waivers:
+            for testname in waivers:
+                # TODO(dhaddock): Find a more robust way to apply waivers.
+                fail_count = (result.stdout.count(testname + ' FAIL') +
+                              result.stdout.count(testname + ' fail'))
+                if fail_count:
+                    if fail_count > 2:
+                        raise error.TestFail('Error: There are too many '
+                                             'failures found in the output to '
+                                             'be valid for applying waivers. '
+                                             'Please check output.')
+                    waived += fail_count
+                    logging.info('Waived failure for %s %d time(s)',
+                                 testname, fail_count)
+        counts = (tests, passed, failed, not_executed, waived)
+        msg = ('tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' %
+               counts)
+        logging.info(msg)
+        if failed - waived < 0:
+            raise error.TestFail('Error: Internal waiver bookkeeping has '
+                                 'become inconsistent (failed=%d, waived=%d).'
+                                 % (failed, waived))
+        return counts
 
     def _collect_logs(self, repository, datetime, destination):
         """Collects the tradefed logs.
@@ -709,5 +796,6 @@ class TradefedTest(test.test):
                     expected_failures |= lines
             except IOError as e:
                 logging.error('Error loading %s (%s).', file_path, e.strerror)
-        logging.info('Finished loading expected failures: %s', expected_failures)
+        logging.info('Finished loading expected failures: %s',
+                     expected_failures)
         return expected_failures
