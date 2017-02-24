@@ -27,9 +27,9 @@ class platform_ImageLoader(test.test):
     LOAD_COMPONENT = 'LoadComponent'
     BAD_RESULT = ''
     USER = 'chronos'
-    COMPONENT_NAME = 'PepperFlashPlayer'
-    CORRUPT_COMPONENT_NAME = 'CorruptPepperFlashPlayer'
-    CORRUPT_COMPONENT_PATH = '/tmp/CorruptPepperFlashPlayer'
+    COMPONENT_NAME = 'TestFlashComponent'
+    CORRUPT_COMPONENT_NAME = 'CorruptTestFlashComponent'
+    CORRUPT_COMPONENT_PATH = '/tmp/CorruptTestFlashComponent'
     OLD_VERSION = '23.0.0.207'
     NEW_VERSION = '24.0.0.186'
 
@@ -78,21 +78,23 @@ class platform_ImageLoader(test.test):
         @offset    The offset in the file to corrupt.
         """
 
-        if not self._register_component(self.CORRUPT_COMPONENT_NAME + iteration,
-                                        self.OLD_VERSION, component):
+        versioned_name = self.CORRUPT_COMPONENT_NAME + iteration
+        if not self._register_component(versioned_name, self.OLD_VERSION,
+                                        component):
             raise error.TestError('Failed to register a valid component')
 
-        corrupt_path = ('/var/lib/imageloader/' + self.CORRUPT_COMPONENT_NAME +
-                        iteration + '/' + self.OLD_VERSION)
+        self._components_to_delete.append(versioned_name)
+
+        corrupt_path = os.path.join('/var/lib/imageloader', versioned_name,
+                                    self.OLD_VERSION)
         os.system('printf \'\\xa1\' | dd conv=notrunc of=%s bs=1 seek=%s' %
                   (corrupt_path + '/' + target, offset))
 
-        return self._load_component(self.CORRUPT_COMPONENT_NAME + iteration)
+        return self._load_component(versioned_name)
 
     def initialize(self):
         self._paths_to_unmount = []
-        # Clear any existing storage before the test.
-        shutil.rmtree(self.STORAGE, ignore_errors=True)
+        self._components_to_delete = []
 
     def run_once(self, component1=None, component2=None):
 
@@ -109,6 +111,8 @@ class platform_ImageLoader(test.test):
         if not self._register_component(self.COMPONENT_NAME, self.OLD_VERSION,
                                         component1):
             raise error.TestError('The component failed to register')
+
+        self._components_to_delete.append(self.COMPONENT_NAME)
 
         if self._get_component_version(self.COMPONENT_NAME) != '23.0.0.207':
             raise error.TestError('The component version is incorrect')
@@ -139,11 +143,11 @@ class platform_ImageLoader(test.test):
                                     component1):
             raise error.TestError('ImageLoader allowed a rollback')
 
-        known_mount_path = '/run/imageloader/PepperFlashPlayer_testing'
+        known_mount_path = '/run/imageloader/TestFlashComponent_testing'
         # Now test loading the component on the command line.
         if subprocess.call([
                 '/usr/sbin/imageloader', '--mount',
-                '--mount_component=PepperFlashPlayer', '--mount_point=%s' %
+                '--mount_component=TestFlashComponent', '--mount_point=%s' %
             (known_mount_path)
         ]) != 0:
             raise error.TestError('Failed to mount component')
@@ -151,7 +155,7 @@ class platform_ImageLoader(test.test):
         # If the component is already mounted, it should return the path again.
         if subprocess.call([
                 '/usr/sbin/imageloader', '--mount',
-                '--mount_component=PepperFlashPlayer', '--mount_point=%s' %
+                '--mount_component=TestFlashComponent', '--mount_point=%s' %
             (known_mount_path)
         ]) != 0:
             raise error.TestError('Failed to remount component')
@@ -228,9 +232,9 @@ class platform_ImageLoader(test.test):
             raise error.TestError('Mounted component with corrupt table')
 
     def cleanup(self):
-        # Clear the STORAGE after the test as well.
-        shutil.rmtree(self.STORAGE, ignore_errors=True)
         shutil.rmtree(self.CORRUPT_COMPONENT_PATH, ignore_errors=True)
+        for name in self._components_to_delete:
+            shutil.rmtree(os.path.join(self.STORAGE, name), ignore_errors=True)
         for path in self._paths_to_unmount:
             utils.system('umount %s' % (path), ignore_status=True)
             shutil.rmtree(path, ignore_errors=True)
