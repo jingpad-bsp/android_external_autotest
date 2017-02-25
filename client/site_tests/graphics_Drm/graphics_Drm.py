@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
@@ -27,7 +28,16 @@ class graphics_Drm(test.test):
         if self._services:
             self._services.restore_services()
 
-    def run_once(self, cmd, stop_ui=True):
+    def run_once(self, cmd, stop_ui=True, display_required=True):
+        num_displays = graphics_utils.get_num_outputs_on()
+        # Sanity check to guard against incorrect silent passes.
+        if num_displays == 0 and utils.get_device_type() == 'CHROMEBOOK':
+            raise error.TestFail('Error: found Chromebook without display.')
+        if display_required and num_displays == 0:
+            # If a test needs a display and we don't have a display,
+            # consider it a pass.
+            logging.warning('No display connected, skipping test.')
+            return
         if stop_ui:
             self._services.stop_services()
         try:
