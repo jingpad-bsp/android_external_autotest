@@ -18,6 +18,7 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
+import socket
 import traceback
 
 from json import decoder
@@ -110,6 +111,7 @@ class ServiceHandler(object):
 
         metadata = request.copy()
         metadata['_type'] = 'rpc'
+        metadata['rpc_server'] = socket.gethostname()
         timer = autotest_stats.Timer('rpc', metadata=metadata)
 
         try:
