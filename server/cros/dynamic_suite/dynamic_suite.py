@@ -272,6 +272,7 @@ class SuiteSpec(object):
             test_source_build=None,
             run_prod_code=False,
             delay_minutes=0,
+            job_keyvals=None,
             **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
@@ -339,6 +340,7 @@ class SuiteSpec(object):
                               lab servers.
         @param delay_minutes: Delay the creation of test jobs for a given number
                               of minutes.
+        @param job_keyvals: General job keyvals to be inserted into keyval file
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -373,6 +375,7 @@ class SuiteSpec(object):
         self.offload_failures_only = offload_failures_only
         self.run_prod_code = run_prod_code
         self.delay_minutes = delay_minutes
+        self.job_keyvals = job_keyvals
 
         self._init_predicate(predicate)
         self._init_suite_dependencies(suite_dependencies)
@@ -577,7 +580,8 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             max_retries=spec.max_retries,
             offload_failures_only=spec.offload_failures_only,
             test_source_build=spec.test_source_build,
-            run_prod_code=spec.run_prod_code)
+            run_prod_code=spec.run_prod_code,
+            job_keyvals=spec.job_keyvals)
 
     if spec.delay_minutes:
         logging.debug('delay_minutes is set. Sleeping %d minutes before '
