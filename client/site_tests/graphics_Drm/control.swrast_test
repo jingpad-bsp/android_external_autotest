@@ -21,4 +21,5 @@ DOC = """
 Runs swrast_test.
 """
 
-job.run_test('graphics_Drm', tag='swrast_test', cmd='swrast_test')
+job.run_test('graphics_Drm', tag='swrast_test', cmd='swrast_test',
+             stop_ui=True, display_required=False)

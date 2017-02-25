@@ -21,4 +21,5 @@ DOC = """
 Runs vgem_test.
 """
 
-job.run_test('graphics_Drm', tag='vgem_test', cmd='vgem_test')
+job.run_test('graphics_Drm', tag='vgem_test', cmd='vgem_test',
+             stop_ui=True, display_required=False)
