@@ -10,6 +10,8 @@ Note: confusingly, 'Innodb_buffer_pool_reads' is actually the cache-misses, not
 the number of reads to the buffer pool.  'Innodb_buffer_pool_read_requests'
 corresponds to the number of reads the the buffer pool.
 """
+import logging
+import sys
 
 import MySQLdb
 import time
@@ -36,7 +38,7 @@ LOOP_INTERVAL = 60
 EMITTED_STATUSES_COUNTERS = [
     'bytes_received',
     'bytes_sent',
-    'connections'
+    'connections',
     'Innodb_buffer_pool_read_requests',
     'Innodb_buffer_pool_reads',
     'questions',
@@ -49,6 +51,7 @@ EMITTED_STATUS_GAUGES = ['threads_running', 'threads_connected']
 
 def main():
     """Sets up ts_mon and repeatedly queries MySQL stats"""
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     db = MySQLdb.connect('localhost', DEFAULT_USER, DEFAULT_PASSWD)
     cursor = db.cursor()
 
@@ -83,7 +86,10 @@ def GetStatus(cursor, s):
     @returns The mysql query result.
     """
     cursor.execute('SHOW GLOBAL STATUS LIKE "%s";' % s)
-    return int(cursor.fetchone()[1])
+    output = cursor.fetchone()[1]
+    if not output:
+        logging.error('Cannot find any global status like %s', s)
+    return int(output)
 
 
 def QueryAndEmit(baselines, cursor):
