@@ -306,8 +306,9 @@ class  MockMetricsTest(unittest.TestCase):
         """Test the mock class can handle context class.
         """
         test_value = None
-        with metrics.SecondsTimer('context'):
+        with metrics.SecondsTimer('context') as t:
             test_value = 'called_in_context'
+            t['random_key'] = 'pass'
         self.assertEqual('called_in_context', test_value)
 
 
@@ -327,6 +328,13 @@ class  MockMetricsTest(unittest.TestCase):
 
         test(test_value)
         self.assertEqual('called_in_decorator', test_value.value)
+
+
+    def test_setitem(self):
+        """Test the mock class can handle set item call.
+        """
+        timer = metrics.SecondsTimer('name')
+        timer['random_key'] = 'pass'
 
 
 if __name__ == "__main__":
