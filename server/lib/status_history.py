@@ -99,6 +99,7 @@ class _JobEvent(object):
     @property job_status  Short string describing the event's final status.
     @property job_url     URL to the logs for the event's job.
     @property diagnosis   Working status of the DUT after the event.
+    @property is_special  Boolean indicating if the event is a special task.
 
     """
 
@@ -177,6 +178,12 @@ class _JobEvent(object):
         @return A valid diagnosis value.
 
         """
+        raise NotImplemented()
+
+
+    @property
+    def is_special(self):
+        """Return if the event is for a special task."""
         raise NotImplemented()
 
 
@@ -281,6 +288,11 @@ class _SpecialTaskEvent(_JobEvent):
             return UNKNOWN
 
 
+    @property
+    def is_special(self):
+        return True
+
+
 class _TestJobEvent(_JobEvent):
     """`_JobEvent` adapter for regular test jobs.
 
@@ -347,6 +359,11 @@ class _TestJobEvent(_JobEvent):
     @property
     def diagnosis(self):
         return UNKNOWN
+
+
+    @property
+    def is_special(self):
+        return False
 
 
 class HostJobHistory(object):
