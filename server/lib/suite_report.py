@@ -129,6 +129,7 @@ def make_hqe_entry(hostname, hqe, hqe_statuses, parent=None):
     entry['task_name'] = hqe.name.split('/')[-1]
     entry['in_suite'] = hqe.id in hqe_statuses
     entry['job_url'] = hqe.job_url
+    entry['is_special'] = hqe.is_special
     return entry
 
 def generate_suite_report(suite_job_id, afe=None, tko=None):
