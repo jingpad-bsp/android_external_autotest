@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_VZW_Long_Voice'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_nightly_vzw'
-DEPENDENCIES = 'carrier:vzw'
+DEPENDENCIES = 'carrier:verizon'
 
 DOC = """
 This test runs telephony long voice call test against phone with Verizon SIMs.
