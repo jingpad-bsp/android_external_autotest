@@ -147,7 +147,7 @@ def enable_arc_setting(browser):
     settings_tab = browser.tabs.New()
 
     try:
-        settings_tab.Navigate('chrome://settings')
+        settings_tab.Navigate('chrome://settings-frame')
         settings_tab.WaitForDocumentReadyStateToBeComplete()
 
         try:
