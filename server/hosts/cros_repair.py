@@ -226,6 +226,19 @@ class PythonVerifier(hosts.Verifier):
         return 'Python on the host is installed and working'
 
 
+class DevModeVerifier(hosts.Verifier):
+    """Verify that the host is not in dev mode."""
+
+    def verify(self, host):
+        result = host.run('crossystem devsw_boot', ignore_status=True).stdout
+        if result != '0':
+            raise hosts.AutoservVerifyError('The host is in dev mode')
+
+    @property
+    def description(self):
+        return 'The host should not be in dev mode'
+
+
 class ServoSysRqRepair(hosts.RepairAction):
     """
     Repair a Chrome device by sending a system request to the kernel.
@@ -349,6 +362,7 @@ def create_cros_repair_strategy():
     FirmwareVersionVerifier = cros_firmware.FirmwareVersionVerifier
     verify_dag = [
         (repair.SshVerifier,         'ssh',      []),
+        (DevModeVerifier,            'devmode',  ['ssh']),
         (ACPowerVerifier,            'power',    ['ssh']),
         (EXT4fsErrorVerifier,        'ext4',     ['ssh']),
         (WritableVerifier,           'writable', ['ssh']),
@@ -395,7 +409,7 @@ def create_cros_repair_strategy():
         # firmware.
         (FirmwareRepair, 'firmware', [], ['ssh', 'fwstatus', 'good_au']),
 
-        (repair.RebootRepair, 'reboot', ['ssh'], ['writable']),
+        (repair.RebootRepair, 'reboot', ['ssh'], ['devmode', 'writable']),
 
         (AutoUpdateRepair, 'au',
                 usb_triggers + powerwash_triggers, au_triggers),
