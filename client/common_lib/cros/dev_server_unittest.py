@@ -366,7 +366,7 @@ class DevServerTest(mox.MoxTestBase):
                 mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
         self.assertFalse(self.dev_server.kill_au_process_for_host(
-                '100.0.0.0'))
+                '100.0.0.0', 100))
 
 
     def testURLErrorRetryKillAUProcess(self):
@@ -380,7 +380,8 @@ class DevServerTest(mox.MoxTestBase):
         time.sleep(mox.IgnoreArg())
         dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
         self.mox.ReplayAll()
-        self.assertFalse(self.dev_server.kill_au_process_for_host('100.0.0.0'))
+        self.assertFalse(self.dev_server.kill_au_process_for_host(
+                '100.0.0.0', 100))
 
 
     def testCmdErrorRetryCleanTrackLog(self):
