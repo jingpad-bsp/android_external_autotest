@@ -92,7 +92,7 @@ class security_NetworkListeners(test.test):
         baseline_filename = _BASELINE_DEFAULT_NAME
         arc_mode = None
 
-        if chrome.is_arc_available():
+        if utils.is_arc_available():
             baseline_filename = _BASELINE_ARC_NAME
             arc_mode = 'enabled'
 
