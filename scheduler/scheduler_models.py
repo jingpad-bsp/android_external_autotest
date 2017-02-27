@@ -390,8 +390,7 @@ class Label(DBObject):
 
 class Host(DBObject):
     _table_name = 'afe_hosts'
-    # TODO(ayatane): synch_id is not used, remove after fixing DB.
-    _fields = ('id', 'hostname', 'locked', 'synch_id', 'status',
+    _fields = ('id', 'hostname', 'locked', 'status',
                'invalid', 'protection', 'locked_by_id', 'lock_time', 'dirty',
                'leased', 'shard_id', 'lock_reason')
 
