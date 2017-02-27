@@ -137,8 +137,6 @@ class graphics_GLBench(test.test):
       options += ' -hasty'
 
     cmd = '%s %s' % (exefile, options)
-    if not utils.is_freon():
-      cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 ' + cmd
     summary = None
     try:
       if hasty:
@@ -169,11 +167,6 @@ class graphics_GLBench(test.test):
       raise error.TestFail('Failed: CmdError running %s' % cmd)
     except error.CmdTimeoutError:
       raise error.TestFail('Failed: CmdTimeout running %s' % cmd)
-    finally:
-      if not utils.is_freon():
-        # Just sending SIGTERM to X is not enough; we must wait for it to
-        # really die before we start a new X server (ie start ui).
-        utils.ensure_processes_are_dead_by_name('^X$')
 
     # Write a copy of stdout to help debug failures.
     results_path = os.path.join(self.outputdir, 'summary.txt')
