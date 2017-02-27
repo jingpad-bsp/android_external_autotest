@@ -10,6 +10,7 @@ from __future__ import print_function
 import common
 import sys
 
+from autotest_lib.server import frontend
 from autotest_lib.server.lib import suite_report
 from chromite.lib import commandline
 from chromite.lib import cros_logging as logging
@@ -21,6 +22,8 @@ def GetParser():
                         help='Suite job ids to dump')
     parser.add_argument('--output', '-o', type=str, action='store',
                         help='Path to write JSON file to')
+    parser.add_argument('--afe', type=str, action='store',
+                        help='AFE server to connect to')
     return parser
 
 
@@ -33,11 +36,16 @@ def main(argv):
     parser = GetParser()
     options = parser.parse_args(argv[1:])
 
+    afe = None
+    if options.afe:
+        afe = frontend.AFE(server=options.afe)
+
     # Look up and generate entries for all jobs.
     entries = []
     for suite_job_id in options.job_ids:
         logging.debug('Suite job %s:' % suite_job_id)
-        suite_entries = suite_report.generate_suite_report(suite_job_id)
+        suite_entries = suite_report.generate_suite_report(suite_job_id,
+                                                           afe=afe)
         logging.debug('... generated %d entries' % len(suite_entries))
         entries.extend(suite_entries)
 
