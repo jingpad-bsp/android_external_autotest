@@ -22,6 +22,7 @@ TKO_STATUS_MAP = {
     'FAIL': 'fail',
     'GOOD': 'pass',
     'PASS': 'pass',
+    'Failed': 'fail',
     'Completed': 'pass',
 }
 
