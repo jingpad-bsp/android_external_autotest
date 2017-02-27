@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import time
+import os.path
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -36,23 +39,27 @@ class platform_InputScreenshot(test.test):
                             self._DOWNLOADS, self._SCREENSHOT))
 
 
-    def confirm_file_exist(self, path):
+    def confirm_file_exist(self, filepath):
         """Check if screenshot file can be found.
 
-        @param path as file path.
+        @param filepath file path.
 
         @raises: error.TestFail if screenshot file does not exist.
 
         """
-        if not (utils.system_output('sync; find %s -name "%s"'
-                                    %(path, self._SCREENSHOT))):
-            self._ERROR.append('Screenshot was not found under:%s' %path)
+        if not os.path.isdir(filepath):
+            raise error.TestNAError("%s folder is not found" % filepath)
+
+        if not (utils.system_output('sync; sleep 2; find %s -name "%s"'
+                                    % (filepath, self._SCREENSHOT))):
+            self._ERROR.append('Screenshot was not found under:%s' % filepath)
 
 
     def create_screenshot(self):
         """Create a screenshot."""
         self.player.blocking_playback_of_default_file(
                input_type='keyboard', filename='keyboard_ctrl+f5')
+        time.sleep(self._WAIT)
 
 
     def run_once(self):
