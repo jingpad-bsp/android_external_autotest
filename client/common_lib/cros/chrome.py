@@ -14,30 +14,6 @@ from telemetry.internal.browser import extension_to_load
 Error = exceptions.Error
 
 
-# Cached result of whether ARC is available on current device.
-_arc_available = None
-
-
-def is_arc_available():
-    """Returns true if ARC is available on current device."""
-    global _arc_available
-    if _arc_available is not None:
-        return _arc_available
-
-    def _check_lsb_release():
-        lsb_release = '/etc/lsb-release'
-        if not os.path.exists(lsb_release):
-            return False
-        with open(lsb_release) as f:
-            for line in f:
-                if line.startswith('CHROMEOS_ARC_VERSION='):
-                    return True
-        return False
-
-    _arc_available = _check_lsb_release()
-    return _arc_available
-
-
 def NormalizeEmail(username):
     """Remove dots from username. Add @gmail.com if necessary.
 
@@ -117,7 +93,7 @@ class Chrome(object):
             extension_paths.append(self._autotest_ext_path)
 
         finder_options = browser_options.BrowserFinderOptions()
-        if is_arc_available() and arc_util.should_start_arc(arc_mode):
+        if utils.is_arc_available() and arc_util.should_start_arc(arc_mode):
             if disable_arc_opt_in:
                 finder_options.browser_options.AppendExtraBrowserArgs(
                         arc_util.get_extra_chrome_flags())
@@ -148,7 +124,7 @@ class Chrome(object):
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
 
-        if is_arc_available() and not disable_arc_opt_in:
+        if utils.is_arc_available() and not disable_arc_opt_in:
             arc_util.set_browser_options_for_opt_in(b_options)
 
         self.username = b_options.username if username is None else username
@@ -177,7 +153,7 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
-                if is_arc_available():
+                if utils.is_arc_available():
                     if disable_arc_opt_in:
                         if arc_util.should_start_arc(arc_mode):
                             arc_util.enable_arc_setting(self.browser)
@@ -313,7 +289,7 @@ class Chrome(object):
         """Closes the browser.
         """
         try:
-            if is_arc_available():
+            if utils.is_arc_available():
                 arc_util.pre_processing_before_close(self)
         finally:
             # Calling platform.StopAllLocalServers() to tear down the telemetry

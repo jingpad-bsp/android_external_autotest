@@ -103,3 +103,16 @@ def get_device_type(lsb_release_content=None):
     """
     return _lsbrelease_search(r'^DEVICETYPE=(.+)$', group_id=1,
                               lsb_release_content=lsb_release_content)
+
+
+def is_arc_available(lsb_release_content=None):
+    """Returns True if the device has ARC installed.
+
+    @param lsb_release_content: A string represents the content of lsb-release.
+            If the caller is from drone, it can pass in the file content here.
+
+    @return True if the device has ARC installed.
+    """
+    return (_lsbrelease_search(r'^CHROMEOS_ARC_VERSION',
+                               lsb_release_content=lsb_release_content)
+            is not None)
