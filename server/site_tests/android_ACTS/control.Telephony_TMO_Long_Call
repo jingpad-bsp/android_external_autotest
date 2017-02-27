@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_TMO_Long_Voice'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_nightly_tmo'
-DEPENDENCIES = 'carrier:tmo'
+DEPENDENCIES = 'carrier:tmobile'
 
 DOC = """
 This test runs telephony long voice call test against phone with T-mobile SIMs.
