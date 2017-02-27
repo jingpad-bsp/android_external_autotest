@@ -131,15 +131,19 @@ def make_hqe_entry(hostname, hqe, hqe_statuses, parent=None):
     entry['job_url'] = hqe.job_url
     return entry
 
-def generate_suite_report(suite_job_id):
+def generate_suite_report(suite_job_id, afe=None, tko=None):
     """Generate a list of events corresonding to a single suite job.
 
     @param suite_job_id: The AFE id of the suite job.
+    @param afe: AFE database handle.
+    @param tko: TKO database handle.
 
     @return A list of entries suitable for dumping via JSON.
     """
-    afe = frontend.AFE()
-    tko = frontend.TKO()
+    if afe is None:
+        afe = frontend.AFE()
+    if tko is None:
+        tko = frontend.TKO()
 
     # Retrieve the main suite job.
     suite_job = afe.get_jobs(id=suite_job_id)[0]
