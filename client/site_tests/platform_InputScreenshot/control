@@ -16,4 +16,3 @@ Press Ctrl+F5 to create a screenshot file and verify it is present.
 """
 
 job.run_test("platform_InputScreenshot")
-
