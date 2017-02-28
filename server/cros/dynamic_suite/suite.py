@@ -355,7 +355,8 @@ def _find_test_control_data_for_suite(
 
     logging.debug('Parsing control files ...')
     matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
-    for file in filter(lambda f: not matcher.match(f), files):
+    filtered_files = filter(lambda f: not matcher.match(f), files)
+    for file in filtered_files:
         if _should_batch_with(cf_getter):
             text = suite_info[file]
         else:
