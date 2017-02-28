@@ -30,7 +30,10 @@ class video_ChromeRTCHWDecodeUsed(test.test):
                 # (board, milestone); None if don't care.
 
                 # kevin did support hw decode, but not ready in M54 and M55.
-                ('kevin', 54),('kevin', 55)
+                ('kevin', 54), ('kevin', 55),
+
+                # elm and hana support hw decode since M57.
+                ('elm', 56), ('hana', 56),
         ]
 
         entry = (utils.get_current_board(), utils.get_chrome_milestone())
