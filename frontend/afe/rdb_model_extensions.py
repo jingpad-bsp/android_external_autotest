@@ -184,6 +184,9 @@ class AbstractHostModel(dbmodels.Model, ModelValidators):
     hostname = dbmodels.CharField(max_length=255, unique=True)
     locked = dbmodels.BooleanField(default=False)
     leased = dbmodels.BooleanField(default=True)
+    # TODO(ayatane): This is needed until synch_id is removed from Host._fields
+    synch_id = dbmodels.IntegerField(blank=True, null=True,
+                                     editable=settings.FULL_ADMIN)
     status = dbmodels.CharField(max_length=255, default=Status.READY,
                                 choices=Status.choices(),
                                 editable=settings.FULL_ADMIN)
