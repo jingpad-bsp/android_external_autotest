@@ -298,7 +298,7 @@ class _ExperimentalTestFilter(object):
         return filter(lambda t: t.experimental, self._tests)
 
 
-def _find_test_control_data(
+def _find_test_control_data_for_suite(
         cf_getter, suite_name='', add_experimental=False,
         forgiving_parser=True, run_prod_code=False,
         test_args=None):
@@ -1350,7 +1350,7 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
-        tests = _find_test_control_data(
+        tests = _find_test_control_data_for_suite(
                 cf_getter, suite_name, add_experimental, forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args)
@@ -1385,7 +1385,7 @@ class Suite(object):
         @return list of top names that similar to the given test, sorted by
                 match ratio.
         """
-        tests = _find_test_control_data(
+        tests = _find_test_control_data_for_suite(
                 cf_getter, suite_name,
                 add_experimental=True, forgiving_parser=True)
         logging.debug('Parsed %s control files.', len(tests))
