@@ -13,7 +13,6 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend import database_settings_helper
-from autotest_lib.server import site_utils
 from autotest_lib.tko import utils
 
 
@@ -468,18 +467,14 @@ class db_sql(object):
                 'started_time': job.started_time,
                 'finished_time': job.finished_time,
                 'afe_job_id': afe_job_id,
-                'afe_parent_job_id': parent_job_id}
+                'afe_parent_job_id': parent_job_id,
+                'build': job.build,
+                'build_version': job.build_version,
+                'board': job.board,
+                'suite': job.suite}
         job.afe_job_id = afe_job_id
         if parent_job_id:
             job.afe_parent_job_id = str(parent_job_id)
-        if job.label:
-            label_info = site_utils.parse_job_name(job.label)
-            if label_info:
-                data['build'] = label_info.get('build', None)
-                job.build_version = data['build_version'] = label_info.get(
-                        'build_version', None)
-                job.board = data['board'] = label_info.get('board', None)
-                job.suite = data['suite'] = label_info.get('suite', None)
 
         # TODO(ntang): check job.index directly.
         is_update = hasattr(job, 'index')
