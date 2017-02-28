@@ -152,6 +152,8 @@ class SuiteTest(mox.MoxTestBase):
         self.getter._dev_server = self._DEVSERVER_HOST
         self.getter.get_suite_info(
                 suite_name=suite_name).AndReturn(suite_info)
+        self.getter.get_suite_info(
+                suite_name=suite_name).AndReturn(suite_info)
 
 
     def testFindAllTestInBatch(self):
