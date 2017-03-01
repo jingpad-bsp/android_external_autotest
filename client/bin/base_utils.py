@@ -7,9 +7,21 @@ Convenience functions for use by tests or whomever.
 Note that this file is mixed in by utils.py - note very carefully the
 precedence order defined there
 """
-import os, shutil, commands, pickle, glob
-import math, re, fnmatch, logging, multiprocessing
-from autotest_lib.client.common_lib import error, utils, magic
+
+import commands
+import fnmatch
+import glob
+import logging
+import math
+import multiprocessing
+import os
+import pickle
+import re
+import shutil
+
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import magic
+from autotest_lib.client.common_lib import utils
 
 
 def grep(pattern, file):
