@@ -720,22 +720,6 @@ class MatplotlibPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setupegg_py)
 
 
-class AtForkPackage(ExternalPackage):
-    """atfork package"""
-    version = '0.1.2'
-    local_filename = 'atfork-%s.zip' % version
-    # Since the url doesn't include version anymore, there exists a small
-    # chance that the url and hex_sum remain the same but a package with new
-    # version is linked by this url.
-    urls = ('https://github.com/google/python-atfork/archive/master.zip',)
-    hex_sum = '868dace98201cf8a920287c6186f135c1ec70cb0'
-    extracted_package_path = 'python-atfork-master'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-            ExternalPackage._build_and_install_current_dir_noegg)
-
-
 class ParamikoPackage(ExternalPackage):
     """paramiko package"""
     version = '1.7.5'
