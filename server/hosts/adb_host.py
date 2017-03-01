@@ -908,6 +908,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def repair(self):
         """Attempt to get the DUT to pass `self.verify()`."""
+        if self.is_up():
+            logging.debug('The device is up and accessible by adb. No need to '
+                          'repair.')
+            return
         # Force to do a reinstall in repair first. The reason is that it
         # requires manual action to put the device into fastboot mode.
         # If repair tries to switch the device back to adb mode, one will
