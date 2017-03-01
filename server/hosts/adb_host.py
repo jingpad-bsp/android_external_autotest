@@ -908,11 +908,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def repair(self):
         """Attempt to get the DUT to pass `self.verify()`."""
-        try:
-            self.ensure_adb_mode(timeout=30)
-            return
-        except error.AutoservError as e:
-            logging.error(e)
+        # Force to do a reinstall in repair first. The reason is that it
+        # requires manual action to put the device into fastboot mode.
+        # If repair tries to switch the device back to adb mode, one will
+        # have to change it back to fastboot mode manually again.
         logging.debug('Verifying the device is accessible via fastboot.')
         self.ensure_bootloader_mode()
         if not self.job.run_test(
