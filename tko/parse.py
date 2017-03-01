@@ -620,8 +620,15 @@ def main():
                 fcntl.flock(lockfile, fcntl.LOCK_UN)
                 lockfile.close()
 
-    except:
+    except Exception as e:
         pid_file_manager.close_file(1)
+
+        metadata = {'results_dir': results_dir,
+                    'error': str(e),
+                    'details': traceback.format_exc()}
+        autotest_es.post(use_http=True, type_str='parse_failure_final',
+                         metadata=metadata)
+
         raise
     else:
         pid_file_manager.close_file(0)
