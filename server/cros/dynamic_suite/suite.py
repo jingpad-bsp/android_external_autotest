@@ -309,8 +309,8 @@ class Suite(object):
         return map(lambda x: x.strip(), tag.split(','))
 
 
-    @staticmethod
-    def name_in_tag_predicate(name):
+    @classmethod
+    def name_in_tag_predicate(cls, name):
         """Returns predicate that takes a control file and looks for |name|.
 
         Builds a predicate that takes in a parsed control file (a ControlData)
@@ -321,11 +321,11 @@ class Suite(object):
                 ControlData object's suite member.
         """
         return lambda t: (hasattr(t, 'suite') and
-                          name in Suite.parse_tag(t.suite))
+                          name in cls.parse_tag(t.suite))
 
 
-    @staticmethod
-    def name_in_tag_similarity_predicate(name):
+    @classmethod
+    def name_in_tag_similarity_predicate(cls, name):
         """Returns predicate that takes a control file and gets the similarity
         of the suites in the control file and the given name.
 
@@ -343,7 +343,7 @@ class Suite(object):
         return lambda t: ((None, 0) if not hasattr(t, 'suite') else
                           [(suite,
                             difflib.SequenceMatcher(a=suite, b=name).ratio())
-                           for suite in Suite.parse_tag(t.suite)])
+                           for suite in cls.parse_tag(t.suite)])
 
 
     @staticmethod
@@ -467,9 +467,9 @@ class Suite(object):
 
         suites = set()
         predicate = lambda t: hasattr(t, 'suite')
-        for test in Suite.find_and_parse_tests(cf_getter, predicate,
+        for test in cls.find_and_parse_tests(cf_getter, predicate,
                                                add_experimental=True):
-            suites.update(Suite.parse_tag(test.suite))
+            suites.update(cls.parse_tag(test.suite))
         return list(suites)
 
 
@@ -536,11 +536,11 @@ class Suite(object):
             if run_prod_code:
                 cf_getter = cls.create_fs_getter(_AUTOTEST_DIR)
             else:
-                build = Suite.get_test_source_build(builds, **dargs)
+                build = cls.get_test_source_build(builds, **dargs)
                 cf_getter = cls._create_ds_getter(build, devserver)
 
-        return Suite(predicates,
-                     name, builds, board, cf_getter, run_prod_code, **dargs)
+        return cls(predicates,
+                   name, builds, board, cf_getter, run_prod_code, **dargs)
 
 
     @classmethod
@@ -569,8 +569,8 @@ class Suite(object):
             build = cls.get_test_source_build(builds, **dargs)
             cf_getter = cls._create_ds_getter(build, devserver)
 
-        return Suite([Suite.name_in_tag_predicate(name)],
-                     name, builds, board, cf_getter, **dargs)
+        return cls([cls.name_in_tag_predicate(name)],
+                   name, builds, board, cf_getter, **dargs)
 
 
     def __init__(
