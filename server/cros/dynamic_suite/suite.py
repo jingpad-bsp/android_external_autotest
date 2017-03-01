@@ -302,15 +302,7 @@ class Suite(object):
 
 
     @staticmethod
-    def parse_tag(tag):
-        """Splits a string on ',' optionally surrounded by whitespace.
-        @param tag: string to split.
-        """
-        return map(lambda x: x.strip(), tag.split(','))
-
-
-    @classmethod
-    def name_in_tag_predicate(cls, name):
+    def name_in_tag_predicate(name):
         """Returns predicate that takes a control file and looks for |name|.
 
         Builds a predicate that takes in a parsed control file (a ControlData)
@@ -321,11 +313,11 @@ class Suite(object):
                 ControlData object's suite member.
         """
         return lambda t: (hasattr(t, 'suite') and
-                          name in cls.parse_tag(t.suite))
+                          name in t.suite_tag_parts)
 
 
-    @classmethod
-    def name_in_tag_similarity_predicate(cls, name):
+    @staticmethod
+    def name_in_tag_similarity_predicate(name):
         """Returns predicate that takes a control file and gets the similarity
         of the suites in the control file and the given name.
 
@@ -343,7 +335,7 @@ class Suite(object):
         return lambda t: ((None, 0) if not hasattr(t, 'suite') else
                           [(suite,
                             difflib.SequenceMatcher(a=suite, b=name).ratio())
-                           for suite in cls.parse_tag(t.suite)])
+                           for suite in t.suite_tag_parts])
 
 
     @staticmethod
@@ -469,7 +461,7 @@ class Suite(object):
         predicate = lambda t: hasattr(t, 'suite')
         for test in cls.find_and_parse_tests(cf_getter, predicate,
                                                add_experimental=True):
-            suites.update(cls.parse_tag(test.suite))
+            suites.update(test.suite_tag_parts)
         return list(suites)
 
 
