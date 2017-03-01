@@ -312,8 +312,7 @@ class Suite(object):
         @return a callable that takes a ControlData and looks for |name| in that
                 ControlData object's suite member.
         """
-        return lambda t: (hasattr(t, 'suite') and
-                          name in t.suite_tag_parts)
+        return lambda t: name in t.suite_tag_parts
 
 
     @staticmethod
@@ -332,10 +331,9 @@ class Suite(object):
                 the control file, and ratio is the similarity between each suite
                 and the given name.
         """
-        return lambda t: ((None, 0) if not hasattr(t, 'suite') else
-                          [(suite,
-                            difflib.SequenceMatcher(a=suite, b=name).ratio())
-                           for suite in t.suite_tag_parts])
+        return lambda t: [(suite,
+                           difflib.SequenceMatcher(a=suite, b=name).ratio())
+                          for suite in t.suite_tag_parts] or [(None, 0)]
 
 
     @staticmethod
@@ -458,9 +456,9 @@ class Suite(object):
             cf_getter = cls._create_ds_getter(build, devserver)
 
         suites = set()
-        predicate = lambda t: hasattr(t, 'suite')
+        predicate = lambda t: True
         for test in cls.find_and_parse_tests(cf_getter, predicate,
-                                               add_experimental=True):
+                                             add_experimental=True):
             suites.update(test.suite_tag_parts)
         return list(suites)
 
