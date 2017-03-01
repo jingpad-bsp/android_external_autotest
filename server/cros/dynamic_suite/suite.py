@@ -696,26 +696,6 @@ class Suite(object):
 
 
     @property
-    def stable_tests(self):
-        """
-        |self.tests|, filtered for non-experimental tests.
-
-        @returns: list
-        """
-        return filter(lambda t: not t.experimental, self.tests)
-
-
-    @property
-    def unstable_tests(self):
-        """
-        |self.tests|, filtered for experimental tests.
-
-        @returns: list
-        """
-        return filter(lambda t: t.experimental, self.tests)
-
-
-    @property
     def _cros_build(self):
         """Return the CrOS build or the first build in the builds dict."""
         # TODO(ayatane): Note that the builds dict isn't ordered.  I'm not
@@ -914,18 +894,22 @@ class Suite(object):
         @param add_experimental: schedule experimental tests as well, or not.
         @returns: The number of tests that were scheduled.
         """
-        logging.debug('Discovered %d stable tests.', len(self.stable_tests))
+        scheduled_test_names = []
+        discoverer = _DynamicSuiteDiscoverer(
+                tests=self.tests,
+                add_experimental=add_experimental)
+        logging.debug('Discovered %d stable tests.',
+                      len(discoverer.stable_tests))
         logging.debug('Discovered %d unstable tests.',
-                      len(self.unstable_tests))
+                      len(discoverer.unstable_tests))
 
         Status('INFO', 'Start %s' % self._tag).record_result(record)
-        scheduled_test_names = []
         try:
             # Write job_keyvals into keyval file.
             if self._job_keyvals:
                 utils.write_keyval(self._results_dir, self._job_keyvals)
 
-            for test in self._get_tests_to_schedule(add_experimental):
+            for test in discoverer.discover_tests():
                 scheduled_job = self._schedule_test(record, test)
                 if scheduled_job is not None:
                     scheduled_test_names.append(test.name)
@@ -946,21 +930,6 @@ class Suite(object):
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
         return len(scheduled_test_names)
-
-
-    def _get_tests_to_schedule(self, add_experimental=True):
-        """Return a list of tests to be scheduled for this suite.
-
-        @param add_experimental: schedule experimental tests as well, or not.
-        @returns: list of tests (ControlData objects)
-        """
-        tests = self.stable_tests
-        if add_experimental:
-            for test in self.unstable_tests:
-                if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
-                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
-                tests.append(test)
-        return tests
 
 
     def _make_scheduled_tests_keyvals(self, scheduled_test_names):
@@ -1383,6 +1352,52 @@ class Suite(object):
         return [s[0] for s in
                 sorted(similarities.items(), key=operator.itemgetter(1),
                        reverse=True)][:count]
+
+
+class _DynamicSuiteDiscoverer(object):
+    """Test discoverer for dynamic suite tests."""
+
+
+    def __init__(self, tests, add_experimental=True):
+        """Initialize instance.
+
+        @param tests: iterable of tests (ControlData objects)
+        @param add_experimental: schedule experimental tests as well, or not.
+        """
+        self._tests = list(tests)
+        self._add_experimental = add_experimental
+
+
+    def discover_tests(self):
+        """Return a list of tests to be scheduled for this suite.
+
+        @returns: list of tests (ControlData objects)
+        """
+        tests = self.stable_tests
+        if self._add_experimental:
+            for test in self.unstable_tests:
+                if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
+                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
+                tests.append(test)
+        return tests
+
+
+    @property
+    def stable_tests(self):
+        """Non-experimental tests.
+
+        @returns: list
+        """
+        return filter(lambda t: not t.experimental, self._tests)
+
+
+    @property
+    def unstable_tests(self):
+        """Experimental tests.
+
+        @returns: list
+        """
+        return filter(lambda t: t.experimental, self._tests)
 
 
 def _is_nonexistent_board_error(e):
