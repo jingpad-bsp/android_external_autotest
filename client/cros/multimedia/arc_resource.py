@@ -4,6 +4,7 @@
 
 """Resource manager to access the ARC-related functionality."""
 
+import logging
 import os
 import pipes
 import time
@@ -169,6 +170,7 @@ class ArcPlayMusicResource(object):
     _PLAYMUSIC_PACKAGE = 'com.google.android.music'
     _PLAYMUSIC_FILE_FOLDER = '/storage/emulated/0/'
     _PLAYMUSIC_PERMISSIONS = ['WRITE_EXTERNAL_STORAGE', 'READ_EXTERNAL_STORAGE']
+    _PLAYMUSIC_ACTIVITY = '.AudioPreview'
     _KEYCODE_MEDIA_STOP = 86
 
     def __init__(self):
@@ -235,10 +237,14 @@ class ArcPlayMusicResource(object):
 
         """
         ext = os.path.splitext(dest_path)[1]
-        arc.adb_shell(
-                'am start -a android.intent.action.VIEW'
-                ' -d "file://%s" -t "audio/%s"' % (
-                        pipes.quote(dest_path), pipes.quote(ext)))
+        command = ('am start -a android.intent.action.VIEW'
+                   ' -d "file://%s" -t "audio/%s"'
+                   ' -n "%s/%s"'% (
+                          pipes.quote(dest_path), pipes.quote(ext),
+                          pipes.quote(self._PLAYMUSIC_PACKAGE),
+                          pipes.quote(self._PLAYMUSIC_ACTIVITY)))
+        logging.debug(command)
+        arc.adb_shell(command)
 
 
     def stop_playback(self):
