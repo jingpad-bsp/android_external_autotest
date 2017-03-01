@@ -63,7 +63,7 @@ def get_suite_control_files(autotest_dir, external_autotest_dirs=None):
     for d in [autotest_dir] + (external_autotest_dirs or []):
         d = d.rstrip('/')
         for test in _get_control_files_to_process(d):
-            for suite_name in suite.Suite.parse_tag(test.suite):
+            for suite_name in test.suite_tag_parts:
                 if suite_name in SUITE_BLACKLIST:
                     continue
 
