@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_ChromeRTCHWDecodeUsed.arc"
 PURPOSE = "Verify that HW decoding works for WebRTC/vp8 video."
-ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
