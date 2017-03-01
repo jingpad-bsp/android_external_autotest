@@ -27,7 +27,7 @@ class audio_AudioARCPlayback(audio_test.AudioTest):
     """
     version = 1
     DELAY_AFTER_BINDING = 0.5
-    WAIT_CLIENT_READY_TIMEOUT_SECS = 120
+    WAIT_CLIENT_READY_TIMEOUT_SECS = 150
     WAIT_PLAYBACK_SECS = 10
 
     def run_once(self, host, source_id, sink_id, recorder_id,
