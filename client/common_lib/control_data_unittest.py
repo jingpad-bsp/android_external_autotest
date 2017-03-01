@@ -30,6 +30,27 @@ SUITE = "suite-listed-only-in-suite-line"
 """
 
 
+class ControlDataTestCase(unittest.TestCase):
+    def setUp(self):
+        self._required_vars = control_data.REQUIRED_VARS
+        control_data.REQUIRED_VARS = set()
+
+
+    def tearDown(self):
+        control_data.REQUIRED_VARS = self._required_vars
+
+
+    def test_suite_tag_parts(self):
+        cd = ControlData({'suite': 'foo,bar'}, 'filename')
+        self.assertEqual(set(cd.suite_tag_parts), {'foo', 'bar'})
+
+
+    def test_suite_tag_parts_empty_for_non_suite(self):
+        cd = ControlData({}, 'filename')
+        self.assertEqual(cd.suite_tag_parts, [])
+
+
+
 class ParseControlTest(unittest.TestCase):
     def setUp(self):
         self.control_tmp = autotemp.tempfile(unique_id='control_unit',
