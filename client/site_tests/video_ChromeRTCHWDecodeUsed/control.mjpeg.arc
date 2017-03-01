@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_ChromeCameraMJpegHWDecodeUsed.arc"
 PURPOSE = "Verify MJPEG camera video are HW accelerated."
-ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
