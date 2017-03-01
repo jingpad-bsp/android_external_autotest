@@ -106,6 +106,15 @@ class ControlData(object):
         self._patch_up_suites_from_attributes()
 
 
+    @property
+    def suite_tag_parts(self):
+        """Return the part strings of the test's suite tag."""
+        if hasattr(self, 'suite'):
+            return [part.strip() for part in self.suite.split(',')]
+        else:
+            return []
+
+
     def set_attr(self, attr, val, raise_warnings=False):
         attr = attr.lower()
         try:
