@@ -644,18 +644,24 @@ class DevServer(object):
 
 
     @classmethod
-    def get_healthy_devserver(cls, build, devservers):
+    def get_healthy_devserver(cls, build, devservers, ban_list=None):
         """"Get a healthy devserver instance from the list of devservers.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
+        @param devservers: The devserver list to be chosen out a healthy one.
+        @param ban_list: The blacklist of devservers we don't want to choose.
+                Default is None.
 
         @return: A DevServer object of a healthy devserver. Return None if no
-                 healthy devserver is found.
+                healthy devserver is found.
 
         """
         while devservers:
             hash_index = hash(build) % len(devservers)
             devserver = devservers.pop(hash_index)
+            if ban_list and devserver in ban_list:
+                continue
+
             if cls.devserver_healthy(devserver):
                 return cls(devserver)
 
@@ -711,13 +717,14 @@ class DevServer(object):
 
 
     @classmethod
-    def resolve(cls, build, hostname=None):
+    def resolve(cls, build, hostname=None, ban_list=None):
         """"Resolves a build to a devserver instance.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
         @param hostname: The hostname of dut that requests a devserver. It's
                          used to make sure a devserver in the same subnet is
                          preferred.
+        @param ban_list: The blacklist of devservers shouldn't be chosen.
 
         @raise DevServerException: If no devserver is available.
         """
@@ -726,12 +733,14 @@ class DevServer(object):
         if devservers:
             tried_devservers |= set(devservers)
 
-        devserver = cls.get_healthy_devserver(build, devservers)
+        devserver = cls.get_healthy_devserver(build, devservers,
+                                              ban_list=ban_list)
 
         if not devserver and can_retry:
             # Find available devservers without dut location constrain.
             devservers, _ = cls.get_available_devservers()
-            devserver = cls.get_healthy_devserver(build, devservers)
+            devserver = cls.get_healthy_devserver(build, devservers,
+                                                  ban_list=ban_list)
             if devservers:
                 tried_devservers |= set(devservers)
         if devserver:
@@ -1618,14 +1627,26 @@ class ImageServer(ImageServerBase):
                             self.url(), response))
 
 
-    def kill_au_process_for_host(self, host_name):
+    def kill_au_process_for_host(self, host_name, pid):
         """Kill the triggerred auto_update process if error happens.
 
+        Usually this function is used to clear all potential left au processes
+        of the given host name.
+
+        If pid is specified, the devserver will further check the given pid to
+        make sure the process is killed. This is used for the case that the au
+        process has started in background, but then provision fails due to
+        some unknown issues very fast. In this case, when 'kill_au_proc' is
+        called, there's no corresponding background track log created for this
+        ongoing au process, which prevents this RPC call from killing this au
+        process.
+
         @param host_name: The DUT's hostname.
+        @param pid: The ongoing au process's pid.
 
         @return: True if successfully kill the auto-update process for host.
         """
-        kwargs = {'host_name': host_name}
+        kwargs = {'host_name': host_name, 'pid': pid}
         try:
             self._kill_au_process_for_host(**kwargs)
         except DevServerException:
@@ -1782,7 +1803,8 @@ class ImageServer(ImageServerBase):
 
             """
             try:
-                response = json.loads(self.run_call(call))
+                au_status = self.run_call(call)
+                response = json.loads(au_status)
                 # This is a temp fix to fit both dict and tuple returning
                 # values. The dict check will be removed after a corresponding
                 # devserver CL is deployed.
@@ -1825,6 +1847,9 @@ class ImageServer(ImageServerBase):
                 logging.warning('Socket Error (%r): Retrying connection to '
                                 'devserver to check auto-update status.', e)
                 return False
+            except ValueError as e:
+                raise DevServerException(
+                        '%s (Got AU status: %r)' % (str(e), au_status))
 
         site_utils.poll_for_condition(
                 all_finished,
@@ -1891,6 +1916,25 @@ class ImageServer(ImageServerBase):
 
         return '(0) Unknown exception'
 
+    def _is_retryable(self, error_msg):
+        """Detect whether we will retry auto-update based on error_msg.
+
+        @param error_msg: The given error message.
+
+        @return A boolean variable which indicates whether we will retry
+            auto_update with another devserver based on the given error_msg.
+        """
+        # For now we just hard-code the error message we think it's suspicious.
+        # When we get more date about what's the json response when devserver
+        # is overloaded, we can update this part.
+        retryable_errors = ['No JSON object could be decoded',
+                            'is not pingable']
+        for err in retryable_errors:
+            if err in error_msg:
+                return True
+
+        return False
+
 
     def auto_update(self, host_name, build_name, log_dir=None,
                     force_update=False, full_update=False):
@@ -1906,6 +1950,13 @@ class ImageServer(ImageServerBase):
                              force a full reimage. If False, try stateful
                              update first if the dut is already installed
                              with the same version.
+
+        @return A set (is_success, is_retryable) in which:
+            1. is_success indicates whether this auto_update succeeds.
+            2. is_retryable indicates whether we should retry auto_update if
+               if it fails.
+
+        @raise DevServerException if auto_update fails and is not retryable.
         """
         kwargs = {'host_name': host_name,
                   'build_name': build_name,
@@ -1918,6 +1969,8 @@ class ImageServer(ImageServerBase):
         au_log_dir = os.path.join(log_dir,
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
         error_list = []
+        retry_with_another_devserver = False
+
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
@@ -1955,6 +2008,10 @@ class ImageServer(ImageServerBase):
                     is_au_success = True
                     break
                 else:
+                    if not self.kill_au_process_for_host(kwargs['host_name'],
+                                                         pid):
+                        logging.debug('Failed to kill auto_update process %d',
+                                      pid)
                     if raised_error:
                         logging.debug(error_msg_attempt, au_attempt+1,
                                       str(raised_error))
@@ -1965,11 +2022,13 @@ class ImageServer(ImageServerBase):
                                                   kwargs['host_name'],
                                                   pid))
                         error_list.append(self._parse_AU_error(str(raised_error)))
-                    if not self.kill_au_process_for_host(kwargs['host_name']):
-                        logging.debug('Failed to kill auto_update process %d',
-                                      pid)
+                        if self._is_retryable(str(raised_error)):
+                            retry_with_another_devserver = True
 
             finally:
+                if retry_with_another_devserver:
+                    break
+
                 if not is_au_success and au_attempt < AU_RETRY_LIMIT - 1:
                     time.sleep(CROS_AU_RETRY_INTERVAL)
                     # TODO(kevcheng): Remove this once crbug.com/651974 is
@@ -2017,16 +2076,18 @@ class ImageServer(ImageServerBase):
              'dut_host_name': host_name}
         c.increment(fields=f)
 
-        if not is_au_success:
-            # If errors happen in the CrOS AU process, report the first error
-            # since the following errors might be caused by the first error.
-            # If error happens in RPCs of cleaning track log, collecting
-            # auto-update logs, or killing auto-update processes, just report
-            # them together.
-            if error_list:
-                raise DevServerException(error_msg % (host_name, error_list[0]))
-            else:
-                raise DevServerException(error_msg % (
+        if is_au_success or retry_with_another_devserver:
+            return (is_au_success, retry_with_another_devserver)
+
+        # If errors happen in the CrOS AU process, report the first error
+        # since the following errors might be caused by the first error.
+        # If error happens in RPCs of cleaning track log, collecting
+        # auto-update logs, or killing auto-update processes, just report
+        # them together.
+        if error_list:
+            raise DevServerException(error_msg % (host_name, error_list[0]))
+        else:
+            raise DevServerException(error_msg % (
                         host_name, ('RPC calls after the whole auto-update '
                                     'process failed.')))
 
@@ -2364,7 +2425,7 @@ def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
     return loads[0]['devserver']
 
 
-def resolve(build, hostname=None):
+def resolve(build, hostname=None, ban_list=None):
     """Resolve a devserver can be used for given build and hostname.
 
     @param build: Name of a build to stage on devserver, e.g.,
@@ -2372,6 +2433,7 @@ def resolve(build, hostname=None):
                   Launch Control build: git_mnc_release/shamu-eng
     @param hostname: Hostname of a devserver for, default is None, which means
             devserver is not restricted by the network location of the host.
+    @param ban_list: The blacklist of devservers shouldn't be chosen.
 
     @return: A DevServer instance that can be used to stage given build for the
              given host.
@@ -2379,4 +2441,4 @@ def resolve(build, hostname=None):
     if utils.is_launch_control_build(build):
         return AndroidBuildServer.resolve(build, hostname)
     else:
-        return ImageServer.resolve(build, hostname)
+        return ImageServer.resolve(build, hostname, ban_list=ban_list)
