@@ -67,7 +67,8 @@ class ResultCollectorUnittest(unittest.TestCase):
                 'job_finished_time': job_finished_time}
 
 
-    def _mock_tko_get_detailed_test_views(self, test_views):
+    def _mock_tko_get_detailed_test_views(self, test_views,
+                                          missing_results=[]):
         """Mock tko method get_detailed_test_views call.
 
         @param test_views: A list of test views that will be returned
@@ -78,6 +79,9 @@ class ResultCollectorUnittest(unittest.TestCase):
             views_of_job = return_values.setdefault(
                     ('get_detailed_test_views', v['afe_job_id']), [])
             views_of_job.append(v)
+        for job_id in missing_results:
+            views_of_job = return_values.setdefault(
+                    ('get_detailed_test_views', job_id), [])
 
         def side_effect(*args, **kwargs):
             """Maps args and kwargs to the mocked return values."""
@@ -103,6 +107,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         for job_id in child_job_ids:
             new_job = mock.MagicMock()
             new_job.id = job_id
+            new_job.name = 'test.%d' % job_id
             new_job.max_runtime_mins = self.JOB_MAX_RUNTIME_MINS
             new_job.parent_job = suite_job
             return_values[suite_job_id].append(new_job)
@@ -128,13 +133,19 @@ class ResultCollectorUnittest(unittest.TestCase):
                 'GOOD', suite_job_id)
         test_to_include = self._build_view(
                 12, 'dummy_Pass.bluetooth', None, 'TEST_NA', suite_job_id)
+        test_missing = self._build_view(
+                13, 'dummy_Missing', None, 'ABORT', suite_job_id)
         self._mock_afe_get_jobs(suite_job_id, [])
         self._mock_tko_get_detailed_test_views(
-                [server_job_view, test_to_ignore, test_to_include])
+                [server_job_view, test_to_ignore, test_to_include,
+                 test_missing])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
                 build='fake/build', board='fake', suite_name='dummy',
                 suite_job_id=suite_job_id)
+        collector._missing_results = {
+                test_missing['test_name']: [14, 15],
+        }
         suite_views = collector._fetch_relevant_test_views_of_suite()
         suite_views = sorted(suite_views, key=lambda view: view['test_idx'])
         # Verify that SERVER_JOB is renamed to 'Suite job'
@@ -143,6 +154,11 @@ class ResultCollectorUnittest(unittest.TestCase):
         # Verify that the test with a subidr is not included.
         self.assertEqual(suite_views[0]['test_idx'], 10)
         self.assertEqual(suite_views[1]['test_idx'], 12)
+        self.assertEqual(suite_views[1]['afe_job_id'], suite_job_id)
+        # Verify that the test with missing results had it's AFE job id
+        # replaced.
+        self.assertEqual(suite_views[2]['test_idx'], 13)
+        self.assertEqual(suite_views[2]['afe_job_id'], 14)
 
 
     def testFetchTestViewOfChildJobs(self):
@@ -157,6 +173,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         good_job_name = '%s/%s/test_Pass' % (build, suite_name)
         bad_job_id = 103
         bad_job_name = '%s/%s/test_ServerJobFail' % (build, suite_name)
+        missing_job_id = 104
 
         invalid_test = self._build_view(
                 19, 'test_Pass_Old', 'fake/subdir',
@@ -174,17 +191,21 @@ class ResultCollectorUnittest(unittest.TestCase):
                 bad_job_id, bad_job_name)
         self._mock_tko_get_detailed_test_views(
                 [good_job_server_job, good_job_test,
-                 bad_job_server_job, bad_job_test, invalid_test])
-        self._mock_afe_get_jobs(suite_job_id, [good_job_id, bad_job_id])
+                 bad_job_server_job, bad_job_test, invalid_test],
+                [missing_job_id])
+        self._mock_afe_get_jobs(suite_job_id,
+                                [good_job_id, bad_job_id, missing_job_id])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
                 build, board, suite_name, suite_job_id)
-        child_views, retry_counts = collector._fetch_test_views_of_child_jobs()
+        child_views, retry_counts, missing_results = (
+                collector._fetch_test_views_of_child_jobs())
         # child_views should contain tests 21, 22, 23
         child_views = sorted(child_views, key=lambda view: view['test_idx'])
         # Verify that the SERVER_JOB has been renamed properly
         self.assertEqual(child_views[1].get_testname(),
                          'test_ServerJobFail_SERVER_JOB')
+        self.assertEqual(missing_results, {'test.104': [104]})
         # Verify that failed SERVER_JOB and actual invalid tests are included,
         expected = [good_job_test['test_idx'], bad_job_server_job['test_idx'],
                     bad_job_test['test_idx']]
