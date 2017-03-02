@@ -1050,6 +1050,14 @@ class TestView(object):
         return attributes
 
 
+    def override_afe_job_id(self, afe_job_id):
+        """Overrides the AFE job id for the test.
+
+        @param afe_job_id: The new AFE job id to use.
+        """
+        self.view['afe_job_id'] = afe_job_id
+
+
 def log_buildbot_links(log_func, links):
     """Output buildbot links to log.
 
@@ -1138,6 +1146,7 @@ class ResultCollector(object):
         self._child_views = []
         self._test_views = []
         self._retry_counts = {}
+        self._missing_results = {}
         self._web_links = []
         self._buildbot_links = []
         self._num_child_jobs = 0
@@ -1191,6 +1200,16 @@ class ResultCollector(object):
             v = TestView(v, suite_job, self._suite_name, self._build, self._user,
                          solo_test_run=self._solo_test_run)
             if v.is_relevant_suite_view():
+                # If the test doesn't have results in TKO and is being
+                # displayed in the suite view instead of the child view,
+                # then afe_job_id is incorrect and from the suite.
+                # Override it based on the AFE job id which was missing
+                # results.
+                # TODO: This is likely inaccurate if a test has multiple
+                # tries which all fail TKO parse stage.
+                if v['test_name'] in self._missing_results:
+                    v.override_afe_job_id(
+                            self._missing_results[v['test_name']][0])
                 relevant_views.append(v)
         return relevant_views
 
@@ -1216,15 +1235,18 @@ class ResultCollector(object):
     def _fetch_test_views_of_child_jobs(self, jobs=None):
         """Fetch test views of child jobs.
 
-        @returns: A tuple (child_views, retry_counts)
+        @returns: A tuple (child_views, retry_counts, missing_results)
                   child_views is list of TestView objects, representing
-                  all valid views. retry_counts is a dictionary that maps
-                  test_idx to retry counts. It only stores retry
-                  counts that are greater than 0.
+                  all valid views.
+                  retry_counts is a dictionary that maps test_idx to retry
+                  counts. It only stores retry counts that are greater than 0.
+                  missing_results is a dictionary that maps test names to
+                  lists of job ids.
 
         """
         child_views = []
         retry_counts = {}
+        missing_results = {}
         child_jobs = jobs or self._afe.get_jobs(parent_job_id=self._suite_job_id)
         if child_jobs:
             self._num_child_jobs = len(child_jobs)
@@ -1233,6 +1255,8 @@ class ResultCollector(object):
                      for v in self._tko.run(
                          call='get_detailed_test_views', afe_job_id=job.id,
                          invalid=0)]
+            if len(views) == 0:
+                missing_results.setdefault(job.name, []).append(job.id)
             contains_test_failure = any(
                     v.is_test() and v['status'] != 'GOOD' for v in views)
             for v in views:
@@ -1245,7 +1269,7 @@ class ResultCollector(object):
                     retry_count = self._compute_retry_count(v)
                     if retry_count > 0:
                         retry_counts[v['test_idx']] = retry_count
-        return child_views, retry_counts
+        return child_views, retry_counts, missing_results
 
 
     def _generate_web_and_buildbot_links(self):
@@ -1476,13 +1500,13 @@ class ResultCollector(object):
 
         """
         if self._solo_test_run:
-            self._test_views, self.retry_count = (
+            self._test_views, self.retry_count, self._missing_results = (
                   self._fetch_test_views_of_child_jobs(
                           jobs=self._afe.get_jobs(id=self._suite_job_id)))
         else:
-            self._suite_views = self._fetch_relevant_test_views_of_suite()
-            self._child_views, self._retry_counts = (
+            self._child_views, self._retry_counts, self._missing_results = (
                     self._fetch_test_views_of_child_jobs())
+            self._suite_views = self._fetch_relevant_test_views_of_suite()
             self._test_views = self._suite_views + self._child_views
         # For hostless job in Starting status, there is no test view associated.
         # This can happen when a suite job in Starting status is aborted. When
