@@ -997,7 +997,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.assertFalse(gs_offloader._is_valid_result(
             release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-bvt-cq'))
         self.assertTrue(gs_offloader._is_valid_result(
-            release_build, gs_offloader.GTS_RESULT_PATTERN, 'arc-gts-tot'))
+            release_build, gs_offloader.CTS_V2_RESULT_PATTERN, 'arc-gts'))
         self.assertFalse(gs_offloader._is_valid_result(
             None, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
         self.assertFalse(gs_offloader._is_valid_result(
@@ -1020,10 +1020,13 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         sysinfo_folder = os.path.join(host_folder, 'sysinfo')
         cts_result_folder = os.path.join(
                 host_folder, 'cheets_CTS.android.dpi', 'results', 'cts-results')
+        cts_v2_result_folder = os.path.join(host_folder,
+                'cheets_CTS_N.CtsGraphicsTestCases', 'results', 'android-cts')
         gts_result_folder = os.path.join(
                 host_folder, 'cheets_GTS.google.admin', 'results', 'android-gts')
         timestamp_str = '2016.04.28_01.41.44'
         timestamp_cts_folder = os.path.join(cts_result_folder, timestamp_str)
+        timestamp_cts_v2_folder = os.path.join(cts_v2_result_folder, timestamp_str)
         timestamp_gts_folder = os.path.join(gts_result_folder, timestamp_str)
 
         # Test results in cts_result_folder with a different time-stamp.
@@ -1031,25 +1034,32 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         timestamp_cts_folder_2 = os.path.join(cts_result_folder, timestamp_str_2)
 
         for folder in [debug_folder, sysinfo_folder, cts_result_folder,
-                       timestamp_cts_folder, timestamp_gts_folder, timestamp_cts_folder_2]:
+                       timestamp_cts_folder, timestamp_cts_folder_2,
+                       timestamp_cts_v2_folder, timestamp_gts_folder]:
             os.makedirs(folder)
 
         path_pattern_pair = [(timestamp_cts_folder, gs_offloader.CTS_RESULT_PATTERN),
                              (timestamp_cts_folder_2, gs_offloader.CTS_RESULT_PATTERN),
-                             (timestamp_gts_folder, gs_offloader.GTS_RESULT_PATTERN)]
+                             (timestamp_cts_v2_folder, gs_offloader.CTS_V2_RESULT_PATTERN),
+                             (timestamp_gts_folder, gs_offloader.CTS_V2_RESULT_PATTERN)]
 
         # Create timestamp.zip file_path.
         cts_zip_file = os.path.join(cts_result_folder, timestamp_str + '.zip')
         cts_zip_file_2 = os.path.join(cts_result_folder, timestamp_str_2 + '.zip')
+        cts_v2_zip_file = os.path.join(cts_v2_result_folder, timestamp_str + '.zip')
         gts_zip_file = os.path.join(gts_result_folder, timestamp_str + '.zip')
 
         # Create xml file_path.
         cts_result_file = os.path.join(timestamp_cts_folder, 'testResult.xml')
-        cts_result_file_2 = os.path.join(timestamp_cts_folder_2, 'testResult.xml')
+        cts_result_file_2 = os.path.join(timestamp_cts_folder_2,
+                                         'testResult.xml')
         gts_result_file = os.path.join(timestamp_gts_folder, 'test_result.xml')
+        cts_v2_result_file = os.path.join(timestamp_cts_v2_folder,
+                                         'test_result.xml')
 
-        for file_path in [cts_zip_file, cts_zip_file_2, gts_zip_file,
-                          cts_result_file, cts_result_file_2, gts_result_file]:
+        for file_path in [cts_zip_file, cts_zip_file_2, cts_v2_zip_file,
+                          gts_zip_file, cts_result_file, cts_result_file_2,
+                          gts_result_file, cts_v2_result_file]:
             with open(file_path, 'w') as f:
                 f.write('test')
 

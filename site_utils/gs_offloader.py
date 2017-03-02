@@ -38,7 +38,7 @@ from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
 
 # Autotest requires the psutil module from site-packages, so it must be imported
-# after "import common" 
+# after "import common".
 try:
     # Does not exist, nor is needed, on moblab.
     import psutil
@@ -116,7 +116,7 @@ GS_OFFLOADER_MULTIPROCESSING = global_config.global_config.get_config_value(
 D = '[0-9][0-9]'
 TIMESTAMP_PATTERN = '%s%s.%s.%s_%s.%s.%s' % (D, D, D, D, D, D, D)
 CTS_RESULT_PATTERN = 'testResult.xml'
-GTS_RESULT_PATTERN = 'test_result.xml'
+CTS_V2_RESULT_PATTERN = 'test_result.xml'
 # Google Storage bucket URI to store results in.
 DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
@@ -343,10 +343,13 @@ def upload_testresult_files(dir_entry, multiprocessing):
     for host in glob.glob(os.path.join(dir_entry, '*')):
         cts_path = os.path.join(host, 'cheets_CTS.*', 'results', '*',
                                 TIMESTAMP_PATTERN)
-        gts_path = os.path.join(host, 'cheets_GTS.*', 'results', '*',
-                                TIMESTAMP_PATTERN)
+        cts_v2_path = os.path.join(host, 'cheets_CTS_*', 'results', '*',
+                                   TIMESTAMP_PATTERN)
+        gts_v2_path = os.path.join(host, 'cheets_GTS.*', 'results', '*',
+                                   TIMESTAMP_PATTERN)
         for result_path, result_pattern in [(cts_path, CTS_RESULT_PATTERN),
-                            (gts_path, GTS_RESULT_PATTERN)]:
+                            (cts_v2_path, CTS_V2_RESULT_PATTERN),
+                            (gts_v2_path, CTS_V2_RESULT_PATTERN)]:
             for path in glob.glob(result_path):
                 try:
                     _upload_files(host, path, result_pattern, multiprocessing)
@@ -374,8 +377,9 @@ def _is_valid_result(build, result_pattern, suite):
     # Not valid if it's cts result but not 'arc-cts*' or 'test_that_wrapper'
     # suite.
     whitelisted_suites = ['arc-cts', 'arc-cts-dev', 'arc-cts-beta',
-                          'arc-cts-stable', 'test_that_wrapper']
-    if result_pattern == CTS_RESULT_PATTERN and suite not in whitelisted_suites:
+                          'arc-cts-stable', 'arc-gts', 'test_that_wrapper']
+    result_patterns = [CTS_RESULT_PATTERN, CTS_V2_RESULT_PATTERN]
+    if result_pattern in result_patterns and suite not in whitelisted_suites:
         return False
 
     return True
