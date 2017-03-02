@@ -238,13 +238,3 @@ def database_servers():
     @returns: An iterable of all hosts.
     """
     return _scrape_from_instances('AUTOTEST_WEB', 'host')
-
-
-def drone_servers():
-    """
-    Generate a list of all drones used by all instances of autotest in
-    production.
-
-    @returns: An iterable of drone servers.
-    """
-    return _scrape_from_instances('SCHEDULER', 'drones')
