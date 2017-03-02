@@ -39,29 +39,10 @@ except ImportError:
 
 _CONFIG = global_config.global_config
 
-require_atfork = _CONFIG.get_config_value(
-        'AUTOSERV', 'require_atfork_module', type=bool, default=True)
-
 
 # Number of seconds to wait before returning if testing mode is enabled
 TESTING_MODE_SLEEP_SECS = 1
 
-try:
-    import atfork
-    atfork.monkeypatch_os_fork_functions()
-    import atfork.stdlib_fixer
-    # Fix the Python standard library for threading+fork safety with its
-    # internal locks.  http://code.google.com/p/python-atfork/
-    import warnings
-    warnings.filterwarnings('ignore', 'logging module already imported')
-    atfork.stdlib_fixer.fix_logging_module()
-except ImportError, e:
-    from autotest_lib.client.common_lib import global_config
-    if _CONFIG.get_config_value(
-            'AUTOSERV', 'require_atfork_module', type=bool, default=False):
-        print >>sys.stderr, 'Please run utils/build_externals.py'
-        print e
-        sys.exit(1)
 
 from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
