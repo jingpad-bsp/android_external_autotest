@@ -9,7 +9,6 @@ import unittest
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.hosts import base_label_unittest, factory
-from autotest_lib.server.hosts import paramiko_host
 
 
 class MockHost(object):
@@ -79,14 +78,12 @@ class CreateHostUnittests(unittest.TestCase):
         self._orig_cros_host = factory.cros_host.CrosHost
         self._orig_local_host = factory.local_host.LocalHost
         self._orig_ssh_host = factory.ssh_host.SSHHost
-        self._orig_paramiko_host = paramiko_host.ParamikoHost
 
         self.host_types = factory.host_types = []
         self.os_host_dict = factory.OS_HOST_DICT = {}
         factory.cros_host.CrosHost = _gen_mock_host('cros_host')
         factory.local_host.LocalHost = _gen_mock_conn('local')
         factory.ssh_host.SSHHost = _gen_mock_conn('ssh')
-        paramiko_host.ParamikoHost = _gen_mock_conn('paramiko')
 
 
     def tearDown(self):
@@ -97,7 +94,6 @@ class CreateHostUnittests(unittest.TestCase):
         factory.cros_host.CrosHost = self._orig_cros_host
         factory.local_host.LocalHost = self._orig_local_host
         factory.ssh_host.SSHHost = self._orig_ssh_host
-        paramiko_host.ParamikoHost = self._orig_paramiko_host
 
 
     def test_use_specified(self):
@@ -159,16 +155,6 @@ class CreateHostUnittests(unittest.TestCase):
         machine = _gen_machine_dict(hostname='localhost')
         host_obj = factory.create_host(machine)
         self.assertEqual(host_obj._conn_cls_name, 'local')
-
-
-    def test_choose_connectivity_paramiko(self):
-        """Confirm paramiko connectivity class used when configured and
-        hostname is not localhost.
-        """
-        factory.SSH_ENGINE = 'paramiko'
-        machine = _gen_machine_dict(hostname='somehost')
-        host_obj = factory.create_host(machine)
-        self.assertEqual(host_obj._conn_cls_name, 'paramiko')
 
 
     def test_choose_connectivity_ssh(self):
