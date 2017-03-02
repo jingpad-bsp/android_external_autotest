@@ -9,6 +9,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, session_manager
 from autotest_lib.client.cros import asan
+from autotest_lib.client.cros.input_playback import input_playback
 
 import gobject
 from dbus.mainloop.glib import DBusGMainLoop
@@ -27,6 +28,14 @@ class desktopui_ScreenLocker(test.test):
     def initialize(self):
         super(desktopui_ScreenLocker, self).initialize()
         DBusGMainLoop(set_as_default=True)
+        self.player = input_playback.InputPlayback()
+        self.player.emulate(input_type='keyboard')
+        self.player.find_connected_inputs()
+
+
+    def cleanup(self):
+        """Test cleanup."""
+        self.player.close()
 
 
     @property
@@ -69,6 +78,10 @@ class desktopui_ScreenLocker(test.test):
 
         @param perf_values: Performance data will be stored inside of this dict.
 
+        @raises: error.TestFail when screen already locked.
+        @raises: error.TestFail if lockscreen screen not visible.
+        @raises: error.TestFail when screen not locked.
+
         """
         logging.debug('lock_screen')
         if self.screen_locked:
@@ -89,8 +102,33 @@ class desktopui_ScreenLocker(test.test):
             raise error.TestFail('Screen not locked')
 
 
+    def lock_screen_through_keyboard(self):
+        """Lock the screen with keyboard(search+L) .
+
+         @raises: error.TestFail when screen already locked.
+         @raises: error.TestFail if lockscreen screen not visible.
+         @raises: error.TestFail when screen not locked after using keyboard shortcut.
+
+         """
+        logging.debug('Locking screen through the keyboard shortcut')
+        if self.screen_locked:
+            raise error.TestFail('Screen already locked')
+        self.player.blocking_playback_of_default_file(
+            input_type='keyboard', filename='keyboard_search+L')
+        utils.poll_for_condition(lambda: self.screenlocker_visible,
+                                 exception=error.TestFail('Screenlock screen not visible'))
+        if not self.screen_locked:
+            raise error.TestFail('Screen not locked after using keyboard shortcut')
+
+
     def attempt_unlock_bad_password(self):
-        """Attempt unlock with a bad password."""
+        """Attempt unlock with a bad password.
+
+         @raises: error.TestFail when try to unlock with bad password.
+         @raises: error.TestFail if bubble prematurely visible.
+         @raises: error.TestFail when Bad password bubble did not show.
+
+         """
         logging.debug('attempt_unlock_bad_password')
         if self.error_bubble_visible:
             raise error.TestFail('Error bubble prematurely visible')
@@ -102,7 +140,12 @@ class desktopui_ScreenLocker(test.test):
 
 
     def unlock_screen(self):
-        """Unlock the screen with the right password."""
+        """Unlock the screen with the right password.
+
+         @raises: error.TestFail if failed to unlock screen.
+         @raises: error.TestFail if screen unlocked.
+
+        """
         logging.debug('unlock_screen')
         self.attempt_unlock()
         utils.poll_for_condition(
@@ -123,7 +166,8 @@ class desktopui_ScreenLocker(test.test):
             self.lock_screen(perf_values)
             self.attempt_unlock_bad_password()
             self.unlock_screen()
-
+            self.lock_screen_through_keyboard()
+            self.unlock_screen()
             self.output_perf_value(
                     description='time_to_lock_screen',
                     value=perf_values['lock_seconds'],
