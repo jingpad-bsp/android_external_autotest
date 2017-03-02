@@ -58,8 +58,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         tab.WaitForDocumentReadyStateToBeComplete()
 
 
-    def run_once(self, video_name, histogram_name, histogram_bucket_val,
-                 arc_mode=None):
+    def run_once(self, video_name, histogram_name, histogram_bucket_val):
         if self.is_skipping_test():
             raise error.TestNAError('Skipping test run on this board.')
 
@@ -71,7 +70,6 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         # Start chrome with test flags.
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
-                           arc_mode=arc_mode,
                            init_network_controller=True) as cr:
             # Open WebRTC loopback page.
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
