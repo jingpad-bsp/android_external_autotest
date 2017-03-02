@@ -4,8 +4,8 @@
 
 # This file has been automatically generated. Do not edit!
 
-AUTHOR = 'ARC++ Team'
-NAME = 'cheets_CTS.6.0_r15.arm.android.core.tests.libcore.package.harmony_java_lang'
+AUTHOR = 'ARC Team'
+NAME = 'cheets_CTS.arm.android.core.tests.libcore.package.harmony_java_lang'
 ATTRIBUTES = 'suite:cts'
 DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
@@ -13,8 +13,8 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package android.core.tests.libcore.package.harmony_java_lang of the '
-       'Android 6.0_r15 Compatibility Test Suite (CTS), build 3666707,'
-       'using arm ABI in the ARC++ container.')
+       'Android 6.0_r12 Compatibility Test Suite (CTS), build 3426263,'
+       'using arm ABI in the ARC container.')
 
 def run_CTS(machine):
     host = hosts.create_host(machine)
@@ -24,6 +24,7 @@ def run_CTS(machine):
         iterations=1,
         tag='android.core.tests.libcore.package.harmony_java_lang',
         target_package='android.core.tests.libcore.package.harmony_java_lang',
+        bundle='arm',
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
