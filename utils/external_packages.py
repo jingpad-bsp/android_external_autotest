@@ -720,46 +720,6 @@ class MatplotlibPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setupegg_py)
 
 
-class ParamikoPackage(ExternalPackage):
-    """paramiko package"""
-    version = '1.7.5'
-    local_filename = 'paramiko-%s.zip' % version
-    urls = ('https://pypi.python.org/packages/source/p/paramiko/' + local_filename,)
-    hex_sum = 'd23e437c0d8bd6aeb181d9990a9d670fb30d0c72'
-
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-
-
-    def _check_for_pycrypto(self):
-        # NOTE(gps): Linux distros have better python-crypto packages than we
-        # can easily get today via a wget due to the library's age and staleness
-        # yet many security and behavior bugs are fixed by patches that distros
-        # already apply.  PyCrypto has a new active maintainer in 2009.  Once a
-        # new release is made (http://pycrypto.org/) we should add an installer.
-        try:
-            import Crypto
-        except ImportError:
-            logging.error('Please run "sudo apt-get install python-crypto" '
-                          'or your Linux distro\'s equivalent.')
-            return False
-        return True
-
-
-    def _build_and_install_current_dir(self, install_dir):
-        if not self._check_for_pycrypto():
-            return False
-        # paramiko 1.7.4 doesn't require building, it is just a module directory
-        # that we can rsync into place directly.
-        if not os.path.isdir('paramiko'):
-            raise Error('no paramiko directory in %s.' % os.getcwd())
-        status = system("rsync -r 'paramiko' '%s/'" % install_dir)
-        if status:
-            logging.error('%s rsync to install_dir failed.', self.name)
-            return False
-        return True
-
-
 class JsonRPCLib(ExternalPackage):
     """jsonrpclib package"""
     version = '0.1.3'

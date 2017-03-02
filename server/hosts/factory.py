@@ -128,11 +128,6 @@ def _choose_connectivity_class(hostname, ssh_port):
     if (hostname == 'localhost' and ssh_port == DEFAULT_SSH_PORT):
         return local_host.LocalHost
     # by default assume we're using SSH support
-    elif SSH_ENGINE == 'paramiko':
-        # Not all systems have paramiko installed so only import paramiko host
-        # if the global_config settings call for it.
-        from autotest_lib.server.hosts import paramiko_host
-        return paramiko_host.ParamikoHost
     elif SSH_ENGINE == 'raw_ssh':
         return ssh_host.SSHHost
     else:
