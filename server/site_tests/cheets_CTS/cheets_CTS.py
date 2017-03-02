@@ -362,7 +362,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         # Don't download media for tests that don't need it. b/29371037
         # TODO(ihf): This can be removed once the control file generator is
         # aware of this constraint.
-        if target_package.startswith('android.mediastress'):
+        if target_package and target_package.startswith('android.mediastress'):
             needs_push_media = True
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
