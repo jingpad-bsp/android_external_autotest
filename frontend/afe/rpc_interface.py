@@ -75,16 +75,6 @@ _CONFIG = global_config.global_config
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
-def get_parameterized_autoupdate_image_url(job):
-    """Get the parameterized autoupdate image url from a parameterized job."""
-    known_test_obj = models.Test.smart_get('autoupdate_ParameterizedJob')
-    image_parameter = known_test_obj.testparameter_set.get(test=known_test_obj,
-                                                           name='image')
-    para_set = job.parameterized_job.parameterizedjobparameter_set
-    job_test_para = para_set.get(test_parameter=image_parameter)
-    return job_test_para.parameter_value
-
-
 # labels
 
 def modify_label(id, **data):
@@ -791,125 +781,6 @@ def generate_control_file(tests=(), profilers=(),
     return cf_info
 
 
-def create_parameterized_job(
-        name,
-        priority,
-        test,
-        parameters,
-        kernel=None,
-        label=None,
-        profilers=(),
-        profiler_parameters=None,
-        use_container=False,
-        profile_only=None,
-        upload_kernel_config=False,
-        hosts=(),
-        meta_hosts=(),
-        one_time_hosts=(),
-        atomic_group_name=None,
-        synch_count=None,
-        is_template=False,
-        timeout=None,
-        timeout_mins=None,
-        max_runtime_mins=None,
-        run_verify=False,
-        email_list='',
-        dependencies=(),
-        reboot_before=None,
-        reboot_after=None,
-        parse_failed_repair=None,
-        hostless=False,
-        keyvals=None,
-        drone_set=None,
-        run_reset=True,
-        require_ssp=None):
-    """
-    Creates and enqueues a parameterized job.
-
-    Most parameters a combination of the parameters for generate_control_file()
-    and create_job(), with the exception of:
-
-    @param test name or ID of the test to run
-    @param parameters a map of parameter name ->
-                          tuple of (param value, param type)
-    @param profiler_parameters a dictionary of parameters for the profilers:
-                                   key: profiler name
-                                   value: dict of param name -> tuple of
-                                                                (param value,
-                                                                 param type)
-    """
-    # Set up the parameterized job configs
-    test_obj = models.Test.smart_get(test)
-    control_type = test_obj.test_type
-
-    try:
-        label = models.Label.smart_get(label)
-    except models.Label.DoesNotExist:
-        label = None
-
-    kernel_objs = models.Kernel.create_kernels(kernel)
-    profiler_objs = [models.Profiler.smart_get(profiler)
-                     for profiler in profilers]
-
-    parameterized_job = models.ParameterizedJob.objects.create(
-            test=test_obj, label=label, use_container=use_container,
-            profile_only=profile_only,
-            upload_kernel_config=upload_kernel_config)
-    parameterized_job.kernels.add(*kernel_objs)
-
-    for profiler in profiler_objs:
-        parameterized_profiler = models.ParameterizedJobProfiler.objects.create(
-                parameterized_job=parameterized_job,
-                profiler=profiler)
-        profiler_params = profiler_parameters.get(profiler.name, {})
-        for name, (value, param_type) in profiler_params.iteritems():
-            models.ParameterizedJobProfilerParameter.objects.create(
-                    parameterized_job_profiler=parameterized_profiler,
-                    parameter_name=name,
-                    parameter_value=value,
-                    parameter_type=param_type)
-
-    try:
-        for parameter in test_obj.testparameter_set.all():
-            if parameter.name in parameters:
-                param_value, param_type = parameters.pop(parameter.name)
-                parameterized_job.parameterizedjobparameter_set.create(
-                        test_parameter=parameter, parameter_value=param_value,
-                        parameter_type=param_type)
-
-        if parameters:
-            raise Exception('Extra parameters remain: %r' % parameters)
-
-        return rpc_utils.create_job_common(
-                name=name,
-                priority=priority,
-                control_type=control_type,
-                hosts=hosts,
-                meta_hosts=meta_hosts,
-                one_time_hosts=one_time_hosts,
-                atomic_group_name=atomic_group_name,
-                synch_count=synch_count,
-                is_template=is_template,
-                timeout=timeout,
-                timeout_mins=timeout_mins,
-                max_runtime_mins=max_runtime_mins,
-                run_verify=run_verify,
-                email_list=email_list,
-                dependencies=dependencies,
-                reboot_before=reboot_before,
-                reboot_after=reboot_after,
-                parse_failed_repair=parse_failed_repair,
-                hostless=hostless,
-                keyvals=keyvals,
-                drone_set=drone_set,
-                parameterized_job=parameterized_job.id,
-                run_reset=run_reset,
-                require_ssp=require_ssp)
-    except:
-        parameterized_job.delete()
-        raise
-
-
 def create_job_page_handler(name, priority, control_file, control_type,
                             image=None, hostless=False, firmware_rw_build=None,
                             firmware_ro_build=None, test_source_build=None,
@@ -1228,8 +1099,6 @@ def get_jobs(not_yet_run=False, running=False, finished=False,
                                             for label in job.dependencies)
         job_dict['keyvals'] = dict((keyval.key, keyval.value)
                                    for keyval in job.keyvals)
-        if job.parameterized_job:
-            job_dict['image'] = get_parameterized_autoupdate_image_url(job)
         job_dicts.append(job_dict)
     return rpc_utils.prepare_for_serialization(job_dicts)
 
@@ -1320,48 +1189,42 @@ def get_info_for_clone(id, preserve_metahosts, queue_entry_filter_data=None):
 
 
 def _get_image_for_job(job, hostless):
-    """ Gets the image used for a job.
+    """Gets the image used for a job.
 
-    Gets the image used for an AFE job. If the job is a parameterized job, get
-    the image from the job parameter; otherwise, tries to get the image from
-    the job's keyvals 'build' or 'builds'. As a last resort, if the job is a
-    hostless job, tries to get the image from its control file attributes
-    'build' or 'builds'.
+    Gets the image used for an AFE job from the job's keyvals 'build' or
+    'builds'. If that fails, and the job is a hostless job, tries to
+    get the image from its control file attributes 'build' or 'builds'.
 
     TODO(ntang): Needs to handle FAFT with two builds for ro/rw.
 
     @param job      An AFE job object.
-    @param hostless Boolean on of the job is hostless.
+    @param hostless Boolean indicating whether the job is hostless.
 
     @returns The image build used for the job.
     """
-    image = None
-    if job.parameterized_job:
-        image = get_parameterized_autoupdate_image_url(job)
-    else:
-        keyvals = job.keyval_dict()
-        image = keyvals.get('build')
-        if not image:
-            value = keyvals.get('builds')
-            builds = None
-            if isinstance(value, dict):
-                builds = value
-            elif isinstance(value, basestring):
-                builds = ast.literal_eval(value)
-            if builds:
+    keyvals = job.keyval_dict()
+    image = keyvals.get('build')
+    if not image:
+        value = keyvals.get('builds')
+        builds = None
+        if isinstance(value, dict):
+            builds = value
+        elif isinstance(value, basestring):
+            builds = ast.literal_eval(value)
+        if builds:
+            image = builds.get('cros-version')
+    if not image and hostless and job.control_file:
+        try:
+            control_obj = control_data.parse_control_string(
+                    job.control_file)
+            if hasattr(control_obj, 'build'):
+                image = getattr(control_obj, 'build')
+            if not image and hasattr(control_obj, 'builds'):
+                builds = getattr(control_obj, 'builds')
                 image = builds.get('cros-version')
-        if not image and hostless and job.control_file:
-            try:
-                control_obj = control_data.parse_control_string(
-                        job.control_file)
-                if hasattr(control_obj, 'build'):
-                    image = getattr(control_obj, 'build')
-                if not image and hasattr(control_obj, 'builds'):
-                    builds = getattr(control_obj, 'builds')
-                    image = builds.get('cros-version')
-            except:
-                logging.warning('Failed to parse control file for job: %s',
-                                job.name)
+        except:
+            logging.warning('Failed to parse control file for job: %s',
+                            job.name)
     return image
 
 
@@ -1709,7 +1572,6 @@ def get_static_data():
     result['motd'] = rpc_utils.get_motd()
     result['drone_sets_enabled'] = models.DroneSet.drone_sets_enabled()
     result['drone_sets'] = drone_sets
-    result['parameterized_jobs'] = models.Job.parameterized_jobs_enabled()
 
     result['status_dictionary'] = {"Aborted": "Aborted",
                                    "Verifying": "Verifying Host",
