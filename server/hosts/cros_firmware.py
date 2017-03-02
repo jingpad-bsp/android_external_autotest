@@ -299,6 +299,12 @@ class FirmwareVersionVerifier(hosts.Verifier):
             logging.exception(message, current_firmware, stable_firmware)
             raise hosts.AutoservVerifyError(
                     message % (current_firmware, stable_firmware))
+        final_firmware = self._get_rw_firmware(host)
+        if final_firmware != stable_firmware:
+            message = ('chromeos-firmwareupdate failed: tried upgrade '
+                       'to %s, now running %s instead')
+            raise hosts.AutoservVerifyError(
+                    message % (stable_firmware, final_firmware))
 
     @property
     def description(self):
