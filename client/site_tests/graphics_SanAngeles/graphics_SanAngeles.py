@@ -27,13 +27,12 @@ class graphics_SanAngeles(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
-        if utils.is_freon():
-            # If UI is running, we must stop it and restore later.
-            self._services = service_stopper.ServiceStopper(['ui'])
-            self._services.stop_services()
+        # If UI is running, we must stop it and restore later.
+        self._services = service_stopper.ServiceStopper(['ui'])
+        self._services.stop_services()
 
     def cleanup(self):
-        if utils.is_freon() and self._services:
+        if self._services:
             self._services.restore_services()
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
