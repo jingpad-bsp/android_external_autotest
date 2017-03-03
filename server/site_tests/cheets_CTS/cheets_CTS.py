@@ -112,10 +112,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
 
     def _copy_media(self, media):
         """Calls copy_media to push media files to DUT via adb."""
-        base = os.path.splitext(os.path.basename(_CTS_URI['media']))[0]
-        cts_media = os.path.join(media, base)
-        copy_media = os.path.join(cts_media, 'copy_media.sh')
-        with pushd(cts_media):
+        copy_media = os.path.join(media, 'copy_media.sh')
+        with pushd(media):
             try:
                 self._run('file', args=('/bin/sh',), verbose=True,
                           ignore_status=True, timeout=60,
@@ -146,12 +144,13 @@ class cheets_CTS(tradefed_test.TradefedTest):
         cmd = ('diff '
                '<(adb shell "cd /sdcard/test; '
                    'find ./bbb_short ./bbb_full -type f -print0 | '
-                   'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2")'
+                   'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2") '
                '<(cd %s; '
                    'find ./bbb_short ./bbb_full -type f -print0 | '
                    'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2)'
                    % media)
-        output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read()
+        output = subprocess.Popen(cmd, shell=True, executable='/bin/bash',
+                                  stdout=subprocess.PIPE).communicate()[0]
         if output:
             logging.error('Some media files differ on DUT /sdcard/test vs. local.')
             logging.error(output)
@@ -162,14 +161,16 @@ class cheets_CTS(tradefed_test.TradefedTest):
     def _push_media(self):
         """Downloads, caches and pushed media files to DUT."""
         media = self._install_bundle(_CTS_URI['media'])
+        base = os.path.splitext(os.path.basename(_CTS_URI['media']))[0]
+        cts_media = os.path.join(media, base)
         # TODO(ihf): this really should measure throughput in Bytes/s.
         m = 'chromeos/autotest/infra_benchmark/cheets/push_media/duration'
         fields = {'success': False,
                   'dut_host_name': self._host.hostname}
         with metrics.SecondsTimer(m, fields=fields) as c:
-            self._copy_media(media)
+            self._copy_media(cts_media)
             c['success'] = True
-        if not self._verify_media(media):
+        if not self._verify_media(cts_media):
             raise error.TestFail('Error: saw corruption pushing media files.')
 
     def _tradefed_run_command(self,
