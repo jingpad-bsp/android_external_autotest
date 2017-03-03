@@ -18,7 +18,7 @@ from autotest_lib.site_utils import sponge_utils
 DEFAULT_ACTS_INTERNAL_DIRECTORY = 'tools/test/connectivity/acts'
 
 CONFIG_FOLDER_LOCATION = global_config.global_config.get_config_value(
-        'ACTS', 'acts_config_folder', default='')
+    'ACTS', 'acts_config_folder', default='')
 
 TEST_DIR_NAME = 'tests'
 FRAMEWORK_DIR_NAME = 'framework'
@@ -51,8 +51,8 @@ def create_acts_package_from_current_artifact(test_station, job_repo_url,
     build_info = adb_host.ADBHost.get_build_info_from_build_url(job_repo_url)
 
     return create_acts_package_from_artifact(
-            test_station, build_info['branch'], build_info['target'],
-            build_info['build_id'], job_repo_url, target_zip_file)
+        test_station, build_info['branch'], build_info['target'],
+        build_info['build_id'], job_repo_url, target_zip_file)
 
 
 def create_acts_package_from_artifact(test_station, branch, target, build_id,
@@ -74,11 +74,8 @@ def create_acts_package_from_artifact(test_station, branch, target, build_id,
     """
     devserver_url = dev_server.AndroidBuildServer.get_server_url(job_repo_url)
     devserver = dev_server.AndroidBuildServer(devserver_url)
-    devserver.trigger_download(target,
-                               build_id,
-                               branch,
-                               files='acts.zip',
-                               synchronous=True)
+    devserver.trigger_download(
+        target, build_id, branch, files='acts.zip', synchronous=True)
 
     download_ulr = os.path.join(job_repo_url, 'acts.zip')
 
@@ -110,6 +107,7 @@ def create_acts_package_from_zip(test_station, zip_location, target_zip_file):
 
 class ActsPackage(object):
     """A packaged version of acts on a teststation."""
+
     def __init__(self, test_station, zip_file_path):
         """
         @param test_station: The teststation this package is on.
@@ -136,9 +134,10 @@ class ActsPackage(object):
         self.test_station.run('unzip "%s" -x -d "%s"' %
                               (self.zip_file, container_directory))
 
-        return ActsContainer(self.test_station,
-                             container_directory,
-                             acts_directory=internal_acts_directory)
+        return ActsContainer(
+            self.test_station,
+            container_directory,
+            acts_directory=internal_acts_directory)
 
     def create_enviroment(self,
                           container_directory,
@@ -162,19 +161,21 @@ class ActsPackage(object):
         """
         if testbed.teststation != self.test_station:
             raise error.TestError('Creating a contianer for a testbed on a '
-                                   'different teststation is not allowed.')
+                                  'different teststation is not allowed.')
 
         self.test_station.run('unzip "%s" -x -d "%s"' %
                               (self.zip_file, container_directory))
 
-        return ActsTestingEnviroment(testbed=testbed,
-                container_directory=container_directory,
-                testbed_name=testbed_name,
-                acts_directory=internal_acts_directory)
+        return ActsTestingEnviroment(
+            testbed=testbed,
+            container_directory=container_directory,
+            testbed_name=testbed_name,
+            acts_directory=internal_acts_directory)
 
 
 class AndroidTestingEnviroment(object):
     """A container for testing android devices on a test station."""
+
     def __init__(self, testbed, testbed_name=None):
         """Creates a new android testing enviroment.
 
@@ -197,10 +198,10 @@ class AndroidTestingEnviroment(object):
         """Install sl4a to a test bed."""
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
-                    adb_host,
-                    constants.SL4A_APK,
-                    constants.SL4A_ARTIFACT,
-                    package_name=constants.SL4A_PACKAGE)
+                adb_host,
+                constants.SL4A_APK,
+                constants.SL4A_ARTIFACT,
+                package_name=constants.SL4A_PACKAGE)
 
     def install_apk(self, apk_info):
         """Installs an additional apk on all adb devices.
@@ -214,18 +215,16 @@ class AndroidTestingEnviroment(object):
         """
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
-                    adb_host,
-                    apk_info['apk'],
-                    apk_info.get('artifact') or constants.SL4A_ARTIFACT,
-                    package_name=apk_info['package'])
+                adb_host,
+                apk_info['apk'],
+                apk_info.get('artifact') or constants.SL4A_ARTIFACT,
+                package_name=apk_info['package'])
 
 
 class ActsContainer(object):
     """A container for working with acts."""
-    def __init__(self,
-                 test_station,
-                 container_directory,
-                 acts_directory=None):
+
+    def __init__(self, test_station, container_directory, acts_directory=None):
         """
         @param test_station: The test station that the container is on.
         @param container_directory: The directory on the teststation this
@@ -284,9 +283,11 @@ class ActsContainer(object):
         @returns: A dictionary of enviroment variables to be used by this
                   container.
         """
-        env = {ACTS_TESTPATHS_ENV_KEY: ':'.join(self.get_test_paths()),
-               ACTS_LOGPATH_ENV_KEY: self.log_directory,
-               ACTS_PYTHONPATH_ENV_KEY: self.get_python_path()}
+        env = {
+            ACTS_TESTPATHS_ENV_KEY: ':'.join(self.get_test_paths()),
+            ACTS_LOGPATH_ENV_KEY: self.log_directory,
+            ACTS_PYTHONPATH_ENV_KEY: self.get_python_path()
+        }
 
         return env
 
@@ -310,8 +311,7 @@ class ActsContainer(object):
             dst = os.path.join(self.container_directory, dst)
 
         path = os.path.dirname(dst)
-        result = self.test_station.run('mkdir "%s"' % path,
-                                       ignore_status=True)
+        result = self.test_station.run('mkdir "%s"' % path, ignore_status=True)
 
         original_dst = dst
         if os.path.basename(src) == os.path.basename(dst):
@@ -340,6 +340,7 @@ class ActsContainer(object):
 
 class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
     """A container for running acts tests with a contained version of acts."""
+
     def __init__(self,
                  container_directory,
                  testbed,
@@ -354,12 +355,14 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
                                acts. If none then it defaults to
                                DEFAULT_ACTS_INTERNAL_DIRECTORY.
         """
-        AndroidTestingEnviroment.__init__(self, testbed,
-                                          testbed_name=testbed_name)
+        AndroidTestingEnviroment.__init__(
+            self, testbed, testbed_name=testbed_name)
 
-        ActsContainer.__init__(self, testbed.teststation,
-                               container_directory=container_directory,
-                               acts_directory=acts_directory)
+        ActsContainer.__init__(
+            self,
+            testbed.teststation,
+            container_directory=container_directory,
+            acts_directory=acts_directory)
 
         self.config_location = os.path.join(self.container_directory,
                                             CONFIG_DIR_NAME)
@@ -373,7 +376,7 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
         self.working_directory = os.path.join(container_directory,
                                               CONFIG_DIR_NAME)
         self.test_station.run('mkdir %s' % self.working_directory,
-                ignore_status=True)
+                              ignore_status=True)
 
         self.configs = {}
         self.campaigns = {}
@@ -420,7 +423,8 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
                  test_case=None,
                  extra_env={},
                  python_bin='python',
-                 timeout=7200):
+                 timeout=7200,
+                 additional_cmd_line_params=None):
         """Runs a test within the container.
 
         Runs a test within a container using the given settings.
@@ -439,6 +443,12 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
         @param extra_env: Extra enviroment variables to run the test with.
         @param python_bin: The python binary to execute the test with.
         @param timeout: How many seconds to wait before timing out.
+        @param additional_cmd_line_params: Adds the ability to add any string
+                                           to the end of the acts.py command
+                                           line string.  This is intended to
+                                           add acts command line flags however
+                                           this is unbounded so it could cause
+                                           errors if incorrectly set.
 
         @returns: The results of the test run.
         """
@@ -471,13 +481,18 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
         # Make sure to execute in the working directory.
         command_setup = 'cd %s' % self.working_directory
 
-        act_base_cmd = '%s %s -c %s -tb %s ' % (python_bin, self.acts_file,
-                                                full_config, self.testbed_name)
+        if additional_cmd_line_params:
+            act_base_cmd = '%s %s -c %s -tb %s %s ' % (
+                python_bin, self.acts_file, full_config, self.testbed_name,
+                additional_cmd_line_params)
+        else:
+            act_base_cmd = '%s %s -c %s -tb %s ' % (
+                python_bin, self.acts_file, full_config, self.testbed_name)
 
         # Format the acts command based on what type of test is being run.
         if test_case and campaign:
             raise error.TestError(
-                    'campaign and test_file cannot both have a value.')
+                'campaign and test_file cannot both have a value.')
         elif test_case:
             if isinstance(test_case, str):
                 test_case = [test_case]
@@ -508,12 +523,13 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
             act_result = None
             excep = e
 
-        return ActsTestResults(str(test_case) or campaign,
-                               self.testbed,
-                               testbed_name=self.testbed_name,
-                               run_result=act_result,
-                               log_directory=self.log_directory,
-                               exception=excep)
+        return ActsTestResults(
+            str(test_case) or campaign,
+            self.testbed,
+            testbed_name=self.testbed_name,
+            run_result=act_result,
+            log_directory=self.log_directory,
+            exception=excep)
 
 
 class ActsTestResults(object):
@@ -600,7 +616,8 @@ class ActsTestResults(object):
             self.report_to_autotest(test)
             summary_file = os.path.join(test.resultsdir,
                                         'test_run_summary.json')
-            sponge_utils.upload_results_in_test(test, acts_summary=summary_file)
+            sponge_utils.upload_results_in_test(
+                test, acts_summary=summary_file)
 
     def report_to_autotest(self, test):
         """Reports the results to an autotest test object.
