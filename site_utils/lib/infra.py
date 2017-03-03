@@ -248,20 +248,3 @@ def drone_servers():
     @returns: An iterable of drone servers.
     """
     return _scrape_from_instances('SCHEDULER', 'drones')
-
-
-def shard_servers():
-    """
-    Generate a list of all shard servers.
-
-    @returns: An iterable of all shard servers.
-    """
-    shard_hostnames = set()
-    sams = sam_servers()
-    for sam in sams:
-        afe = frontend_wrappers.RetryingAFE(server=sam)
-        shards = afe.run('get_shards')
-        for shard in shards:
-            shard_hostnames.add(shard['hostname'])
-
-    return list(shard_hostnames)
