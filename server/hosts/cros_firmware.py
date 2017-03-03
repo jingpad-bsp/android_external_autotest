@@ -256,8 +256,13 @@ class FirmwareVersionVerifier(hosts.Verifier):
         if not _is_firmware_update_supported(host):
             return
         # Test 2 - The DUT has an assigned stable firmware version.
-        stable_firmware = afe_utils.get_stable_firmware_version(
-                host._get_board_from_afe())
+        info = host.host_info_store.get()
+        if info.board is None:
+            raise hosts.AutoservVerifyError(
+                    'Can not verify firmware version. '
+                    'No board label value found')
+
+        stable_firmware = afe_utils.get_stable_firmware_version(info.board)
         if stable_firmware is None:
             # This DUT doesn't have a firmware update target
             return
