@@ -906,8 +906,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return
 
 
-    def repair(self):
-        """Attempt to get the DUT to pass `self.verify()`."""
+    def repair(self, board=None, os=None):
+        """Attempt to get the DUT to pass `self.verify()`.
+
+        @param board: Board name of the device. For host created in testbed,
+                      it does not have host labels and attributes. Therefore,
+                      the board name needs to be passed in from the testbed
+                      repair call.
+        @param os: OS of the device. For host created in testbed, it does not
+                   have host labels and attributes. Therefore, the OS needs to
+                   be passed in from the testbed repair call.
+        """
         if self.is_up():
             logging.debug('The device is up and accessible by adb. No need to '
                           'repair.')
@@ -920,7 +929,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.ensure_bootloader_mode()
         if not self.job.run_test(
                 'provision_AndroidUpdate', host=self, value=None,
-                force=True, repair=True):
+                force=True, repair=True, board=board, os=os):
             raise error.AutoservRepairTotalFailure(
                     'Unable to repair the device.')
 
