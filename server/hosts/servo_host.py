@@ -777,10 +777,10 @@ def _get_standard_servo_args(dut_host):
         if is_in_lab:
             servo_args = {SERVO_HOST_ATTR: servo_host}
     if servo_args is not None:
-        servo_board = afe_utils.get_board(dut_host)
-        if servo_board is not None:
-            servo_board = _map_afe_board_to_servo_board(servo_board)
-            servo_args[SERVO_BOARD_ATTR] = servo_board
+        info = dut_host.host_info_store.get()
+        if info.board:
+            servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(
+                    info.board)
     return servo_args, is_in_lab
 
 
