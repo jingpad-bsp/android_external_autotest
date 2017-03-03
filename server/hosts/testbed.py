@@ -136,8 +136,18 @@ class TestBed(object):
 
     def repair(self):
         """Run through repair on all the devices."""
+        # board name is needed for adb_host to repair as the adb_host objects
+        # created for testbed doesn't have host label and attributes retrieved
+        # from AFE.
+        info = self.host_info_store.get()
+        board = info.board
+        # Remove the tailing -# in board name as it can be passed in from
+        # testbed board labels
+        match = re.match(r'^(.*)-\d+$', board)
+        if match:
+            board = match.group(1)
         for adb_device in self.get_adb_devices().values():
-            adb_device.repair()
+            adb_device.repair(board=board, os=info.os)
 
 
     def verify(self):
