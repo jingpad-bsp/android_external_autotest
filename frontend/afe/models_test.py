@@ -4,9 +4,12 @@
 import unittest
 
 import common
+from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.frontend.afe import models, model_logic
+from autotest_lib.frontend.afe import model_logic
+from autotest_lib.frontend.afe import models
 
 
 class AclGroupTest(unittest.TestCase,
@@ -356,8 +359,7 @@ class SerializationTest(unittest.TestCase,
                            'locked': False,
                            'protection': 0,
                            'shard': {'hostname': '1', 'id': 1},
-                           'status': 'Ready',
-                           'synch_id': None}],
+                           'status': 'Ready'}],
                 'jobs': [{'control_file': 'some control file\n\n\n',
                           'control_type': 2,
                           'created_on': '2014-09-04T13:09:35',
