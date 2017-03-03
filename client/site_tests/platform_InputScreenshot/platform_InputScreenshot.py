@@ -20,7 +20,7 @@ class platform_InputScreenshot(test.test):
     _DOWNLOADS = '/home/chronos/user/Downloads'
     _SCREENSHOT = 'Screenshot*'
     _ERROR = list()
-
+    _MIN_SIZE = 1000
 
     def warmup(self):
         """Test setup."""
@@ -40,7 +40,7 @@ class platform_InputScreenshot(test.test):
 
 
     def confirm_file_exist(self, filepath):
-        """Check if screenshot file can be found.
+        """Check if screenshot file can be found and with minimum size.
 
         @param filepath file path.
 
@@ -53,6 +53,12 @@ class platform_InputScreenshot(test.test):
         if not (utils.system_output('sync; sleep 2; find %s -name "%s"'
                                     % (filepath, self._SCREENSHOT))):
             self._ERROR.append('Screenshot was not found under:%s' % filepath)
+
+        filesize = utils.system_output('ls -l %s/%s | cut -d" " -f5'
+                                       % (filepath, self._SCREENSHOT))
+        if filesize < self._MIN_SIZE:
+            self._ERROR.append('Screenshot size:%s at %s is wrong'
+                               % (filesize, filepath))
 
 
     def create_screenshot(self):
