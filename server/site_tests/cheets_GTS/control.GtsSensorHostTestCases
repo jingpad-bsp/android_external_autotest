@@ -5,7 +5,7 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_GTS.4.1_r1.GtsSensorHostTestCases'
+NAME = 'cheets_GTS.GtsSensorHostTestCases'
 ATTRIBUTES = 'suite:gts'
 DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
