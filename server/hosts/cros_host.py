@@ -331,8 +331,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _get_cros_repair_image_name(self):
-        return afe_utils.get_stable_cros_image_name(
-                self._get_board_from_afe())
+        info = self.host_info_store.get()
+        if info.board is None:
+            raise error.AutoservError('Cannot obtain repair image name. '
+                                      'No board label value found')
+
+        return afe_utils.get_stable_cros_image_name(info.board)
 
 
     def verify_job_repo_url(self, tag=''):
