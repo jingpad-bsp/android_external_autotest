@@ -44,7 +44,8 @@ class android_ACTS(test.test):
                  override_internal_acts_dir=None,
                  override_python_bin='python',
                  acts_timeout=7200,
-                 perma_path=None):
+                 perma_path=None,
+                 additional_cmd_line_params=None):
         """Runs an acts test case.
 
         @param testbed: The testbed to test on.
@@ -83,7 +84,7 @@ class android_ACTS(test.test):
                                   ' determine build to grab artifact from.')
 
         job_repo_url = afe_utils.get_host_attribute(
-                host, host.job_repo_url_attribute)
+            host, host.job_repo_url_attribute)
         test_station = testbed.teststation
         if not perma_path:
             ts_tempfolder = test_station.get_tmp_dir()
@@ -97,30 +98,29 @@ class android_ACTS(test.test):
             raise error.TestError('Cannot give both a url and zip override.')
         elif override_acts_zip:
             package = acts_lib.create_acts_package_from_zip(
-                    test_station, override_acts_zip, target_zip)
+                test_station, override_acts_zip, target_zip)
         elif override_build_url:
             build_url_pieces = override_build_url.split('/')
             if len(build_url_pieces) != 3:
-                raise error.TestError('Override build url must be formatted as '
-                                      '<branch>/<target>/<build_id>')
+                raise error.TestError(
+                    'Override build url must be formatted as '
+                    '<branch>/<target>/<build_id>')
 
             branch = build_url_pieces[0]
             target = build_url_pieces[1]
             build_id = build_url_pieces[2]
-            package = acts_lib.create_acts_package_from_artifact(test_station,
-                                                                 branch,
-                                                                 target,
-                                                                 build_id,
-                                                                 job_repo_url,
-                                                                 target_zip)
+            package = acts_lib.create_acts_package_from_artifact(
+                test_station, branch, target, build_id, job_repo_url,
+                target_zip)
         else:
             package = acts_lib.create_acts_package_from_current_artifact(
-                    test_station, job_repo_url, target_zip)
+                test_station, job_repo_url, target_zip)
 
-        test_env = package.create_enviroment(testbed=testbed,
-                container_directory=ts_tempfolder,
-                testbed_name=testbed_name,
-                internal_acts_directory=override_internal_acts_dir)
+        test_env = package.create_enviroment(
+            testbed=testbed,
+            container_directory=ts_tempfolder,
+            testbed_name=testbed_name,
+            internal_acts_directory=override_internal_acts_dir)
 
         test_env.install_sl4a_apk()
 
@@ -138,11 +138,13 @@ class android_ACTS(test.test):
         if test_file:
             test_env.upload_campaign(test_file)
 
-        results = test_env.run_test(config_file,
-                                    campaign=test_file,
-                                    test_case=test_case,
-                                    python_bin=override_python_bin,
-                                    timeout=acts_timeout)
+        results = test_env.run_test(
+            config_file,
+            campaign=test_file,
+            test_case=test_case,
+            python_bin=override_python_bin,
+            timeout=acts_timeout,
+            additional_cmd_line_params=additional_cmd_line_params)
 
         results.log_output()
         results.upload_to_sponge(self)
