@@ -43,7 +43,8 @@ class provision_AndroidUpdate(test.test):
             raise error.TestFail('No build version specified.')
 
 
-    def run_once(self, host, value=None, force=False, repair=False):
+    def run_once(self, host, value=None, force=False, repair=False, board=None,
+                 os=None):
         """The method called by the control file to start the test.
 
         @param host: The host object to update to |value|.
@@ -56,6 +57,13 @@ class provision_AndroidUpdate(test.test):
         @param repair: If True, we are doing a repair provision, therefore the
                        build to provision is looked up from the AFE's
                        get_stable_version RPC.
+        @param board: Board name of the device. For host created in testbed,
+                      it does not have host labels and attributes. Therefore,
+                      the board name needs to be passed in from the testbed
+                      repair call.
+        @param os: OS of the device. For host created in testbed, it does not
+                   have host labels and attributes. Therefore, the OS needs to
+                   be passed in from the testbed repair call.
 
         """
         logging.debug('Start provisioning %s to %s', host, value)
@@ -75,21 +83,24 @@ class provision_AndroidUpdate(test.test):
                             'Host already running %s' % value)
             return
 
-        logging.debug('Host %s is board type: %s', host, info.board)
+        board = board or info.board
+        os = os or info.os
+        logging.debug('Host %s is board type: %s, OS type: %s', host, board, os)
         if repair:
             # TODO(kevcheng): remove the board.split() line when all android
             # devices have their board label updated to have no android in
             # there.
-            board = info.board.split('-')[-1]
+            board = board.split('-')[-1]
             value = afe_utils.get_stable_android_version(board)
             if not value:
                 raise error.TestFail('No stable version assigned for board: '
                                      '%s' % board)
+            logging.debug('Stable version found for board %s: %s', board, value)
 
         if not isinstance(host, testbed.TestBed):
-            url, _ = host.stage_build_for_install(value, os_type=info.os)
+            url, _ = host.stage_build_for_install(value, os_type=os)
             logging.debug('Installing image from: %s', url)
-            args = {'build_url': url, 'os_type': info.os}
+            args = {'build_url': url, 'os_type': os}
         else:
             logging.debug('Installing image: %s', value)
             args = {'image': value}
