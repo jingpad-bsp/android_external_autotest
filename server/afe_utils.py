@@ -11,7 +11,6 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
@@ -58,31 +57,6 @@ def get_labels(host, prefix=None):
 
     return [label for label in host._afe_host.labels
             if label.startswith(prefix)]
-
-
-def get_boards(host):
-    """Retrieve all boards for a given host stored inside host._afe_host.
-
-    @param host: Host object to get board.
-
-    @returns List of all boards.
-    """
-    return [board[len(constants.BOARD_PREFIX):]
-            for board in get_labels(host, constants.BOARD_PREFIX)]
-
-
-def get_board(host):
-    """Retrieve the board for a given host stored inside host._afe_host.
-
-    @param host: Host object to get board.
-
-    @returns The current board or None if it could not find it.
-    """
-    boards = get_boards(host)
-    if not boards:
-        return None
-    return boards[0]
-
 
 
 def clear_version_labels(host):
@@ -235,17 +209,3 @@ def machine_install_and_update_labels(host, *args, **dargs):
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
     add_version_label(host, image_name)
-
-
-def get_os(host):
-    """Retrieve the os for a given host stored inside host._afe_host.
-
-    @param host: Host object to get board.
-
-    @returns The os or None if it could not find it.
-    """
-    full_os_prefix = constants.OS_PREFIX + ':'
-    os_labels = get_labels(host, full_os_prefix)
-    if not os_labels:
-        return None
-    return os_labels[0][len(full_os_prefix):]
