@@ -9,7 +9,7 @@ import sys
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import afe_utils, utils
+from autotest_lib.server import utils
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.utils import emulator_manager
 
@@ -93,7 +93,8 @@ class EmulatedADBHost(adb_host.ADBHost):
 
         @return: os type as str
         """
-        return afe_utils.get_os(self) or OS_TYPE_DEFAULT
+        info = self.host_info_store.get()
+        return info.os or OS_TYPE_DEFAULT
 
 
     def get_board(self):
@@ -102,7 +103,8 @@ class EmulatedADBHost(adb_host.ADBHost):
 
         @return: board as str
         """
-        return afe_utils.get_board(self) or BOARD_DEFAULT
+        info = self.host_info_store.get()
+        return info.board or BOARD_DEFAULT
 
 
     @staticmethod
