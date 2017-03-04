@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package android.mediastress of the '
-       'Android 6.0_r12 Compatibility Test Suite (CTS), build 3426263,'
+       'Android 6.0_r15 Compatibility Test Suite (CTS), build 3666707,'
        'using x86 ABI in the ARC container.')
 
 def run_CTS(machine):
@@ -23,7 +23,6 @@ def run_CTS(machine):
         host=host,
         iterations=1,
         tag='android.mediastress',
-        needs_push_media=True,
         target_package='android.mediastress',
         bundle='x86',
         timeout=28800)
