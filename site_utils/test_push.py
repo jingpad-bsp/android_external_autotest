@@ -137,23 +137,26 @@ class TestPushException(Exception):
 
 
 @retry.retry(TestPushException, timeout_min=5, delay_sec=30)
-def check_dut_inventory(required_num_duts):
-    """Check DUT inventory for each board.
+def check_dut_inventory(required_num_duts, pool):
+    """Check DUT inventory for each board in the pool specified..
 
     @param required_num_duts: a dict specifying the number of DUT each platform
                               requires in order to finish push tests.
+    @param pool: the pool used by test_push.
     @raise TestPushException: if number of DUTs are less than the requirement.
     """
     print 'Checking DUT inventory...'
+    pool_label = constants.Labels.POOL_PREFIX + pool
     hosts = AFE.run('get_hosts', status='Ready', locked=False)
+    hosts = [h for h in hosts if pool_label in h.get('labels', [])]
     platforms = [host['platform'] for host in hosts]
     current_inventory = {p : platforms.count(p) for p in platforms}
     error_msg = ''
     for platform, req_num in required_num_duts.items():
         curr_num = current_inventory.get(platform, 0)
         if curr_num < req_num:
-            error_msg += ('\nRequire %d %s DUTs, only %d are Ready now' %
-                          (req_num, platform, curr_num))
+            error_msg += ('\nRequire %d %s DUTs in pool: %s, only %d are Ready'
+                          ' now' % (req_num, platform, pool, curr_num))
     if error_msg:
         raise TestPushException('Not enough DUTs to run push tests. %s' %
                                 error_msg)
@@ -585,7 +588,7 @@ def main():
         # Verify all the DUTs at the beginning of testing push.
         reverify_all_push_duts(arguments.pool)
         time.sleep(15) # Wait 15 secs for the verify test to start.
-        check_dut_inventory(arguments.num_duts)
+        check_dut_inventory(arguments.num_duts, arguments.pool)
         queue = multiprocessing.Queue()
 
         push_to_prod_suite = multiprocessing.Process(
