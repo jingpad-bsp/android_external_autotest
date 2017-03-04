@@ -77,7 +77,8 @@ def create_acts_package_from_artifact(test_station, branch, target, build_id,
     devserver.trigger_download(
         target, build_id, branch, files='acts.zip', synchronous=True)
 
-    download_ulr = os.path.join(job_repo_url, 'acts.zip')
+    pull_base_url = devserver.get_pull_url(target, build_id, branch)
+    download_ulr = os.path.join(pull_base_url, 'acts.zip')
 
     test_station.download_file(download_ulr, target_zip_file)
 
