@@ -130,6 +130,9 @@ class platform_ToolchainOptions(test.test):
                     # positives, and since that's noexec anyways, it should
                     # be skipped.
                     " -wholename '/home/chronos' -prune -o "
+                    " -wholename "
+                    "/opt/google/containers/android/rootfs/root/vendor"
+                    " -prune -o "
                     " %s "
                     " -not -name 'libstdc++.so.*' "
                     " -not -name 'libgcc_s.so.*' "
