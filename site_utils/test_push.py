@@ -46,6 +46,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.hosts import afe_store
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -380,11 +381,12 @@ def check_dut_image(build, suite_job_id):
             for job_id in job_ids]
     hostnames = set([hqe.host.hostname for hqe in hqes])
     for hostname in hostnames:
-        found_build = site_utils.get_build_from_afe(hostname, AFE)
-        if found_build != build:
+        host_info_store = afe_store.AfeStore(hostname, AFE)
+        info = host_info_store.get()
+        if info.build != build:
             raise TestPushException('DUT is not imaged properly. Host %s has '
                                     'build %s, while build %s is expected.' %
-                                    (hostname, found_build, build))
+                                    (hostname, info.build, build))
 
 
 def test_suite(suite_name, expected_results, arguments, use_shard=False,
