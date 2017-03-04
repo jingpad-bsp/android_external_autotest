@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package android.media of the '
-       'Android 6.0_r12 Compatibility Test Suite (CTS), build 3426263,'
+       'Android 6.0_r15 Compatibility Test Suite (CTS), build 3666707,'
        'using arm ABI in the ARC container.')
 
 def run_CTS(machine):
@@ -25,6 +25,6 @@ def run_CTS(machine):
         tag='android.media',
         target_package='android.media',
         bundle='arm',
-        timeout=14400)
+        timeout=21600)
 
 parallel_simple(run_CTS, machines)
