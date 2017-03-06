@@ -362,8 +362,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raises urllib2.URLError: If the devserver embedded in job_repo_url
                                   doesn't respond within the timeout.
         """
-        job_repo_url = afe_utils.get_host_attribute(self,
-                                                    ds_constants.JOB_REPO_URL)
+        info = self.host_info_store.get()
+        job_repo_url = info.attributes.get(ds_constants.JOB_REPO_URL, '')
         if not job_repo_url:
             logging.warning('No job repo url set on host %s', self.hostname)
             return
@@ -439,8 +439,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         'Failed to parse build name from %s' % image)
             ds = dev_server.ImageServer.resolve(image_name, hostname)
         else:
-            job_repo_url = afe_utils.get_host_attribute(
-                    self, ds_constants.JOB_REPO_URL)
+            info = self.host_info_store.get()
+            job_repo_url = info.attributes.get(ds_constants.JOB_REPO_URL)
             if job_repo_url:
                 devserver_url, image_name = (
                     tools.get_devserver_build_from_package_url(job_repo_url))
