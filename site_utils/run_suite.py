@@ -262,6 +262,11 @@ def make_parser():
         '--job_keyvals', dest='job_keyvals', type=json.loads,
         action='store', default=None,
         help='A dict of job keyvals to be inject to suite control file')
+    parser.add_argument(
+        '--test_args', dest='test_args', type=ast.literal_eval,
+        action='store', default=None,
+        help=('A dict of args passed all the way to each individual test that '
+              'will be actually ran.'))
     return parser
 
 
@@ -1544,6 +1549,7 @@ def create_suite(afe, options):
         run_prod_code=options.run_prod_code,
         delay_minutes=options.delay_minutes,
         job_keyvals=options.job_keyvals,
+        test_args=options.test_args,
     )
 
 
