@@ -927,9 +927,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # have to change it back to fastboot mode manually again.
         logging.debug('Verifying the device is accessible via fastboot.')
         self.ensure_bootloader_mode()
+        subdir_tag = self.adb_serial if board else None
         if not self.job.run_test(
-                'provision_AndroidUpdate', host=self, value=None,
-                force=True, repair=True, board=board, os=os):
+                'provision_AndroidUpdate', host=self, value=None, force=True,
+                repair=True, board=board, os=os, subdir_tag=subdir_tag):
             raise error.AutoservRepairTotalFailure(
                     'Unable to repair the device.')
 
