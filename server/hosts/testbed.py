@@ -6,7 +6,9 @@
 
 import logging
 import re
+import sys
 import threading
+import traceback
 from multiprocessing import pool
 
 import common
@@ -146,8 +148,25 @@ class TestBed(object):
         match = re.match(r'^(.*)-\d+$', board)
         if match:
             board = match.group(1)
+        failures = []
         for adb_device in self.get_adb_devices().values():
-            adb_device.repair(board=board, os=info.os)
+            try:
+                adb_device.repair(board=board, os=info.os)
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                failures.append((adb_device.adb_serial, exc_type, exc_value,
+                                 exc_traceback))
+        if failures:
+            serials = []
+            for serial, exc_type, exc_value, exc_traceback in failures:
+                serials.append(serial)
+                details = ''.join(traceback.format_exception(
+                        exc_type, exc_value, exc_traceback))
+                logging.error('Failed to repair device with serial %s, '
+                              'error:\n%s', serial, details)
+            raise error.AutoservRepairTotalFailure(
+                    'Fail to repair %d devices: %s' %
+                    (len(serials), ','.join(serials)))
 
 
     def verify(self):
