@@ -300,7 +300,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # TODO(fdeng): We need to simplify the
         # process of servo and servo_host initialization.
         # crbug.com/298432
-        self._servo_host =  servo_host.create_servo_host(
+        self._servo_host = servo_host.create_servo_host(
                 dut=self, servo_args=servo_args,
                 try_lab_servo=try_lab_servo,
                 try_servo_repair=try_servo_repair)
