@@ -141,8 +141,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         # Find all files in the bbb_short and bbb_full directories, md5sum these
         # files and sort by filename. The result for local and DUT hierarchies
         # is piped through the diff command.
-        # TODO(ihf): Remove -y.
-        cmd = ('diff -y '
+        cmd = ('diff --strip-trailing-cr '
                '<(adb shell "cd /sdcard/test; '
                    'find ./bbb_short ./bbb_full -type f -print0 | '
                    'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2") '
