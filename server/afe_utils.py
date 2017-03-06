@@ -184,7 +184,8 @@ def update_host_attribute(host, attribute, value):
         return
 
     AFE.set_host_attribute(attribute, value, hostname=host.hostname)
-    if get_host_attribute(host, attribute, use_local_value=False) != value:
+    info = host.host_info_store.get(force_refresh=True)
+    if info.attributes.get(attribute) != value:
         raise error.AutoservError(
                 'Failed to update host attribute `%s` with %s, host %s' %
                 (attribute, value, host.hostname))
