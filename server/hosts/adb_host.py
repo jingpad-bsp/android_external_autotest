@@ -1745,9 +1745,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if image:
             ds = dev_server.AndroidBuildServer.resolve(image, hostname)
         else:
-            job_repo_url = afe_utils.get_host_attribute(
-                    self, self.job_repo_url_attribute)
-            if job_repo_url:
+            info = self.host_info_store.get()
+            job_repo_url = info.attributes.get(self.job_repo_url_attribute)
+            if job_repo_url is not None:
                 devserver_url, image = (
                         tools.get_devserver_build_from_package_url(
                                 job_repo_url, True))
