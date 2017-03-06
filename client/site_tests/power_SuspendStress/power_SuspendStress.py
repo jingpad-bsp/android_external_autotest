@@ -13,8 +13,8 @@ class power_SuspendStress(test.test):
     version = 1
 
     def initialize(self, duration, idle=False, init_delay=0, min_suspend=0,
-                   min_resume=0, check_connection=False, iterations=None,
-                   suspend_state=''):
+                   min_resume=0, max_resume_window=3, check_connection=False,
+                   iterations=None, suspend_state=''):
         """
         Entry point.
 
@@ -26,6 +26,9 @@ class power_SuspendStress(test.test):
         @param min_suspend: suspend durations will be chosen randomly out of
                 the interval between min_suspend and min_suspend + 3 seconds.
         @param min_resume: minimal time in seconds between suspends.
+        @param max_resume_window: maximum range to use between suspends. i.e.,
+                we will stay awake between min_resume and min_resume +
+                max_resume_window seconds.
         @param check_connection: If true, we check that the network interface
                 used for testing is up after resume. Otherwsie we reboot.
         @param iterations: number of times to attempt suspend.  If !=None has
@@ -40,6 +43,7 @@ class power_SuspendStress(test.test):
         self._init_delay = init_delay
         self._min_suspend = min_suspend
         self._min_resume = min_resume
+        self._max_resume_window = max_resume_window
         self._check_connection = check_connection
         self._iterations = iterations
         self._suspend_state = suspend_state
@@ -66,7 +70,8 @@ class power_SuspendStress(test.test):
                     interface = fields[0]
 
         while not self._done():
-            time.sleep(self._min_resume + random.randint(0, 3))
+            time.sleep(self._min_resume +
+                       random.randint(0, self._max_resume_window))
             # Check the network interface to the caller is still available
             if self._check_connection:
                 link_status = None
