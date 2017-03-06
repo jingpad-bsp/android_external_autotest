@@ -14,6 +14,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.frontend.afe import model_logic
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rpc_interface
@@ -396,6 +397,56 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(task['requested_by'], 'autotest_system')
 
 
+    def test_parameterized_job(self):
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'parameterized_jobs', 'True')
+
+        string_type = model_attributes.ParameterTypes.STRING
+
+        test = models.Test.objects.create(
+                name='test', test_type=control_data.CONTROL_TYPE.SERVER)
+        test_parameter = test.testparameter_set.create(name='key')
+        profiler = models.Profiler.objects.create(name='profiler')
+
+        kernels = ({'version': 'version', 'cmdline': 'cmdline'},)
+        profilers = ('profiler',)
+        profiler_parameters = {'profiler': {'key': ('value', string_type)}}
+        job_parameters = {'key': ('value', string_type)}
+
+        job_id = rpc_interface.create_parameterized_job(
+                name='job', priority=priorities.Priority.DEFAULT, test='test',
+                parameters=job_parameters, kernel=kernels, label='label1',
+                profilers=profilers, profiler_parameters=profiler_parameters,
+                profile_only=False, hosts=('host1',))
+        parameterized_job = models.Job.smart_get(job_id).parameterized_job
+
+        self.assertEqual(parameterized_job.test, test)
+        self.assertEqual(parameterized_job.label, self.labels[0])
+        self.assertEqual(parameterized_job.kernels.count(), 1)
+        self.assertEqual(parameterized_job.profilers.count(), 1)
+
+        kernel = models.Kernel.objects.get(**kernels[0])
+        self.assertEqual(parameterized_job.kernels.all()[0], kernel)
+        self.assertEqual(parameterized_job.profilers.all()[0], profiler)
+
+        parameterized_profiler = models.ParameterizedJobProfiler.objects.get(
+                parameterized_job=parameterized_job, profiler=profiler)
+        profiler_parameters_obj = (
+                models.ParameterizedJobProfilerParameter.objects.get(
+                parameterized_job_profiler=parameterized_profiler))
+        self.assertEqual(profiler_parameters_obj.parameter_name, 'key')
+        self.assertEqual(profiler_parameters_obj.parameter_value, 'value')
+        self.assertEqual(profiler_parameters_obj.parameter_type, string_type)
+
+        self.assertEqual(
+                parameterized_job.parameterizedjobparameter_set.count(), 1)
+        parameters_obj = (
+                parameterized_job.parameterizedjobparameter_set.all()[0])
+        self.assertEqual(parameters_obj.test_parameter, test_parameter)
+        self.assertEqual(parameters_obj.parameter_value, 'value')
+        self.assertEqual(parameters_obj.parameter_type, string_type)
+
+
     def _modify_host_helper(self, on_shard=False, host_on_shard=False):
         shard_hostname = 'shard1'
         if on_shard:
@@ -586,6 +637,21 @@ class RpcInterfaceTest(unittest.TestCase,
 
         self.assertRaises(models.Label.DoesNotExist,
                           models.Label.smart_get, label1.id)
+        self.god.check_playback()
+
+
+    def test_get_image_for_job_parameterized(self):
+        test = models.Test.objects.create(
+            name='name', author='author', test_class='class',
+            test_category='category',
+            test_type=control_data.CONTROL_TYPE.SERVER, path='path')
+        parameterized_job = models.ParameterizedJob.objects.create(test=test)
+        job = self._create_job(hosts=[1])
+        job.parameterized_job = parameterized_job
+        self.god.stub_function_to_return(rpc_interface,
+                'get_parameterized_autoupdate_image_url', 'cool-image')
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
         self.god.check_playback()
 
 
