@@ -17,19 +17,6 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     version = 1
     binary = 'video_decode_accelerator_unittest'
 
-    def get_filter_options(self):
-        blacklist = {
-                # board: [test to skip ...]
-                # Boards using MediaTek chipset have known issue in Thumbnail
-                # test (crbug/691464).
-                'elm' : ['Thumbnail/*'],
-                'oak' : ['Thumbnail/*'],
-                'hana' : ['Thumbnail/*'],
-        }
-        board = utils.get_current_board()
-        if board in blacklist:
-            return ' --gtest_filter=-' + ':'.join(blacklist[board])
-        return ''
 
     @chrome_binary_test.nuke_chrome
     def run_once(self, videos, use_cr_source_dir=True):
@@ -55,8 +42,6 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
             if utils.is_freon():
                 cmd_line += ' --ozone-platform=gbm'
-
-            cmd_line += self.get_filter_options()
 
             try:
                 self.run_chrome_test_binary(self.binary, cmd_line)
