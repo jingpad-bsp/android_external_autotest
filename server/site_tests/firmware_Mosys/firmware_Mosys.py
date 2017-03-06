@@ -249,7 +249,7 @@ class firmware_Mosys(FirmwareTest):
 
         # f. mosys -k pd info
         command = 'mosys -k pd info'
-        if 'pd' in self.command_list:
+        if self.faft_config.chrome_usbpd and 'pd' in self.command_list:
           output = self.run_cmd(command)[0]
           p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
           v = p.match(output)
