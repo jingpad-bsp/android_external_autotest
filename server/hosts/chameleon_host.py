@@ -117,10 +117,25 @@ class ChameleonHost(ssh_host.SSHHost):
 
 
     def create_chameleon_board(self):
-        """Create a ChameleonBoard object."""
+        """Create a ChameleonBoard object with error recovery.
+
+        This function will reboot the chameleon board once and retry if we can't
+        create chameleon board.
+
+        @return A ChameleonBoard object.
+        """
         # TODO(waihong): Add verify and repair logic which are required while
         # deploying to Cros Lab.
-        return chameleon.ChameleonBoard(self._chameleon_connection, self)
+        chameleon_board = None
+        try:
+            chameleon_board = chameleon.ChameleonBoard(
+                    self._chameleon_connection, self)
+            return chameleon_board
+        except:
+            self.reboot()
+            chameleon_board = chameleon.ChameleonBoard(
+                self._chameleon_connection, self)
+            return chameleon_board
 
 
 def create_chameleon_host(dut, chameleon_args):
