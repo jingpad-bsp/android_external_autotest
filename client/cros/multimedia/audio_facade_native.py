@@ -82,13 +82,13 @@ class AudioFacadeNative(object):
         return self._loaded_extension_handler
 
 
-    def get_audio_info(self):
-        """Returns the audio info from chrome.audio API.
+    def get_audio_devices(self):
+        """Returns the audio devices from chrome.audio API.
 
-        @returns: Checks docstring of get_audio_info of AudioExtensionHandler.
+        @returns: Checks docstring of get_audio_devices of AudioExtensionHandler.
 
         """
-        return self._extension_handler.get_audio_info()
+        return self._extension_handler.get_audio_devices()
 
 
     def set_chrome_active_volume(self, volume):
