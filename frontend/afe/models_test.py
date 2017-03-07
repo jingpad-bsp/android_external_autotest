@@ -3,6 +3,8 @@
 import datetime
 import unittest
 import common
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, model_logic
