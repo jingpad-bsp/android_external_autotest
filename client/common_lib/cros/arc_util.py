@@ -57,12 +57,19 @@ def post_processing_after_browser(chrome):
     @param chrome: Chrome object.
 
     """
-    # Wait for Android container ready if ARC is enabled.
-    if chrome.arc_mode == arc_common.ARC_MODE_ENABLED:
-        arc_common.wait_for_android_boot()
     # Remove any stale dumpstate files.
     if os.path.isfile(_DUMPSTATE_PATH):
         os.unlink(_DUMPSTATE_PATH)
+
+    # Wait for Android container ready if ARC is enabled.
+    if chrome.arc_mode == arc_common.ARC_MODE_ENABLED:
+        try:
+            arc_common.wait_for_android_boot()
+        except Exception:
+            # Save dumpstate so that we can figure out why boot does not
+            # complete.
+            _save_android_dumpstate()
+            raise
 
 
 def pre_processing_before_close(chrome):
@@ -80,41 +87,44 @@ def pre_processing_before_close(chrome):
     # logcat for all tests
 
     # Save dumpstate just before logout.
-    try:
-        logging.info('Saving Android dumpstate.')
-        _save_android_dumpstate()
-        logging.info('Android dumpstate successfully saved.')
-    except Exception:
-        # Dumpstate is nice-to-have stuff. Do not make it as a fatal error.
-        logging.exception('Failed to save Android dumpstate.')
+    _save_android_dumpstate()
 
 
 def _save_android_dumpstate(timeout=_DUMPSTATE_DEFAULT_TIMEOUT):
     """
     Triggers a dumpstate and saves its contents to to /var/log/arc-dumpstate.log
+    with logging.
+
+    Exception thrown while doing dumpstate will be ignored.
 
     @param timeout: The timeout in seconds.
     """
 
-    with open(_DUMPSTATE_PATH, 'w') as out:
-        # _DUMPSTATE_PIPE_PATH is a named pipe, so it permanently blocks if
-        # opened normally if the other end has not been opened. In order to
-        # avoid that, open the file with O_NONBLOCK and use a select loop to
-        # read from the file with a timeout.
-        fd = os.open(_DUMPSTATE_PIPE_PATH, os.O_RDONLY | os.O_NONBLOCK)
-        with os.fdopen(fd, 'r') as pipe:
-            end_time = time.time() + timeout
-            while True:
-                remaining_time = end_time - time.time()
-                if remaining_time <= 0:
-                    break
-                rlist, _, _ = select.select([pipe], [], [], remaining_time)
-                if pipe not in rlist:
-                    break
-                buf = os.read(pipe.fileno(), 1024)
-                if len(buf) == 0:
-                    break
-                out.write(buf)
+    try:
+        logging.info('Saving Android dumpstate.')
+        with open(_DUMPSTATE_PATH, 'w') as out:
+            # _DUMPSTATE_PIPE_PATH is a named pipe, so it permanently blocks if
+            # opened normally if the other end has not been opened. In order to
+            # avoid that, open the file with O_NONBLOCK and use a select loop to
+            # read from the file with a timeout.
+            fd = os.open(_DUMPSTATE_PIPE_PATH, os.O_RDONLY | os.O_NONBLOCK)
+            with os.fdopen(fd, 'r') as pipe:
+                end_time = time.time() + timeout
+                while True:
+                    remaining_time = end_time - time.time()
+                    if remaining_time <= 0:
+                        break
+                    rlist, _, _ = select.select([pipe], [], [], remaining_time)
+                    if pipe not in rlist:
+                        break
+                    buf = os.read(pipe.fileno(), 1024)
+                    if len(buf) == 0:
+                        break
+                    out.write(buf)
+        logging.info('Android dumpstate successfully saved.')
+    except Exception:
+        # Dumpstate is nice-to-have stuff. Do not make it as a fatal error.
+        logging.exception('Failed to save Android dumpstate.')
 
 
 def set_browser_options_for_opt_in(b_options):
