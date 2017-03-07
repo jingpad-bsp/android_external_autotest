@@ -1709,7 +1709,6 @@ def get_static_data():
     result['motd'] = rpc_utils.get_motd()
     result['drone_sets_enabled'] = models.DroneSet.drone_sets_enabled()
     result['drone_sets'] = drone_sets
-    result['parameterized_jobs'] = models.Job.parameterized_jobs_enabled()
 
     result['status_dictionary'] = {"Aborted": "Aborted",
                                    "Verifying": "Verifying Host",
