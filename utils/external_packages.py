@@ -1101,6 +1101,36 @@ class PyLintPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class Pytz(ExternalPackage):
+    """Pytz package."""
+    version = '2016.10'
+    url_filename = 'pytz-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=cc9f16ba436efabdcef3c4d32ae4919c
+    urls = ('https://pypi.python.org/packages/42/00/'
+            '5c89fc6c9b305df84def61863528e899e9dccb196f8438f6cbe960758fc5/%s' %
+            (url_filename),)
+    hex_sum = '8d63f1e9b1ee862841b990a7d8ad1d4508d9f0be'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class Tzlocal(ExternalPackage):
+    """Tzlocal package."""
+    version = '1.3'
+    url_filename = 'tzlocal-%s.tar.gz' % version
+    local_filename = url_filename
+    # md5=3cb544b3975b59f91a793850a072d4a8
+    urls = ('https://pypi.python.org/packages/d3/64/'
+            'e4b18738496213f82b88b31c431a0e4ece143801fb6771dddd1c2bf0101b/%s' %
+            (url_filename),)
+    hex_sum = '730e9d7112335865a1dcfabec69c8c3086be424f'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
