@@ -96,7 +96,7 @@
     "master_name": "ChromeOSPerf"
   },
   {
-    "autotest_name": "longevity_Tracker",
+    "autotest_name": "enterprise_LongevityTrackerServer",
     "master_name": "ChromeOS_Enterprise"
   },
   {
