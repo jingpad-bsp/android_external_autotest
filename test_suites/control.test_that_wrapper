@@ -41,7 +41,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['beeps@chromium.org']
+    'cc': ['chromeos-lab-errors@google.com']
 }
 
 
