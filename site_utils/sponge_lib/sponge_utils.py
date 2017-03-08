@@ -8,7 +8,7 @@
 import logging
 import traceback
 
-from autotest_lib.site_utils.sponge_lib import autotest_job_info
+from autotest_lib.site_utils.sponge_lib import autotest_dynamic_job
 from autotest_lib.client.common_lib import decorators
 
 try:
@@ -28,7 +28,7 @@ def upload_results(job, log=logging.debug):
     @return: A url to the Sponge invocation.
     """
     try:
-        info = autotest_job_info.JobInfo(job)
+        info = autotest_dynamic_job.DynamicJobInfo(job)
         return sponge.upload_utils.UploadInfo(info)
     except:
         stack = traceback.format_exc()
