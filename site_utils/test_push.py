@@ -188,14 +188,10 @@ def powerwash_dut_to_test_repair(hostname, timeout):
     AFE.reverify_hosts(hostnames=[hostname])
 
 
-def reverify_all_push_duts(pool):
-    """Reverify all the push DUTs.
-
-    @param pool: Name of the pool used by test_push.
-    """
-    print 'Reverifying DUTs in pool %s' % pool
-    pool_label = constants.Labels.POOL_PREFIX + pool
-    hosts = [h.hostname for h in AFE.get_hosts(label=pool_label)]
+def reverify_all_push_duts():
+    """Reverify all the push DUTs."""
+    print 'Reverifying all DUTs.'
+    hosts = [h.hostname for h in AFE.get_hosts()]
     AFE.reverify_hosts(hostnames=hosts)
 
 
@@ -586,7 +582,7 @@ def main():
         # Use daemon flag will kill child processes when parent process fails.
         use_daemon = not arguments.continue_on_failure
         # Verify all the DUTs at the beginning of testing push.
-        reverify_all_push_duts(arguments.pool)
+        reverify_all_push_duts()
         time.sleep(15) # Wait 15 secs for the verify test to start.
         check_dut_inventory(arguments.num_duts, arguments.pool)
         queue = multiprocessing.Queue()
@@ -661,7 +657,7 @@ def main():
         raise
     finally:
         # Reverify all the hosts
-        reverify_all_push_duts(arguments.pool)
+        reverify_all_push_duts()
 
     message = ('\nAll tests are completed successfully, the prod branch of the '
                'following repos ready to be pushed to the hash list below.\n'
