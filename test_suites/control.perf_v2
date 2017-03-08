@@ -37,8 +37,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': ['pthammaiah@chromium.org','scottz@chromium.org',
-            'beeps@chromium.org']
+    'cc': []
 }
 
 args_dict['file_bugs'] = False
