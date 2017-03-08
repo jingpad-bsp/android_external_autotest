@@ -83,12 +83,14 @@ def cached_property(func):
     return _Property(func)
 
 
-def test_module_available(module):
+def test_module_available(module, raise_error=False):
     """A decorator to test if the given module is available first before
     calling a function.
 
     @param module: Module object. The value should be None if the module is
                    failed to be imported.
+    @param raise_error: If true an import error will be raised on call if module
+                        is not imported.
     """
 
     def decorator(f):
@@ -103,6 +105,8 @@ def test_module_available(module):
             """A dummy function silently pass."""
             logging.debug('Module %s is not found. Call %s is skipped.', module,
                           f)
+            if raise_error:
+                raise ImportError('Module %s is not found.' % module)
 
         return f if module else dummy_func
 
