@@ -118,7 +118,7 @@ class BaseAutotest(installable_object.InstallableObject):
                 host.run('test -w %s' % utils.sh_escape(path))
                 logging.debug('Found existing autodir at %s', path)
                 return path
-            except error.AutoservRunError:
+            except error.GenericHostRunError:
                 logging.debug('%s does not exist on %s', autotest_binary,
                               host.hostname)
         raise AutodirNotFoundError
