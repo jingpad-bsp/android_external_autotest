@@ -50,7 +50,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'ccs': []
+    'cc': []
 }
 
 args_dict['max_runtime_mins'] = 30
