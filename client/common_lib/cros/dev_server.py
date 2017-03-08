@@ -334,6 +334,7 @@ class DevServer(object):
     NETWORK_IO = 'network_total_bytes_per_second'
     CPU_LOAD = 'cpu_percent'
     FREE_DISK = 'free_disk'
+    AU_PROCESS = 'au_process_count'
     STAGING_THREAD_COUNT = 'staging_thread_count'
     APACHE_CLIENT_COUNT = 'apache_client_count'
 
@@ -514,6 +515,13 @@ class DevServer(object):
             c.increment(fields={'dev_server': cls(devserver).resolved_hostname,
                                 'healthy': healthy,
                                 'reason': reason})
+            # Monitor how many AU processes the devserver is currently running.
+            if load is not None and load.get(DevServer.AU_PROCESS):
+                c_au = metrics.Gauge(
+                        'chromeos/autotest/devserver/devserver_au_count')
+                c_au.set(
+                    load.get(DevServer.AU_PROCESS),
+                    fields={'dev_server': cls(devserver).resolved_hostname})
 
 
     @staticmethod
