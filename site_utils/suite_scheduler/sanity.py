@@ -11,10 +11,12 @@ import common
 
 _WHITELISTED_SUITES = (
     'arc-cts',
+    'arc-cts-perbuild',
     'arc-cts-dev',
     'arc-cts-beta',
     'arc-cts-stable',
     'arc-gts',
+    'arc-gts-perbuild',
     'arc-gts-tot',
     'arc-nightly',
     'arc-weekly',

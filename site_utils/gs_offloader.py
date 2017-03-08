@@ -377,7 +377,8 @@ def _is_valid_result(build, result_pattern, suite):
     # Not valid if it's cts result but not 'arc-cts*' or 'test_that_wrapper'
     # suite.
     whitelisted_suites = ['arc-cts', 'arc-cts-dev', 'arc-cts-beta',
-                          'arc-cts-stable', 'arc-gts', 'test_that_wrapper']
+                          'arc-cts-stable', 'arc-cts-perbuild', 'arc-gts',
+                          'arc-gts-perbuild', 'test_that_wrapper']
     result_patterns = [CTS_RESULT_PATTERN, CTS_V2_RESULT_PATTERN]
     if result_pattern in result_patterns and suite not in whitelisted_suites:
         return False
