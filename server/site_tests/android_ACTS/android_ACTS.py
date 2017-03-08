@@ -45,7 +45,8 @@ class android_ACTS(test.test):
                  override_python_bin='python',
                  acts_timeout=7200,
                  perma_path=None,
-                 additional_cmd_line_params=None):
+                 additional_cmd_line_params=None,
+                 testtracker_project_id=None):
         """Runs an acts test case.
 
         @param testbed: The testbed to test on.
@@ -76,6 +77,9 @@ class android_ACTS(test.test):
         @param override_python_bin: Overrides the default python binary that
                                     is used.
         @param acts_timeout: How long to wait for acts to finish.
+        @param perma_path: If given a permantent path will be used rather than
+                           a temp path.
+        @parm testtracker_project_id: ID to use for test tracker project.
         """
         host = next(v for v in testbed.get_adb_devices().values())
 
@@ -147,6 +151,5 @@ class android_ACTS(test.test):
             additional_cmd_line_params=additional_cmd_line_params)
 
         results.log_output()
-        results.upload_to_sponge(self)
         results.report_to_autotest(self)
         results.rethrow_exception()
