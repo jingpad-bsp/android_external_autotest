@@ -28,9 +28,11 @@ suite:arc-bvt-perbuild
 suite:arc-cts
 suite:arc-cts-dev
 suite:arc-cts-beta
+suite:arc-cts-perbuild
 suite:arc-cts-stable
 suite:gts
 suite:arc-gts
+suite:arc-gts-perbuild
 suite:arc-gts-tot
 suite:arc-nightly
 suite:arc-weekly
