@@ -574,10 +574,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         populateRebootChoices();
         onPreferencesChanged();
 
-        if (parameterizedJobsEnabled()) {
-            display.getEditControlButton().setEnabled(false);
-        }
-
         display.getEditControlButton().addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 DOM.eventCancelBubble(DOM.eventGetCurrentEvent(), true);
@@ -1000,10 +996,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         setRebootSelectorDefault(rebootAfter, "reboot_after");
         selectPreferredDroneSet();
         testSelector.reset();
-    }
-
-    private boolean parameterizedJobsEnabled() {
-        return staticData.getData("parameterized_jobs").isBoolean().booleanValue();
     }
 
     private void fetchImageTests() {
