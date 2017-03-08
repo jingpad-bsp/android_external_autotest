@@ -154,11 +154,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
             for testname in waivers:
                 fail_count = result.stdout.count(testname + ' fail')
                 if fail_count:
-                    # For arm only, we repeat the test cases with output like
-                    # Starting armeabi-v7a GtsPlacementTestCases with 12 tests
-                    # Continuing armeabi-v7a GtsPlacementTestcase with 12 tests
-                    if abis == ['armeabi-v7a']:
-                        fail_count /= 2
                     if fail_count > len(abis):
                         raise error.TestFail('Error: Found %d failures for %s '
                                              'but there are only %d abis: %s' %
