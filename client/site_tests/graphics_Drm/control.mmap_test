@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'graphics_Drm.vgem_fb_test'
+NAME = 'graphics_Drm.mmap_test'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Uses drm-tests to sanity check DRM graphics output'
 CRITERIA = """
@@ -21,4 +21,5 @@ DOC = """
 Runs vgem_fb_test.
 """
 
-job.run_test('graphics_Drm', tag='vgem_fb_test', cmd='vgem_fb_test')
+job.run_test('graphics_Drm', tag='mmap_test', cmd='mmap_test', opts = args +
+	     ['--use_vgem'])
