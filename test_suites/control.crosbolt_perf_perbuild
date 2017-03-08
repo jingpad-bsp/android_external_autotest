@@ -34,7 +34,7 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 _BUG_TEMPLATE = {
     'labels': ['Type-Bug', 'Cros-Perf-Test'],
     'owner': 'rohitbm@chromium.org',
-    'ccs': []
+    'cc': []
 }
 
 args_dict['timeout_mins'] = 960
