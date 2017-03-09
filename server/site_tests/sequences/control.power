@@ -33,7 +33,7 @@ TESTS = [
 
 def run_client_test(machine):
   client = hosts.create_host(machine)
-  client_attributes = site_host_attributes.HostAttributes(machine)
+  client_attributes = site_host_attributes.HostAttributes(client.hostname)
   client_at = autotest.Autotest(client)
 
   if client.has_power():
