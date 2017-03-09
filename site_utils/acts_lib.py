@@ -593,6 +593,14 @@ class ActsTestResults(object):
         if self.run_result:
             logging.debug('ACTS Output:\n%s', self.run_result.stdout)
 
+    def save_test_info(self, test):
+        """Save info about the test.
+
+        @param test: The test to save.
+        """
+        if self.testbed and self:
+            self.testbed.save_info(test.resultsdir)
+
     def rethrow_exception(self):
         """Re-throws the exception thrown during the test."""
         if self.exception:

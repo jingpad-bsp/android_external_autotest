@@ -301,6 +301,15 @@ class TestBed(object):
         return serial_build_pairs
 
 
+    def save_info(self, results_dir):
+        """Saves info about the testbed to a directory.
+
+        @param results_dir: The directory to save to.
+        """
+        for device in self.get_adb_devices().values():
+            device.save_info(results_dir, include_build_info=True)
+
+
     def _stage_shared_build(self, serial_build_map):
         """Try to stage build on teststation to be shared by all provision jobs.
 

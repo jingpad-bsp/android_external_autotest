@@ -152,4 +152,5 @@ class android_ACTS(test.test):
 
         results.log_output()
         results.report_to_autotest(self)
+        results.save_test_info(self)
         results.rethrow_exception()
