@@ -17,6 +17,7 @@ import time
 import unittest
 import urllib2
 
+import common
 from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
