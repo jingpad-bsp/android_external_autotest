@@ -484,7 +484,6 @@ class DevServer(object):
         @return: True if devserver is healthy. Return False otherwise.
 
         """
-        server_name = get_hostname(devserver)
         c = metrics.Counter('chromeos/autotest/devserver/devserver_healthy')
         reason = ''
         healthy = False
@@ -512,7 +511,7 @@ class DevServer(object):
             healthy = bool(disk_ok)
             return disk_ok
         finally:
-            c.increment(fields={'dev_server': server_name,
+            c.increment(fields={'dev_server': cls(devserver).resolved_hostname,
                                 'healthy': healthy,
                                 'reason': reason})
 
