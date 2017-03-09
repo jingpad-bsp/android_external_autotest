@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -232,24 +233,50 @@ def get_sanitized_name(name):
 def sanitize_dir(dir_entry):
     """Replace all invalid characters in folder and file names with valid ones.
 
+    FIFOs are converted to regular files to prevent gsutil hangs (see crbug/684122).
+    Symlinks are converted to regular files that store the link destination
+    (crbug/692788).
+
     @param dir_entry: Directory entry to be sanitized.
     """
     if not os.path.exists(dir_entry):
         return
     renames = []
+    fifos = []
+    symlinks = []
     for root, dirs, files in os.walk(dir_entry):
         sanitized_root = get_sanitized_name(root)
         for name in dirs + files:
             sanitized_name = get_sanitized_name(name)
+            sanitized_path = os.path.join(sanitized_root, sanitized_name)
             if name != sanitized_name:
                 orig_path = os.path.join(sanitized_root, name)
-                rename_path = os.path.join(sanitized_root,
-                                           sanitized_name)
-                renames.append((orig_path, rename_path))
+                renames.append((orig_path, sanitized_path))
+            current_path = os.path.join(root, name)
+            file_stat = os.lstat(current_path)
+            if stat.S_ISFIFO(file_stat.st_mode):
+                # Replace fifos with markers
+                fifos.append(sanitized_path)
+            elif stat.S_ISLNK(file_stat.st_mode):
+                # Replace symlinks with markers
+                destination = os.readlink(current_path)
+                symlinks.append((sanitized_path, destination))
     for src, dest in renames:
         logging.warning('Invalid character found. Renaming %s to %s.', src,
                         dest)
         shutil.move(src, dest)
+    for fifo in fifos:
+        logging.debug('Removing fifo %s', fifo)
+        os.remove(fifo)
+        logging.debug('Creating marker %s', fifo)
+        with open(fifo, 'a') as marker:
+            marker.write('<FIFO>')
+    for link, destination in symlinks:
+        logging.debug('Removing symlink %s', link)
+        os.remove(link)
+        logging.debug('Creating marker %s', link)
+        with open(link, 'w') as marker:
+            marker.write('<symlink to %s>' % destination)
 
 
 def _get_zippable_folders(dir_entry):
