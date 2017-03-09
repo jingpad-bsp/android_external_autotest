@@ -51,7 +51,7 @@ def _iterate_tests(client, machine):
     # Run the short version of power_Consumption
     client_at.run_test('power_Consumption', short=True)
 
-    client_attributes = site_host_attributes.HostAttributes(machine)
+    client_attributes = site_host_attributes.HostAttributes(client.hostname)
     if not client_attributes.has_resume_bug:
         client_at.run_test('power_Resume', tag=tag)
 
