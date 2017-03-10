@@ -259,7 +259,7 @@ def make_parser():
         '--skip_duts_check', dest='skip_duts_check', action='store_true',
         default=False, help='If True, skip minimum available DUTs check')
     parser.add_argument(
-        '--job_keyvals', dest='job_keyvals', type=json.loads,
+        '--job_keyvals', dest='job_keyvals', type=ast.literal_eval,
         action='store', default=None,
         help='A dict of job keyvals to be inject to suite control file')
     parser.add_argument(
