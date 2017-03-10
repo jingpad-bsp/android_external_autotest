@@ -938,7 +938,6 @@ class _BaseSuite(object):
     @var _jobs: currently scheduled jobs, if any.
     @var _jobs_to_tests: a dictionary that maps job ids to tests represented
                          ControlData objects.
-    @var _cf_getter: a control_file_getter.ControlFileGetter
     @var _retry: a bool value indicating whether jobs should be retried on
                  failure.
     @var _retry_handler: a RetryHandler object.
@@ -951,7 +950,6 @@ class _BaseSuite(object):
             tag,
             builds,
             board,
-            cf_getter,
             afe=None,
             tko=None,
             pool=None,
@@ -982,7 +980,6 @@ class _BaseSuite(object):
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
-        @param cf_getter: a control_file_getter.ControlFileGetter
         @param afe: an instance of AFE as defined in server/frontend.py.
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
@@ -1021,7 +1018,6 @@ class _BaseSuite(object):
 
         self._tag = tag
         self._builds = builds
-        self._cf_getter = cf_getter
         self._results_dir = results_dir
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
@@ -1648,7 +1644,6 @@ class Suite(_BaseSuite):
                 tag=tag,
                 builds=builds,
                 board=board,
-                cf_getter=cf_getter,
                 afe=afe,
                 tko=tko,
                 pool=pool,
