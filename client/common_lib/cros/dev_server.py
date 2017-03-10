@@ -414,7 +414,7 @@ class DevServer(object):
         @return: A dictionary of the devserver's load.
 
         """
-        call = DevServer._build_call(devserver, 'check_health')
+        call = cls._build_call(devserver, 'check_health')
         @remote_devserver_call(timeout_min=timeout_min)
         def get_load(devserver=devserver):
             """Inner method that makes the call."""
@@ -427,8 +427,8 @@ class DevServer(object):
                           ' Error: %s', call, timeout_min * 60, e)
 
 
-    @staticmethod
-    def is_free_disk_ok(load):
+    @classmethod
+    def is_free_disk_ok(cls, load):
         """Check if a devserver has enough free disk.
 
         @param load: A dict of the load of the devserver.
@@ -439,14 +439,14 @@ class DevServer(object):
         """
         if SKIP_DEVSERVER_HEALTH_CHECK:
             logging.debug('devserver health check is skipped.')
-        elif load[DevServer.FREE_DISK] < DevServer._MIN_FREE_DISK_SPACE_GB:
+        elif load[cls.FREE_DISK] < cls._MIN_FREE_DISK_SPACE_GB:
             return False
 
         return True
 
 
-    @staticmethod
-    def is_apache_client_count_ok(load):
+    @classmethod
+    def is_apache_client_count_ok(cls, load):
         """Check if a devserver has enough Apache connections available.
 
         Apache server by default has maximum of 150 concurrent connections. If
@@ -463,10 +463,10 @@ class DevServer(object):
         """
         if SKIP_DEVSERVER_HEALTH_CHECK:
             logging.debug('devserver health check is skipped.')
-        elif DevServer.APACHE_CLIENT_COUNT not in load:
+        elif cls.APACHE_CLIENT_COUNT not in load:
             logging.debug('Apache client count is not collected from devserver.')
-        elif (load[DevServer.APACHE_CLIENT_COUNT] >
-              DevServer._MAX_APACHE_CLIENT_COUNT):
+        elif (load[cls.APACHE_CLIENT_COUNT] >
+              cls._MAX_APACHE_CLIENT_COUNT):
             return False
 
         return True
@@ -494,20 +494,20 @@ class DevServer(object):
                 reason = '(1) Failed to get load.'
                 return False
 
-            apache_ok = DevServer.is_apache_client_count_ok(load)
+            apache_ok = cls.is_apache_client_count_ok(load)
             if not apache_ok:
                 reason = '(2) Apache client count too high.'
                 logging.error('Devserver check_health failed. Live Apache client '
                               'count is too high: %d.',
-                              load[DevServer.APACHE_CLIENT_COUNT])
+                              load[cls.APACHE_CLIENT_COUNT])
                 return False
 
-            disk_ok = DevServer.is_free_disk_ok(load)
+            disk_ok = cls.is_free_disk_ok(load)
             if not disk_ok:
                 reason = '(3) Disk space too low.'
                 logging.error('Devserver check_health failed. Free disk space is '
                               'low. Only %dGB is available.',
-                              load[DevServer.FREE_DISK])
+                              load[cls.FREE_DISK])
             healthy = bool(disk_ok)
             return disk_ok
         finally:
