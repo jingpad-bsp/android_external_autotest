@@ -412,9 +412,11 @@ def parse_one(db, jobname, path, parse_options):
     # Generate a suite report.
     # Check whether this is a suite job, a suite job will be a hostless job, its
     # jobname will be <JOB_ID>-<USERNAME>/hostless, the suite field will not be
-    # NULL
+    # NULL. Only generate timeline report when datastore_parent_key is given.
     try:
-        if suite_report and jobname.endswith('/hostless') and job_data['suite']:
+        datastore_parent_key = job_keyval.get('datastore_parent_key', None)
+        if (suite_report and jobname.endswith('/hostless')
+            and job_data['suite'] and datastore_parent_key):
             tko_utils.dprint('Start dumping suite timing report...')
             timing_log = os.path.join(path, 'suite_timing.log')
             dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
@@ -426,11 +428,11 @@ def parse_one(db, jobname, path, parse_options):
 
             if (datastore_creds and export_to_gcloud_path
                 and os.path.exists(export_to_gcloud_path)):
-                upload_cmd = ("%s %s %s" %
-                              (export_to_gcloud_path, datastore_creds,
-                               timing_log))
+                upload_cmd = [export_to_gcloud_path, datastore_creds,
+                              timing_log, '--parent_key',
+                              repr(tuple(datastore_parent_key))]
                 tko_utils.dprint('Start exporting timeline report to gcloud')
-                subprocess.check_output(upload_cmd, shell=True)
+                subprocess.check_output(upload_cmd)
                 tko_utils.dprint('Successfully export timeline report to '
                                  'gcloud')
             else:
