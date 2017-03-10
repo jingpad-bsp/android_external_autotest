@@ -451,14 +451,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     ds = dev_server.ImageServer(devserver_url)
                 else:
                     ds = dev_server.ImageServer.resolve(image_name)
+            elif info.build is not None:
+                ds = dev_server.ImageServer.resolve(info.build, hostname)
             else:
-                labels = afe_utils.get_labels(self, self.VERSION_PREFIX)
-                if not labels:
-                    raise error.AutoservError(
-                            'Failed to stage server-side package. The host has '
-                            'no job_report_url attribute or version label.')
-                image_name = labels[0][len(self.VERSION_PREFIX + ':'):]
-                ds = dev_server.ImageServer.resolve(image_name, hostname)
+                raise error.AutoservError(
+                        'Failed to stage server-side package. The host has '
+                        'no job_report_url attribute or version label.')
 
         # Get the OS version of the build, for any build older than
         # MIN_VERSION_SUPPORT_SSP, server side packaging is not supported.
