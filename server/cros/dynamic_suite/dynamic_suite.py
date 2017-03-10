@@ -230,6 +230,8 @@ class SuiteSpec(object):
                       included in suite. If argument is absent, suite
                       behavior will default to creating a suite of based
                       on the SUITE field of control files.
+    @param test_args: A dict of args passed all the way to each individual test
+                      that will be actually ran.
     """
 
     _REQUIRED_KEYWORDS = {
@@ -273,6 +275,7 @@ class SuiteSpec(object):
             run_prod_code=False,
             delay_minutes=0,
             job_keyvals=None,
+            test_args = None,
             **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
@@ -341,6 +344,8 @@ class SuiteSpec(object):
         @param delay_minutes: Delay the creation of test jobs for a given number
                               of minutes.
         @param job_keyvals: General job keyvals to be inserted into keyval file
+        @param test_args: A dict of args passed all the way to each individual
+                          test that will be actually ran.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -376,6 +381,7 @@ class SuiteSpec(object):
         self.run_prod_code = run_prod_code
         self.delay_minutes = delay_minutes
         self.job_keyvals = job_keyvals
+        self.test_args = test_args
 
         self._init_predicate(predicate)
         self._init_suite_dependencies(suite_dependencies)
@@ -513,6 +519,8 @@ def reimage_and_run(**dargs):
                         happening in the suite can't exceed _max_retries.
                         Default to None, no max.
     @param offload_failures_only: Only enable gs_offloading for failed jobs.
+    @param test_args: A dict of args passed all the way to each individual test
+                      that will be actually ran.
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
@@ -581,7 +589,8 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             offload_failures_only=spec.offload_failures_only,
             test_source_build=spec.test_source_build,
             run_prod_code=spec.run_prod_code,
-            job_keyvals=spec.job_keyvals)
+            job_keyvals=spec.job_keyvals,
+            test_args=spec.test_args)
 
     if spec.delay_minutes:
         logging.debug('delay_minutes is set. Sleeping %d minutes before '

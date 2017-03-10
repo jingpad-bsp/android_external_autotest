@@ -1880,6 +1880,7 @@ def create_suite_job(
         delay_minutes=0,
         is_cloning=False,
         job_keyvals=None,
+        test_args=None,
         **kwargs
 ):
     """
@@ -1932,6 +1933,8 @@ def create_suite_job(
                           minutes.
     @param is_cloning: True if creating a cloning job.
     @param job_keyvals: A dict of job keyvals to be inject to control file.
+    @param test_args: A dict of args passed all the way to each individual test
+                      that will be actually run.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -2020,7 +2023,8 @@ def create_suite_job(
         'test_source_build': test_source_build,
         'run_prod_code': run_prod_code,
         'delay_minutes': delay_minutes,
-        'job_keyvals': job_keyvals
+        'job_keyvals': job_keyvals,
+        'test_args': test_args,
     }
     control_file = tools.inject_vars(inject_dict, control_file)
 
