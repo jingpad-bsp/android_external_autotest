@@ -521,7 +521,7 @@ def _find_test_control_data_for_suite(
     filtered_files = (path for path in files if not matcher.match(path))
     if _should_batch_with(cf_getter):
         control_file_texts = _batch_get_control_file_texts(
-                cf_getter, suite_name, filtered_files)
+                suite_info, filtered_files)
     else:
         control_file_texts = _get_control_file_texts(
                 cf_getter, filtered_files)
@@ -579,16 +579,13 @@ def _parse_control_file_texts(control_file_texts, add_experimental=False,
     return tests
 
 
-def _batch_get_control_file_texts(cf_getter, suite_name, paths):
+def _batch_get_control_file_texts(suite_info, paths):
     """Get control file content for given files.
 
-    @param cf_getter: a control_file_getter.ControlFileGetter used to list
-           and fetch the content of control files
-    @param suite_name: suite name
+    @param suite_info: dict mapping paths to control file text
     @param paths: iterable of control file paths
     @returns: generator yielding (path, text) tuples
     """
-    suite_info = cf_getter.get_suite_info(suite_name=suite_name)
     for path in paths:
         yield path, suite_info[path]
 
