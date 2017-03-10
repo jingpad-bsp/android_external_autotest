@@ -9,7 +9,6 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 
 
@@ -25,17 +24,15 @@ class provision_FirmwareUpdate(test.test):
 
         @param host:  a CrosHost object of the machine to update.
         """
-        cros_image_labels = afe_utils.get_labels(host, host.VERSION_PREFIX)
-        if not cros_image_labels:
-            logging.warn('Failed to get version label from the DUT, skip '
-                         'staging ChromeOS image on the servo USB stick.')
+        info = host.host_info_store.get()
+        if not info.build:
+            logging.warning('Failed to get build label from the DUT, skip '
+                            'staging ChromeOS image on the servo USB stick.')
         else:
-            cros_image_name = cros_image_labels[0][len(
-                    host.VERSION_PREFIX + ':'):]
             host.servo.image_to_servo_usb(
-                    host.stage_image_for_servo(cros_image_name))
+                    host.stage_image_for_servo(info.build))
             logging.debug('ChromeOS image %s is staged on the USB stick.',
-                          cros_image_name)
+                          info.build)
 
     def get_ro_firmware_ver(self, host):
         """Get the RO firmware version from the host."""

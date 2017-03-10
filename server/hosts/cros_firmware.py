@@ -58,21 +58,6 @@ _FIRMWARE_REPAIR_POOLS = set(
 _FIRMWARE_UPDATE_POOLS = set(constants.Pools.MANAGED_POOLS)
 
 
-def _get_host_pools(host):
-    """
-    Return the set of pools to which the host is assigned.
-
-    Returns all of a host's assigned pools as a set of pool names,
-    with the 'pool:' prefix stripped off.
-
-    @param host  The host for which to find the pools.
-    @return A set object containing all the pools.
-    """
-    pool_prefix = constants.Labels.POOL_PREFIX
-    pool_labels = afe_utils.get_labels(host, pool_prefix)
-    return set([l[len(pool_prefix) : ] for l in pool_labels])
-
-
 def _is_firmware_repair_supported(host):
     """
     Check if a host supports firmware repair.
@@ -85,7 +70,8 @@ def _is_firmware_repair_supported(host):
     @return A true value if the host should use `FirmwareStatusVerifier`
             and `FirmwareRepair`; a false value otherwise.
     """
-    return bool(_get_host_pools(host) & _FIRMWARE_REPAIR_POOLS)
+    info = host.host_info_store.get()
+    return bool(info.pools & _FIRMWARE_REPAIR_POOLS)
 
 
 def _is_firmware_update_supported(host):
@@ -103,7 +89,8 @@ def _is_firmware_update_supported(host):
     @return A true value if the host should use
             `FirmwareVersionVerifier`; a false value otherwise.
     """
-    return bool(_get_host_pools(host) & _FIRMWARE_UPDATE_POOLS)
+    info = host.host_info_store.get()
+    return bool(info.pools & _FIRMWARE_UPDATE_POOLS)
 
 
 class FirmwareStatusVerifier(hosts.Verifier):
