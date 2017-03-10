@@ -34,6 +34,7 @@ class HostInfo(object):
     # Constants related to exposing labels as more semantic properties.
     _BOARD_PREFIX = 'board'
     _OS_PREFIX = 'os'
+    _POOL_PREFIX = 'pool'
 
     def __init__(self, labels=None, attributes=None):
         """
@@ -82,6 +83,15 @@ class HostInfo(object):
         """
         os_list = self._get_stripped_labels_with_prefix(self._OS_PREFIX)
         return os_list[0] if os_list else ''
+
+
+    @property
+    def pools(self):
+        """Retrieve the set of pools for the host.
+
+        @returns: set(str) of pool values.
+        """
+        return set(self._get_stripped_labels_with_prefix(self._POOL_PREFIX))
 
 
     def _get_stripped_labels_with_prefix(self, prefix):
