@@ -1669,9 +1669,9 @@ class Suite(_BaseSuite):
                 job_keyvals=job_keyvals)
 
         self.tests = find_and_parse_tests(
-                self._cf_getter,
+                cf_getter,
                 lambda control_data: all(f(control_data) for f in predicates),
-                self._tag,
+                tag,
                 add_experimental=True,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
