@@ -70,6 +70,7 @@ class HostInfoTest(unittest.TestCase):
                             'os_without_colon']
         self.assertEqual(self.info.os, '')
 
+
     def test_os_returns_first_match(self):
         """Return the first matching os label."""
         self.info.labels = ['os:linux', 'os:windows', 'os_corrupted_label']
@@ -87,6 +88,20 @@ class HostInfoTest(unittest.TestCase):
         """Return the first matching board label."""
         self.info.labels = ['board_corrupted', 'board:walk', 'board:bored']
         self.assertEqual(self.info.board, 'walk')
+
+
+    def test_pools_no_match(self):
+        """Use proper prefix to search for pool information."""
+        self.info.labels = ['something_else', 'cros-version:hana', 'os:blah',
+                            'board_my_board_no_colon', 'board:my_board']
+        self.assertEqual(self.info.pools, set())
+
+
+    def test_pools_returns_all_matches(self):
+        """Return all matching pool labels."""
+        self.info.labels = ['board_corrupted', 'board:walk', 'board:bored',
+                            'pool:first_pool', 'pool:second_pool']
+        self.assertEqual(self.info.pools, {'second_pool', 'first_pool'})
 
 
 class InMemoryHostInfoStoreTest(unittest.TestCase):
