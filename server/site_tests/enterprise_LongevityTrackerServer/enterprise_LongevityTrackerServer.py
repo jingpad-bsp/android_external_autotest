@@ -14,9 +14,7 @@ import logging
 import httplib
 
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import afe_utils
 from autotest_lib.server import autotest
-from autotest_lib.server import site_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -379,9 +377,8 @@ class enterprise_LongevityTrackerServer(test.test):
 
     def _setup_kiosk_app_on_dut(self, kiosk_app_attributes=None):
         """Enroll the DUT and setup a Kiosk app."""
-        app_config_id = None
-        app_config_id = site_utils.get_label_from_afe(
-                self.client.hostname, 'app_config_id', afe_utils.AFE)
+        info = self.client.host_info_store.get()
+        app_config_id = info.get_label_value('app_config_id')
         if app_config_id and app_config_id.startswith(':'):
             app_config_id = app_config_id[1:]
         if kiosk_app_attributes:
