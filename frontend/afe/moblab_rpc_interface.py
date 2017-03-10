@@ -26,7 +26,7 @@ import StringIO
 import subprocess
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import global_config, utils
+from autotest_lib.client.common_lib import global_config, utils, site_utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import frontend
@@ -487,6 +487,9 @@ def get_version_info():
     lines = open(_ETC_LSB_RELEASE).readlines()
     version_response = {
         x.split('=')[0]: x.split('=')[1] for x in lines if '=' in x}
+    version_response['MOBLAB_ID'] = site_utils.get_moblab_id();
+    version_response['MOBLAB_MAC_ADDRESS'] = (
+        site_utils.get_default_interface_mac_address())
     return rpc_utils.prepare_for_serialization(version_response)
 
 
