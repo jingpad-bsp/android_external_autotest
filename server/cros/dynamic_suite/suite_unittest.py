@@ -297,7 +297,8 @@ class SuiteTest(mox.MoxTestBase):
             mox.IgnoreArg(),
             add_experimental=True,
             forgiving_parser=True,
-            run_prod_code=False).AndReturn(self.files.values())
+            run_prod_code=False,
+            test_args=None).AndReturn(self.files.values())
 
 
     def expect_job_scheduling(self, recorder, add_experimental,

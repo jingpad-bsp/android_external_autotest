@@ -589,7 +589,8 @@ class Suite(object):
             max_retries=sys.maxint,
             offload_failures_only=False,
             test_source_build=None,
-            job_keyvals=None
+            job_keyvals=None,
+            test_args=None
     ):
         """
         Constructor
@@ -639,7 +640,8 @@ class Suite(object):
         @param test_source_build: Build that contains the server-side test code.
         @param job_keyvals: General job keyvals to be inserted into keyval file,
                             which will be used by tko/parse later.
-
+        @param test_args: A dict of args passed all the way to each individual
+                          test that will be actually ran.
         """
         if extra_deps is None:
             extra_deps = []
@@ -665,6 +667,7 @@ class Suite(object):
                 add_experimental=True,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
+                test_args=test_args,
         )
 
         self._max_runtime_mins = max_runtime_mins
@@ -683,6 +686,7 @@ class Suite(object):
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
         self._job_keyvals = job_keyvals
+        self._test_args = test_args
 
 
     @property
@@ -1178,7 +1182,8 @@ class Suite(object):
 
     @staticmethod
     def _find_all_tests(cf_getter, suite_name='', add_experimental=False,
-                       forgiving_parser=True, run_prod_code=False):
+                        forgiving_parser=True, run_prod_code=False,
+                        test_args=None):
         """
         Function to scan through all tests and find all tests.
 
@@ -1212,6 +1217,8 @@ class Suite(object):
                               lives in prod aka the test code currently on the
                               lab servers by disabling SSP for the discovered
                               tests.
+        @param test_args: A dict of args to be seeded in test control file under
+                          the name |args_dict|.
 
         @raises ControlVariableException: If forgiving_parser is False and there
                                           is a syntax error in a control file.
@@ -1237,6 +1244,9 @@ class Suite(object):
                 text = suite_info[file]
             else:
                 text = cf_getter.get_control_file_contents(file)
+            # Seed test_args into the control file.
+            if test_args:
+                text = tools.inject_vars(test_args, text)
             try:
                 found_test = control_data.parse_control_string(
                         text, raise_warnings=True, path=file)
@@ -1259,7 +1269,7 @@ class Suite(object):
     @classmethod
     def find_and_parse_tests(cls, cf_getter, predicate, suite_name='',
                              add_experimental=False, forgiving_parser=True,
-                             run_prod_code=False):
+                             run_prod_code=False, test_args=None):
         """
         Function to scan through all tests and find eligible tests.
 
@@ -1284,6 +1294,7 @@ class Suite(object):
                               lives in prod aka the test code currently on the
                               lab servers by disabling SSP for the discovered
                               tests.
+        @param test_args: A dict of args to be seeded in test control file.
 
         @raises ControlVariableException: If forgiving_parser is False and there
                                           is a syntax error in a control file.
@@ -1294,7 +1305,8 @@ class Suite(object):
         """
         tests = cls._find_all_tests(cf_getter, suite_name, add_experimental,
                                     forgiving_parser,
-                                    run_prod_code=run_prod_code)
+                                    run_prod_code=run_prod_code,
+                                    test_args=test_args)
         logging.debug('Parsed %s control files.', len(tests))
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:
