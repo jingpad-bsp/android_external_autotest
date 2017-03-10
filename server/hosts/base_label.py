@@ -9,7 +9,6 @@ import logging
 
 import common
 
-from autotest_lib.server import afe_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
@@ -32,9 +31,8 @@ def forever_exists_decorate(exists):
         @returns True if the label already exists on the host, otherwise run
             the exists method.
         """
-        if self._NAME in afe_utils.get_labels(host):
-            return True
-        return exists(self, host)
+        info = host.host_info_store.get()
+        return (self._NAME in info.labels) or exists(self, host)
     return exists_wrapper
 
 
