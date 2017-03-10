@@ -27,7 +27,6 @@ class platform_Flashrom(FirmwareTest):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         super(platform_Flashrom, self).initialize(host, cmdline_args)
-        self.switcher.setup_mode('dev')
 
     def run_cmd(self, command, checkfor=''):
         """
