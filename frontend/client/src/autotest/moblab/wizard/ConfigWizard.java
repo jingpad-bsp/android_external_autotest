@@ -127,6 +127,13 @@ public class ConfigWizard extends Composite {
         row++;
         layoutTable.setWidget(row, 0, new Label("Description"));
         layoutTable.setWidget(row, 1, new Label(info.getReleaseDescription()));
+        row++;
+        layoutTable.setWidget(row, 0, new Label("Moblab Identification"));
+        layoutTable.setWidget(row, 1, new Label(
+            info.getMoblabIdentification()));
+        row++;
+        layoutTable.setWidget(row, 0, new Label("Moblab Mac Address"));
+        layoutTable.setWidget(row, 1, new Label(info.getMoblabMacAddress()));
       }
     });
     return layoutTable;
