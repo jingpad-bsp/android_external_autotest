@@ -70,8 +70,7 @@ class HostInfo(object):
 
         @returns: The (stripped) board label, or None if no label is found.
         """
-        boards = self._get_stripped_labels_with_prefix(self._BOARD_PREFIX)
-        return boards[0] if boards else ''
+        return self.get_label_value(self._BOARD_PREFIX)
 
 
     @property
@@ -81,8 +80,7 @@ class HostInfo(object):
         @returns The os (str) or None if no os label exists. Returns the first
                 matching os if mutiple labels are found.
         """
-        os_list = self._get_stripped_labels_with_prefix(self._OS_PREFIX)
-        return os_list[0] if os_list else ''
+        return self.get_label_value(self._OS_PREFIX)
 
 
     @property
@@ -92,6 +90,17 @@ class HostInfo(object):
         @returns: set(str) of pool values.
         """
         return set(self._get_stripped_labels_with_prefix(self._POOL_PREFIX))
+
+
+    def get_label_value(self, prefix):
+        """Retrieve the value stored as a label with a well known prefix.
+
+        @param prefix: The prefix of the desired label.
+        @return: For the first label matching 'prefix:value', returns value.
+                Returns '' if no label matches the given prefix.
+        """
+        values = self._get_stripped_labels_with_prefix(prefix)
+        return values[0] if values else ''
 
 
     def _get_stripped_labels_with_prefix(self, prefix):
