@@ -97,7 +97,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         logging.info('Cleaning up repository.')
         repository = os.path.join(self._android_cts, 'android-cts',
                 'repository')
-        for directory in ['logs', 'plans', 'results']:
+        for directory in ['logs', 'results']:
             path = os.path.join(repository, directory)
             if os.path.exists(path):
                 shutil.rmtree(path)
@@ -215,7 +215,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
             if test_method is not None:
                 cmd += ['-m', test_method]
         else:
-            raise error.TestFail('Error: Need to provide an argument.')
+            logging.warning('Running all tests. This can take several days.')
+            cmd = ['run', 'commandAndExit', 'cts', '--plan', 'CTS']
         # Automated media download is broken, so disable it. Instead we handle
         # this explicitly via _push_media(). This has the benefit of being
         # cached on the dev server. b/27245577
@@ -365,7 +366,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
         # Don't download media for tests that don't need it. b/29371037
         # TODO(ihf): This can be removed once the control file generator is
         # aware of this constraint.
-        if target_package and target_package.startswith('android.mediastress'):
+        if target_package is not None and target_package.startswith(
+                'android.mediastress'):
             needs_push_media = True
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
@@ -394,8 +396,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
             test_command = self._tradefed_run_command(
                 test_class=target_class, test_method=target_method)
         else:
-            raise error.TestFail(
-                'Error: should assign a package, a plan, or a class name')
+            test_command = self._tradefed_run_command()
+            test_name = 'all_CTS'
 
         # Unconditionally run CTS package until we see some tests executed.
         while steps < self._max_retry and total_tests == 0:
