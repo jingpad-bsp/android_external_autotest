@@ -402,14 +402,19 @@ class Suspender(object):
         failed = False
 
         # TODO(scottz): warning_monitor crosbug.com/38092
-        for i in xrange(len(self._logs)):
+        log_len = len(self._logs)
+        for i in xrange(log_len):
             line = self._logs[i]
             if warning_regex.search(line):
                 # match the source file from the WARNING line, and the
                 # actual error text by peeking one or two lines below that
                 src = cros_logging.strip_timestamp(line)
-                text = cros_logging.strip_timestamp(self._logs[i + 1]) + '\n' \
-                     + cros_logging.strip_timestamp(self._logs[i + 2])
+                text = ''
+                if i+1 < log_len:
+                    text = cros_logging.strip_timestamp(self._logs[i + 1])
+                if i+2 < log_len:
+                    text += '\n' + cros_logging.strip_timestamp(
+                        self._logs[i + 2])
                 for p1, p2 in sys_power.KernelError.WHITELIST:
                     if re.search(p1, src) and re.search(p2, text):
                         logging.info('Whitelisted KernelError: %s', src)
