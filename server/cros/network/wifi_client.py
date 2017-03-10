@@ -21,9 +21,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import adb_utils
 from autotest_lib.server import autotest
 from autotest_lib.server import constants as server_constants
-from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
-from autotest_lib.server import site_utils
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
@@ -138,13 +136,15 @@ def get_xmlrpc_proxy(host):
     return proxy
 
 
-def _is_conductive(hostname):
-    if utils.host_could_be_in_afe(hostname):
-        conductive = site_utils.get_label_from_afe(hostname.split('.')[0],
-                                                  'conductive:',
-                                                   frontend.AFE())
-        if conductive and conductive.lower() == 'true':
-            return True
+def _is_conductive(host):
+    """Determine if the host is conductive based on AFE labels.
+
+    @param host: A Host object.
+    """
+    if utils.host_could_be_in_afe(host.hostname):
+        info = host.host_info_store.get()
+        conductive = info.get_label_value('conductive')
+        return conductive.lower() == 'true'
     return False
 
 
@@ -261,7 +261,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
     def conductive(self):
         """@return True if the rig is conductive; False otherwise."""
         if self._conductive is None:
-            self._conductive = _is_conductive(self._client_hostname)
+            self._conductive = _is_conductive(self.host)
         return self._conductive
 
 
@@ -360,7 +360,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._machine_id = None
         self._result_dir = result_dir
         self._conductive = None
-        self._client_hostname = client_host.hostname
 
         if self.host.get_os_type() == adb_host.OS_TYPE_ANDROID and use_wpa_cli:
             # Look up the WiFi device (and its MAC) on the client.
