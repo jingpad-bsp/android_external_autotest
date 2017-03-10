@@ -59,7 +59,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import utils
@@ -647,57 +646,6 @@ class Timings(object):
                                            self.artifact_end_time,
                                            self.tests_start_time,
                                            self.tests_end_time))
-
-
-    def SendResultsToStatsd(self, suite, build, board):
-        """
-        Sends data to statsd.
-
-        1. Makes a data_key of the form: run_suite.$board.$branch.$suite
-            eg: stats/gauges/<hostname>/run_suite/<board>/<branch>/<suite>/
-        2. Computes timings for several start and end event pairs.
-        3. Sends all timing values to statsd.
-
-        @param suite: scheduled suite that we want to record the results of.
-        @param build: the build that this suite ran on.
-                      eg: 'lumpy-release/R26-3570.0.0'
-        @param board: the board that this suite ran on.
-        """
-        if sys.version_info < (2, 7):
-            logging.error('Sending run_suite perf data to statsd requires'
-                          'python 2.7 or greater.')
-            return
-
-        # Constructs the key used for logging statsd timing data.
-        data_key = utils.get_data_key('run_suite', suite, build, board)
-
-        # Since we don't want to try subtracting corrupted datetime values
-        # we catch TypeErrors in time_utils.time_string_to_datetime and insert
-        # None instead. This means that even if, say,
-        # keyvals.get(constants.ARTIFACT_FINISHED_TIME) returns a corrupt
-        # value the member artifact_end_time is set to None.
-        if self.download_start_time:
-            if self.payload_end_time:
-                autotest_stats.Timer(data_key).send('payload_download_time',
-                        (self.payload_end_time -
-                         self.download_start_time).total_seconds())
-
-            if self.artifact_end_time:
-                autotest_stats.Timer(data_key).send('artifact_download_time',
-                        (self.artifact_end_time -
-                         self.download_start_time).total_seconds())
-
-        if self.tests_end_time:
-            if self.suite_start_time:
-                autotest_stats.Timer(data_key).send('suite_run_time',
-                        (self.tests_end_time -
-                         self.suite_start_time).total_seconds())
-
-            if self.tests_start_time:
-                autotest_stats.Timer(data_key).send('tests_run_time',
-                        (self.tests_end_time -
-                         self.tests_start_time).total_seconds())
-
 
 
 def instance_for_pool(pool_name):
@@ -1529,10 +1477,6 @@ class ResultCollector(object):
 
     def gather_timing_stats(self):
         """Collect timing related statistics."""
-        # Send timings to statsd.
-        self.timings.SendResultsToStatsd(
-                self._original_suite_name, self._build, self._board)
-
         # Record suite runtime in metadata db.
         # Some failure modes can leave times unassigned, report sentinel value
         # in that case.
@@ -1877,8 +1821,6 @@ def main():
 
     logging.info('Will return from run_suite with status: %s',
                   RETURN_CODES.get_string(code))
-    autotest_stats.Counter('run_suite.%s' %
-                           RETURN_CODES.get_string(code)).increment()
     return code
 
 
