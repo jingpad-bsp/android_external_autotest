@@ -1581,6 +1581,112 @@ class Suite(_BaseSuite):
     get_test_source_build = _deprecated_suite_method(get_test_source_build)
 
 
+    def __init__(
+            self,
+            predicates,
+            tag,
+            builds,
+            board,
+            cf_getter,
+            run_prod_code=False,
+            afe=None,
+            tko=None,
+            pool=None,
+            results_dir=None,
+            max_runtime_mins=24*60,
+            timeout_mins=24*60,
+            file_bugs=False,
+            file_experimental_bugs=False,
+            suite_job_id=None,
+            ignore_deps=False,
+            extra_deps=None,
+            priority=priorities.Priority.DEFAULT,
+            forgiving_parser=True,
+            wait_for_results=True,
+            job_retry=False,
+            max_retries=sys.maxint,
+            offload_failures_only=False,
+            test_source_build=None,
+            job_keyvals=None
+    ):
+        """
+        Constructor
+
+        @param predicates: A list of callables that accept ControlData
+                           representations of control files. A test will be
+                           included in suite is all callables in this list
+                           return True on the given control file.
+        @param tag: a string with which to tag jobs run in this suite.
+        @param builds: the builds on which we're running this suite.
+        @param board: the board on which we're running this suite.
+        @param cf_getter: a control_file_getter.ControlFileGetter
+        @param afe: an instance of AFE as defined in server/frontend.py.
+        @param tko: an instance of TKO as defined in server/frontend.py.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers.
+        @param results_dir: The directory where the job can write results to.
+                            This must be set if you want job_id of sub-jobs
+                            list in the job keyvals.
+        @param max_runtime_mins: Maximum suite runtime, in minutes.
+        @param timeout: Maximum job lifetime, in hours.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
+        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
+                            attribute and skip applying of dependency labels.
+                            (Default:False)
+        @param extra_deps: A list of strings which are the extra DEPENDENCIES
+                           to add to each test being scheduled.
+        @param priority: Integer priority level.  Higher is more important.
+        @param wait_for_results: Set to False to run the suite job without
+                                 waiting for test jobs to finish. Default is
+                                 True.
+        @param job_retry: A bool value indicating whether jobs should be retired
+                          on failure. If True, the field 'JOB_RETRIES' in
+                          control files will be respected. If False, do not
+                          retry.
+        @param max_retries: Maximum retry limit at suite level.
+                            Regardless how many times each individual test
+                            has been retried, the total number of retries
+                            happening in the suite can't exceed _max_retries.
+                            Default to sys.maxint.
+        @param offload_failures_only: Only enable gs_offloading for failed
+                                      jobs.
+        @param test_source_build: Build that contains the server-side test code.
+        @param job_keyvals: General job keyvals to be inserted into keyval file,
+                            which will be used by tko/parse later.
+
+        """
+        super(Suite, self).__init__(
+                predicates=predicates,
+                tag=tag,
+                builds=builds,
+                board=board,
+                cf_getter=cf_getter,
+                run_prod_code=run_prod_code,
+                afe=afe,
+                tko=tko,
+                pool=pool,
+                results_dir=results_dir,
+                max_runtime_mins=max_runtime_mins,
+                timeout_mins=timeout_mins,
+                file_bugs=file_bugs,
+                file_experimental_bugs=file_experimental_bugs,
+                suite_job_id=suite_job_id,
+                ignore_deps=ignore_deps,
+                extra_deps=extra_deps,
+                priority=priority,
+                forgiving_parser=forgiving_parser,
+                wait_for_results=wait_for_results,
+                job_retry=job_retry,
+                max_retries=max_retries,
+                offload_failures_only=offload_failures_only,
+                test_source_build=test_source_build,
+                job_keyvals=job_keyvals)
+
+
 
 def _is_nonexistent_board_error(e):
     """Return True if error is caused by nonexistent board label.
