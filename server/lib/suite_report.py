@@ -60,6 +60,24 @@ def make_entry(entry_id, name, status, start_time,
         entry['parent'] = parent
     return entry
 
+
+def find_start_finish_times(statuses):
+    """Determines the start and finish times for a list of statuses.
+
+    @param statuses: A list of job test statuses.
+
+    @return (start_tme, finish_time) tuple of seconds past epoch.  If either
+            cannot be determined, None for that time.
+    """
+    starts = {int(time_utils.to_epoch_time(s.test_started_time))
+              for s in statuses if s.test_started_time != 'None'}
+    finishes = {int(time_utils.to_epoch_time(s.test_finished_time))
+                for s in statuses if s.test_finished_time != 'None'}
+    start_time = min(starts) if starts else None
+    finish_time = max(finishes) if finishes else None
+    return start_time, finish_time
+
+
 def make_job_entry(tko, job, parent=None, suite_job=False, job_entries=None):
     """Generate a Suite or HWTest event log entry.
 
@@ -81,15 +99,9 @@ def make_job_entry(tko, job, parent=None, suite_job=False, job_entries=None):
             status = parsed_status
         if s.hostname:
             dut = s.hostname
-    if len(statuses):
-        start_time = min(int(time_utils.to_epoch_time(s.test_started_time))
-                         for s in statuses)
-        finish_time = max(int(time_utils.to_epoch_time(s.test_finished_time))
-                          for s in statuses)
-    else:
-        start_time = None
-        finish_time = None
-
+        if s.test_started_time == 'None' or s.test_finished_time == 'None':
+            logging.warn('TKO entry for %d missing time: %s' % (job.id, str(s)))
+    start_time, finish_time = find_start_finish_times(statuses)
     entry = make_entry(('Suite' if suite_job else 'HWTest', int(job.id)),
                        job.name.split('/')[-1], status, start_time,
                        finish_time=finish_time, parent=parent)
