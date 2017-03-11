@@ -1307,8 +1307,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         # Append the file name to the url if build_url is linked to the folder
         # containing the file.
-        if not build_url.endswith('/%s' % file):
-            src_url = os.path.join(build_url, file)
+        build_url = build_url.lower()
+        if not build_url.endswith('/%s' % file.lower()):
+            src_url = os.path.join(build_url, file.lower())
         else:
             src_url = build_url
         dest_file = os.path.join(dest_dir, file)
