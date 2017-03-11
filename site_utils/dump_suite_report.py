@@ -10,7 +10,7 @@ from __future__ import print_function
 import common
 import sys
 
-from autotest_lib.server import frontend
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.lib import suite_report
 from chromite.lib import commandline
 from chromite.lib import cros_logging as logging
@@ -36,16 +36,16 @@ def main(argv):
     parser = GetParser()
     options = parser.parse_args(argv[1:])
 
-    afe = None
-    if options.afe:
-        afe = frontend.AFE(server=options.afe)
+    afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10,
+                                        server=options.afe)
+    tko = frontend_wrappers.RetryingTKO(timeout_min=5, delay_sec=10)
 
     # Look up and generate entries for all jobs.
     entries = []
     for suite_job_id in options.job_ids:
         logging.debug('Suite job %s:' % suite_job_id)
         suite_entries = suite_report.generate_suite_report(suite_job_id,
-                                                           afe=afe)
+                                                           afe=afe, tko=tko)
         logging.debug('... generated %d entries' % len(suite_entries))
         entries.extend(suite_entries)
 
