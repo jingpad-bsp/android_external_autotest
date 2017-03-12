@@ -1,4 +1,5 @@
-import atexit, datetime, os, tempfile, unittest
+import datetime
+
 import common
 from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend import thread_local
@@ -7,6 +8,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
 
 class FrontendTestMixin(object):
+    # pylint: disable=missing-docstring
     def _fill_in_test_data(self):
         """Populate the test database with some hosts and labels."""
         if models.DroneSet.drone_sets_enabled():
@@ -67,8 +69,6 @@ class FrontendTestMixin(object):
         self.god = mock.mock_god(ut=self)
         if setup_tables:
             setup_test_environment.set_up()
-        global_config.global_config.override_config_value(
-                'AUTOTEST_WEB', 'parameterized_jobs', 'False')
         global_config.global_config.override_config_value(
                 'SERVER', 'rpc_logging', 'False')
         if fill_data and setup_tables:

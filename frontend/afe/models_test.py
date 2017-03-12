@@ -1,7 +1,8 @@
 #!/usr/bin/python
+# pylint: disable=missing-docstring
 
-import datetime
 import unittest
+
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
@@ -285,37 +286,6 @@ class ParameterizedJobTest(unittest.TestCase,
                                parameterized_job=parameterized_job)
 
         self.assertEqual(job, parameterized_job.job())
-
-
-class JobTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
-    def setUp(self):
-        self._frontend_common_setup()
-
-
-    def tearDown(self):
-        self._frontend_common_teardown()
-
-
-    def test_check_parameterized_jobs_no_args(self):
-        self.assertRaises(Exception, models.Job.check_parameterized_job,
-                          control_file=None, parameterized_job=None)
-
-
-    def test_check_parameterized_jobs_both_args(self):
-        self.assertRaises(Exception, models.Job.check_parameterized_job,
-                          control_file=object(), parameterized_job=object())
-
-
-    def test_check_parameterized_jobs_disabled(self):
-        self.assertRaises(Exception, models.Job.check_parameterized_job,
-                          control_file=None, parameterized_job=object())
-
-
-    def test_check_parameterized_jobs_enabled(self):
-        global_config.global_config.override_config_value(
-                'AUTOTEST_WEB', 'parameterized_jobs', 'True')
-        self.assertRaises(Exception, models.Job.check_parameterized_job,
-                          control_file=object(), parameterized_job=None)
 
 
 class SerializationTest(unittest.TestCase,
