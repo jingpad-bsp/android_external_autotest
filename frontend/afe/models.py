@@ -1,4 +1,4 @@
-# pylint: disable-msg=C0111
+# pylint: disable=missing-docstring
 
 import logging
 from datetime import datetime
@@ -1442,41 +1442,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
-    def parameterized_jobs_enabled(cls):
-        """Returns whether parameterized jobs are enabled.
-
-        @param cls: Implicit class object.
-        """
-        return global_config.global_config.get_config_value(
-                'AUTOTEST_WEB', 'parameterized_jobs', type=bool)
-
-
-    @classmethod
-    def check_parameterized_job(cls, control_file, parameterized_job):
-        """Checks that the job is valid given the global config settings.
-
-        First, either control_file must be set, or parameterized_job must be
-        set, but not both. Second, parameterized_job must be set if and only if
-        the parameterized_jobs option in the global config is set to True.
-
-        @param cls: Implict class object.
-        @param control_file: A control file.
-        @param parameterized_job: A parameterized job.
-        """
-        if not (bool(control_file) ^ bool(parameterized_job)):
-            raise Exception('Job must have either control file or '
-                            'parameterization, but not both')
-
-        parameterized_jobs_enabled = cls.parameterized_jobs_enabled()
-        if control_file and parameterized_jobs_enabled:
-            raise Exception('Control file specified, but parameterized jobs '
-                            'are enabled')
-        if parameterized_job and not parameterized_jobs_enabled:
-            raise Exception('Parameterized job specified, but parameterized '
-                            'jobs are not enabled')
-
-
-    @classmethod
     def create(cls, owner, options, hosts):
         """Creates a job.
 
@@ -1493,14 +1458,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         control_file = options.get('control_file')
         parameterized_job = options.get('parameterized_job')
 
-        # The current implementation of parameterized jobs requires that only
-        # control files or parameterized jobs are used. Using the image
-        # parameter on autoupdate_ParameterizedJob doesn't mix pure
-        # parameterized jobs and control files jobs, it does muck enough with
-        # normal jobs by adding a parameterized id to them that this check will
-        # fail. So for now we just skip this check.
-        # cls.check_parameterized_job(control_file=control_file,
-        #                             parameterized_job=parameterized_job)
         user = User.current_user()
         if options.get('reboot_before') is None:
             options['reboot_before'] = user.get_reboot_before_display()
