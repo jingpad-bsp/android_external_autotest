@@ -15,6 +15,7 @@ suite:android_telephony_nightly_att
 suite:android_telephony_nightly_spt
 suite:android_telephony_nightly_tmo
 suite:android_telephony_nightly_vzw
+suite:android_telephony_power
 suite:android_wifi_connect
 suite:android_wifi_ent_roaming
 suite:android_wifi_sanity
