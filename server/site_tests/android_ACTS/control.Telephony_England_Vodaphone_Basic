@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bettyzhou, krisr'
-NAME = 'android_ACTS.Telephony_England_Vodafone_Basic'
+NAME = 'android_ACTS.Telephony_England_Vodaphone_Basic'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_international_roaming'
 DEPENDENCIES = 'carrier:england_vodaphone'
 
 DOC = """
-This test runs telephony sanity against phones with England Vodafone SIMs.
+This test runs telephony sanity against phones with England Vodaphone SIMs.
 """
 
 def run(machine):
