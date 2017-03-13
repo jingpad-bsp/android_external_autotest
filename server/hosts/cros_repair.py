@@ -9,12 +9,23 @@ import time
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
 from autotest_lib.server import crashcollect
 from autotest_lib.server.hosts import repair
 from autotest_lib.server.hosts import cros_firmware
 
+# _DEV_MODE_ALLOW_POOLS - The set of pools that are allowed to be
+# in dev mode (usually, those should be unmanaged devices)
+#
+_DEV_MODE_ALLOWED_POOLS = set(
+    global_config.global_config.get_config_value(
+            'CROS',
+            'pools_dev_mode_allowed',
+            type=str,
+            default='',
+            allow_blank=True).split(','))
 
 class ACPowerVerifier(hosts.Verifier):
     """Check for AC power and a reasonable battery charge."""
@@ -230,6 +241,11 @@ class DevModeVerifier(hosts.Verifier):
     """Verify that the host is not in dev mode."""
 
     def verify(self, host):
+        # Some pools are allowed to be in dev mode
+        info = host.host_info_store.get()
+        if (bool(info.pools & _DEV_MODE_ALLOWED_POOLS)):
+            return
+
         result = host.run('crossystem devsw_boot', ignore_status=True).stdout
         if result != '0':
             raise hosts.AutoservVerifyError('The host is in dev mode')
