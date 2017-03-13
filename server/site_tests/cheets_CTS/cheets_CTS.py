@@ -16,7 +16,6 @@ import contextlib
 import logging
 import os
 import shutil
-import subprocess
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
@@ -139,22 +138,20 @@ class cheets_CTS(tradefed_test.TradefedTest):
         Used for debugging b/32978387 where we may see file corruption."""
         # TODO(ihf): Remove function once b/32978387 is resolved.
         # Find all files in the bbb_short and bbb_full directories, md5sum these
-        # files and sort by filename. The result for local and DUT hierarchies
-        # is piped through the diff command.
-        cmd = ('diff --strip-trailing-cr '
-               '<(adb shell "cd /sdcard/test; '
-                   'find ./bbb_short ./bbb_full -type f -print0 | '
-                   'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2") '
-               '<(cd %s; '
-                   'find ./bbb_short ./bbb_full -type f -print0 | '
-                   'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2)'
-                   % media)
-        output = subprocess.Popen(cmd, shell=True, executable='/bin/bash',
-                                  stdout=subprocess.PIPE).communicate()[0]
-        if output:
+        # files and sort by filename, both on the DUT and on the local tree.
+        remote = self._run('adb', args=('shell',
+            'cd /sdcard/test; find ./bbb_short ./bbb_full -type f -print0 | '
+            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
+        local = self._run('/bin/sh', args=('-c',
+            ('cd %s; find ./bbb_short ./bbb_full -type f -print0 | '
+            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2') % media))
+
+        # 'adb shell' terminates lines with CRLF. Normalize before comparing.
+        if remote.stdout.replace('\r\n','\n') != local.stdout:
             logging.error('Some media files differ on DUT /sdcard/test vs. local.')
             logging.info('media=%s', media)
-            logging.error(output)
+            logging.error('remote=%s', remote)
+            logging.error('local=%s', local)
             # TODO(ihf): Return False.
             return True
         logging.info('Media files identical on DUT /sdcard/test vs. local.')
