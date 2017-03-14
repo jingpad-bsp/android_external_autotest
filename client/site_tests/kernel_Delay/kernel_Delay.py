@@ -19,8 +19,12 @@ class kernel_Delay(test.test):
     """
     version = 1
 
+    # Module not present prior to 3.8.  From 4.4 on, module renamed.
     MIN_KERNEL_VER = '3.8'
-    MODULE_NAME = 'udelay_test'
+    OLD_MODULE_NAME = 'udelay_test'
+    NEW_KERNEL_VER = '4.4'
+    NEW_MODULE_NAME = 'test_udelay'
+
     UDELAY_PATH = '/sys/kernel/debug/udelay_test'
     QUIET_GOVERNOR_PATH = '/sys/devices/system/cpu/cpuquiet/current_governor'
     GOVERNOR_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
@@ -217,10 +221,15 @@ class kernel_Delay(test.test):
         if utils.compare_versions(kernel_ver, self.MIN_KERNEL_VER) < 0:
             logging.info(
                     'skipping test: old kernel %s (min %s) missing module %s',
-                    kernel_ver, self.MIN_KERNEL_VER, self.MODULE_NAME)
+                    kernel_ver, self.MIN_KERNEL_VER, self.OLD_MODULE_NAME)
             return
 
-        utils.load_module(self.MODULE_NAME)
+        if utils.compare_versions(kernel_ver, self.NEW_KERNEL_VER) < 0:
+            module_name = self.OLD_MODULE_NAME
+        else:
+            module_name = self.NEW_MODULE_NAME
+
+        utils.load_module(module_name)
 
         self._governor_paths = glob.glob(self.GOVERNOR_GLOB)
         self._setspeed_paths = glob.glob(self.SETSPEED_GLOB)
@@ -240,4 +249,4 @@ class kernel_Delay(test.test):
                 self._test_all_delays()
         finally:
             self._reset_freq(initial_governors, initial_quiet_governor)
-            utils.unload_module(self.MODULE_NAME)
+            utils.unload_module(module_name)
