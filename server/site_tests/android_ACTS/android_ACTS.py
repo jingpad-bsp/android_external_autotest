@@ -38,7 +38,7 @@ class android_ACTS(test.test):
                  test_case=None,
                  test_file=None,
                  additional_configs=[],
-                 additional_apks=[{}],
+                 additional_apks=[],
                  override_build_url=None,
                  override_acts_zip=None,
                  override_internal_acts_dir=None,
