@@ -1665,6 +1665,44 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.GenericHostRunError('Uninstall of "%s" failed.'
                                             % package, result)
 
+    def save_info(self, results_dir, include_build_info=True):
+        """Save info about this device.
+
+        @param results_dir: The local directory to store the info in.
+        @param include_build_info: If true this will include the build info
+                                   artifact.
+        """
+        if include_build_info:
+            teststation_temp_dir = self.teststation.get_tmp_dir()
+
+            job_repo_url = afe_utils.get_host_attribute(
+                    self, self.job_repo_url_attribute)
+            build_info = ADBHost.get_build_info_from_build_url(
+                    job_repo_url)
+
+            target = build_info['target']
+            branch = build_info['branch']
+            build_id = build_info['build_id']
+
+            devserver_url = dev_server.AndroidBuildServer.get_server_url(
+                    job_repo_url)
+            ds = dev_server.AndroidBuildServer(devserver_url)
+
+            ds.trigger_download(target, build_id, branch, files='BUILD_INFO',
+                                synchronous=True)
+
+            pull_base_url = ds.get_pull_url(target, build_id, branch)
+
+            source_path = os.path.join(teststation_temp_dir, 'BUILD_INFO')
+
+            self.download_file(pull_base_url, 'BUILD_INFO',
+                               teststation_temp_dir)
+
+            destination_path = os.path.join(
+                    results_dir, 'BUILD_INFO-%s' % self.adb_serial)
+            self.teststation.get_file(source_path, destination_path)
+
+
 
     @retry.retry(error.GenericHostRunError, timeout_min=0.2)
     def _confirm_apk_installed(self, package_name):
