@@ -19,22 +19,22 @@ public class StaticDataRepository {
     }
     // singleton
     public static final StaticDataRepository theInstance = new StaticDataRepository();
-    
+
     protected JSONObject dataObject = null;
     protected HashMap<Double, String> priorityMap = null;
-    
+
     private StaticDataRepository() {}
-    
+
     public static StaticDataRepository getRepository() {
         return theInstance;
     }
-    
+
     /**
      * Update the local copy of the static data from the server.
      * @param finished callback to be notified once data has been retrieved
      */
     public void refresh(final FinishedCallback finished) {
-        JsonRpcProxy.getProxy().rpcCall("get_static_data", null, 
+        JsonRpcProxy.getProxy().rpcCall("get_static_data", null,
                                         new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
@@ -45,7 +45,7 @@ public class StaticDataRepository {
             }
         });
     }
-    
+
     private void populatePriorities(JSONArray priorities) {
         for(int i = 0; i < priorities.size(); i++) {
             JSONArray priorityData = priorities.get(i).isArray();
@@ -61,14 +61,14 @@ public class StaticDataRepository {
     public JSONValue getData(String key) {
         return dataObject.get(key);
     }
-    
+
     /**
      * Set a value in the repository.
      */
     public void setData(String key, JSONValue data) {
         dataObject.put(key, data);
     }
-    
+
     public String getCurrentUserLogin() {
         return Utils.jsonToString(dataObject.get("current_user").isObject().get("login"));
     }
@@ -84,5 +84,22 @@ public class StaticDataRepository {
         }
 
         return priorityName;
+    }
+
+    /**
+     * Checks if the server is a moblab.
+     */
+    public boolean isMoblab() {
+      JSONValue data = getData("is_moblab");
+      return data != null && data.isBoolean().booleanValue();
+    }
+
+    public String getWMatrixUrl() {
+      String wmatrixUrl = null;
+      JSONValue data = getData("wmatrix_url");
+      if (data != null) {
+        wmatrixUrl = data.isString().stringValue();
+      }
+      return wmatrixUrl;
     }
 }
