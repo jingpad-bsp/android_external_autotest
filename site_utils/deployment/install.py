@@ -70,8 +70,8 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
-from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
+from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.deployment import commandline
 from autotest_lib.site_utils.suite_scheduler.constants import Labels
@@ -200,13 +200,18 @@ def _update_build(afe, report_log, arguments):
     return version
 
 
-def _create_host(hostname, afe_host):
+def _create_host(hostname, afe, afe_host):
     """Create a CrosHost object for a DUT to be installed.
 
     @param hostname  Hostname of the target DUT.
+    @param afe       A frontend.AFE object.
     @param afe_host  AFE Host object for the DUT.
     """
-    machine_dict = {'hostname': hostname, 'afe_host': afe_host}
+    machine_dict = {
+            'hostname': hostname,
+            'afe_host': afe_host,
+            'host_info_store': afe_store.AfeStore(hostname, afe),
+    }
     servo_args = hosts.CrosHost.get_servo_arguments({})
     return hosts.create_host(machine_dict, servo_args=servo_args)
 
@@ -420,7 +425,7 @@ def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
     afe_host, unlock_on_failure = _get_afe_host(afe, hostname, arguments,
                                                 host_attr_dict)
     try:
-        host = _create_host(hostname, afe_host)
+        host = _create_host(hostname, afe, afe_host)
         _install_test_image(host, arguments)
         host.labels.update_labels(host)
         platform_labels = afe.get_labels(
