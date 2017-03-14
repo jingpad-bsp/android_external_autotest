@@ -68,7 +68,7 @@ DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_EMAIL = CONFIG.get_config_value(
         'SCHEDULER', 'notify_email', type=str, default='')
-DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 1}"
+DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 0}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
