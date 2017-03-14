@@ -1760,16 +1760,21 @@ def parse_reef_s0ix_residency_info():
     ioss_info_path = '/sys/kernel/debug/telemetry/ioss_info'
     S0IX_CLOCK_HZ = 19.2e6
     if not os.path.exists(ioss_info_path):
-        raise error.TestNAError('File: ' + ioss_info_path +  ' used to'
+        raise error.TestNAError('File: ' + ioss_info_path + ' used to'
                                 ' measure s0ix residency does not exist')
 
     with open(ioss_info_path) as fd:
+        residency = -1
         for line in fd:
             if line.startswith('SOC_S0IX_TOTAL_RES'):
                 #residency here is a clock pulse with XTAL of 19.2mhz.
                 residency = int(line.rsplit(None, 1)[-1], 0)
-                return (residency / S0IX_CLOCK_HZ)
-
+                logging.debug("S0ix Residency: %d", residency)
+            # Helps in debugging scenarios where the residency count has not increased.
+            elif 'BLOCK' in line:
+                logging.debug(line)
+        if residency is not -1:
+            return residency / S0IX_CLOCK_HZ
     raise error.TestNAError('Could not find s0ix residency in ' +
                             ioss_info_path)
 
