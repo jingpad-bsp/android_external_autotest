@@ -459,7 +459,8 @@ class _SuiteChildJobCreator(object):
         return keyvals
 
 
-def _get_cf_retriever(cf_getter):
+def _get_cf_retriever(cf_getter, forgiving_parser=True, run_prod_code=False,
+                      test_args=None):
     """Return the correct _ControlFileRetriever instance.
 
     If cf_getter is a File system ControlFileGetter, return a
@@ -477,9 +478,11 @@ def _get_cf_retriever(cf_getter):
     contents in batch.
     """
     if _should_batch_with(cf_getter):
-        return _BatchControlFileRetriever(cf_getter)
+        return _BatchControlFileRetriever(cf_getter, forgiving_parser,
+                                          run_prod_code, test_args)
     else:
-        return _ControlFileRetriever(cf_getter)
+        return _ControlFileRetriever(cf_getter, forgiving_parser, run_prod_code,
+                                     test_args)
 
 
 def _should_batch_with(cf_getter):
@@ -501,33 +504,35 @@ class _ControlFileRetriever(object):
     which simply return the control file text contents.
     """
 
-    def __init__(self, cf_getter):
+    def __init__(self, cf_getter, forgiving_parser=True, run_prod_code=False,
+                 test_args=None):
         """Initialize instance.
 
         @param cf_getter: a control_file_getter.ControlFileGetter used to list
                and fetch the content of control files
-        """
-        self._cf_getter = cf_getter
-
-
-    def retrieve_for_suite(
-            self, suite_name='',
-            forgiving_parser=True, run_prod_code=False, test_args=None):
-        """Scan through all tests and find all tests.
-
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
         @param forgiving_parser: If False, will raise ControlVariableExceptions
                                  if any are encountered when parsing control
                                  files. Note that this can raise an exception
                                  for syntax errors in unrelated files, because
                                  we parse them before applying the predicate.
-        @param run_prod_code: If true, the suite will run the test code that
-                              lives in prod aka the test code currently on the
-                              lab servers by disabling SSP for the discovered
-                              tests.
+        @param run_prod_code: If true, the retrieved tests will run the test
+                              code that lives in prod aka the test code
+                              currently on the lab servers by disabling
+                              SSP for the discovered tests.
         @param test_args: A dict of args to be seeded in test control file under
                           the name |args_dict|.
+        """
+        self._cf_getter = cf_getter
+        self._forgiving_parser = forgiving_parser
+        self._run_prod_code = run_prod_code
+        self._test_args = test_args
+
+
+    def retrieve_for_suite(self, suite_name=''):
+        """Scan through all tests and find all tests.
+
+        @param suite_name: If specified, this method will attempt to restrain
+                           the search space to just this suite's control files.
 
         @raises ControlVariableException: If forgiving_parser is False and there
                                           is a syntax error in a control file.
@@ -536,11 +541,7 @@ class _ControlFileRetriever(object):
                  parameters.
         """
         control_file_texts = self._get_control_file_texts_for_suite(suite_name)
-        return self._parse_control_file_texts(
-                control_file_texts=control_file_texts,
-                forgiving_parser=forgiving_parser,
-                run_prod_code=run_prod_code,
-                test_args=test_args)
+        return self._parse_control_file_texts(control_file_texts)
 
 
     def _filter_cf_paths(self, paths):
@@ -566,35 +567,22 @@ class _ControlFileRetriever(object):
             yield path, self._cf_getter.get_control_file_contents(path)
 
 
-    def _parse_control_file_texts(self, control_file_texts,
-                                  forgiving_parser=True, run_prod_code=False,
-                                  test_args=None):
+    def _parse_control_file_texts(self, control_file_texts):
         """Parse control file texts.
 
         @param control_file_texts: iterable of (path, text) pairs
-        @param forgiving_parser: If False, will raise ControlVariableExceptions
-                                 if any are encountered when parsing control
-                                 files. Note that this can raise an exception
-                                 for syntax errors in unrelated files, because
-                                 we parse them before applying the predicate.
-        @param run_prod_code: If true, the suite will run the test code that
-                              lives in prod aka the test code currently on the
-                              lab servers by disabling SSP for the discovered
-                              tests.
-        @param test_args: A dict of args to be seeded in test control file under
-                          the name |args_dict|.
         @returns: a dictionary of ControlData objects
         """
         tests = {}
         for path, text in control_file_texts:
             # Seed test_args into the control file.
-            if test_args:
-                text = tools.inject_vars(test_args, text)
+            if self._test_args:
+                text = tools.inject_vars(self._test_args, text)
             try:
                 found_test = control_data.parse_control_string(
                         text, raise_warnings=True, path=path)
             except control_data.ControlVariableException, e:
-                if not forgiving_parser:
+                if not self._forgiving_parser:
                     msg = "Failed parsing %s\n%s" % (path, e)
                     raise control_data.ControlVariableException(msg)
                 logging.warning("Skipping %s\n%s", path, e)
@@ -602,7 +590,7 @@ class _ControlFileRetriever(object):
                 logging.error("Bad %s\n%s", path, e)
             else:
                 found_test.text = text
-                if run_prod_code:
+                if self._run_prod_code:
                     found_test.require_ssp = False
                 tests[path] = found_test
         return tests
@@ -866,9 +854,11 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             on the TIME setting in control file, slowest test comes first.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _get_cf_retriever(cf_getter).retrieve_for_suite(
-        suite_name, forgiving_parser, run_prod_code=run_prod_code,
-        test_args=test_args)
+    retriever = _get_cf_retriever(cf_getter,
+                                  forgiving_parser=forgiving_parser,
+                                  run_prod_code=run_prod_code,
+                                  test_args=test_args)
+    tests = retriever.retrieve_for_suite(suite_name)
     if not add_experimental:
         tests = {path: test_data for path, test_data in tests.iteritems()
                  if not test_data.experimental}
@@ -903,8 +893,9 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _get_cf_retriever(cf_getter).retrieve_for_suite(
-        suite_name, forgiving_parser=True)
+    retriever = _get_cf_retriever(cf_getter,
+                                  forgiving_parser=True)
+    tests = retriever.retrieve_for_suite(suite_name)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
     for test in tests.itervalues():
