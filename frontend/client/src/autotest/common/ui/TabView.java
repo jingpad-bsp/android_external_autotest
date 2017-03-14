@@ -16,7 +16,7 @@ import com.google.gwt.user.client.ui.Widget;
 import java.util.Map;
 
 /**
- * A widget to facilitate building a tab panel from elements present in the 
+ * A widget to facilitate building a tab panel from elements present in the
  * static HTML document.  Each <code>TabView</code> grabs a certain HTML
  * element, removes it from the document, and wraps it.  It can then be added
  * to a TabPanel.  The <code>getTitle()</code> method retrieves a title for the
@@ -29,6 +29,8 @@ public abstract class TabView implements HasTabVisible {
     private String title;
     protected boolean visible;
     private Map<String, String> savedState;
+    protected boolean autorefresh = false;
+    private boolean autorefreshEnabled = true;
 
     public Widget getWidget() {
         return htmlPanel;
@@ -38,11 +40,11 @@ public abstract class TabView implements HasTabVisible {
         title = Document.get().getElementById(getElementId()).getAttribute("title");
         htmlPanel = Utils.divToPanel(getElementId());
     }
-    
+
     public void addWidget(Widget widget, String subElementId) {
         htmlPanel.add(widget, subElementId);
     }
-    
+
     public Element getElementById(String subElementId) {
         return htmlPanel.getElementById(subElementId);
     }
@@ -56,20 +58,20 @@ public abstract class TabView implements HasTabVisible {
             initialized = true;
         }
     }
-    
+
     // for subclasses to override
     public void refresh() {}
-    
+
     public void display() {
         ensureInitialized();
         refresh();
         visible = true;
     }
-    
+
     public void hide() {
         visible = false;
     }
-    
+
     public boolean isTabVisible() {
         return visible;
     }
@@ -77,11 +79,11 @@ public abstract class TabView implements HasTabVisible {
     public String getTitle() {
         return title;
     }
-    
+
     public void updateHistory() {
         CustomHistory.newItem(getHistoryArguments());
     }
-    
+
     /**
      * Subclasses should override this to store any additional history information.
      */
@@ -90,11 +92,11 @@ public abstract class TabView implements HasTabVisible {
         arguments.put("tab_id", getElementId());
         return arguments;
     }
-    
+
     /**
      * Subclasses should override this to actually handle the tokens.
      * Should *not* trigger a refresh.  refresh() will be called separately.
-     * 
+     *
      * @param arguments the parsed history arguments to use
      */
     public void handleHistoryArguments(Map<String, String> arguments) {}
@@ -124,5 +126,21 @@ public abstract class TabView implements HasTabVisible {
         // allow control-click on windows or command-click on macs (control-click is overridden
         // on macs to take the place of right-click)
         return event.getCtrlKey() || event.getMetaKey() || middleMouseButton;
+    }
+
+    public boolean isAutorefreshEnabled() {
+      return autorefreshEnabled;
+    }
+
+    public void setAutorefreshEnabled(boolean autorefreshEnabled) {
+      this.autorefreshEnabled = autorefreshEnabled;
+    }
+
+    public boolean isAutorefreshOn() {
+        return autorefresh;
+    }
+
+    public void setAutorefresh(boolean autorefresh) {
+        this.autorefresh = autorefresh;
     }
 }
