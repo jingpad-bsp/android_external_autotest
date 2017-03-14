@@ -1059,7 +1059,7 @@ class FirmwareTest(FAFTBase):
         if not callable(action):
             raise error.TestError('action is not callable!')
 
-        info_msg = 'calling %s' % str(action)
+        info_msg = 'calling %s' % action.__name__
         if args:
             info_msg += ' with args %s' % str(args)
         logging.info(info_msg)
@@ -1091,7 +1091,7 @@ class FirmwareTest(FAFTBase):
             self.switcher.wait_for_client(timeout=shutdown_timeout)
             raise error.TestFail(
                     'Should shut the device down after calling %s.' %
-                    str(shutdown_action))
+                    shutdown_action.__name__)
         except ConnectionError:
             logging.info(
                 'DUT is surely shutdown. We are going to power it on again...')
