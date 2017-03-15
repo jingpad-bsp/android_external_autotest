@@ -31,7 +31,8 @@ class video_WebRtcMediaRecorder(test.test):
 
         @param test_name: Name of test to run.
         """
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+                           init_network_controller=True) as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.tab = cr.browser.tabs[0]
             self.tab.Navigate(cr.browser.platform.http_server.UrlOf(

@@ -4,7 +4,6 @@
 
 import logging
 import os
-import re
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -25,6 +24,7 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         """Opens WebRTC loopback page.
 
         @param cr: Autotest Chrome instance.
+        @param video_codec: video codec to use.
         """
         cr.browser.platform.SetHTTPServerDirectories(self.bindir)
 
@@ -42,18 +42,22 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
 
         @raises TestError on timeout, or javascript eval fails.
         """
-        def test_done():
+        def _test_done():
             status = self.tab.EvaluateJavaScript('getStatus()')
             logging.debug(status);
             return status != 'running'
 
         utils.poll_for_condition(
-            test_done, timeout=timeout_secs, sleep_interval=1,
+            _test_done, timeout=timeout_secs, sleep_interval=1,
             desc='loopback.html reports itself as finished')
 
     def run_once(self, video_codec):
-        """Runs the video_WebRtcPeerConnectionWithCamera test."""
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+        """Runs the video_WebRtcPeerConnectionWithCamera test.
+
+        @param video_codec: video codec to use.
+        """
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+                           init_network_controller=True) as cr:
             self.start_loopback(cr, video_codec)
             self.wait_test_completed(TIMEOUT)
             self.print_loopback_result(video_codec)
@@ -61,6 +65,7 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
     def print_loopback_result(self, video_codec):
         """Prints loopback results (unless we failed to retrieve them).
 
+        @param video_codec: video codec to use.
         @raises TestError if the test failed outright.
         """
         status = self.tab.EvaluateJavaScript('getStatus()')

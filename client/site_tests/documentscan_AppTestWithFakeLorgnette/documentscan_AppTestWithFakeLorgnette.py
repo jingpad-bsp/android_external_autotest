@@ -149,7 +149,8 @@ class documentscan_AppTestWithFakeLorgnette(
         self._extension_path = os.path.join(os.path.dirname(__file__),
                                             'document_scan_test_app')
 
-        with chrome.Chrome(extension_paths=[self._extension_path]) as cr:
+        with chrome.Chrome(extension_paths=[self._extension_path],
+                           init_network_controller=True) as cr:
             img = os.path.join(self.bindir, self._IMAGE_FILENAME)
             with mock_lorgnette.MockLorgnette(img) as lorgnette_instance:
                 self._launch_app(cr)

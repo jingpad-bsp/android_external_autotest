@@ -108,7 +108,7 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
             self._gest_file_path[filename] = os.path.join(gestures_dir,
                                                           filename)
 
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             # Open test page.
             self._open_events_page(cr)
             self._events.expand_page()

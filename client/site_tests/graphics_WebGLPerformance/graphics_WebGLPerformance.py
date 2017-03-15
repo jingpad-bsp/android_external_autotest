@@ -124,7 +124,9 @@ class graphics_WebGLPerformance(test.test):
                 os.path.join(self.autodir, 'deps', 'graphics',
                              'graphics_test_extension'))
 
-        with chrome.Chrome(logged_in=False, extension_paths=ext_paths) as cr:
+        with chrome.Chrome(logged_in=False,
+                           extension_paths=ext_paths,
+                           init_network_controller=True) as cr:
             websrc_dir = os.path.join(self.autodir, 'deps', 'webgl_perf', 'src')
             if not cr.browser.platform.SetHTTPServerDirectories(websrc_dir):
                 raise error.TestFail('Failed: Unable to start HTTP server')
