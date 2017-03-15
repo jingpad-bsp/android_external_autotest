@@ -251,5 +251,22 @@ class CachingHostInfoStoreErrorTest(unittest.TestCase):
             self.store.get()
 
 
+class GetStoreFromMachineTest(unittest.TestCase):
+    """Tests the get_store_from_machine function."""
+
+    def test_machine_is_dict(self):
+        machine = {
+                'something': 'else',
+                'host_info_store': 5
+        }
+        self.assertEqual(host_info.get_store_from_machine(machine), 5)
+
+
+    def test_machine_is_string(self):
+        machine = 'hostname'
+        self.assertTrue(isinstance(host_info.get_store_from_machine(machine),
+                                   host_info.InMemoryHostInfoStore))
+
+
 if __name__ == '__main__':
     unittest.main()
