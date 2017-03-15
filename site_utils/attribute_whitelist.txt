@@ -18,9 +18,10 @@ suite:android_telephony_nightly_vzw
 suite:android_telephony_power
 suite:android_wifi_connect
 suite:android_wifi_ent_roaming
-suite:android_wifi_sanity
 suite:android_wifi_interop
 suite:android_wifi_iot_ent
+suite:android_wifi_power
+suite:android_wifi_sanity
 suite:android_wifi_scanner
 suite:android_wifi_softApStress
 suite:another_suite
