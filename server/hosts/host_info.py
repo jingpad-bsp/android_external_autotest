@@ -263,3 +263,15 @@ class InMemoryHostInfoStore(CachingHostInfoStore):
         @param info: The HostInfo object to commit.
         """
         self.info = copy.deepcopy(info)
+
+
+def get_store_from_machine(machine):
+    """Obtain the host_info_store object stuffed in the machine dict.
+
+    The machine argument to jobs can be a string (a hostname) or a dict because
+    of legacy reasons. If we can't get a real store, return a dummy.
+    """
+    if isinstance(machine, dict):
+        return machine['host_info_store']
+    else:
+        return InMemoryHostInfoStore()
