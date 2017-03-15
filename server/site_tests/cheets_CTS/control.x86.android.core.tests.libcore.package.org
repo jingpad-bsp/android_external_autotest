@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package android.core.tests.libcore.package.org of the '
-       'Android 6.0_r15 Compatibility Test Suite (CTS), build 3666707,'
+       'Android 6.0_r16 Compatibility Test Suite (CTS), build 3736419,'
        'using x86 ABI in the ARC container.')
 
 def run_CTS(machine):
