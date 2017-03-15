@@ -135,7 +135,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # follows;
         #   Starting x86 GtsAccountsHostTestCases with 3 tests
         #   Starting armeabi-v7a GtsAccountsHostTestCases with 3 tests
-        group_list = re.findall(r'Starting (.+) %s with (\d+(?:,\d+)?) test' %
+        group_list = re.findall(r'Starting (.+) %s with (\d+(?:,\d+)?) tests' %
                                 self._target_package,
                                 result.stdout)
 
