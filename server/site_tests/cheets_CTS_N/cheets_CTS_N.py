@@ -28,9 +28,10 @@ _CTS_TIMEOUT_SECONDS = 3600
 # Public download locations for android cts bundles.
 _DL_CTS = 'https://dl.google.com/dl/android/cts/'
 _CTS_URI = {
-    'arm': _DL_CTS + 'android-cts-7.1_r2-linux_x86-arm.zip',
-    'x86': _DL_CTS + 'android-cts-7.1_r2-linux_x86-x86.zip',
-    'media': _DL_CTS + 'android-cts-media-1.2.zip',
+    'arm': _DL_CTS + 'android-cts-7.1_r3-linux_x86-arm.zip',
+    'x86': _DL_CTS + 'android-cts-7.1_r3-linux_x86-x86.zip',
+    'media11': _DL_CTS + 'android-cts-media-1.1.zip',
+    'media12': _DL_CTS + 'android-cts-media-1.2.zip',
 }
 
 _SDK_TOOLS_DIR_N = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
