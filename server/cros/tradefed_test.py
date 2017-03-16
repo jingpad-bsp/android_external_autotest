@@ -670,13 +670,15 @@ class TradefedTest(test.test):
                                  'become inconsistent.')
         return (tests, passed, failed, not_executed)
 
-    def _parse_result_N(self, result, waivers=None):
-        """Check the result from the tradefed output.
+    def _parse_result_v2(self, result, accumulative_count=False, waivers=None):
+        """Check the result from the tradefed-v2 output.
 
         This extracts the test pass/fail/executed list from the output of
         tradefed. It is up to the caller to handle inconsistencies.
 
         @param result: The result object from utils.run.
+        @param accumulative_count: set True if using an old version of tradefed
+                                   that prints test count in accumulative way.
         @param waivers: a set() of tests which are permitted to fail.
         """
         # Parse the stdout to extract test status. In particular step over
@@ -692,17 +694,36 @@ class TradefedTest(test.test):
         failed = int(match.group(2))
         not_executed = int(match.group(3))
 
-        # Starting x86 CtsUtilTestCases with 204 tests
-        match = re.search(r'Starting (?:armeabi-v7a|x86) (.*) with '
-                          r'(\d+(?:,\d+)?) tests', result.stdout)
-        if match and match.group(2):
-            tests = int(match.group(2).replace(',', ''))
+        # Some tests may be split into several groups. E.g. per architecture as
+        # follows;
+        #   Starting armeabi-v7a GtsSearchHostTestCases with 1 test
+        #   Continuing armeabi-v7a GtsSearchHostTestCases with 2 tests
+        #   Starting x86 GtsSearchHostTestCases with 1 test
+        #   Continuing x86 GtsSearchHostTestCases with 2 tests
+        match_list = re.findall(r'(?:Start|Continu)ing (armeabi-v7a|x86) (?:.*)'
+                                r' with (\d+(?:,\d+)?) test', result.stdout)
+
+        if match_list:
+            # Old version of tradefed displays an accumulated count in the
+            # 'Continuing' messages. New one spreads the count to each.
+            # For the former (accumulative_count=True), only use the last one.
+            # For the latter, sum up the counts.
+            abi_to_count = dict()
+            for (abi, num_str) in match_list:
+                num = int(num_str.replace(',', ''))
+                if accumulative_count:
+                    abi_to_count[abi] = num
+                else:
+                    abi_to_count[abi] = abi_to_count.get(abi, 0) + num
+            tests = sum(abi_to_count.values())
+            abis = list(abi_to_count.keys())
             logging.info('Found %d tests.', tests)
         else:
             # Unfortunately this happens. Assume it made no other mistakes.
             logging.warning('Tradefed forgot to print number of tests.')
             # TODO(ihf): Once b/35530394 is fixed "+ not_executed".
             tests = passed + failed
+            abis = []
 
         # TODO(rohitbm): make failure parsing more robust by extracting the list
         # of failing tests instead of searching in the result blob. As well as
@@ -714,11 +735,11 @@ class TradefedTest(test.test):
                 fail_count = (result.stdout.count(testname + ' FAIL') +
                               result.stdout.count(testname + ' fail'))
                 if fail_count:
-                    if fail_count > 2:
-                        raise error.TestFail('Error: There are too many '
-                                             'failures found in the output to '
-                                             'be valid for applying waivers. '
-                                             'Please check output.')
+                    if fail_count > len(abis):
+                        raise error.TestFail('Error: Found %d failures for %s '
+                                             'but there are only %d abis: %s' %
+                                             (fail_count, testname, len(abis),
+                                             abis))
                     waived += fail_count
                     logging.info('Waived failure for %s %d time(s)',
                                  testname, fail_count)
