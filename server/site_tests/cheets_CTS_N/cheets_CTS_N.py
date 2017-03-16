@@ -325,6 +325,16 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         logging.warning('Could not establish channel. Using retry=%d.', retry)
         return retry
 
+    def _consistent(self, tests, passed, failed, notexecuted):
+        """Verifies that the given counts are plausible.
+
+        Used for finding bad logfile parsing using accounting identities.
+
+        TODO(ihf): change to tests != passed + failed + notexecuted
+        only once b/35530394 fixed."""
+        return ((tests == passed + failed) or
+                (tests == passed + failed + notexecuted))
+
     def run_once(self,
                  target_module=None,
                  target_plan=None,
@@ -424,15 +434,12 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 if tests == 0 and target_module not in self.notest_modules:
                     logging.error('Did not find any tests in module. Hoping '
                                   'this is transient. Retry after reboot.')
-                # An internal self-check. We really should never hit this.
-                # TODO(ihf): change to tests != passed + failed + notexecuted
-                # once b/35530394 fixed.
-                if tests != passed + failed:
+                if not self._consistent(tests, passed, failed, notexecuted):
                     # Try to figure out what happened. Example: b/35605415.
                     self._run_cts_tradefed([['list', 'results']],
                                            collect_results=False)
-                    raise error.TestFail('Error: Test count inconsistent. %s' %
-                                         self.summary)
+                    logging.warning('Test count inconsistent. %s' %
+                                    self.summary)
                 # Keep track of global count, we can't trust continue/retry.
                 total_tests = tests
                 steps += 1
@@ -454,7 +461,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                                                               session_id)
                     tests, passed, failed, notexecuted, waived = counts
                     self.result_history[steps] = counts
-                    if tests != passed + failed:
+                    if not self._consistent(tests, passed, failed, notexecuted):
                         logging.warning('Tradefed inconsistency - retrying.')
                         session_id, counts = self._tradefed_retry(test_name,
                                                                   session_id)
@@ -463,8 +470,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                     msg = 'retry(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
                     logging.info('RESULT: %s', msg)
                     self.summary += ' ' + msg
-                    # An internal self-check. We really should never hit this.
-                    if tests != passed + failed:
+                    if not self._consistent(tests, passed, failed, notexecuted):
                         logging.warning('Test count inconsistent. %s',
                                         self.summary)
                 # The DUT has rebooted at this point and is in a clean state.
@@ -482,6 +488,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                                  'notexecuted=%d, waived=%d. %s' %
                                   (total_tests, tests, passed, failed,
                                    notexecuted, waived, self.summary))
+        if not self._consistent(tests, passed, failed, notexecuted):
+            raise error.TestFail('Error: Test count inconsistent. %s' %
+                                 self.summary)
         if steps > 0:
             # TODO(ihf): Make this error.TestPass('...') once available.
             raise error.TestWarn(
