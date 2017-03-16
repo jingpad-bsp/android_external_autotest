@@ -526,3 +526,16 @@ def get_node_id_from_node_type(node_type, is_input):
         raise CrasUtilsError(
                 'Can not find unique node id from node type %s' % node_type)
     return find_ids[0]
+
+def get_active_node_volume():
+    """Returns volume from active node.
+
+    @returns: int for volume
+
+    @raises: CrasUtilsError: if node volume cannot be found.
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active'] == 1 and node['IsInput'] == 0:
+            return int(node['NodeVolume'])
+    raise CrasUtilsError('Cannot find active node volume from nodes.')
