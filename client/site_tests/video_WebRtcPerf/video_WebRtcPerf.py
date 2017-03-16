@@ -179,7 +179,8 @@ class video_WebRtcPerf(test.test):
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
 
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
-                           arc_mode=self.arc_mode) as cr:
+                           arc_mode=self.arc_mode,
+                           init_network_controller=True) as cr:
             # On daisy, Chrome freezes about 30 seconds after login because of
             # TPM error. See http://crbug.com/588579.
             if utils.get_board() == 'daisy':

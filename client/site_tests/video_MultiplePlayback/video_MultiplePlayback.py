@@ -96,5 +96,5 @@ class video_MultiplePlayback(test.test):
         if dut_board == 'x86-mario':
            raise error.TestNAError('This test is not available on %s' %
                                     dut_board)
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             self.run_video_tests(cr.browser)
