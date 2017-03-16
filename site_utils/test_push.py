@@ -641,9 +641,9 @@ def main():
                     ('Test CLs of the following repos failed. Below are the '
                      'repos and the corresponding test HEAD.\n\n%s\n\n.'
                      'Error occurred during test:\n\n%s\n\n'
-                     'All logs have been saved to /var/log/test_push.log '
-                     'on push master. Detail debugging info can be found at '
-                     'go/push-to-prod' %
+                     'All logs have been saved to '
+                     '/var/log/test_push/test_push.log on push master. Detail '
+                     'debugging info can be found at go/push-to-prod' %
                      (updated_repo_msg, str(e)) + '\n'.join(run_suite_output)))
         raise
     finally:
