@@ -252,6 +252,52 @@ class RetryHandler(object):
         return self._retry_map[job_id]['retry_max']
 
 
+class _DynamicSuiteDiscoverer(object):
+    """Test discoverer for dynamic suite tests."""
+
+
+    def __init__(self, tests, add_experimental=True):
+        """Initialize instance.
+
+        @param tests: iterable of tests (ControlData objects)
+        @param add_experimental: schedule experimental tests as well, or not.
+        """
+        self._tests = list(tests)
+        self._add_experimental = add_experimental
+
+
+    def discover_tests(self):
+        """Return a list of tests to be scheduled for this suite.
+
+        @returns: list of tests (ControlData objects)
+        """
+        tests = self.stable_tests
+        if self._add_experimental:
+            for test in self.unstable_tests:
+                if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
+                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
+                tests.append(test)
+        return tests
+
+
+    @property
+    def stable_tests(self):
+        """Non-experimental tests.
+
+        @returns: list
+        """
+        return filter(lambda t: not t.experimental, self._tests)
+
+
+    @property
+    def unstable_tests(self):
+        """Experimental tests.
+
+        @returns: list
+        """
+        return filter(lambda t: t.experimental, self._tests)
+
+
 class Suite(object):
     """
     A suite of tests, defined by some predicate over control file variables.
@@ -1354,52 +1400,6 @@ class Suite(object):
         return [s[0] for s in
                 sorted(similarities.items(), key=operator.itemgetter(1),
                        reverse=True)][:count]
-
-
-class _DynamicSuiteDiscoverer(object):
-    """Test discoverer for dynamic suite tests."""
-
-
-    def __init__(self, tests, add_experimental=True):
-        """Initialize instance.
-
-        @param tests: iterable of tests (ControlData objects)
-        @param add_experimental: schedule experimental tests as well, or not.
-        """
-        self._tests = list(tests)
-        self._add_experimental = add_experimental
-
-
-    def discover_tests(self):
-        """Return a list of tests to be scheduled for this suite.
-
-        @returns: list of tests (ControlData objects)
-        """
-        tests = self.stable_tests
-        if self._add_experimental:
-            for test in self.unstable_tests:
-                if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
-                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
-                tests.append(test)
-        return tests
-
-
-    @property
-    def stable_tests(self):
-        """Non-experimental tests.
-
-        @returns: list
-        """
-        return filter(lambda t: not t.experimental, self._tests)
-
-
-    @property
-    def unstable_tests(self):
-        """Experimental tests.
-
-        @returns: list
-        """
-        return filter(lambda t: t.experimental, self._tests)
 
 
 def _is_nonexistent_board_error(e):
