@@ -35,20 +35,30 @@ HOSTEVENT_INVALID           = 0x80000000
 KEYPRESS_RECOVERY_TIME = 0.5
 
 
-class ChromeEC(object):
-    """Manages control of a Chrome EC.
+class ChromeConsole(object):
+    """Manages control of a Chrome console.
 
-    We control the Chrome EC via the UART of a Servo board. Chrome EC
+    We control the Chrome console via the UART of a Servo board. Chrome console
     provides many interfaces to set and get its behavior via console commands.
     This class is to abstract these interfaces.
     """
 
-    def __init__(self, servo):
+    CMD = "_cmd"
+    REGEXP = "_regexp"
+    MULTICMD = "_multicmd"
+
+    def __init__(self, servo, name):
         """Initialize and keep the servo object.
 
         Args:
           servo: A Servo object.
+          name: The console name.
         """
+        self.name = name
+        self.uart_cmd = self.name + self.CMD
+        self.uart_regexp = self.name + self.REGEXP
+        self.uart_multicmd = self.name + self.MULTICMD
+
         self._servo = servo
         self._cached_uart_regexp = None
 
@@ -57,7 +67,7 @@ class ChromeEC(object):
         if self._cached_uart_regexp == regexp:
             return
         self._cached_uart_regexp = regexp
-        self._servo.set('ec_uart_regexp', regexp)
+        self._servo.set(self.uart_regexp, regexp)
 
 
     def send_command(self, commands):
@@ -72,18 +82,18 @@ class ChromeEC(object):
         self.set_uart_regexp('None')
         if isinstance(commands, list):
             try:
-                self._servo.set_nocheck('ec_uart_multicmd', ';'.join(commands))
+                self._servo.set_nocheck(self.uart_multicmd, ';'.join(commands))
             except error.TestFail as e:
                 if 'No control named' in str(e):
                     logging.warning(
-                            'The servod is too old that ec_uart_multicmd '
-                            'not supported. Use ec_uart_cmd instead.')
+                            'The servod is too old that uart_multicmd '
+                            'not supported. Use uart_cmd instead.')
                     for command in commands:
-                        self._servo.set_nocheck('ec_uart_cmd', command)
+                        self._servo.set_nocheck(self.uart_cmd, command)
                 else:
                     raise
         else:
-            self._servo.set_nocheck('ec_uart_cmd', commands)
+            self._servo.set_nocheck(self.uart_cmd, commands)
 
 
     def send_command_get_output(self, command, regexp_list):
@@ -116,8 +126,20 @@ class ChromeEC(object):
                                   str(regexp_list))
 
         self.set_uart_regexp(str(regexp_list))
-        self._servo.set_nocheck('ec_uart_cmd', command)
-        return ast.literal_eval(self._servo.get('ec_uart_cmd'))
+        self._servo.set_nocheck(self.uart_cmd, command)
+        return ast.literal_eval(self._servo.get(self.uart_cmd))
+
+
+class ChromeEC(ChromeConsole):
+    """Manages control of a Chrome EC.
+
+    We control the Chrome EC via the UART of a Servo board. Chrome EC
+    provides many interfaces to set and get its behavior via console commands.
+    This class is to abstract these interfaces.
+    """
+
+    def __init__(self, servo, name="ec_uart"):
+        super(ChromeEC, self).__init__(servo, name)
 
 
     def key_down(self, keyname):
@@ -227,6 +249,7 @@ class ChromeEC(object):
         # FIXME: Stop importing time module if this hack becomes obsolete.
         time.sleep(1)
 
+
     def enable_console_channel(self, channel):
         """Find console channel mask and enable that channel only
 
@@ -240,3 +263,27 @@ class ChromeEC(object):
         cmd = 'chan 0x' + l[0][2]
         # Set console to only output the desired channel
         self.send_command(cmd)
+
+
+class ChromeUSBPD(ChromeEC):
+    """Manages control of a Chrome USBPD.
+
+    We control the Chrome EC via the UART of a Servo board. Chrome USBPD
+    provides many interfaces to set and get its behavior via console commands.
+    This class is to abstract these interfaces.
+    """
+
+    def __init__(self, servo):
+        super(ChromeUSBPD, self).__init__(servo, "usbpd_uart")
+
+
+class ChromeCr50(ChromeConsole):
+    """Manages control of a Chrome Cr50.
+
+    We control the Chrome Cr50 via the console of a Servo board. Chrome Cr50
+    provides many interfaces to set and get its behavior via console commands.
+    This class is to abstract these interfaces.
+    """
+
+    def __init__(self, servo):
+        super(ChromeCr50, self).__init__(servo, "cr50_console")
