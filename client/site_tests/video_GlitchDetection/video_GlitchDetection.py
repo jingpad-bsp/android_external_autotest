@@ -41,8 +41,10 @@ class video_GlitchDetection(test.test):
 
         file_utils.make_leaf_dir(constants.TEST_DIR)
 
-        with chrome.Chrome(extension_paths = [
-            cros_constants.MULTIMEDIA_TEST_EXTENSION], autotest_ext = True) as cr:
+        with chrome.Chrome(
+                extension_paths = [cros_constants.MULTIMEDIA_TEST_EXTENSION],
+                autotest_ext=True,
+                init_network_controller=True) as cr:
 
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             html_fullpath = os.path.join(self.bindir, 'video.html')

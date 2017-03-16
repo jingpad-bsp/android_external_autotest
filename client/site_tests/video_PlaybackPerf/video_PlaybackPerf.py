@@ -233,7 +233,8 @@ class video_PlaybackPerf(test.test):
         """
         keyvals = {}
 
-        with chrome.Chrome(arc_mode=self.arc_mode) as cr:
+        with chrome.Chrome(arc_mode=self.arc_mode,
+                           init_network_controller=True) as cr:
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)

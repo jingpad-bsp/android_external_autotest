@@ -86,8 +86,9 @@ class graphics_WebGLClear(test.test):
         # in xorg.conf.
         browser_args = '--disable-gpu-vsync'
 
-        with chrome.Chrome(
-                logged_in=False, extra_browser_args=browser_args) as cr:
+        with chrome.Chrome(logged_in=False,
+                           extra_browser_args=browser_args,
+                           init_network_controller=True) as cr:
             clearsrc = os.path.join(self.autodir, 'deps', 'webgl_clear', 'src')
             if not cr.browser.platform.SetHTTPServerDirectories(clearsrc):
                 raise error.TestFail('Failed: Unable to start HTTP server')

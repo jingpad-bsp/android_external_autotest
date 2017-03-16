@@ -24,7 +24,7 @@ class power_VideoDetector(test.test):
         if run_time_sec < 30:
             raise error.TestError('Must run for at least 30 seconds')
 
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             # Start powerd if not started.  Set timeouts for quick idle events.
             run_time_ms = run_time_sec * 1000
             # At the time of writing this test, the video detector gets a status
