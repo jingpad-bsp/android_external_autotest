@@ -279,7 +279,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Collect tradefed logs for autotest.
         tradefed = os.path.join(self._android_cts, 'android-cts')
         self._collect_logs(tradefed, datetime_id, result_destination)
-        return self._parse_result_N(output, self.waivers_and_manual_tests)
+        return self._parse_result_v2(output,
+                                     waivers=self.waivers_and_manual_tests)
 
     def _tradefed_retry(self, test_name, session_id):
         """Retries failing tests in session.

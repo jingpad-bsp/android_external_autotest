@@ -84,8 +84,10 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
-        tests, passed, failed, not_executed = self._parse_result(output,
-                                                                 self.waivers)
+        tests, passed, failed, not_executed, waived = self._parse_result_v2(
+            output, accumulative_count=True, waivers=self.waivers)
+        passed += waived
+        failed -= waived
         if tests != passed or failed > 0 or not_executed > 0:
             raise error.TestFail('Failed: Passed (%d), Failed (%d), '
                                  'Not Executed (%d)' %
@@ -106,70 +108,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         logging.info('Tradefed identified results and logs with %s.',
                      datetime_id)
         return datetime_id
-
-    def _parse_result(self, result, waivers=None):
-        """Check the result from the tradefed output.
-
-        This extracts the test pass/fail/executed list from the output of
-        tradefed. It is up to the caller to handle inconsistencies.
-
-        @param result: The result object from utils.run.
-        @param waivers: a set() of tests which are permitted to fail.
-        """
-        # TODO(dhaddock): This function overrides the parent version while GTS
-        # uses the updated version with modules and new output.
-        # This will be merged into the tradefed_test.py class eventually.
-        match = re.search(r': Invocation finished in (.*). PASSED: (\d+), '
-                          r'FAILED: (\d+), '
-                          r'NOT EXECUTED: (\d+), MODULES: ('
-                          r'\d+) of (\d+)', result.stdout)
-
-        if not match:
-            raise error.Test('Test log does not contain a summary.')
-
-        passed = int(match.group(2))
-        failed = int(match.group(3))
-        not_executed = int(match.group(4))
-
-        # Some tests may be split into several groups. E.g. per architecture as
-        # follows;
-        #   Starting x86 GtsAccountsHostTestCases with 3 tests
-        #   Starting armeabi-v7a GtsAccountsHostTestCases with 3 tests
-        group_list = re.findall(r'Starting (.+) %s with (\d+(?:,\d+)?) tests' %
-                                self._target_package,
-                                result.stdout)
-
-        abis = []
-        if group_list:
-            tests = sum(int(num_tests[1].replace(',', ''))
-                        for num_tests in group_list)
-            abis = [abi[0] for abi in group_list]
-        else:
-            # Unfortunately this happens. Assume it made no other mistakes.
-            logging.warning('Tradefed forgot to print number of tests.')
-            tests = passed + failed + not_executed
-        # TODO(rohitbm): make failure parsing more robust by extracting the list
-        # of failing tests instead of searching in the result blob.
-        if waivers:
-            for testname in waivers:
-                fail_count = result.stdout.count(testname + ' fail')
-                if fail_count:
-                    if fail_count > len(abis):
-                        raise error.TestFail('Error: Found %d failures for %s '
-                                             'but there are only %d abis: %s' %
-                                             (fail_count, testname, len(abis),
-                                             abis))
-                    failed -= fail_count
-                    # To maintain total count consistency.
-                    passed += fail_count
-                    logging.info('Waived failure for %s %d time(s)',
-                                 testname, fail_count)
-        logging.info('tests=%d, passed=%d, failed=%d, not_executed=%d',
-                     tests, passed, failed, not_executed)
-        if failed < 0:
-            raise error.TestFail('Error: Internal waiver book keeping has '
-                                 'become inconsistent.')
-        return (tests, passed, failed, not_executed)
 
     def run_once(self, target_package=None):
         """Runs GTS target package exactly once."""
