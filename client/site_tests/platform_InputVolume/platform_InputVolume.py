@@ -87,17 +87,7 @@ class platform_InputVolume(test.test):
 
         @returns: current volume on active node.
         """
-        node_cmd = cras_utils.get_cras_nodes_cmd()
-        node_info = utils.system_output(node_cmd)
-        headphone_plugged = cras_utils.node_type_is_plugged(
-                                       'HEADPHONE', node_info)
-        if headphone_plugged:
-            active_node = 'HEADPHONE'
-        else:
-            active_node = 'INTERNAL_SPEAKER'
-        ctc_out = utils.system_output(self.CTC_GREP_FOR + active_node)
-        volume = re.split('\s+', ctc_out)[3]
-        return int(volume)
+        return cras_utils.get_active_node_volume()
 
     def is_muted(self):
         """
