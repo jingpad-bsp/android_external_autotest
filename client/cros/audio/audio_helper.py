@@ -885,7 +885,7 @@ class chrome_rms_test(_base_rms_test):
         # Just do the import here for those who really need it.
         from autotest_lib.client.common_lib.cros import chrome
 
-        self.chrome = chrome.Chrome()
+        self.chrome = chrome.Chrome(init_network_controller=True)
 
         # The audio configuration could be changed when we
         # restart chrome.

@@ -348,6 +348,7 @@ def _get_testcase_name(class_name, videos):
 # Deprecate the logging messages at DEBUG level (and lower) in telemetry.
 # http://crbug.com/331992
 class TelemetryFilter(logging.Filter):
+    """Filter for telemetry logging."""
 
     def filter(self, record):
         return (record.levelno > logging.DEBUG or
@@ -362,7 +363,7 @@ class video_VideoDecodeMemoryUsage(test.test):
         last_error = None
         logging.getLogger().addFilter(TelemetryFilter())
 
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             for class_name, videos in testcases:
                 name = _get_testcase_name(class_name, videos)

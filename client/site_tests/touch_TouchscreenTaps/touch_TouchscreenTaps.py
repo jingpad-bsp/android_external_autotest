@@ -59,7 +59,7 @@ class touch_TouchscreenTaps(touch_playback_test_base.touch_playback_test_base):
             return
 
         # Log in and start test.
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             self._open_events_page(cr)
             self._events.set_prevent_defaults(False)
             self._check_for_click()

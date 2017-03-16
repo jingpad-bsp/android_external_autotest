@@ -69,6 +69,8 @@ class desktopui_FlashSanityCheck(test.test):
     def verify_file(self, name):
         """
         Does sanity checks on a file on disk.
+
+        @param name: filename to verify.
         """
         if not os.path.exists(name):
             raise error.TestFail('Failed: File does not exist %s' % name)
@@ -255,7 +257,8 @@ class desktopui_FlashSanityCheck(test.test):
         logging.info(browser_args)
         # Browser will download component, but it will require a subsequent
         # reboot by the caller to use it. (Browser restart is not enough.)
-        with chrome.Chrome(extra_browser_args=browser_args) as cr:
+        with chrome.Chrome(extra_browser_args=browser_args,
+                           init_network_controller=True) as cr:
             self.serve_swf_to_browser(cr.browser)
             # Wait for the last file to be written by component updater.
             utils.wait_for_value_changed(
@@ -311,6 +314,9 @@ class desktopui_FlashSanityCheck(test.test):
         """
         Verifies that directing the browser to an swf file results in a running
         Pepper Flash process which does not immediately crash.
+
+        @param browser_args: additional browser args.
+        @param load_path: flash load path.
         """
         if not browser_args:
             browser_args = []
@@ -321,7 +327,8 @@ class desktopui_FlashSanityCheck(test.test):
         # try to hide these unrelated flakes by selective retry.
         for _ in range(0, self._retries):
             logging.info(browser_args)
-            with chrome.Chrome(extra_browser_args=browser_args) as cr:
+            with chrome.Chrome(extra_browser_args=browser_args,
+                               init_network_controller=True) as cr:
                 if self.serve_swf_to_browser(cr.browser):
                     self.verify_flash_process(load_path)
                     return

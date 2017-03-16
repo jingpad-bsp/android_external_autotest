@@ -21,7 +21,7 @@ class video_VideoReload(test.test):
 
         @param video_file: fullpath to video to play.
         """
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
