@@ -32,6 +32,18 @@ class cheets_CTSHelper(test.test):
         else:
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
-            self.chrome = chrome.Chrome(
-                        arc_mode=arc.arc_common.ARC_MODE_ENABLED,
-                        init_network_controller=False)
+            try:
+                self.chrome = chrome.Chrome(
+                            arc_mode=arc.arc_common.ARC_MODE_ENABLED,
+                            init_network_controller=False)
+            except:
+                # We are going to paper over some failures here. Notice these
+                # should still be detected by regularly running
+                # cheets_CTSHelper.stress.
+                logging.error('Could not start Chrome. Retrying soon...')
+                # Give system a chance to calm down.
+                time.sleep(20)
+                self.chrome = chrome.Chrome(
+                            arc_mode=arc.arc_common.ARC_MODE_ENABLED,
+                            num_tries=10,
+                            init_network_controller=False)
