@@ -41,6 +41,11 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 
+# TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 # TODO(ihf): Find a home for all these paths. This is getting out of hand.
 _SDK_TOOLS_DIR_M = 'gs://chromeos-arc-images/builds/git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341'
@@ -166,6 +171,19 @@ def adb_keepalive(target, extra_paths):
         # The adb_keepalive.py script runs forever until SIGTERM is sent.
         base_utils.nuke_subprocess(job.sp)
         base_utils.join_bg_jobs([job])
+
+
+@contextlib.contextmanager
+def pushd(d):
+    """Defines pushd.
+    @param d: the directory to change to.
+    """
+    current = os.getcwd()
+    os.chdir(d)
+    try:
+        yield
+    finally:
+        os.chdir(current)
 
 
 class TradefedTest(test.test):
@@ -526,6 +544,72 @@ class TradefedTest(test.test):
             os.chmod(local, permission)
             # Keep track of PATH.
             self._install_paths.append(os.path.dirname(local))
+
+    def _copy_media(self, media):
+        """Calls copy_media to push media files to DUT via adb."""
+        logging.info('Copying media to device. This can take a few minutes.')
+        copy_media = os.path.join(media, 'copy_media.sh')
+        with pushd(media):
+            try:
+                self._run('file', args=('/bin/sh',), verbose=True,
+                          ignore_status=True, timeout=60,
+                          stdout_tee=utils.TEE_TO_LOGS,
+                          stderr_tee=utils.TEE_TO_LOGS)
+                self._run('sh', args=('--version',), verbose=True,
+                          ignore_status=True, timeout=60,
+                          stdout_tee=utils.TEE_TO_LOGS,
+                          stderr_tee=utils.TEE_TO_LOGS)
+            except:
+                logging.warning('Could not obtain sh version.')
+            self._run(
+                'sh',
+                args=('-e', copy_media, 'all'),
+                timeout=7200,  # Wait at most 2h for download of media files.
+                verbose=True,
+                ignore_status=False,
+                stdout_tee=utils.TEE_TO_LOGS,
+                stderr_tee=utils.TEE_TO_LOGS)
+
+    def _verify_media(self, media):
+        """Verify that the local media directory matches the DUT.
+        Used for debugging b/32978387 where we may see file corruption."""
+        # TODO(ihf): Remove function once b/32978387 is resolved.
+        # Find all files in the bbb_short and bbb_full directories, md5sum these
+        # files and sort by filename, both on the DUT and on the local tree.
+        logging.info('Computing md5 of remote media files.')
+        remote = self._run('adb', args=('shell',
+            'cd /sdcard/test; find ./bbb_short ./bbb_full -type f -print0 | '
+            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
+        logging.info('Computing md5 of local media files.')
+        local = self._run('/bin/sh', args=('-c',
+            ('cd %s; find ./bbb_short ./bbb_full -type f -print0 | '
+            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2') % media))
+
+        # 'adb shell' terminates lines with CRLF. Normalize before comparing.
+        if remote.stdout.replace('\r\n','\n') != local.stdout:
+            logging.error('Some media files differ on DUT /sdcard/test vs. local.')
+            logging.info('media=%s', media)
+            logging.error('remote=%s', remote)
+            logging.error('local=%s', local)
+            # TODO(ihf): Return False.
+            return True
+        logging.info('Media files identical on DUT /sdcard/test vs. local.')
+        return True
+
+    def _push_media(self, CTS_URI):
+        """Downloads, caches and pushed media files to DUT."""
+        media = self._install_bundle(CTS_URI['media'])
+        base = os.path.splitext(os.path.basename(CTS_URI['media']))[0]
+        cts_media = os.path.join(media, base)
+        # TODO(ihf): this really should measure throughput in Bytes/s.
+        m = 'chromeos/autotest/infra_benchmark/cheets/push_media/duration'
+        fields = {'success': False,
+                  'dut_host_name': self._host.hostname}
+        with metrics.SecondsTimer(m, fields=fields) as c:
+            self._copy_media(cts_media)
+            c['success'] = True
+        if not self._verify_media(cts_media):
+            raise error.TestFail('Error: saw corruption pushing media files.')
 
     def _run(self, *args, **kwargs):
         """Executes the given command line.
