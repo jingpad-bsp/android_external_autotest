@@ -108,6 +108,6 @@ class video_VimeoVideo(test.test):
 
 
     def run_once(self):
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(init_network_controller=True) as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.run_vimeo_tests(cr.browser)

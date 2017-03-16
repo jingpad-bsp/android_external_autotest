@@ -68,19 +68,20 @@ class video_WebRtcCamera(test.test):
 
         @raises TestError on timeout, or javascript eval fails.
         """
-        def test_done():
+        def _test_done():
             is_test_done = self.tab.EvaluateJavaScript(IS_TEST_DONE)
             return is_test_done == 1
 
         utils.poll_for_condition(
-            test_done, timeout=timeout_secs, sleep_interval=1,
+            _test_done, timeout=timeout_secs, sleep_interval=1,
             desc=('getusermedia.html:reportTestDone did not run. Test did not '
                   'complete successfully.'))
 
     def run_once(self):
         """Runs the test."""
         self.board = utils.get_current_board()
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+                           init_network_controller=True) as cr:
             self.start_getusermedia(cr)
             self.print_perf_results()
 

@@ -4,7 +4,6 @@
 
 import logging
 import os
-import re
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -42,18 +41,19 @@ class video_WebRtcSanity(test.test):
         @returns True if test completed, False otherwise.
 
         """
-        def test_done():
+        def _test_done():
             status = self.tab.EvaluateJavaScript('getStatus()')
             logging.debug(status);
             return status != 'running'
 
         utils.poll_for_condition(
-            test_done, timeout=timeout_secs, sleep_interval=1,
+            _test_done, timeout=timeout_secs, sleep_interval=1,
             desc = 'getusermedia.html reports itself as finished')
 
     def run_once(self):
         """Runs the test."""
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+                           init_network_controller=True) as cr:
             self.start_getusermedia(cr)
             self.wait_test_completed(SHORT_TIMEOUT_IN_SECS)
             self.verify_successful()
