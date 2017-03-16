@@ -485,16 +485,9 @@ def main(args):
     behaviors = parse_arguments(args)
 
     if behaviors.verify:
-        try:
-            print('Checking tree status:')
-            verify_repo_clean()
-            print('Clean.')
-        except DirtyTreeException as e:
-            print('Local tree is dirty, can\'t perform update safely.')
-            print()
-            print('repo status:')
-            print(e.args[0])
-            return 1
+        print('Checking tree status:')
+        verify_repo_clean()
+        print('Tree status: clean')
 
     versions_before = repo_versions()
     versions_after = set()
@@ -513,15 +506,9 @@ def main(args):
         # If the corresponding repo/file not change, no need to run the cmd.
         cmds_skip = (set() if behaviors.force_update else
                      {t[0] for t in cmd_versions_before & cmd_versions_after})
-        try:
-            run_deploy_actions(
-                    cmds_skip, behaviors.dryrun, behaviors.skip_service_status,
-                    use_chromite_master=behaviors.update_push_servers)
-        except UnstableServices as e:
-            print('The following services were not stable after '
-                  'the update:')
-            print(e.args[0])
-            return 1
+        run_deploy_actions(
+                cmds_skip, behaviors.dryrun, behaviors.skip_service_status,
+                use_chromite_master=behaviors.update_push_servers)
 
     if behaviors.report:
         print('Changes:')
