@@ -124,16 +124,14 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
         self.test_set.clear()
 
 
-    def enqueue_job(self, job, atomic_group=None, is_template=False):
+    def enqueue_job(self, job, is_template=False):
         """Enqueue a job on any host of this label.
 
         @param job: A job to enqueue.
-        @param atomic_group: The associated atomic group.
         @param is_template: Whether the status should be "Template".
         """
         queue_entry = HostQueueEntry.create(meta_host=self, job=job,
-                                            is_template=is_template,
-                                            atomic_group=atomic_group)
+                                            is_template=is_template)
         queue_entry.save()
 
 
@@ -627,16 +625,14 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         logging.info(self.hostname + ' -> ' + self.status)
 
 
-    def enqueue_job(self, job, atomic_group=None, is_template=False):
+    def enqueue_job(self, job, is_template=False):
         """Enqueue a job on this host.
 
         @param job: A job to enqueue.
-        @param atomic_group: The associated atomic group.
         @param is_template: Whther the status should be "Template".
         """
         queue_entry = HostQueueEntry.create(host=self, job=job,
-                                            is_template=is_template,
-                                            atomic_group=atomic_group)
+                                            is_template=is_template)
         # allow recovery of dead hosts from the frontend
         if not self.active_queue_entry() and self.is_dead():
             self.status = Host.Status.READY
@@ -1572,27 +1568,20 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         super(Job, self).save(*args, **kwargs)
 
 
-    def queue(self, hosts, atomic_group=None, is_template=False):
+    def queue(self, hosts, is_template=False):
         """Enqueue a job on the given hosts.
 
         @param hosts: The hosts to use.
-        @param atomic_group: The associated atomic group.
         @param is_template: Whether the status should be "Template".
         """
         if not hosts:
-            if atomic_group:
-                # No hosts or labels are required to queue an atomic group
-                # Job.  However, if they are given, we respect them below.
-                atomic_group.enqueue_job(self, is_template=is_template)
-            else:
-                # hostless job
-                entry = HostQueueEntry.create(job=self, is_template=is_template)
-                entry.save()
+            # hostless job
+            entry = HostQueueEntry.create(job=self, is_template=is_template)
+            entry.save()
             return
 
         for host in hosts:
-            host.enqueue_job(self, atomic_group=atomic_group,
-                             is_template=is_template)
+            host.enqueue_job(self, is_template=is_template)
 
 
     def user(self):
@@ -1756,7 +1745,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
-    def create(cls, job, host=None, meta_host=None, atomic_group=None,
+    def create(cls, job, host=None, meta_host=None,
                  is_template=False):
         """Creates a new host queue entry.
 
@@ -1764,7 +1753,6 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
         @param job: The associated job.
         @param host: The associated host.
         @param meta_host: The associated meta host.
-        @param atomic_group: The associated atomic group.
         @param is_template: Whether the status should be "Template".
         """
         if is_template:
@@ -1772,8 +1760,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
         else:
             status = cls.Status.QUEUED
 
-        return cls(job=job, host=host, meta_host=meta_host,
-                   atomic_group=atomic_group, status=status)
+        return cls(job=job, host=host, meta_host=meta_host, status=status)
 
 
     def save(self, *args, **kwargs):
@@ -1793,16 +1780,13 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     def host_or_metahost_name(self):
         """Returns the first non-None name found in priority order.
 
-        The priority order checked is: (1) host name; (2) meta host name; and
-        (3) atomic group name.
+        The priority order checked is: (1) host name; (2) meta host name
         """
         if self.host:
             return self.host.hostname
-        elif self.meta_host:
-            return self.meta_host.name
         else:
-            assert self.atomic_group, "no host, meta_host or atomic group!"
-            return self.atomic_group.name
+            assert self.meta_host
+            return self.meta_host.name
 
 
     def _set_active_and_complete(self):

@@ -2,7 +2,6 @@
 
 from django import forms
 from django.contrib import admin, messages
-from django.db import models as dbmodels
 from django.forms.util import flatatt
 from django.utils.encoding import smart_str
 from django.utils.safestring import mark_safe
@@ -61,11 +60,8 @@ class LabelForm(ModelWithInvalidForm):
 
 
 class LabelAdmin(SiteAdmin):
-    list_display = ('name', 'atomic_group', 'kernel_config')
-    # Avoid a bug with the admin interface showing a select box pointed at an
-    # AtomicGroup when this field is intentionally NULL such that editing a
-    # label via the admin UI unintentionally sets an atomicgroup.
-    raw_id_fields = ('atomic_group',)
+    list_display = ('name', 'kernel_config')
+    raw_id_fields = ()
 
     form = LabelForm
 
