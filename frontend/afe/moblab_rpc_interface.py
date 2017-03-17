@@ -503,7 +503,7 @@ def get_connected_dut_info():
     leases = _get_dhcp_dut_leases()
 
     # Get a list of the AFE configured DUT's
-    hosts = list(rpc_utils.get_host_query((), False, False, True, {}))
+    hosts = list(rpc_utils.get_host_query((), False, True, {}))
     models.Host.objects.populate_relationships(hosts, models.Label,
                                                'label_list')
     configured_duts = {}
@@ -600,14 +600,14 @@ def remove_moblab_label(ipaddress, label_name):
 
 def _get_connected_dut_labels(requested_label, only_first_label=True):
     """ Query the DUT's attached to the moblab and return a filtered list of labels.
-    
+
     @param requested_label:  the label name you are requesting.
     @param only_first_label:  if the device has the same label name multiple times only
                               return the first label value in the list.
 
     @return: A de-duped list of requested dut labels attached to the moblab.
     """
-    hosts = list(rpc_utils.get_host_query((), False, False, True, {}))
+    hosts = list(rpc_utils.get_host_query((), False, True, {}))
     if not hosts:
         return []
     models.Host.objects.populate_relationships(hosts, models.Label,

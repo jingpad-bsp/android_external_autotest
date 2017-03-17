@@ -198,7 +198,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True', 'None'],
                      out_words_no=['host0', 'host2',
-                                   'label1', 'label4', 'False'])
+                                   'label1', 'False'])
 
 
     def test_execute_list_filter_two_hosts(self):
@@ -225,14 +225,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
         mfile.clean()
 
@@ -250,13 +250,13 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['Ready', 'plat1',
-                                   'label3', 'label4', 'True', 'None'],
+                                   'label3', 'True', 'None'],
                      out_words_no=['host1', 'False'],
                      err_words_ok=['host1'])
         mfile.clean()
@@ -296,14 +296,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -337,15 +337,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'id': 4}])],
                      out_words_ok=['host1', 'host3', 'Ready', 'plat0',
                                    'label2', 'label3', 'plat2', 'None'],
-                     out_words_no=['host2', 'label4', 'False', 'plat1'])
+                     out_words_no=['host2', 'False', 'plat1'])
 
 
     def test_execute_list_filter_three_labels(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label3,label2, label4'],
+                           '-b', 'label3,label2'],
                      rpcs=[('get_hosts', {'multiple_labels': ['label2',
-                                                              'label3',
-                                                              'label4']},
+                                                              'label3']},
                             True,
                             [{u'status': u'Ready',
                               u'hostname': u'host2',
@@ -353,14 +352,13 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label2', u'label4',
-                                          u'plat1'],
+                              u'labels': [u'label3', u'label2', u'plat1'],
                               u'invalid': False,
                               u'platform': u'plat1',
                               u'shard': None,
                               u'id': 3}])],
                      out_words_ok=['host2', 'plat1',
-                                   'label2', 'label3', 'label4', 'None'],
+                                   'label2', 'label3', 'None'],
                      out_words_no=['host1', 'host3'])
 
 
@@ -377,13 +375,12 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label2', u'label4',
-                                          u'plat1'],
+                              u'labels': [u'label3', u'label2', u'plat1'],
                               u'invalid': 0,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host2', 'plat1',
-                                   'label2', 'label3', 'label4', 'None'],
+                                   'label2', 'label3', 'None'],
                      out_words_no=['host1', 'host3'])
 
 
@@ -396,7 +393,7 @@ class host_list_unittest(cli_mock.cli_unittest):
                             [])],
                      out_words_ok=[],
                      out_words_no=['host1', 'host2', 'host3',
-                                   'label2', 'label3', 'label4'])
+                                   'label2', 'label3'])
 
 
     def test_execute_list_filter_label_and_hosts(self):
@@ -422,14 +419,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -467,14 +464,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -502,14 +499,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -562,14 +559,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_reason': u'',
                               u'lock_time': u'2008-07-23 12:54:15',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'True',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'False'])
 
 
@@ -595,14 +592,14 @@ class host_list_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'lock_reason': u'',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
                               u'id': 3}])],
                      out_words_ok=['host1', 'Ready', 'plat1',
                                    'label2', 'label3', 'False',
-                                   'host2', 'label4', 'None'],
+                                   'host2', 'None'],
                      out_words_no=['host0', 'label1', 'True'])
 
 
@@ -619,7 +616,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_reason': u'',
                               u'protection': 'No protection',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'shard': None,
                               u'platform': u'plat1',
@@ -795,7 +792,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_reason': u'',
                               u'protection': 'No protection',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'platform': u'plat1',
                               u'id': 3,
@@ -880,7 +877,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
                               u'locked_by': 'user0',
                               u'lock_reason': u'',
                               u'protection': 'No protection',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'platform': u'plat1',
                               u'id': 3,
@@ -1033,7 +1030,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                               u'locked': True,
                               u'lock_time': u'2008-07-23 12:54:15',
                               u'locked_by': 'user0',
-                              u'labels': [u'label3', u'label4', u'plat1'],
+                              u'labels': [u'label3', u'plat1'],
                               u'invalid': False,
                               u'platform': u'plat1',
                               u'id': 3},
