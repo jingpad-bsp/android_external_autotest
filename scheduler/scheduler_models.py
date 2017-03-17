@@ -21,7 +21,6 @@ _drone_manager: reference to global DroneManager instance.
 import datetime
 import itertools
 import logging
-import os
 import re
 import time
 import weakref
@@ -483,12 +482,6 @@ class HostQueueEntry(DBObject):
         else:
             self.host = None
 
-        if self.atomic_group_id:
-            self.atomic_group = AtomicGroup(self.atomic_group_id,
-                                            always_query=False)
-        else:
-            self.atomic_group = None
-
 
     @classmethod
     def clone(cls, template):
@@ -868,22 +861,6 @@ class HostQueueEntry(DBObject):
                     requested_by=self.job.owner_model())
 
         self.set_status(Status.ABORTED)
-        self.job.abort_delay_ready_task()
-
-
-    def get_group_name(self):
-        atomic_group = self.atomic_group
-        if not atomic_group:
-            return ''
-
-        # Look at any meta_host and dependency labels and pick the first
-        # one that also specifies this atomic group.  Use that label name
-        # as the group name if possible (it is more specific).
-        for label in self.get_labels():
-            if label.atomic_group_id:
-                assert label.atomic_group_id == atomic_group.id
-                return label.name
-        return atomic_group.name
 
 
     def execution_tag(self):
@@ -925,8 +902,7 @@ class HostQueueEntry(DBObject):
 
     def is_hostless(self):
         return (self.host_id is None
-                and self.meta_host is None
-                and self.atomic_group_id is None)
+                and self.meta_host is None)
 
 
 class Job(DBObject):
@@ -938,17 +914,6 @@ class Job(DBObject):
                'parameterized_job_id', 'max_runtime_mins', 'parent_job_id',
                'test_retry', 'run_reset', 'timeout_mins', 'shard_id',
                'require_ssp')
-
-    # This does not need to be a column in the DB.  The delays are likely to
-    # be configured short.  If the scheduler is stopped and restarted in
-    # the middle of a job's delay cycle, the delay cycle will either be
-    # repeated or skipped depending on the number of Pending machines found
-    # when the restarted scheduler recovers to track it.  Not a problem.
-    #
-    # A reference to the DelayedCallTask that will wake up the job should
-    # no other HQEs change state in time.  Its end_time attribute is used
-    # by our run_with_ready_delay() method to determine if the wait is over.
-    _delay_ready_task = None
 
     # TODO(gps): On scheduler start/recovery we need to call HQE.on_pending() on
     # all status='Pending' atomic group HQEs incase a delay was running when the
@@ -1110,32 +1075,6 @@ class Job(DBObject):
         return self.model().keyval_dict()
 
 
-    def _atomic_and_has_started(self):
-        """
-        @returns True if any of the HostQueueEntries associated with this job
-        have entered the Status.STARTING state or beyond.
-        """
-        atomic_entries = models.HostQueueEntry.objects.filter(
-                job=self.id, atomic_group__isnull=False)
-        if atomic_entries.count() <= 0:
-            return False
-
-        # These states may *only* be reached if Job.run() has been called.
-        started_statuses = (models.HostQueueEntry.Status.STARTING,
-                            models.HostQueueEntry.Status.RUNNING,
-                            models.HostQueueEntry.Status.COMPLETED)
-
-        started_entries = atomic_entries.filter(status__in=started_statuses)
-        return started_entries.count() > 0
-
-
-    def _hosts_assigned_count(self):
-        """The number of HostQueueEntries assigned a Host for this job."""
-        entries = models.HostQueueEntry.objects.filter(job=self.id,
-                                                       host__isnull=False)
-        return entries.count()
-
-
     def _pending_count(self):
         """The number of HostQueueEntries for this job in the Pending state."""
         pending_entries = models.HostQueueEntry.objects.filter(
@@ -1143,38 +1082,14 @@ class Job(DBObject):
         return pending_entries.count()
 
 
-    def _max_hosts_needed_to_run(self, atomic_group):
-        """
-        @param atomic_group: The AtomicGroup associated with this job that we
-                are using to set an upper bound on the threshold.
-        @returns The maximum number of HostQueueEntries assigned a Host before
-                this job can run.
-        """
-        return min(self._hosts_assigned_count(),
-                   atomic_group.max_number_of_machines)
-
-
-    def _min_hosts_needed_to_run(self):
-        """Return the minumum number of hsots needed to run this job."""
-        return self.synch_count
-
-
     def is_ready(self):
-        # NOTE: Atomic group jobs stop reporting ready after they have been
-        # started to avoid launching multiple copies of one atomic job.
-        # Only possible if synch_count is less than than half the number of
-        # machines in the atomic group.
         pending_count = self._pending_count()
-        atomic_and_has_started = self._atomic_and_has_started()
-        ready = (pending_count >= self.synch_count
-                 and not atomic_and_has_started)
+        ready = (pending_count >= self.synch_count)
 
         if not ready:
             logging.info(
-                    'Job %s not ready: %s pending, %s required '
-                    '(Atomic and started: %s)',
-                    self, pending_count, self.synch_count,
-                    atomic_and_has_started)
+                    'Job %s not ready: %s pending, %s required ',
+                    self, pending_count, self.synch_count)
 
         return ready
 
@@ -1233,15 +1148,9 @@ class Job(DBObject):
             self._stop_all_entries()
 
 
-    def _next_group_name(self, group_name=''):
+    def _next_group_name(self):
         """@returns a directory name to use for the next host group results."""
-        if group_name:
-            # Sanitize for use as a pathname.
-            group_name = group_name.replace(os.path.sep, '_')
-            if group_name.startswith('.'):
-                group_name = '_' + group_name[1:]
-            # Add a separator between the group name and 'group%d'.
-            group_name += '.'
+        group_name = ''
         group_count_re = re.compile(r'%sgroup(\d+)' % re.escape(group_name))
         query = models.HostQueueEntry.objects.filter(
             job=self.id).values('execution_subdir').distinct()
@@ -1379,11 +1288,11 @@ class Job(DBObject):
             queue_entry.on_pending()
 
 
-    def _assign_new_group(self, queue_entries, group_name=''):
+    def _assign_new_group(self, queue_entries):
         if len(queue_entries) == 1:
             group_subdir_name = queue_entries[0].host.hostname
         else:
-            group_subdir_name = self._next_group_name(group_name)
+            group_subdir_name = self._next_group_name()
             logging.info('Running synchronous job %d hosts %s as %s',
                 self.id, [entry.host.hostname for entry in queue_entries],
                 group_subdir_name)
@@ -1398,12 +1307,8 @@ class Job(DBObject):
                 used to run this Job, a string group name to suggest giving
                 to this job in the results database.
         """
-        atomic_group = include_queue_entry.atomic_group
         chosen_entries = [include_queue_entry]
-        if atomic_group:
-            num_entries_wanted = atomic_group.max_number_of_machines
-        else:
-            num_entries_wanted = self.synch_count
+        num_entries_wanted = self.synch_count
         num_entries_wanted -= len(chosen_entries)
 
         if num_entries_wanted > 0:
@@ -1427,9 +1332,7 @@ class Job(DBObject):
                     'Job not started, too few chosen entries', message)
             return []
 
-        group_name = include_queue_entry.get_group_name()
-
-        self._assign_new_group(chosen_entries, group_name=group_name)
+        self._assign_new_group(chosen_entries)
         return chosen_entries
 
 
@@ -1443,36 +1346,8 @@ class Job(DBObject):
         """
         if not self.is_ready():
             self.stop_if_necessary()
-        elif queue_entry.atomic_group:
-            self.run_with_ready_delay(queue_entry)
         else:
             self.run(queue_entry)
-
-
-    def run_with_ready_delay(self, queue_entry):
-        """
-        Start a delay to wait for more hosts to enter Pending state before
-        launching an atomic group job.  Once set, the a delay cannot be reset.
-
-        @param queue_entry: The HostQueueEntry object to get atomic group
-                info from and pass to run_if_ready when the delay is up.
-
-        @returns An Agent to run the job as appropriate or None if a delay
-                has already been set.
-        """
-        assert queue_entry.job_id == self.id
-        assert queue_entry.atomic_group
-        delay = scheduler_config.config.secs_to_wait_for_atomic_group_hosts
-        over_max_threshold = (self._pending_count() >=
-                self._max_hosts_needed_to_run(queue_entry.atomic_group))
-        delay_expired = (self._delay_ready_task and
-                         time.time() >= self._delay_ready_task.end_time)
-
-        # Delay is disabled or we already have enough?  Do not wait to run.
-        if not delay or over_max_threshold or delay_expired:
-            self.run(queue_entry)
-        else:
-            queue_entry.set_status(models.HostQueueEntry.Status.WAITING)
 
 
     def request_abort(self):
@@ -1480,40 +1355,10 @@ class Job(DBObject):
         self.model().abort()
 
 
-    def schedule_delayed_callback_task(self, queue_entry):
-        queue_entry.set_status(models.HostQueueEntry.Status.PENDING)
-
-        if self._delay_ready_task:
-            return None
-
-        delay = scheduler_config.config.secs_to_wait_for_atomic_group_hosts
-
-        def run_job_after_delay():
-            logging.info('Job %s done waiting for extra hosts.', self)
-            # Check to see if the job is still relevant.  It could have aborted
-            # while we were waiting or hosts could have disappearred, etc.
-            if self._pending_count() < self._min_hosts_needed_to_run():
-                logging.info('Job %s had too few Pending hosts after waiting '
-                             'for extras.  Not running.', self)
-                self.request_abort()
-                return
-            return self.run(queue_entry)
-
-        logging.info('Job %s waiting up to %s seconds for more hosts.',
-                     self.id, delay)
-        self._delay_ready_task = DelayedCallTask(delay_seconds=delay,
-                                                 callback=run_job_after_delay)
-        return self._delay_ready_task
-
-
     def run(self, queue_entry):
         """
         @param queue_entry: The HostQueueEntry instance calling this method.
         """
-        if queue_entry.atomic_group and self._atomic_and_has_started():
-            logging.error('Job.run() called on running atomic Job %d '
-                          'with HQE %s.', self.id, queue_entry)
-            return
         queue_entries = self._choose_group_to_run(queue_entry)
         if queue_entries:
             self._finish_run(queue_entries)
@@ -1522,15 +1367,6 @@ class Job(DBObject):
     def _finish_run(self, queue_entries):
         for queue_entry in queue_entries:
             queue_entry.set_status(models.HostQueueEntry.Status.STARTING)
-        self.abort_delay_ready_task()
-
-
-    def abort_delay_ready_task(self):
-        """Abort the delayed task associated with this job, if any."""
-        if self._delay_ready_task:
-            # Cancel any pending callback that would try to run again
-            # as we are already running.
-            self._delay_ready_task.abort()
 
 
     def __str__(self):
