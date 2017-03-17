@@ -97,7 +97,7 @@ SKIP = set((
     'ap_configurator_test.py',
     'chaos_base_test.py',
     'chaos_interop_test.py',
-    'atomic_group_unittests.py',
+    'only_if_needed_unittests.py',
     # crbug.com/251395
     'dev_server_test.py',
     'full_release_test.py',

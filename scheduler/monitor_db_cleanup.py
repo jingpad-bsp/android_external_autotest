@@ -253,7 +253,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         self._check_for_active_and_complete_queue_entries()
         self._check_for_multiple_platform_hosts()
         self._check_for_no_platform_hosts()
-        self._check_for_multiple_atomic_group_hosts()
 
 
     def _check_for_active_and_complete_queue_entries(self):
@@ -304,29 +303,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         if rows:
             logging.warning('%s hosts with no platform\n%s', self._db.rowcount,
                          ', '.join(row[0] for row in rows))
-
-
-    def _check_for_multiple_atomic_group_hosts(self):
-        rows = self._db.execute("""
-            SELECT afe_hosts.id, hostname,
-                   COUNT(DISTINCT afe_atomic_groups.name) AS atomic_group_count,
-                   GROUP_CONCAT(afe_labels.name),
-                   GROUP_CONCAT(afe_atomic_groups.name)
-            FROM afe_hosts
-            INNER JOIN afe_hosts_labels ON
-                    afe_hosts.id = afe_hosts_labels.host_id
-            INNER JOIN afe_labels ON afe_hosts_labels.label_id = afe_labels.id
-            INNER JOIN afe_atomic_groups ON
-                       afe_labels.atomic_group_id = afe_atomic_groups.id
-            WHERE NOT afe_hosts.invalid AND NOT afe_labels.invalid
-            GROUP BY afe_hosts.id
-            HAVING atomic_group_count > 1
-            ORDER BY hostname""")
-        if rows:
-            subject = '%s hosts with multiple atomic groups' % self._db.rowcount
-            lines = [' '.join(str(item) for item in row)
-                     for row in rows]
-            self._send_inconsistency_message(subject, lines)
 
 
     def _send_inconsistency_message(self, subject, lines):
