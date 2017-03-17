@@ -274,38 +274,7 @@ def get_labels(exclude_filters=(), **filter_data):
     labels = models.Label.query_objects(filter_data)
     for exclude_filter in exclude_filters:
         labels = labels.exclude(**exclude_filter)
-    return rpc_utils.prepare_rows_as_nested_dicts(labels, ('atomic_group',))
-
-
-# atomic groups
-
-def add_atomic_group(name, max_number_of_machines=None, description=None):
-    return models.AtomicGroup.add_object(
-            name=name, max_number_of_machines=max_number_of_machines,
-            description=description).id
-
-
-def modify_atomic_group(id, **data):
-    models.AtomicGroup.smart_get(id).update_object(data)
-
-
-def delete_atomic_group(id):
-    models.AtomicGroup.smart_get(id).delete()
-
-
-def atomic_group_add_labels(id, labels):
-    label_objs = models.Label.smart_get_bulk(labels)
-    models.AtomicGroup.smart_get(id).label_set.add(*label_objs)
-
-
-def atomic_group_remove_labels(id, labels):
-    label_objs = models.Label.smart_get_bulk(labels)
-    models.AtomicGroup.smart_get(id).label_set.remove(*label_objs)
-
-
-def get_atomic_groups(**filter_data):
-    return rpc_utils.prepare_for_serialization(
-            models.AtomicGroup.list_objects(filter_data))
+    return rpc_utils.prepare_rows_as_nested_dicts(labels, ())
 
 
 # hosts
@@ -509,7 +478,7 @@ def get_host_attribute(attribute, **host_filter_data):
     @param host_filter_data: filter data to apply to Hosts to choose hosts to
                              act upon
     """
-    hosts = rpc_utils.get_host_query((), False, False, True, host_filter_data)
+    hosts = rpc_utils.get_host_query((), False, True, host_filter_data)
     hosts = list(hosts)
     models.Host.objects.populate_relationships(hosts, models.HostAttribute,
                                                'attribute_list')
@@ -546,22 +515,18 @@ def delete_host(id):
 
 
 def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
-              exclude_atomic_group_hosts=False, valid_only=True,
-              include_current_job=False, **filter_data):
+              valid_only=True, include_current_job=False, **filter_data):
     """Get a list of dictionaries which contains the information of hosts.
 
     @param multiple_labels: match hosts in all of the labels given.  Should
             be a list of label names.
     @param exclude_only_if_needed_labels: Exclude hosts with at least one
             "only_if_needed" label applied.
-    @param exclude_atomic_group_hosts: Exclude hosts that have one or more
-            atomic group labels associated with them.
     @param include_current_job: Set to True to include ids of currently running
             job and special task.
     """
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
-                                     exclude_atomic_group_hosts,
                                      valid_only, filter_data)
     hosts = list(hosts)
     models.Host.objects.populate_relationships(hosts, models.Label,
@@ -574,8 +539,7 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
     for host_obj in hosts:
         host_dict = host_obj.get_object_dict()
         host_dict['labels'] = [label.name for label in host_obj.label_list]
-        host_dict['platform'], host_dict['atomic_group'] = (rpc_utils.
-                find_platform_and_atomic_group(host_obj))
+        host_dict['platform'] = rpc_utils.find_platform(host_obj)
         host_dict['acls'] = [acl.name for acl in host_obj.acl_list]
         host_dict['attributes'] = dict((attribute.attribute, attribute.value)
                                        for attribute in host_obj.attribute_list)
@@ -598,8 +562,7 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
 
 
 def get_num_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
-                  exclude_atomic_group_hosts=False, valid_only=True,
-                  **filter_data):
+                  valid_only=True, **filter_data):
     """
     Same parameters as get_hosts().
 
@@ -607,7 +570,6 @@ def get_num_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
     """
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
-                                     exclude_atomic_group_hosts,
                                      valid_only, filter_data)
     return hosts.count()
 
@@ -806,7 +768,6 @@ def create_parameterized_job(
         hosts=(),
         meta_hosts=(),
         one_time_hosts=(),
-        atomic_group_name=None,
         synch_count=None,
         is_template=False,
         timeout=None,
@@ -887,7 +848,6 @@ def create_parameterized_job(
                 hosts=hosts,
                 meta_hosts=meta_hosts,
                 one_time_hosts=one_time_hosts,
-                atomic_group_name=atomic_group_name,
                 synch_count=synch_count,
                 is_template=is_template,
                 timeout=timeout,
@@ -972,7 +932,6 @@ def create_job(
         hosts=(),
         meta_hosts=(),
         one_time_hosts=(),
-        atomic_group_name=None,
         synch_count=None,
         is_template=False,
         timeout=None,
@@ -1022,7 +981,6 @@ def create_job(
     @param meta_hosts List where each entry is a label name, and for each entry
         one host will be chosen from that label to run the job on.
     @param one_time_hosts List of hosts not in the database to run the job on.
-    @param atomic_group_name The name of an atomic group to schedule the job on.
     @param drone_set The name of the drone set to run this test on.
     @param image OS image to install before running job.
     @param parent_job_id id of a job considered to be parent of created job.
@@ -1052,7 +1010,6 @@ def create_job(
             hosts=hosts,
             meta_hosts=meta_hosts,
             one_time_hosts=one_time_hosts,
-            atomic_group_name=atomic_group_name,
             synch_count=synch_count,
             is_template=is_template,
             timeout=timeout,
@@ -1305,10 +1262,6 @@ def get_info_for_clone(id, preserve_metahosts, queue_entry_filter_data=None):
                 meta_host_counts=meta_host_counts,
                 hosts=host_dicts)
     info['job']['dependencies'] = job_info['dependencies']
-    if job_info['atomic_group']:
-        info['atomic_group_name'] = (job_info['atomic_group']).name
-    else:
-        info['atomic_group_name'] = None
     info['hostless'] = job_info['hostless']
     info['drone_set'] = job.drone_set and job.drone_set.name
 
@@ -1376,7 +1329,7 @@ def get_host_queue_entries(start_time=None, end_time=None, **filter_data):
                                                    **filter_data)
     return rpc_utils.prepare_rows_as_nested_dicts(
             models.HostQueueEntry.query_objects(filter_data),
-            ('host', 'atomic_group', 'job'))
+            ('host', 'job'))
 
 
 def get_num_host_queue_entries(start_time=None, end_time=None, **filter_data):
@@ -1654,7 +1607,6 @@ def get_static_data():
     users: Sorted list of all users.
     labels: Sorted list of labels not start with 'cros-version' and
             'fw-version'.
-    atomic_groups: Sorted list of all atomic groups.
     tests: Sorted list of all tests.
     profilers: Sorted list of all profilers.
     current_user: Logged-in username.
@@ -1692,7 +1644,6 @@ def get_static_data():
         label_exclude_filters,
         sort_by=['-platform', 'name'])
 
-    result['atomic_groups'] = get_atomic_groups(sort_by=['name'])
     result['tests'] = get_tests(sort_by=['name'])
     result['profilers'] = get_profilers(sort_by=['name'])
     result['current_user'] = rpc_utils.prepare_for_serialization(

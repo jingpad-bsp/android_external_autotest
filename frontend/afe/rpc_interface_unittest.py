@@ -46,10 +46,6 @@ class RpcInterfaceTest(unittest.TestCase,
 
 
     def test_validation(self):
-        # non-number for a numeric field
-        self.assertRaises(model_logic.ValidationError,
-                          rpc_interface.add_atomic_group, name='foo',
-                          max_number_of_machines='bar')
         # omit a required field
         self.assertRaises(model_logic.ValidationError, rpc_interface.add_label,
                           name=None)
@@ -87,7 +83,6 @@ class RpcInterfaceTest(unittest.TestCase,
         host = hosts[0]
         self.assertEquals(sorted(host['labels']), ['label1', 'myplatform'])
         self.assertEquals(host['platform'], 'myplatform')
-        self.assertEquals(host['atomic_group'], None)
         self.assertEquals(host['acls'], ['my_acl'])
         self.assertEquals(host['attributes'], {})
 
@@ -103,23 +98,6 @@ class RpcInterfaceTest(unittest.TestCase,
 
         hosts = rpc_interface.get_hosts(hostname__in=['host1', 'host2'],
                                         exclude_only_if_needed_labels=True)
-        self._check_hostnames(hosts, ['host2'])
-
-
-    def test_get_hosts_exclude_atomic_group_hosts(self):
-        hosts = rpc_interface.get_hosts(
-                exclude_atomic_group_hosts=True,
-                hostname__in=['host4', 'host5', 'host6'])
-        self._check_hostnames(hosts, ['host4'])
-
-
-    def test_get_hosts_exclude_both(self):
-        self.hosts[0].labels.add(self.label3)
-
-        hosts = rpc_interface.get_hosts(
-                hostname__in=['host1', 'host2', 'host5'],
-                exclude_only_if_needed_labels=True,
-                exclude_atomic_group_hosts=True)
         self._check_hostnames(hosts, ['host2'])
 
 
@@ -262,7 +240,6 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(len(queue_entries), 1)
         self.assertEquals(queue_entries[0].host, None)
         self.assertEquals(queue_entries[0].meta_host, None)
-        self.assertEquals(queue_entries[0].atomic_group, None)
 
 
     def _setup_special_tasks(self):

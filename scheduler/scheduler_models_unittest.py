@@ -244,10 +244,10 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         self._check_hqe_labels(hqe, ['label2'])
 
 
-    def test_get_labels_dependancies(self):
-        hqe = self._create_hqe(dependency_labels=(self.label3, self.label4),
+    def test_get_labels_dependencies(self):
+        hqe = self._create_hqe(dependency_labels=(self.label3,),
                                metahosts=[1])
-        self._check_hqe_labels(hqe, ['label1', 'label3', 'label4'])
+        self._check_hqe_labels(hqe, ['label1', 'label3'])
 
 
     def setup_abort_test(self, agent_finished=True):
