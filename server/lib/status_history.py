@@ -35,10 +35,12 @@ the logs explaining a failure or repair event.
 """
 
 import common
+import os
 from autotest_lib.frontend import setup_django_environment
 from django.db import models as django_models
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.site_utils.suite_scheduler import constants
@@ -97,7 +99,10 @@ class _JobEvent(object):
     @property id          id of the event in the AFE database.
     @property name        Name of the event, derived from the AFE database.
     @property job_status  Short string describing the event's final status.
+    @property logdir      Relative path to the logs for the event's job.
     @property job_url     URL to the logs for the event's job.
+    @property gs_url      GS URL to the logs for the event's job.
+    @property job_id      id of the AFE job for HQEs.  None otherwise.
     @property diagnosis   Working status of the DUT after the event.
     @property is_special  Boolean indicating if the event is a special task.
 
@@ -121,6 +126,22 @@ class _JobEvent(object):
 
         """
         return cls._LOG_URL_PATTERN % (afe_hostname, logdir)
+
+
+    @classmethod
+    def get_gs_url(cls, logdir):
+        """Return a GS URL to job results.
+
+        The URL is constructed from a base URL determined by the
+        global config, plus the relative path of the job's log
+        directory.
+
+        @param logdir Relative path of the results log directory.
+
+        @return A URL to the requested results log.
+
+        """
+        return os.path.join(site_utils.get_offload_gsuri(), logdir)
 
 
     def __init__(self, start_time, end_time):
@@ -159,8 +180,26 @@ class _JobEvent(object):
 
 
     @property
+    def logdir(self):
+        """Return the relative path for this event's job logs."""
+        raise NotImplemented()
+
+
+    @property
     def job_url(self):
         """Return the URL for this event's job logs."""
+        raise NotImplemented()
+
+
+    @property
+    def gs_url(self):
+        """Return the GS URL for this event's job logs."""
+        raise NotImplemented()
+
+
+    @property
+    def job_id(self):
+        """Return the id of the AFE job for HQEs.  None otherwise."""
         raise NotImplemented()
 
 
@@ -271,11 +310,25 @@ class _SpecialTaskEvent(_JobEvent):
 
 
     @property
+    def logdir(self):
+        return ('hosts/%s/%s-%s' %
+                (self._afetask.host.hostname, self._afetask.id,
+                 self._afetask.task.lower()))
+
+
+    @property
     def job_url(self):
-        logdir = ('hosts/%s/%s-%s' %
-                  (self._afetask.host.hostname, self._afetask.id,
-                   self._afetask.task.lower()))
-        return _SpecialTaskEvent.get_log_url(self._afe_hostname, logdir)
+        return _SpecialTaskEvent.get_log_url(self._afe_hostname, self.logdir)
+
+
+    @property
+    def gs_url(self):
+        return _SpecialTaskEvent.get_gs_url(self.logdir)
+
+
+    @property
+    def job_id(self):
+        return None
 
 
     @property
@@ -351,9 +404,23 @@ class _TestJobEvent(_JobEvent):
 
 
     @property
+    def logdir(self):
+        return _get_job_logdir(self._hqe.job)
+
+
+    @property
     def job_url(self):
-        logdir = '%s-%s' % (self._hqe.job.id, self._hqe.job.owner)
-        return _TestJobEvent.get_log_url(self._afe_hostname, logdir)
+        return _TestJobEvent.get_log_url(self._afe_hostname, self.logdir)
+
+
+    @property
+    def gs_url(self):
+        return _TestJobEvent.get_gs_url(self.logdir)
+
+
+    @property
+    def job_id(self):
+        return self._hqe.job.id
 
 
     @property
@@ -673,3 +740,23 @@ def get_status_task(host_id, end_time):
             host_id=host_id,
             time_finished__lte=end_time,
             is_complete=True).order_by('time_started').reverse()[0:1]
+
+
+def _get_job_logdir(job):
+    """Gets the logdir for an AFE job.
+
+    @param job Job object which has id and owner properties.
+
+    @return Relative path of the results log directory.
+    """
+    return '%s-%s' % (job.id, job.owner)
+
+
+def get_job_gs_url(job):
+    """Gets the GS URL for an AFE job.
+
+    @param job Job object which has id and owner properties.
+
+    @return Absolute GS URL to the results log directory.
+    """
+    return _JobEvent.get_gs_url(_get_job_logdir(job))
