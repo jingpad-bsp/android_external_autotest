@@ -29,7 +29,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 # How long after restarting a service do we watch it to see if it's stable.
-SERVICE_STABILITY_TIMER = 120
+SERVICE_STABILITY_TIMER = 60
 
 # A list of commands that only applies to primary server. For example,
 # test_importer should only be run in primary master scheduler. If two servers
@@ -299,7 +299,6 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
     # Restart each, and record the status (including pid).
     for name in service_names:
         restart_service(name)
-        service_statuses[name] = service_status(name)
 
     # Skip service status check if --skip-service-status is specified. Used for
     # servers in backup status.
@@ -309,7 +308,8 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
 
     # Wait for a while to let the services settle.
     time.sleep(SERVICE_STABILITY_TIMER)
-
+    service_statuses = {name: service_status(name) for name in service_names}
+    time.sleep(SERVICE_STABILITY_TIMER)
     # Look for any services that changed status.
     unstable_services = [n for n in service_names
                          if service_status(n) != service_statuses[n]]
