@@ -21,6 +21,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
@@ -1783,6 +1784,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if image:
             ds = dev_server.AndroidBuildServer.resolve(image, hostname)
         else:
+            info = self.host_info_store.get()
             job_repo_url = afe_utils.get_host_attribute(
                     self, self.job_repo_url_attribute)
             if job_repo_url:
