@@ -14,6 +14,7 @@ from autotest_lib.server import frontend
 from autotest_lib.server.lib import status_history
 from chromite.lib import cros_logging as logging
 
+
 HostJobHistory = status_history.HostJobHistory
 
 # TODO: Handle other statuses like infra failures.
@@ -26,6 +27,7 @@ TKO_STATUS_MAP = {
     'Completed': 'pass',
 }
 
+
 def parse_tko_status_string(status_string):
     """Parse a status string from TKO or the HQE databases.
 
@@ -34,6 +36,7 @@ def parse_tko_status_string(status_string):
     @return A status string suitable for inclusion within Cloud Datastore.
     """
     return TKO_STATUS_MAP.get(status_string, 'unknown:' + status_string)
+
 
 def make_entry(entry_id, name, status, start_time,
                finish_time=None, parent=None):
@@ -121,7 +124,9 @@ def make_job_entry(tko, job, parent=None, suite_job=False, job_entries=None):
             entry['try'] = 0
     else:
         entry['try'] = 1
+    entry['gs_url'] = status_history.get_job_gs_url(job)
     return entry
+
 
 def make_hqe_entry(hostname, hqe, hqe_statuses, parent=None):
     """Generate a HQE event log entry.
@@ -141,8 +146,12 @@ def make_hqe_entry(hostname, hqe, hqe_statuses, parent=None):
     entry['task_name'] = hqe.name.split('/')[-1]
     entry['in_suite'] = hqe.id in hqe_statuses
     entry['job_url'] = hqe.job_url
+    entry['gs_url'] = hqe.gs_url
+    if hqe.job_id is not None:
+        entry['job_id'] = hqe.job_id
     entry['is_special'] = hqe.is_special
     return entry
+
 
 def generate_suite_report(suite_job_id, afe=None, tko=None):
     """Generate a list of events corresonding to a single suite job.
@@ -160,6 +169,7 @@ def generate_suite_report(suite_job_id, afe=None, tko=None):
 
     # Retrieve the main suite job.
     suite_job = afe.get_jobs(id=suite_job_id)[0]
+
     suite_entry = make_job_entry(tko, suite_job, suite_job=True)
     entries = [suite_entry]
 
@@ -195,6 +205,7 @@ def generate_suite_report(suite_job_id, afe=None, tko=None):
                                                  suite_entry['start_time'],
                                                  suite_entry['finish_time'])
                  for hostname in sorted(hostnames)]
+
     for history in histories:
         entries.extend(make_hqe_entry(history.hostname, h, hqe_statuses,
                                       suite_entry['id']) for h in history)
