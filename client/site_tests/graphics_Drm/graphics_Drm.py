@@ -52,18 +52,6 @@ class graphics_Drm(test.test):
             # Fail on exceptions.
             raise error.TestFail('Failed: Exception running %s' % cmd)
 
-        # Fail on any stderr with first line of stderr for triage.
-        if result.stderr:
-            raise error.TestFail('Failed: %s (%s)' %
-                                    (cmd, result.stderr.splitlines()[0]))
-
-        # Fail on fishy output with said output for triage.
-        stdout = result.stdout.lower()
-        if 'fail' in stdout or 'error' in stdout:
-            for line in result.stdout.splitlines():
-                if 'fail' in line.lower() or 'error' in line.lower():
-                    raise error.TestFail('Failed: %s (%s)' % (cmd, line))
-
         # Last but not least check return code and use it for triage.
         if result.exit_status != 0:
             raise error.TestFail('Failed: %s (exit=%d)' %
