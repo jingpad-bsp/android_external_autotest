@@ -365,6 +365,10 @@
     "dashboard_test_name": "network_WiFi_SuspendStress"
   },
   {
+    "autotest_name": "performance_InboxInputLatency",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "platform_BootPerfServer",
     "master_name": "ChromeOSPerf"
   },
