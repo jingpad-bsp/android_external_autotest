@@ -38,7 +38,6 @@ _BUG_TEMPLATE = {
 }
 
 args_dict['timeout_mins'] = 480
-args_dict['file_bugs'] = False
 args_dict['name'] = 'crosbolt_perf_nightly'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
