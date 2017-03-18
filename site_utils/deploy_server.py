@@ -225,39 +225,43 @@ def update_in_parallel(servers, options):
     # for other running updates being finished. Abort in the middle of an update
     # may leave the server in a bad state.
     pool = multiprocessing.pool.ThreadPool(POOL_SIZE)
-    failed_servers = []
-    results = pool.map_async(update_server, args)
-    pool.close()
+    try:
+        failed_servers = []
+        results = pool.map_async(update_server, args)
+        pool.close()
 
-    # Track the updating progress for current group of servers.
-    incomplete_servers = set()
-    server_names = set([s[0] for s in servers])
-    while not results.ready():
-        incomplete_servers = server_names - set(finished_servers)
-        print('Not finished yet. %d servers in this group. '
-              '%d servers are still running:\n%s\n' %
-              (len(servers), len(incomplete_servers), incomplete_servers))
-        # Check the progress every 1 mins
-        results.wait(60)
+        # Track the updating progress for current group of servers.
+        incomplete_servers = set()
+        server_names = set([s[0] for s in servers])
+        while not results.ready():
+            incomplete_servers = server_names - set(finished_servers)
+            print('Not finished yet. %d servers in this group. '
+                '%d servers are still running:\n%s\n' %
+                (len(servers), len(incomplete_servers), incomplete_servers))
+            # Check the progress every 1 mins
+            results.wait(60)
 
-    # After update finished, parse the result.
-    for server, success, output in results.get():
-        if options.dryrun:
-            print('Dry run, updating server %s is skipped.' % server)
-        else:
-            if success:
-                msg = ('Successfully updated server %s.\n' % server)
-                if options.verbose:
-                    print(output)
-                    print()
+        # After update finished, parse the result.
+        for server, success, output in results.get():
+            if options.dryrun:
+                print('Dry run, updating server %s is skipped.' % server)
             else:
-                msg = ('Failed to update server %s.\nError: %s' %
-                       (server, output.strip()))
-                print(msg)
-                failed_servers.append(server)
-            # Write the result into logfile.
-            with open(options.logfile, 'a') as f:
-                f.write(msg)
+                if success:
+                    msg = ('Successfully updated server %s.\n' % server)
+                    if options.verbose:
+                        print(output)
+                        print()
+                else:
+                    msg = ('Failed to update server %s.\nError: %s' %
+                        (server, output.strip()))
+                    print(msg)
+                    failed_servers.append(server)
+                # Write the result into logfile.
+                with open(options.logfile, 'a') as f:
+                    f.write(msg)
+    finally:
+        pool.terminate()
+        pool.join()
 
     return failed_servers
 
