@@ -182,10 +182,9 @@ class telemetry_Crosperf(test.test):
             stderr_str = stderr.getvalue()
             stdout.close()
             stderr.close()
-
-        logging.info('Telemetry completed with exit code: %d.'
-                     '\nstdout:%s\nstderr:%s', exit_code,
-                     stdout_str, stderr_str)
+            logging.info('Telemetry completed with exit code: %d.'
+                         '\nstdout:%s\nstderr:%s', exit_code,
+                         stdout_str, stderr_str)
 
         # Copy the results-chart.json file into the test_that results
         # directory.
