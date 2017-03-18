@@ -129,7 +129,7 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
 
             # Create the md5 hash too.
             md5sum = pkgmgr.compute_checksum(tarball_path)
-            md5sum_filepath = os.path.join(build_dir, name + '.checksum')
+            md5sum_filepath = os.path.join(build_dir, pkg_name + '.checksum')
             with open(md5sum_filepath, "w") as f:
                 f.write(md5sum)
 
@@ -143,8 +143,15 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
                     msg = ("Temporary directory for packages %s does not have "
                            "enough space available: %s" % (temp_dir, e))
                     raise error.RepoDiskFullError(msg)
-                tarball_path = pkgmgr.tar_package(pkg_name, pkg_dir,
-                                                  temp_dir, exclude_string)
+
+                # Check if tarball already exists. If it does, don't duplicate
+                # the effort.
+                tarball_path = os.path.join(pkg_dir, pkg_name);
+                if os.path.exists(tarball_path):
+                   print("Tarball %s already exists" % tarball_path);
+                else:
+                    tarball_path = pkgmgr.tar_package(pkg_name, pkg_dir,
+                                                      temp_dir, exclude_string)
                 pkgmgr.upload_pkg(tarball_path, update_checksum=True)
             finally:
                 # remove the temporary directory
@@ -173,9 +180,15 @@ def tar_packages(pkgmgr, pkg_type, pkg_names, src_dir, temp_dir):
             pkg_dir = os.path.join(src_dir, name)
 
         pkg_name = pkgmgr.get_tarball_name(name, pkg_type)
-        tarball_path = pkgmgr.tar_package(pkg_name, pkg_dir,
-                                              temp_dir, exclude_string)
 
+        # Check if tarball already exists. If it does, don't duplicate
+        # the effort.
+        tarball_path = os.path.join(pkg_dir, pkg_name);
+        if os.path.exists(tarball_path):
+            print("Tarball %s already exists" % tarball_path);
+        else:
+            tarball_path = pkgmgr.tar_package(pkg_name, pkg_dir,
+                                              temp_dir, exclude_string)
         tarballs.append(tarball_path)
     return tarballs
 

@@ -749,6 +749,22 @@ class BasePackageManager(object):
         Compute the MD5 checksum for the package file and return it.
         pkg_path : The complete path for the package file
         '''
+        # Check if the checksum has been pre-calculated.
+        # There are two modes of operation:
+        #
+        # 1. Package is compiled on dev machine / build server : In this
+        # case, we will have the freshest checksum during the install
+        # phase (which was computed and stored during src_compile). The
+        # checksum always gets recomputed during src_compile.
+        #
+        # 2. Package in installed from a fetched prebuilt: Here, we will
+        # have the checksum associated with what was used to compile
+        # the prebuilt. So it is expected to be the same.
+        checksum_path = pkg_path + '.checksum'
+        if os.path.exists(checksum_path):
+            print ("Checksum %s exists" % checksum_path)
+            with open(checksum_path, "r") as f:
+                return f.read().replace('\n', '')
         md5sum_output = self._run_command("md5sum %s " % pkg_path).stdout
         return md5sum_output.split()[0]
 
