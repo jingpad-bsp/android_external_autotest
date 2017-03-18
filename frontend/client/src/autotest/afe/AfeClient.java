@@ -28,7 +28,7 @@ public class AfeClient implements EntryPoint {
     private HostListView hostListView;
     private HostDetailView hostDetailView;
 
-    public CustomTabPanel mainTabPanel;
+    public CustomTabPanel mainTabPanel = new CustomTabPanel();
 
     /**
      * Application entry point.
@@ -55,17 +55,16 @@ public class AfeClient implements EntryPoint {
     protected void finishLoading() {
         SiteCommonClassFactory.globalInitialize();
 
-        String wmatrixUrl =
-            StaticDataRepository.getRepository().getWMatrixUrl();
+        String wmatrixUrl = StaticDataRepository.getRepository().getData(
+            "wmatrix_url").isString().stringValue();
         if (!wmatrixUrl.equals("")) {
             Document.get().getElementById("wmatrix-link").setAttribute(
                 "href", wmatrixUrl);
             Document.get().getElementById("wmatrix").removeClassName("hidden");
         }
-
-        boolean isMoblab = StaticDataRepository.getRepository().isMoblab();
-        mainTabPanel = new CustomTabPanel();
-        if (isMoblab) {
+        boolean is_moblab = StaticDataRepository.getRepository().getData(
+            "is_moblab").isBoolean().booleanValue();
+        if (is_moblab) {
             Document.get().getElementById("moblab_setup").removeClassName("hidden");
             Document.get().getElementById("mobmonitor_link").setAttribute("href",
                 "http://" + Location.getHostName() + ":9991");
@@ -76,7 +75,6 @@ public class AfeClient implements EntryPoint {
                 showJob(jobId);
             }
         });
-        jobList.setAutorefreshEnabled(isMoblab);
         jobDetail = new JobDetailView(new JobDetailListener() {
             public void onHostSelected(String hostId) {
                 showHost(hostId);

@@ -21,15 +21,15 @@ public class TkoClient implements EntryPoint, TableSwitchListener {
     private TableView tableView;
     private GraphingView graphingView;
     private TestDetailView detailView;
-
+    
     private CustomTabPanel mainTabPanel = new CustomTabPanel();
     private SavedQueriesControl savedQueriesControl;
-
+    
     public void onModuleLoad() {
         JsonRpcProxy.setDefaultBaseUrl(JsonRpcProxy.TKO_BASE_URL);
-
+        
         NotifyManager.getInstance().initialize();
-
+        
         StaticDataRepository.getRepository().refresh(
                                  new StaticDataRepository.FinishedCallback() {
             public void onFinished() {
@@ -37,7 +37,7 @@ public class TkoClient implements EntryPoint, TableSwitchListener {
             }
         });
     }
-
+    
     protected void finishLoading() {
         SiteCommonClassFactory.globalInitialize();
 
@@ -46,16 +46,16 @@ public class TkoClient implements EntryPoint, TableSwitchListener {
         tableView = new TableView(this);
         graphingView = new GraphingView(this);
         detailView = TkoUtils.factory.getTestDetailView();
-
+        
         mainTabPanel.getCommonAreaPanel().add(commonPanel);
         mainTabPanel.addTabView(spreadsheetView);
         mainTabPanel.addTabView(tableView);
         mainTabPanel.addTabView(graphingView);
         mainTabPanel.addTabView(detailView);
-
+        
         savedQueriesControl = new SavedQueriesControl();
         mainTabPanel.getOtherWidgetsPanel().add(savedQueriesControl);
-
+        
         final RootPanel tabsRoot = RootPanel.get("tabs");
         tabsRoot.add(mainTabPanel);
         commonPanel.initialize();
@@ -63,7 +63,7 @@ public class TkoClient implements EntryPoint, TableSwitchListener {
         mainTabPanel.initialize();
         tabsRoot.removeStyleName("hidden");
     }
-
+    
     public void onSwitchToTable(TableViewConfig config) {
         tableView.ensureInitialized();
         switch (config) {
@@ -80,7 +80,7 @@ public class TkoClient implements EntryPoint, TableSwitchListener {
         tableView.doQuery();
         mainTabPanel.selectTabView(tableView);
     }
-
+    
     public void onSelectTest(int testId) {
         History.newItem(getSelectTestHistoryToken(testId).toString());
     }
