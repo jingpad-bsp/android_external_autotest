@@ -56,7 +56,7 @@ class Chrome(object):
                  auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
                  arc_mode=None, disable_arc_opt_in=True,
-                 init_network_controller=True):
+                 init_network_controller=False):
         """
         Constructor of telemetry wrapper.
 
