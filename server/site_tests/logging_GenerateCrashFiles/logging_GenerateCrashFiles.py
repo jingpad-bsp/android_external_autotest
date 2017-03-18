@@ -14,7 +14,7 @@ from autotest_lib.server import test
 class logging_GenerateCrashFiles(test.test):
     """Tests if crash files are generated when crash is invoked."""
     version = 1
-    SHORT_WAIT = 3
+    SHORT_WAIT = 10
     REBOOT_TIMEOUT = 60
     CRASH_DIR = CrashTest._SYSTEM_CRASH_DIR
 
