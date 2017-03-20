@@ -15,7 +15,7 @@ https://github.com/autotest/autotest/wiki
 
 ## Coding style
 
-Basically PEP-8.  See [docs/coding-style.md](docs/coding-style.md)
+Basically PEP-8.  See [docs/coding-style.md](coding-style.md)
 
 ## Where should my code live?
 
