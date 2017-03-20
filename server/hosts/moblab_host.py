@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import time
-import urllib2
 
 import common
 from autotest_lib.client.common_lib import error, global_config
@@ -153,7 +152,7 @@ class MoblabHost(cros_host.CrosHost):
         # to continue and reimage the device.
         try:
             self.wait_afe_up()
-        except (urllib2.HTTPError, urllib2.URLError) as e:
+        except Exception as e:
             logging.error('DUT has rebooted but AFE has failed to load.: %s',
                           e)
 
