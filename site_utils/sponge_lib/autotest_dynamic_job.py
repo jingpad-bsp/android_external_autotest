@@ -10,7 +10,7 @@ class DynamicJobInfo(autotest_job_info.AutotestJobInfo):
 
     def create_task_info(self, test):
         """Dynamically creates tasks based on the type of test run."""
-        if 'android_ACTS' in test.subdir:
+        if test.subdir and 'android_ACTS' in test.subdir:
             return acts_job_info.ACTSTaskInfo(test, self)
 
         return super(DynamicJobInfo, self).create_task_info(test)
