@@ -4,6 +4,8 @@
 import json
 import os
 
+import logging
+
 from autotest_lib.site_utils.sponge_lib import autotest_job_info
 
 
@@ -45,13 +47,20 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
         summary_location = os.path.join(
             self.results_dir, 'results/latest/test_run_summary.json')
 
-        with open(summary_location) as fd:
-            self._acts_summary = json.load(fd)
+        try:
+            with open(summary_location) as fd:
+                self._acts_summary = json.load(fd)
 
-        self._summary_block = self._acts_summary['Summary']
+            self._summary_block = self._acts_summary['Summary']
 
-        record_block = self._acts_summary['Results']
-        self._records = list(ACTSRecord(record) for record in record_block)
+            record_block = self._acts_summary['Results']
+            self._records = list(ACTSRecord(record) for record in record_block)
+            self.is_valid = True
+        except Exception as e:
+            logging.error(e.message)
+            logging.error('Bad acts data, reverting to autotest only.')
+            self.is_valid = False
+            self.tags = autotest_job_info.AutotestTaskInfo.tags
 
     @property
     def test_case_count(self):
