@@ -284,6 +284,35 @@ class ChromeCr50(ChromeConsole):
     provides many interfaces to set and get its behavior via console commands.
     This class is to abstract these interfaces.
     """
+    IDLE_COUNT = 'count: (\d+)'
 
     def __init__(self, servo):
         super(ChromeCr50, self).__init__(servo, "cr50_console")
+
+
+    def get_deep_sleep_count(self):
+        """Get the deep sleep count from the idle task"""
+        result = self.send_command_get_output('idle', [self.IDLE_COUNT])
+        return int(result[0][1])
+
+
+    def clear_deep_sleep_count(self):
+        """Clear the deep sleep count"""
+        result = self.send_command_get_output('idle c', [self.IDLE_COUNT])
+        if int(result[0][1]):
+            raise error.TestFail("Could not clear deep sleep count")
+
+
+    def ccd_disable(self):
+        """Change the values of the CC lines to disable CCD"""
+        self._servo.set_nocheck('servo_v4_ccd_mode', 'disconnect')
+        # TODO: Add a better way to wait until usb is disconnected
+        time.sleep(3)
+
+
+    def ccd_enable(self):
+        """Reenable CCD and reset servo interfaces"""
+        self._servo.set_nocheck('servo_v4_ccd_mode', 'ccd')
+        self._servo.set('sbu_mux_enable', 'on')
+        self._servo.set_nocheck('power_state', 'ccd_reset')
+        time.sleep(2)
