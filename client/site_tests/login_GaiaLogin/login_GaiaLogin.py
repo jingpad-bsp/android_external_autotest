@@ -15,19 +15,14 @@ class login_GaiaLogin(test.test):
     version = 1
 
 
-    _USERNAME = 'power.loadtest@gmail.com'
-    _PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
-                '/testing/power-testing/pltp/pltp'
-
-
     def run_once(self, username=None, password=None):
         if username is None:
-            username = self._USERNAME
+            username = chrome.CAP_USERNAME
 
         if password is None:
-            with tempfile.NamedTemporaryFile() as pltp:
-                file_utils.download_file(self._PLTP_URL, pltp.name)
-                password = pltp.read().rstrip()
+            with tempfile.NamedTemporaryFile() as cap:
+                file_utils.download_file(chrome.CAP_URL, cap.name)
+                password = cap.read().rstrip()
 
         if not password:
           raise error.TestFail('Password not set.')
