@@ -37,7 +37,7 @@ public class SuiteRunnerView extends TabView {
   private Button actionButton;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq", "bvt-inline",
-      "cts", "gts", "hardware_storagequal", "hardware_memoryqual",
+      "cts", "cts_N", "gts", "hardware_storagequal", "hardware_memoryqual",
       "faft_setup", "faft_ec", "faft_bios");
 
   @Override
