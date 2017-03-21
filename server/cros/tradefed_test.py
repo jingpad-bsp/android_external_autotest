@@ -110,7 +110,10 @@ class _ChromeLogin(object):
 
 @contextlib.contextmanager
 def lock(filename):
-    """Prevents other autotest/tradefed instances from accessing cache."""
+    """Prevents other autotest/tradefed instances from accessing cache.
+
+    @param filename: The file to be locked.
+    """
     filelock = lockfile.FileLock(filename)
     # It is tempting just to call filelock.acquire(3600). But the implementation
     # has very poor temporal granularity (timeout/10), which is unsuitable for
@@ -330,12 +333,12 @@ class TradefedTest(test.test):
         Tests for the presence of the intent helper app to determine whether ARC
         has finished booting.
         """
-        def intent_helper_running():
+        def _intent_helper_running():
             result = self._run('adb', args=('shell', 'pgrep', '-f',
                                             'org.chromium.arc.intent_helper'))
             return bool(result.stdout)
         utils.poll_for_condition(
-            intent_helper_running,
+            _intent_helper_running,
             exception=error.TestFail(
                 'Error: Timed out waiting for intent helper.'),
             timeout=_ARC_READY_TIMEOUT_SECONDS,
