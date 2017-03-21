@@ -4,7 +4,7 @@
 
 AUTHOR = 'ARC Team'
 NAME = 'cheets_CTS.arm.all'
-ATTRIBUTES = 'suite:arc-cts-stable'
+ATTRIBUTES = 'suite:arc-cts-stable, suite:arc-cts-beta'
 DEPENDENCIES = 'arc'
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
