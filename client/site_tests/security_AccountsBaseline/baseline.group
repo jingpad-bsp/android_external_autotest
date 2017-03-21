@@ -12,7 +12,7 @@ floppy:!:11:root
 news:!:13:news
 uucp:!:14:uucp,gpsd
 console:!:17:
-audio:!:18:cras,chronos,volume
+audio:!:18:cras,chronos,volume,midis
 cdrom:!:19:
 tape:!:26:root
 cdrw:!:80:
@@ -97,3 +97,4 @@ imageloaderd:!:220:
 arc-networkd:!:284:
 authpolicyd-exec:!:607:
 touch_keyboard:!:285:touch_keyboard
+midis:!:608:chronos
