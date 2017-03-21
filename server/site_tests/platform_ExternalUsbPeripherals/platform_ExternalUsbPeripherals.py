@@ -283,6 +283,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.action_step = None
 
         self.host.servo.switch_usbkey('dut')
+        self.set_hub_power(False)
         if (stress_rack):
             self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
         else:
