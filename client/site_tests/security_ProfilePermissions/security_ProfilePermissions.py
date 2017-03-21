@@ -10,7 +10,7 @@ import stat
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import constants, cryptohome
+from autotest_lib.client.cros import cryptohome
 
 
 class security_ProfilePermissions(test.test):
@@ -112,9 +112,7 @@ class security_ProfilePermissions(test.test):
 
             # This next section only applies if we have a real vault mounted
             # (ie, not a BWSI tmpfs).
-            if cryptohome.is_vault_mounted(
-                    username,
-                    device_regex=constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER):
+            if cryptohome.is_permanent_vault_mounted(username):
                 # Also check the permissions of the underlying vault and
                 # supporting directory structure.
                 mountpath = cryptohome.get_mounted_vault_path(username)
