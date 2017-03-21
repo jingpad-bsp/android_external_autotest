@@ -206,9 +206,12 @@ def get_obb_mounter_pid():
 
 def is_android_booted():
     """Return whether Android has completed booting."""
-    output = _android_shell('getprop sys.boot_completed',
-                            ignore_status=True)
-    return output.strip() == '1'
+    # We used to check sys.boot_completed system property to detect Android has
+    # booted in Android M, but in Android N it is set long before BOOT_COMPLETED
+    # intent is broadcast. So we read event logs instead.
+    log = _android_shell(
+        'logcat -d -b events *:S arc_system_event', ignore_status=True)
+    return 'ArcAppLauncher:started' in log
 
 
 def is_android_process_running(process_name):
