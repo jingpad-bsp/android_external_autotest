@@ -453,12 +453,10 @@ class TradefedTest(test.test):
         if parsed.scheme in ['http', 'https']:
             logging.info('Using wget to download %s to %s.', uri, output_dir)
             # We are downloading 1 file at a time, hence using -O over -P.
-            # We also limit the rate to 20MBytes/s
             utils.run(
                 'wget',
                 args=(
                     '--report-speed=bits',
-                    '--limit-rate=20M',
                     '-O',
                     output,
                     uri),
@@ -500,7 +498,6 @@ class TradefedTest(test.test):
                 'wget',
                 args=(
                         '--report-speed=bits',
-                        '--limit-rate=20M',
                         '-O',
                         output,
                         ds_src),
