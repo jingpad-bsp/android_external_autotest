@@ -94,8 +94,8 @@ class performance_InboxInputLatency(test.test):
         """
         button_query = 'document.getElementsByClassName("' + class_name +'")'
         # Make sure the target button is available
-        self.tab.WaitForJavaScriptCondition2(button_query + '.length == 1',
-                                             timeout=_SCRIPT_TIMEOUT)
+        self.tab.WaitForJavaScriptCondition(button_query + '.length == 1',
+                                            timeout=_SCRIPT_TIMEOUT)
         # Perform click action
         self.tab.ExecuteJavaScript(button_query + '[0].click();')
 
