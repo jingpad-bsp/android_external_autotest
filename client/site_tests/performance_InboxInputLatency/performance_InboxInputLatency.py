@@ -36,11 +36,6 @@ _TARGET_EVENT = 'InputLatency::Char'
 _TARGET_TRACING_CATEGORIES = 'input, latencyInfo'
 _TRACING_TIMEOUT = 60
 
-# TODO(cywang): Create new test account for non-powerloadtest.
-_USERNAME = 'powerloadtest@gmail.com'
-_PLTP_URL = ('https://sites.google.com/a/chromium.org/dev/chromium-os'
-             '/testing/power-testing/pltp/pltp')
-
 
 class performance_InboxInputLatency(test.test):
     """Invoke Inbox composer, inject key events then measure latency."""
@@ -54,12 +49,12 @@ class performance_InboxInputLatency(test.test):
         self.keyboard = input_device.InputDevice(device_node)
 
         # Instantiate Chrome browser.
-        with tempfile.NamedTemporaryFile() as pltp:
-            file_utils.download_file(_PLTP_URL, pltp.name)
-            password = pltp.read().rstrip()
+        with tempfile.NamedTemporaryFile() as cap:
+            file_utils.download_file(chrome.CAP_URL, cap.name)
+            password = cap.read().rstrip()
 
         self.browser = chrome.Chrome(gaia_login=True,
-                                     username=_USERNAME,
+                                     username=chrome.CAP_USERNAME,
                                      password=password)
         self.tab = self.browser.browser.tabs[0]
 
