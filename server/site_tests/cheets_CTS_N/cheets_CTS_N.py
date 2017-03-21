@@ -130,7 +130,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             if test_method is not None:
                 cmd += ['-m', test_method]
         else:
-            raise error.TestFail('Error: Need to provide more arguments.')
+            logging.warning('Running all tests. This can take several days.')
+            cmd = ['run', 'commandAndExit', 'cts']
         # We handle media download ourselves in the lab, as lazy as possible.
         cmd.append('--precondition-arg')
         cmd.append('skip-media-download')
@@ -312,8 +313,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 test_method=target_method,
                 session_id=session_id)
         else:
-            raise error.TestFail(
-                'Error: should assign a module, a plan, or a class name')
+            test_command = self._tradefed_run_command()
+            test_name = 'all_CTS'
 
         # Unconditionally run CTS module until we see some tests executed.
         while total_tests == 0 and steps < self._max_retry:
