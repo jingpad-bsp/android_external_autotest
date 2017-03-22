@@ -142,7 +142,7 @@ class AutotestTaskInfo(object):
     @property
     def results_dir(self):
         """The full directory where results are stored for this test."""
-        if self.subdir == '----':
+        if self.subdir == '----' or not self.subdir:
             return self._job.results_dir
         else:
             return os.path.join(self._job.results_dir, self.subdir)
