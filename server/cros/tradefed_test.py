@@ -769,7 +769,7 @@ class TradefedTest(test.test):
         # Regular expressions for start/end messages of each test-run chunk.
         abi_re = r'armeabi-v7a|x86'
         # TODO(kinaba): use the current running module name.
-        module_re = r'\S+Test(?:Case)?s'
+        module_re = r'\S+'
         start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
                               r' (\d+(?:,\d+)?) test' % (abi_re, module_re))
         end_re = re.compile(r'(%s) %s (?:complet|fail)ed in .*\.'
