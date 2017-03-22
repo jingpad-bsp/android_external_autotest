@@ -21,10 +21,10 @@ _ARC_SUPPORT_HOST_PAGENAME = '_generated_background_page.html'
 _DUMPSTATE_DEFAULT_TIMEOUT = 20
 _DUMPSTATE_PATH = '/var/log/arc-dumpstate.log'
 _DUMPSTATE_PIPE_PATH = '/var/run/arc/bugreport/pipe'
-_USERNAME = 'powerloadtest@gmail.com'
-_USERNAME_DISPLAY = 'power.loadtest@gmail.com'
-_PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
-                '/testing/power-testing/pltp/pltp'
+_USERNAME = 'arcplusplustest@gmail.com'
+_USERNAME_DISPLAY = 'arcplusplustest@gmail.com'
+_ARCP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
+                '/testing/arcplusplus-testing/arcp'
 _OPT_IN_BEGIN = 'Initializing ARC opt-in flow.'
 _OPT_IN_FINISH = 'ARC opt-in flow complete.'
 
@@ -136,7 +136,7 @@ def set_browser_options_for_opt_in(b_options):
     """
     b_options.username = _USERNAME
     with tempfile.NamedTemporaryFile() as pltp:
-        file_utils.download_file(_PLTP_URL, pltp.name)
+        file_utils.download_file(_ARCP_URL, pltp.name)
         b_options.password = pltp.read().rstrip()
     b_options.disable_default_apps = False
     b_options.disable_component_extensions_with_background_pages = False
