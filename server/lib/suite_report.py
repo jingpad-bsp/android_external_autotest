@@ -201,14 +201,15 @@ def generate_suite_report(suite_job_id, afe=None, tko=None):
 
     # Retrieve histories for the time of the suite for all associated hosts.
     # TODO: Include all hosts in the pool.
-    histories = [HostJobHistory.get_host_history(afe, hostname,
-                                                 suite_entry['start_time'],
-                                                 suite_entry['finish_time'])
-                 for hostname in sorted(hostnames)]
+    if suite_entry['start_time'] and suite_entry['finish_time']:
+        histories = [HostJobHistory.get_host_history(afe, hostname,
+                                                     suite_entry['start_time'],
+                                                     suite_entry['finish_time'])
+                     for hostname in sorted(hostnames)]
 
-    for history in histories:
-        entries.extend(make_hqe_entry(history.hostname, h, hqe_statuses,
-                                      suite_entry['id']) for h in history)
+        for history in histories:
+            entries.extend(make_hqe_entry(history.hostname, h, hqe_statuses,
+                                          suite_entry['id']) for h in history)
 
     return entries
 
