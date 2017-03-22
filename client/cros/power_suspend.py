@@ -530,8 +530,8 @@ class Suspender(object):
                         self._s0ix_residency_stats.\
                                 get_accumulated_residency_secs()
                 if not s0ix_residency_secs:
-                    raise error.TestFail('Sanity check failed: S0ix ' +
-                                         'residency counter did not change.')
+                    raise sys_power.S0ixResidencyNotChanged(
+                        'S0ix residency did not change.')
                 logging.info('S0ix residency : %d secs.', s0ix_residency_secs)
 
             self.successes.append({
