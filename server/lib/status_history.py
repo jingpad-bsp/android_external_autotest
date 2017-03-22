@@ -164,43 +164,43 @@ class _JobEvent(object):
     @property
     def id(self):
         """Return the id of the event in the AFE database."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def name(self):
         """Return the name of the event."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def job_status(self):
         """Return a short string describing the event's final status."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def logdir(self):
         """Return the relative path for this event's job logs."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def job_url(self):
         """Return the URL for this event's job logs."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def gs_url(self):
         """Return the GS URL for this event's job logs."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def job_id(self):
         """Return the id of the AFE job for HQEs.  None otherwise."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
@@ -217,13 +217,13 @@ class _JobEvent(object):
         @return A valid diagnosis value.
 
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
     @property
     def is_special(self):
         """Return if the event is for a special task."""
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 class _SpecialTaskEvent(_JobEvent):
