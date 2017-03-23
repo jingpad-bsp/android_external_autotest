@@ -153,6 +153,7 @@ class ShardClient(object):
         hosts_serialized = heartbeat_response['hosts']
         jobs_serialized = heartbeat_response['jobs']
         suite_keyvals_serialized = heartbeat_response['suite_keyvals']
+        incorrect_host_ids = heartbeat_response.get('incorrect_host_ids', [])
 
         metrics.Gauge('chromeos/autotest/shard_client/hosts_received'
                       ).set(len(hosts_serialized))
@@ -174,6 +175,10 @@ class ShardClient(object):
                                        for kv in suite_keyvals_serialized])
         logging.info('Heartbeat response contains suite_keyvals_for jobs %s',
                      list(parent_jobs_with_keyval))
+        if incorrect_host_ids:
+            logging.info('Heartbeat response contains incorrect_host_ids %s '
+                         'which will be deleted.', incorrect_host_ids)
+            self._remove_incorrect_hosts(incorrect_host_ids)
 
         # If the master has just sent any jobs that we think have completed,
         # re-sync them with the master. This is especially useful when a
@@ -187,6 +192,20 @@ class ShardClient(object):
             job_ids_repr = ', '.join([str(job.id) for job in job_models])
             logging.warn('Following completed jobs are reset shard_id to NULL '
                          'to be uploaded to master again: %s', job_ids_repr)
+
+
+    def _remove_incorrect_hosts(self, incorrect_host_ids=None):
+        """Remove from local database any hosts that should not exist.
+
+        Entries of |incorrect_host_ids| that are absent from database will be
+        silently ignored.
+
+        @param incorrect_host_ids: a list of ids (as integers) to remove.
+        """
+        if not incorrect_host_ids:
+            return
+
+        models.Host.objects.filter(id__in=incorrect_host_ids).delete()
 
 
     @property
