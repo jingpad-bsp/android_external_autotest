@@ -48,7 +48,7 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
         hqe.set_status('Completed')
 
         # Only incomplete jobs should be in known ids.
-        job_ids, host_ids = client._get_known_ids()
+        job_ids, host_ids, _ = client._get_known_jobs_and_hosts()
         assert(job_ids == [])
 
         # Jobs that have successfully gone through a set_status should
@@ -89,7 +89,7 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
 
         # Make sure the job with a shard but without complete is still
         # in known_ids.
-        job_ids, host_ids = client._get_known_ids()
+        job_ids, host_ids, _ = client._get_known_jobs_and_hosts()
         assert(set(job_ids) == set([job.id]))
 
         # Make sure the job with a shard but without complete is not
