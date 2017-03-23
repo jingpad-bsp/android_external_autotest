@@ -5,7 +5,7 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_CTS.arm.CtsLibcoreTestCases'
+NAME = 'cheets_CTS_N.arm.CtsLibcoreTestCases'
 ATTRIBUTES = 'suite:cts_N'
 DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
