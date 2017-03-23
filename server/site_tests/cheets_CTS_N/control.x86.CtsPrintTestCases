@@ -5,7 +5,7 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_CTS.x86.CtsPrintTestCases'
+NAME = 'cheets_CTS_N.x86.CtsPrintTestCases'
 ATTRIBUTES = 'suite:cts_N'
 DEPENDENCIES = 'arc, cts_abi_x86'
 JOB_RETRIES = 2
