@@ -5,7 +5,7 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_CTS.arm.CtsSustainedPerformanceHostTestCases'
+NAME = 'cheets_CTS_N.arm.CtsSustainedPerformanceHostTestCases'
 ATTRIBUTES = 'suite:cts_N'
 DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
