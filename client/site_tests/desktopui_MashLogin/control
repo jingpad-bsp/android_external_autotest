@@ -16,6 +16,11 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
+BUG_TEMPLATE = {
+  'components': ['Internals>Mus'],
+  'labels': ['Proj-Mustash'],
+  'cc': ['jamescook@chromium.org'],
+}
 
 DOC = """
 chrome --mash has significant differences in its initialization vs.
