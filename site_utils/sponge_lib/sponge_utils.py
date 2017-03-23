@@ -18,6 +18,19 @@ except ImportError:
     sponge = None
 
 
+
+class SpongeLogHandler(logging.Handler):
+    """Helper log handler for logging during sponge."""
+    def __init__(self, log_func):
+        super(SpongeLogHandler, self).__init__()
+        self.log_func = log_func
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.log_func(log_entry)
+
+
+
 @decorators.test_module_available(sponge)
 def upload_results(job, log=logging.debug):
     """Upload test results to Sponge with given job details.
@@ -27,11 +40,22 @@ def upload_results(job, log=logging.debug):
 
     @return: A url to the Sponge invocation.
     """
+    start_level = logging.getLogger().level
+
+    log_handler = SpongeLogHandler(log)
+    logging.getLogger().addHandler(log_handler)
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    logging.info("added log handler")
+
     try:
+        logging.info('Starting sponge upload.')
         info = autotest_dynamic_job.DynamicJobInfo(job)
         return sponge.upload_utils.UploadInfo(info)
     except:
         stack = traceback.format_exc()
-        log('Failed to upload to sponge.')
-        log(str(stack))
-
+        logging.info('Failed to upload to sponge.')
+        logging.info(str(stack))
+    finally:
+        logging.getLogger().removeHandler(log_handler)
+        logging.getLogger().setLevel(start_level)
