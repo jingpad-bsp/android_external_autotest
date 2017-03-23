@@ -81,8 +81,11 @@ class _ChromeLogin(object):
     def __enter__(self):
         """Logs in to the Chrome."""
         logging.info('Ensure Android is running...')
-        autotest.Autotest(self._host).run_test('cheets_CTSHelper',
-                                               check_client_result=True)
+        # If we can't login to Chrome and launch Android we want this job to
+        # die roughly after 5 minutes instead of hanging for the duration.
+        autotest.Autotest(self._host).run_timed_test('cheets_CTSHelper',
+                                                     timeout=300,
+                                                     check_client_result=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit, to wipe out all the login state, reboot the machine.
