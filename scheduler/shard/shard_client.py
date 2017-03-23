@@ -9,8 +9,8 @@ import argparse
 import httplib
 import logging
 import os
+import random
 import signal
-import socket
 import time
 import urllib2
 
@@ -343,7 +343,9 @@ class ShardClient(object):
         """Calls tick() until shutdown() is called."""
         while not self._shutdown:
             self.tick()
-            time.sleep(self.tick_pause_sec)
+            # Sleep with +/- 10% fuzzing to avoid phaselock of shards.
+            tick_fuzz = self.tick_pause_sec * 0.2 * (random.random() - 0.5)
+            time.sleep(self.tick_pause_sec + tick_fuzz)
 
 
     def shutdown(self):
