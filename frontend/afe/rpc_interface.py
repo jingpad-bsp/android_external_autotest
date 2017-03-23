@@ -1997,6 +1997,10 @@ def _assign_board_to_shard_precheck(labels):
 
     @returns: A list of label models that ready to be added to shard.
     """
+    if not labels:
+      # allow creation of label-less shards (labels='' would otherwise fail the
+      # checks below)
+      return []
     labels = labels.split(',')
     label_models = []
     for label in labels:
