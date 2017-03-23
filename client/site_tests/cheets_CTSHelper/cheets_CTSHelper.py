@@ -45,5 +45,5 @@ class cheets_CTSHelper(test.test):
                 time.sleep(20)
                 self.chrome = chrome.Chrome(
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED,
-                            num_tries=10,
+                            num_tries=3,
                             init_network_controller=False)
