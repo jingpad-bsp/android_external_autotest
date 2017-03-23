@@ -1057,66 +1057,19 @@ class AclGroup(dbmodels.Model, model_logic.ModelExtensions):
         return unicode(self.name)
 
 
-class Kernel(dbmodels.Model):
-    """
-    A kernel configuration for a parameterized job
-    """
-    version = dbmodels.CharField(max_length=255)
-    cmdline = dbmodels.CharField(max_length=255, blank=True)
-
-    @classmethod
-    def create_kernels(cls, kernel_list):
-        """Creates all kernels in the kernel list.
-
-        @param cls: Implicit class object.
-        @param kernel_list: A list of dictionaries that describe the kernels,
-            in the same format as the 'kernel' argument to
-            rpc_interface.generate_control_file.
-        @return A list of the created kernels.
-        """
-        if not kernel_list:
-            return None
-        return [cls._create(kernel) for kernel in kernel_list]
-
-
-    @classmethod
-    def _create(cls, kernel_dict):
-        version = kernel_dict.pop('version')
-        cmdline = kernel_dict.pop('cmdline', '')
-
-        if kernel_dict:
-            raise Exception('Extraneous kernel arguments remain: %r'
-                            % kernel_dict)
-
-        kernel, _ = cls.objects.get_or_create(version=version,
-                                              cmdline=cmdline)
-        return kernel
-
-
-    class Meta:
-        """Metadata for class Kernel."""
-        db_table = 'afe_kernels'
-        unique_together = ('version', 'cmdline')
-
-    def __unicode__(self):
-        return u'%s %s' % (self.version, self.cmdline)
-
-
 class ParameterizedJob(dbmodels.Model):
     """
     Auxiliary configuration for a parameterized job.
+
+    This class is obsolete, and ought to be dead.  Due to a series of
+    unfortunate events, it can't be deleted:
+      * In `class Job` we're required to keep a reference to this class
+        for the sake of the scheduler unit tests.
+      * The existence of the reference in `Job` means that certain
+        methods here will get called from the `get_jobs` RPC.
+    So, the definitions below seem to be the minimum stub we can support
+    unless/until we change the database schema.
     """
-    test = dbmodels.ForeignKey(Test)
-    label = dbmodels.ForeignKey(Label, null=True)
-    use_container = dbmodels.BooleanField(default=False)
-    profile_only = dbmodels.BooleanField(default=False)
-    upload_kernel_config = dbmodels.BooleanField(default=False)
-
-    kernels = dbmodels.ManyToManyField(
-            Kernel, db_table='afe_parameterized_job_kernels')
-    profilers = dbmodels.ManyToManyField(
-            Profiler, through='ParameterizedJobProfiler')
-
 
     @classmethod
     def smart_get(cls, id_or_name, *args, **kwargs):
@@ -1143,59 +1096,6 @@ class ParameterizedJob(dbmodels.Model):
 
     def __unicode__(self):
         return u'%s (parameterized) - %s' % (self.test.name, self.job())
-
-
-class ParameterizedJobProfiler(dbmodels.Model):
-    """
-    A profiler to run on a parameterized job
-    """
-    parameterized_job = dbmodels.ForeignKey(ParameterizedJob)
-    profiler = dbmodels.ForeignKey(Profiler)
-
-    class Meta:
-        """Metedata for class ParameterizedJobProfiler."""
-        db_table = 'afe_parameterized_jobs_profilers'
-        unique_together = ('parameterized_job', 'profiler')
-
-
-class ParameterizedJobProfilerParameter(dbmodels.Model):
-    """
-    A parameter for a profiler in a parameterized job
-    """
-    parameterized_job_profiler = dbmodels.ForeignKey(ParameterizedJobProfiler)
-    parameter_name = dbmodels.CharField(max_length=255)
-    parameter_value = dbmodels.TextField()
-    parameter_type = dbmodels.CharField(
-            max_length=8, choices=model_attributes.ParameterTypes.choices())
-
-    class Meta:
-        """Metadata for class ParameterizedJobProfilerParameter."""
-        db_table = 'afe_parameterized_job_profiler_parameters'
-        unique_together = ('parameterized_job_profiler', 'parameter_name')
-
-    def __unicode__(self):
-        return u'%s - %s' % (self.parameterized_job_profiler.profiler.name,
-                             self.parameter_name)
-
-
-class ParameterizedJobParameter(dbmodels.Model):
-    """
-    Parameters for a parameterized job
-    """
-    parameterized_job = dbmodels.ForeignKey(ParameterizedJob)
-    test_parameter = dbmodels.ForeignKey(TestParameter)
-    parameter_value = dbmodels.TextField()
-    parameter_type = dbmodels.CharField(
-            max_length=8, choices=model_attributes.ParameterTypes.choices())
-
-    class Meta:
-        """Metadata for class ParameterizedJobParameter."""
-        db_table = 'afe_parameterized_job_parameters'
-        unique_together = ('parameterized_job', 'test_parameter')
-
-    def __unicode__(self):
-        return u'%s - %s' % (self.parameterized_job.job().name,
-                             self.test_parameter.name)
 
 
 class JobManager(model_logic.ExtendedManager):
@@ -1400,6 +1300,13 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     max_runtime_mins = dbmodels.IntegerField(default=DEFAULT_MAX_RUNTIME_MINS)
     drone_set = dbmodels.ForeignKey(DroneSet, null=True, blank=True)
 
+    # TODO(jrbarnette)  We have to keep `parameterized_job` around or it
+    # breaks the scheduler_models unit tests (and fixing the unit tests
+    # will break the scheduler, so don't do that).
+    #
+    # The ultimate fix is to delete the column from the database table
+    # at which point, you _must_ delete this.  Until you're ready to do
+    # that, DON'T MUCK WITH IT.
     parameterized_job = dbmodels.ForeignKey(ParameterizedJob, null=True,
                                             blank=True)
 
@@ -1452,7 +1359,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         AclGroup.check_for_acl_violation_hosts(hosts)
 
         control_file = options.get('control_file')
-        parameterized_job = options.get('parameterized_job')
 
         user = User.current_user()
         if options.get('reboot_before') is None:
@@ -1483,7 +1389,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             parse_failed_repair=options.get('parse_failed_repair'),
             created_on=datetime.now(),
             drone_set=drone_set,
-            parameterized_job=parameterized_job,
             parent_job=options.get('parent_job_id'),
             test_retry=options.get('test_retry'),
             run_reset=options.get('run_reset'),
@@ -1554,18 +1459,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             Job.objects.filter(pk__in=job_ids).update(shard=shard)
             return list(Job.objects.filter(pk__in=job_ids).all())
         return []
-
-
-    def save(self, *args, **kwargs):
-        # The current implementation of parameterized jobs requires that only
-        # control files or parameterized jobs are used. Using the image
-        # parameter on autoupdate_ParameterizedJob doesn't mix pure
-        # parameterized jobs and control files jobs, it does muck enough with
-        # normal jobs by adding a parameterized id to them that this check will
-        # fail. So for now we just skip this check.
-        # cls.check_parameterized_job(control_file=self.control_file,
-        #                             parameterized_job=self.parameterized_job)
-        super(Job, self).save(*args, **kwargs)
 
 
     def queue(self, hosts, is_template=False):
