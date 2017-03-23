@@ -96,13 +96,8 @@ class shard_create(action_common.atest_create, shard):
     def parse(self):
         (options, leftover) = super(shard_create, self).parse(
                 req_items='shards')
-        if not options.labels:
-            print ('Must provide one or more labels separated by a comma '
-                  'with -l <labels>')
-            self.parser.print_help()
-            sys.exit(1)
         self.data_item_key = 'hostname'
-        self.data['labels'] = options.labels
+        self.data['labels'] = options.labels or ''
         return (options, leftover)
 
 
