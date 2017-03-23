@@ -1,4 +1,4 @@
-#pylint: disable-msg=C0111
+# pylint: disable=missing-docstring
 """
 Utility functions for rpc_interface.py.  We keep them in a separate file so that
 only RPC interface functions go into that file.
@@ -756,7 +756,6 @@ def create_job_common(
         hostless=False,
         keyvals=None,
         drone_set=None,
-        parameterized_job=None,
         parent_job_id=None,
         test_retry=0,
         run_reset=True,
@@ -815,7 +814,6 @@ def create_job_common(
                    parse_failed_repair=parse_failed_repair,
                    keyvals=keyvals,
                    drone_set=drone_set,
-                   parameterized_job=parameterized_job,
                    parent_job_id=parent_job_id,
                    test_retry=test_retry,
                    run_reset=run_reset,
