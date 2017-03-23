@@ -100,9 +100,9 @@ def create_acts_package_from_zip(test_station, zip_location, target_zip_file):
         zip_location = os.path.join(CONFIG_FOLDER_LOCATION, 'acts_artifacts',
                                     zip_location)
 
-    remote_zip = test_station.send_file(zip_location, target_zip_file)
+    test_station.send_file(zip_location, target_zip_file)
 
-    return ActsPackage(test_station, remote_zip)
+    return ActsPackage(test_station, target_zip_file)
 
 
 class ActsPackage(object):
