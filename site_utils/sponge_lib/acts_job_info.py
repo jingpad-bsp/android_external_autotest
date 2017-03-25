@@ -1,6 +1,8 @@
 # Copyright 2017 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+import glob
 import json
 import os
 
@@ -45,7 +47,38 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
         super(ACTSTaskInfo, self).__init__(test, job)
 
         summary_location = os.path.join(
-            self.results_dir, 'results/latest/test_run_summary.json')
+                self.results_dir, 'results/latest/test_run_summary.json')
+
+        build_info_location = os.path.join(self.results_dir,
+                'results/BUILD_INFO-*')
+        build_info_files = glob.iglob(build_info_location)
+
+        try:
+            build_info_file = next(build_info_files)
+            logging.info('Using build info file: %s', build_info_file)
+            with open(build_info_file) as fd:
+                self.build_info = json.load(fd)
+        except Exception as e:
+            logging.exception(e)
+            logging.error('Bad build info file.')
+            self.build_info = {}
+
+        try:
+            build_prop_str = self.build_info['build_prop']
+            prop_dict = {}
+            self.build_info['build_prop'] = prop_dict
+            lines = build_prop_str.splitlines()
+            for line in lines:
+                parts = line.split('=')
+
+                if len(parts) != 2:
+                    continue
+
+                prop_dict[parts[0]] = parts[1]
+        except Exception as e:
+            logging.exception(e)
+            logging.error('Bad build prop data, using default empty dict')
+            self.build_info['build_prop'] = {}
 
         try:
             with open(summary_location) as fd:
@@ -57,7 +90,7 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
             self._records = list(ACTSRecord(record) for record in record_block)
             self.is_valid = True
         except Exception as e:
-            logging.error(e.message)
+            logging.exception(e)
             logging.error('Bad acts data, reverting to autotest only.')
             self.is_valid = False
             self.tags = autotest_job_info.AutotestTaskInfo.tags
@@ -85,7 +118,8 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     @property
     def effort_name(self):
         """The test tracker effort name."""
-        return self._job.build_version or 'UNKNOWN_BUILD'
+        return self.build_info.get('build_prop', {}).get(
+            'ro.build.version.incremental', 'UNKNOWN_BUILD')
 
     @property
     def project_id(self):
@@ -95,7 +129,7 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     @property
     def environment(self):
         """The name of the enviroment for test tracker."""
-        return self._job.board or 'UNKNOWN_BOARD'
+        return self.build_info.get('branch', 'UNKNOWN_BRANCH')
 
 
 class ACTSRecord(object):
