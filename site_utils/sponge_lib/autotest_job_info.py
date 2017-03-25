@@ -1,6 +1,8 @@
 # Copyright 2017 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+import logging
 import os
 import socket
 import time
@@ -91,6 +93,7 @@ class AutotestJobInfo(object):
 
         @returns The task info.
         """
+        logging.info('Using default autotest task info for %s.', test.testname)
         return AutotestTaskInfo(test, self)
 
 
