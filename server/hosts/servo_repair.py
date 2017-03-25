@@ -328,10 +328,10 @@ def create_servo_repair_strategy():
     """
     config = ['brd_config', 'ser_config']
     verify_dag = [
-        (repair.SshVerifier,         'ssh',         []),
-        (_UpdateVerifier,            'update',      ['ssh']),
-        (_BoardConfigVerifier,       'brd_config',  ['ssh']),
-        (_SerialConfigVerifier,      'ser_config',  ['ssh']),
+        (repair.SshVerifier,         'servo_ssh',   []),
+        (_UpdateVerifier,            'update',      ['servo_ssh']),
+        (_BoardConfigVerifier,       'brd_config',  ['servo_ssh']),
+        (_SerialConfigVerifier,      'ser_config',  ['servo_ssh']),
         (_ServodJobVerifier,         'job',         config),
         (_ServodConnectionVerifier,  'servod',      ['job']),
         (_PowerButtonVerifier,       'pwr_button',  ['servod']),
@@ -348,8 +348,8 @@ def create_servo_repair_strategy():
 
     servod_deps = ['job', 'servod', 'pwr_button', 'lid_open']
     repair_actions = [
-        (repair.RPMCycleRepair, 'rpm', [], ['ssh']),
-        (_RestartServod, 'restart', ['ssh'], config + servod_deps),
-        (_ServoRebootRepair, 'reboot', ['ssh'], servod_deps),
+        (repair.RPMCycleRepair, 'rpm', [], ['servo_ssh']),
+        (_RestartServod, 'restart', ['servo_ssh'], config + servod_deps),
+        (_ServoRebootRepair, 'reboot', ['servo_ssh'], servod_deps),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
