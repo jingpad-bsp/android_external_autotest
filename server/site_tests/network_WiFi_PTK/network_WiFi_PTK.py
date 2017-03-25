@@ -38,7 +38,7 @@ class network_WiFi_PTK(wifi_cell_test_base.WiFiCellTestBase):
                     security_config=wpa_config)
         # TODO(wiley) This is just until we find the source of these
         #             test failures.
-        self.context.router.start_capture(ap_config.frequency)
+        self.context.capture_host.start_capture(ap_config.frequency)
         self.context.configure(ap_config)
         assoc_params = xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid(),
@@ -61,3 +61,4 @@ class network_WiFi_PTK(wifi_cell_test_base.WiFiCellTestBase):
                                     ping_result.loss)
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
+        self.context.capture_host.stop_capture()
