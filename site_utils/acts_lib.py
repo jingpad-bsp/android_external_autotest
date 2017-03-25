@@ -194,16 +194,20 @@ class AndroidTestingEnviroment(object):
 
         self.testbed_name = testbed_name
 
-    def install_sl4a_apk(self):
-        """Install sl4a to a test bed."""
+    def install_sl4a_apk(self, force_reinstall=True):
+        """Install sl4a to a test bed.
+
+        @param force_reinstall: If true the apk will be force to reinstall.
+        """
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
                 adb_host,
                 constants.SL4A_APK,
                 constants.SL4A_ARTIFACT,
-                package_name=constants.SL4A_PACKAGE)
+                package_name=constants.SL4A_PACKAGE,
+                force_reinstall=force_reinstall)
 
-    def install_apk(self, apk_info):
+    def install_apk(self, apk_info, force_reinstall=True):
         """Installs an additional apk on all adb devices.
 
         @param apk_info: A dictionary contianing the apk info. This dictionary
@@ -212,13 +216,15 @@ class AndroidTestingEnviroment(object):
                             package="Name of the package".
                             artifact="Name of the artifact", if missing
                                       the package name is used."
+        @param force_reinstall: If true the apk will be forced to reinstall.
         """
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
                 adb_host,
                 apk_info['apk'],
                 apk_info.get('artifact') or constants.SL4A_ARTIFACT,
-                package_name=apk_info['package'])
+                package_name=apk_info['package'],
+                force_reinstall=force_reinstall)
 
 
 class ActsContainer(object):
