@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -17,10 +17,9 @@ import os
 import common
 
 from autotest_lib.server import frontend
-from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite import job_status
-from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost, FakeJob
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeStatus
 
 
@@ -92,8 +91,8 @@ class StatusTest(mox.MoxTestBase):
         self.expect_result_gathering(jobs[0])
         # Expect us to poll twice.
         self.mox.StubOutWithMock(time, 'sleep')
-        time.sleep(5)
-        time.sleep(5)
+        time.sleep(mox.IgnoreArg())
+        time.sleep(mox.IgnoreArg())
         self.mox.ReplayAll()
 
         results = [result for result in job_status.wait_for_results(self.afe,
@@ -151,7 +150,7 @@ class StatusTest(mox.MoxTestBase):
             for job in yield_this:
                 self.expect_yield_job_entries(job)
                 job_id_set.remove(job.id)
-            time.sleep(5)
+            time.sleep(mox.IgnoreArg())
         self.mox.ReplayAll()
 
         results = [result for result in job_status.wait_for_child_results(

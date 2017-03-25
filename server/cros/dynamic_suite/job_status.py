@@ -2,15 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, os, time
+import datetime
+import logging
+import os
+import random
+import time
 
 
 from autotest_lib.client.common_lib import base_job, global_config, log
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.host_queue_entry_states \
-    import IntStatus as HqeIntStatus
 
-DEFAULT_POLL_INTERVAL_SECONDS = 10
+_DEFAULT_POLL_INTERVAL_SECONDS = 30.0
 
 HQE_MAXIMUM_ABORT_RATE_FLOAT = global_config.global_config.get_config_value(
             'SCHEDULER', 'hqe_maximum_abort_rate_float', type=float,
@@ -207,7 +209,7 @@ def wait_for_child_results(afe, tko, parent_job_id):
                     # Return nothing if 'send' is called
                     yield None
 
-        time.sleep(5)
+        time.sleep(_DEFAULT_POLL_INTERVAL_SECONDS * (random.random() + 0.5))
 
 
 def wait_for_results(afe, tko, jobs):
@@ -239,7 +241,7 @@ def wait_for_results(afe, tko, jobs):
                     # Return nothing if 'send' is called
                     yield None
 
-        time.sleep(5)
+        time.sleep(_DEFAULT_POLL_INTERVAL_SECONDS * (random.random() + 0.5))
 
 
 class Status(object):
