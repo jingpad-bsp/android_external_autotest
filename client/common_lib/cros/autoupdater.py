@@ -5,7 +5,6 @@
 import glob
 import logging
 import os
-import time
 import re
 import urlparse
 import urllib2
@@ -150,8 +149,8 @@ class BaseUpdater(object):
         We use the `update_engine_client -status' command and parse the line
         indicating the update state, e.g. "CURRENT_OP=UPDATE_STATUS_IDLE".
         """
-        update_status = self.host.run(
-            '%s -status | grep CURRENT_OP' % self.updater_ctrl_bin)
+        update_status = self.host.run(command='%s -status | grep CURRENT_OP' %
+                                      self.updater_ctrl_bin)
         return update_status.stdout.strip().split('=')[-1]
 
 
@@ -206,11 +205,47 @@ class BaseUpdater(object):
             raise RootFSUpdateError(message)
 
 
+    def _wait_for_update_service(self):
+        """Ensure that the update engine daemon is running, possibly
+        by waiting for it a bit in case the DUT just rebooted and the
+        service hasn't started yet.
+        """
+        def handler(e):
+            """Retry exception handler.
+
+            Assumes that the error is due to the update service not having
+            started yet.
+
+            @param e: the exception intercepted by the retry util.
+            """
+            if isinstance(e, error.AutoservRunError):
+                logging.debug('update service check exception: %s\n'
+                              'retrying...', e)
+                return True
+            else:
+                return False
+
+        # Retry at most three times, every 5s.
+        status = retry_util.GenericRetry(handler, 3,
+                                         self.check_update_status,
+                                         sleep=5)
+
+        # Expect the update engine to be idle.
+        if status != UPDATER_IDLE:
+            raise ChromiumOSError('%s is not in an installable state' %
+                                  self.host.hostname)
+
+
     def trigger_update(self):
         """Triggers a background update.
 
         @raise RootFSUpdateError or unknown Exception if anything went wrong.
         """
+        # If this function is called immediately after reboot (which it is at
+        # this time), there is no guarantee that the update service is up and
+        # running yet, so wait for it.
+        self._wait_for_update_service()
+
         autoupdate_cmd = ('%s --check_for_update --omaha_url=%s' %
                           (self.updater_ctrl_bin, self.update_url))
         run_args = {'command': autoupdate_cmd}
@@ -324,23 +359,7 @@ class ChromiumOSUpdater(BaseUpdater):
         self._run('start update-engine')
 
         # Wait for update engine to be ready.
-        retry=3
-        while retry >= 0:
-            retry -= 1
-            try:
-                status = self.check_update_status()
-                break
-            except error.AutoservRunError as e:
-              if retry > 0:
-                  logging.info('Retrying to get the update_engine status...')
-                  time.sleep(5)
-                  continue
-              else:
-                  raise e
-
-        if status != UPDATER_IDLE:
-            raise ChromiumOSError('%s is not in an installable state' %
-                                  self.host.hostname)
+        self._wait_for_update_service()
 
 
     def _run(self, cmd, *args, **kwargs):
