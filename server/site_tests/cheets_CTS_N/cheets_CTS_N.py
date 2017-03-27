@@ -390,12 +390,20 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                     # Consistency check, did we really run as many as we
                     # thought initially?
                     if expected_tests != tests:
-                        retry_inconsistency_error = ('Retry inconsistency - '
+                        msg = ('Retry inconsistency - '
                            'initially saw %d failed+notexecuted, ran %d tests. '
                            'passed=%d, failed=%d, notexecuted=%d, waived=%d.' %
                            (expected_tests, tests, passed, failed, notexecuted,
                             waived))
-                        logging.warning(retry_inconsistency_error)
+                        logging.warning(msg)
+                        if expected_tests > tests:
+                            # See b/36523200#comment8. Due to the existence of
+                            # the multiple tests having the same ID, more cases
+                            # may be run than previous fail count. As a
+                            # workaround, making it an error only when the tests
+                            # run were less than expected.
+                            # TODO(kinaba): Find a way to handle this dup.
+                            retry_inconsistency_error = msg
                     if not self._consistent(tests, passed, failed, notexecuted):
                         logging.warning('Tradefed inconsistency - retrying.')
                         session_id, counts = self._tradefed_retry(test_name,
