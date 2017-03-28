@@ -34,8 +34,7 @@ class cheets_CTSHelper(test.test):
             # ensure the machine will be rebooted after test.
             try:
                 self.chrome = chrome.Chrome(
-                            arc_mode=arc.arc_common.ARC_MODE_ENABLED,
-                            init_network_controller=False)
+                            arc_mode=arc.arc_common.ARC_MODE_ENABLED)
             except:
                 # We are going to paper over some failures here. Notice these
                 # should still be detected by regularly running
@@ -45,5 +44,4 @@ class cheets_CTSHelper(test.test):
                 time.sleep(20)
                 self.chrome = chrome.Chrome(
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED,
-                            num_tries=3,
-                            init_network_controller=False)
+                            num_tries=3)
