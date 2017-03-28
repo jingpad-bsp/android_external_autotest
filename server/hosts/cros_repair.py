@@ -288,11 +288,11 @@ class ServoSysRqRepair(hosts.RepairAction):
             crashcollect.get_crashinfo(host, None)
             return
         raise hosts.AutoservRepairError(
-                '%s is still offline after reset.' % host.hostname)
+                '%s is still offline after sysrq-x.' % host.hostname)
 
     @property
     def description(self):
-        return 'Reset the DUT via kernel sysrq'
+        return 'Reset the DUT via keyboard sysrq-x'
 
 
 class ServoResetRepair(hosts.RepairAction):
@@ -311,7 +311,7 @@ class ServoResetRepair(hosts.RepairAction):
             crashcollect.get_crashinfo(host, None)
             return
         raise hosts.AutoservRepairError(
-                '%s is still offline after reset.' % host.hostname)
+                '%s is still offline after servo reset.' % host.hostname)
 
     @property
     def description(self):
