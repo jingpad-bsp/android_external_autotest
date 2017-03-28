@@ -484,7 +484,8 @@ class ArcTest(test.test):
                     self._chrome.close()
 
     def arc_setup(self, dep_package=None, apks=None, full_pkg_names=[],
-                  uiautomator=False, email_id=None, password=None):
+                  uiautomator=False, email_id=None, password=None,
+                  block_outbound=False):
         """ARC test setup: Setup dependencies and install apks.
 
         This function disables package verification and enables non-market
@@ -500,6 +501,7 @@ class ArcTest(test.test):
         @param email_id: email id to be attached to the android. Only used
                          when  account_util is set to true.
         @param password: password related to the email_id.
+        @param block_outbound: block outbound network traffic during a test.
         """
         if not self.initialized:
             logging.info('Skipping ARC setup: not initialized')
@@ -557,6 +559,8 @@ class ArcTest(test.test):
         if self.uiautomator:
             path = os.path.join(self.autodir, 'deps', self._PKG_UIAUTOMATOR)
             sys.path.append(path)
+        if block_outbound:
+            self.block_outbound()
 
     def _stop_logcat(self):
         """Stop the adb logcat process gracefully."""
@@ -609,13 +613,12 @@ class ArcTest(test.test):
         """ Blocks the connection from the container to outer network.
 
             The iptables settings accept only 192.168.254.2 port 5555 (adb) and
-            localhost port 9008 (uiautomator)
+            all local connections, e.g. uiautomator.
         """
         logging.info('Blocking outbound connection')
         _android_shell('iptables -I OUTPUT -j REJECT')
         _android_shell('iptables -I OUTPUT -p tcp -s 192.168.254.2 --sport 5555 -j ACCEPT')
-        _android_shell('iptables -I OUTPUT -p tcp -d localhost --dport 9008 -j ACCEPT')
-        _android_shell('iptables -I OUTPUT -p tcp -s localhost --sport 9008 -j ACCEPT')
+        _android_shell('iptables -I OUTPUT -p tcp -d localhost -j ACCEPT')
 
 
     def unblock_outbound(self):
@@ -626,7 +629,6 @@ class ArcTest(test.test):
             unblock the outbound connections during the test if needed.
         """
         logging.info('Unblocking outbound connection')
-        _android_shell('iptables -D OUTPUT -p tcp -s localhost --sport 9008 -j ACCEPT')
-        _android_shell('iptables -D OUTPUT -p tcp -d localhost --dport 9008 -j ACCEPT')
+        _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
         _android_shell('iptables -D OUTPUT -p tcp -s 192.168.254.2 --sport 5555 -j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
