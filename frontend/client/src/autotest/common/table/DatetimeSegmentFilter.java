@@ -2,6 +2,7 @@ package autotest.common.table;
 
 import autotest.common.ui.DateTimeBox;
 
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -41,6 +42,19 @@ public class DatetimeSegmentFilter extends SimpleFilter {
         CalendarUtil.addDaysToDate(placeHolderDate, -7);
         placeHolderStartDatetime = dateTimeFormat.format(placeHolderDate) + "T00:00";
         setStartTimeToPlaceHolderValue();
+
+        addValueChangeHandler(
+            new ValueChangeHandler() {
+                public void onValueChange(ValueChangeEvent event) {
+                    notifyListeners();
+                }
+            },
+            new ValueChangeHandler() {
+                public void onValueChange(ValueChangeEvent event) {
+                    notifyListeners();
+                }
+            }
+        );
     }
 
     @Override
