@@ -1,0 +1,59 @@
+03-15 20:51:45 I/ModuleRepo: chromeos2-row5-rack10-host7:22 running 2 modules, expected to complete in 2m 0s
+03-15 20:51:45 I/CompatibilityTest: Starting 2 modules on chromeos2-row5-rack10-host7:22
+03-15 20:51:45 D/ConfigurationFactory: Loading configuration 'system-status-checkers'
+03-15 20:51:45 I/CompatibilityTest: Running system status checker before module execution: GtsSearchHostTestCases
+03-15 20:51:45 D/ModuleDef: Preparer: StubTargetPreparer
+03-15 20:51:45 D/TargetPreparer: skipping target prepare step
+03-15 20:51:45 D/ModuleDef: Test: JarHostTest
+03-15 20:51:45 D/BackgroundDeviceAction: Waiting for device chromeos2-row5-rack10-host7:22 online before starting.
+03-15 20:51:45 D/BackgroundDeviceAction: Device chromeos2-row5-rack10-host7:22 now online.
+03-15 20:51:45 D/BackgroundDeviceAction: Starting logcat for chromeos2-row5-rack10-host7:22.
+03-15 20:51:45 D/ModuleListener: ModuleListener.testRunStarted(com.google.android.search.gts.SearchHostTest, 1)
+03-15 20:51:45 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] Starting x86 GtsSearchHostTestCases with 1 test
+03-15 20:51:45 D/DeviceTestCase: Running com.google.android.search.gts.SearchHostTest#testHotword()
+03-15 20:51:45 D/ModuleListener: ModuleListener.testStarted(com.google.android.search.gts.SearchHostTest#testHotword)
+03-15 20:51:46 D/ModuleListener: ModuleListener.testEnded(com.google.android.search.gts.SearchHostTest#testHotword, {})
+03-15 20:51:46 I/ConsoleReporter: [1/1 x86 GtsSearchHostTestCases chromeos2-row5-rack10-host7:22] com.google.android.search.gts.SearchHostTest#testHotword pass
+03-15 20:51:46 D/ModuleListener: ModuleListener.testRunEnded(1001, {})
+03-15 20:51:46 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] x86 GtsSearchHostTestCases completed in 1s. 1 passed, 0 failed, 0 not executed
+03-15 20:51:46 D/ModuleListener: ModuleListener.testRunStarted(com.google.android.search.gts.GoogleSearchWidgetTest, 1)
+03-15 20:51:46 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] Continuing x86 GtsSearchHostTestCases with 2 tests
+03-15 20:51:46 D/DeviceTestCase: Running com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence()
+03-15 20:51:46 D/ModuleListener: ModuleListener.testStarted(com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence)
+03-15 20:51:47 D/ModuleListener: ModuleListener.testEnded(com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence, {})
+03-15 20:51:47 I/ConsoleReporter: [2/2 x86 GtsSearchHostTestCases chromeos2-row5-rack10-host7:22] com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence pass
+03-15 20:51:47 D/ModuleListener: ModuleListener.testRunEnded(953, {})
+03-15 20:51:47 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] x86 GtsSearchHostTestCases completed in 953 ms. 2 passed, 0 failed, 0 not executed
+03-15 20:51:47 W/CompatibilityTest: Inaccurate runtime hint for x86 GtsSearchHostTestCases, expected 1m 0s was 1s
+03-15 20:51:47 I/CompatibilityTest: Running system status checker after module execution: GtsSearchHostTestCases
+03-15 20:51:47 D/WifiUtil.apk5493596675121158066.apk: Uploading WifiUtil.apk5493596675121158066.apk onto device 'chromeos2-row5-rack10-host7:22'
+03-15 20:51:47 D/Device: Uploading file onto device 'chromeos2-row5-rack10-host7:22'
+03-15 20:51:49 I/MonitoringUtils: Connectivity: passed check.
+03-15 20:51:49 I/CompatibilityTest: Running system status checker before module execution: GtsSearchHostTestCases
+03-15 20:51:49 D/ModuleDef: Preparer: StubTargetPreparer
+03-15 20:51:49 D/TargetPreparer: skipping target prepare step
+03-15 20:51:49 D/ModuleDef: Test: JarHostTest
+03-15 20:51:49 D/ModuleListener: ModuleListener.testRunStarted(com.google.android.search.gts.SearchHostTest, 1)
+03-15 20:51:49 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] Starting armeabi-v7a GtsSearchHostTestCases with 1 test
+03-15 20:51:49 D/DeviceTestCase: Running com.google.android.search.gts.SearchHostTest#testHotword()
+03-15 20:51:49 D/ModuleListener: ModuleListener.testStarted(com.google.android.search.gts.SearchHostTest#testHotword)
+03-15 20:51:50 D/ModuleListener: ModuleListener.testEnded(com.google.android.search.gts.SearchHostTest#testHotword, {})
+03-15 20:51:50 I/ConsoleReporter: [1/1 armeabi-v7a GtsSearchHostTestCases chromeos2-row5-rack10-host7:22] com.google.android.search.gts.SearchHostTest#testHotword pass
+03-15 20:51:50 D/ModuleListener: ModuleListener.testRunEnded(918, {})
+03-15 20:51:50 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] armeabi-v7a GtsSearchHostTestCases completed in 918 ms. 1 passed, 0 failed, 0 not executed
+03-15 20:51:50 D/ModuleListener: ModuleListener.testRunStarted(com.google.android.search.gts.GoogleSearchWidgetTest, 1)
+03-15 20:51:50 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] Continuing armeabi-v7a GtsSearchHostTestCases with 2 tests
+03-15 20:51:50 D/DeviceTestCase: Running com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence()
+03-15 20:51:50 D/ModuleListener: ModuleListener.testStarted(com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence)
+03-15 20:51:51 D/ModuleListener: ModuleListener.testEnded(com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence, {})
+03-15 20:51:51 I/ConsoleReporter: [2/2 armeabi-v7a GtsSearchHostTestCases chromeos2-row5-rack10-host7:22] com.google.android.search.gts.GoogleSearchWidgetTest#testWidgetPresence pass
+03-15 20:51:51 D/ModuleListener: ModuleListener.testRunEnded(973, {})
+03-15 20:51:51 I/ConsoleReporter: [chromeos2-row5-rack10-host7:22] armeabi-v7a GtsSearchHostTestCases completed in 973 ms. 2 passed, 0 failed, 0 not executed
+03-15 20:51:51 W/CompatibilityTest: Inaccurate runtime hint for armeabi-v7a GtsSearchHostTestCases, expected 1m 0s was 1s
+03-15 20:51:51 I/CompatibilityTest: Running system status checker after module execution: GtsSearchHostTestCases
+03-15 20:51:51 I/MonitoringUtils: Connectivity: passed check.
+03-15 20:51:51 D/RunUtil: run interrupt allowed: false
+03-15 20:51:51 W/BatteryFetcher: IOException getting battery level for device chromeos2-row5-rack10-host7:22: Unrecognized response to battery level queries
+03-15 20:51:55 I/ResultReporter: Invocation finished in 14s. PASSED: 4, FAILED: 0, NOT EXECUTED: 0, MODULES: 2 of 2
+03-15 20:51:55 I/ResultReporter: Test Result: /tmp/autotest-tradefed-install_9XGnX4/3b26794769c6c72bdeb40572f2c1e674/gts-4.1_r1-3556119/android-gts/results/2017.03.15_20.51.40/test_result.xml
+03-15 20:51:55 I/ResultReporter: Full Result: /tmp/autotest-tradefed-install_9XGnX4/3b26794769c6c72bdeb40572f2c1e674/gts-4.1_r1-3556119/android-gts/results/2017.03.15_20.51.40.zip
