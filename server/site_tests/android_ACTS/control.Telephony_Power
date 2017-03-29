@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_Power'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_power'
-DEPENDENCIES = 'board:telephony_monsoon'
+DEPENDENCIES = 'power:telephony'
 
 DOC = """
 This test runs telephony power test.
