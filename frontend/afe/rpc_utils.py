@@ -939,19 +939,20 @@ def find_records_for_shard(shard, known_job_ids, known_host_ids):
     @param known_job_ids: List of ids of jobs the shard already has.
     @param known_host_ids: List of ids of hosts the shard already has.
 
-    @returns: Tuple of three lists for hosts, jobs, and suite job keyvals:
-              (hosts, jobs, suite_job_keyvals).
+    @returns: Tuple of lists:
+              (hosts, jobs, suite_job_keyvals, invalid_host_ids)
     """
     timer = autotest_stats.Timer('shard_heartbeat')
     with timer.get_client('find_hosts'):
-        hosts = models.Host.assign_to_shard(shard, known_host_ids)
+        hosts, invalid_host_ids = models.Host.assign_to_shard(
+                shard, known_host_ids)
     with timer.get_client('find_jobs'):
         jobs = models.Job.assign_to_shard(shard, known_job_ids)
     with timer.get_client('find_suite_job_keyvals'):
         parent_job_ids = [job.parent_job_id for job in jobs]
         suite_job_keyvals = models.JobKeyval.objects.filter(
                 job_id__in=parent_job_ids)
-    return hosts, jobs, suite_job_keyvals
+    return hosts, jobs, suite_job_keyvals, invalid_host_ids
 
 
 def _persist_records_with_type_sent_from_shard(

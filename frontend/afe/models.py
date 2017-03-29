@@ -510,6 +510,10 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         Hosts that are assigned to the shard but aren't already present on the
         shard are returned.
 
+        Any boards that are in |known_ids| but that do not belong to the shard
+        are incorrect ids, which are also returned so that the shard can remove
+        them locally.
+
         Board to shard mapping is many-to-one. Many different boards can be
         hosted in a shard. However, DUTs of a single board cannot be distributed
         into more than one shard.
@@ -523,7 +527,9 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                           The number of hosts usually lies in O(100), so the
                           overhead is acceptable.
 
-        @returns the hosts objects that should be sent to the shard.
+        @returns a tuple of (hosts objects that should be sent to the shard,
+                             incorrect host ids that should not belong to]
+                             shard)
         """
 
         # Disclaimer: concurrent heartbeats should theoretically not occur in
@@ -540,6 +546,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         #   hosts for the shard, this is overhead
         # - SELECT and then UPDATE only selected without requerying afterwards:
         #   returns the old state of the records.
+        hosts = []
+
         host_ids = set(Host.objects.filter(
             labels__in=shard.labels.all(),
             leased=False
@@ -549,8 +557,15 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
         if host_ids:
             Host.objects.filter(pk__in=host_ids).update(shard=shard)
-            return list(Host.objects.filter(pk__in=host_ids).all())
-        return []
+            hosts = list(Host.objects.filter(pk__in=host_ids).all())
+
+        invalid_host_ids = list(Host.objects.filter(
+            id__in=known_ids
+            ).exclude(
+            shard=shard
+            ).values_list('pk', flat=True))
+
+        return hosts, invalid_host_ids
 
     def resurrect_object(self, old_object):
         super(Host, self).resurrect_object(old_object)
