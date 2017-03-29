@@ -290,9 +290,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
         if self._get_release_channel == 'stable':
             self._timeout += 3600
         # Retries depend on channel.
-        self._max_retry = max_retry
-        if not self._max_retry:
-            self._max_retry = self._get_channel_retry()
+        self._max_retry = (
+            max_retry if max_retry is not None else self._get_channel_retry())
         session_id = 0
 
         steps = -1  # For historic reasons the first iteration is not counted.
