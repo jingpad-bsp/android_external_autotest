@@ -439,6 +439,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         'Failed to parse build name from %s' % image)
             ds = dev_server.ImageServer.resolve(image_name, hostname)
         else:
+            info = self.host_info_store.get()
             job_repo_url = afe_utils.get_host_attribute(
                     self, ds_constants.JOB_REPO_URL)
             if job_repo_url:
