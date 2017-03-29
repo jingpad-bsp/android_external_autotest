@@ -3,22 +3,23 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bettyzhou, krisr'
-NAME = 'android_ACTS.Telephony_England_EE_Basic'
-TIME = 'LONG'
+NAME = 'android_ACTS.Telephony_MTV_Germany_Vodafone_Roaming'
+TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_nightly'
-DEPENDENCIES = 'carrier:england_ee'
+ATTRIBUTES = 'suite:android_telephony_international_roaming'
+DEPENDENCIES = 'carrier:germany_vodafone'
 
 DOC = """
-This test runs telephony sanity against an phones with EE SIMs.
+This test runs telephony sanity against phones with Germany Vodaphone SIMs
+roaming in US.
 """
 
 def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-telephony-test-station.config',
-                 test_file='telephony_uk_ee_basic',
+                 test_file='telephony_international_roaming',
                  additional_configs=['simcard_list.json'],
-                 acts_timeout=25200)
+                 acts_timeout=18000)
 
 parallel_simple(run, machines)
