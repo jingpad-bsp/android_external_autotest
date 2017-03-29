@@ -11,6 +11,7 @@ suite:android_telephony_nexus_att
 suite:android_telephony_nexus_spt
 suite:android_telephony_nexus_tmo
 suite:android_telephony_nexus_vzw
+suite:android_telephony_nightly
 suite:android_telephony_nightly_att
 suite:android_telephony_nightly_spt
 suite:android_telephony_nightly_tmo
