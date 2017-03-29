@@ -192,6 +192,102 @@ def pushd(d):
         os.chdir(current)
 
 
+def parse_tradefed_v2_result(result, accumulative_count=False, waivers=None):
+    """Check the result from the tradefed-v2 output.
+
+    @param result: The result stdout string from the tradefed command.
+    @param accumulative_count: set True if using an old version of tradefed
+                               that prints test count in accumulative way.
+    @param waivers: a set() of tests which are permitted to fail.
+    @return 5-tuple (tests, passed, failed, notexecuted, waived)
+    """
+    # Regular expressions for start/end messages of each test-run chunk.
+    abi_re = r'armeabi-v7a|x86'
+    # TODO(kinaba): use the current running module name.
+    module_re = r'\S+'
+    start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
+                          r' (\d+(?:,\d+)?) test' % (abi_re, module_re))
+    end_re = re.compile(r'(%s) %s (?:complet|fail)ed in .*\.'
+                        r' (\d+) passed, (\d+) failed, (\d+) not executed'
+                        % (abi_re, module_re))
+
+    # Records the result per each ABI.
+    total_test = dict()
+    total_pass = dict()
+    total_fail = dict()
+    last_notexec = dict()
+
+    # ABI and the test count for the current chunk.
+    abi = None
+    ntest = None
+
+    for line in result.splitlines():
+        # Beginning of a chunk of tests.
+        match = start_re.search(line)
+        if match:
+           if abi:
+               raise error.TestFail('Error: Unexpected test start: ' + line)
+           abi = match.group(1)
+           ntest = int(match.group(2).replace(',',''))
+        else:
+           # End of the current chunk.
+           match = end_re.search(line)
+           if not match:
+               continue
+
+           if abi != match.group(1):
+               raise error.TestFail('Error: Unexpected test end: ' + line)
+           npass, nfail, nnotexec = map(int, match.group(2,3,4))
+
+           # When the test crashes too ofen, tradefed seems to finish the
+           # iteration by running "0 tests, 0 passed, ...". Do not count
+           # that in.
+           if ntest > 0:
+               if accumulative_count:
+                   total_test[abi] = ntest
+                   total_pass[abi] = npass
+                   total_fail[abi] = nfail
+               else:
+                   total_test[abi] = (total_test.get(abi, 0) + ntest -
+                       last_notexec.get(abi, 0))
+                   total_pass[abi] = total_pass.get(abi, 0) + npass
+                   total_fail[abi] = total_fail.get(abi, 0) + nfail
+               last_notexec[abi] = nnotexec
+           abi = None
+
+    if abi:
+        raise error.TestFail('Error: No end message for the last chunk.')
+
+    # TODO(rohitbm): make failure parsing more robust by extracting the list
+    # of failing tests instead of searching in the result blob. As well as
+    # only parse for waivers for the running ABI.
+    waived = 0
+    if waivers:
+        abis = total_test.keys()
+        for testname in waivers:
+            # TODO(dhaddock): Find a more robust way to apply waivers.
+            fail_count = (result.count(testname + ' FAIL') +
+                          result.count(testname + ' fail'))
+            if fail_count:
+                if fail_count > len(abis):
+                    raise error.TestFail('Error: Found %d failures for %s '
+                                         'but there are only %d abis: %s' %
+                                         (fail_count, testname, len(abis),
+                                         abis))
+                waived += fail_count
+                logging.info('Waived failure for %s %d time(s)',
+                             testname, fail_count)
+    counts = tuple(sum(count_per_abi.values()) for count_per_abi in
+        (total_test, total_pass, total_fail, last_notexec)) + (waived,)
+    msg = ('tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' %
+           counts)
+    logging.info(msg)
+    if counts[2] - waived < 0:
+        raise error.TestFail('Error: Internal waiver bookkeeping has '
+                             'become inconsistent (%s)' % msg)
+    return counts
+
+
 class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
@@ -757,7 +853,6 @@ class TradefedTest(test.test):
                                  'become inconsistent.')
         return (tests, passed, failed, not_executed)
 
-    # TODO(kinaba): Add unit test.
     def _parse_result_v2(self, result, accumulative_count=False, waivers=None):
         """Check the result from the tradefed-v2 output.
 
@@ -769,91 +864,8 @@ class TradefedTest(test.test):
                                    that prints test count in accumulative way.
         @param waivers: a set() of tests which are permitted to fail.
         """
-        # Regular expressions for start/end messages of each test-run chunk.
-        abi_re = r'armeabi-v7a|x86'
-        # TODO(kinaba): use the current running module name.
-        module_re = r'\S+'
-        start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
-                              r' (\d+(?:,\d+)?) test' % (abi_re, module_re))
-        end_re = re.compile(r'(%s) %s (?:complet|fail)ed in .*\.'
-                            r' (\d+) passed, (\d+) failed, (\d+) not executed'
-                            % (abi_re, module_re))
-
-        # Records the result per each ABI.
-        total_test = dict()
-        total_pass = dict()
-        total_fail = dict()
-        last_notexec = dict()
-
-        # ABI and the test count for the current chunk.
-        abi = None
-        ntest = None
-
-        for line in result.stdout.splitlines():
-            # Beginning of a chunk of tests.
-            match = start_re.search(line)
-            if match:
-               if abi:
-                   raise error.TestFail('Error: Unexpected test start: ' + line)
-               abi = match.group(1)
-               ntest = int(match.group(2).replace(',',''))
-            else:
-               # End of the current chunk.
-               match = end_re.search(line)
-               if not match:
-                   continue
-
-               if abi != match.group(1):
-                   raise error.TestFail('Error: Unexpected test end: ' + line)
-               npass, nfail, nnotexec = map(int, match.group(2,3,4))
-
-               # When the test crashes too ofen, tradefed seems to finish the
-               # iteration by running "0 tests, 0 passed, ...". Do not count
-               # that in.
-               if ntest > 0:
-                   if accumulative_count:
-                       total_test[abi] = ntest
-                       total_pass[abi] = npass
-                       total_fail[abi] = nfail
-                   else:
-                       total_test[abi] = (total_test.get(abi, 0) + ntest -
-                           last_notexec.get(abi, 0))
-                       total_pass[abi] = total_pass.get(abi, 0) + npass
-                       total_fail[abi] = total_fail.get(abi, 0) + nfail
-                   last_notexec[abi] = nnotexec
-               abi = None
-
-        if abi:
-            raise error.TestFail('Error: No end message for the last chunk.')
-
-        # TODO(rohitbm): make failure parsing more robust by extracting the list
-        # of failing tests instead of searching in the result blob. As well as
-        # only parse for waivers for the running ABI.
-        waived = 0
-        if waivers:
-            abis = total_test.keys()
-            for testname in waivers:
-                # TODO(dhaddock): Find a more robust way to apply waivers.
-                fail_count = (result.stdout.count(testname + ' FAIL') +
-                              result.stdout.count(testname + ' fail'))
-                if fail_count:
-                    if fail_count > len(abis):
-                        raise error.TestFail('Error: Found %d failures for %s '
-                                             'but there are only %d abis: %s' %
-                                             (fail_count, testname, len(abis),
-                                             abis))
-                    waived += fail_count
-                    logging.info('Waived failure for %s %d time(s)',
-                                 testname, fail_count)
-        counts = tuple(sum(count_per_abi.values()) for count_per_abi in
-            (total_test, total_pass, total_fail, last_notexec)) + (waived,)
-        msg = ('tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' %
-               counts)
-        logging.info(msg)
-        if counts[2] - waived < 0:
-            raise error.TestFail('Error: Internal waiver bookkeeping has '
-                                 'become inconsistent (%s)' % msg)
-        return counts
+        return parse_tradefed_v2_result(result.stdout, accumulative_count,
+                                        waivers)
 
     def _collect_logs(self, repository, datetime, destination):
         """Collects the tradefed logs.
