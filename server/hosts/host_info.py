@@ -4,6 +4,7 @@
 
 import abc
 import copy
+import json
 import logging
 
 import common
@@ -287,3 +288,55 @@ def get_store_from_machine(machine):
         return machine['host_info_store']
     else:
         return InMemoryHostInfoStore()
+
+
+class DeserializationError(Exception):
+    """Raised when deserialization fails due to malformed input."""
+
+
+# Default serialzation version. This should be uprevved whenever a change to
+# HostInfo is backwards incompatible, i.e. we can no longer correctly
+# deserialize a previously serialized HostInfo. An example of such change is if
+# a field in the HostInfo object is dropped.
+_CURRENT_SERIALIZATION_VERSION = 1
+
+
+def json_serialize(info, file_obj, version=_CURRENT_SERIALIZATION_VERSION):
+    """Serialize the given HostInfo.
+
+    @param info: A HostInfo object to serialize.
+    @param file_obj: A file like object to serialize info into.
+    @param version: Use a specific serialization version. Should mostly use the
+            default.
+    """
+    info_json = {
+            'serializer_version': version,
+            'labels': info.labels,
+            'attributes': info.attributes,
+    }
+    return json.dump(info_json, file_obj, sort_keys=True, indent=4,
+                     separators=(',', ': '))
+
+
+def json_deserialize(file_obj):
+    """Deserialize a HostInfo from the given file.
+
+    @param file_obj: a file like object containing a json_serialized()ed
+            HostInfo.
+    @returns: The deserialized HostInfo object.
+    """
+    try:
+        deserialized_json = json.load(file_obj)
+    except ValueError as e:
+        raise DeserializationError(e)
+
+    serializer_version = deserialized_json.get('serializer_version')
+    if serializer_version != 1:
+        raise DeserializationError('Unsupported serialization version %s' %
+                                   serializer_version)
+
+    try:
+        return HostInfo(deserialized_json['labels'],
+                        deserialized_json['attributes'])
+    except KeyError as e:
+        raise DeserializationError('Malformed serialized host_info: %r' % e)
