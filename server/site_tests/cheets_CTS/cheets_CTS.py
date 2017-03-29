@@ -315,6 +315,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
 
         # Unconditionally run CTS package until we see some tests executed.
         while steps < self._max_retry and total_tests == 0:
+            steps += 1
             with self._login_chrome():
                 self._ready_arc()
 
@@ -360,7 +361,6 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 # works on local failures.
                 total_tests = tests
                 total_passed = passed
-                steps += 1
             # The DUT has rebooted at this point and is in a clean state.
         if total_tests == 0:
             raise error.TestFail('Error: Could not find any tests in package.')
@@ -370,8 +370,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
         while steps < self._max_retry and (notexecuted > 0 or failed > 0):
             # First retry until there is no test is left that was not executed.
             while notexecuted > 0 and steps < self._max_retry:
+                steps += 1
                 with self._login_chrome():
-                    steps += 1
                     self._ready_arc()
                     logging.info('Continuing session %d:', session_id)
                     # 'Continue' reports as passed all passing results in the
