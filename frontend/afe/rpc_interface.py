@@ -1959,13 +1959,14 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(), known_job_ids=(),
                 host_model.status = known_host_statuses[i]
                 host_model.save()
 
-        hosts, jobs, suite_keyvals = rpc_utils.find_records_for_shard(
+        hosts, jobs, suite_keyvals, inc_ids = rpc_utils.find_records_for_shard(
                 shard_obj, known_job_ids=known_job_ids,
                 known_host_ids=known_host_ids)
         return {
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs],
             'suite_keyvals': [kv.serialize() for kv in suite_keyvals],
+            'incorrect_host_ids': [int(i) for i in inc_ids],
         }
 
 

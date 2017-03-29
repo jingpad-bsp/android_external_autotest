@@ -946,9 +946,11 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
 
 
     def _assert_shard_heartbeat_response(self, shard_hostname, retval, jobs=[],
-                                         hosts=[], hqes=[]):
+                                         hosts=[], hqes=[],
+                                         incorrect_host_ids=[]):
 
         retval_hosts, retval_jobs = retval['hosts'], retval['jobs']
+        retval_incorrect_hosts = retval['incorrect_host_ids']
 
         expected_jobs = [
             (job.id, job.name, shard_hostname) for job in jobs]
@@ -968,6 +970,8 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
         expected_hqes = [(hqe.id) for hqe in hqes]
         returned_hqes = [(hqe['id']) for hqe in retval_hqes]
         self.assertEqual(returned_hqes, expected_hqes)
+
+        self.assertEqual(retval_incorrect_hosts, incorrect_host_ids)
 
 
     def _send_records_to_master_helper(
@@ -1053,12 +1057,14 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
     def _createShardAndHostWithLabel(self, shard_hostname='shard1',
                                      host_hostname='host1',
                                      label_name='board:lumpy'):
+        """Create a label, host, shard, and assign host to shard."""
         label = models.Label.objects.create(name=label_name)
 
         shard = models.Shard.objects.create(hostname=shard_hostname)
         shard.labels.add(label)
 
-        host = models.Host.objects.create(hostname=host_hostname, leased=False)
+        host = models.Host.objects.create(hostname=host_hostname, leased=False,
+                                          shard=shard)
         host.labels.add(label)
 
         return shard, host, label
@@ -1084,6 +1090,18 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
 
         # Hostless jobs should be executed by the global scheduler.
         self._do_heartbeat_and_assert_response(hosts=[host1])
+
+
+    def testShardHeartbeatIncorrectHosts(self):
+        """Ensure that hosts that don't belong to shard are determined."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+
+        host2 = models.Host.objects.create(hostname='host2', leased=False)
+
+        # host2 should not belong to shard1. Ensure that if shard1 thinks host2
+        # is a known host, then it is returned as invalid.
+        self._do_heartbeat_and_assert_response(known_hosts=[host1, host2],
+                                               incorrect_host_ids=[host2.id])
 
 
     def testShardRetrieveJobs(self):
