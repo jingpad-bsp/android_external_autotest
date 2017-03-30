@@ -587,7 +587,7 @@ class DevServerTest(mox.MoxTestBase):
         errors.
 
         Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
-        even if '_start_auto_update()' failed.
+        even if '_trigger_auto_update()' failed.
         """
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(__builtin__, 'open')
@@ -603,7 +603,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testCleanUpErrorInAutoUpdate(self):
@@ -611,7 +611,7 @@ class DevServerTest(mox.MoxTestBase):
         errors.
 
         Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
-        no matter '_start_auto_update()' succeeds or fails.
+        no matter '_trigger_auto_update()' succeeds or fails.
         """
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(__builtin__, 'open')
@@ -628,7 +628,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testCollectLogErrorInAutoUpdate(self):
@@ -648,7 +648,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testGetAUStatusErrorAndCleanUpErrorInAutoUpdate(self):
@@ -656,7 +656,7 @@ class DevServerTest(mox.MoxTestBase):
         and handler_cleanup errors.
 
         Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
-        even if '_start_auto_update()' fails.
+        even if '_trigger_auto_update()' fails.
         """
         self.mox.StubOutWithMock(time, 'sleep')
         self.mox.StubOutWithMock(__builtin__, 'open')
@@ -673,7 +673,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testGetAUStatusErrorAndCleanUpErrorAndCollectLogErrorInAutoUpdate(self):
@@ -681,7 +681,7 @@ class DevServerTest(mox.MoxTestBase):
         handler_cleanup, and collect_au_log errors.
 
         Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
-        even if '_start_auto_update()' fails.
+        even if '_trigger_auto_update()' fails.
         """
         self.mox.StubOutWithMock(time, 'sleep')
         kwargs={'cros_au_error': False, 'get_au_status_error': True,
@@ -696,7 +696,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testGetAUStatusErrorAndCleanUpErrorAndCollectLogErrorAndKillErrorInAutoUpdate(self):
@@ -704,7 +704,7 @@ class DevServerTest(mox.MoxTestBase):
         handler_cleanup, collect_au_log, and kill_au_proc errors.
 
         Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
-        even if '_start_auto_update()' fails.
+        even if '_trigger_auto_update()' fails.
         """
         self.mox.StubOutWithMock(time, 'sleep')
 
@@ -720,7 +720,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '100.0.0.0', 'build', 'path/')
+                          '100.0.0.0', 'build', log_dir='path/')
 
 
     def testSuccessfulTriggerDownloadSync(self):
