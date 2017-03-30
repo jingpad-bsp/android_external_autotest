@@ -114,14 +114,14 @@ class AbstractSSHHost(remote.RemoteHost):
 
         # Check if rsync is available on the remote host. If it's not,
         # don't try to use it for any future file transfers.
-        self._use_rsync = self._check_rsync()
+        self._use_rsync = self.check_rsync()
         if not self._use_rsync:
             logging.warning("rsync not available on remote host %s -- disabled",
                          self.hostname)
         return self._use_rsync
 
 
-    def _check_rsync(self):
+    def check_rsync(self):
         """
         Check if rsync is available on the remote host.
         """
