@@ -955,14 +955,13 @@ class ChromiumOSTestPlatform(TestPlatform):
         @param stateful_url: If set, the specified url to find the stateful
                              payload.
         """
+        # Reboot to get us into a clean state.
+        self._host.reboot()
         try:
-            # Reboot to get us into a clean state.
-            self._host.reboot()
             # Since we are installing the source image of the test, clobber
             # stateful.
             self._update_via_test_payloads(devserver_hostname, image_url,
                                            stateful_url, True)
-            self._host.reboot()
         except OmahaDevserverFailedToStart as e:
             logging.fatal('Failed to start private devserver for installing '
                           'the source image (%s) on the DUT', image_url)
@@ -970,10 +969,19 @@ class ChromiumOSTestPlatform(TestPlatform):
                     'Failed to start private devserver for installing the '
                     'source image on the DUT: %s' % e)
         except error.AutoservRunError as e:
-            logging.fatal('Error re-imaging or rebooting the DUT with the '
-                          'source image from %s', image_url)
-            raise error.TestError('Failed to install the source image or '
-                                  'reboot the DUT: %s' % e)
+            logging.fatal('Error re-imaging the DUT with '
+                          'the source image from %s', image_url)
+            raise error.TestError('Failed to install '
+                          'the source image DUT: %s' % e)
+        self._host.reboot()
+
+        # If powerwashed, need to reinstall stateful_url
+        if not self._host.check_rsync():
+            logging.warn('Device has been powerwashed, need to reinstall '
+                         'stateful from %s', stateful_url)
+            self._update_via_test_payloads(devserver_hostname, None,
+                                           stateful_url, True)
+            self._host.reboot()
 
 
     def _stage_artifacts_onto_devserver(self, test_conf):
