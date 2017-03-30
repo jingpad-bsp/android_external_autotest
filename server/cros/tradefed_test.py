@@ -833,6 +833,7 @@ class TradefedTest(test.test):
         # TODO(rohitbm): make failure parsing more robust by extracting the list
         # of failing tests instead of searching in the result blob. As well as
         # only parse for waivers for the running ABI.
+        waived = 0
         if waivers:
             for testname in waivers:
                 # TODO(dhaddock): Find a more robust way to apply waivers.
@@ -843,17 +844,16 @@ class TradefedTest(test.test):
                                              'failures found in the output to '
                                              'be valid for applying waivers. '
                                              'Please check output.')
-                    failed -= fail_count
-                    # To maintain total count consistency.
-                    passed += fail_count
+                    waived += fail_count
                     logging.info('Waived failure for %s %d time(s)',
                                  testname, fail_count)
-        logging.info('tests=%d, passed=%d, failed=%d, not_executed=%d',
-                tests, passed, failed, not_executed)
-        if failed < 0:
+        logging.info(
+            'tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d',
+            tests, passed, failed, not_executed, waived)
+        if failed < waived:
             raise error.TestFail('Error: Internal waiver book keeping has '
                                  'become inconsistent.')
-        return (tests, passed, failed, not_executed)
+        return (tests, passed, failed, not_executed, waived)
 
     def _parse_result_v2(self, result, accumulative_count=False, waivers=None):
         """Check the result from the tradefed-v2 output.
