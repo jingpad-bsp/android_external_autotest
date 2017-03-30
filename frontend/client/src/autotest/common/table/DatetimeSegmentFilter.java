@@ -8,6 +8,7 @@ import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.Panel;
 import com.google.gwt.user.client.ui.Widget;
+import com.google.gwt.user.datepicker.client.CalendarUtil;
 
 import java.util.Date;
 
@@ -17,7 +18,8 @@ public class DatetimeSegmentFilter extends SimpleFilter {
     protected Panel panel;
     protected Label fromLabel;
     protected Label toLabel;
-    private String placeHolderDatetime;
+    private String placeHolderStartDatetime;
+    private String placeHolderEndDatetime;
 
     public DatetimeSegmentFilter() {
         startDatetimeBox = new DateTimeBox();
@@ -32,9 +34,13 @@ public class DatetimeSegmentFilter extends SimpleFilter {
         panel.add(endDatetimeBox);
 
         DateTimeFormat dateTimeFormat = DateTimeFormat.getFormat("yyyy-MM-dd");
-        placeHolderDatetime = dateTimeFormat.format(new Date()) + "T00:00";
-        setStartTimeToPlaceHolderValue();
+        Date placeHolderDate = new Date();
+        placeHolderEndDatetime = dateTimeFormat.format(placeHolderDate) + "T00:00";
         setEndTimeToPlaceHolderValue();
+
+        CalendarUtil.addDaysToDate(placeHolderDate, -7);
+        placeHolderStartDatetime = dateTimeFormat.format(placeHolderDate) + "T00:00";
+        setStartTimeToPlaceHolderValue();
     }
 
     @Override
@@ -43,11 +49,11 @@ public class DatetimeSegmentFilter extends SimpleFilter {
     }
 
     public void setStartTimeToPlaceHolderValue() {
-        startDatetimeBox.setValue(placeHolderDatetime);
+        startDatetimeBox.setValue(placeHolderStartDatetime);
     }
 
     public void setEndTimeToPlaceHolderValue() {
-        endDatetimeBox.setValue(placeHolderDatetime);
+        endDatetimeBox.setValue(placeHolderEndDatetime);
     }
 
     public void addValueChangeHandler(ValueChangeHandler<String> startTimeHandler,
