@@ -34,7 +34,7 @@ def main(args):
 
     start = datetime.datetime.now()
     logging.info('Starting chrome and logging in.')
-    is_arc_available = chrome.is_arc_available()
+    is_arc_available = utils.is_arc_available()
     arc_mode = arc_common.ARC_MODE_ENABLED if is_arc_available else None
     with chrome.Chrome(arc_mode=arc_mode) as cr:
         # Check that the cryptohome is mounted.
