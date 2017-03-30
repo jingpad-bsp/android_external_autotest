@@ -2110,7 +2110,9 @@ def delete_shard(hostname):
                 'reboot_dut_for_shard_deletion',
                 priority=priorities.Priority.SUPER,
                 control_type='Server',
-                control_file=c, hosts=hostnames_to_lock)
+                control_file=c, hosts=hostnames_to_lock,
+                timeout_mins=10,
+                max_runtime_mins=10)
 
     # Unlock these shard-related hosts.
     dicts = {'locked': False, 'lock_time': None}
