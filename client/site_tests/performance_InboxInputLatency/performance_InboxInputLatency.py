@@ -45,7 +45,7 @@ class performance_InboxInputLatency(test.test):
         # Create a virtual keyboard device for key event playback.
         device_node = input_device.get_device_node(input_device.KEYBOARD_TYPES)
         if not device_node:
-            raise error.TestFail('Could not find keyboard device node')
+            raise error.TestNAError('Could not find keyboard device node')
         self.keyboard = input_device.InputDevice(device_node)
 
         # Instantiate Chrome browser.
@@ -66,7 +66,7 @@ class performance_InboxInputLatency(test.test):
         self.target_tracing_config = config
 
     def cleanup(self):
-        if self.browser:
+        if hasattr(self, 'browser'):
             self.browser.close()
 
     def inject_key_events(self, event_file):
