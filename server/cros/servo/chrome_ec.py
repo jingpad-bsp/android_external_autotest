@@ -304,9 +304,36 @@ class ChromeCr50(ChromeConsole):
     VERSION_ERROR = 'Error'
     INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
     ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
+    WAKE_CHAR = '\n'
+
 
     def __init__(self, servo):
         super(ChromeCr50, self).__init__(servo, "cr50_console")
+
+
+    def send_command(self, commands):
+        """Send command through UART.
+
+        Cr50 will drop characters input to the UART when it resumes from sleep.
+        If servo is not using ccd, send some dummy characters before sending the
+        real command to make sure cr50 is awake.
+        """
+        if not self.using_ccd():
+            super(ChromeCr50, self).send_command(self.WAKE_CHAR)
+        super(ChromeCr50, self).send_command(commands)
+
+
+    def send_command_get_output(self, command, regexp_list):
+        """Send command through UART and wait for response.
+
+        Cr50 will drop characters input to the UART when it resumes from sleep.
+        If servo is not using ccd, send some dummy characters before sending the
+        real command to make sure cr50 is awake.
+        """
+        if not self.using_ccd():
+            super(ChromeCr50, self).send_command(self.WAKE_CHAR)
+        return super(ChromeCr50, self).send_command_get_output(command,
+                                                               regexp_list)
 
 
     def get_deep_sleep_count(self):
