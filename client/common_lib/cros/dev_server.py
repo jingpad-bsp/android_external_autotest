@@ -1943,14 +1943,36 @@ class ImageServer(ImageServerBase):
         return False
 
 
-    def auto_update(self, host_name, build_name, log_dir=None,
+    def _parse_buildname_safely(self, build_name):
+        """Parse a given buildname safely.
+
+        @param build_name: the build name to be parsed.
+
+        @return: a tuple (board, build_type, milestone)
+        """
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s for metrics. '
+                            'Continuing anyway.', build_name)
+            board, build_type, milestone = ('', '', '')
+
+        return board, build_type, milestone
+
+
+    def auto_update(self, host_name, build_name, original_board=None,
+                    original_release_version=None, log_dir=None,
                     force_update=False, full_update=False):
         """Auto-update a CrOS host.
 
-        @param host_name:    The hostname of the DUT to auto-update.
-        @param build_name:   The build name to be auto-updated on the DUT.
-        @param log_dir:      The log directory to store auto-update logs from
-                             devserver.
+        @param host_name: The hostname of the DUT to auto-update.
+        @param build_name:  The build name to be auto-updated on the DUT.
+        @param original_board: The original board of the DUT to auto-update.
+        @param original_release_version: The release version of the DUT's
+            current build.
+        @param log_dir: The log directory to store auto-update logs from
+            devserver.
         @param force_update: Force an update even if the version installed
                              is the same. Default: False.
         @param full_update:  If True, do not run stateful update, directly
@@ -1977,16 +1999,40 @@ class ImageServer(ImageServerBase):
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
         error_list = []
         retry_with_another_devserver = False
+        board, build_type, milestone = self._parse_buildname_safely(build_name)
 
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
-            # No matter _start_auto_update succeeds or fails, the auto-update
+            # No matter _trigger_auto_update succeeds or fails, the auto-update
             # track_status_file should be cleaned, and the auto-update execute
             # log should be collected to directory sysinfo. Also, the error
-            # raised by _start_auto_update should be displayed.
+            # raised by _trigger_auto_update should be displayed.
             try:
-                response = self._trigger_auto_update(**kwargs)
+                # Try update with stateful.tgz of old release version in the
+                # last try of auto-update.
+                if (au_attempt > 0 and au_attempt  == AU_RETRY_LIMIT - 1 and
+                    original_release_version):
+                    # Monitor this case in monarch
+                    original_build = '%s/%s' % (original_board,
+                                                original_release_version)
+                    c = metrics.Counter(
+                            'chromeos/autotest/provision/'
+                            'cros_update_with_original_build')
+                    f = {'dev_server': ImageServer.get_server_name(self.url()),
+                         'board': board,
+                         'build_type': build_type,
+                         'milestone': milestone,
+                         'original_build': original_build}
+                    c.increment(fields=f)
+
+                    logging.debug('Try updating stateful partition of the '
+                                  'host with the same version of its current '
+                                  'rootfs partition: %s', original_build)
+                    response = self._trigger_auto_update(
+                            original_build=original_build, **kwargs)
+                else:
+                    response = self._trigger_auto_update(**kwargs)
             except DevServerException as e:
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
                 error_list.append(str(e))
@@ -2048,15 +2094,6 @@ class ImageServer(ImageServerBase):
                     logging.debug(
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
-
-        # Upload data to metrics
-        try:
-            board, build_type, milestone, _ = server_utils.ParseBuildName(
-                build_name)
-        except server_utils.ParseBuildNameException:
-            logging.warning('Unable to parse build name %s for metrics. '
-                            'Continuing anyway.', build_name)
-            board, build_type, milestone = ('', '', '')
 
         # Note: To avoid reaching or exceeding the monarch field cardinality
         # limit, we avoid a metric that includes both dut hostname and other
