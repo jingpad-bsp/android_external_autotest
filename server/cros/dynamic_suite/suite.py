@@ -303,31 +303,45 @@ class _SuiteChildJobCreator(object):
 
     def __init__(
             self,
+            tag,
             builds,
             board,
             pool=None,
+            suite_job_id=None,
             ignore_deps=False,
-            extra_deps=None):
+            extra_deps=None,
+            offload_failures_only=False,
+            test_source_build=None):
         """
         Constructor
 
+        @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param suite_job_id: Job id that will act as parent id to all sub jobs.
+                             Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
                             attribute and skip applying of dependency labels.
                             (Default:False)
         @param extra_deps: A list of strings which are the extra DEPENDENCIES
                            to add to each test being scheduled.
+        @param offload_failures_only: Only enable gs_offloading for failed
+                                      jobs.
+        @param test_source_build: Build that contains the server-side test code.
         """
         if extra_deps is None:
             extra_deps = []
+        self._tag = tag
         self._builds = builds
         self._board = board
         self._pool = pool
+        self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
+        self._offload_failures_only = offload_failures_only
+        self._test_source_build = test_source_build
 
 
     @property
@@ -354,6 +368,56 @@ class _SuiteChildJobCreator(object):
             job_deps.append(self._pool)
         job_deps.append(self._board)
         return job_deps
+
+
+    def _create_keyvals_for_test_job(self, test, retry_for=None):
+        """Create keyvals dict for creating a test job.
+
+        @param test: ControlData object for a test to run.
+        @param retry_for: If the to-be-created job is a retry for an
+                          old job, the afe_job_id of the old job will
+                          be passed in as |retry_for|, which will be
+                          recorded in the new job's keyvals.
+        @returns: A keyvals dict for creating the test job.
+        """
+        keyvals = {
+            constants.JOB_BUILD_KEY: self.cros_build,
+            constants.JOB_SUITE_KEY: self._tag,
+            constants.JOB_EXPERIMENTAL_KEY: test.experimental,
+            constants.JOB_BUILDS_KEY: self._builds
+        }
+        # test_source_build is saved to job_keyvals so scheduler can retrieve
+        # the build name from database when compiling autoserv commandline.
+        # This avoid a database change to add a new field in afe_jobs.
+        #
+        # Only add `test_source_build` to job keyvals if the build is different
+        # from the CrOS build or the job uses more than one build, e.g., both
+        # firmware and CrOS will be updated in the dut.
+        # This is for backwards compatibility, so the update Autotest code can
+        # compile an autoserv command line to run in a SSP container using
+        # previous builds.
+        if (self._test_source_build and
+            (self.cros_build != self._test_source_build or
+             len(self._builds) > 1)):
+            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = \
+                    self._test_source_build
+            for prefix, build in self._builds.iteritems():
+                if prefix == provision.FW_RW_VERSION_PREFIX:
+                    keyvals[constants.FWRW_BUILD]= build
+                elif prefix == provision.FW_RO_VERSION_PREFIX:
+                    keyvals[constants.FWRO_BUILD] = build
+        # Add suite job id to keyvals so tko parser can read it from keyval
+        # file.
+        if self._suite_job_id:
+            keyvals[constants.PARENT_JOB_ID] = self._suite_job_id
+        # We drop the old job's id in the new job's keyval file so that
+        # later our tko parser can figure out the retry relationship and
+        # invalidate the results of the old job in tko database.
+        if retry_for:
+            keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
+        if self._offload_failures_only:
+            keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
+        return keyvals
 
 
 def _find_test_control_data_for_suite(
@@ -947,11 +1011,15 @@ class Suite(object):
         self._test_args = test_args
 
         self._job_creator = _SuiteChildJobCreator(
+            tag=tag,
             builds=builds,
             board=board,
             pool=pool,
+            suite_job_id=suite_job_id,
             ignore_deps=ignore_deps,
             extra_deps=extra_deps,
+            offload_failures_only=offload_failures_only,
+            test_source_build=test_source_build,
         )
 
 
@@ -977,7 +1045,8 @@ class Suite(object):
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
             dependencies=self._job_creator._create_job_deps(test),
-            keyvals=self._create_keyvals_for_test_job(test, retry_for),
+            keyvals=self._job_creator._create_keyvals_for_test_job(test,
+                                                                   retry_for),
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
@@ -988,56 +1057,6 @@ class Suite(object):
 
         test_obj.test_name = test.name
         return test_obj
-
-
-    def _create_keyvals_for_test_job(self, test, retry_for=None):
-        """Create keyvals dict for creating a test job.
-
-        @param test: ControlData object for a test to run.
-        @param retry_for: If the to-be-created job is a retry for an
-                          old job, the afe_job_id of the old job will
-                          be passed in as |retry_for|, which will be
-                          recorded in the new job's keyvals.
-        @returns: A keyvals dict for creating the test job.
-        """
-        keyvals = {
-            constants.JOB_BUILD_KEY: self._job_creator.cros_build,
-            constants.JOB_SUITE_KEY: self._tag,
-            constants.JOB_EXPERIMENTAL_KEY: test.experimental,
-            constants.JOB_BUILDS_KEY: self._builds
-        }
-        # test_source_build is saved to job_keyvals so scheduler can retrieve
-        # the build name from database when compiling autoserv commandline.
-        # This avoid a database change to add a new field in afe_jobs.
-        #
-        # Only add `test_source_build` to job keyvals if the build is different
-        # from the CrOS build or the job uses more than one build, e.g., both
-        # firmware and CrOS will be updated in the dut.
-        # This is for backwards compatibility, so the update Autotest code can
-        # compile an autoserv command line to run in a SSP container using
-        # previous builds.
-        if (self._test_source_build and
-            (self._job_creator.cros_build != self._test_source_build or
-             len(self._builds) > 1)):
-            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = \
-                    self._test_source_build
-            for prefix, build in self._builds.iteritems():
-                if prefix == provision.FW_RW_VERSION_PREFIX:
-                    keyvals[constants.FWRW_BUILD]= build
-                elif prefix == provision.FW_RO_VERSION_PREFIX:
-                    keyvals[constants.FWRO_BUILD] = build
-        # Add suite job id to keyvals so tko parser can read it from keyval
-        # file.
-        if self._suite_job_id:
-            keyvals[constants.PARENT_JOB_ID] = self._suite_job_id
-        # We drop the old job's id in the new job's keyval file so that
-        # later our tko parser can figure out the retry relationship and
-        # invalidate the results of the old job in tko database.
-        if retry_for:
-            keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
-        if self._offload_failures_only:
-            keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
-        return keyvals
 
 
     def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
