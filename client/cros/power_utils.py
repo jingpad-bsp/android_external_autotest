@@ -768,11 +768,9 @@ class USBPower(object):
 
 
 class DisplayPanelSelfRefresh(object):
-    """Class for control and monitoring of display's PSR.
-
-    TODO(tbroch) support devices that don't use i915 drivers but have PSR
-    """
-    psr_status_file = '/sys/kernel/debug/dri/0/i915_edp_psr_status'
+    """Class for control and monitoring of display's PSR."""
+    _PSR_STATUS_FILE_X86 = '/sys/kernel/debug/dri/0/i915_edp_psr_status'
+    _PSR_STATUS_FILE_ARM = '/sys/kernel/debug/dri/*/psr_active_ms'
 
     def __init__(self, init_time=time.time()):
         """Initializer.
@@ -785,6 +783,16 @@ class DisplayPanelSelfRefresh(object):
             _init_counter: integer of initial value of residency counter.
             _keyvals: dictionary of keyvals
         """
+        if os.path.exists(self._PSR_STATUS_FILE_X86):
+            self._psr_path = self._PSR_STATUS_FILE_X86
+            self._psr_parse_prefix = 'Performance_Counter:'
+        else:
+            paths = glob.glob(self._PSR_STATUS_FILE_ARM)
+            if paths:
+                # Should be only one PSR file
+                self._psr_path = paths[0]
+                self._psr_parse_prefix = ''
+
         self._init_time = init_time
         self._init_counter = self._get_counter()
         self._keyvals = {}
@@ -799,8 +807,8 @@ class DisplayPanelSelfRefresh(object):
         the performance counter can't be read.
         """
         try:
-            count = utils.get_field(utils.read_file(self.psr_status_file), 0,
-                                    linestart='Performance_Counter:')
+            count = utils.get_field(utils.read_file(self._psr_path),
+                                    0, linestart=self._psr_parse_prefix)
         except IOError:
             logging.info("Can't find or read PSR status file")
             return None
