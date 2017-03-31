@@ -430,7 +430,7 @@ def parse_one(db, jobname, path, parse_options):
                 and os.path.exists(export_to_gcloud_path)):
                 upload_cmd = [export_to_gcloud_path, datastore_creds,
                               timing_log, '--parent_key',
-                              repr(tuple(datastore_parent_key))]
+                              datastore_parent_key]
                 tko_utils.dprint('Start exporting timeline report to gcloud')
                 subprocess.check_output(upload_cmd)
                 tko_utils.dprint('Successfully export timeline report to '
