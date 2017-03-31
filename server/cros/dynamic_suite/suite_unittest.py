@@ -257,7 +257,7 @@ class SuiteTest(mox.MoxTestBase):
         self.assertFalse(self.files['four'] in suite.tests)
         self.assertTrue(self.files['five'] in suite.tests)
 
-        discoverer = SuiteBase._DynamicSuiteDiscoverer(suite.tests)
+        discoverer = SuiteBase._ExperimentalTestFilter(suite.tests)
         self.assertFalse(self.files['one'] in discoverer.unstable_tests)
         self.assertFalse(self.files['two'] in discoverer.stable_tests)
         self.assertFalse(self.files['one'] in discoverer.stable_tests)
@@ -278,7 +278,7 @@ class SuiteTest(mox.MoxTestBase):
         # Sanity check.
         self.assertFalse(self.files['four'] in suite.tests)
 
-        discoverer = SuiteBase._DynamicSuiteDiscoverer(suite.tests)
+        discoverer = SuiteBase._ExperimentalTestFilter(suite.tests)
         self.assertTrue(self.files['one'] in discoverer.unstable_tests)
         self.assertTrue(self.files['two'] in discoverer.stable_tests)
         self.assertFalse(self.files['one'] in discoverer.stable_tests)
