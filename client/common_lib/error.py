@@ -56,7 +56,7 @@ class UnhandledJobError(JobError):
     def __init__(self, unhandled_exception):
         if isinstance(unhandled_exception, JobError):
             JobError.__init__(self, *unhandled_exception.args)
-        elif isinstance(unhandled_exception, str):
+        elif isinstance(unhandled_exception, basestring):
             JobError.__init__(self, unhandled_exception)
         else:
             msg = "Unhandled %s: %s"
@@ -105,7 +105,7 @@ class UnhandledTestError(TestError):
     def __init__(self, unhandled_exception):
         if isinstance(unhandled_exception, TestError):
             TestError.__init__(self, *unhandled_exception.args)
-        elif isinstance(unhandled_exception, str):
+        elif isinstance(unhandled_exception, basestring):
             TestError.__init__(self, unhandled_exception)
         else:
             msg = "Unhandled %s: %s"
@@ -120,7 +120,7 @@ class UnhandledTestFail(TestFail):
     def __init__(self, unhandled_exception):
         if isinstance(unhandled_exception, TestFail):
             TestFail.__init__(self, *unhandled_exception.args)
-        elif isinstance(unhandled_exception, str):
+        elif isinstance(unhandled_exception, basestring):
             TestFail.__init__(self, unhandled_exception)
         else:
             msg = "Unhandled %s: %s"
