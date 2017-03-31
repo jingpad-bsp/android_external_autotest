@@ -124,7 +124,10 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     @property
     def project_id(self):
         """The test tracker project id."""
-        return self.keyvals.get('param-testtracker_project_id', None)
+        if 'param-testtracker_project_id' in self.keyvals:
+            return self.keyvals.get('param-testtracker_project_id', None)
+        else:
+            return self.keyvals.get('param-test_tracker_project_id', None)
 
     @property
     def environment(self):
