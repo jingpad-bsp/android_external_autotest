@@ -2,7 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ast, logging, re, time
+import ast
+import functools
+import logging
+import re
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -278,6 +282,16 @@ class ChromeUSBPD(ChromeEC):
         super(ChromeUSBPD, self).__init__(servo, "usbpd_uart")
 
 
+def ccd_command(func):
+    """Decorator for methods only relevant to devices using CCD."""
+    @functools.wraps(func)
+    def wrapper(instance, *args, **kwargs):
+        if instance.using_ccd():
+            return func(instance, *args, **kwargs)
+        logging.info("not using ccd. ignoring %s", func.func_name)
+    return wrapper
+
+
 class ChromeCr50(ChromeConsole):
     """Manages control of a Chrome Cr50.
 
@@ -366,6 +380,12 @@ class ChromeCr50(ChromeConsole):
         return self.get_version_info(self.ACTIVE)
 
 
+    def using_ccd(self):
+        """Returns true if the console is being served using CCD"""
+        return self._servo.get_servo_version().startswith('servo_v4')
+
+
+    @ccd_command
     def get_ccd_state(self):
         """Get the CCD state from servo
 
@@ -375,6 +395,7 @@ class ChromeCr50(ChromeConsole):
         return self._servo.get('ccd_state')
 
 
+    @ccd_command
     def wait_for_ccd_state(self, state, timeout):
         """Wait up to timeout seconds for CCD to be 'on' or 'off'
         Args:
@@ -392,16 +413,19 @@ class ChromeCr50(ChromeConsole):
         logging.info("ccd is '%s'", state)
 
 
+    @ccd_command
     def wait_for_ccd_disable(self, timeout=60):
         """Wait for the cr50 console to stop working"""
         self.wait_for_ccd_state('off', timeout)
 
 
+    @ccd_command
     def wait_for_ccd_enable(self, timeout=60):
         """Wait for the cr50 console to start working"""
         self.wait_for_ccd_state('on', timeout)
 
 
+    @ccd_command
     def ccd_disable(self):
         """Change the values of the CC lines to disable CCD"""
         logging.info("disable ccd")
@@ -409,6 +433,7 @@ class ChromeCr50(ChromeConsole):
         self.wait_for_ccd_disable()
 
 
+    @ccd_command
     def ccd_enable(self):
         """Reenable CCD and reset servo interfaces"""
         logging.info("reenable ccd")
