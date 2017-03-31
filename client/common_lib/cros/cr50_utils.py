@@ -16,6 +16,7 @@ CR50_STATE = '/var/cache/cr50*'
 GET_CR50_VERSION = 'cat /var/cache/cr50-version'
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
 UPDATE_FAILURE = 'unexpected cr50-update exit code'
+DUMMY_VER = '-1.-1.-1'
 # This dictionary is used to search the usb_updater output for the version
 # strings. There are two usb_updater commands that will return versions:
 # 'fwver' and 'binver'.
@@ -33,6 +34,35 @@ VERSION_RE = {
 }
 
 
+def AssertVersionsAreEqual(name_a, ver_a, name_b, ver_b):
+    """Raise an error ver_a isn't the same as ver_b
+
+    Args:
+        name_a: the name of section a
+        ver_a: the version string for section a
+        name_b: the name of section b
+        ver_b: the version string for section b
+
+    Raises:
+        AssertionError if ver_a is not equal to ver_b
+    """
+    assert ver_a == ver_b, ("Versions do not match: %s %s %s %s" %
+                            (name_a, ver_a, name_b, ver_b))
+
+
+def GetNewestVersion(ver_a, ver_b):
+    """Compare the versions. Return the newest one. If they are the same return
+    None."""
+    a = [int(x) for x in ver_a.split('.')]
+    b = [int(x) for x in ver_b.split('.')]
+
+    if a > b:
+        return ver_a
+    if b > a:
+        return ver_b
+    return None
+
+
 def GetVersion(versions, name):
     """Return the version string from the dictionary.
 
@@ -40,17 +70,25 @@ def GetVersion(versions, name):
     substring name. Make sure all of the versions match and return the version
     string. Raise an error if the versions don't match.
 
-    @param version: dictionary with the partition names as keys and the
-                    partition version strings as values.
-    @param name: the string used to find the relevant items in versions.
+    Args:
+        version: dictionary with the partition names as keys and the
+                 partition version strings as values.
+        name: the string used to find the relevant items in versions.
+    Returns:
+        the version from versions or "-1.-1.-1" if an invalid RO was detected.
     """
     ver = None
+    key = None
     for k, v in versions.iteritems():
         if name in k:
-            if ver and ver != v:
-                raise error.TestFail("Versions don't match %s %s" % (ver, v))
+            if v == DUMMY_VER:
+                logging.info("Detected invalid %s %s", name, v)
+                return v
+            elif ver:
+                AssertVersionsAreEqual(key, ver, k, v)
             else:
                 ver = v
+                key = k
     return ver
 
 
@@ -91,12 +129,8 @@ def GetBinVersion(client, image=CR50_FILE):
     return GetVersionFromUpdater(client, ["--binver", image])
 
 
-def CompareVersions(name_a, ver_a, rw_a, ver_b):
-    """Compare ver_a to ver_b. Raise an error if they aren't the same"""
-    if ver_a != ver_b:
-        raise error.TestFail("Versions do not match: %s RO %s RW %s %s RO %s " \
-                             "RW %s" % (name_a, ver_a[0], ver_a[1], name_b,
-                                        ver_b[0], ver_b[1]))
+def GetVersionString(ver):
+    return 'RO %s RW %s' % (ver[0], ver[1])
 
 
 def GetRunningVersion(client):
@@ -115,7 +149,8 @@ def GetRunningVersion(client):
     running_ver = GetFwVersion(client)
     saved_ver = GetSavedVersion(client)
 
-    CompareVersions("Running", running_ver, "Saved", saved_ver)
+    AssertVersionsAreEqual("Running", GetVersionString(running_ver),
+                           "Saved", GetVersionString(saved_ver))
     return running_ver
 
 
@@ -145,7 +180,7 @@ def CheckForFailures(client, last_message):
     return messages.rsplit('\n', 1)[-1]
 
 
-def VerifyUpdate(client, ver=None, last_message=''):
+def VerifyUpdate(client, ver='', last_message=''):
     """Verify that the saved update state is correct and there were no
     unexpected cr50-update exit codes since the last update.
 
@@ -158,8 +193,10 @@ def VerifyUpdate(client, ver=None, last_message=''):
     logging.debug("last cr50 message %s", last_message)
 
     new_ver = GetRunningVersion(client)
-    if ver:
-        CompareVersions("Old", ver, "Updated", new_ver)
+    if ver != '':
+        if DUMMY_VER != ver[0]:
+            AssertVersionsAreEqual("Old RO", ver[0], "Updated RO", new_ver[0])
+        AssertVersionsAreEqual("Old RW", ver[1], "Updated RW", new_ver[1])
     return new_ver, last_message
 
 
@@ -167,3 +204,20 @@ def ClearUpdateStateAndReboot(client):
     """Removes the cr50 status files in /var/cache and reboots the AP"""
     client.run("rm %s" % CR50_STATE)
     client.reboot()
+
+
+def InstallImage(client, src, dest=CR50_FILE):
+    """Copy the image at src to dest on the dut
+    Args:
+        src: the image location of the server
+        dest: the desired location on the dut
+    Returns:
+        The filename where the image was copied to on the dut, a tuple
+        containing the RO and RW version of the file
+    """
+    # Send the file to the DUT
+    client.send_file(src, dest)
+
+    ver = GetBinVersion(client, dest)
+    client.run("sync")
+    return dest, ver
