@@ -12,10 +12,10 @@ from autotest_lib.site_utils.sponge_lib import autotest_dynamic_job
 from autotest_lib.client.common_lib import decorators
 
 try:
-    import sponge
+    from sponge import upload_utils
 except ImportError:
     logging.debug('Module failed to be imported: sponge')
-    sponge = None
+    upload_utils = None
 
 
 
@@ -31,7 +31,7 @@ class SpongeLogHandler(logging.Handler):
 
 
 
-@decorators.test_module_available(sponge)
+@decorators.test_module_available(upload_utils)
 def upload_results(job, log=logging.debug):
     """Upload test results to Sponge with given job details.
 
@@ -51,7 +51,7 @@ def upload_results(job, log=logging.debug):
     try:
         logging.info('Starting sponge upload.')
         info = autotest_dynamic_job.DynamicJobInfo(job)
-        return sponge.upload_utils.UploadInfo(info)
+        return upload_utils.UploadInfo(info)
     except:
         stack = traceback.format_exc()
         logging.info('Failed to upload to sponge.')
