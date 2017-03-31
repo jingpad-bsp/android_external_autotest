@@ -928,10 +928,12 @@ class ChromiumOSTestPlatform(TestPlatform):
         # allows us to use any payload filename to serve an update.
         temp_devserver = None
         try:
-            if payload_url:
+            if omaha_host:
                 temp_devserver = OmahaDevserver(
-                        omaha_host, self._devserver_dir, payload_url)
+                        omaha_host, self._devserver_dir,
+                        payload_url or stateful_url)
                 temp_devserver.start_devserver()
+            if payload_url:
                 payload_url = temp_devserver.get_update_url()
 
             stateful_url = self._payload_to_update_url(stateful_url)
