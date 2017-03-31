@@ -4,6 +4,7 @@
 
 import ast, logging, re, time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import ec
 
@@ -285,6 +286,10 @@ class ChromeCr50(ChromeConsole):
     This class is to abstract these interfaces.
     """
     IDLE_COUNT = 'count: (\d+)'
+    VERSION_FORMAT = '\d+\.\d+\.\d+'
+    VERSION_ERROR = 'Error'
+    INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
+    ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
 
     def __init__(self, servo):
         super(ChromeCr50, self).__init__(servo, "cr50_console")
@@ -303,16 +308,111 @@ class ChromeCr50(ChromeConsole):
             raise error.TestFail("Could not clear deep sleep count")
 
 
+    def has_command(self, cmd):
+        """Returns 1 if cr50 has the command 0 if it doesn't"""
+        try:
+            self.send_command_get_output('help', [cmd])
+        except:
+            logging.info("Image does not include '%s' command", cmd)
+            return 0
+        return 1
+
+
+    def erase_nvmem(self):
+        """Use flasherase to erase both nvmem sections"""
+        if not self.has_command('flasherase'):
+            raise error.TestError("need image with 'flasherase'")
+
+        self.send_command('flasherase 0x7d000 0x3000')
+        self.send_command('flasherase 0x3d000 0x3000')
+
+
+    def reboot(self):
+        """Reboot Cr50 and wait for CCD to be enabled"""
+        self.send_command('reboot')
+        self.wait_for_ccd_disable()
+        self.ccd_enable()
+
+
+    def rollback(self):
+        """Set the reset counter high enough to force a rollback then reboot"""
+        if not self.has_command('rw') or not self.has_command('eraseflashinfo'):
+            raise error.TestError("need image with 'rw' and 'eraseflashinfo'")
+
+        if self.get_inactive_version_info()[1] == self.VERSION_ERROR:
+            raise error.TestError("Invalid image in inactive RW")
+
+        # Increase the reset count to above the rollback threshold
+        self.send_command('rw 0x40000128 1')
+        self.send_command('rw 0x4000012c 15')
+
+        self.send_command('eraseflashinfo')
+
+        self.reboot()
+
+
+    def get_version_info(self, regexp):
+        """Get information from the version command"""
+        return self.send_command_get_output('ver', [regexp])[0][1::]
+
+
+    def get_inactive_version_info(self):
+        """Get the active partition, version, and hash"""
+        return self.get_version_info(self.INACTIVE)
+
+
+    def get_active_version_info(self):
+        """Get the active partition, version, and hash"""
+        return self.get_version_info(self.ACTIVE)
+
+
+    def get_ccd_state(self):
+        """Get the CCD state from servo
+
+        Returns:
+            'off' or 'on' based on whether the cr50 console is working.
+        """
+        return self._servo.get('ccd_state')
+
+
+    def wait_for_ccd_state(self, state, timeout):
+        """Wait up to timeout seconds for CCD to be 'on' or 'off'
+        Args:
+            state: a string either 'on' or 'off'.
+            timeout: time in seconds to wait
+
+        Raises
+            TestFail if ccd never reaches the specified state
+        """
+        logging.info("Wait until ccd is '%s'", state)
+        value = utils.wait_for_value(self.get_ccd_state, state,
+                                     timeout_sec=timeout)
+        if value != state:
+            raise error.TestFail("timed out before detecting ccd '%s'" % state)
+        logging.info("ccd is '%s'", state)
+
+
+    def wait_for_ccd_disable(self, timeout=60):
+        """Wait for the cr50 console to stop working"""
+        self.wait_for_ccd_state('off', timeout)
+
+
+    def wait_for_ccd_enable(self, timeout=60):
+        """Wait for the cr50 console to start working"""
+        self.wait_for_ccd_state('on', timeout)
+
+
     def ccd_disable(self):
         """Change the values of the CC lines to disable CCD"""
+        logging.info("disable ccd")
         self._servo.set_nocheck('servo_v4_ccd_mode', 'disconnect')
-        # TODO: Add a better way to wait until usb is disconnected
-        time.sleep(3)
+        self.wait_for_ccd_disable()
 
 
     def ccd_enable(self):
         """Reenable CCD and reset servo interfaces"""
+        logging.info("reenable ccd")
         self._servo.set_nocheck('servo_v4_ccd_mode', 'ccd')
         self._servo.set('sbu_mux_enable', 'on')
         self._servo.set_nocheck('power_state', 'ccd_reset')
-        time.sleep(2)
+        self.wait_for_ccd_enable()
