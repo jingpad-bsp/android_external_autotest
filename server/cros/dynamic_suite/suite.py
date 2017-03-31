@@ -252,8 +252,8 @@ class RetryHandler(object):
         return self._retry_map[job_id]['retry_max']
 
 
-class _DynamicSuiteDiscoverer(object):
-    """Test discoverer for dynamic suite tests."""
+class _ExperimentalTestFilter(object):
+    """Filter experimental tests."""
 
 
     def __init__(self, tests, add_experimental=True):
@@ -266,7 +266,7 @@ class _DynamicSuiteDiscoverer(object):
         self._add_experimental = add_experimental
 
 
-    def discover_tests(self):
+    def get_tests_to_schedule(self):
         """Return a list of tests to be scheduled for this suite.
 
         @returns: list of tests (ControlData objects)
@@ -935,13 +935,13 @@ class Suite(object):
         @returns: The number of tests that were scheduled.
         """
         scheduled_test_names = []
-        discoverer = _DynamicSuiteDiscoverer(
+        test_filter = _ExperimentalTestFilter(
                 tests=self.tests,
                 add_experimental=add_experimental)
         logging.debug('Discovered %d stable tests.',
-                      len(discoverer.stable_tests))
+                      len(test_filter.stable_tests))
         logging.debug('Discovered %d unstable tests.',
-                      len(discoverer.unstable_tests))
+                      len(test_filter.unstable_tests))
 
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         try:
@@ -949,7 +949,7 @@ class Suite(object):
             if self._job_keyvals:
                 utils.write_keyval(self._results_dir, self._job_keyvals)
 
-            for test in discoverer.discover_tests():
+            for test in test_filter.get_tests_to_schedule():
                 scheduled_job = self._schedule_test(record, test)
                 if scheduled_job is not None:
                     scheduled_test_names.append(test.name)
