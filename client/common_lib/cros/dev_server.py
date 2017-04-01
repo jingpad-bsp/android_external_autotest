@@ -82,7 +82,7 @@ DEVSERVER_IS_STAGING_RETRY_MIN = 100
 DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN = 100
 
 # The total times of devserver triggering CrOS auto-update.
-AU_RETRY_LIMIT = 2
+AU_RETRY_LIMIT = 3
 
 # Number of seconds for caller to poll devserver's get_au_status call to
 # check if cros auto-update is finished.
@@ -2019,7 +2019,7 @@ class ImageServer(ImageServerBase):
                     c = metrics.Counter(
                             'chromeos/autotest/provision/'
                             'cros_update_with_original_build')
-                    f = {'dev_server': ImageServer.get_server_name(self.url()),
+                    f = {'dev_server': self.resolved_hostname,
                          'board': board,
                          'build_type': build_type,
                          'milestone': milestone,
