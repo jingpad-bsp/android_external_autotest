@@ -391,26 +391,26 @@ def _parse_control_file_texts(control_file_texts, add_experimental=False,
     @returns: a dictionary of ControlData objects
     """
     tests = {}
-    for file, text in control_file_texts:
+    for path, text in control_file_texts:
         # Seed test_args into the control file.
         if test_args:
             text = tools.inject_vars(test_args, text)
         try:
             found_test = control_data.parse_control_string(
-                    text, raise_warnings=True, path=file)
+                    text, raise_warnings=True, path=path)
             if not add_experimental and found_test.experimental:
                 continue
             found_test.text = text
             if run_prod_code:
                 found_test.require_ssp = False
-            tests[file] = found_test
+            tests[path] = found_test
         except control_data.ControlVariableException, e:
             if not forgiving_parser:
-                msg = "Failed parsing %s\n%s" % (file, e)
+                msg = "Failed parsing %s\n%s" % (path, e)
                 raise control_data.ControlVariableException(msg)
-            logging.warning("Skipping %s\n%s", file, e)
+            logging.warning("Skipping %s\n%s", path, e)
         except Exception, e:
-            logging.error("Bad %s\n%s", file, e)
+            logging.error("Bad %s\n%s", path, e)
     return tests
 
 
