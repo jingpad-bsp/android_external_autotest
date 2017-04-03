@@ -346,10 +346,7 @@ def _find_test_control_data_for_suite(
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
     tests = {}
-    use_batch = (ENABLE_CONTROLS_IN_BATCH
-                 and isinstance(cf_getter,
-                                control_file_getter.DevServerGetter))
-    if use_batch:
+    if _should_batch_with(cf_getter):
         suite_info = cf_getter.get_suite_info(suite_name=suite_name)
         files = suite_info.keys()
     else:
@@ -359,7 +356,7 @@ def _find_test_control_data_for_suite(
     logging.debug('Parsing control files ...')
     matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
     for file in filter(lambda f: not matcher.match(f), files):
-        if use_batch:
+        if _should_batch_with(cf_getter):
             text = suite_info[file]
         else:
             text = cf_getter.get_control_file_contents(file)
@@ -383,6 +380,18 @@ def _find_test_control_data_for_suite(
         except Exception, e:
             logging.error("Bad %s\n%s", file, e)
     return tests
+
+
+def _should_batch_with(cf_getter):
+    """Return whether control files should be fetched in batch.
+
+    This depends on the control file getter and configuration options.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    """
+    return (ENABLE_CONTROLS_IN_BATCH
+            and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
 class Suite(object):
