@@ -356,11 +356,13 @@ def _find_test_control_data_for_suite(
     logging.debug('Parsing control files ...')
     matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
     filtered_files = (path for path in files if not matcher.match(path))
-    for file in filtered_files:
-        if _should_batch_with(cf_getter):
-            text = suite_info[file]
-        else:
-            text = cf_getter.get_control_file_contents(file)
+    if _should_batch_with(cf_getter):
+        control_file_texts = _batch_get_control_file_texts(
+                cf_getter, suite_name, filtered_files)
+    else:
+        control_file_texts = _get_control_file_texts(
+                cf_getter, filtered_files)
+    for file, text in control_file_texts:
         # Seed test_args into the control file.
         if test_args:
             text = tools.inject_vars(test_args, text)
@@ -381,6 +383,32 @@ def _find_test_control_data_for_suite(
         except Exception, e:
             logging.error("Bad %s\n%s", file, e)
     return tests
+
+
+def _batch_get_control_file_texts(cf_getter, suite_name, paths):
+    """Get control file content for given files.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    @param suite_name: suite name
+    @param paths: iterable of control file paths
+    @returns: generator yielding (path, text) tuples
+    """
+    suite_info = cf_getter.get_suite_info(suite_name=suite_name)
+    for path in paths:
+        yield path, suite_info[path]
+
+
+def _get_control_file_texts(cf_getter, paths):
+    """Get control file content for given files.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    @param paths: iterable of control file paths
+    @returns: generator yielding (path, text) tuples
+    """
+    for path in paths:
+        yield path, cf_getter.get_control_file_contents(path)
 
 
 def _should_batch_with(cf_getter):
