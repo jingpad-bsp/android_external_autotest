@@ -345,7 +345,6 @@ def _find_test_control_data_for_suite(
              parameters.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = {}
     if _should_batch_with(cf_getter):
         suite_info = cf_getter.get_suite_info(suite_name=suite_name)
         files = suite_info.keys()
@@ -362,6 +361,36 @@ def _find_test_control_data_for_suite(
     else:
         control_file_texts = _get_control_file_texts(
                 cf_getter, filtered_files)
+    return _parse_control_file_texts(
+            control_file_texts=control_file_texts,
+            add_experimental=add_experimental,
+            forgiving_parser=forgiving_parser,
+            run_prod_code=run_prod_code,
+            test_args=test_args)
+
+
+def _parse_control_file_texts(control_file_texts, add_experimental=False,
+                              forgiving_parser=True, run_prod_code=False,
+                              test_args=None):
+    """Parse control file texts.
+
+    @param control_file_texts: iterable of (path, text) pairs
+    @param add_experimental: add tests with experimental attribute set.
+    @param forgiving_parser: If False, will raise ControlVariableExceptions
+                             if any are encountered when parsing control
+                             files. Note that this can raise an exception
+                             for syntax errors in unrelated files, because
+                             we parse them before applying the predicate.
+    @param run_prod_code: If true, the suite will run the test code that
+                          lives in prod aka the test code currently on the
+                          lab servers by disabling SSP for the discovered
+                          tests.
+    @param test_args: A dict of args to be seeded in test control file under
+                      the name |args_dict|.
+
+    @returns: a dictionary of ControlData objects
+    """
+    tests = {}
     for file, text in control_file_texts:
         # Seed test_args into the control file.
         if test_args:
