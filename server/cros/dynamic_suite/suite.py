@@ -298,6 +298,92 @@ class _ExperimentalTestFilter(object):
         return filter(lambda t: t.experimental, self._tests)
 
 
+def _find_test_control_data(
+        cf_getter, suite_name='', add_experimental=False,
+        forgiving_parser=True, run_prod_code=False,
+        test_args=None):
+    """
+    Function to scan through all tests and find all tests.
+
+    When this method is called with a file system ControlFileGetter, or
+    enable_controls_in_batch is set as false, this function will looks at
+    control files returned by cf_getter.get_control_file_list() for tests.
+
+    If cf_getter is a File system ControlFileGetter, it performs a full
+    parse of the root directory associated with the getter. This is the
+    case when it's invoked from suite_preprocessor.
+
+    If cf_getter is a devserver getter it looks up the suite_name in a
+    suite to control file map generated at build time, and parses the
+    relevant control files alone. This lookup happens on the devserver,
+    so as far as this method is concerned, both cases are equivalent. If
+    enable_controls_in_batch is switched on, this function will call
+    cf_getter.get_suite_info() to get a dict of control files and contents
+    in batch.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    @param suite_name: If specified, this method will attempt to restrain
+                       the search space to just this suite's control files.
+    @param add_experimental: add tests with experimental attribute set.
+    @param forgiving_parser: If False, will raise ControlVariableExceptions
+                             if any are encountered when parsing control
+                             files. Note that this can raise an exception
+                             for syntax errors in unrelated files, because
+                             we parse them before applying the predicate.
+    @param run_prod_code: If true, the suite will run the test code that
+                          lives in prod aka the test code currently on the
+                          lab servers by disabling SSP for the discovered
+                          tests.
+    @param test_args: A dict of args to be seeded in test control file under
+                      the name |args_dict|.
+
+    @raises ControlVariableException: If forgiving_parser is False and there
+                                      is a syntax error in a control file.
+
+    @returns a dictionary of ControlData objects that based on given
+             parameters.
+    """
+    logging.debug('Getting control file list for suite: %s', suite_name)
+    tests = {}
+    use_batch = (ENABLE_CONTROLS_IN_BATCH and hasattr(
+            cf_getter, '_dev_server'))
+    if use_batch:
+        suite_info = cf_getter.get_suite_info(suite_name=suite_name)
+        files = suite_info.keys()
+    else:
+        files = cf_getter.get_control_file_list(suite_name=suite_name)
+
+
+    logging.debug('Parsing control files ...')
+    matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+    for file in filter(lambda f: not matcher.match(f), files):
+        if use_batch:
+            text = suite_info[file]
+        else:
+            text = cf_getter.get_control_file_contents(file)
+        # Seed test_args into the control file.
+        if test_args:
+            text = tools.inject_vars(test_args, text)
+        try:
+            found_test = control_data.parse_control_string(
+                    text, raise_warnings=True, path=file)
+            if not add_experimental and found_test.experimental:
+                continue
+            found_test.text = text
+            if run_prod_code:
+                found_test.require_ssp = False
+            tests[file] = found_test
+        except control_data.ControlVariableException, e:
+            if not forgiving_parser:
+                msg = "Failed parsing %s\n%s" % (file, e)
+                raise control_data.ControlVariableException(msg)
+            logging.warning("Skipping %s\n%s", file, e)
+        except Exception, e:
+            logging.error("Bad %s\n%s", file, e)
+    return tests
+
+
 class Suite(object):
     """
     A suite of tests, defined by some predicate over control file variables.
@@ -1226,93 +1312,6 @@ class Suite(object):
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
 
 
-    @staticmethod
-    def _find_test_control_data(
-            cf_getter, suite_name='', add_experimental=False,
-            forgiving_parser=True, run_prod_code=False,
-            test_args=None):
-        """
-        Function to scan through all tests and find all tests.
-
-        When this method is called with a file system ControlFileGetter, or
-        enable_controls_in_batch is set as false, this function will looks at
-        control files returned by cf_getter.get_control_file_list() for tests.
-
-        If cf_getter is a File system ControlFileGetter, it performs a full
-        parse of the root directory associated with the getter. This is the
-        case when it's invoked from suite_preprocessor.
-
-        If cf_getter is a devserver getter it looks up the suite_name in a
-        suite to control file map generated at build time, and parses the
-        relevant control files alone. This lookup happens on the devserver,
-        so as far as this method is concerned, both cases are equivalent. If
-        enable_controls_in_batch is switched on, this function will call
-        cf_getter.get_suite_info() to get a dict of control files and contents
-        in batch.
-
-        @param cf_getter: a control_file_getter.ControlFileGetter used to list
-               and fetch the content of control files
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
-        @param add_experimental: add tests with experimental attribute set.
-        @param forgiving_parser: If False, will raise ControlVariableExceptions
-                                 if any are encountered when parsing control
-                                 files. Note that this can raise an exception
-                                 for syntax errors in unrelated files, because
-                                 we parse them before applying the predicate.
-        @param run_prod_code: If true, the suite will run the test code that
-                              lives in prod aka the test code currently on the
-                              lab servers by disabling SSP for the discovered
-                              tests.
-        @param test_args: A dict of args to be seeded in test control file under
-                          the name |args_dict|.
-
-        @raises ControlVariableException: If forgiving_parser is False and there
-                                          is a syntax error in a control file.
-
-        @returns a dictionary of ControlData objects that based on given
-                 parameters.
-        """
-        logging.debug('Getting control file list for suite: %s', suite_name)
-        tests = {}
-        use_batch = (ENABLE_CONTROLS_IN_BATCH and hasattr(
-                cf_getter, '_dev_server'))
-        if use_batch:
-            suite_info = cf_getter.get_suite_info(suite_name=suite_name)
-            files = suite_info.keys()
-        else:
-            files = cf_getter.get_control_file_list(suite_name=suite_name)
-
-
-        logging.debug('Parsing control files ...')
-        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
-        for file in filter(lambda f: not matcher.match(f), files):
-            if use_batch:
-                text = suite_info[file]
-            else:
-                text = cf_getter.get_control_file_contents(file)
-            # Seed test_args into the control file.
-            if test_args:
-                text = tools.inject_vars(test_args, text)
-            try:
-                found_test = control_data.parse_control_string(
-                        text, raise_warnings=True, path=file)
-                if not add_experimental and found_test.experimental:
-                    continue
-                found_test.text = text
-                if run_prod_code:
-                    found_test.require_ssp = False
-                tests[file] = found_test
-            except control_data.ControlVariableException, e:
-                if not forgiving_parser:
-                    msg = "Failed parsing %s\n%s" % (file, e)
-                    raise control_data.ControlVariableException(msg)
-                logging.warning("Skipping %s\n%s", file, e)
-            except Exception, e:
-                logging.error("Bad %s\n%s", file, e)
-        return tests
-
-
     @classmethod
     def find_and_parse_tests(cls, cf_getter, predicate, suite_name='',
                              add_experimental=False, forgiving_parser=True,
@@ -1350,7 +1349,7 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
-        tests = cls._find_test_control_data(
+        tests = _find_test_control_data(
                 cf_getter, suite_name, add_experimental, forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args)
@@ -1385,9 +1384,9 @@ class Suite(object):
         @return list of top names that similar to the given test, sorted by
                 match ratio.
         """
-        tests = cls._find_test_control_data(cf_getter, suite_name,
-                                    add_experimental=True,
-                                    forgiving_parser=True)
+        tests = _find_test_control_data(
+                cf_getter, suite_name,
+                add_experimental=True, forgiving_parser=True)
         logging.debug('Parsed %s control files.', len(tests))
         similarities = {}
         for test in tests.itervalues():
