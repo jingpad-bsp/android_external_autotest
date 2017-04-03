@@ -346,8 +346,9 @@ def _find_test_control_data(
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
     tests = {}
-    use_batch = (ENABLE_CONTROLS_IN_BATCH and hasattr(
-            cf_getter, '_dev_server'))
+    use_batch = (ENABLE_CONTROLS_IN_BATCH
+                 and isinstance(cf_getter,
+                                control_file_getter.DevServerGetter))
     if use_batch:
         suite_info = cf_getter.get_suite_info(suite_name=suite_name)
         files = suite_info.keys()
