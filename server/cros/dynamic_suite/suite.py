@@ -1227,9 +1227,10 @@ class Suite(object):
 
 
     @staticmethod
-    def _find_all_tests(cf_getter, suite_name='', add_experimental=False,
-                        forgiving_parser=True, run_prod_code=False,
-                        test_args=None):
+    def _find_test_control_data(
+            cf_getter, suite_name='', add_experimental=False,
+            forgiving_parser=True, run_prod_code=False,
+            test_args=None):
         """
         Function to scan through all tests and find all tests.
 
@@ -1349,10 +1350,10 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
-        tests = cls._find_all_tests(cf_getter, suite_name, add_experimental,
-                                    forgiving_parser,
-                                    run_prod_code=run_prod_code,
-                                    test_args=test_args)
+        tests = cls._find_test_control_data(
+                cf_getter, suite_name, add_experimental, forgiving_parser,
+                run_prod_code=run_prod_code,
+                test_args=test_args)
         logging.debug('Parsed %s control files.', len(tests))
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:
@@ -1384,7 +1385,7 @@ class Suite(object):
         @return list of top names that similar to the given test, sorted by
                 match ratio.
         """
-        tests = cls._find_all_tests(cf_getter, suite_name,
+        tests = cls._find_test_control_data(cf_getter, suite_name,
                                     add_experimental=True,
                                     forgiving_parser=True)
         logging.debug('Parsed %s control files.', len(tests))
