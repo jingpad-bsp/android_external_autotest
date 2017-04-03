@@ -138,6 +138,7 @@ class SuiteTest(mox.MoxTestBase):
 
         @param suite_name: The suite name to parse control files for.
         """
+        self.getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
         self.mox.StubOutWithMock(control_data, 'parse_control_string')
         suite_info = {}
         for k, v in self.files.iteritems():
