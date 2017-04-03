@@ -1,12 +1,12 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'angli, krisr'
+AUTHOR = 'bettyzhou, jaineelm, krisr'
 NAME = 'android_ACTS.Telephony_VZW_Nexus'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_nexus_vzw'
+ATTRIBUTES = 'suite:android_telephony_nexus'
 DEPENDENCIES = 'carrier:verizon'
 
 DOC = """
