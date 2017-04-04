@@ -307,7 +307,6 @@ class _SuiteChildJobCreator(object):
             builds,
             board,
             afe=None,
-            pool=None,
             max_runtime_mins=24*60,
             timeout_mins=24*60,
             suite_job_id=None,
@@ -323,8 +322,6 @@ class _SuiteChildJobCreator(object):
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
         @param afe: an instance of AFE as defined in server/frontend.py.
-        @param pool: Specify the pool of machines to use for scheduling
-                purposes.
         @param max_runtime_mins: Maximum suite runtime, in minutes.
         @param timeout_mins: Maximum job lifetime, in minutes.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
@@ -347,7 +344,6 @@ class _SuiteChildJobCreator(object):
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
-        self._pool = pool
         self._max_runtime_mins = max_runtime_mins
         self._timeout_mins = timeout_mins
         self._suite_job_id = suite_job_id
@@ -413,8 +409,6 @@ class _SuiteChildJobCreator(object):
         else:
             job_deps = list(test.dependencies)
         job_deps.extend(self._extra_deps)
-        if self._pool:
-            job_deps.append(self._pool)
         job_deps.append(self._board)
         return job_deps
 
@@ -1050,12 +1044,13 @@ class Suite(object):
 
         if extra_deps is None:
             extra_deps = []
+        if pool:
+            extra_deps.append(pool)
         self._job_creator = _SuiteChildJobCreator(
             tag=tag,
             builds=builds,
             board=board,
             afe=afe,
-            pool=pool,
             max_runtime_mins=max_runtime_mins,
             timeout_mins=timeout_mins,
             suite_job_id=suite_job_id,
