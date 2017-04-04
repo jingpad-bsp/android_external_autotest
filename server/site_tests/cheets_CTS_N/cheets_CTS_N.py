@@ -413,6 +413,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 if not self._consistent(tests, passed, failed, notexecuted):
                     logging.warning('Test count inconsistent. %s', self.summary)
                 total_passed += passed
+                if tests > expected_tests:
+                    total_tests += tests - expected_tests
             # The DUT has rebooted at this point and is in a clean state.
 
         # Final classification of test results.
