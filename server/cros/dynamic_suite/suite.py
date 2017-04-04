@@ -409,7 +409,6 @@ class _SuiteChildJobCreator(object):
         else:
             job_deps = list(test.dependencies)
         job_deps.extend(self._extra_deps)
-        job_deps.append(self._board)
         return job_deps
 
 
@@ -1044,6 +1043,7 @@ class Suite(object):
 
         if extra_deps is None:
             extra_deps = []
+        extra_deps.append(board)
         if pool:
             extra_deps.append(pool)
         self._job_creator = _SuiteChildJobCreator(
