@@ -1014,8 +1014,6 @@ class Suite(object):
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
         """
-        if extra_deps is None:
-            extra_deps = []
 
         self._tag = tag
         self._builds = builds
@@ -1050,6 +1048,8 @@ class Suite(object):
         self._job_keyvals = job_keyvals
         self._test_args = test_args
 
+        if extra_deps is None:
+            extra_deps = []
         self._job_creator = _SuiteChildJobCreator(
             tag=tag,
             builds=builds,
