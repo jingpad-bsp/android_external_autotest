@@ -783,6 +783,7 @@ class DisplayPanelSelfRefresh(object):
             _init_counter: integer of initial value of residency counter.
             _keyvals: dictionary of keyvals
         """
+        self._psr_path = ''
         if os.path.exists(self._PSR_STATUS_FILE_X86):
             self._psr_path = self._PSR_STATUS_FILE_X86
             self._psr_parse_prefix = 'Performance_Counter:'
