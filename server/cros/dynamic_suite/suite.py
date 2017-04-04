@@ -303,6 +303,7 @@ class _SuiteChildJobCreator(object):
 
     def __init__(
             self,
+            builds,
             board,
             pool=None,
             ignore_deps=False,
@@ -310,6 +311,7 @@ class _SuiteChildJobCreator(object):
         """
         Constructor
 
+        @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
@@ -321,10 +323,21 @@ class _SuiteChildJobCreator(object):
         """
         if extra_deps is None:
             extra_deps = []
+        self._builds = builds
         self._board = board
         self._pool = pool
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
+
+
+    @property
+    def cros_build(self):
+        """Return the CrOS build or the first build in the builds dict."""
+        # TODO(ayatane): Note that the builds dict isn't ordered.  I'm not
+        # sure what the implications of this are, but it's probably not a
+        # good thing.
+        return self._builds.get(provision.CROS_VERSION_PREFIX,
+                                self._builds.values()[0])
 
 
     def _create_job_deps(self, test):
@@ -934,21 +947,12 @@ class Suite(object):
         self._test_args = test_args
 
         self._job_creator = _SuiteChildJobCreator(
+            builds=builds,
             board=board,
             pool=pool,
             ignore_deps=ignore_deps,
             extra_deps=extra_deps,
         )
-
-
-    @property
-    def _cros_build(self):
-        """Return the CrOS build or the first build in the builds dict."""
-        # TODO(ayatane): Note that the builds dict isn't ordered.  I'm not
-        # sure what the implications of this are, but it's probably not a
-        # good thing.
-        return self._builds.get(provision.CROS_VERSION_PREFIX,
-                                self._builds.values()[0])
 
 
     def _create_job(self, test, retry_for=None):
@@ -967,7 +971,7 @@ class Suite(object):
         test_obj = self._afe.create_job(
             control_file=test.text,
             name=tools.create_job_name(
-                    self._test_source_build or self._cros_build,
+                    self._test_source_build or self._job_creator.cros_build,
                     self._tag,
                     test.name),
             control_type=test.test_type.capitalize(),
@@ -997,7 +1001,7 @@ class Suite(object):
         @returns: A keyvals dict for creating the test job.
         """
         keyvals = {
-            constants.JOB_BUILD_KEY: self._cros_build,
+            constants.JOB_BUILD_KEY: self._job_creator.cros_build,
             constants.JOB_SUITE_KEY: self._tag,
             constants.JOB_EXPERIMENTAL_KEY: test.experimental,
             constants.JOB_BUILDS_KEY: self._builds
@@ -1013,7 +1017,7 @@ class Suite(object):
         # compile an autoserv command line to run in a SSP container using
         # previous builds.
         if (self._test_source_build and
-            (self._cros_build != self._test_source_build or
+            (self._job_creator.cros_build != self._test_source_build or
              len(self._builds) > 1)):
             keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = \
                     self._test_source_build
@@ -1349,7 +1353,7 @@ class Suite(object):
 
         job_views = self._tko.run('get_detailed_test_views',
                                   afe_job_id=result.id)
-        return reporting.TestBug(self._cros_build,
+        return reporting.TestBug(self._job_creator.cros_build,
                 site_utils.get_chrome_version(job_views),
                 self._tag,
                 result)
