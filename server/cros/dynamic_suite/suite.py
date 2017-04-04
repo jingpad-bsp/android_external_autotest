@@ -298,6 +298,10 @@ class _ExperimentalTestFilter(object):
         return filter(lambda t: t.experimental, self._tests)
 
 
+class _SuiteChildJobCreator(object):
+    """Create test jobs for a suite."""
+
+
 def _find_test_control_data_for_suite(
         cf_getter, suite_name='', add_experimental=False,
         forgiving_parser=True, run_prod_code=False,
@@ -887,6 +891,8 @@ class Suite(object):
         self._test_source_build = test_source_build
         self._job_keyvals = job_keyvals
         self._test_args = test_args
+
+        self._job_creator = _SuiteChildJobCreator()
 
 
     @property
