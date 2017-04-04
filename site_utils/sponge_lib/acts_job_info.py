@@ -11,6 +11,10 @@ import logging
 from autotest_lib.site_utils.sponge_lib import autotest_job_info
 
 
+UNKNOWN_EFFORT_NAME = 'UNKNOWN_BUILD'
+UNKNOWN_ENV_NAME = 'UNKNOWN_BOARD'
+
+
 class ACTSSummaryEnums(object):
     """A class contains the attribute names used in a ACTS summary."""
 
@@ -118,21 +122,28 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     @property
     def effort_name(self):
         """The test tracker effort name."""
-        return self.build_info.get('build_prop', {}).get(
-            'ro.build.version.incremental', 'UNKNOWN_BUILD')
+        build_id = self.build_info.get('build_prop', {}).get('ro.build.id')
+        if build_id and any(c.isdigit() for c in build_id):
+            return build_id
+        else:
+            build_version = self.build_info.get('build_prop', {}).get(
+                    'ro.build.version.incremental', UNKNOWN_EFFORT_NAME)
+            return build_version
+
 
     @property
     def project_id(self):
         """The test tracker project id."""
         if 'param-testtracker_project_id' in self.keyvals:
-            return self.keyvals.get('param-testtracker_project_id', None)
+            return self.keyvals.get('param-testtracker_project_id')
         else:
-            return self.keyvals.get('param-test_tracker_project_id', None)
+            return self.keyvals.get('param-test_tracker_project_id')
 
     @property
     def environment(self):
         """The name of the enviroment for test tracker."""
-        return self.build_info.get('branch', 'UNKNOWN_BRANCH')
+        return self.build_info.get('build_prop', {}).get('ro.product.board',
+                                                         UNKNOWN_ENV_NAME)
 
 
 class ACTSRecord(object):
@@ -154,12 +165,12 @@ class ACTSRecord(object):
     @property
     def test_case(self):
         """The test case that was run. None implies all in the class."""
-        return self._json_record.get(ACTSRecordEnums.TestName, None)
+        return self._json_record.get(ACTSRecordEnums.TestName)
 
     @property
     def uid(self):
         """The uid of the test case."""
-        return self._json_record.get(ACTSRecordEnums.UID, None)
+        return self._json_record.get(ACTSRecordEnums.UID)
 
     @property
     def status(self):
@@ -179,17 +190,30 @@ class ACTSRecord(object):
     @property
     def details(self):
         """Details about the test case."""
-        return self._json_record.get(ACTSRecordEnums.Details, None)
+        return self._json_record.get(ACTSRecordEnums.Details)
 
     @property
     def extras(self):
         """Extra info about the test case."""
-        return self._json_record.get(ACTSRecordEnums.Extras, None)
+        return self._json_record.get(ACTSRecordEnums.Extras)
 
     @property
     def extra_errors(self):
         """Extra errors about the test case."""
-        return self._json_record.get(ACTSRecordEnums.ExtraErrors, None)
+        return self._json_record.get(ACTSRecordEnums.ExtraErrors)
+
+    @property
+    def extra_environment(self):
+        """Extra details about the environment for this test."""
+        extras = self.extras
+        if not extras:
+            return None
+
+        test_tracker_info = self.extras.get('test_tracker_info')
+        if not test_tracker_info:
+            return self.extras.get('test_tracker_environment_info')
+
+        return test_tracker_info.get('extra_environment')
 
     @property
     def uuid(self):
@@ -198,8 +222,8 @@ class ACTSRecord(object):
         if not extras:
             return None
 
-        test_tracker_info = self.extras.get('test_tracker_info', None)
+        test_tracker_info = self.extras.get('test_tracker_info')
         if not test_tracker_info:
-            return None
+            return self.extras.get('test_tracker_uuid')
 
-        return test_tracker_info.get('test_tracker_uuid', None)
+        return test_tracker_info.get('test_tracker_uuid')
