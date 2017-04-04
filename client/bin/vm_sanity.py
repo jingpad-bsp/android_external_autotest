@@ -41,9 +41,13 @@ def main(args):
         # is_vault_mounted throws an exception if it fails.
         logging.info('Checking mounted cryptohome.')
         cryptohome.is_vault_mounted(user=cr.username, allow_fail=False)
+        # Navigate to about:blank.
+        tab = cr.browser.tabs[0]
+        tab.Navigate('about:blank')
+
         # Evaluate some javascript.
         logging.info('Evaluating JavaScript.')
-        if cr.browser.tabs[0].EvaluateJavaScript('2+2') != 4:
+        if tab.EvaluateJavaScript('2+2') != 4:
             raise TestFail('EvaluateJavaScript failed')
 
         # ARC test.
