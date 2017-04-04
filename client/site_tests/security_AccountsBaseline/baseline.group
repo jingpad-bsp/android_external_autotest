@@ -80,6 +80,7 @@ dnsmasq:!:268:dnsmasq
 lpadmin:!:269:cups,lpadmin
 cups:!:277:
 biod:!:282:
+devicejail:!:283:
 arc-camera:!:603:
 ntfs-3g:!:300:
 avfs:!:301:
