@@ -306,10 +306,14 @@ class _SuiteChildJobCreator(object):
             tag,
             builds,
             board,
+            afe=None,
             pool=None,
+            max_runtime_mins=24*60,
+            timeout_mins=24*60,
             suite_job_id=None,
             ignore_deps=False,
             extra_deps=None,
+            priority=priorities.Priority.DEFAULT,
             offload_failures_only=False,
             test_source_build=None):
         """
@@ -318,8 +322,11 @@ class _SuiteChildJobCreator(object):
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
+        @param afe: an instance of AFE as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param max_runtime_mins: Maximum suite runtime, in minutes.
+        @param timeout_mins: Maximum job lifetime, in minutes.
         @param suite_job_id: Job id that will act as parent id to all sub jobs.
                              Default: None
         @param ignore_deps: True if jobs should ignore the DEPENDENCIES
@@ -327,6 +334,7 @@ class _SuiteChildJobCreator(object):
                             (Default:False)
         @param extra_deps: A list of strings which are the extra DEPENDENCIES
                            to add to each test being scheduled.
+        @param priority: Integer priority level.  Higher is more important.
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
         @param test_source_build: Build that contains the server-side test code.
@@ -336,10 +344,16 @@ class _SuiteChildJobCreator(object):
         self._tag = tag
         self._builds = builds
         self._board = board
+        self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
+                                                         delay_sec=10,
+                                                         debug=False)
         self._pool = pool
+        self._max_runtime_mins = max_runtime_mins
+        self._timeout_mins = timeout_mins
         self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
         self._extra_deps = extra_deps
+        self._priority = priority
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
 
@@ -352,6 +366,41 @@ class _SuiteChildJobCreator(object):
         # good thing.
         return self._builds.get(provision.CROS_VERSION_PREFIX,
                                 self._builds.values()[0])
+
+
+    def create_job(self, test, retry_for=None):
+        """
+        Thin wrapper around frontend.AFE.create_job().
+
+        @param test: ControlData object for a test to run.
+        @param retry_for: If the to-be-created job is a retry for an
+                          old job, the afe_job_id of the old job will
+                          be passed in as |retry_for|, which will be
+                          recorded in the new job's keyvals.
+        @returns: A frontend.Job object with an added test_name member.
+                  test_name is used to preserve the higher level TEST_NAME
+                  name of the job.
+        """
+        test_obj = self._afe.create_job(
+            control_file=test.text,
+            name=tools.create_job_name(
+                    self._test_source_build or self.cros_build,
+                    self._tag,
+                    test.name),
+            control_type=test.test_type.capitalize(),
+            meta_hosts=[self._board]*test.sync_count,
+            dependencies=self._create_job_deps(test),
+            keyvals=self._create_keyvals_for_test_job(test, retry_for),
+            max_runtime_mins=self._max_runtime_mins,
+            timeout_mins=self._timeout_mins,
+            parent_job_id=self._suite_job_id,
+            test_retry=test.retries,
+            priority=self._priority,
+            synch_count=test.sync_count,
+            require_ssp=test.require_ssp)
+
+        test_obj.test_name = test.name
+        return test_obj
 
 
     def _create_job_deps(self, test):
@@ -1014,49 +1063,17 @@ class Suite(object):
             tag=tag,
             builds=builds,
             board=board,
+            afe=afe,
             pool=pool,
+            max_runtime_mins=max_runtime_mins,
+            timeout_mins=timeout_mins,
             suite_job_id=suite_job_id,
             ignore_deps=ignore_deps,
             extra_deps=extra_deps,
+            priority=priority,
             offload_failures_only=offload_failures_only,
             test_source_build=test_source_build,
         )
-
-
-    def _create_job(self, test, retry_for=None):
-        """
-        Thin wrapper around frontend.AFE.create_job().
-
-        @param test: ControlData object for a test to run.
-        @param retry_for: If the to-be-created job is a retry for an
-                          old job, the afe_job_id of the old job will
-                          be passed in as |retry_for|, which will be
-                          recorded in the new job's keyvals.
-        @returns: A frontend.Job object with an added test_name member.
-                  test_name is used to preserve the higher level TEST_NAME
-                  name of the job.
-        """
-        test_obj = self._afe.create_job(
-            control_file=test.text,
-            name=tools.create_job_name(
-                    self._test_source_build or self._job_creator.cros_build,
-                    self._tag,
-                    test.name),
-            control_type=test.test_type.capitalize(),
-            meta_hosts=[self._board]*test.sync_count,
-            dependencies=self._job_creator._create_job_deps(test),
-            keyvals=self._job_creator._create_keyvals_for_test_job(test,
-                                                                   retry_for),
-            max_runtime_mins=self._max_runtime_mins,
-            timeout_mins=self._timeout_mins,
-            parent_job_id=self._suite_job_id,
-            test_retry=test.retries,
-            priority=self._priority,
-            synch_count=test.sync_count,
-            require_ssp=test.require_ssp)
-
-        test_obj.test_name = test.name
-        return test_obj
 
 
     def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
@@ -1091,7 +1108,7 @@ class Suite(object):
         logging.debug(msg)
         begin_time_str = datetime.datetime.now().strftime(time_utils.TIME_FMT)
         try:
-            job = self._create_job(test, retry_for=retry_for)
+            job = self._job_creator.create_job(test, retry_for=retry_for)
         except (error.NoEligibleHostException, proxy.ValidationError) as e:
             if (isinstance(e, error.NoEligibleHostException)
                 or (isinstance(e, proxy.ValidationError)
