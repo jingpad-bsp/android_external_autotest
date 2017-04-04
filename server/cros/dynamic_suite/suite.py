@@ -301,6 +301,47 @@ class _ExperimentalTestFilter(object):
 class _SuiteChildJobCreator(object):
     """Create test jobs for a suite."""
 
+    def __init__(
+            self,
+            board,
+            pool=None,
+            ignore_deps=False,
+            extra_deps=None):
+        """
+        Constructor
+
+        @param board: the board on which we're running this suite.
+        @param pool: Specify the pool of machines to use for scheduling
+                purposes.
+        @param ignore_deps: True if jobs should ignore the DEPENDENCIES
+                            attribute and skip applying of dependency labels.
+                            (Default:False)
+        @param extra_deps: A list of strings which are the extra DEPENDENCIES
+                           to add to each test being scheduled.
+        """
+        if extra_deps is None:
+            extra_deps = []
+        self._board = board
+        self._pool = pool
+        self._ignore_deps = ignore_deps
+        self._extra_deps = extra_deps
+
+
+    def _create_job_deps(self, test):
+        """Create job deps list for a test job.
+
+        @returns: A list of dependency strings.
+        """
+        if self._ignore_deps:
+            job_deps = []
+        else:
+            job_deps = list(test.dependencies)
+        job_deps.extend(self._extra_deps)
+        if self._pool:
+            job_deps.append(self._pool)
+        job_deps.append(self._board)
+        return job_deps
+
 
 def _find_test_control_data_for_suite(
         cf_getter, suite_name='', add_experimental=False,
@@ -892,7 +933,12 @@ class Suite(object):
         self._job_keyvals = job_keyvals
         self._test_args = test_args
 
-        self._job_creator = _SuiteChildJobCreator()
+        self._job_creator = _SuiteChildJobCreator(
+            board=board,
+            pool=pool,
+            ignore_deps=ignore_deps,
+            extra_deps=extra_deps,
+        )
 
 
     @property
@@ -926,7 +972,7 @@ class Suite(object):
                     test.name),
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
-            dependencies=self._create_job_deps(test),
+            dependencies=self._job_creator._create_job_deps(test),
             keyvals=self._create_keyvals_for_test_job(test, retry_for),
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
@@ -938,22 +984,6 @@ class Suite(object):
 
         test_obj.test_name = test.name
         return test_obj
-
-
-    def _create_job_deps(self, test):
-        """Create job deps list for a test job.
-
-        @returns: A list of dependency strings.
-        """
-        if self._ignore_deps:
-            job_deps = []
-        else:
-            job_deps = list(test.dependencies)
-        job_deps.extend(self._extra_deps)
-        if self._pool:
-            job_deps.append(self._pool)
-        job_deps.append(self._board)
-        return job_deps
 
 
     def _create_keyvals_for_test_job(self, test, retry_for=None):
