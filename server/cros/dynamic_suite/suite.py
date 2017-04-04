@@ -1019,7 +1019,6 @@ class Suite(object):
 
         self._tag = tag
         self._builds = builds
-        self._board = board
         self._cf_getter = cf_getter
         self._results_dir = results_dir
         self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
@@ -1028,7 +1027,6 @@ class Suite(object):
         self._tko = tko or frontend_wrappers.RetryingTKO(timeout_min=30,
                                                          delay_sec=10,
                                                          debug=False)
-        self._pool = pool
         self._jobs = []
         self._jobs_to_tests = {}
         self.tests = self.find_and_parse_tests(
@@ -1041,21 +1039,14 @@ class Suite(object):
                 test_args=test_args,
         )
 
-        self._max_runtime_mins = max_runtime_mins
-        self._timeout_mins = timeout_mins
         self._file_bugs = file_bugs
         self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
-        self._ignore_deps = ignore_deps
-        self._extra_deps = extra_deps
-        self._priority = priority
         self._job_retry=job_retry
         self._max_retries = max_retries
         # RetryHandler to be initialized in schedule()
         self._retry_handler = None
         self.wait_for_results = wait_for_results
-        self._offload_failures_only = offload_failures_only
-        self._test_source_build = test_source_build
         self._job_keyvals = job_keyvals
         self._test_args = test_args
 
