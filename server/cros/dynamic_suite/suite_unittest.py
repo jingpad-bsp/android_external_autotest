@@ -701,8 +701,9 @@ class SuiteTest(mox.MoxTestBase):
             StatusContains.CreateFromStrings('FAIL', self._TAG, 'scheduling'),
             log_in_subdir=False)
 
-        self.mox.StubOutWithMock(suite, '_create_job')
-        suite._create_job(mox.IgnoreArg(), retry_for=mox.IgnoreArg()).AndRaise(
+        self.mox.StubOutWithMock(suite._job_creator, 'create_job')
+        suite._job_creator.create_job(
+            mox.IgnoreArg(), retry_for=mox.IgnoreArg()).AndRaise(
             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
@@ -841,8 +842,8 @@ class SuiteTest(mox.MoxTestBase):
                 self.suite,
                 [test_results[0] + test_results[1]],
                 self.recorder)
-        self.mox.StubOutWithMock(self.suite, '_create_job')
-        self.suite._create_job(
+        self.mox.StubOutWithMock(self.suite._job_creator, 'create_job')
+        self.suite._job_creator.create_job(
                 test_to_retry,
                 retry_for=self._FAKE_JOB_ID).AndReturn(fake_new_job)
         self.mox.ReplayAll()
@@ -905,8 +906,8 @@ class SuiteTest(mox.MoxTestBase):
                 self.suite,
                 [test_results[0] + test_results[1]],
                 self.recorder)
-        self.mox.StubOutWithMock(self.suite, '_create_job')
-        self.suite._create_job(
+        self.mox.StubOutWithMock(self.suite._job_creator, 'create_job')
+        self.suite._job_creator.create_job(
                 test_to_retry, retry_for=self._FAKE_JOB_ID).AndRaise(
                 error.RPCException('Expected during test'))
         # Do not file a bug.
