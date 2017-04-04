@@ -95,6 +95,10 @@ _LOCK_REASON_NEW_HOST = 'Repairing or deploying a new host'
 _ReportResult = namedtuple('_ReportResult', ['hostname', 'message'])
 
 
+class _NoAFEServoPortError(Exception):
+    """Exception when there is no servo port stored in the AFE."""
+
+
 class _MultiFileWriter(object):
 
     """Group file objects for writing at once."""
@@ -636,6 +640,33 @@ def _get_free_servo_port(servo_hostname, used_servo_ports, afe):
     return servo_port
 
 
+def _get_afe_servo_port(host_info, afe):
+    """
+    Get the servo port from the afe if it matches the same servo host hostname.
+
+    @param host_info   HostInfo tuple (hostname, host_attr_dict).
+
+    @returns Servo port (int) if servo host hostname matches the one specified
+    host_info.host_attr_dict, otherwise None.
+
+    @raises _NoAFEServoPortError: When there is no stored host info or servo
+        port host attribute in the AFE for the given host.
+    """
+    afe_hosts = afe.get_hosts(hostname=host_info.hostname)
+    if not afe_hosts:
+        raise _NoAFEServoPortError
+
+    servo_port = afe_hosts[0].attributes.get(servo_host.SERVO_PORT_ATTR)
+    afe_servo_host = afe_hosts[0].attributes.get(servo_host.SERVO_HOST_ATTR)
+    host_info_servo_host = host_info.host_attr_dict.get(
+        servo_host.SERVO_HOST_ATTR)
+
+    if afe_servo_host == host_info_servo_host and servo_port:
+        return int(servo_port)
+    else:
+        raise _NoAFEServoPortError
+
+
 def _get_host_attributes(host_info_list, afe):
     """
     Get host attributes if a hostname_file was supplied.
@@ -652,8 +683,14 @@ def _get_host_attributes(host_info_list, afe):
     used_servo_ports = {}
     for host_info in host_info_list:
         host_attr_dict = host_info.host_attr_dict
-        host_attr_dict[servo_host.SERVO_PORT_ATTR] = _get_free_servo_port(
-                host_attr_dict[servo_host.SERVO_HOST_ATTR],used_servo_ports,
+        # If the host already has an entry in the AFE that matches the same
+        # servo host hostname and the servo port is set, use that port.
+        try:
+            host_attr_dict[servo_host.SERVO_PORT_ATTR] = _get_afe_servo_port(
+                host_info, afe)
+        except _NoAFEServoPortError:
+            host_attr_dict[servo_host.SERVO_PORT_ATTR] = _get_free_servo_port(
+                host_attr_dict[servo_host.SERVO_HOST_ATTR], used_servo_ports,
                 afe)
         host_attributes[host_info.hostname] = host_attr_dict
     return host_attributes
