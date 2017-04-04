@@ -10,7 +10,7 @@ AUTHOR = 'chromeos-chameleon'
 NAME = 'bluetooth_AdapterLEAdvertising.single'
 PURPOSE = 'Test bluetooth adapter advertising.'
 CRITERIA = 'Adapter should advertise with correct parameters.'
-ATTRIBUTES = 'suite:bluetooth'
+ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_sanity'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
@@ -23,6 +23,9 @@ behave as a Bluetooth low-energy device and register a single
 advertisement with data and parameters correctly. This test case also
 verifies that the single advertisement could be registered and
 unregistered continuously.
+
+This autotest include the following test cases:
+     self.test_case_SI200_RA1_CD_UA1()
 
 Specifically, the subtests included in this autotest verify the
 following operations and parameters.
@@ -40,6 +43,20 @@ following operations and parameters.
     - test_reset_advertising
       * The single advertisement instance is removed.
       * Advertising is disabled consequently.
+
+Mnemonics of the test cases:
+    CD: check advertising duration and intervals
+    RA: register advertisements
+    UA: unregister advertisements
+    SI: set advertising intervals
+    RS: reset advertising
+    FRA: fail to register extra advertisements when max ones have
+         been registered.
+    FSI: fail to set advertising intervals beyond legitimate range
+         of [20 ms, 10,240 ms].
+    PC: power cycle the bluetooth adapter (controller).
+    SR: suspend and resume the DUT (chromebook)
+
 """
 
 
