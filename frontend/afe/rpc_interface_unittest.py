@@ -1116,13 +1116,8 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
         # shard1.
         self.mox.StubOutWithMock(models.Host, '_assign_to_shard_nothing_helper')
         def remove_label():
-            # A separate RPC call to remove_board_from_shard (not yet
-            # implemented) swoops in and removes the label from the shard and
-            # the shard from all previously assigned hosts.
-            shard1.labels.remove(lumpy_label)
-            models.Host.objects.filter(
-                labels__in=[lumpy_label]
-            ).update(shard=None)
+            rpc_interface.remove_board_from_shard(
+                    shard1.hostname, lumpy_label.name)
         models.Host._assign_to_shard_nothing_helper().WithSideEffects(
             remove_label)
         self.mox.ReplayAll()
@@ -1131,6 +1126,30 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
             known_hosts=[host1], hosts=[], incorrect_host_ids=[host1.id])
         host2 = models.Host.smart_get(host2.id)
         self.assertEqual(host2.shard, None)
+
+
+    def testShardLabelRemovalInvalid(self):
+        """Ensure you cannot remove the wrong label from shard."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+        stumpy_label = models.Label.objects.create(
+                name='board:stumpy', platform=True)
+        with self.assertRaises(error.RPCException):
+            rpc_interface.remove_board_from_shard(
+                    shard1.hostname, stumpy_label.name)
+
+
+    def testShardHeartbeatLabelRemoval(self):
+        """Ensure label removal from shard works."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+
+        self.assertEqual(host1.shard, shard1)
+        self.assertItemsEqual(shard1.labels.all(), [lumpy_label])
+        rpc_interface.remove_board_from_shard(
+                shard1.hostname, lumpy_label.name)
+        host1 = models.Host.smart_get(host1.id)
+        shard1 = models.Shard.smart_get(shard1.id)
+        self.assertEqual(host1.shard, None)
+        self.assertItemsEqual(shard1.labels.all(), [])
 
 
     def testShardRetrieveJobs(self):
