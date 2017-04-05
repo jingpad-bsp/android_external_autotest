@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_MTV_VZW_Longevity'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_longevity'
-DEPENDENCIES = 'carrier:verizon'
+DEPENDENCIES = 'carrier:verizon,location:mtv'
 
 DOC = """
 This test runs telephony longevity test against an phones with Verizon SIMs.

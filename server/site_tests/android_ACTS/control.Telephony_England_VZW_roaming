@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_England_Verizon_Roaming'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_international_roaming'
-DEPENDENCIES = 'carrier:verizon_london'
+DEPENDENCIES = 'carrier:verizon,location:london'
 
 DOC = """
 This test runs telephony sanity against phones with Verizon SIMs roaming
@@ -20,6 +20,7 @@ def run(machine):
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_international_roaming',
                  additional_configs=['simcard_list.json'],
+                 testtracker_project_id=11349,
                  acts_timeout=18000)
 
 parallel_simple(run, machines)
