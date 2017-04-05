@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_MTV_TMO_Basic'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_nightly'
-DEPENDENCIES = 'carrier:tmobile'
+DEPENDENCIES = 'carrier:tmobile,location:mtv'
 
 DOC = """
 This test runs telephony sanity against an phones with T-Mobile SIMs.
@@ -19,6 +19,7 @@ def run(machine):
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_tmo_basic',
                  additional_configs=['simcard_list.json'],
-                 acts_timeout=25200)
+                 testtracker_project_id=11349,
+                 acts_timeout=36000)
 
 parallel_simple(run, machines)
