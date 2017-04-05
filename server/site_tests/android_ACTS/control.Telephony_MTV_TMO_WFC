@@ -19,6 +19,7 @@ def run(machine):
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_tmo_wfc',
                  additional_configs=['simcard_list.json'],
-                 acts_timeout=25200)
+                 testtracker_project_id=11349,
+                 acts_timeout=36000)
 
 parallel_simple(run, machines)
