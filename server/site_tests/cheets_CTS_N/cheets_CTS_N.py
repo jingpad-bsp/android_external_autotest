@@ -418,7 +418,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             # The DUT has rebooted at this point and is in a clean state.
 
         # Final classification of test results.
-        if total_passed == 0 or failed > waived:
+        if total_passed + waived == 0 or failed > waived:
             raise error.TestFail(
                 'Failed: after %d retries giving up. '
                 'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
