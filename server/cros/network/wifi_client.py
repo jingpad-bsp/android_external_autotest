@@ -168,6 +168,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
     NET_DETECT_SCAN_PERIOD = 'NetDetectScanPeriodSeconds'
     WAKE_TO_SCAN_PERIOD = 'WakeToScanPeriodSeconds'
     FORCE_WAKE_TO_SCAN_TIMER = 'ForceWakeToScanTimer'
+    MAC_ADDRESS_RANDOMIZATION = 'MACAddressRandomization'
 
     CONNECTED_STATES = ['ready', 'portal', 'online']
 
@@ -943,6 +944,24 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                            self.wifi_if,
                                            self.FORCE_WAKE_TO_SCAN_TIMER,
                                            is_forced)
+
+
+    def mac_address_randomization(self, enabled):
+        """Sets the boolean value determining whether or not to enable MAC
+        address randomization. This instructs the NIC to randomize the last
+        three octets of the MAC address used in probe requests while
+        disconnected to make the DUT harder to track.
+
+        @param enabled: boolean whether or not to enable MAC address
+                randomization
+
+        @return a context manager for the MAC address randomization property
+
+        """
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.MAC_ADDRESS_RANDOMIZATION,
+                                           enabled)
 
 
     def request_roam(self, bssid):
