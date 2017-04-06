@@ -125,6 +125,15 @@ class platform_FilePerms(test.test):
             'options': standard_ro_options},
     }
     testmode_modded_fses = set(['/home', '/tmp', '/usr/local'])
+    # TODO(yusukes): Remove shared_fonts_ variables once we switch to overlayfs.
+    shared_fonts_pattern = (r'/opt/google/containers/android/rootfs/root/'
+                            r'system/fonts/.*\.tt[cf]')
+    shared_fonts_expected_mount_options = {
+        # The fonts are bind-mounted versions of fonts in /usr/share/fonts. Use
+        # the same type and options for '/'.
+        'type': 'ext2',
+        'options': ['ro'],
+    }
 
 
     def checkid(self, fs, userid):
@@ -304,18 +313,21 @@ class platform_FilePerms(test.test):
                     logging.warning('Ignoring filesystem "%s" with type "%s"',
                                  fs, fs_type)
                     continue
-                if not fs in self.expected_mount_options:
+                if re.match(self.shared_fonts_pattern, fs):
+                  mount_options = self.shared_fonts_expected_mount_options
+                elif fs in self.expected_mount_options:
+                  mount_options = self.expected_mount_options[fs]
+                else:
                     logging.error(
                             'No expectations entry for "%s" with info "%s"',
                             fs, mtab[fs])
                     errors += 1
                     continue
 
-                if fs_type != self.expected_mount_options[fs]['type']:
+                if fs_type != mount_options['type']:
                     logging.error(
                             '[%s] "%s" has type "%s", expected type "%s"',
-                            mtab_path, fs, fs_type,
-                            self.expected_mount_options[fs]['type'])
+                            mtab_path, fs, fs_type, mount_options['type'])
                     errors += 1
 
                 # For options, require the specified options to be present.
@@ -323,7 +335,7 @@ class platform_FilePerms(test.test):
                 # (This makes it easy to deal with options we don't wish
                 # to track closely, like devtmpfs's nr_inodes= for example.)
                 seen = set(mtab[fs]['options'])
-                expected = set(self.expected_mount_options[fs]['options'])
+                expected = set(mount_options['options'])
                 missing = expected - seen
                 if (missing):
                     logging.error('[%s] "%s" is missing options "%s"',
