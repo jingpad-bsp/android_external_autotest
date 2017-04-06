@@ -1104,6 +1104,35 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
                                                incorrect_host_ids=[host2.id])
 
 
+    def testShardHeartbeatLabelRemovalRace(self):
+        """Ensure correctness if label removed during heartbeat."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+
+        host2 = models.Host.objects.create(hostname='host2', leased=False)
+        host2.labels.add(lumpy_label)
+        self.assertEqual(host2.shard, None)
+
+        # In the middle of the assign_to_shard call, remove lumpy_label from
+        # shard1.
+        self.mox.StubOutWithMock(models.Host, '_assign_to_shard_nothing_helper')
+        def remove_label():
+            # A separate RPC call to remove_board_from_shard (not yet
+            # implemented) swoops in and removes the label from the shard and
+            # the shard from all previously assigned hosts.
+            shard1.labels.remove(lumpy_label)
+            models.Host.objects.filter(
+                labels__in=[lumpy_label]
+            ).update(shard=None)
+        models.Host._assign_to_shard_nothing_helper().WithSideEffects(
+            remove_label)
+        self.mox.ReplayAll()
+
+        self._do_heartbeat_and_assert_response(
+            known_hosts=[host1], hosts=[], incorrect_host_ids=[host1.id])
+        host2 = models.Host.smart_get(host2.id)
+        self.assertEqual(host2.shard, None)
+
+
     def testShardRetrieveJobs(self):
         """Create jobs and retrieve them."""
         # should never be returned by heartbeat
