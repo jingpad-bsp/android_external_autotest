@@ -37,6 +37,7 @@ import logging
 import os
 import sys
 
+from django.db import transaction
 from django.db.models import Count
 
 import common
@@ -2061,6 +2062,30 @@ def add_board_to_shard(hostname, labels):
     for label in labels:
         shard.labels.add(label)
     return shard.id
+
+
+# Remove board RPCs are rare, so we can afford to make them a bit more
+# expensive (by performing in a transaction) in order to guarantee
+# atomicity.
+# TODO(akeshet): If we ever update to newer version of django, we need to
+# migrate to transaction.atomic instead of commit_on_success
+@transaction.commit_on_success
+def remove_board_from_shard(hostname, label):
+    """Remove board from the given shard.
+    @param hostname: The hostname of the shard to be changed.
+    @param labels: Board label.
+
+    @raises models.Label.DoesNotExist: If the label specified doesn't exist.
+
+    @returns: The id of the changed shard.
+    """
+    shard = models.Shard.objects.get(hostname=hostname)
+    label = models.Label.smart_get(label)
+    if label not in shard.labels.all():
+        raise error.RPCException(
+          'Cannot remove label from shard that does not belong to it.')
+    shard.labels.remove(label)
+    models.Host.objects.filter(labels__in=[label]).update(shard=None)
 
 
 def delete_shard(hostname):
