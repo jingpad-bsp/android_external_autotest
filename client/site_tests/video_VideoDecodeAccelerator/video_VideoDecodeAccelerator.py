@@ -40,6 +40,11 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
         for video in videos:
             cmd_line = ('--test_video_data="%s%s"' % (path, video))
 
+            # While thumbnail test fails, write thumbnail image to results
+            # directory so that it will be accessible to host and packed
+            # along with test logs.
+            cmd_line += (' --thumbnail_output_dir="%s"' % self.resultsdir)
+
             if utils.is_freon():
                 cmd_line += ' --ozone-platform=gbm'
 
