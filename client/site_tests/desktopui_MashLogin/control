@@ -19,7 +19,7 @@ TEST_TYPE = "client"
 BUG_TEMPLATE = {
   'components': ['Internals>Mus'],
   'labels': ['Proj-Mustash'],
-  'cc': ['jamescook@chromium.org'],
+  'cc': ['mustash-autotest-bugs@google.com'],
 }
 
 DOC = """
