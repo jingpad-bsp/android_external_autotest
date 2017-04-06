@@ -1,12 +1,17 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+DEPENDENCIES = "board:veyron_minnie"
+NAME = "desktopui_MashLogin.veyron_minnie"
 AUTHOR = "jamescook@chromium.org, mustash-team@google.com"
-NAME = "desktopui_MashLogin"
 PURPOSE = "Verify chrome --mash (for mustash) starts and logs in."
 CRITERIA = "Fails if chrome --mash does not start."
-ATTRIBUTES = "suite:bvt-perbuild"
+# Part of bvt-cq so it runs on the Chrome ToT informational builders.
+# Most failures are due to bad chrome CLs. If you need to disable this
+# test please put it back in bvt-perbuild so we can tell from the nightly
+# builds when chrome is good again.
+ATTRIBUTES = "suite:bvt-cq"
 JOB_RETRIES = 2
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
