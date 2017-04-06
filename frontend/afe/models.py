@@ -502,6 +502,15 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
+    def _assign_to_shard_nothing_helper(cls):
+        """Does nothing.
+
+        This method is called in the middle of assign_to_shard, and does
+        nothing. It exists to allow integration tests to simulate a race
+        condition."""
+
+
+    @classmethod
     def assign_to_shard(cls, shard, known_ids):
         """Assigns hosts to a shard.
 
@@ -531,7 +540,6 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                              incorrect host ids that should not belong to]
                              shard)
         """
-
         # Disclaimer: concurrent heartbeats should theoretically not occur in
         # the current setup. As they may be introduced in the near future,
         # this comment will be left here.
@@ -546,18 +554,28 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         #   hosts for the shard, this is overhead
         # - SELECT and then UPDATE only selected without requerying afterwards:
         #   returns the old state of the records.
-        hosts = []
+        new_hosts = []
 
-        host_ids = set(Host.objects.filter(
+        possible_new_host_ids = set(Host.objects.filter(
             labels__in=shard.labels.all(),
             leased=False
             ).exclude(
             id__in=known_ids,
             ).values_list('pk', flat=True))
 
-        if host_ids:
-            Host.objects.filter(pk__in=host_ids).update(shard=shard)
-            hosts = list(Host.objects.filter(pk__in=host_ids).all())
+        # No-op in production, used to simulate race condition in tests.
+        cls._assign_to_shard_nothing_helper()
+
+        if possible_new_host_ids:
+            Host.objects.filter(
+                pk__in=possible_new_host_ids,
+                labels__in=shard.labels.all(),
+                leased=False
+                ).update(shard=shard)
+            new_hosts = list(Host.objects.filter(
+                pk__in=possible_new_host_ids,
+                shard=shard
+                ).all())
 
         invalid_host_ids = list(Host.objects.filter(
             id__in=known_ids
@@ -565,7 +583,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             shard=shard
             ).values_list('pk', flat=True))
 
-        return hosts, invalid_host_ids
+        return new_hosts, invalid_host_ids
 
     def resurrect_object(self, old_object):
         super(Host, self).resurrect_object(old_object)
