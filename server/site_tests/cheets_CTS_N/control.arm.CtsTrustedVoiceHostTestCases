@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run module CtsTrustedVoiceHostTestCases of the '
-       'Android 7.1_r3 Compatibility Test Suite (CTS), build 3764431,'
+       'Android 7.1_r4 Compatibility Test Suite (CTS), build 3866195,'
        'using arm ABI in the ARC++ container.')
 
 def run_CTS(machine):
