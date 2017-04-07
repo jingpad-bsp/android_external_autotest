@@ -17,13 +17,15 @@ connection is reliable.
 """
 
 args_dict = utils.args_to_dict(args)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_args=servo_args)
+
     num_iterations = int(args_dict.get("num_iterations", 100))
     exit_condition = args_dict.get("exit_condition", "")
 
-    job.run_test("firmware_Cr50USB", host=host, num_iterations=num_iterations,
-                 exit_condition=exit_condition)
+    job.run_test("firmware_Cr50USB", host=host, cmdline_args=args,
+                 num_iterations=num_iterations, exit_condition=exit_condition)
 
 parallel_simple(run, machines)
