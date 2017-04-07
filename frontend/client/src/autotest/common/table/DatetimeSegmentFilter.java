@@ -36,6 +36,8 @@ public class DatetimeSegmentFilter extends SimpleFilter {
 
         DateTimeFormat dateTimeFormat = DateTimeFormat.getFormat("yyyy-MM-dd");
         Date placeHolderDate = new Date();
+        // We want all entries from today, so advance end date to tomorrow.
+        CalendarUtil.addDaysToDate(placeHolderDate, 1);
         placeHolderEndDatetime = dateTimeFormat.format(placeHolderDate) + "T00:00";
         setEndTimeToPlaceHolderValue();
 
