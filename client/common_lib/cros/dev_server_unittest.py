@@ -18,7 +18,7 @@ import unittest
 import urllib2
 
 import common
-from autotest_lib.client.bin import utils as site_utils
+from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -1138,7 +1138,7 @@ class DevServerTest(mox.MoxTestBase):
                 artifacts=mox.IgnoreArg(),
                 files=mox.IgnoreArg(),
                 archive_url=mox.IgnoreArg(),
-                error_message=mox.IgnoreArg()).AndRaise(site_utils.TimeoutError())
+                error_message=mox.IgnoreArg()).AndRaise(bin_utils.TimeoutError())
 
 
     def test_StageArtifactsTimeout(self):

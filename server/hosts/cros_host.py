@@ -2260,7 +2260,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @return CPU architecture of the DUT.
         """
-        # Add CPUs by following logic in client/bin/base_utils.py.
+        # Add CPUs by following logic in client/bin/utils.py.
         if self.run("grep '^flags.*:.* lm .*' /proc/cpuinfo",
                 ignore_status=True).stdout:
             return 'x86_64'
