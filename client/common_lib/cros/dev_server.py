@@ -16,7 +16,7 @@ import time
 import urllib2
 import urlparse
 
-from autotest_lib.client.bin import utils as site_utils
+from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -690,7 +690,7 @@ class DevServer(object):
         """
         host_ip = None
         if hostname:
-            host_ip = site_utils.get_ip_address(hostname)
+            host_ip = bin_utils.get_ip_address(hostname)
             if not host_ip:
                 logging.error('Failed to get IP address of %s. Will pick a '
                               'devserver without subnet constraint.', hostname)
@@ -1004,9 +1004,9 @@ class ImageServerBase(DevServer):
                 logging.warning('CmdError happens in is_stage: %r, will retry', e)
                 return False
 
-        site_utils.poll_for_condition(
+        bin_utils.poll_for_condition(
                 all_staged,
-                exception=site_utils.TimeoutError(),
+                exception=bin_utils.TimeoutError(),
                 timeout=DEVSERVER_IS_STAGING_RETRY_MIN * 60,
                 sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
 
@@ -1111,7 +1111,7 @@ class ImageServerBase(DevServer):
                                    **arguments)
             logging.info('Finished staging artifacts: %s', staging_info)
             success = True
-        except (site_utils.TimeoutError, error.TimeoutException):
+        except (bin_utils.TimeoutError, error.TimeoutException):
             logging.error('stage_artifacts timed out: %s', staging_info)
             raise DevServerException(
                     'stage_artifacts timed out: %s' % staging_info)
@@ -1174,7 +1174,7 @@ class ImageServerBase(DevServer):
         try:
             response = self.call_and_wait(call_name='stage', **kwargs)
             logging.info('trigger_download finishes for %s', build)
-        except (site_utils.TimeoutError, error.TimeoutException):
+        except (bin_utils.TimeoutError, error.TimeoutException):
             logging.error('trigger_download timed out for %s.', build)
             raise DevServerException(
                     'trigger_download timed out for %s.' % build)
@@ -1211,7 +1211,7 @@ class ImageServerBase(DevServer):
             kwargs.update(kwargs_build_info)
         try:
             self.call_and_wait(call_name='stage', **kwargs)
-        except (site_utils.TimeoutError, error.TimeoutException):
+        except (bin_utils.TimeoutError, error.TimeoutException):
             logging.error('finish_download timed out for %s', build)
             raise DevServerException(
                     'finish_download timed out for %s.' % build)
@@ -1551,7 +1551,7 @@ class ImageServer(ImageServerBase):
         @param build: The build (e.g. x86-mario-release/R21-2333.0.0)
                       whose dependencies the caller is interested in.
         @return The contents of the dependencies file, which should eval to
-                a dict of dicts, as per site_utils/suite_preprocessor.py.
+                a dict of dicts, as per bin_utils/suite_preprocessor.py.
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         build = self.translate(build)
@@ -1858,9 +1858,9 @@ class ImageServer(ImageServerBase):
                 raise DevServerException(
                         '%s (Got AU status: %r)' % (str(e), au_status))
 
-        site_utils.poll_for_condition(
+        bin_utils.poll_for_condition(
                 all_finished,
-                exception=site_utils.TimeoutError(),
+                exception=bin_utils.TimeoutError(),
                 timeout=DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN * 60,
                 sleep_interval=CROS_AU_POLLING_INTERVAL)
 

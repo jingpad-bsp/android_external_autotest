@@ -5,7 +5,7 @@
 import logging
 import os
 
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 ROOTFS_SIZE = 2 * 1024 * 1024 * 1024
@@ -51,7 +51,7 @@ class platform_PartitionCheck(test.test):
 
     def run_once(self):
         errors = []
-        device = os.path.basename(site_utils.get_fixed_dst_drive())
+        device = os.path.basename(utils.get_fixed_dst_drive())
         mmcpath = os.path.join('/sys', 'block', device)
 
         if os.path.exists(mmcpath) and device.startswith('mmc'):
