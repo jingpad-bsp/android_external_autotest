@@ -6,7 +6,7 @@ import logging
 import os
 import time
 
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
@@ -164,10 +164,10 @@ class video_PlaybackPerf(test.test):
         """
         def get_cpu_usage(cr):
             time.sleep(STABILIZATION_DURATION)
-            cpu_usage_start = site_utils.get_cpu_usage()
+            cpu_usage_start = utils.get_cpu_usage()
             time.sleep(MEASUREMENT_DURATION)
-            cpu_usage_end = site_utils.get_cpu_usage()
-            return site_utils.compute_active_cpu_time(cpu_usage_start,
+            cpu_usage_end = utils.get_cpu_usage()
+            return utils.compute_active_cpu_time(cpu_usage_start,
                                                       cpu_usage_end) * 100
         if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
                                        CPU_IDLE_USAGE):

@@ -24,7 +24,7 @@ import re
 import socket
 
 from autotest_lib.cli import action_common, rpc, topic_common
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import error, host_protections
 from autotest_lib.server import frontend, hosts
 
@@ -656,7 +656,7 @@ class host_create(BaseHostModCreate):
         afe_host = frontend.Host(None, data)
         machine = {'hostname': host, 'afe_host': afe_host}
         try:
-            if utils.ping(host, tries=1, deadline=1) == 0:
+            if bin_utils.ping(host, tries=1, deadline=1) == 0:
                 serials = self.attributes.get('serials', '').split(',')
                 if serials and len(serials) > 1:
                     host_dut = hosts.create_testbed(machine,

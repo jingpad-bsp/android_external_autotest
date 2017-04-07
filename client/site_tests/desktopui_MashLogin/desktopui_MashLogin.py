@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib.cros import chrome
 
 
@@ -20,7 +20,7 @@ class desktopui_MashLogin(test.test):
         # Chromebit devices in the lab run without a connected display.
         # Limit this test to devices with a built-in display until we can fix
         # mash. http://crbug.com/673561
-        if site_utils.get_board_type() not in ['CHROMEBOOK', 'CHROMEBASE']:
+        if utils.get_board_type() not in ['CHROMEBOOK', 'CHROMEBASE']:
             logging.warning('chrome --mash requires a display, skipping test.')
             return
 
