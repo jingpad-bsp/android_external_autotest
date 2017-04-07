@@ -140,8 +140,7 @@ class firmware_Cr50Update(FirmwareTest):
                     logging.info("Successfully restored the original image")
                     break
             if rv != self.SUCCESS:
-                logging.info("Could not restore the original image")
-                raise rv
+                raise error.TestError("Could not restore the original image")
 
         super(firmware_Cr50Update, self).cleanup()
 
