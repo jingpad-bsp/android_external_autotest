@@ -1375,7 +1375,6 @@ class BluetoothAdapterTests(test.test):
 
     @_test_retry_and_log(False)
     def test_unregister_advertisement(self, advertisement_data, instance_id,
-                                      min_adv_interval_ms, max_adv_interval_ms,
                                       advertising_disabled):
         """Verify that an advertisement is unregistered correctly.
 
@@ -1386,8 +1385,6 @@ class BluetoothAdapterTests(test.test):
 
         @param advertisement_data: the data of an advertisement to unregister.
         @param instance_id: the instance id of the advertisement to remove.
-        @param min_adv_interval_ms: min_adv_interval in milliseconds.
-        @param max_adv_interval_ms: max_adv_interval in milliseconds.
         @param advertising_disabled: is advertising disabled? This happens
                 only when all advertisements are removed.
 
