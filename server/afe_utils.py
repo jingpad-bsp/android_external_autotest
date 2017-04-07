@@ -201,7 +201,7 @@ def machine_install_and_update_labels(host, *args, **dargs):
     clear_host_attributes_before_provision(host)
     # If ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE is enabled and the host is a
     # CrosHost, devserver will be used to trigger auto-update.
-    if host.support_devserver_provision and not dargs.get('repair'):
+    if host.support_devserver_provision:
         image_name, host_attributes = host.machine_install_by_devserver(
             *args, **dargs)
     else:
