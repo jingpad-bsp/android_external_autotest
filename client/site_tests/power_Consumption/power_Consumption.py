@@ -7,7 +7,7 @@ import os
 import time
 import urllib
 
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import backchannel
@@ -368,7 +368,7 @@ class power_Consumption(test.test):
         self._run_cmd('memtester', '/usr/local/sbin/memtester %s 1' % mb)
 
         # one rep of dd takes about 15 seconds
-        root_dev = site_utils.get_root_partition()
+        root_dev = utils.get_root_partition()
         cmd = 'dd if=%s of=/dev/null' % root_dev
         self._run_cmd('dd', cmd, repeat=2 * self._repeats)
 
