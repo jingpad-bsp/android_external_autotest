@@ -46,7 +46,8 @@ class android_ACTS(test.test):
                  acts_timeout=7200,
                  perma_path=None,
                  additional_cmd_line_params=None,
-                 testtracker_project_id=None):
+                 testtracker_project_id=None,
+                 testtracker_extra_env=None):
         """Runs an acts test case.
 
         @param testbed: The testbed to test on.
@@ -79,7 +80,9 @@ class android_ACTS(test.test):
         @param acts_timeout: How long to wait for acts to finish.
         @param perma_path: If given a permantent path will be used rather than
                            a temp path.
-        @parm testtracker_project_id: ID to use for test tracker project.
+        @param testtracker_project_id: ID to use for test tracker project.
+        @param testtracker_extra_env: Extra environment info to publish
+                                      with the results.
         """
         host = next(v for v in testbed.get_adb_devices().values())
 

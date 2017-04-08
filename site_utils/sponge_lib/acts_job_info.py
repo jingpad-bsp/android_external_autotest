@@ -145,6 +145,19 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
         return self.build_info.get('build_prop', {}).get('ro.product.board',
                                                          UNKNOWN_ENV_NAME)
 
+    @property
+    def extra_environment(self):
+        """Extra environment info about the task."""
+        if 'param-testtracker_extra_env' in self.keyvals:
+            extra = self.keyvals.get('param-testtracker_extra_env', [])
+        else:
+            extra = self.keyvals.get('param-testtracker_extra_env', [])
+
+        if not isinstance(extra, list):
+            extra = [extra]
+
+        return extra
+
 
 class ACTSRecord(object):
     """A single record of a test case in an ACTS test."""
