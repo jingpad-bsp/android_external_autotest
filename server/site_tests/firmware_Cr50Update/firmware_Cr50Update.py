@@ -7,7 +7,7 @@ import os
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import cr50_utils
+from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
 from autotest_lib.server import autotest, test
 from autotest_lib.server.cros import debugd_dev_tools
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -50,6 +50,7 @@ class firmware_Cr50Update(FirmwareTest):
         # Make sure ccd is disabled so it won't interfere with the update
         self.cr50.ccd_disable()
 
+        tpm_utils.ClearTPMOwnerRequest(host)
         self.rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
         self.rootfs_tool.initialize(host)
         if not self.rootfs_tool.is_enabled():
