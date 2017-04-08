@@ -35,7 +35,7 @@ class firmware_Cr50Update(FirmwareTest):
     ORIGINAL_NAME = "original_image"
     RESTORE_ORIGINAL_TRIES = 3
     SUCCESS = 0
-    UPSTART_SUCCESS = 1
+    UPDATE_OK = 1
 
 
     def initialize(self, host, cmdline_args, release_image, dev_image,
@@ -175,26 +175,30 @@ class firmware_Cr50Update(FirmwareTest):
             # immediately.
             result = self.host.run("usb_updater -s -u %s" % dest,
                                    ignore_status=True)
-            # After a posted reboot, the usb_update exit code should equal 1.
-            if result.exit_status != self.UPSTART_SUCCESS:
-                logging.debug(result)
-                raise error.TestError("Got unexpected usb_update exit code")
-            # Reset the AP to finish the Cr50 update.
-            self.cr50.send_command("sysrst pulse")
         else:
             logging.info("Flashing image into inactive partition")
             # The image at 'dest' is older than the one Cr50 is running, so
             # upstart cannot be used. Without -u Cr50 will flash the image into
             # the inactive partition and reboot immediately.
             result = self.host.run("usb_updater -s %s" % dest,
+                                   ignore_status=True,
                                    ignore_timeout=True,
                                    timeout=self.UPDATE_TIMEOUT)
-            logging.info(result)
+
+        # After a posted reboot, the usb_update exit code should equal 1.
+        if result.exit_status and result.exit_status != self.UPDATE_OK:
+            logging.debug(result)
+            raise error.TestError("Got unexpected usb_update exit code %d" %
+                                  result.exit_status)
+
+        # Reset the AP to finish the Cr50 update.
+        if is_newer:
+            self.cr50.send_command("sysrst pulse")
 
         # After usb_updater finishes running, Cr50 will reboot. Wait until Cr50
         # reboots before continuing. Cr50 reboot can be detected by detecting
         # when CCD stops working.
-        self.cr50.wait_for_ccd_disable()
+        self.cr50.wait_for_ccd_disable(raise_error=is_newer)
 
 
     def finish_rollback(self, image_rw, erase_nvmem):
@@ -224,10 +228,7 @@ class firmware_Cr50Update(FirmwareTest):
 
         # CCD may disapppear after resetting the EC. If it does, re-enable it.
         # TODO: remove this when CCD is no longer disabled after ec reset.
-        try:
-            self.cr50.wait_for_ccd_disable(timeout=15)
-        except error.TestFail, e:
-            pass
+        self.cr50.wait_for_ccd_disable(timeout=15, raise_error=False)
         self.cr50.ccd_enable()
 
         if erase_nvmem:
