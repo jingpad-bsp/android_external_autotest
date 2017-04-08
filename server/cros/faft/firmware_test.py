@@ -198,6 +198,10 @@ class FirmwareTest(FAFTBase):
             'servod_version': self._client._servo_host.run(
                 'servod --version').stdout.strip(),
         }
+
+        if hasattr(self, 'cr50'):
+            system_info['cr50_version'] = self.servo.get('cr50_version')
+
         logging.info('System info:\n' + pprint.pformat(system_info))
         self.write_attr_keyval(system_info)
 
