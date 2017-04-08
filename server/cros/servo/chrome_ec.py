@@ -423,11 +423,12 @@ class ChromeCr50(ChromeConsole):
 
 
     @ccd_command
-    def wait_for_ccd_state(self, state, timeout):
+    def wait_for_ccd_state(self, state, timeout, raise_error=True):
         """Wait up to timeout seconds for CCD to be 'on' or 'off'
         Args:
             state: a string either 'on' or 'off'.
             timeout: time in seconds to wait
+            raise_error: Raise TestFail if the value is state is not reached.
 
         Raises
             TestFail if ccd never reaches the specified state
@@ -436,14 +437,17 @@ class ChromeCr50(ChromeConsole):
         value = utils.wait_for_value(self.get_ccd_state, state,
                                      timeout_sec=timeout)
         if value != state:
-            raise error.TestFail("timed out before detecting ccd '%s'" % state)
-        logging.info("ccd is '%s'", state)
+            error_msg = "timed out before detecting ccd '%s'" % state
+            if raise_error:
+                raise error.TestFail(error_msg)
+            logging.warning(error_msg)
+        logging.info("ccd is '%s'", value)
 
 
     @ccd_command
-    def wait_for_ccd_disable(self, timeout=60):
+    def wait_for_ccd_disable(self, timeout=60, raise_error=True):
         """Wait for the cr50 console to stop working"""
-        self.wait_for_ccd_state('off', timeout)
+        self.wait_for_ccd_state('off', timeout, raise_error)
 
 
     @ccd_command
