@@ -5,7 +5,7 @@
 """Server side bluetooth tests on adapter standalone working states."""
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.bluetooth.bluetooth_adpater_tests import (
+from autotest_lib.server.cros.bluetooth.bluetooth_adapter_tests import (
         BluetoothAdapterTests)
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
