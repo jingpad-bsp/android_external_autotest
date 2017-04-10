@@ -7,7 +7,7 @@ NAME = 'android_ACTS.Telephony_TMO_Nexus'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_nexus'
-DEPENDENCIES = 'carrier:tmobile'
+DEPENDENCIES = 'carrier:tmobile,location:mtv'
 
 DOC = """
 This test runs telephony Nexus sanity against phones with Verizon SIMs.
@@ -19,6 +19,8 @@ def run(machine):
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_tmo_nexus',
                  additional_configs=['simcard_list.json'],
+                 testtracker_project_id=11403,
+                 testtracker_extra_env="tmobile",
                  acts_timeout=25200)
 
 parallel_simple(run, machines)
