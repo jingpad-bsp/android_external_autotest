@@ -18,6 +18,9 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_tmo_conf_nocep',
-                 additional_configs=['simcard_list.json'])
+                 additional_configs=['simcard_list.json'],
+                 testtracker_project_id=11349,
+                 testtracker_extra_env="tmobile",
+                 acts_timeout=36000)
 
 parallel_simple(run, machines)
