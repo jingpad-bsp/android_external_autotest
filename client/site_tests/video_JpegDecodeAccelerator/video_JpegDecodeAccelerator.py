@@ -23,11 +23,18 @@ class video_JpegDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self):
+    def run_once(self, gtest_filter=None):
         """
         Runs jpeg_decode_accelerator_unittest on the device.
+
+        @param gtest_filter: test case filter.
 
         @raises: error.TestFail for jpeg_decode_accelerator_unittest failures.
         """
         logging.debug('Starting video_JpegDecodeAccelerator')
-        self.run_chrome_test_binary(self.binary)
+        cmd_line_list = []
+        if gtest_filter:
+            cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)
+
+        cmd_line = ' '.join(cmd_line_list)
+        self.run_chrome_test_binary(self.binary, cmd_line)

@@ -19,13 +19,13 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self, videos, use_cr_source_dir=True):
+    def run_once(self, videos, use_cr_source_dir=True, gtest_filter=None):
         """
         Runs video_decode_accelerator_unittest on the videos.
 
         @param videos: The test videos for video_decode_accelerator_unittest.
         @param use_cr_source_dir:  Videos are under chrome source directory.
-        @param gtest_filter: gtest_filter parameter for the unittest.
+        @param gtest_filter: test case filter.
 
         @raises: error.TestFail for video_decode_accelerator_unittest failures.
         """
@@ -38,16 +38,21 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
         last_test_failure = None
         for video in videos:
-            cmd_line = ('--test_video_data="%s%s"' % (path, video))
+            cmd_line_list = ['--test_video_data="%s%s"' % (path, video)]
 
             # While thumbnail test fails, write thumbnail image to results
             # directory so that it will be accessible to host and packed
             # along with test logs.
-            cmd_line += (' --thumbnail_output_dir="%s"' % self.resultsdir)
+            cmd_line_list.append(
+                '--thumbnail_output_dir="%s"' % self.resultsdir)
 
             if utils.is_freon():
-                cmd_line += ' --ozone-platform=gbm'
+                cmd_line_list.append('--ozone-platform=gbm')
 
+            if gtest_filter:
+                cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)
+
+            cmd_line = ' '.join(cmd_line_list)
             try:
                 self.run_chrome_test_binary(self.binary, cmd_line)
             except error.TestFail as test_failure:
