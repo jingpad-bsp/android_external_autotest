@@ -20,6 +20,7 @@ def run(machine):
                  test_file='telephony_att_basic',
                  additional_configs=['simcard_list.json'],
                  testtracker_project_id=11349,
+                 testtracker_extra_env="at&t",
                  acts_timeout=18000)
 
 parallel_simple(run, machines)
