@@ -21,6 +21,7 @@ def run(machine):
                  test_file='telephony_international_roaming',
                  additional_configs=['simcard_list.json'],
                  testtracker_project_id=11349,
+                 testtracker_extra_env="norway_telenor_mtv",
                  acts_timeout=36000)
 
 parallel_simple(run, machines)
