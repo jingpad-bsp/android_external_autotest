@@ -72,8 +72,6 @@ class Interface:
     ADDRESS_TYPE_IPV6 = 'inet6'
     ADDRESS_TYPES = [ ADDRESS_TYPE_MAC, ADDRESS_TYPE_IPV4, ADDRESS_TYPE_IPV6 ]
 
-    INTERFACE_NAME_ETHERNET = 'eth0'  # Assume this is `the` ethernet interface.
-
 
     @staticmethod
     def get_connected_ethernet_interface(ignore_failures=False):
