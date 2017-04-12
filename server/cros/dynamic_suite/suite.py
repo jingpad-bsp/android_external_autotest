@@ -616,6 +616,18 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def create_fs_getter(autotest_dir):
+    """
+    @param autotest_dir: the place to find autotests.
+    @return a FileSystemGetter instance that looks under |autotest_dir|.
+    """
+    # currently hard-coded places to look for tests.
+    subpaths = ['server/site_tests', 'client/site_tests',
+                'server/tests', 'client/tests']
+    directories = [os.path.join(autotest_dir, p) for p in subpaths]
+    return control_file_getter.FileSystemGetter(directories)
+
+
 def _create_ds_getter(build, devserver):
     """
     @param build: the build on which we're running this suite.
@@ -755,19 +767,7 @@ class Suite(object):
     # backward compatibility.
     find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
-
-
-    @staticmethod
-    def create_fs_getter(autotest_dir):
-        """
-        @param autotest_dir: the place to find autotests.
-        @return a FileSystemGetter instance that looks under |autotest_dir|.
-        """
-        # currently hard-coded places to look for tests.
-        subpaths = ['server/site_tests', 'client/site_tests',
-                    'server/tests', 'client/tests']
-        directories = [os.path.join(autotest_dir, p) for p in subpaths]
-        return control_file_getter.FileSystemGetter(directories)
+    create_fs_getter = _deprecated_suite_method(create_fs_getter)
 
 
     @staticmethod
@@ -993,7 +993,7 @@ class Suite(object):
         """
         if cf_getter is None:
             if run_prod_code:
-                cf_getter = cls.create_fs_getter(_AUTOTEST_DIR)
+                cf_getter = create_fs_getter(_AUTOTEST_DIR)
             else:
                 build = cls.get_test_source_build(builds, **dargs)
                 cf_getter = _create_ds_getter(build, devserver)
