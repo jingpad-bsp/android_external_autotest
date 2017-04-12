@@ -157,21 +157,19 @@ class _VersionUpdater(object):
         self._selected_map = self._version_maps[image_type]
         return self._selected_map.get_all_versions()
 
-    def get_cros_image_name(self, board, version):
+    def get_firmware_version(self, board, version):
         """
-        Get the CrOS image name of a given board and version.
+        Get the firmware version of a given board and CrOS version.
 
-        Returns the string naming a complete Chrome OS image
-        for the `board` and `version`.  The name is part of a URI
-        in storage naming artifacts associated with the build
-        for the given board.
+        Returns the string naming the firmware version for the given
+        `board` and `version`.
 
         The returned string is generally in a form like
-        "celes-release/R56-9000.29.3".
+        "Google_Kip.5216.227.78".
 
-        @returns A CrOS image name.
+        @returns A firmware version string.
         """
-        return self._cros_map.format_image_name(board, version)
+        return get_firmware_version(self._cros_map, board, version)
 
     def announce(self):
         """Announce the start of processing to the user."""
@@ -404,21 +402,31 @@ def _get_by_key_path(dictdict, key_path):
     return value
 
 
-def _get_firmware_version(updater, board, cros_version):
+def get_firmware_version(version_map, board, cros_version):
     """
     Get the firmware version for a given board and CrOS version.
 
-    @param updater        A `_VersionUpdater` to use for extracting the
-                          image name.
+    Typically, CrOS builds bundle firmware that is installed at update
+    time.  This function returns a version string for the firmware
+    installed in a particular build.
+
+    The returned value will be `None` if the build isn't found in
+    storage, if there is no firmware found for the build, or if the
+    board is blacklisted from firmware updates in the test lab.
+
+    @param version_map    An AFE cros version map object; used to
+                          locate the build in storage.
     @param board          The board for the firmware version to be
                           determined.
     @param cros_version   The CrOS version bundling the firmware.
-    @return The version string of the firmware for `board` bundled with
-            `cros_version`.
+    @return The version string of the firmware for `board` that's
+            bundled with `cros_version`, or `None`.
     """
+    if board in _FIRMWARE_UPGRADE_BLACKLIST:
+        return None
     try:
-        uri = (_BUILD_METADATA_PATTERN
-                % updater.get_cros_image_name(board, cros_version))
+        image_path = version_map.format_image_name(board, cros_version)
+        uri = _BUILD_METADATA_PATTERN % image_path
         key_path = ['board-metadata', board, 'main-firmware-version']
         return _get_by_key_path(_read_gs_json_data(uri), key_path)
     except:
@@ -434,7 +442,7 @@ def _get_firmware_version(updater, board, cros_version):
         return None
 
 
-def _get_firmware_upgrades(afe_versions, cros_versions):
+def _get_firmware_upgrades(updater, cros_versions):
     """
     Get the new firmware versions to which we should update.
 
@@ -446,16 +454,14 @@ def _get_firmware_upgrades(afe_versions, cros_versions):
     The firmware for each board is determined from the JSON metadata for
     the CrOS build for that board, as specified in `cros_versions`.
 
-    @param afe_versions     The current board->version mappings in the
-                            AFE.
+    @param updater          An instance of _VersionUpdater.
     @param cros_versions    Current board->cros version mappings in the
                             AFE.
     @return  A dictionary mapping boards to firmware versions.
     """
     return {
-        board: _get_firmware_version(afe_versions, board, version)
+        board: updater.get_firmware_version(board, version)
             for board, version in cros_versions.iteritems()
-                if board not in _FIRMWARE_UPGRADE_BLACKLIST
     }
 
 
