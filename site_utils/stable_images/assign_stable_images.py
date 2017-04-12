@@ -114,6 +114,69 @@ _FIRMWARE_UPGRADE_BLACKLIST = set([
     ])
 
 
+def _get_by_key_path(dictdict, key_path):
+    """
+    Traverse a sequence of keys in a dict of dicts.
+
+    The `dictdict` parameter is a dict of nested dict values, and
+    `key_path` a list of keys.
+
+    A single-element key path returns `dictdict[key_path[0]]`, a
+    two-element path returns `dictdict[key_path[0]][key_path[1]]`, and
+    so forth.  If any key in the path is not found, return `None`.
+
+    @param dictdict   A dictionary of nested dictionaries.
+    @param key_path   The sequence of keys to look up in `dictdict`.
+    @return The value found by successive dictionary lookups, or `None`.
+    """
+    value = dictdict
+    for key in key_path:
+        value = value.get(key)
+        if value is None:
+            break
+    return value
+
+
+def get_firmware_version(version_map, board, cros_version):
+    """
+    Get the firmware version for a given board and CrOS version.
+
+    Typically, CrOS builds bundle firmware that is installed at update
+    time.  This function returns a version string for the firmware
+    installed in a particular build.
+
+    The returned value will be `None` if the build isn't found in
+    storage, if there is no firmware found for the build, or if the
+    board is blacklisted from firmware updates in the test lab.
+
+    @param version_map    An AFE cros version map object; used to
+                          locate the build in storage.
+    @param board          The board for the firmware version to be
+                          determined.
+    @param cros_version   The CrOS version bundling the firmware.
+    @return The version string of the firmware for `board` that's
+            bundled with `cros_version`, or `None`.
+    """
+    if board in _FIRMWARE_UPGRADE_BLACKLIST:
+        return None
+    try:
+        image_path = version_map.format_image_name(board, cros_version)
+        uri = _BUILD_METADATA_PATTERN % image_path
+        key_path = ['board-metadata', board, 'main-firmware-version']
+        return _get_by_key_path(_read_gs_json_data(uri), key_path)
+    except:
+        # TODO(jrbarnette): If we get here, it likely means that
+        # the repair build for our board doesn't exist.  That can
+        # happen if a board doesn't release on the Beta channel for
+        # at least 6 months.
+        #
+        # We can't allow this error to propogate up the call chain
+        # because that will kill assigning versions to all the other
+        # boards that are still OK, so for now we ignore it.  We
+        # really should do better.
+        return None
+
+
 class _VersionUpdater(object):
     """
     Class to report and apply version changes.
@@ -377,69 +440,6 @@ def _get_upgrade_versions(afe_versions, omaha_versions, boards):
         version_counts[version] += 1
     return (upgrade_versions,
             max(version_counts.items(), key=lambda x: x[1])[0])
-
-
-def _get_by_key_path(dictdict, key_path):
-    """
-    Traverse a sequence of keys in a dict of dicts.
-
-    The `dictdict` parameter is a dict of nested dict values, and
-    `key_path` a list of keys.
-
-    A single-element key path returns `dictdict[key_path[0]]`, a
-    two-element path returns `dictdict[key_path[0]][key_path[1]]`, and
-    so forth.  If any key in the path is not found, return `None`.
-
-    @param dictdict   A dictionary of nested dictionaries.
-    @param key_path   The sequence of keys to look up in `dictdict`.
-    @return The value found by successive dictionary lookups, or `None`.
-    """
-    value = dictdict
-    for key in key_path:
-        value = value.get(key)
-        if value is None:
-            break
-    return value
-
-
-def get_firmware_version(version_map, board, cros_version):
-    """
-    Get the firmware version for a given board and CrOS version.
-
-    Typically, CrOS builds bundle firmware that is installed at update
-    time.  This function returns a version string for the firmware
-    installed in a particular build.
-
-    The returned value will be `None` if the build isn't found in
-    storage, if there is no firmware found for the build, or if the
-    board is blacklisted from firmware updates in the test lab.
-
-    @param version_map    An AFE cros version map object; used to
-                          locate the build in storage.
-    @param board          The board for the firmware version to be
-                          determined.
-    @param cros_version   The CrOS version bundling the firmware.
-    @return The version string of the firmware for `board` that's
-            bundled with `cros_version`, or `None`.
-    """
-    if board in _FIRMWARE_UPGRADE_BLACKLIST:
-        return None
-    try:
-        image_path = version_map.format_image_name(board, cros_version)
-        uri = _BUILD_METADATA_PATTERN % image_path
-        key_path = ['board-metadata', board, 'main-firmware-version']
-        return _get_by_key_path(_read_gs_json_data(uri), key_path)
-    except:
-        # TODO(jrbarnette): If we get here, it likely means that
-        # the repair build for our board doesn't exist.  That can
-        # happen if a board doesn't release on the Beta channel for
-        # at least 6 months.
-        #
-        # We can't allow this error to propogate up the call chain
-        # because that will kill assigning versions to all the other
-        # boards that are still OK, so for now we ignore it.  We
-        # really should do better.
-        return None
 
 
 def _get_firmware_upgrades(updater, cros_versions):
