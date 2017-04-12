@@ -166,10 +166,10 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         predicate = lambda d: d.suite == self._TAG
-        tests = Suite.find_and_parse_tests(self.getter,
-                                           predicate,
-                                           self._TAG,
-                                           add_experimental=True)
+        tests = SuiteBase.find_and_parse_tests(self.getter,
+                                               predicate,
+                                               self._TAG,
+                                               add_experimental=True)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -186,7 +186,9 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         predicate = lambda d: d.text == self.files['two'].string
-        tests = Suite.find_and_parse_tests(self.getter, predicate, self._TAG)
+        tests = SuiteBase.find_and_parse_tests(self.getter,
+                                               predicate,
+                                               self._TAG)
         self.assertEquals(len(tests), 1)
         self.assertEquals(tests[0], self.files['two'])
 
@@ -202,8 +204,9 @@ class SuiteTest(mox.MoxTestBase):
             os.path.join(os.path.dirname(__file__), '..', '..', '..'))
         fs_getter = Suite.create_fs_getter(autodir)
         predicate = lambda t: hasattr(t, 'suite')
-        Suite.find_and_parse_tests(fs_getter, predicate, add_experimental=True,
-                                   forgiving_parser=False)
+        SuiteBase.find_and_parse_tests(fs_getter, predicate,
+                                       add_experimental=True,
+                                       forgiving_parser=False)
 
 
     def testFindAndParseTestsSuite(self):
@@ -212,10 +215,10 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         predicate = lambda d: d.suite == self._TAG
-        tests = Suite.find_and_parse_tests(self.getter,
-                                           predicate,
-                                           self._TAG,
-                                           add_experimental=True)
+        tests = SuiteBase.find_and_parse_tests(self.getter,
+                                               predicate,
+                                               self._TAG,
+                                               add_experimental=True)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -231,10 +234,10 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         predicate = Suite.matches_attribute_expression_predicate('attr:attr')
-        tests = Suite.find_and_parse_tests(self.getter,
-                                           predicate,
-                                           self._TAG,
-                                           add_experimental=True)
+        tests = SuiteBase.find_and_parse_tests(self.getter,
+                                               predicate,
+                                               self._TAG,
+                                               add_experimental=True)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -293,8 +296,8 @@ class SuiteTest(mox.MoxTestBase):
         """
         for test in self.files.values():
             test.text = test.string  # mimic parsing.
-        self.mox.StubOutWithMock(Suite, 'find_and_parse_tests')
-        Suite.find_and_parse_tests(
+        self.mox.StubOutWithMock(SuiteBase, 'find_and_parse_tests')
+        SuiteBase.find_and_parse_tests(
             mox.IgnoreArg(),
             mox.IgnoreArg(),
             mox.IgnoreArg(),
@@ -716,10 +719,10 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
         # Get all tests.
-        tests = Suite.find_and_parse_tests(self.getter,
-                                           lambda d: True,
-                                           self._TAG,
-                                           add_experimental=True)
+        tests = SuiteBase.find_and_parse_tests(self.getter,
+                                               lambda d: True,
+                                               self._TAG,
+                                               add_experimental=True)
         self.assertEquals(len(tests), 7)
         times = [control_data.ControlData.get_test_time_index(test.time)
                  for test in tests]
