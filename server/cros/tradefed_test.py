@@ -75,8 +75,9 @@ _TRADEFED_CACHE_MAX_SIZE = (10 * 1024 * 1024 * 1024)
 class _ChromeLogin(object):
     """Context manager to handle Chrome login state."""
 
-    def __init__(self, host):
+    def __init__(self, host, cts_helper_kwargs):
         self._host = host
+        self._cts_helper_kwargs = cts_helper_kwargs
 
     def __enter__(self):
         """Logs in to the Chrome."""
@@ -85,7 +86,8 @@ class _ChromeLogin(object):
         # die roughly after 5 minutes instead of hanging for the duration.
         autotest.Autotest(self._host).run_timed_test('cheets_CTSHelper',
                                                      timeout=300,
-                                                     check_client_result=True)
+                                                     check_client_result=True,
+                                                     **self._cts_helper_kwargs)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit, to wipe out all the login state, reboot the machine.
@@ -335,12 +337,12 @@ class TradefedTest(test.test):
         logging.info('Cleaning up %s.', self._tradefed_install)
         shutil.rmtree(self._tradefed_install)
 
-    def _login_chrome(self):
+    def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
 
         Please see also cheets_CTSHelper for details about how this works.
         """
-        return _ChromeLogin(self._host)
+        return _ChromeLogin(self._host, cts_helper_kwargs)
 
     def _get_adb_target(self):
         return '{}:{}'.format(self._host.hostname, self._host.port)
