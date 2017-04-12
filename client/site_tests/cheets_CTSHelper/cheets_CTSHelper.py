@@ -20,20 +20,22 @@ class cheets_CTSHelper(test.test):
     """
     version = 1
 
-    def run_once(self, count=None):
+    def run_once(self, count=None, dont_override_profile=False):
         if count:
             # Run stress test by logging in and starting ARC several times.
             # Each iteration is about 15s on Samus.
             for i in range(count):
                 logging.info('cheets_CTSHelper iteration %d', i)
                 with chrome.Chrome(
-                        arc_mode=arc.arc_common.ARC_MODE_ENABLED) as _:
+                        arc_mode=arc.arc_common.ARC_MODE_ENABLED,
+                        dont_override_profile=dont_override_profile) as _:
                     time.sleep(2)
         else:
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
             try:
                 self.chrome = chrome.Chrome(
+                            dont_override_profile=dont_override_profile,
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED)
             except:
                 # We are going to paper over some failures here. Notice these
@@ -43,5 +45,6 @@ class cheets_CTSHelper(test.test):
                 # Give system a chance to calm down.
                 time.sleep(20)
                 self.chrome = chrome.Chrome(
+                            dont_override_profile=dont_override_profile,
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED,
                             num_tries=3)
