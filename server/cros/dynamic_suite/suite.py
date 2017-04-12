@@ -311,7 +311,7 @@ class _SuiteChildJobCreator(object):
             timeout_mins=24*60,
             suite_job_id=None,
             ignore_deps=False,
-            extra_deps=None,
+            extra_deps=(),
             priority=priorities.Priority.DEFAULT,
             offload_failures_only=False,
             test_source_build=None):
@@ -336,8 +336,6 @@ class _SuiteChildJobCreator(object):
                                       jobs.
         @param test_source_build: Build that contains the server-side test code.
         """
-        if extra_deps is None:
-            extra_deps = []
         self._tag = tag
         self._builds = builds
         self._board = board
@@ -348,7 +346,7 @@ class _SuiteChildJobCreator(object):
         self._timeout_mins = timeout_mins
         self._suite_job_id = suite_job_id
         self._ignore_deps = ignore_deps
-        self._extra_deps = extra_deps
+        self._extra_deps = tuple(extra_deps)
         self._priority = priority
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
