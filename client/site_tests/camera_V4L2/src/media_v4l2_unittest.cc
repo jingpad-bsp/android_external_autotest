@@ -57,14 +57,14 @@ void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
   }
 
   if (!v4l2_dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                            constant_framerate)) {
+                            constant_framerate, 0)) {
     printf("[Error] Can not init device '%s' for the first time\n", dev_name);
     exit(EXIT_FAILURE);
   }
 
   // multiple streaming request should fail.
   if (v4l2_dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                           constant_framerate)) {
+                           constant_framerate, 0)) {
     printf("[Error] Multiple init device '%s' should fail\n", dev_name);
     exit(EXIT_FAILURE);
   }
