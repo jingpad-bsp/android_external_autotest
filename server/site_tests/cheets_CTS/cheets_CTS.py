@@ -295,6 +295,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         session_id = 0
 
         steps = -1  # For historic reasons the first iteration is not counted.
+        pushed_media = False
         total_tests = 0
         self.summary = ''
         if target_package is not None:
@@ -316,14 +317,14 @@ class cheets_CTS(tradefed_test.TradefedTest):
         # Unconditionally run CTS package until we see some tests executed.
         while steps < self._max_retry and total_tests == 0:
             steps += 1
-            with self._login_chrome():
+            with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
 
                 # Only push media for tests that need it. b/29371037
-                if needs_push_media:
+                if needs_push_media and not pushed_media:
                     self._push_media(_CTS_URI)
                     # copy_media.sh is not lazy, but we try to be.
-                    needs_push_media = False
+                    pushed_media = True
 
                 # Start each valid iteration with a clean repository. This
                 # allows us to track session_id blindly.
@@ -371,7 +372,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
             # First retry until there is no test is left that was not executed.
             while notexecuted > 0 and steps < self._max_retry:
                 steps += 1
-                with self._login_chrome():
+                with self._login_chrome(dont_override_profile=pushed_media):
                     self._ready_arc()
                     logging.info('Continuing session %d:', session_id)
                     # 'Continue' reports as passed all passing results in the
@@ -422,7 +423,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
             # Managed to reduce notexecuted to zero. Now create a new test plan
             # to rerun only the failures we did encounter.
             if failed > 0:
-                with self._login_chrome():
+                with self._login_chrome(dont_override_profile=pushed_media):
                     steps += 1
                     self._ready_arc()
                     logging.info('Retrying failures of %s with session_id %d:',
