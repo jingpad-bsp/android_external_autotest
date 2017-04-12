@@ -380,9 +380,6 @@ class ChromeCr50(ChromeConsole):
         if not self.has_command('rw') or not self.has_command('eraseflashinfo'):
             raise error.TestError("need image with 'rw' and 'eraseflashinfo'")
 
-        if self.get_inactive_version_info()[1] == self.VERSION_ERROR:
-            raise error.TestError("Invalid image in inactive RW")
-
         # Increase the reset count to above the rollback threshold
         self.send_command('rw 0x40000128 1')
         self.send_command('rw 0x4000012c 15')

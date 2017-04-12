@@ -213,10 +213,7 @@ class firmware_Cr50Update(FirmwareTest):
                             rollback.
         """
         self.cr50.ccd_enable()
-        inactive_info = self.cr50.get_inactive_version_info()
-        if inactive_info[1] != image_rw:
-            raise error.TestError("Image is not in inactive partition")
-
+        start_partition, _, _ = self.cr50.get_active_version_info()
         logging.info("Attempting Rollback")
 
         # Enable CCD keepalive before turning off the DUT. It will be removed
@@ -237,8 +234,10 @@ class firmware_Cr50Update(FirmwareTest):
 
         self.cr50.rollback()
 
-        # Verify the inactive partition is the active one after the rollback.
-        if inactive_info != self.cr50.get_active_version_info():
+        # Verify the active partition changed and cr50 is running the right
+        # version.
+        active_info = self.cr50.get_active_version_info()
+        if start_partition == active_info[0] or image_rw != active_info[1]:
             raise error.TestError("Rollback failed")
 
         # Verify the system boots normally after erasing nvmem
