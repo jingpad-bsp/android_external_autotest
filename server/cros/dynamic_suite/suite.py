@@ -1489,8 +1489,8 @@ class Suite(object):
         return tests
 
 
-    @classmethod
-    def find_possible_tests(cls, cf_getter, predicate, suite_name='', count=10):
+    @staticmethod
+    def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
         """
         Function to scan through all tests and find possible tests.
 
