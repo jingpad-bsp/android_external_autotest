@@ -616,6 +616,15 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def _create_ds_getter(build, devserver):
+    """
+    @param build: the build on which we're running this suite.
+    @param devserver: the devserver which contains the build.
+    @return a FileSystemGetter instance that looks under |autotest_dir|.
+    """
+    return control_file_getter.DevServerGetter(build, devserver)
+
+
 def find_and_parse_tests(cf_getter, predicate, suite_name='',
                          add_experimental=False, forgiving_parser=True,
                          run_prod_code=False, test_args=None):
@@ -746,16 +755,6 @@ class Suite(object):
     # backward compatibility.
     find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
-
-
-    @staticmethod
-    def _create_ds_getter(build, devserver):
-        """
-        @param build: the build on which we're running this suite.
-        @param devserver: the devserver which contains the build.
-        @return a FileSystemGetter instance that looks under |autotest_dir|.
-        """
-        return control_file_getter.DevServerGetter(build, devserver)
 
 
     @staticmethod
@@ -923,7 +922,7 @@ class Suite(object):
         @return list of suites
         """
         if cf_getter is None:
-            cf_getter = cls._create_ds_getter(build, devserver)
+            cf_getter = _create_ds_getter(build, devserver)
 
         suites = set()
         predicate = lambda t: True
@@ -997,7 +996,7 @@ class Suite(object):
                 cf_getter = cls.create_fs_getter(_AUTOTEST_DIR)
             else:
                 build = cls.get_test_source_build(builds, **dargs)
-                cf_getter = cls._create_ds_getter(build, devserver)
+                cf_getter = _create_ds_getter(build, devserver)
 
         return cls(predicates,
                    name, builds, board, cf_getter, run_prod_code, **dargs)
@@ -1027,7 +1026,7 @@ class Suite(object):
         """
         if cf_getter is None:
             build = cls.get_test_source_build(builds, **dargs)
-            cf_getter = cls._create_ds_getter(build, devserver)
+            cf_getter = _create_ds_getter(build, devserver)
 
         return cls([cls.name_in_tag_predicate(name)],
                    name, builds, board, cf_getter, **dargs)
