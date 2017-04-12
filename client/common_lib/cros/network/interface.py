@@ -155,7 +155,7 @@ class Interface:
                 ignore_status=True).exit_status == 0
         read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
                      if exists(path) else None)
-        if not self.is_wifi_device:
+        if not self.is_wifi_device():
             logging.error('Device description not supported on non-wifi '
                           'interface: %s.', self._name)
             return None
