@@ -1495,8 +1495,8 @@ class Suite(object):
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
 
 
-    @classmethod
-    def find_and_parse_tests(cls, cf_getter, predicate, suite_name='',
+    @staticmethod
+    def find_and_parse_tests(cf_getter, predicate, suite_name='',
                              add_experimental=False, forgiving_parser=True,
                              run_prod_code=False, test_args=None):
         """
