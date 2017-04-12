@@ -614,6 +614,46 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
+    """
+    Function to scan through all tests and find possible tests.
+
+    Search through all tests based on given cf_getter, suite_name,
+    add_experimental and forgiving_parser. Use the given predicate to
+    calculate the similarity and return the top 10 matches.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    @param predicate: a function that should return a tuple of (name, ratio)
+           when run over a ControlData representation of a control file that
+           should be in this Suite. `name` is the key to be compared, e.g.,
+           a suite name or test name. `ratio` is a value between [0,1]
+           indicating the similarity of `name` and the value to be compared.
+    @param suite_name: If specified, this method will attempt to restrain
+                       the search space to just this suite's control files.
+    @param count: Number of suggestions to return, default to 10.
+
+    @return list of top names that similar to the given test, sorted by
+            match ratio.
+    """
+    tests = _find_test_control_data_for_suite(
+            cf_getter, suite_name,
+            add_experimental=True, forgiving_parser=True)
+    logging.debug('Parsed %s control files.', len(tests))
+    similarities = {}
+    for test in tests.itervalues():
+        ratios = predicate(test)
+        # Some predicates may return a list of tuples, e.g.,
+        # name_in_tag_similarity_predicate. Convert all returns to a list.
+        if not isinstance(ratios, list):
+            ratios = [ratios]
+        for name, ratio in ratios:
+            similarities[name] = ratio
+    return [s[0] for s in
+            sorted(similarities.items(), key=operator.itemgetter(1),
+                   reverse=True)][:count]
+
+
 class Suite(object):
     """
     A suite of tests, defined by some predicate over control file variables.
@@ -1489,45 +1529,9 @@ class Suite(object):
         return tests
 
 
-    @staticmethod
-    def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
-        """
-        Function to scan through all tests and find possible tests.
-
-        Search through all tests based on given cf_getter, suite_name,
-        add_experimental and forgiving_parser. Use the given predicate to
-        calculate the similarity and return the top 10 matches.
-
-        @param cf_getter: a control_file_getter.ControlFileGetter used to list
-               and fetch the content of control files
-        @param predicate: a function that should return a tuple of (name, ratio)
-               when run over a ControlData representation of a control file that
-               should be in this Suite. `name` is the key to be compared, e.g.,
-               a suite name or test name. `ratio` is a value between [0,1]
-               indicating the similarity of `name` and the value to be compared.
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
-        @param count: Number of suggestions to return, default to 10.
-
-        @return list of top names that similar to the given test, sorted by
-                match ratio.
-        """
-        tests = _find_test_control_data_for_suite(
-                cf_getter, suite_name,
-                add_experimental=True, forgiving_parser=True)
-        logging.debug('Parsed %s control files.', len(tests))
-        similarities = {}
-        for test in tests.itervalues():
-            ratios = predicate(test)
-            # Some predicates may return a list of tuples, e.g.,
-            # name_in_tag_similarity_predicate. Convert all returns to a list.
-            if not isinstance(ratios, list):
-                ratios = [ratios]
-            for name, ratio in ratios:
-                similarities[name] = ratio
-        return [s[0] for s in
-                sorted(similarities.items(), key=operator.itemgetter(1),
-                       reverse=True)][:count]
+    # TODO(ayatane): These methods are kept on the Suite class for
+    # backward compatibility.
+    find_possible_tests = staticmethod(find_possible_tests)
 
 
 def _is_nonexistent_board_error(e):
