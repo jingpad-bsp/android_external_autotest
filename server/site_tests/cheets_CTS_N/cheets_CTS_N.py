@@ -293,6 +293,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
 
         self.result_history = {}
         steps = -1  # For historic reasons the first iteration is not counted.
+        pushed_media = False
         total_tests = 0
         total_passed = 0
         self.summary = ''
@@ -319,14 +320,14 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Unconditionally run CTS module until we see some tests executed.
         while total_tests == 0 and steps < self._max_retry:
             steps += 1
-            with self._login_chrome():
+            with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
 
                 # Only push media for tests that need it. b/29371037
-                if needs_push_media:
+                if needs_push_media and not pushed_media:
                     self._push_media(_CTS_URI)
                     # copy_media.sh is not lazy, but we try to be.
-                    needs_push_media = False
+                    pushed_media = True
 
                 # Start each valid iteration with a clean repository. This
                 # allows us to track session_id blindly.
@@ -375,7 +376,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # retry them iteratively MAX_RETRY times.
         while steps < self._max_retry and failed > waived:
             steps += 1
-            with self._login_chrome():
+            with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
                 logging.info('Retrying failures of %s with session_id %d:',
                              test_name, session_id)
