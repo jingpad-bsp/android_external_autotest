@@ -34,15 +34,15 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.bluetooth import bluetooth_adpater_tests
+from autotest_lib.server.cros.bluetooth import bluetooth_adapter_tests
 from autotest_lib.server.cros.multimedia import bluetooth_le_facade_adapter
 
 
-test_case_log = bluetooth_adpater_tests.test_case_log
+test_case_log = bluetooth_adapter_tests.test_case_log
 
 
 class bluetooth_AdapterLEAdvertising(
-        bluetooth_adpater_tests.BluetoothAdapterTests):
+        bluetooth_adapter_tests.BluetoothAdapterTests):
     """Server side bluetooth adapter advertising Test.
 
     This class comprises a number of test cases to verify
