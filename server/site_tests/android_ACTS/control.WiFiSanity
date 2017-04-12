@@ -19,6 +19,7 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-row3-rack1-server.config',
                  test_file='wifi_sanity',
+                 testtracker_project_id=733,
                  acts_timeout=18000)
 
 parallel_simple(run, machines)
