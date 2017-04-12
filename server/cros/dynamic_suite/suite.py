@@ -4,12 +4,14 @@
 
 import datetime
 import difflib
+import functools
 import hashlib
 import logging
 import operator
 import os
 import re
 import sys
+import warnings
 
 import common
 
@@ -652,6 +654,19 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
     return [s[0] for s in
             sorted(similarities.items(), key=operator.itemgetter(1),
                    reverse=True)][:count]
+
+
+def _deprecated_suite_method(func):
+    """Decorator for deprecated Suite static methods.
+
+    TODO(ayatane): This is used to decorate functions that are called as
+    static methods on Suite.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn('Calling this method from Suite is deprecated')
+        return func(*args, **kwargs)
+    return staticmethod(wrapper)
 
 
 class Suite(object):
@@ -1531,7 +1546,7 @@ class Suite(object):
 
     # TODO(ayatane): These methods are kept on the Suite class for
     # backward compatibility.
-    find_possible_tests = staticmethod(find_possible_tests)
+    find_possible_tests = _deprecated_suite_method(find_possible_tests)
 
 
 def _is_nonexistent_board_error(e):
