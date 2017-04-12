@@ -111,9 +111,9 @@ class security_SandboxedServices(test.test):
         # Example line output:
         # Pid:1 CapInh:0000000000000000 CapPrm:0000001fffffffff CapEff:0000001fffffffff CapBnd:0000001fffffffff Seccomp:0
         cmd = (
-            "awk '$1 ~ \"^(Pid|%s):\" "
+            "for f in /proc/[1-9]*/status ; do awk '$1 ~ \"^(Pid|%s):\" "
             "{printf \"%%s%%s \", $1, $NF; if ($1 == \"%s:\") printf \"\\n\"}'"
-            " /proc/[1-9]*/status"
+            " $f ; done"
         ) % ('|'.join(STATUS_FIELDS), STATUS_FIELDS[-1])
         # Processes might exit while awk is running, so ignore its exit status.
         status_output = utils.system_output(cmd, ignore_status=True)
