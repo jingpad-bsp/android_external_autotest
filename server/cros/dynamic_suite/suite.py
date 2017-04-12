@@ -616,6 +616,54 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def find_and_parse_tests(cf_getter, predicate, suite_name='',
+                         add_experimental=False, forgiving_parser=True,
+                         run_prod_code=False, test_args=None):
+    """
+    Function to scan through all tests and find eligible tests.
+
+    Search through all tests based on given cf_getter, suite_name,
+    add_experimental and forgiving_parser, return the tests that match
+    given predicate.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    @param predicate: a function that should return True when run over a
+           ControlData representation of a control file that should be in
+           this Suite.
+    @param suite_name: If specified, this method will attempt to restrain
+                       the search space to just this suite's control files.
+    @param add_experimental: add tests with experimental attribute set.
+    @param forgiving_parser: If False, will raise ControlVariableExceptions
+                             if any are encountered when parsing control
+                             files. Note that this can raise an exception
+                             for syntax errors in unrelated files, because
+                             we parse them before applying the predicate.
+    @param run_prod_code: If true, the suite will run the test code that
+                          lives in prod aka the test code currently on the
+                          lab servers by disabling SSP for the discovered
+                          tests.
+    @param test_args: A dict of args to be seeded in test control file.
+
+    @raises ControlVariableException: If forgiving_parser is False and there
+                                      is a syntax error in a control file.
+
+    @return list of ControlData objects that should be run, with control
+            file text added in |text| attribute. Results are sorted based
+            on the TIME setting in control file, slowest test comes first.
+    """
+    tests = _find_test_control_data_for_suite(
+            cf_getter, suite_name, add_experimental, forgiving_parser,
+            run_prod_code=run_prod_code,
+            test_args=test_args)
+    logging.debug('Parsed %s control files.', len(tests))
+    tests = [test for test in tests.itervalues() if predicate(test)]
+    tests.sort(key=lambda t:
+               control_data.ControlData.get_test_time_index(t.time),
+               reverse=True)
+    return tests
+
+
 def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
     """
     Function to scan through all tests and find possible tests.
@@ -874,8 +922,8 @@ class Suite(object):
 
         suites = set()
         predicate = lambda t: True
-        for test in cls.find_and_parse_tests(cf_getter, predicate,
-                                             add_experimental=True):
+        for test in find_and_parse_tests(cf_getter, predicate,
+                                         add_experimental=True):
             suites.update(test.suite_tag_parts)
         return list(suites)
 
@@ -1073,7 +1121,7 @@ class Suite(object):
                                                          debug=False)
         self._jobs = []
         self._jobs_to_tests = {}
-        self.tests = self.find_and_parse_tests(
+        self.tests = find_and_parse_tests(
                 self._cf_getter,
                 lambda control_data: all(f(control_data) for f in predicates),
                 self._tag,
@@ -1495,58 +1543,10 @@ class Suite(object):
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
 
 
-    @staticmethod
-    def find_and_parse_tests(cf_getter, predicate, suite_name='',
-                             add_experimental=False, forgiving_parser=True,
-                             run_prod_code=False, test_args=None):
-        """
-        Function to scan through all tests and find eligible tests.
-
-        Search through all tests based on given cf_getter, suite_name,
-        add_experimental and forgiving_parser, return the tests that match
-        given predicate.
-
-        @param cf_getter: a control_file_getter.ControlFileGetter used to list
-               and fetch the content of control files
-        @param predicate: a function that should return True when run over a
-               ControlData representation of a control file that should be in
-               this Suite.
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
-        @param add_experimental: add tests with experimental attribute set.
-        @param forgiving_parser: If False, will raise ControlVariableExceptions
-                                 if any are encountered when parsing control
-                                 files. Note that this can raise an exception
-                                 for syntax errors in unrelated files, because
-                                 we parse them before applying the predicate.
-        @param run_prod_code: If true, the suite will run the test code that
-                              lives in prod aka the test code currently on the
-                              lab servers by disabling SSP for the discovered
-                              tests.
-        @param test_args: A dict of args to be seeded in test control file.
-
-        @raises ControlVariableException: If forgiving_parser is False and there
-                                          is a syntax error in a control file.
-
-        @return list of ControlData objects that should be run, with control
-                file text added in |text| attribute. Results are sorted based
-                on the TIME setting in control file, slowest test comes first.
-        """
-        tests = _find_test_control_data_for_suite(
-                cf_getter, suite_name, add_experimental, forgiving_parser,
-                run_prod_code=run_prod_code,
-                test_args=test_args)
-        logging.debug('Parsed %s control files.', len(tests))
-        tests = [test for test in tests.itervalues() if predicate(test)]
-        tests.sort(key=lambda t:
-                   control_data.ControlData.get_test_time_index(t.time),
-                   reverse=True)
-        return tests
-
-
     # TODO(ayatane): These methods are kept on the Suite class for
     # backward compatibility.
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
+    find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
 
 
 def _is_nonexistent_board_error(e):
