@@ -187,6 +187,7 @@ suite:wifi_lucidsleep
 suite:wifi_matfunc
 suite:wifi_matfunc_arc
 suite:wifi_matfunc_bcm4371
+suite:wifi_matfunc_noservo
 suite:wifi_perf
 suite:wifi_perf_bcm4371
 suite:wifi_release
