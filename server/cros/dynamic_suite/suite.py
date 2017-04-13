@@ -616,6 +616,22 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def test_file_matches_pattern_predicate(test_file_pattern):
+    """Returns predicate that matches based on a test's file name pattern.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns True if the test's control file name matches the given
+    regular expression.
+
+    @param test_file_pattern: regular expression (string) to match against
+                              control file names.
+    @return a callable that takes a ControlData and and returns
+            True if control file name matches the pattern.
+    """
+    return lambda t: hasattr(t, 'path') and re.match(test_file_pattern,
+                                                     t.path)
+
+
 def test_name_matches_pattern_predicate(test_name_pattern):
     """Returns predicate that matches based on a test's name pattern.
 
@@ -836,23 +852,8 @@ class Suite(object):
             test_name_equals_predicate)
     test_name_matches_pattern_predicate = _deprecated_suite_method(
             test_name_matches_pattern_predicate)
-
-
-    @staticmethod
-    def test_file_matches_pattern_predicate(test_file_pattern):
-        """Returns predicate that matches based on a test's file name pattern.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns True if the test's control file name matches the given
-        regular expression.
-
-        @param test_file_pattern: regular expression (string) to match against
-                                  control file names.
-        @return a callable that takes a ControlData and and returns
-                True if control file name matches the pattern.
-        """
-        return lambda t: hasattr(t, 'path') and re.match(test_file_pattern,
-                                                         t.path)
+    test_file_matches_pattern_predicate = _deprecated_suite_method(
+            test_file_matches_pattern_predicate)
 
 
     @staticmethod
