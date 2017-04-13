@@ -742,6 +742,11 @@ class Suite(object):
 
     """
 
+    # TODO(ayatane): These methods are kept on the Suite class for
+    # backward compatibility.
+    find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
+    find_possible_tests = _deprecated_suite_method(find_possible_tests)
+
 
     @staticmethod
     def _create_ds_getter(build, devserver):
@@ -1541,12 +1546,6 @@ class Suite(object):
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
-
-
-    # TODO(ayatane): These methods are kept on the Suite class for
-    # backward compatibility.
-    find_possible_tests = _deprecated_suite_method(find_possible_tests)
-    find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
 
 
 def _is_nonexistent_board_error(e):
