@@ -87,6 +87,30 @@ def parse_args():
     options, args = parser.parse_args()
     return options, args
 
+def get_build_dir(name, dest_dir, pkg_type):
+    """Method to generate the build directory where the tarball and checksum
+    is stored. The following package types are handled: test, dep, profiler.
+    Package type 'client' is not handled.
+    """
+    if pkg_type == 'client':
+        # NOTE: The "tar_only" action for pkg_type "client" has no use
+        # case yet. No known invocations of packager.py with
+        # --action=tar_only send in clients in the command line. Please
+        # confirm the behaviour is expected before this type is enabled for
+        # "tar_only" actions.
+        print ('Tar action not supported for pkg_type= %s, name = %s' %
+                pkg_type, name)
+        return None
+    # For all packages, the work-dir should have 'client' appended to it.
+    base_build_dir = os.path.join(dest_dir, 'client')
+    if pkg_type == 'test':
+        build_dir = os.path.join(get_test_dir(name, base_build_dir), name)
+    else:
+        # For profiler and dep, we append 's', and then append the name.
+        # TODO(pmalani): Make this less fiddly?
+        build_dir = os.path.join(base_build_dir, pkg_type + 's', name)
+    return build_dir
+
 def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
                      action, dest_dir=None):
     """Method to upload or remove package depending on the flag passed to it.
@@ -113,11 +137,7 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
         pkg_name = pkgmgr.get_tarball_name(name, pkg_type)
 
         if action == ACTION_TAR_ONLY:
-            # If the package is a test, then the work-dir should have 'client'
-            # appended to it.
-            base_test_dir = os.path.join(dest_dir, 'client')
-            build_dir = os.path.join(get_test_dir(name, base_test_dir), name)
-
+            build_dir = get_build_dir(name, dest_dir, pkg_type)
             try:
                 packages.check_diskspace(build_dir)
             except error.RepoDiskFullError as e:
@@ -148,7 +168,7 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
                 # the effort.
                 tarball_path = os.path.join(pkg_dir, pkg_name);
                 if os.path.exists(tarball_path):
-                   print("Tarball %s already exists" % tarball_path);
+                   print("Tarball %s already exists" % tarball_path)
                 else:
                     tarball_path = pkgmgr.tar_package(pkg_name, pkg_dir,
                                                       temp_dir, exclude_string)
@@ -333,7 +353,7 @@ def main():
 
     if options.dep:
         process_packages(pkgmgr, 'dep', options.dep, dep_dir,
-                         action=cur_action)
+                         action=cur_action, dest_dir=options.output_dir)
 
     if options.test:
         process_packages(pkgmgr, 'test', options.test, client_dir,
@@ -341,7 +361,7 @@ def main():
 
     if options.prof:
         process_packages(pkgmgr, 'profiler', options.prof, prof_dir,
-                         action=cur_action)
+                         action=cur_action, dest_dir=options.output_dir)
 
     if options.file:
         if cur_action == ACTION_REMOVE:
