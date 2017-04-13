@@ -85,7 +85,8 @@ def _parse_dbus_send_output(dbus_send_stdout):
     localhost ~ # dbus-send --system --dest=org.chromium.flimflam \
             --print-reply --reply-timeout=2000 / \
             org.chromium.flimflam.Manager.GetProperties
-    method return sender=:1.12 -> dest=:1.37 reply_serial=2
+    method return time=1490931987.170070 sender=:1.12 -> destination=:1.37 \
+        serial=6 reply_serial=2
        array [
           dict entry(
              string "ActiveProfile"
@@ -106,9 +107,19 @@ def _parse_dbus_send_output(dbus_send_stdout):
     # The first line contains meta-information about the response
     header = lines[0]
     lines = lines[1:]
-    dbus_address_pattern = '[:\d\\.]+'
-    match = re.match('method return sender=(%s) -> dest=(%s) reply_serial=\d+' %
+    dbus_address_pattern = r'[:\d\\.]+'
+    # The header may or may not have a time= field.
+    match = re.match(r'method return (time=[\d\\.]+ )?sender=(%s) -> '
+                     r'destination=(%s) serial=\d+ reply_serial=\d+' %
                      (dbus_address_pattern, dbus_address_pattern), header)
+
+    # For backward compatibility, match old dbus-send output too.
+    # TODO: drop this when dbus is upgraded to 1.10.12+.
+    if match is None:
+      match = re.match(r'method return sender=(%s) -> dest=(%s) '
+                       r'reply_serial=\d+' %
+                       (dbus_address_pattern, dbus_address_pattern), header)
+
     if match is None:
         raise error.TestError('Could not parse dbus-send header: %s' % header)
 
