@@ -616,6 +616,25 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def test_file_similarity_predicate(test_file_pattern):
+    """Returns predicate that gets the similarity based on a test's file
+    name pattern.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns a tuple of (file path, ratio), where ratio is the
+    similarity between the test file name and the given test_file_pattern.
+
+    @param test_file_pattern: regular expression (string) to match against
+                              control file names.
+    @return a callable that takes a ControlData and and returns a tuple of
+            (file path, ratio), where ratio is the similarity between the
+            test file name and the given test_file_pattern.
+    """
+    return lambda t: ((None, 0) if not hasattr(t, 'path') else
+            (t.path, difflib.SequenceMatcher(a=t.path,
+                                             b=test_file_pattern).ratio()))
+
+
 def test_name_similarity_predicate(test_name):
     """Returns predicate that matched based on a test's name.
 
@@ -893,26 +912,8 @@ class Suite(object):
             matches_attribute_expression_predicate)
     test_name_similarity_predicate = _deprecated_suite_method(
             test_name_similarity_predicate)
-
-
-    @staticmethod
-    def test_file_similarity_predicate(test_file_pattern):
-        """Returns predicate that gets the similarity based on a test's file
-        name pattern.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns a tuple of (file path, ratio), where ratio is the
-        similarity between the test file name and the given test_file_pattern.
-
-        @param test_file_pattern: regular expression (string) to match against
-                                  control file names.
-        @return a callable that takes a ControlData and and returns a tuple of
-                (file path, ratio), where ratio is the similarity between the
-                test file name and the given test_file_pattern.
-        """
-        return lambda t: ((None, 0) if not hasattr(t, 'path') else
-                (t.path, difflib.SequenceMatcher(a=t.path,
-                                                 b=test_file_pattern).ratio()))
+    test_file_similarity_predicate = _deprecated_suite_method(
+            test_file_similarity_predicate)
 
 
     @classmethod
