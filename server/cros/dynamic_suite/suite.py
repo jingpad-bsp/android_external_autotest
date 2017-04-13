@@ -616,6 +616,26 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def name_in_tag_similarity_predicate(name):
+    """Returns predicate that takes a control file and gets the similarity
+    of the suites in the control file and the given name.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns a list of tuples of (suite name, ratio), where suite name
+    is each suite listed in the control file, and ratio is the similarity
+    between each suite and the given name.
+
+    @param name: the suite name to base the predicate on.
+    @return a callable that takes a ControlData and returns a list of tuples
+            of (suite name, ratio), where suite name is each suite listed in
+            the control file, and ratio is the similarity between each suite
+            and the given name.
+    """
+    return lambda t: [(suite,
+                       difflib.SequenceMatcher(a=suite, b=name).ratio())
+                      for suite in t.suite_tag_parts] or [(None, 0)]
+
+
 def name_in_tag_predicate(name):
     """Returns predicate that takes a control file and looks for |name|.
 
@@ -782,27 +802,8 @@ class Suite(object):
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
     create_fs_getter = _deprecated_suite_method(create_fs_getter)
     name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
-
-
-    @staticmethod
-    def name_in_tag_similarity_predicate(name):
-        """Returns predicate that takes a control file and gets the similarity
-        of the suites in the control file and the given name.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns a list of tuples of (suite name, ratio), where suite name
-        is each suite listed in the control file, and ratio is the similarity
-        between each suite and the given name.
-
-        @param name: the suite name to base the predicate on.
-        @return a callable that takes a ControlData and returns a list of tuples
-                of (suite name, ratio), where suite name is each suite listed in
-                the control file, and ratio is the similarity between each suite
-                and the given name.
-        """
-        return lambda t: [(suite,
-                           difflib.SequenceMatcher(a=suite, b=name).ratio())
-                          for suite in t.suite_tag_parts] or [(None, 0)]
+    name_in_tag_similarity_predicate = _deprecated_suite_method(
+            name_in_tag_similarity_predicate)
 
 
     @staticmethod
