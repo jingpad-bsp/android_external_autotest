@@ -52,6 +52,11 @@ class InputPlayback(object):
                                'keyboard': 'keyboard.prop'}
     _PLAYBACK_COMMAND = 'evemu-play --insert-slot0 %s < %s'
 
+    # Define the overhead (500 ms) elapsed for launching evemu-play and the
+    # latency from event injection to the first event read by Chrome Input
+    # thread.
+    _PLAYBACK_OVERHEAD_LATENCY = 0.5
+
     # Define a keyboard as anything with any keys #2 to #248 inclusive,
     # as defined in the linux input header.  This definition includes things
     # like the power button, so reserve the "keyboard" label for things with
@@ -450,10 +455,15 @@ class InputPlayback(object):
             lines = fh.readlines()
             start = float(lines[0].split(' ')[1])
             end = float(lines[-1].split(' ')[1])
-            sleep_time = end - start
+            sleep_time = end - start + self._PLAYBACK_OVERHEAD_LATENCY
+        start_time = time.time()
         self.playback(filepath, input_type)
-        logging.info('Sleeping for %s seconds during playback.', sleep_time)
-        time.sleep(sleep_time)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        if elapsed_time < sleep_time:
+            sleep_time -= elapsed_time
+            logging.info('Blocking for %s seconds after playback.', sleep_time)
+            time.sleep(sleep_time)
 
 
     def blocking_playback_of_default_file(self, filename, input_type='mouse'):
