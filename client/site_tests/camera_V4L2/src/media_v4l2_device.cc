@@ -65,12 +65,6 @@ bool V4L2Device::OpenDevice() {
   }
 
   switch (io_) {
-    case IO_METHOD_READ:
-      if (!(cap.capabilities & V4L2_CAP_READWRITE)) {
-        printf("<<< Error: %s does not support read i/o.>>>\n", dev_name_);
-        return false;
-      }
-      break;
     case IO_METHOD_MMAP:
     case IO_METHOD_USERPTR:
       if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
@@ -147,8 +141,6 @@ bool V4L2Device::InitDevice(uint32_t width,
   pixfmt_ = fmt;
 
   switch (io_) {
-    case IO_METHOD_READ:
-      return InitReadIO(fmt.fmt.pix.sizeimage);
     case IO_METHOD_MMAP:
       return InitMmapIO();
     case IO_METHOD_USERPTR:
@@ -159,10 +151,6 @@ bool V4L2Device::InitDevice(uint32_t width,
 
 bool V4L2Device::UninitDevice() {
   switch (io_) {
-    case IO_METHOD_READ:
-      // Only one buffer for read() i/o.
-      free(v4l2_buffers_[0].start);
-      break;
     case IO_METHOD_MMAP:
       for (uint32_t i = 0; i < num_buffers_; ++i)
         if (-1 == munmap(v4l2_buffers_[i].start, v4l2_buffers_[i].length)) {
@@ -184,9 +172,6 @@ bool V4L2Device::StartCapture() {
   uint32_t i;
   v4l2_buf_type type;
   switch (io_) {
-    case IO_METHOD_READ:
-      // Nothing to do.
-      break;
     case IO_METHOD_MMAP:
       for (i = 0; i < num_buffers_; ++i) {
         memset(&buf, 0, sizeof(buf));
@@ -230,9 +215,6 @@ bool V4L2Device::StartCapture() {
 bool V4L2Device::StopCapture() {
   v4l2_buf_type type;
   switch (io_) {
-    case IO_METHOD_READ:
-      // Nothing to do.
-      break;
     case IO_METHOD_MMAP:
     case IO_METHOD_USERPTR:
       type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -312,21 +294,6 @@ int32_t V4L2Device::ReadOneFrame() {
   memset(&buf, 0, sizeof(buf));
   uint32_t i;
   switch (io_) {
-    case IO_METHOD_READ:
-      if (-1 == read(fd_, v4l2_buffers_[0].start, v4l2_buffers_[0].length)) {
-        switch (errno) {
-          case EAGAIN:
-            return 0;
-          case EIO:
-            // Could ignore EIO, see spec.
-            // Fall through.
-          default:
-            printf("<<< Error: read() failed on %s.>>>\n", dev_name_);
-            return -1;
-        }
-      }
-      ProcessImage(v4l2_buffers_[0].start);
-      break;
     case IO_METHOD_MMAP:
       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       buf.memory = V4L2_MEMORY_MMAP;
@@ -395,18 +362,6 @@ bool V4L2Device::AllocateBuffer(uint32_t buffer_count) {
 bool V4L2Device::FreeBuffer() {
   free(v4l2_buffers_);
   v4l2_buffers_ = NULL;
-  return true;
-}
-
-bool V4L2Device::InitReadIO(uint32_t buffer_size) {
-  if (!AllocateBuffer(1))
-    return false;
-  v4l2_buffers_[0].length = buffer_size;
-  v4l2_buffers_[0].start = new uint8_t[buffer_size];
-  if (!v4l2_buffers_[0].start) {
-    printf("<<< Error: Out of memory.>>>\n");
-    return false;
-  }
   return true;
 }
 
@@ -766,8 +721,6 @@ bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
     if (cap->capabilities & V4L2_CAP_AUDIO)
       printf("<<< Info: %s support audio i/o interface.>>>\n", dev_name_);
 
-    if (cap->capabilities & V4L2_CAP_READWRITE)
-      printf("<<< Info: %s support read/write interface.>>>\n", dev_name_);
     if (cap->capabilities & V4L2_CAP_STREAMING)
       printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
     if (cap->capabilities & V4L2_CAP_TIMEPERFRAME)
