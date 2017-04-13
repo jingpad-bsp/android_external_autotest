@@ -1670,13 +1670,39 @@ class Suite(_BaseSuite):
 
         self.tests = find_and_parse_tests(
                 cf_getter,
-                lambda control_data: all(f(control_data) for f in predicates),
+                _ComposedPredicate(predicates),
                 tag,
                 add_experimental=True,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args,
         )
+
+
+class _ComposedPredicate(object):
+    """Return the composition of the predicates.
+
+    Predicates are functions that take a test control data object and
+    return True of that test is to be included.  The returned
+    predicate's set is the intersection of all of the input predicates'
+    sets (it returns True if all predicates return True).
+    """
+
+    def __init__(self, predicates):
+        """Initialize instance.
+
+        @param predicates: Iterable of predicates.
+        """
+        self._predicates = list(predicates)
+
+    def __repr__(self):
+        return '{cls}({this._predicates!r})'.format(
+            cls=type(self).__qualname__,
+            this=self,
+        )
+
+    def __call__(self, control_data_):
+        return all(f(control_data_) for f in self._predicates)
 
 
 def _is_nonexistent_board_error(e):
