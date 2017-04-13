@@ -616,6 +616,24 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def matches_attribute_expression_predicate(test_attr_boolstr):
+    """Returns predicate that matches based on boolean expression of
+    attributes.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    ans returns True if the test attributes satisfy the given attribute
+    boolean expression.
+
+    @param test_attr_boolstr: boolean expression of the attributes to be
+                              test, like 'system:all and interval:daily'.
+
+    @return a callable that takes a ControlData and returns True if the test
+            attributes satisfy the given boolean expression.
+    """
+    return lambda t: boolparse_lib.BoolstrResult(
+        test_attr_boolstr, t.attributes)
+
+
 def test_file_matches_pattern_predicate(test_file_pattern):
     """Returns predicate that matches based on a test's file name pattern.
 
@@ -854,25 +872,9 @@ class Suite(object):
             test_name_matches_pattern_predicate)
     test_file_matches_pattern_predicate = _deprecated_suite_method(
             test_file_matches_pattern_predicate)
+    matches_attribute_expression_predicate = _deprecated_suite_method(
+            matches_attribute_expression_predicate)
 
-
-    @staticmethod
-    def matches_attribute_expression_predicate(test_attr_boolstr):
-        """Returns predicate that matches based on boolean expression of
-        attributes.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        ans returns True if the test attributes satisfy the given attribute
-        boolean expression.
-
-        @param test_attr_boolstr: boolean expression of the attributes to be
-                                  test, like 'system:all and interval:daily'.
-
-        @return a callable that takes a ControlData and returns True if the test
-                attributes satisfy the given boolean expression.
-        """
-        return lambda t: boolparse_lib.BoolstrResult(
-            test_attr_boolstr, t.attributes)
 
     @staticmethod
     def test_name_similarity_predicate(test_name):
