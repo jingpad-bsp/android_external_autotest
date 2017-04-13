@@ -175,6 +175,7 @@ class firmware_Cr50Update(FirmwareTest):
             # immediately.
             result = self.host.run("usb_updater -s -u %s" % dest,
                                    ignore_status=True)
+            exit_status = result.exit_status
         else:
             logging.info("Flashing image into inactive partition")
             # The image at 'dest' is older than the one Cr50 is running, so
@@ -184,9 +185,12 @@ class firmware_Cr50Update(FirmwareTest):
                                    ignore_status=True,
                                    ignore_timeout=True,
                                    timeout=self.UPDATE_TIMEOUT)
+            # If the command timed out result will be None. That is expected if
+            # Cr50 reboots
+            exit_status = result.exit_status if result else self.UPDATE_OK
 
         # After a posted reboot, the usb_update exit code should equal 1.
-        if result.exit_status and result.exit_status != self.UPDATE_OK:
+        if exit_status and exit_status != self.UPDATE_OK:
             logging.debug(result)
             raise error.TestError("Got unexpected usb_update exit code %d" %
                                   result.exit_status)
