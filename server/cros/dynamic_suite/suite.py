@@ -616,6 +616,34 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def get_test_source_build(builds, **dargs):
+    """Get the build of test code.
+
+    Get the test source build from arguments. If parameter
+    `test_source_build` is set and has a value, return its value. Otherwise
+    returns the ChromeOS build name if it exists. If ChromeOS build is not
+    specified either, raise SuiteArgumentException.
+
+    @param builds: the builds on which we're running this suite. It's a
+                   dictionary of version_prefix:build.
+    @param **dargs: Any other Suite constructor parameters, as described
+                    in Suite.__init__ docstring.
+
+    @return: The build contains the test code.
+    @raise: SuiteArgumentException if both test_source_build and ChromeOS
+            build are not specified.
+
+    """
+    if dargs.get('test_source_build', None):
+        return dargs['test_source_build']
+    test_source_build = builds.get(provision.CROS_VERSION_PREFIX, None)
+    if not test_source_build:
+        raise error.SuiteArgumentException(
+                'test_source_build must be specified if CrOS build is not '
+                'specified.')
+    return test_source_build
+
+
 def list_all_suites(build, devserver, cf_getter=None):
     """
     Parses all ControlData objects with a SUITE tag and extracts all
@@ -938,35 +966,7 @@ class Suite(object):
     test_file_similarity_predicate = _deprecated_suite_method(
             test_file_similarity_predicate)
     list_all_suites = _deprecated_suite_method(list_all_suites)
-
-
-    @staticmethod
-    def get_test_source_build(builds, **dargs):
-        """Get the build of test code.
-
-        Get the test source build from arguments. If parameter
-        `test_source_build` is set and has a value, return its value. Otherwise
-        returns the ChromeOS build name if it exists. If ChromeOS build is not
-        specified either, raise SuiteArgumentException.
-
-        @param builds: the builds on which we're running this suite. It's a
-                       dictionary of version_prefix:build.
-        @param **dargs: Any other Suite constructor parameters, as described
-                        in Suite.__init__ docstring.
-
-        @return: The build contains the test code.
-        @raise: SuiteArgumentException if both test_source_build and ChromeOS
-                build are not specified.
-
-        """
-        if dargs.get('test_source_build', None):
-            return dargs['test_source_build']
-        test_source_build = builds.get(provision.CROS_VERSION_PREFIX, None)
-        if not test_source_build:
-            raise error.SuiteArgumentException(
-                    'test_source_build must be specified if CrOS build is not '
-                    'specified.')
-        return test_source_build
+    get_test_source_build = _deprecated_suite_method(get_test_source_build)
 
 
     @classmethod
@@ -1003,7 +1003,7 @@ class Suite(object):
             if run_prod_code:
                 cf_getter = create_fs_getter(_AUTOTEST_DIR)
             else:
-                build = cls.get_test_source_build(builds, **dargs)
+                build = get_test_source_build(builds, **dargs)
                 cf_getter = _create_ds_getter(build, devserver)
 
         return cls(predicates,
@@ -1033,7 +1033,7 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
-            build = cls.get_test_source_build(builds, **dargs)
+            build = get_test_source_build(builds, **dargs)
             cf_getter = _create_ds_getter(build, devserver)
 
         return cls([name_in_tag_predicate(name)],
