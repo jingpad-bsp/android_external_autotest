@@ -946,77 +946,6 @@ class _BaseSuite(object):
     """
 
 
-    @classmethod
-    def create_from_predicates(cls, predicates, builds, board, devserver,
-                               cf_getter=None, name='ad_hoc_suite',
-                               run_prod_code=False, **dargs):
-        """
-        Create a Suite using a given predicate test filters.
-
-        Uses supplied predicate(s) to instantiate a Suite. Looks for tests in
-        |autotest_dir| and will schedule them using |afe|.  Pulls control files
-        from the default dev server. Results will be pulled from |tko| upon
-        completion.
-
-        @param predicates: A list of callables that accept ControlData
-                           representations of control files. A test will be
-                           included in suite if all callables in this list
-                           return True on the given control file.
-        @param builds: the builds on which we're running this suite. It's a
-                       dictionary of version_prefix:build.
-        @param board: the board on which we're running this suite.
-        @param devserver: the devserver which contains the build.
-        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
-                          using DevServerGetter.
-        @param name: name of suite. Defaults to 'ad_hoc_suite'
-        @param run_prod_code: If true, the suite will run the tests that
-                              lives in prod aka the test code currently on the
-                              lab servers.
-        @param **dargs: Any other Suite constructor parameters, as described
-                        in Suite.__init__ docstring.
-        @return a Suite instance.
-        """
-        if cf_getter is None:
-            if run_prod_code:
-                cf_getter = create_fs_getter(_AUTOTEST_DIR)
-            else:
-                build = get_test_source_build(builds, **dargs)
-                cf_getter = _create_ds_getter(build, devserver)
-
-        return cls(predicates,
-                   name, builds, board, cf_getter, run_prod_code, **dargs)
-
-
-    @classmethod
-    def create_from_name(cls, name, builds, board, devserver, cf_getter=None,
-                         **dargs):
-        """
-        Create a Suite using a predicate based on the SUITE control file var.
-
-        Makes a predicate based on |name| and uses it to instantiate a Suite
-        that looks for tests in |autotest_dir| and will schedule them using
-        |afe|.  Pulls control files from the default dev server.
-        Results will be pulled from |tko| upon completion.
-
-        @param name: a value of the SUITE control file variable to search for.
-        @param builds: the builds on which we're running this suite. It's a
-                       dictionary of version_prefix:build.
-        @param board: the board on which we're running this suite.
-        @param devserver: the devserver which contains the build.
-        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
-                          using DevServerGetter.
-        @param **dargs: Any other Suite constructor parameters, as described
-                        in Suite.__init__ docstring.
-        @return a Suite instance.
-        """
-        if cf_getter is None:
-            build = get_test_source_build(builds, **dargs)
-            cf_getter = _create_ds_getter(build, devserver)
-
-        return cls([name_in_tag_predicate(name)],
-                   name, builds, board, cf_getter, **dargs)
-
-
     def __init__(
             self,
             predicates,
@@ -1579,6 +1508,77 @@ class Suite(_BaseSuite):
             test_file_similarity_predicate)
     list_all_suites = _deprecated_suite_method(list_all_suites)
     get_test_source_build = _deprecated_suite_method(get_test_source_build)
+
+
+    @classmethod
+    def create_from_predicates(cls, predicates, builds, board, devserver,
+                               cf_getter=None, name='ad_hoc_suite',
+                               run_prod_code=False, **dargs):
+        """
+        Create a Suite using a given predicate test filters.
+
+        Uses supplied predicate(s) to instantiate a Suite. Looks for tests in
+        |autotest_dir| and will schedule them using |afe|.  Pulls control files
+        from the default dev server. Results will be pulled from |tko| upon
+        completion.
+
+        @param predicates: A list of callables that accept ControlData
+                           representations of control files. A test will be
+                           included in suite if all callables in this list
+                           return True on the given control file.
+        @param builds: the builds on which we're running this suite. It's a
+                       dictionary of version_prefix:build.
+        @param board: the board on which we're running this suite.
+        @param devserver: the devserver which contains the build.
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+        @param name: name of suite. Defaults to 'ad_hoc_suite'
+        @param run_prod_code: If true, the suite will run the tests that
+                              lives in prod aka the test code currently on the
+                              lab servers.
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
+        @return a Suite instance.
+        """
+        if cf_getter is None:
+            if run_prod_code:
+                cf_getter = create_fs_getter(_AUTOTEST_DIR)
+            else:
+                build = get_test_source_build(builds, **dargs)
+                cf_getter = _create_ds_getter(build, devserver)
+
+        return cls(predicates,
+                   name, builds, board, cf_getter, run_prod_code, **dargs)
+
+
+    @classmethod
+    def create_from_name(cls, name, builds, board, devserver, cf_getter=None,
+                         **dargs):
+        """
+        Create a Suite using a predicate based on the SUITE control file var.
+
+        Makes a predicate based on |name| and uses it to instantiate a Suite
+        that looks for tests in |autotest_dir| and will schedule them using
+        |afe|.  Pulls control files from the default dev server.
+        Results will be pulled from |tko| upon completion.
+
+        @param name: a value of the SUITE control file variable to search for.
+        @param builds: the builds on which we're running this suite. It's a
+                       dictionary of version_prefix:build.
+        @param board: the board on which we're running this suite.
+        @param devserver: the devserver which contains the build.
+        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                          using DevServerGetter.
+        @param **dargs: Any other Suite constructor parameters, as described
+                        in Suite.__init__ docstring.
+        @return a Suite instance.
+        """
+        if cf_getter is None:
+            build = get_test_source_build(builds, **dargs)
+            cf_getter = _create_ds_getter(build, devserver)
+
+        return cls([name_in_tag_predicate(name)],
+                   name, builds, board, cf_getter, **dargs)
 
 
     def __init__(
