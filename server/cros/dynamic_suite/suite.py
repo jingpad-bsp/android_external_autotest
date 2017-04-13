@@ -616,6 +616,29 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def list_all_suites(build, devserver, cf_getter=None):
+    """
+    Parses all ControlData objects with a SUITE tag and extracts all
+    defined suite names.
+
+    @param build: the build on which we're running this suite.
+    @param devserver: the devserver which contains the build.
+    @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
+                      using DevServerGetter.
+
+    @return list of suites
+    """
+    if cf_getter is None:
+        cf_getter = _create_ds_getter(build, devserver)
+
+    suites = set()
+    predicate = lambda t: True
+    for test in find_and_parse_tests(cf_getter, predicate,
+                                     add_experimental=True):
+        suites.update(test.suite_tag_parts)
+    return list(suites)
+
+
 def test_file_similarity_predicate(test_file_pattern):
     """Returns predicate that gets the similarity based on a test's file
     name pattern.
@@ -914,30 +937,7 @@ class Suite(object):
             test_name_similarity_predicate)
     test_file_similarity_predicate = _deprecated_suite_method(
             test_file_similarity_predicate)
-
-
-    @staticmethod
-    def list_all_suites(build, devserver, cf_getter=None):
-        """
-        Parses all ControlData objects with a SUITE tag and extracts all
-        defined suite names.
-
-        @param build: the build on which we're running this suite.
-        @param devserver: the devserver which contains the build.
-        @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
-                          using DevServerGetter.
-
-        @return list of suites
-        """
-        if cf_getter is None:
-            cf_getter = _create_ds_getter(build, devserver)
-
-        suites = set()
-        predicate = lambda t: True
-        for test in find_and_parse_tests(cf_getter, predicate,
-                                         add_experimental=True):
-            suites.update(test.suite_tag_parts)
-        return list(suites)
+    list_all_suites = _deprecated_suite_method(list_all_suites)
 
 
     @staticmethod
