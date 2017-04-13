@@ -616,6 +616,19 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def name_in_tag_predicate(name):
+    """Returns predicate that takes a control file and looks for |name|.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns True if the SUITE tag is present and contains |name|.
+
+    @param name: the suite name to base the predicate on.
+    @return a callable that takes a ControlData and looks for |name| in that
+            ControlData object's suite member.
+    """
+    return lambda t: name in t.suite_tag_parts
+
+
 def create_fs_getter(autotest_dir):
     """
     @param autotest_dir: the place to find autotests.
@@ -768,20 +781,7 @@ class Suite(object):
     find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
     find_possible_tests = _deprecated_suite_method(find_possible_tests)
     create_fs_getter = _deprecated_suite_method(create_fs_getter)
-
-
-    @staticmethod
-    def name_in_tag_predicate(name):
-        """Returns predicate that takes a control file and looks for |name|.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns True if the SUITE tag is present and contains |name|.
-
-        @param name: the suite name to base the predicate on.
-        @return a callable that takes a ControlData and looks for |name| in that
-                ControlData object's suite member.
-        """
-        return lambda t: name in t.suite_tag_parts
+    name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
 
 
     @staticmethod
@@ -1028,7 +1028,7 @@ class Suite(object):
             build = cls.get_test_source_build(builds, **dargs)
             cf_getter = _create_ds_getter(build, devserver)
 
-        return cls([cls.name_in_tag_predicate(name)],
+        return cls([name_in_tag_predicate(name)],
                    name, builds, board, cf_getter, **dargs)
 
 
