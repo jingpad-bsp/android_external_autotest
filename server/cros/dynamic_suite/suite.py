@@ -616,6 +616,19 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def test_name_equals_predicate(test_name):
+    """Returns predicate that matched based on a test's name.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns True if the test name is equal to |test_name|.
+
+    @param test_name: the test name to base the predicate on.
+    @return a callable that takes a ControlData and looks for |test_name|
+            in that ControlData's name.
+    """
+    return lambda t: hasattr(t, 'name') and test_name == t.name
+
+
 def name_in_tag_similarity_predicate(name):
     """Returns predicate that takes a control file and gets the similarity
     of the suites in the control file and the given name.
@@ -804,20 +817,8 @@ class Suite(object):
     name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
     name_in_tag_similarity_predicate = _deprecated_suite_method(
             name_in_tag_similarity_predicate)
-
-
-    @staticmethod
-    def test_name_equals_predicate(test_name):
-        """Returns predicate that matched based on a test's name.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns True if the test name is equal to |test_name|.
-
-        @param test_name: the test name to base the predicate on.
-        @return a callable that takes a ControlData and looks for |test_name|
-                in that ControlData's name.
-        """
-        return lambda t: hasattr(t, 'name') and test_name == t.name
+    test_name_equals_predicate = _deprecated_suite_method(
+            test_name_equals_predicate)
 
 
     @staticmethod
