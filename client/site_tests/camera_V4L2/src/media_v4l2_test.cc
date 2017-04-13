@@ -16,7 +16,6 @@ static void PrintUsage(int argc, char** argv) {
          "--mmap                  Use memory mapped buffers\n"
          "--userp                 Use application allocated buffers\n"
          "--buffers=[NUM]         Minimum buffers required\n"
-         "--frames=[NUM]          Maximum frame to capture\n"
          "--width=[NUM]           Picture width to capture\n"
          "--height=[NUM]          Picture height to capture\n"
          "--pixel-format=[fourcc] Picture format fourcc code\n"
@@ -33,7 +32,6 @@ long_options[] = {
         { "mmap",         no_argument,       NULL, 'm' },
         { "userp",        no_argument,       NULL, 'u' },
         { "buffers",      required_argument, NULL, 'n' },
-        { "frames",       required_argument, NULL, 'f' },
         { "width",        required_argument, NULL, 'w' },
         { "height",       required_argument, NULL, 'h' },
         { "pixel-format", required_argument, NULL, 't' },
@@ -46,12 +44,11 @@ int main(int argc, char** argv) {
   std::string dev_name = "/dev/video";
   V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
   uint32_t buffers = 4;
-  uint32_t frames = 100;
   uint32_t width = 640;
   uint32_t height = 480;
   uint32_t pixfmt = V4L2_PIX_FMT_YUYV;
   uint32_t fps = 0;
-  uint32_t time_to_capture = 0;
+  uint32_t time_to_capture = 3;  // The unit is second.
 
   for (;;) {
     int32_t index;
@@ -76,9 +73,6 @@ int main(int argc, char** argv) {
         break;
       case 'n':
         buffers = atoi(optarg);
-        break;
-      case 'f':
-        frames = atoi(optarg);
         break;
       case 'w':
         width = atoi(optarg);
@@ -107,15 +101,9 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (time_to_capture) {
-    printf("capture %dx%d %c%c%c%c picture for %d seconds at %d fps\n",
-           width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
-           (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, time_to_capture, fps);
-  } else {
-    printf("capture %dx%d %c%c%c%c picture for %d frames at %d fps\n",
-           width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
-           (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, frames, fps);
-  }
+  printf("capture %dx%d %c%c%c%c picture for %d seconds at %d fps\n",
+         width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+         (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, time_to_capture, fps);
 
   V4L2Device* device = new V4L2Device(dev_name.c_str(), io, buffers);
 
@@ -130,7 +118,7 @@ int main(int argc, char** argv) {
   if (!retcode && !device->StartCapture())
     retcode = 3;
 
-  if (!retcode && !device->Run(frames, time_to_capture))
+  if (!retcode && !device->Run(time_to_capture))
     retcode = 4;
 
   if (!retcode && !device->StopCapture())
