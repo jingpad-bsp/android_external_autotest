@@ -616,6 +616,23 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def test_name_similarity_predicate(test_name):
+    """Returns predicate that matched based on a test's name.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns a tuple of (test name, ratio), where ratio is the similarity
+    between the test name and the given test_name.
+
+    @param test_name: the test name to base the predicate on.
+    @return a callable that takes a ControlData and returns a tuple of
+            (test name, ratio), where ratio is the similarity between the
+            test name and the given test_name.
+    """
+    return lambda t: ((None, 0) if not hasattr(t, 'name') else
+            (t.name,
+             difflib.SequenceMatcher(a=t.name, b=test_name).ratio()))
+
+
 def matches_attribute_expression_predicate(test_attr_boolstr):
     """Returns predicate that matches based on boolean expression of
     attributes.
@@ -874,24 +891,8 @@ class Suite(object):
             test_file_matches_pattern_predicate)
     matches_attribute_expression_predicate = _deprecated_suite_method(
             matches_attribute_expression_predicate)
-
-
-    @staticmethod
-    def test_name_similarity_predicate(test_name):
-        """Returns predicate that matched based on a test's name.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns a tuple of (test name, ratio), where ratio is the similarity
-        between the test name and the given test_name.
-
-        @param test_name: the test name to base the predicate on.
-        @return a callable that takes a ControlData and returns a tuple of
-                (test name, ratio), where ratio is the similarity between the
-                test name and the given test_name.
-        """
-        return lambda t: ((None, 0) if not hasattr(t, 'name') else
-                (t.name,
-                 difflib.SequenceMatcher(a=t.name, b=test_name).ratio()))
+    test_name_similarity_predicate = _deprecated_suite_method(
+            test_name_similarity_predicate)
 
 
     @staticmethod
