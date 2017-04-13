@@ -916,8 +916,8 @@ class Suite(object):
             test_file_similarity_predicate)
 
 
-    @classmethod
-    def list_all_suites(cls, build, devserver, cf_getter=None):
+    @staticmethod
+    def list_all_suites(build, devserver, cf_getter=None):
         """
         Parses all ControlData objects with a SUITE tag and extracts all
         defined suite names.
