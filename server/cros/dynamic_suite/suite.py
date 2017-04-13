@@ -948,12 +948,10 @@ class _BaseSuite(object):
 
     def __init__(
             self,
-            predicates,
             tag,
             builds,
             board,
             cf_getter,
-            run_prod_code=False,
             afe=None,
             tko=None,
             pool=None,
@@ -966,22 +964,21 @@ class _BaseSuite(object):
             ignore_deps=False,
             extra_deps=None,
             priority=priorities.Priority.DEFAULT,
-            forgiving_parser=True,
             wait_for_results=True,
             job_retry=False,
             max_retries=sys.maxint,
             offload_failures_only=False,
             test_source_build=None,
-            job_keyvals=None,
-            test_args=None
+            job_keyvals=None
     ):
-        """
-        Constructor
+        """Initialize instance.
 
-        @param predicates: A list of callables that accept ControlData
-                           representations of control files. A test will be
-                           included in suite is all callables in this list
-                           return True on the given control file.
+        Subclasses should extend __init__ to set up the tests instance
+        attribute.
+
+        TODO(ayatane): Use a better way of enforcing/documenting tests
+        initialization.
+
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
@@ -990,9 +987,6 @@ class _BaseSuite(object):
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
-        @param run_prod_code: If true, the suite will run the test code that
-                              lives in prod aka the test code currently on the
-                              lab servers.
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
@@ -1023,8 +1017,6 @@ class _BaseSuite(object):
         @param test_source_build: Build that contains the server-side test code.
         @param job_keyvals: General job keyvals to be inserted into keyval file,
                             which will be used by tko/parse later.
-        @param test_args: A dict of args passed all the way to each individual
-                          test that will be actually ran.
         """
 
         self._tag = tag
@@ -1039,15 +1031,6 @@ class _BaseSuite(object):
                                                          debug=False)
         self._jobs = []
         self._jobs_to_tests = {}
-        self.tests = find_and_parse_tests(
-                self._cf_getter,
-                lambda control_data: all(f(control_data) for f in predicates),
-                self._tag,
-                add_experimental=True,
-                forgiving_parser=forgiving_parser,
-                run_prod_code=run_prod_code,
-                test_args=test_args,
-        )
 
         self._file_bugs = file_bugs
         self._file_experimental_bugs = file_experimental_bugs
@@ -1058,7 +1041,6 @@ class _BaseSuite(object):
         self._retry_handler = None
         self.wait_for_results = wait_for_results
         self._job_keyvals = job_keyvals
-        self._test_args = test_args
 
         if extra_deps is None:
             extra_deps = []
@@ -1607,7 +1589,8 @@ class Suite(_BaseSuite):
             max_retries=sys.maxint,
             offload_failures_only=False,
             test_source_build=None,
-            job_keyvals=None
+            job_keyvals=None,
+            test_args=None
     ):
         """
         Constructor
@@ -1657,15 +1640,15 @@ class Suite(_BaseSuite):
         @param test_source_build: Build that contains the server-side test code.
         @param job_keyvals: General job keyvals to be inserted into keyval file,
                             which will be used by tko/parse later.
+        @param test_args: A dict of args passed all the way to each individual
+                          test that will be actually ran.
 
         """
         super(Suite, self).__init__(
-                predicates=predicates,
                 tag=tag,
                 builds=builds,
                 board=board,
                 cf_getter=cf_getter,
-                run_prod_code=run_prod_code,
                 afe=afe,
                 tko=tko,
                 pool=pool,
@@ -1678,7 +1661,6 @@ class Suite(_BaseSuite):
                 ignore_deps=ignore_deps,
                 extra_deps=extra_deps,
                 priority=priority,
-                forgiving_parser=forgiving_parser,
                 wait_for_results=wait_for_results,
                 job_retry=job_retry,
                 max_retries=max_retries,
@@ -1686,6 +1668,15 @@ class Suite(_BaseSuite):
                 test_source_build=test_source_build,
                 job_keyvals=job_keyvals)
 
+        self.tests = find_and_parse_tests(
+                self._cf_getter,
+                lambda control_data: all(f(control_data) for f in predicates),
+                self._tag,
+                add_experimental=True,
+                forgiving_parser=forgiving_parser,
+                run_prod_code=run_prod_code,
+                test_args=test_args,
+        )
 
 
 def _is_nonexistent_board_error(e):
