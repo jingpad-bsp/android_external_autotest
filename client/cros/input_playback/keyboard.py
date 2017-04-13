@@ -32,7 +32,8 @@ class Keyboard(object):
         if not os.path.exists(event_file):
             raise error.TestError('No such key file keyboard_%s in %s'
                                   % (key, self.dirname))
-        self.keyboard.playback(filepath=event_file, input_type=_KEYBOARD)
+        self.keyboard.blocking_playback(filepath=event_file,
+                                        input_type=_KEYBOARD)
 
     def playback(self, event_file):
         """Replay the specified key events file.
@@ -40,7 +41,8 @@ class Keyboard(object):
         @param event_file: the filename of the key events
 
         """
-        self.keyboard.playback(filepath=event_file, input_type=_KEYBOARD)
+        self.keyboard.blocking_playback(filepath=event_file,
+                                        input_type=_KEYBOARD)
 
     def close(self):
         """Clean up the files/handles created in the class."""
