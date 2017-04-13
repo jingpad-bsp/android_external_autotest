@@ -1597,7 +1597,7 @@ class Suite(_BaseSuite):
 
         @param predicates: A list of callables that accept ControlData
                            representations of control files. A test will be
-                           included in suite is all callables in this list
+                           included in suite if all callables in this list
                            return True on the given control file.
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
