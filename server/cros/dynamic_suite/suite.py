@@ -616,6 +616,21 @@ def _should_batch_with(cf_getter):
             and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
+def test_name_matches_pattern_predicate(test_name_pattern):
+    """Returns predicate that matches based on a test's name pattern.
+
+    Builds a predicate that takes in a parsed control file (a ControlData)
+    and returns True if the test name matches the given regular expression.
+
+    @param test_name_pattern: regular expression (string) to match against
+                              test names.
+    @return a callable that takes a ControlData and returns
+            True if the name fields matches the pattern.
+    """
+    return lambda t: hasattr(t, 'name') and re.match(test_name_pattern,
+                                                     t.name)
+
+
 def test_name_equals_predicate(test_name):
     """Returns predicate that matched based on a test's name.
 
@@ -819,22 +834,8 @@ class Suite(object):
             name_in_tag_similarity_predicate)
     test_name_equals_predicate = _deprecated_suite_method(
             test_name_equals_predicate)
-
-
-    @staticmethod
-    def test_name_matches_pattern_predicate(test_name_pattern):
-        """Returns predicate that matches based on a test's name pattern.
-
-        Builds a predicate that takes in a parsed control file (a ControlData)
-        and returns True if the test name matches the given regular expression.
-
-        @param test_name_pattern: regular expression (string) to match against
-                                  test names.
-        @return a callable that takes a ControlData and returns
-                True if the name fields matches the pattern.
-        """
-        return lambda t: hasattr(t, 'name') and re.match(test_name_pattern,
-                                                         t.name)
+    test_name_matches_pattern_predicate = _deprecated_suite_method(
+            test_name_matches_pattern_predicate)
 
 
     @staticmethod
