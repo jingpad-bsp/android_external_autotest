@@ -920,7 +920,7 @@ def _deprecated_suite_method(func):
     return staticmethod(wrapper)
 
 
-class Suite(object):
+class _BaseSuite(object):
     """
     A suite of tests, defined by some predicate over control file variables.
 
@@ -944,29 +944,6 @@ class Suite(object):
     @var _retry_handler: a RetryHandler object.
 
     """
-
-    # TODO(ayatane): These methods are kept on the Suite class for
-    # backward compatibility.
-    find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
-    find_possible_tests = _deprecated_suite_method(find_possible_tests)
-    create_fs_getter = _deprecated_suite_method(create_fs_getter)
-    name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
-    name_in_tag_similarity_predicate = _deprecated_suite_method(
-            name_in_tag_similarity_predicate)
-    test_name_equals_predicate = _deprecated_suite_method(
-            test_name_equals_predicate)
-    test_name_matches_pattern_predicate = _deprecated_suite_method(
-            test_name_matches_pattern_predicate)
-    test_file_matches_pattern_predicate = _deprecated_suite_method(
-            test_file_matches_pattern_predicate)
-    matches_attribute_expression_predicate = _deprecated_suite_method(
-            matches_attribute_expression_predicate)
-    test_name_similarity_predicate = _deprecated_suite_method(
-            test_name_similarity_predicate)
-    test_file_similarity_predicate = _deprecated_suite_method(
-            test_file_similarity_predicate)
-    list_all_suites = _deprecated_suite_method(list_all_suites)
-    get_test_source_build = _deprecated_suite_method(get_test_source_build)
 
 
     @classmethod
@@ -1553,6 +1530,56 @@ class Suite(object):
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
+
+
+class Suite(_BaseSuite):
+    """
+    A suite of tests, defined by some predicate over control file variables.
+
+    Given a place to search for control files a predicate to match the desired
+    tests, can gather tests and fire off jobs to run them, and then wait for
+    results.
+
+    @var _predicate: a function that should return True when run over a
+         ControlData representation of a control file that should be in
+         this Suite.
+    @var _tag: a string with which to tag jobs run in this suite.
+    @var _builds: the builds on which we're running this suite.
+    @var _afe: an instance of AFE as defined in server/frontend.py.
+    @var _tko: an instance of TKO as defined in server/frontend.py.
+    @var _jobs: currently scheduled jobs, if any.
+    @var _jobs_to_tests: a dictionary that maps job ids to tests represented
+                         ControlData objects.
+    @var _cf_getter: a control_file_getter.ControlFileGetter
+    @var _retry: a bool value indicating whether jobs should be retried on
+                 failure.
+    @var _retry_handler: a RetryHandler object.
+
+    """
+
+    # TODO(ayatane): These methods are kept on the Suite class for
+    # backward compatibility.
+    find_and_parse_tests = _deprecated_suite_method(find_and_parse_tests)
+    find_possible_tests = _deprecated_suite_method(find_possible_tests)
+    create_fs_getter = _deprecated_suite_method(create_fs_getter)
+    name_in_tag_predicate = _deprecated_suite_method(name_in_tag_predicate)
+    name_in_tag_similarity_predicate = _deprecated_suite_method(
+            name_in_tag_similarity_predicate)
+    test_name_equals_predicate = _deprecated_suite_method(
+            test_name_equals_predicate)
+    test_name_matches_pattern_predicate = _deprecated_suite_method(
+            test_name_matches_pattern_predicate)
+    test_file_matches_pattern_predicate = _deprecated_suite_method(
+            test_file_matches_pattern_predicate)
+    matches_attribute_expression_predicate = _deprecated_suite_method(
+            matches_attribute_expression_predicate)
+    test_name_similarity_predicate = _deprecated_suite_method(
+            test_name_similarity_predicate)
+    test_file_similarity_predicate = _deprecated_suite_method(
+            test_file_similarity_predicate)
+    list_all_suites = _deprecated_suite_method(list_all_suites)
+    get_test_source_build = _deprecated_suite_method(get_test_source_build)
+
 
 
 def _is_nonexistent_board_error(e):
