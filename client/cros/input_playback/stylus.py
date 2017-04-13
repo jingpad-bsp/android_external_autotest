@@ -10,12 +10,12 @@ from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.input_playback import input_playback
 
 _CLICK_EVENTS = '/tmp/click_events'
-_CLICK_TEMPLATE = 'click_events'
+_CLICK_TEMPLATE = 'click_events.template'
 _PREFIX_RESOLUTION = 'RESOLUTION'
 _PREFIX_POSITION = 'POSITION'
 _STYLUS_DEVICE = 'stylus'
 _STYLUS_PROPERTY = '/tmp/stylus.prop'
-_STYLUS_TEMPLATE = 'stylus.prop'
+_STYLUS_TEMPLATE = 'stylus.prop.template'
 
 
 class Stylus(object):
