@@ -57,17 +57,18 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
         board = utils.get_current_board()
         if board in blacklist:
-            return ' --gtest_filter=-' + ':'.join(blacklist[board])
+            return '-' + ':'.join(blacklist[board])
 
         return ''
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self, in_cloud, streams, profile):
+    def run_once(self, in_cloud, streams, profile, gtest_filter=None):
         """Runs video_encode_accelerator_unittest on the streams.
 
         @param in_cloud: Input file needs to be downloaded first.
         @param streams: The test streams for video_encode_accelerator_unittest.
         @param profile: The profile to encode into.
+        @param gtest_filter: test case filter.
 
         @raises error.TestFail for video_encode_accelerator_unittest failures.
         """
@@ -83,11 +84,23 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             output_path = os.path.join(self.tmpdir,
                     '%s.out' % input_path.split('/')[-1])
 
-            cmd_line = '--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
-                    input_path, width, height, profile, output_path, bit_rate)
+            cmd_line_list = []
+            cmd_line_list.append('--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
+                    input_path, width, height, profile, output_path, bit_rate))
             if utils.is_freon():
-                cmd_line += ' --ozone-platform=gbm'
-            cmd_line += self.get_filter_option()
+                cmd_line_list.append('--ozone-platform=gbm')
+
+            # Command line |gtest_filter| can override get_filter_option().
+            predefined_filter = self.get_filter_option()
+            if gtest_filter and predefined_filter:
+                logging.warning('predefined gtest filter is suppressed: %s',
+                    predefined_filter)
+            if not gtest_filter:
+                gtest_filter = predefined_filter
+            if gtest_filter:
+                cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)
+
+            cmd_line = ' '.join(cmd_line_list)
             try:
                 self.run_chrome_test_binary(BINARY, cmd_line, as_chronos=False)
             except error.TestFail as test_failure:
