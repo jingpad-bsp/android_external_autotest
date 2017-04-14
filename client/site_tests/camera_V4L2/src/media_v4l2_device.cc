@@ -232,16 +232,16 @@ void V4L2Device::ProcessImage(const void* p) {
   fflush(stdout);
 }
 
-// Do capture for number of |frames| ( when time_in_sec == 0 )
-// or for duration of |time_in_sec|  ( when time_in_sec > 0 ).
-bool V4L2Device::Run(uint32_t frames, uint32_t time_in_sec) {
+// Do capture for duration of |time_in_sec|.
+bool V4L2Device::Run(uint32_t time_in_sec) {
+  uint32_t frames = 0;
   stopped_ = false;
-  if (time_in_sec) // duration setting override the frames setting.
-    frames = 30 * time_in_sec; // Assume maximum fps is 30.
+  if (!time_in_sec)
+    return false;
 
   uint64_t start_in_sec = Now();
   int32_t timeout = 5;  // Used 5 seconds for initial delay.
-  while (!stopped_ && frames > 0) {
+  while (!stopped_) {
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(fd_, &fds);
@@ -264,12 +264,19 @@ bool V4L2Device::Run(uint32_t frames, uint32_t time_in_sec) {
     if (r < 0)
       return false;
     if (r)
-      frames--;
+      frames++;
     if (time_in_sec) {
       uint64_t end_in_sec = Now();
       if ( end_in_sec - start_in_sec >= time_in_sec )
-        return true;
+        break;
     }
+  }
+  // All resolutions should have at least 1 fps.
+  float actual_fps = static_cast<float>(frames) / time_in_sec;
+  printf("\n<<< Info: Actual fps is %f on %s.>>>\n", actual_fps, dev_name_);
+  if (actual_fps < 1.0) {
+    printf("<<< Error: The actual fps is too low on %s.>>>\n", dev_name_);
+    return false;
   }
   return true;
 }

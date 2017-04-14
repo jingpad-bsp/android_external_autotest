@@ -43,7 +43,7 @@ class V4L2Device {
   virtual bool UninitDevice();
   virtual bool StartCapture();
   virtual bool StopCapture();
-  virtual bool Run(uint32_t frames, uint32_t time_in_sec = 0);
+  virtual bool Run(uint32_t time_in_sec);
 
   // Helper methods.
   bool EnumInput();
