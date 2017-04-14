@@ -20,7 +20,6 @@
 class V4L2Device {
  public:
   enum IOMethod {
-    IO_METHOD_READ,
     IO_METHOD_MMAP,
     IO_METHOD_USERPTR,
   };
@@ -87,7 +86,6 @@ class V4L2Device {
  private:
   int32_t DoIoctl(int32_t request, void* arg);
   int32_t ReadOneFrame();
-  bool InitReadIO(uint32_t buffer_size);
   bool InitMmapIO();
   bool InitUserPtrIO(uint32_t buffer_size);
   bool AllocateBuffer(uint32_t buffer_count);
