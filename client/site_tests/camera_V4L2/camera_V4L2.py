@@ -117,9 +117,6 @@ class camera_V4L2(test.test):
         pattern = r"support streaming i/o interface.>>>"
         self.support_streaming = True if re.search(pattern, stdout) else False
 
-        pattern = r"support streaming read/write interface.>>>"
-        self.support_readwrite = True if re.search(pattern, stdout) else False
-
         # Currently I assume streaming (mmap) is mandatroy.
         if not self.support_streaming:
             raise error.TestFail(device + " does not support streaming!")
@@ -155,11 +152,6 @@ class camera_V4L2(test.test):
 
     def run_v4l2_capture_tests(self, device):
         default_options = ["--device=%s" % device]
-
-        # If the device claims to support read/write i/o.
-        if self.support_readwrite:
-            option = default_options + ["--read"]
-            okay, stdout = self.run_v4l2_capture_test(False, option)
 
         # If the device claims to support stream i/o.
         # This could mean either mmap stream i/o or user pointer stream i/o.
