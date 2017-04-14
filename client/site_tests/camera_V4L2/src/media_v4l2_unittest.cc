@@ -237,7 +237,6 @@ static void PrintUsage() {
          "--device=DEVICE_NAME   Video device name [/dev/video]\n"
          "--help                 Print usage\n"
          "--buffer-io=mmap       Use memory mapped buffers\n"
-         "--buffer-io=read       Use read() calls\n"
          "--buffer-io=userp      Use application allocated buffers\n");
 }
 
@@ -272,8 +271,6 @@ int main(int argc, char** argv) {
         io_name = strdup(optarg);
         if (io_name == "mmap") {
           io = V4L2Device::IO_METHOD_MMAP;
-        } else if (io_name == "read") {
-          io = V4L2Device::IO_METHOD_READ;
         } else if (io_name == "userp") {
           io = V4L2Device::IO_METHOD_USERPTR;
         } else {

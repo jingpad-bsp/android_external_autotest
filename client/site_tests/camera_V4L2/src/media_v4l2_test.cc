@@ -14,7 +14,6 @@ static void PrintUsage(int argc, char** argv) {
          "--device=DEVICE_NAME    Video device name [/dev/video]\n"
          "--help                  Print usage\n"
          "--mmap                  Use memory mapped buffers\n"
-         "--read                  Use read() calls\n"
          "--userp                 Use application allocated buffers\n"
          "--buffers=[NUM]         Minimum buffers required\n"
          "--frames=[NUM]          Maximum frame to capture\n"
@@ -32,7 +31,6 @@ long_options[] = {
         { "device",       required_argument, NULL, 'd' },
         { "help",         no_argument,       NULL, '?' },
         { "mmap",         no_argument,       NULL, 'm' },
-        { "read",         no_argument,       NULL, 'r' },
         { "userp",        no_argument,       NULL, 'u' },
         { "buffers",      required_argument, NULL, 'n' },
         { "frames",       required_argument, NULL, 'f' },
@@ -72,9 +70,6 @@ int main(int argc, char** argv) {
         exit (EXIT_SUCCESS);
       case 'm':
         io = V4L2Device::IO_METHOD_MMAP;
-        break;
-      case 'r':
-        io = V4L2Device::IO_METHOD_READ;
         break;
       case 'u':
         io = V4L2Device::IO_METHOD_USERPTR;
