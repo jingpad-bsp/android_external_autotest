@@ -378,7 +378,6 @@ class BluetoothAdapterTests(test.test):
 
     """
     version = 1
-    ADAPTER_POWER_STATE_TIMEOUT_SECS = 5
     ADAPTER_ACTION_SLEEP_SECS = 1
     ADAPTER_PAIRING_TIMEOUT_SECS = 60
     ADAPTER_CONNECTION_TIMEOUT_SECS = 30
@@ -387,6 +386,8 @@ class BluetoothAdapterTests(test.test):
     ADAPTER_DISCOVER_TIMEOUT_SECS = 60          # 30 seconds too short sometimes
     ADAPTER_DISCOVER_POLLING_SLEEP_SECS = 1
     ADAPTER_DISCOVER_NAME_TIMEOUT_SECS = 30
+    ADAPTER_WAIT_DEFAULT_TIMEOUT_SECS = 10
+    ADAPTER_POLLING_DEFAULT_SLEEP_SECS = 1
 
     HID_REPORT_SLEEP_SECS = 1
 
@@ -432,6 +433,38 @@ class BluetoothAdapterTests(test.test):
         return self.devices[device_type]
 
 
+    def _wait_for_condition(self, func, method_name,
+                            timeout=ADAPTER_WAIT_DEFAULT_TIMEOUT_SECS,
+                            sleep_interval=ADAPTER_POLLING_DEFAULT_SLEEP_SECS):
+        """Wait for the func() to become True.
+
+        @param fun: the function to wait for.
+        @param method_name: the invoking class method.
+        @param timeout: number of seconds to wait before giving up.
+        @param sleep_interval: the interval in seconds to sleep between
+                invoking func().
+
+        @returns: the bluetooth device object
+
+        """
+
+        try:
+            utils.poll_for_condition(condition=func,
+                                     timeout=timeout,
+                                     sleep_interval=sleep_interval,
+                                     desc=('Waiting %s', method_name))
+            return True
+        except utils.TimeoutError as e:
+            logging.error('%s: %s', method_name, e)
+        except Exception as e:
+            logging.error('%s: %s', method_name, e)
+            err = 'bluetoothd possibly crashed. Check out /var/log/messages.'
+            logging.error(err)
+        except:
+            logging.error('%s: unexpected error', method_name)
+        return False
+
+
     # -------------------------------------------------------------------
     # Adater standalone tests
     # -------------------------------------------------------------------
@@ -463,7 +496,8 @@ class BluetoothAdapterTests(test.test):
         and its hci device is hci0.
         """
         has_adapter = self.bluetooth_facade.has_adapter()
-        is_powered_on = self.bluetooth_facade.is_powered_on()
+        is_powered_on = self._wait_for_condition(
+                self.bluetooth_facade.is_powered_on, method_name())
         hci = self.bluetooth_facade.get_hci() == self.EXPECTED_HCI
         self.results = {
                 'has_adapter': has_adapter,
@@ -476,17 +510,8 @@ class BluetoothAdapterTests(test.test):
     def test_power_on_adapter(self):
         """Test that the adapter could be powered on successfully."""
         power_on = self.bluetooth_facade.set_powered(True)
-        is_powered_on = False
-        try:
-            utils.poll_for_condition(
-                    condition=self.bluetooth_facade.is_powered_on,
-                    timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
-                    desc='Waiting for adapter powered on')
-            is_powered_on = True
-        except utils.TimeoutError as e:
-            logging.error('test_power_on_adapter: %s', e)
-        except:
-            logging.error('test_power_on_adapter: unexpected error')
+        is_powered_on = self._wait_for_condition(
+                self.bluetooth_facade.is_powered_on, method_name())
 
         self.results = {'power_on': power_on, 'is_powered_on': is_powered_on}
         return all(self.results.values())
@@ -496,18 +521,9 @@ class BluetoothAdapterTests(test.test):
     def test_power_off_adapter(self):
         """Test that the adapter could be powered off successfully."""
         power_off = self.bluetooth_facade.set_powered(False)
-        is_powered_off = False
-        try:
-            utils.poll_for_condition(
-                    condition=(lambda:
-                               not self.bluetooth_facade.is_powered_on()),
-                    timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
-                    desc='Waiting for adapter powered off')
-            is_powered_off = True
-        except utils.TimeoutError as e:
-            logging.error('test_power_off_adapter: %s', e)
-        except:
-            logging.error('test_power_off_adapter: unexpected error')
+        is_powered_off = self._wait_for_condition(
+                lambda: not self.bluetooth_facade.is_powered_on(),
+                method_name())
 
         self.results = {
                 'power_off': power_off,
@@ -523,17 +539,8 @@ class BluetoothAdapterTests(test.test):
         and cached devices.
         """
         reset_on = self.bluetooth_facade.reset_on()
-        is_powered_on = False
-        try:
-            utils.poll_for_condition(
-                    condition=self.bluetooth_facade.is_powered_on,
-                    timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
-                    desc='Waiting for adapter reset on')
-            is_powered_on = True
-        except utils.TimeoutError as e:
-            logging.error('test_reset_on_adapter: %s', e)
-        except:
-            logging.error('test_reset_on_adapter: unexpected error')
+        is_powered_on = self._wait_for_condition(
+                self.bluetooth_facade.is_powered_on, method_name())
 
         self.results = {'reset_on': reset_on, 'is_powered_on': is_powered_on}
         return all(self.results.values())
@@ -547,18 +554,9 @@ class BluetoothAdapterTests(test.test):
         and cached devices.
         """
         reset_off = self.bluetooth_facade.reset_off()
-        is_powered_off = False
-        try:
-            utils.poll_for_condition(
-                    condition=(lambda:
-                               not self.bluetooth_facade.is_powered_on()),
-                    timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
-                    desc='Waiting for adapter reset off')
-            is_powered_off = True
-        except utils.TimeoutError as e:
-            logging.error('test_reset_off_adapter: %s', e)
-        except:
-            logging.error('test_reset_off_adapter: unexpected error')
+        is_powered_off = self._wait_for_condition(
+                lambda: not self.bluetooth_facade.is_powered_on(),
+                method_name())
 
         self.results = {
                 'reset_off': reset_off,
@@ -579,8 +577,9 @@ class BluetoothAdapterTests(test.test):
     def test_start_discovery(self):
         """Test that the adapter could start discovery."""
         start_discovery = self.bluetooth_facade.start_discovery()
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_discovering = self.bluetooth_facade.is_discovering()
+        is_discovering = self._wait_for_condition(
+                self.bluetooth_facade.is_discovering, method_name())
+
         self.results = {
                 'start_discovery': start_discovery,
                 'is_discovering': is_discovering}
@@ -591,8 +590,10 @@ class BluetoothAdapterTests(test.test):
     def test_stop_discovery(self):
         """Test that the adapter could stop discovery."""
         stop_discovery = self.bluetooth_facade.stop_discovery()
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_not_discovering = not self.bluetooth_facade.is_discovering()
+        is_not_discovering = self._wait_for_condition(
+                lambda: not self.bluetooth_facade.is_discovering(),
+                method_name())
+
         self.results = {
                 'stop_discovery': stop_discovery,
                 'is_not_discovering': is_not_discovering}
@@ -603,8 +604,9 @@ class BluetoothAdapterTests(test.test):
     def test_discoverable(self):
         """Test that the adapter could be set discoverable."""
         set_discoverable = self.bluetooth_facade.set_discoverable(True)
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_discoverable = self.bluetooth_facade.is_discoverable()
+        is_discoverable = self._wait_for_condition(
+                self.bluetooth_facade.is_discoverable, method_name())
+
         self.results = {
                 'set_discoverable': set_discoverable,
                 'is_discoverable': is_discoverable}
@@ -615,8 +617,10 @@ class BluetoothAdapterTests(test.test):
     def test_nondiscoverable(self):
         """Test that the adapter could be set non-discoverable."""
         set_nondiscoverable = self.bluetooth_facade.set_discoverable(False)
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_nondiscoverable = not self.bluetooth_facade.is_discoverable()
+        is_nondiscoverable = self._wait_for_condition(
+                lambda: not self.bluetooth_facade.is_discoverable(),
+                method_name())
+
         self.results = {
                 'set_nondiscoverable': set_nondiscoverable,
                 'is_nondiscoverable': is_nondiscoverable}
@@ -627,8 +631,9 @@ class BluetoothAdapterTests(test.test):
     def test_pairable(self):
         """Test that the adapter could be set pairable."""
         set_pairable = self.bluetooth_facade.set_pairable(True)
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_pairable = self.bluetooth_facade.is_pairable()
+        is_pairable = self._wait_for_condition(
+                self.bluetooth_facade.is_pairable, method_name())
+
         self.results = {
                 'set_pairable': set_pairable,
                 'is_pairable': is_pairable}
@@ -639,8 +644,9 @@ class BluetoothAdapterTests(test.test):
     def test_nonpairable(self):
         """Test that the adapter could be set non-pairable."""
         set_nonpairable = self.bluetooth_facade.set_pairable(False)
-        time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_nonpairable = not self.bluetooth_facade.is_pairable()
+        is_nonpairable = self._wait_for_condition(
+                lambda: not self.bluetooth_facade.is_pairable(), method_name())
+
         self.results = {
                 'set_nonpairable': set_nonpairable,
                 'is_nonpairable': is_nonpairable}
