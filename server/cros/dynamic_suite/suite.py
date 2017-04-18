@@ -525,21 +525,23 @@ def _find_test_control_data_for_suite(
     else:
         control_file_texts = _get_control_file_texts(
                 cf_getter, filtered_files)
-    return _parse_control_file_texts(
+    tests = _parse_control_file_texts(
             control_file_texts=control_file_texts,
-            add_experimental=add_experimental,
             forgiving_parser=forgiving_parser,
             run_prod_code=run_prod_code,
             test_args=test_args)
+    if not add_experimental:
+        tests = {path: test_data for path, test_data in tests.iteritems()
+                 if not test_data.experimental}
+    return tests
 
 
-def _parse_control_file_texts(control_file_texts, add_experimental=False,
+def _parse_control_file_texts(control_file_texts,
                               forgiving_parser=True, run_prod_code=False,
                               test_args=None):
     """Parse control file texts.
 
     @param control_file_texts: iterable of (path, text) pairs
-    @param add_experimental: add tests with experimental attribute set.
     @param forgiving_parser: If False, will raise ControlVariableExceptions
                              if any are encountered when parsing control
                              files. Note that this can raise an exception
@@ -570,8 +572,6 @@ def _parse_control_file_texts(control_file_texts, add_experimental=False,
         except Exception, e:
             logging.error("Bad %s\n%s", path, e)
         else:
-            if not add_experimental and found_test.experimental:
-                continue
             found_test.text = text
             if run_prod_code:
                 found_test.require_ssp = False
