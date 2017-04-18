@@ -947,6 +947,7 @@ class _BaseSuite(object):
 
     def __init__(
             self,
+            tests,
             tag,
             builds,
             board,
@@ -971,12 +972,7 @@ class _BaseSuite(object):
     ):
         """Initialize instance.
 
-        Subclasses should extend __init__ to set up the tests instance
-        attribute.
-
-        TODO(ayatane): Use a better way of enforcing/documenting tests
-        initialization.
-
+        @param tests: Iterable of tests to run.
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
@@ -1016,6 +1012,7 @@ class _BaseSuite(object):
                             which will be used by tko/parse later.
         """
 
+        self.tests = list(tests)
         self._tag = tag
         self._builds = builds
         self._results_dir = results_dir
@@ -1640,7 +1637,17 @@ class Suite(_BaseSuite):
                           test that will be actually ran.
 
         """
+        tests = find_and_parse_tests(
+                cf_getter,
+                _ComposedPredicate(predicates),
+                tag,
+                add_experimental=True,
+                forgiving_parser=forgiving_parser,
+                run_prod_code=run_prod_code,
+                test_args=test_args,
+        )
         super(Suite, self).__init__(
+                tests=tests,
                 tag=tag,
                 builds=builds,
                 board=board,
@@ -1662,16 +1669,6 @@ class Suite(_BaseSuite):
                 offload_failures_only=offload_failures_only,
                 test_source_build=test_source_build,
                 job_keyvals=job_keyvals)
-
-        self.tests = find_and_parse_tests(
-                cf_getter,
-                _ComposedPredicate(predicates),
-                tag,
-                add_experimental=True,
-                forgiving_parser=forgiving_parser,
-                run_prod_code=run_prod_code,
-                test_args=test_args,
-        )
 
 
 class _ComposedPredicate(object):
