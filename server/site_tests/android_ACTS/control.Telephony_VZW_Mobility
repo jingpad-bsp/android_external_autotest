@@ -6,7 +6,7 @@ AUTHOR = 'jaineelm, bettyzhou, krisr'
 NAME = 'android_ACTS.Telephony_VZW_Mobility'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_nightly'
+ATTRIBUTES = 'suite:android_telephony_mobility'
 DEPENDENCIES = 'carrier:verizon_mobility'
 
 DOC = """
