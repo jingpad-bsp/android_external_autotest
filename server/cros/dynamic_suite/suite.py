@@ -462,6 +462,11 @@ class _SuiteChildJobCreator(object):
         return keyvals
 
 
+def _get_cf_retriever(cf_getter):
+    """Returns the correct _ControlFileRetriever instance."""
+    return _ControlFileRetriever(cf_getter)
+
+
 class _ControlFileRetriever(object):
     """Retrieves control files.
 
@@ -859,7 +864,7 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             on the TIME setting in control file, slowest test comes first.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _ControlFileRetriever(cf_getter).find_test_control_data_for_suite(
+    tests = _get_cf_retriever(cf_getter).find_test_control_data_for_suite(
         suite_name, forgiving_parser, run_prod_code=run_prod_code,
         test_args=test_args)
     if not add_experimental:
@@ -896,7 +901,7 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _ControlFileRetriever(cf_getter).find_test_control_data_for_suite(
+    tests = _get_cf_retriever(cf_getter).find_test_control_data_for_suite(
         suite_name, forgiving_parser=True)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
