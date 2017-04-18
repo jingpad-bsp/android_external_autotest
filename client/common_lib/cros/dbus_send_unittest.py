@@ -206,3 +206,7 @@ class DBusSendTest(unittest.TestCase):
 
         assert len(parsed_output) == 0, ('Got extra parsed output: %r' %
                                          parsed_output)
+
+
+if __name__ == "__main__":
+    unittest.main()
