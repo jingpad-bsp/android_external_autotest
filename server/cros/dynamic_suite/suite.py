@@ -562,12 +562,6 @@ def _parse_control_file_texts(control_file_texts, add_experimental=False,
         try:
             found_test = control_data.parse_control_string(
                     text, raise_warnings=True, path=path)
-            if not add_experimental and found_test.experimental:
-                continue
-            found_test.text = text
-            if run_prod_code:
-                found_test.require_ssp = False
-            tests[path] = found_test
         except control_data.ControlVariableException, e:
             if not forgiving_parser:
                 msg = "Failed parsing %s\n%s" % (path, e)
@@ -575,6 +569,13 @@ def _parse_control_file_texts(control_file_texts, add_experimental=False,
             logging.warning("Skipping %s\n%s", path, e)
         except Exception, e:
             logging.error("Bad %s\n%s", path, e)
+        else:
+            if not add_experimental and found_test.experimental:
+                continue
+            found_test.text = text
+            if run_prod_code:
+                found_test.require_ssp = False
+            tests[path] = found_test
     return tests
 
 
