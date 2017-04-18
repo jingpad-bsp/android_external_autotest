@@ -463,7 +463,7 @@ class _SuiteChildJobCreator(object):
 
 
 def _find_test_control_data_for_suite(
-        cf_getter, suite_name='', add_experimental=False,
+        cf_getter, suite_name='',
         forgiving_parser=True, run_prod_code=False,
         test_args=None):
     """
@@ -489,7 +489,6 @@ def _find_test_control_data_for_suite(
            and fetch the content of control files
     @param suite_name: If specified, this method will attempt to restrain
                        the search space to just this suite's control files.
-    @param add_experimental: add tests with experimental attribute set.
     @param forgiving_parser: If False, will raise ControlVariableExceptions
                              if any are encountered when parsing control
                              files. Note that this can raise an exception
@@ -525,15 +524,11 @@ def _find_test_control_data_for_suite(
     else:
         control_file_texts = _get_control_file_texts(
                 cf_getter, filtered_files)
-    tests = _parse_control_file_texts(
+    return _parse_control_file_texts(
             control_file_texts=control_file_texts,
             forgiving_parser=forgiving_parser,
             run_prod_code=run_prod_code,
             test_args=test_args)
-    if not add_experimental:
-        tests = {path: test_data for path, test_data in tests.iteritems()
-                 if not test_data.experimental}
-    return tests
 
 
 def _parse_control_file_texts(control_file_texts,
@@ -854,9 +849,11 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             on the TIME setting in control file, slowest test comes first.
     """
     tests = _find_test_control_data_for_suite(
-            cf_getter, suite_name, add_experimental, forgiving_parser,
-            run_prod_code=run_prod_code,
-            test_args=test_args)
+            cf_getter, suite_name, forgiving_parser,
+            run_prod_code=run_prod_code, test_args=test_args)
+    if not add_experimental:
+        tests = {path: test_data for path, test_data in tests.iteritems()
+                 if not test_data.experimental}
     logging.debug('Parsed %s control files.', len(tests))
     tests = [test for test in tests.itervalues() if predicate(test)]
     tests.sort(key=lambda t:
@@ -888,8 +885,7 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     tests = _find_test_control_data_for_suite(
-            cf_getter, suite_name,
-            add_experimental=True, forgiving_parser=True)
+            cf_getter, suite_name, forgiving_parser=True)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
     for test in tests.itervalues():
