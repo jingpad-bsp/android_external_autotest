@@ -507,15 +507,12 @@ def _find_test_control_data_for_suite(
     @returns a dictionary of ControlData objects that based on given
              parameters.
     """
-    logging.debug('Getting control file list for suite: %s', suite_name)
     if _should_batch_with(cf_getter):
         suite_info = cf_getter.get_suite_info(suite_name=suite_name)
         files = suite_info.keys()
     else:
         files = cf_getter.get_control_file_list(suite_name=suite_name)
 
-
-    logging.debug('Parsing control files ...')
     matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
     filtered_files = (path for path in files if not matcher.match(path))
     if _should_batch_with(cf_getter):
@@ -848,6 +845,7 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             file text added in |text| attribute. Results are sorted based
             on the TIME setting in control file, slowest test comes first.
     """
+    logging.debug('Getting control file list for suite: %s', suite_name)
     tests = _find_test_control_data_for_suite(
             cf_getter, suite_name, forgiving_parser,
             run_prod_code=run_prod_code, test_args=test_args)
@@ -884,6 +882,7 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
     @return list of top names that similar to the given test, sorted by
             match ratio.
     """
+    logging.debug('Getting control file list for suite: %s', suite_name)
     tests = _find_test_control_data_for_suite(
             cf_getter, suite_name, forgiving_parser=True)
     logging.debug('Parsed %s control files.', len(tests))
