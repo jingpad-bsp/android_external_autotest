@@ -469,11 +469,18 @@ class _ControlFileRetriever(object):
     which simply return the control file text contents.
     """
 
+    def __init__(self, cf_getter):
+        """Initialize instance.
+
+        @param cf_getter: a control_file_getter.ControlFileGetter used to list
+               and fetch the content of control files
+        """
+        self._cf_getter = cf_getter
+
 
     def find_test_control_data_for_suite(
-            self, cf_getter, suite_name='',
-            forgiving_parser=True, run_prod_code=False,
-            test_args=None):
+            self, suite_name='',
+            forgiving_parser=True, run_prod_code=False, test_args=None):
         """
         Function to scan through all tests and find all tests.
 
@@ -493,8 +500,6 @@ class _ControlFileRetriever(object):
         cf_getter.get_suite_info() to get a dict of control files and contents
         in batch.
 
-        @param cf_getter: a control_file_getter.ControlFileGetter used to list
-               and fetch the content of control files
         @param suite_name: If specified, this method will attempt to restrain
                            the search space to just this suite's control files.
         @param forgiving_parser: If False, will raise ControlVariableExceptions
@@ -515,20 +520,20 @@ class _ControlFileRetriever(object):
         @returns a dictionary of ControlData objects that based on given
                  parameters.
         """
-        if _should_batch_with(cf_getter):
-            suite_info = cf_getter.get_suite_info(suite_name=suite_name)
+        if _should_batch_with(self._cf_getter):
+            suite_info = self._cf_getter.get_suite_info(suite_name=suite_name)
             files = suite_info.keys()
         else:
-            files = cf_getter.get_control_file_list(suite_name=suite_name)
+            files = self._cf_getter.get_control_file_list(suite_name=suite_name)
 
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         filtered_files = (path for path in files if not matcher.match(path))
-        if _should_batch_with(cf_getter):
+        if _should_batch_with(self._cf_getter):
             control_file_texts = _batch_get_control_file_texts(
                     suite_info, filtered_files)
         else:
             control_file_texts = _get_control_file_texts(
-                    cf_getter, filtered_files)
+                    self._cf_getter, filtered_files)
         return _parse_control_file_texts(
                 control_file_texts=control_file_texts,
                 forgiving_parser=forgiving_parser,
@@ -854,9 +859,9 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             on the TIME setting in control file, slowest test comes first.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _ControlFileRetriever().find_test_control_data_for_suite(
-            cf_getter, suite_name, forgiving_parser,
-            run_prod_code=run_prod_code, test_args=test_args)
+    tests = _ControlFileRetriever(cf_getter).find_test_control_data_for_suite(
+        suite_name, forgiving_parser, run_prod_code=run_prod_code,
+        test_args=test_args)
     if not add_experimental:
         tests = {path: test_data for path, test_data in tests.iteritems()
                  if not test_data.experimental}
@@ -891,8 +896,8 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _ControlFileRetriever().find_test_control_data_for_suite(
-            cf_getter, suite_name, forgiving_parser=True)
+    tests = _ControlFileRetriever(cf_getter).find_test_control_data_for_suite(
+        suite_name, forgiving_parser=True)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
     for test in tests.itervalues():
