@@ -7,6 +7,7 @@ suite:android_bluetooth_longev_gatt
 suite:android_bluetooth_longev_rfcomm
 suite:android_telephony_international_roaming
 suite:android_telephony_longevity
+suite:android_telephony_mobility
 suite:android_telephony_nexus_att
 suite:android_telephony_nexus_spt
 suite:android_telephony_nexus_tmo
