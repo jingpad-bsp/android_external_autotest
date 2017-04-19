@@ -939,8 +939,14 @@ class _BaseRun(object):
                     # give the client machine a chance to recover from a crash
                     self.host.wait_up(
                         self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
+                    logging.debug('Unexpected final status message from '
+                                  'client %s: %s', (self.host.name, last))
+                    # The line 'last' may have sensitive phrases, like
+                    # 'END GOOD', which breaks the tko parser. So the error
+                    # message will exclude it, since it will be recorded to
+                    # status.log.
                     msg = ("Aborting - unexpected final status message from "
-                           "client on %s: %s\n") % (self.host.hostname, last)
+                           "client on %s\n") % self.host.hostname
                     raise error.AutotestRunError(msg)
         finally:
             logging.debug('Autotest job finishes running. Below is the '
