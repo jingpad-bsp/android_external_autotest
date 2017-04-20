@@ -66,6 +66,7 @@ class graphics_WebGLAquarium(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
+
         self.sampler_lock = threading.Lock()
         # TODO: Create samplers for other platforms (e.g. x86).
         if utils.get_board().lower() in ['daisy', 'daisy_spring']:
@@ -85,7 +86,8 @@ class graphics_WebGLAquarium(test.test):
         if self._service_stopper:
             self._service_stopper.restore_services()
         if self.GSC:
-            keyvals = self.GSC.get_memory_keyvals()
+            keyvals = self.GSC.get_memory_difference_keyvals()
+
             if not self._test_power:
                 for key, val in keyvals.iteritems():
                     self.output_perf_value(
@@ -93,6 +95,7 @@ class graphics_WebGLAquarium(test.test):
                         value=val,
                         units='bytes',
                         higher_is_better=False)
+
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
@@ -115,13 +118,15 @@ class graphics_WebGLAquarium(test.test):
         # Set the number of fishes when document finishes loading.  Also reset
         # our own FPS counter and start recording FPS and rendering time.
         utils.wait_for_value(
-            lambda: tab.EvaluateJavaScript('if (document.readyState === "complete") {'
-                                           '  setSetting(document.getElementById("%s"), %d);'
-                                           '  g_crosFpsCounter.reset();'
-                                           '  true;'
-                                           '} else {'
-                                           '  false;'
-                                           '}' % self.test_settings[num_fishes]),
+            lambda: tab.EvaluateJavaScript(
+                'if (document.readyState === "complete") {'
+                '  setSetting(document.getElementById("%s"), %d);'
+                '  g_crosFpsCounter.reset();'
+                '  true;'
+                '} else {'
+                '  false;'
+                '}' % self.test_settings[num_fishes]
+            ),
             expected_value=True,
             timeout_sec=30)
 
@@ -276,7 +281,7 @@ class graphics_WebGLAquarium(test.test):
                  test_setting_num_fishes=(50, 1000),
                  power_test=False,
                  ac_ok=False):
-        """Find a brower with telemetry, and run the test.
+        """Find a browser with telemetry, and run the test.
 
         @param test_duration_secs: The duration in seconds to run each scenario
                 for.
