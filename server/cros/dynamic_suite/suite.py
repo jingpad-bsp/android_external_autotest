@@ -209,8 +209,6 @@ class RetryHandler(object):
     def _should_retry(self, result):
         """Check whether we should retry a job based on its result.
 
-        This method only makes sense when called by has_following_retry().
-
         We will retry the job that corresponds to the result
         when all of the following are true.
         a) The test was actually executed, meaning that if
@@ -230,10 +228,10 @@ class RetryHandler(object):
         @returns: True if we should retry the job.
 
         """
-        assert result.test_executed
-        assert result.id in self._retry_map
         return (
-            not self._suite_max_reached()
+            result.test_executed
+            and result.id in self._retry_map
+            and not self._suite_max_reached()
             and result.is_worse_than(
                 job_status.Status(self._retry_level, '', 'reason'))
             and self._retry_map[result.id]['state'] == self.States.NOT_ATTEMPTED
@@ -1304,7 +1302,7 @@ class _BaseSuite(object):
         result.record_all(record)
         self._remember_job_keyval(result)
 
-        if self._has_retry(result):
+        if self._job_retry and self._retry_handler._should_retry(result):
             new_job = self._schedule_test(
                     record=record, test=self._jobs_to_tests[result.id],
                     retry_for=result.id, ignore_errors=True)
