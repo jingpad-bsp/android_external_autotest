@@ -106,6 +106,11 @@ NETWORK_INIT_TIMEOUT = 300
 # Network bring up is slower in Moblab.
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
+# Number of seconds to download files from devserver.
+DEVSERVER_CALL_TIMEOUT = 300
+# Number of retries to download files from devserver.
+DEVSERVER_CALL_RETRY = 3
+
 # Type string for container related metadata.
 CONTAINER_CREATE_METADB_TYPE = 'container_create'
 CONTAINER_CREATE_RETRY_METADB_TYPE = 'container_create_retry'
@@ -265,9 +270,13 @@ def cleanup_if_fail():
     return deco_cleanup_if_fail
 
 
-@retry.retry(error.CmdError, timeout_min=5)
+@retry.retry((error.CmdError, error.CmdTimeoutError),
+             timeout_min=DEVSERVER_CALL_TIMEOUT * DEVSERVER_CALL_RETRY / 60)
 def download_extract(url, target, extract_dir):
     """Download the file from given url and save it to the target, then extract.
+
+    Retry download_file in case it hang there. Actually it may only be tried
+    DEVSERVER_CALL_RETRY - 1 times due to race condition.
 
     @param url: Url to download the file.
     @param target: Path of the file to save to.
@@ -278,7 +287,8 @@ def download_extract(url, target, extract_dir):
     # wget for ganeti devservers.
     if remote_url in dev_server.ImageServerBase.servers():
         tmp_file = '/tmp/%s' % os.path.basename(target)
-        dev_server.ImageServerBase.download_file(url, tmp_file, timeout=300)
+        dev_server.ImageServerBase.download_file(
+                url, tmp_file, timeout=DEVSERVER_CALL_TIMEOUT)
         utils.run('sudo mv %s %s' % (tmp_file, target))
     else:
         utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target),
