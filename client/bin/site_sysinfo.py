@@ -277,15 +277,9 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             purgeable_logdir(
                 os.path.join(constants.CRYPTOHOME_MOUNT_PT, "crash"),
                 additional_exclude=crash_exclude_string))
-        self.after_iteration_loggables.add(
-            purgeable_logdir(constants.CRASH_DIR,
-                             additional_exclude=crash_exclude_string))
         self.test_loggables.add(
             logfile(os.path.join(constants.USER_DATA_DIR,
                                  ".Google/Google Talk Plugin/gtbplugin.log")))
-        self.test_loggables.add(purgeable_logdir(
-                constants.CRASH_DIR,
-                additional_exclude=crash_exclude_string))
         # Collect files under /tmp/crash_reporter, which contain the procfs
         # copy of those crashed processes whose core file didn't get converted
         # into minidump. We need these additional files for post-mortem analysis
