@@ -1,0 +1,8 @@
+[Mon Apr 17 16:20:27.694190 2017] [:error] [pid 21539] WARNING:root:/usr/local/autotest/site-packages/django/conf/urls/defaults.py:3: DeprecationWarning: django.conf.urls.defaults   is deprecated; use django.conf.urls instead
+[Mon Apr 17 16:20:27.694306 2017] [:error] [pid 21539]   DeprecationWarning)
+[Mon Apr 17 16:20:27.694320 2017] [:error] [pid 21539]
+[Mon Apr 17 16:30:26.141731 2017] [:warn] [pid 4177] mod_wsgi (pid=4177): Callback registration for signal 14 ignored.
+[Mon Apr 17 16:30:26.142223 2017] [:warn] [pid 4177]   File "/usr/local/autotest/frontend/frontend.wsgi", line 23, in application
+[Mon Apr 17 16:30:26.142259 2017] [:warn] [pid 4177]     return _application(environ, start_response)
+[Mon Apr 17 16:30:26.142285 2017] [:warn] [pid 4177]   File "/usr/local/autotest/site-packages/django/core/handlers/wsgi.py", line 255, in __call__
+[Mon Apr 17 16:30:26.142323 2017] [:warn] [pid 4177]     response = self.get_response(request)
