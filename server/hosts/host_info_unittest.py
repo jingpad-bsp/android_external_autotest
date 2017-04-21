@@ -104,6 +104,13 @@ class HostInfoTest(unittest.TestCase):
         self.assertEqual(self.info.pools, {'second_pool', 'first_pool'})
 
 
+    def test_str(self):
+        """Sanity checks the __str__ implementation."""
+        info = host_info.HostInfo(labels=['a'], attributes={'b': 2})
+        self.assertEqual(str(info),
+                         "HostInfo [Labels: ['a'], Attributes: {'b': 2}]")
+
+
 class InMemoryHostInfoStoreTest(unittest.TestCase):
     """Basic tests for CachingHostInfoStore using InMemoryHostInfoStore."""
 

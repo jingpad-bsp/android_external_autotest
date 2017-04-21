@@ -120,7 +120,7 @@ class HostInfo(object):
 
 
     def __str__(self):
-        return ('HostInfo [Labels: %s, Attributes: %s'
+        return ('HostInfo [Labels: %s, Attributes: %s]'
                 % (self.labels, self.attributes))
 
 
