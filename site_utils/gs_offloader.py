@@ -484,6 +484,15 @@ def _create_test_result_notification(gs_path, dir_entry):
     return msg_payload
 
 
+def _emit_gs_returncode_metric(returncode):
+    """Increment the gs_returncode counter based on |returncode|."""
+    m_gs_returncode = 'chromeos/autotest/gs_offloader/gs_returncode'
+    rcode = int(returncode)
+    if rcode < 0 or rcode > 255:
+        rcode = -1
+    metrics.Counter(m_gs_returncode).increment(fields={'return_code': rcode})
+
+
 def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None):
     """Returns the offload directory function for the given gs_uri
 
@@ -530,6 +539,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                         stdout=stdout_file, stderr=stderr_file)
                 process.wait()
                 signal.alarm(0)
+
+                _emit_gs_returncode_metric(process.returncode)
 
                 if process.returncode == 0:
                     dir_size = get_directory_size_kibibytes(dir_entry)
@@ -587,6 +598,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
         finally:
             signal.alarm(0)
             if error:
+                m_any_error = 'chromeos/autotest/errors/gs_offloader/any_error'
+                metrics.Counter(m_any_error).increment()
                 # Rewind the log files for stdout and stderr and log
                 # their contents.
                 stdout_file.seek(0)
