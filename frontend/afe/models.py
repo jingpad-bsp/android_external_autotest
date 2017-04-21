@@ -1282,7 +1282,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # shards should be powered off and wiped hen they are removed from the
         # master.
         if self.shard_id and self.shard_id != shard.id:
-            raise error.UnallowedRecordsSentToMaster(
+            raise error.IgnorableUnallowedRecordsSentToMaster(
                 'Job id=%s is assigned to shard (%s). Cannot update it with %s '
                 'from shard %s.' % (self.id, self.shard_id, updated_serialized,
                                     shard.id))
@@ -1634,7 +1634,7 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     def sanity_check_update_from_shard(self, shard, updated_serialized,
                                        job_ids_sent):
         if self.job_id not in job_ids_sent:
-            raise error.UnallowedRecordsSentToMaster(
+            raise error.IgnorableUnallowedRecordsSentToMaster(
                 'Sent HostQueueEntry without corresponding '
                 'job entry: %s' % updated_serialized)
 

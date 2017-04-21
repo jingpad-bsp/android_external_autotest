@@ -982,11 +982,17 @@ def _persist_records_with_type_sent_from_shard(
                 'Object with pk %s of type %s does not exist on master.' % (
                     pk, record_type))
 
-        current_record.sanity_check_update_from_shard(
-            shard, serialized_record, *args, **kwargs)
+        try:
+            current_record.sanity_check_update_from_shard(
+                shard, serialized_record, *args, **kwargs)
+        except error.IgnorableUnallowedRecordsSentToMaster:
+            # An illegal record change was attempted, but it was of a non-fatal
+            # variety. Silently skip this record.
+            pass
+        else:
+            current_record.update_from_serialized(serialized_record)
+            pks.append(pk)
 
-        current_record.update_from_serialized(serialized_record)
-        pks.append(pk)
     return pks
 
 
@@ -1011,12 +1017,13 @@ def persist_records_sent_from_shard(shard, jobs, hqes):
     """
     timer = autotest_stats.Timer('shard_heartbeat')
     with timer.get_client('persist_jobs'):
-        job_ids_sent = _persist_records_with_type_sent_from_shard(
+        job_ids_persisted = _persist_records_with_type_sent_from_shard(
                 shard, jobs, models.Job)
 
     with timer.get_client('persist_hqes'):
         _persist_records_with_type_sent_from_shard(
-                shard, hqes, models.HostQueueEntry, job_ids_sent=job_ids_sent)
+                shard, hqes, models.HostQueueEntry,
+                job_ids_sent=job_ids_persisted)
 
 
 def forward_single_host_rpc_to_shard(func):
