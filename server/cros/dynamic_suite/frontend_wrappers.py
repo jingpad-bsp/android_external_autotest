@@ -19,6 +19,16 @@ except ImportError:
     retry_util = None
     timeout_util = None
 
+_in_mod_wsgi = False
+try:
+    # Per mod_wsgi documentation, this import will only succeed if we are running
+    # inside a mod_wsgi process.
+    # pylint: disable=unused-import
+    from mod_wsgi import version
+    _in_mod_wsgi = True
+except:
+    pass
+
 
 def convert_timeout_to_retry(backoff, timeout_min, delay_sec):
     """Compute the number of retry attempts for use with chromite.retry_util.
@@ -106,6 +116,12 @@ class RetryingAFE(frontend.AFE):
             # Set the keyword argument for GenericRetry
             dargs['sleep'] = self.delay_sec
             dargs['backoff_factor'] = backoff
+            # timeout_util.Timeout fundamentally relies on sigalrm, and doesn't
+            # work at all in wsgi environment (just emits logs spam). So, don't
+            # use it in wsgi.
+            if _in_mod_wsgi:
+                return retry_util.GenericRetry(handler, max_retry, _run,
+                                               self, call, **dargs)
             with timeout_util.Timeout(self.timeout_min * 60):
                 return retry_util.GenericRetry(handler, max_retry, _run,
                                                self, call, **dargs)
