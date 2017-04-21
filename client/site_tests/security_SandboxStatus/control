@@ -4,7 +4,7 @@
 
 AUTHOR = "jorgelo"
 NAME = "security_SandboxStatus"
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-inline"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
