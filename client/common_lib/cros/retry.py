@@ -11,6 +11,16 @@ import time
 
 from autotest_lib.client.common_lib import error
 
+_in_mod_wsgi = False
+try:
+    # Per mod_wsgi documentation, this import will only suceed if we are running
+    # inside a mod_wsgi process.
+    # pylint: disable=unused-import
+    from mod_wsgi import version
+    _in_mod_wsgi = True
+except:
+    pass
+
 
 def install_sigalarm_handler(new_handler):
     """
@@ -26,6 +36,12 @@ def install_sigalarm_handler(new_handler):
                         the numbers 1,0 respectively.
     @return: True if the installation of new_handler succeeded, False otherwise.
     """
+    # Installing signal handlers does not and is never expected to work if we're
+    # running in a mod_wsgi process.
+    if _in_mod_wsgi:
+        logging.warning('Cannot install sigalarm handler in mod_wsgi process.')
+        return False
+
     if (new_handler is None or
         (not callable(new_handler) and
          new_handler != signal.SIG_IGN and
