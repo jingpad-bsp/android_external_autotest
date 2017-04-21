@@ -16,14 +16,6 @@ class desktopui_MashLogin(test.test):
     def run_once(self):
         """Entry point of this test."""
 
-        # Mash requires a connected display to start chrome. Chromebox and
-        # Chromebit devices in the lab run without a connected display.
-        # Limit this test to devices with a built-in display until we can fix
-        # mash. http://crbug.com/673561
-        if utils.get_board_type() not in ['CHROMEBOOK', 'CHROMEBASE']:
-            logging.warning('chrome --mash requires a display, skipping test.')
-            return
-
         # The test is sometimes flaky on these boards. Mash doesn't target
         # hardware this old, so skip the test. http://crbug.com/679213
         boards_to_skip = ['x86-mario', 'x86-alex', 'x86-alex_he', 'x86-zgb',
