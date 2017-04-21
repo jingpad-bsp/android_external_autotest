@@ -44,6 +44,7 @@ _BUG_TEMPLATE = {
     'cc': ['kalin@chromium.org']
 }
 
+args_dict['suite_dependencies'] = 'accel:cros-ec'
 args_dict['add_experimental'] = True
 args_dict['bug_template'] = _BUG_TEMPLATE
 args_dict['job'] = job
