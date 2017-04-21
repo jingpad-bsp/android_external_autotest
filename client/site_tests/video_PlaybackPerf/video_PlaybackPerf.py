@@ -253,7 +253,7 @@ class video_PlaybackPerf(test.test):
         # Start chrome with disabled video hardware decode flag.
         with chrome.Chrome(extra_browser_args=
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS,
-                arc_mode=self.arc_mode) as cr:
+                arc_mode=self.arc_mode, init_network_controller=True) as cr:
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)
