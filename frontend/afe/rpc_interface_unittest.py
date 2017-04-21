@@ -1031,18 +1031,44 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
 
 
     def testSendingRecordsToMasterJobAssignedToDifferentShard(self):
-        """Ensure records that belong to a different shard are rejected."""
-        jobs, hqes = self._get_records_for_sending_to_master()
-        models.Shard.objects.create(hostname='other_shard')
-        self._send_records_to_master_helper(
-            jobs=jobs, hqes=hqes, shard_hostname='other_shard')
+        """Ensure records belonging to different shard are silently rejected."""
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        shard2 = models.Shard.objects.create(hostname='shard2')
+        job1 = self._create_job(shard=shard1, control_file='foo1')
+        job2 = self._create_job(shard=shard2, control_file='foo2')
+        job1_id = job1.id
+        job2_id = job2.id
+        hqe1 = models.HostQueueEntry.objects.create(job=job1)
+        hqe2 = models.HostQueueEntry.objects.create(job=job2)
+        hqe1_id = hqe1.id
+        hqe2_id = hqe2.id
+        job1_record = job1.serialize(include_dependencies=False)
+        job2_record = job2.serialize(include_dependencies=False)
+        hqe1_record = hqe1.serialize(include_dependencies=False)
+        hqe2_record = hqe2.serialize(include_dependencies=False)
 
+        # Prepare a bogus job record update from the wrong shard. The update
+        # should not throw an exception. Non-bogus jobs in the same update
+        # should happily update.
+        job1_record.update({'control_file': 'bar1'})
+        job2_record.update({'control_file': 'bar2'})
+        hqe1_record.update({'status': 'Aborted'})
+        hqe2_record.update({'status': 'Aborted'})
+        self._do_heartbeat_and_assert_response(
+            shard_hostname='shard2', upload_jobs=[job1_record, job2_record],
+            upload_hqes=[hqe1_record, hqe2_record])
 
-    def testSendingRecordsToMasterJobHqeWithoutJob(self):
-        """Ensure update for hqe without update for it's job gets rejected."""
-        _, hqes = self._get_records_for_sending_to_master()
-        self._send_records_to_master_helper(
-            jobs=[], hqes=hqes)
+        # Job and HQE record for wrong job should not be modified, because the
+        # rpc came from the wrong shard. Job and HQE record for valid job are
+        # modified.
+        self.assertEqual(models.Job.objects.get(id=job1_id).control_file,
+                         'foo1')
+        self.assertEqual(models.Job.objects.get(id=job2_id).control_file,
+                         'bar2')
+        self.assertEqual(models.HostQueueEntry.objects.get(id=hqe1_id).status,
+                         '')
+        self.assertEqual(models.HostQueueEntry.objects.get(id=hqe2_id).status,
+                         'Aborted')
 
 
     def testSendingRecordsToMasterNotExistingJob(self):
