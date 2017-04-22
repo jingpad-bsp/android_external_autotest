@@ -938,6 +938,18 @@ class GraphicsKernelMemory(object):
 
     num_errors = 0
 
+    def __init__(self):
+        self._initial_memory = self.get_memory_keyvals()
+
+    def get_memory_difference_keyvals(self):
+        """
+        Reads the graphics memory values and return the difference between now
+        and the memory usage at initialization stage as keyvals.
+        """
+        current_memory = self.get_memory_keyvals()
+        return {key: self._initial_memory[key] - current_memory[key]
+                for key in self._initial_memory}
+
     def get_memory_keyvals(self):
         """
         Reads the graphics memory values and returns them as keyvals.
@@ -1101,10 +1113,12 @@ class GraphicsStateChecker(object):
             if new_gpu_warning:
                 raise error.TestWarn('Detected GPU warning during test.')
 
-
     def get_memory_access_errors(self):
         """ Returns the number of errors while reading memory stats. """
         return self.graphics_kernel_memory.num_errors
+
+    def get_memory_difference_keyvals(self):
+        return self.graphics_kernel_memory.get_memory_difference_keyvals()
 
     def get_memory_keyvals(self):
         """ Returns memory stats. """
