@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe.json_rpc import proxy
@@ -1376,7 +1375,7 @@ class _BaseSuite(object):
         job_views = self._tko.run('get_detailed_test_views',
                                   afe_job_id=result.id)
         return reporting.TestBug(self._job_creator.cros_build,
-                site_utils.get_chrome_version(job_views),
+                utils.get_chrome_version(job_views),
                 self._tag,
                 result)
 
