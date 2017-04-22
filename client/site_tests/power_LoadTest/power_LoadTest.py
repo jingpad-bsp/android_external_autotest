@@ -4,7 +4,6 @@
 
 import collections, logging, numpy, os, tempfile, time
 from autotest_lib.client.bin import utils, test
-from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
@@ -576,7 +575,7 @@ class power_LoadTest(test.test):
         # If the command exits with a failure status,
         # we do not have a light sensor
         cmd = 'check_powerd_config --ambient_light_sensor'
-        result = base_utils.run(cmd, ignore_status=True)
+        result = utils.run(cmd, ignore_status=True)
         if result.exit_status:
             logging.debug('Ambient light sensor not present')
             return False
@@ -639,7 +638,7 @@ class power_LoadTest(test.test):
         """
 
         cmd = 'check_powerd_config --hover_detection'
-        result = base_utils.run(cmd, ignore_status=True)
+        result = utils.run(cmd, ignore_status=True)
         if result.exit_status:
             logging.debug('Hover not present')
             return False

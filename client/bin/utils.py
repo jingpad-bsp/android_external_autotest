@@ -1254,7 +1254,7 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
 
     Raises:
       error.AutoservPidAlreadyDeadError: no existing process matches name.
-      site_utils.TimeoutError: if processes still exist after timeout_sec.
+      utils.TimeoutError: if processes still exist after timeout_sec.
     """
 
     def list_and_kill_processes(name):
