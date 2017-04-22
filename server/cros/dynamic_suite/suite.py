@@ -532,16 +532,36 @@ class _ControlFileRetriever(object):
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         filtered_files = (path for path in files if not matcher.match(path))
         if _should_batch_with(self._cf_getter):
-            control_file_texts = _batch_get_control_file_texts(
+            control_file_texts = self._batch_get_control_file_texts(
                     suite_info, filtered_files)
         else:
-            control_file_texts = _get_control_file_texts(
-                    self._cf_getter, filtered_files)
+            control_file_texts = self._get_control_file_texts(filtered_files)
         return _parse_control_file_texts(
                 control_file_texts=control_file_texts,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args)
+
+
+    def _batch_get_control_file_texts(self, suite_info, paths):
+        """Get control file content for given files.
+
+        @param suite_info: dict mapping paths to control file text
+        @param paths: iterable of control file paths
+        @returns: generator yielding (path, text) tuples
+        """
+        for path in paths:
+            yield path, suite_info[path]
+
+
+    def _get_control_file_texts(self, paths):
+        """Get control file content for given files.
+
+        @param paths: iterable of control file paths
+        @returns: generator yielding (path, text) tuples
+        """
+        for path in paths:
+            yield path, self._cf_getter.get_control_file_contents(path)
 
 
 def _parse_control_file_texts(control_file_texts,
@@ -585,29 +605,6 @@ def _parse_control_file_texts(control_file_texts,
                 found_test.require_ssp = False
             tests[path] = found_test
     return tests
-
-
-def _batch_get_control_file_texts(suite_info, paths):
-    """Get control file content for given files.
-
-    @param suite_info: dict mapping paths to control file text
-    @param paths: iterable of control file paths
-    @returns: generator yielding (path, text) tuples
-    """
-    for path in paths:
-        yield path, suite_info[path]
-
-
-def _get_control_file_texts(cf_getter, paths):
-    """Get control file content for given files.
-
-    @param cf_getter: a control_file_getter.ControlFileGetter used to list
-           and fetch the content of control files
-    @param paths: iterable of control file paths
-    @returns: generator yielding (path, text) tuples
-    """
-    for path in paths:
-        yield path, cf_getter.get_control_file_contents(path)
 
 
 def _should_batch_with(cf_getter):
