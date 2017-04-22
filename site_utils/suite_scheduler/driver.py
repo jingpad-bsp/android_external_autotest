@@ -139,6 +139,8 @@ class Driver(object):
             task.TotMilestoneManager().refresh()
             time.sleep(self._LOOP_INTERVAL_SECONDS)
             self.RereadAndReprocessConfig(config, mv)
+            metrics.Counter('chromeos/autotest/suite_scheduler/'
+                            'handle_events_tick').increment()
 
 
     @staticmethod
