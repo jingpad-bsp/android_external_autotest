@@ -10,7 +10,7 @@ import common
 from autotest_lib.client.common_lib.cros import dbus_send
 
 EXAMPLE_SHILL_GET_PROPERTIES_OUTPUT = \
-"""method return sender=:1.12 -> dest=:1.37 reply_serial=2
+"""method return sender=org.freedesktop.DBus -> dest=:1.37 reply_serial=2
    array [
       dict entry(
          string "ActiveProfile"
@@ -173,7 +173,7 @@ PARSED_SHILL_GET_PROPERTIES_OUTPUT = {
 }
 
 EXAMPLE_AVAHI_GET_STATE_OUTPUT = \
-"""method return sender=:1.30 -> dest=:1.40 reply_serial=2
+"""method return sender=org.freedesktop.DBus -> dest=:1.40 reply_serial=2
    int32 2
 """
 
@@ -183,10 +183,12 @@ class DBusSendTest(unittest.TestCase):
 
     def testAvahiGetState(self):
         """Test that extremely simple input works."""
-        token_stream = dbus_send._build_token_stream(
-                EXAMPLE_AVAHI_GET_STATE_OUTPUT.splitlines()[1:])
-        parsed_output = dbus_send._parse_value(token_stream)
-        assert parsed_output == 2, 'Actual == %r' % parsed_output
+        result = dbus_send._parse_dbus_send_output(
+            EXAMPLE_AVAHI_GET_STATE_OUTPUT)
+        assert result.sender == 'org.freedesktop.DBus', (
+            'Sender == %r' % result.sender)
+        assert result.responder == ':1.40', 'Responder == %r' % result.responder
+        assert result.response == 2, 'Response == %r' % result.response
 
 
     def testShillManagerGetProperties(self):
@@ -196,16 +198,17 @@ class DBusSendTest(unittest.TestCase):
         itself to debugging a little more.
 
         """
-        token_stream = dbus_send._build_token_stream(
-                EXAMPLE_SHILL_GET_PROPERTIES_OUTPUT.splitlines()[1:])
-        parsed_output = dbus_send._parse_value(token_stream)
-        for k,v in PARSED_SHILL_GET_PROPERTIES_OUTPUT.iteritems():
-            assert k in parsed_output, '%r not in parsed output' % k
-            actual_v = parsed_output.pop(k)
+        result = dbus_send._parse_dbus_send_output(
+            EXAMPLE_SHILL_GET_PROPERTIES_OUTPUT)
+        assert result.sender == 'org.freedesktop.DBus', (
+            'Sender == %r' % result.sender)
+        assert result.responder == ':1.37', 'Responder == %r' % result.responder
+        for k, v in PARSED_SHILL_GET_PROPERTIES_OUTPUT.iteritems():
+            assert k in result.response, '%r not in response' % k
+            actual_v = result.response.pop(k)
             assert actual_v == v, 'Expected %r, got %r' % (v, actual_v)
-
-        assert len(parsed_output) == 0, ('Got extra parsed output: %r' %
-                                         parsed_output)
+        assert len(result.response) == 0, (
+            'Got extra response: %r' % result.response)
 
 
 if __name__ == "__main__":
