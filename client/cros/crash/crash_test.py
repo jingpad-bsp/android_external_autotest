@@ -2,7 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import contextlib, fcntl, logging, os, re, shutil
+import contextlib
+import fcntl
+import logging
+import os
+import re
+import shutil
 
 import common
 from autotest_lib.client.bin import test, utils
@@ -507,14 +512,12 @@ class CrashTest(test.test):
     def _call_sender_one_crash(self,
                                send_success=True,
                                reports_enabled=True,
-                               username='root',
                                report=None,
                                should_fail=False):
         """Call the crash sender script to mock upload one crash.
 
         @param send_success: Mock a successful send if true
         @param reports_enabled: Has the user consented to sending crash reports.
-        @param username: user to emulate a crash from
         @param report: report to use for crash, if None we create one.
 
         @returns a dictionary describing the result with the keys
