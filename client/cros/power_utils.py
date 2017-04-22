@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 import glob, logging, os, re, shutil, time
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import upstart
 
@@ -343,7 +342,7 @@ class KbdBacklight(object):
 
     def __init__(self):
         cmd = 'check_powerd_config --keyboard_backlight'
-        result = base_utils.run(cmd, ignore_status=True)
+        result = utils.run(cmd, ignore_status=True)
         if result.exit_status:
             raise KbdBacklightException('Keyboard backlight support' +
                                         'is not enabled')

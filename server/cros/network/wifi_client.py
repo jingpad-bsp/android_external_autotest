@@ -12,7 +12,6 @@ from contextlib import contextmanager
 from collections import namedtuple
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -1343,7 +1342,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             logger_command = ('/usr/bin/logger'
                               ' --tag shill'
                               ' --priority daemon.debug'
-                              ' "%s"' % base_utils.sh_escape(message))
+                              ' "%s"' % utils.sh_escape(message))
             self.host.run(logger_command)
 
 

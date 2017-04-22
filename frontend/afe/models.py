@@ -20,7 +20,7 @@ from autotest_lib.client.common_lib import enum, error, host_protections
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
-from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.server import utils as server_utils
 
@@ -178,10 +178,10 @@ class Shard(dbmodels.Model, model_logic.ModelExtensions):
         # The following hostname substitution is needed only for the VM
         # in puppylab.
         # The 'hostname' should not be replaced in the case of real cluster.
-        if site_utils.is_puppylab_vm(self.hostname):
+        if utils.is_puppylab_vm(self.hostname):
             hostname = self.hostname.split(':')[0]
             return self.hostname.replace(
-                    hostname, site_utils.DEFAULT_VM_GATEWAY)
+                    hostname, utils.DEFAULT_VM_GATEWAY)
         return self.hostname
 
 
