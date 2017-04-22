@@ -19,7 +19,7 @@ import unittest
 import mox
 
 import common
-from autotest_lib.client.common_lib import global_config, site_utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import gs_offloader
@@ -440,12 +440,12 @@ class PubSubTest(mox.MoxTestBase):
 
     def test_create_test_result_notification(self):
         """Tests the test result notification message."""
-        self.mox.StubOutWithMock(site_utils, 'get_moblab_id')
-        self.mox.StubOutWithMock(site_utils,
+        self.mox.StubOutWithMock(utils, 'get_moblab_id')
+        self.mox.StubOutWithMock(utils,
                                  'get_default_interface_mac_address')
-        site_utils.get_default_interface_mac_address().AndReturn(
+        utils.get_default_interface_mac_address().AndReturn(
             '1c:dc:d1:11:01:e1')
-        site_utils.get_moblab_id().AndReturn(
+        utils.get_moblab_id().AndReturn(
             'c8386d92-9ad1-11e6-80f5-111111111111')
         self.mox.ReplayAll()
         msg = gs_offloader._create_test_result_notification(

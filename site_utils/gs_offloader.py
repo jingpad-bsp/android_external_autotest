@@ -32,7 +32,6 @@ from optparse import OptionParser
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
@@ -477,8 +476,8 @@ def _create_test_result_notification(gs_path, dir_entry):
     msg_attributes[NOTIFICATION_ATTR_GCS_URI] = gcs_uri
     msg_attributes[NOTIFICATION_ATTR_VERSION] = NOTIFICATION_VERSION
     msg_attributes[NOTIFICATION_ATTR_MOBLAB_MAC] = \
-        site_utils.get_default_interface_mac_address()
-    msg_attributes[NOTIFICATION_ATTR_MOBLAB_ID] = site_utils.get_moblab_id()
+        utils.get_default_interface_mac_address()
+    msg_attributes[NOTIFICATION_ATTR_MOBLAB_ID] = utils.get_moblab_id()
     msg_payload['attributes'] = msg_attributes
 
     return msg_payload
