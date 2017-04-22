@@ -708,7 +708,7 @@ class TestPlatform(object):
         @return A TestPlatform implementation.
         """
         os_type = host.get_os_type()
-        if os_type == 'cros':
+        if os_type in ('cros', 'moblab'):
             return ChromiumOSTestPlatform(host)
         if os_type == 'brillo':
             return BrilloTestPlatform(host)
