@@ -1,26 +1,30 @@
 #!/usr/bin/python
 
+import StringIO
 import errno
 import logging
 import os
 import select
 import shutil
 import socket
-import StringIO
 import subprocess
 import time
 import unittest
 import urllib2
 
 import common
-from autotest_lib.client.common_lib import base_utils, autotemp
+from autotest_lib.client.common_lib import autotemp
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock
+
+metrics = utils.metrics_mock
 
 
 class test_read_one_line(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "open")
 
 
     def tearDown(self):
@@ -28,82 +32,82 @@ class test_read_one_line(unittest.TestCase):
 
 
     def test_ip_to_long(self):
-        self.assertEqual(base_utils.ip_to_long('0.0.0.0'), 0)
-        self.assertEqual(base_utils.ip_to_long('255.255.255.255'), 4294967295)
-        self.assertEqual(base_utils.ip_to_long('192.168.0.1'), 3232235521)
-        self.assertEqual(base_utils.ip_to_long('1.2.4.8'), 16909320)
+        self.assertEqual(utils.ip_to_long('0.0.0.0'), 0)
+        self.assertEqual(utils.ip_to_long('255.255.255.255'), 4294967295)
+        self.assertEqual(utils.ip_to_long('192.168.0.1'), 3232235521)
+        self.assertEqual(utils.ip_to_long('1.2.4.8'), 16909320)
 
 
     def test_long_to_ip(self):
-        self.assertEqual(base_utils.long_to_ip(0), '0.0.0.0')
-        self.assertEqual(base_utils.long_to_ip(4294967295), '255.255.255.255')
-        self.assertEqual(base_utils.long_to_ip(3232235521), '192.168.0.1')
-        self.assertEqual(base_utils.long_to_ip(16909320), '1.2.4.8')
+        self.assertEqual(utils.long_to_ip(0), '0.0.0.0')
+        self.assertEqual(utils.long_to_ip(4294967295), '255.255.255.255')
+        self.assertEqual(utils.long_to_ip(3232235521), '192.168.0.1')
+        self.assertEqual(utils.long_to_ip(16909320), '1.2.4.8')
 
 
     def test_create_subnet_mask(self):
-        self.assertEqual(base_utils.create_subnet_mask(0), 0)
-        self.assertEqual(base_utils.create_subnet_mask(32), 4294967295)
-        self.assertEqual(base_utils.create_subnet_mask(25), 4294967168)
+        self.assertEqual(utils.create_subnet_mask(0), 0)
+        self.assertEqual(utils.create_subnet_mask(32), 4294967295)
+        self.assertEqual(utils.create_subnet_mask(25), 4294967168)
 
 
     def test_format_ip_with_mask(self):
-        self.assertEqual(base_utils.format_ip_with_mask('192.168.0.1', 0),
+        self.assertEqual(utils.format_ip_with_mask('192.168.0.1', 0),
                          '0.0.0.0/0')
-        self.assertEqual(base_utils.format_ip_with_mask('192.168.0.1', 32),
+        self.assertEqual(utils.format_ip_with_mask('192.168.0.1', 32),
                          '192.168.0.1/32')
-        self.assertEqual(base_utils.format_ip_with_mask('192.168.0.1', 26),
+        self.assertEqual(utils.format_ip_with_mask('192.168.0.1', 26),
                          '192.168.0.0/26')
-        self.assertEqual(base_utils.format_ip_with_mask('192.168.0.255', 26),
+        self.assertEqual(utils.format_ip_with_mask('192.168.0.255', 26),
                          '192.168.0.192/26')
 
 
     def create_test_file(self, contents):
         test_file = StringIO.StringIO(contents)
-        base_utils.open.expect_call("filename", "r").and_return(test_file)
+        utils.open.expect_call("filename", "r").and_return(test_file)
 
 
     def test_reads_one_line_file(self):
         self.create_test_file("abc\n")
-        self.assertEqual("abc", base_utils.read_one_line("filename"))
+        self.assertEqual("abc", utils.read_one_line("filename"))
         self.god.check_playback()
 
 
     def test_strips_read_lines(self):
         self.create_test_file("abc   \n")
-        self.assertEqual("abc   ", base_utils.read_one_line("filename"))
+        self.assertEqual("abc   ", utils.read_one_line("filename"))
         self.god.check_playback()
 
 
     def test_drops_extra_lines(self):
         self.create_test_file("line 1\nline 2\nline 3\n")
-        self.assertEqual("line 1", base_utils.read_one_line("filename"))
+        self.assertEqual("line 1", utils.read_one_line("filename"))
         self.god.check_playback()
 
 
     def test_works_on_empty_file(self):
         self.create_test_file("")
-        self.assertEqual("", base_utils.read_one_line("filename"))
+        self.assertEqual("", utils.read_one_line("filename"))
         self.god.check_playback()
 
 
     def test_works_on_file_with_no_newlines(self):
         self.create_test_file("line but no newline")
         self.assertEqual("line but no newline",
-                         base_utils.read_one_line("filename"))
+                         utils.read_one_line("filename"))
         self.god.check_playback()
 
 
     def test_preserves_leading_whitespace(self):
         self.create_test_file("   has leading whitespace")
         self.assertEqual("   has leading whitespace",
-                         base_utils.read_one_line("filename"))
+                         utils.read_one_line("filename"))
 
 
 class test_write_one_line(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "open")
 
 
     def tearDown(self):
@@ -112,8 +116,8 @@ class test_write_one_line(unittest.TestCase):
 
     def get_write_one_line_output(self, content):
         test_file = mock.SaveDataAfterCloseStringIO()
-        base_utils.open.expect_call("filename", "w").and_return(test_file)
-        base_utils.write_one_line("filename", content)
+        utils.open.expect_call("filename", "w").and_return(test_file)
+        utils.write_one_line("filename", content)
         self.god.check_playback()
         return test_file.final_data
 
@@ -141,7 +145,7 @@ class test_write_one_line(unittest.TestCase):
 class test_open_write_close(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "open")
 
 
     def tearDown(self):
@@ -151,8 +155,8 @@ class test_open_write_close(unittest.TestCase):
     def test_simple_functionality(self):
         data = "\n\nwhee\n"
         test_file = mock.SaveDataAfterCloseStringIO()
-        base_utils.open.expect_call("filename", "w").and_return(test_file)
-        base_utils.open_write_close("filename", data)
+        utils.open.expect_call("filename", "w").and_return(test_file)
+        utils.open_write_close("filename", data)
         self.god.check_playback()
         self.assertEqual(data, test_file.final_data)
 
@@ -160,7 +164,7 @@ class test_open_write_close(unittest.TestCase):
 class test_read_keyval(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "open")
         self.god.stub_function(os.path, "isdir")
         self.god.stub_function(os.path, "exists")
 
@@ -172,13 +176,13 @@ class test_read_keyval(unittest.TestCase):
     def create_test_file(self, filename, contents):
         test_file = StringIO.StringIO(contents)
         os.path.exists.expect_call(filename).and_return(True)
-        base_utils.open.expect_call(filename).and_return(test_file)
+        utils.open.expect_call(filename).and_return(test_file)
 
 
     def read_keyval(self, contents):
         os.path.isdir.expect_call("file").and_return(False)
         self.create_test_file("file", contents)
-        keyval = base_utils.read_keyval("file")
+        keyval = utils.read_keyval("file")
         self.god.check_playback()
         return keyval
 
@@ -186,21 +190,21 @@ class test_read_keyval(unittest.TestCase):
     def test_returns_empty_when_file_doesnt_exist(self):
         os.path.isdir.expect_call("file").and_return(False)
         os.path.exists.expect_call("file").and_return(False)
-        self.assertEqual({}, base_utils.read_keyval("file"))
+        self.assertEqual({}, utils.read_keyval("file"))
         self.god.check_playback()
 
 
     def test_accesses_files_directly(self):
         os.path.isdir.expect_call("file").and_return(False)
         self.create_test_file("file", "")
-        base_utils.read_keyval("file")
+        utils.read_keyval("file")
         self.god.check_playback()
 
 
     def test_accesses_directories_through_keyval_file(self):
         os.path.isdir.expect_call("dir").and_return(True)
         self.create_test_file("dir/keyval", "")
-        base_utils.read_keyval("dir")
+        utils.read_keyval("dir")
         self.god.check_playback()
 
 
@@ -262,7 +266,7 @@ class test_read_keyval(unittest.TestCase):
 class test_write_keyval(unittest.TestCase):
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "open")
         self.god.stub_function(os.path, "isdir")
 
 
@@ -282,12 +286,12 @@ class test_write_keyval(unittest.TestCase):
             expected_filename = filename
         test_file = StringIO.StringIO()
         self.god.stub_function(test_file, "close")
-        base_utils.open.expect_call(expected_filename, "a").and_return(test_file)
+        utils.open.expect_call(expected_filename, "a").and_return(test_file)
         test_file.close.expect_call()
         if type_tag is None:
-            base_utils.write_keyval(filename, dictionary)
+            utils.write_keyval(filename, dictionary)
         else:
-            base_utils.write_keyval(filename, dictionary, type_tag)
+            utils.write_keyval(filename, dictionary, type_tag)
         return test_file.getvalue()
 
 
@@ -344,27 +348,27 @@ class test_write_keyval(unittest.TestCase):
 
 class test_is_url(unittest.TestCase):
     def test_accepts_http(self):
-        self.assertTrue(base_utils.is_url("http://example.com"))
+        self.assertTrue(utils.is_url("http://example.com"))
 
 
     def test_accepts_ftp(self):
-        self.assertTrue(base_utils.is_url("ftp://ftp.example.com"))
+        self.assertTrue(utils.is_url("ftp://ftp.example.com"))
 
 
     def test_rejects_local_path(self):
-        self.assertFalse(base_utils.is_url("/home/username/file"))
+        self.assertFalse(utils.is_url("/home/username/file"))
 
 
     def test_rejects_local_filename(self):
-        self.assertFalse(base_utils.is_url("filename"))
+        self.assertFalse(utils.is_url("filename"))
 
 
     def test_rejects_relative_local_path(self):
-        self.assertFalse(base_utils.is_url("somedir/somesubdir/file"))
+        self.assertFalse(utils.is_url("somedir/somesubdir/file"))
 
 
     def test_rejects_local_path_containing_url(self):
-        self.assertFalse(base_utils.is_url("somedir/http://path/file"))
+        self.assertFalse(utils.is_url("somedir/http://path/file"))
 
 
 class test_urlopen(unittest.TestCase):
@@ -396,7 +400,7 @@ class test_urlopen(unittest.TestCase):
 
     def test_timeout_set_during_call(self):
         self.stub_urlopen_with_timeout_check(30, "retval", "url")
-        retval = base_utils.urlopen("url", timeout=30)
+        retval = utils.urlopen("url", timeout=30)
         self.assertEquals(retval, "retval")
 
 
@@ -405,7 +409,7 @@ class test_urlopen(unittest.TestCase):
         self.stub_urlopen_with_timeout_check(30, None, "url")
         try:
             socket.setdefaulttimeout(1234)
-            base_utils.urlopen("url", timeout=30)
+            utils.urlopen("url", timeout=30)
             self.assertEquals(1234, socket.getdefaulttimeout())
         finally:
             socket.setdefaulttimeout(old_timeout)
@@ -415,13 +419,13 @@ class test_urlopen(unittest.TestCase):
         def test_func(timeout):
             self.assertTrue(timeout is not None)
         self.stub_urlopen_with_timeout_comparison(test_func, None, "url")
-        base_utils.urlopen("url")
+        utils.urlopen("url")
 
 
     def test_args_are_untouched(self):
         self.stub_urlopen_with_timeout_check(30, None, "http://url",
                                              "POST data")
-        base_utils.urlopen("http://url", timeout=30, data="POST data")
+        utils.urlopen("http://url", timeout=30, data="POST data")
 
 
 class test_urlretrieve(unittest.TestCase):
@@ -434,9 +438,9 @@ class test_urlretrieve(unittest.TestCase):
 
 
     def test_urlopen_passed_arguments(self):
-        self.god.stub_function(base_utils, "urlopen")
-        self.god.stub_function(base_utils.shutil, "copyfileobj")
-        self.god.stub_function(base_utils, "open")
+        self.god.stub_function(utils, "urlopen")
+        self.god.stub_function(utils.shutil, "copyfileobj")
+        self.god.stub_function(utils, "open")
 
         url = "url"
         dest = "somefile"
@@ -446,14 +450,14 @@ class test_urlretrieve(unittest.TestCase):
         src_file = self.god.create_mock_class(file, "file")
         dest_file = self.god.create_mock_class(file, "file")
 
-        (base_utils.urlopen.expect_call(url, data=data, timeout=timeout)
+        (utils.urlopen.expect_call(url, data=data, timeout=timeout)
                 .and_return(src_file))
-        base_utils.open.expect_call(dest, "wb").and_return(dest_file)
-        base_utils.shutil.copyfileobj.expect_call(src_file, dest_file)
+        utils.open.expect_call(dest, "wb").and_return(dest_file)
+        utils.shutil.copyfileobj.expect_call(src_file, dest_file)
         dest_file.close.expect_call()
         src_file.close.expect_call()
 
-        base_utils.urlretrieve(url, dest, data=data, timeout=timeout)
+        utils.urlretrieve(url, dest, data=data, timeout=timeout)
         self.god.check_playback()
 
 
@@ -501,18 +505,18 @@ class test_merge_trees(unittest.TestCase):
 
 
     def test_both_dont_exist(self):
-        base_utils.merge_trees(*self.paths("empty"))
+        utils.merge_trees(*self.paths("empty"))
 
 
     def test_file_only_at_src(self):
         print >> open(self.src("src_only"), "w"), "line 1"
-        base_utils.merge_trees(*self.paths("src_only"))
+        utils.merge_trees(*self.paths("src_only"))
         self.assertFileEqual("src_only")
 
 
     def test_file_only_at_dest(self):
         print >> open(self.dest("dest_only"), "w"), "line 1"
-        base_utils.merge_trees(*self.paths("dest_only"))
+        utils.merge_trees(*self.paths("dest_only"))
         self.assertEqual(False, os.path.exists(self.src("dest_only")))
         self.assertFileContents("line 1\n", "dest_only")
 
@@ -520,21 +524,21 @@ class test_merge_trees(unittest.TestCase):
     def test_file_at_both(self):
         print >> open(self.dest("in_both"), "w"), "line 1"
         print >> open(self.src("in_both"), "w"), "line 2"
-        base_utils.merge_trees(*self.paths("in_both"))
+        utils.merge_trees(*self.paths("in_both"))
         self.assertFileContents("line 1\nline 2\n", "in_both")
 
 
     def test_directory_with_files_in_both(self):
         print >> open(self.dest("in_both"), "w"), "line 1"
         print >> open(self.src("in_both"), "w"), "line 3"
-        base_utils.merge_trees(*self.paths())
+        utils.merge_trees(*self.paths())
         self.assertFileContents("line 1\nline 3\n", "in_both")
 
 
     def test_directory_with_mix_of_files(self):
         print >> open(self.dest("in_dest"), "w"), "dest line"
         print >> open(self.src("in_src"), "w"), "src line"
-        base_utils.merge_trees(*self.paths())
+        utils.merge_trees(*self.paths())
         self.assertFileContents("dest line\n", "in_dest")
         self.assertFileContents("src line\n", "in_src")
 
@@ -546,7 +550,7 @@ class test_merge_trees(unittest.TestCase):
         os.mkdir(self.dest("both_subdir"))
         print >> open(self.src("both_subdir", "subfile"), "w"), "src line"
         print >> open(self.dest("both_subdir", "subfile"), "w"), "dest line"
-        base_utils.merge_trees(*self.paths())
+        utils.merge_trees(*self.paths())
         self.assertFileContents("subdir line\n", "src_subdir", "subfile")
         self.assertFileContents("dest line\nsrc line\n", "both_subdir",
                                 "subfile")
@@ -554,25 +558,25 @@ class test_merge_trees(unittest.TestCase):
 
 class test_get_relative_path(unittest.TestCase):
     def test_not_absolute(self):
-        self.assertRaises(AssertionError, base_utils.get_relative_path, "a", "b")
+        self.assertRaises(AssertionError, utils.get_relative_path, "a", "b")
 
     def test_same_dir(self):
-        self.assertEqual(base_utils.get_relative_path("/a/b/c", "/a/b"), "c")
+        self.assertEqual(utils.get_relative_path("/a/b/c", "/a/b"), "c")
 
     def test_forward_dir(self):
-        self.assertEqual(base_utils.get_relative_path("/a/b/c/d", "/a/b"), "c/d")
+        self.assertEqual(utils.get_relative_path("/a/b/c/d", "/a/b"), "c/d")
 
     def test_previous_dir(self):
-        self.assertEqual(base_utils.get_relative_path("/a/b", "/a/b/c/d"), "../..")
+        self.assertEqual(utils.get_relative_path("/a/b", "/a/b/c/d"), "../..")
 
     def test_parallel_dir(self):
-        self.assertEqual(base_utils.get_relative_path("/a/c/d", "/a/b/c/d"),
+        self.assertEqual(utils.get_relative_path("/a/c/d", "/a/b/c/d"),
                          "../../../c/d")
 
 
 class test_sh_escape(unittest.TestCase):
     def _test_in_shell(self, text):
-        escaped_text = base_utils.sh_escape(text)
+        escaped_text = utils.sh_escape(text)
         proc = subprocess.Popen('echo "%s"' % escaped_text, shell=True,
                                 stdin=open(os.devnull, 'r'),
                                 stdout=subprocess.PIPE,
@@ -658,7 +662,7 @@ class test_sh_quote_word(test_sh_escape):
     """
 
     def _test_in_shell(self, text):
-        quoted_word = base_utils.sh_quote_word(text)
+        quoted_word = utils.sh_quote_word(text)
         echoed_value = subprocess.check_output('echo %s' % quoted_word,
                                                shell=True)
         self.assertEqual(echoed_value, text + '\n')
@@ -671,8 +675,8 @@ class test_nested_sh_quote_word(test_sh_quote_word):
     """
 
     def _test_in_shell(self, text):
-        command = 'echo ' + base_utils.sh_quote_word(text)
-        nested_command = 'echo ' + base_utils.sh_quote_word(command)
+        command = 'echo ' + utils.sh_quote_word(text)
+        nested_command = 'echo ' + utils.sh_quote_word(command)
         produced_command = subprocess.check_output(nested_command, shell=True)
         echoed_value = subprocess.check_output(produced_command, shell=True)
         self.assertEqual(echoed_value, text + '\n')
@@ -680,15 +684,15 @@ class test_nested_sh_quote_word(test_sh_quote_word):
 
 class test_run(unittest.TestCase):
     """
-    Test the base_utils.run() function.
+    Test the utils.run() function.
 
-    Note: This test runs simple external commands to test the base_utils.run()
+    Note: This test runs simple external commands to test the utils.run()
     API without assuming implementation details.
     """
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils.logging, 'warning')
-        self.god.stub_function(base_utils.logging, 'debug')
+        self.god.stub_function(utils.logging, 'warning')
+        self.god.stub_function(utils.logging, 'debug')
 
 
     def tearDown(self):
@@ -706,30 +710,30 @@ class test_run(unittest.TestCase):
     def test_default_simple(self):
         cmd = 'echo "hello world"'
         # expect some king of logging.debug() call but don't care about args
-        base_utils.logging.debug.expect_any_call()
-        self.__check_result(base_utils.run(cmd), cmd, stdout='hello world\n')
+        utils.logging.debug.expect_any_call()
+        self.__check_result(utils.run(cmd), cmd, stdout='hello world\n')
 
 
     def test_default_failure(self):
         cmd = 'exit 11'
         try:
-            base_utils.run(cmd, verbose=False)
-        except base_utils.error.CmdError, err:
+            utils.run(cmd, verbose=False)
+        except utils.error.CmdError, err:
             self.__check_result(err.result_obj, cmd, exit_status=11)
 
 
     def test_ignore_status(self):
         cmd = 'echo error >&2 && exit 11'
-        self.__check_result(base_utils.run(cmd, ignore_status=True, verbose=False),
+        self.__check_result(utils.run(cmd, ignore_status=True, verbose=False),
                             cmd, exit_status=11, stderr='error\n')
 
 
     def test_timeout(self):
         # we expect a logging.warning() message, don't care about the contents
-        base_utils.logging.warning.expect_any_call()
+        utils.logging.warning.expect_any_call()
         try:
-            base_utils.run('echo -n output && sleep 10', timeout=1, verbose=False)
-        except base_utils.error.CmdError, err:
+            utils.run('echo -n output && sleep 10', timeout=1, verbose=False)
+        except utils.error.CmdError, err:
             self.assertEquals(err.result_obj.stdout, 'output')
 
 
@@ -738,7 +742,7 @@ class test_run(unittest.TestCase):
         stdout_tee = StringIO.StringIO()
         stderr_tee = StringIO.StringIO()
 
-        self.__check_result(base_utils.run(
+        self.__check_result(utils.run(
                 cmd, stdout_tee=stdout_tee, stderr_tee=stderr_tee,
                 verbose=False), cmd, stdout='output\n', stderr='error\n')
         self.assertEqual(stdout_tee.getvalue(), 'output\n')
@@ -747,86 +751,86 @@ class test_run(unittest.TestCase):
 
     def test_stdin_string(self):
         cmd = 'cat'
-        self.__check_result(base_utils.run(cmd, verbose=False, stdin='hi!\n'),
+        self.__check_result(utils.run(cmd, verbose=False, stdin='hi!\n'),
                             cmd, stdout='hi!\n')
 
 
     def test_safe_args(self):
         # NOTE: The string in expected_quoted_cmd depends on the internal
-        # implementation of shell quoting which is used by base_utils.run(),
+        # implementation of shell quoting which is used by utils.run(),
         # in this case, sh_quote_word().
         expected_quoted_cmd = "echo 'hello \"world' again"
-        self.__check_result(base_utils.run(
+        self.__check_result(utils.run(
                 'echo', verbose=False, args=('hello "world', 'again')),
                 expected_quoted_cmd, stdout='hello "world again\n')
 
 
     def test_safe_args_given_string(self):
-        self.assertRaises(TypeError, base_utils.run, 'echo', args='hello')
+        self.assertRaises(TypeError, utils.run, 'echo', args='hello')
 
 
     def test_wait_interrupt(self):
         """Test that we actually select twice if the first one returns EINTR."""
-        base_utils.logging.debug.expect_any_call()
+        utils.logging.debug.expect_any_call()
 
-        bg_job = base_utils.BgJob('echo "hello world"')
+        bg_job = utils.BgJob('echo "hello world"')
         bg_job.result.exit_status = 0
-        self.god.stub_function(base_utils.select, 'select')
+        self.god.stub_function(utils.select, 'select')
 
-        base_utils.select.select.expect_any_call().and_raises(
+        utils.select.select.expect_any_call().and_raises(
                 select.error(errno.EINTR, 'Select interrupted'))
-        base_utils.logging.warning.expect_any_call()
+        utils.logging.warning.expect_any_call()
 
-        base_utils.select.select.expect_any_call().and_return(
+        utils.select.select.expect_any_call().and_return(
                 ([bg_job.sp.stdout, bg_job.sp.stderr], [], None))
-        base_utils.logging.warning.expect_any_call()
+        utils.logging.warning.expect_any_call()
 
         self.assertFalse(
-                base_utils._wait_for_commands([bg_job], time.time(), None))
+                utils._wait_for_commands([bg_job], time.time(), None))
 
 
 class test_compare_versions(unittest.TestCase):
     def test_zerofill(self):
-        self.assertEqual(base_utils.compare_versions('1.7', '1.10'), -1)
-        self.assertEqual(base_utils.compare_versions('1.222', '1.3'), 1)
-        self.assertEqual(base_utils.compare_versions('1.03', '1.3'), 0)
+        self.assertEqual(utils.compare_versions('1.7', '1.10'), -1)
+        self.assertEqual(utils.compare_versions('1.222', '1.3'), 1)
+        self.assertEqual(utils.compare_versions('1.03', '1.3'), 0)
 
 
     def test_unequal_len(self):
-        self.assertEqual(base_utils.compare_versions('1.3', '1.3.4'), -1)
-        self.assertEqual(base_utils.compare_versions('1.3.1', '1.3'), 1)
+        self.assertEqual(utils.compare_versions('1.3', '1.3.4'), -1)
+        self.assertEqual(utils.compare_versions('1.3.1', '1.3'), 1)
 
 
     def test_dash_delimited(self):
-        self.assertEqual(base_utils.compare_versions('1-2-3', '1-5-1'), -1)
-        self.assertEqual(base_utils.compare_versions('1-2-1', '1-1-1'), 1)
-        self.assertEqual(base_utils.compare_versions('1-2-4', '1-2-4'), 0)
+        self.assertEqual(utils.compare_versions('1-2-3', '1-5-1'), -1)
+        self.assertEqual(utils.compare_versions('1-2-1', '1-1-1'), 1)
+        self.assertEqual(utils.compare_versions('1-2-4', '1-2-4'), 0)
 
 
     def test_alphabets(self):
-        self.assertEqual(base_utils.compare_versions('m.l.b', 'n.b.a'), -1)
-        self.assertEqual(base_utils.compare_versions('n.b.a', 'm.l.b'), 1)
-        self.assertEqual(base_utils.compare_versions('abc.e', 'abc.e'), 0)
+        self.assertEqual(utils.compare_versions('m.l.b', 'n.b.a'), -1)
+        self.assertEqual(utils.compare_versions('n.b.a', 'm.l.b'), 1)
+        self.assertEqual(utils.compare_versions('abc.e', 'abc.e'), 0)
 
 
     def test_mix_symbols(self):
-        self.assertEqual(base_utils.compare_versions('k-320.1', 'k-320.3'), -1)
-        self.assertEqual(base_utils.compare_versions('k-231.5', 'k-231.1'), 1)
-        self.assertEqual(base_utils.compare_versions('k-231.1', 'k-231.1'), 0)
+        self.assertEqual(utils.compare_versions('k-320.1', 'k-320.3'), -1)
+        self.assertEqual(utils.compare_versions('k-231.5', 'k-231.1'), 1)
+        self.assertEqual(utils.compare_versions('k-231.1', 'k-231.1'), 0)
 
-        self.assertEqual(base_utils.compare_versions('k.320-1', 'k.320-3'), -1)
-        self.assertEqual(base_utils.compare_versions('k.231-5', 'k.231-1'), 1)
-        self.assertEqual(base_utils.compare_versions('k.231-1', 'k.231-1'), 0)
+        self.assertEqual(utils.compare_versions('k.320-1', 'k.320-3'), -1)
+        self.assertEqual(utils.compare_versions('k.231-5', 'k.231-1'), 1)
+        self.assertEqual(utils.compare_versions('k.231-1', 'k.231-1'), 0)
 
 
 class test_args_to_dict(unittest.TestCase):
     def test_no_args(self):
-        result = base_utils.args_to_dict([])
+        result = utils.args_to_dict([])
         self.assertEqual({}, result)
 
 
     def test_matches(self):
-        result = base_utils.args_to_dict(['aBc:DeF', 'SyS=DEf', 'XY_Z:',
+        result = utils.args_to_dict(['aBc:DeF', 'SyS=DEf', 'XY_Z:',
                                      'F__o0O=', 'B8r:=:=', '_bAZ_=:=:'])
         self.assertEqual(result, {'abc':'DeF', 'sys':'DEf', 'xy_z':'',
                                   'f__o0o':'', 'b8r':'=:=', '_baz_':':=:'})
@@ -840,7 +844,7 @@ class test_args_to_dict(unittest.TestCase):
         logger.setLevel(logging.ERROR)
 
         try:
-            result = base_utils.args_to_dict(['ab-c:DeF', '--SyS=DEf', 'a*=b', 'a*b',
+            result = utils.args_to_dict(['ab-c:DeF', '--SyS=DEf', 'a*=b', 'a*b',
                                          ':VAL', '=VVV', 'WORD'])
             self.assertEqual({}, result)
         finally:
@@ -858,11 +862,336 @@ class test_get_random_port(unittest.TestCase):
 
     def test_get_port(self):
         for _ in xrange(100):
-            p = base_utils.get_unused_port()
+            p = utils.get_unused_port()
             s = self.do_bind(p, socket.SOCK_STREAM, socket.IPPROTO_TCP)
             self.assert_(s.getsockname())
             s = self.do_bind(p, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             self.assert_(s.getsockname())
+
+
+def test_function(arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
+    """Test global function.
+    """
+
+
+class TestClass(object):
+    """Test class.
+    """
+
+    def test_instance_function(self, arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
+        """Test instance function.
+        """
+
+
+    @classmethod
+    def test_class_function(cls, arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
+        """Test class function.
+        """
+
+
+    @staticmethod
+    def test_static_function(arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
+        """Test static function.
+        """
+
+
+class GetFunctionArgUnittest(unittest.TestCase):
+    """Tests for method get_function_arg_value."""
+
+    def run_test(self, func, insert_arg):
+        """Run test.
+
+        @param func: Function being called with given arguments.
+        @param insert_arg: Set to True to insert an object in the argument list.
+                           This is to mock instance/class object.
+        """
+        if insert_arg:
+            args = (None, 1, 2, 3)
+        else:
+            args = (1, 2, 3)
+        for i in range(1, 7):
+            self.assertEquals(utils.get_function_arg_value(
+                    func, 'arg%d'%i, args, {}), i)
+
+        self.assertEquals(utils.get_function_arg_value(
+                func, 'arg7', args, {'arg7': 7}), 7)
+        self.assertRaises(
+                KeyError, utils.get_function_arg_value,
+                func, 'arg3', args[:-1], {})
+
+
+    def test_global_function(self):
+        """Test global function.
+        """
+        self.run_test(test_function, False)
+
+
+    def test_instance_function(self):
+        """Test instance function.
+        """
+        self.run_test(TestClass().test_instance_function, True)
+
+
+    def test_class_function(self):
+        """Test class function.
+        """
+        self.run_test(TestClass.test_class_function, True)
+
+
+    def test_static_function(self):
+        """Test static function.
+        """
+        self.run_test(TestClass.test_static_function, False)
+
+
+class VersionMatchUnittest(unittest.TestCase):
+    """Test version_match function."""
+
+    def test_version_match(self):
+        """Test version_match function."""
+        canary_build = 'lumpy-release/R43-6803.0.0'
+        canary_release = '6803.0.0'
+        cq_build = 'lumpy-release/R43-6803.0.0-rc1'
+        cq_release = '6803.0.0-rc1'
+        trybot_paladin_build = 'trybot-lumpy-paladin/R43-6803.0.0-b123'
+        trybot_paladin_release = '6803.0.2015_03_12_2103'
+        trybot_pre_cq_build = 'trybot-wifi-pre-cq/R43-7000.0.0-b36'
+        trybot_pre_cq_release = '7000.0.2016_03_12_2103'
+        trybot_toolchain_build = 'trybot-nyan_big-gcc-toolchain/R56-8936.0.0-b14'
+        trybot_toolchain_release = '8936.0.2016_10_26_1403'
+
+
+        builds = [canary_build, cq_build, trybot_paladin_build,
+                  trybot_pre_cq_build, trybot_toolchain_build]
+        releases = [canary_release, cq_release, trybot_paladin_release,
+                    trybot_pre_cq_release, trybot_toolchain_release]
+        for i in range(len(builds)):
+            for j in range(len(releases)):
+                self.assertEqual(
+                        utils.version_match(builds[i], releases[j]), i==j,
+                        'Build version %s should%s match release version %s.' %
+                        (builds[i], '' if i==j else ' not', releases[j]))
+
+
+class IsPuppylabVmUnittest(unittest.TestCase):
+    """Test is_puppylab_vm function."""
+
+    def test_is_puppylab_vm(self):
+        """Test is_puppylab_vm function."""
+        self.assertTrue(utils.is_puppylab_vm('localhost:8001'))
+        self.assertTrue(utils.is_puppylab_vm('127.0.0.1:8002'))
+        self.assertFalse(utils.is_puppylab_vm('localhost'))
+        self.assertFalse(utils.is_puppylab_vm('localhost:'))
+        self.assertFalse(utils.is_puppylab_vm('127.0.0.1'))
+        self.assertFalse(utils.is_puppylab_vm('127.0.0.1:'))
+        self.assertFalse(utils.is_puppylab_vm('chromeos-server.mtv'))
+        self.assertFalse(utils.is_puppylab_vm('chromeos-server.mtv:8001'))
+
+
+class IsInSameSubnetUnittest(unittest.TestCase):
+    """Test is_in_same_subnet function."""
+
+    def test_is_in_same_subnet(self):
+        """Test is_in_same_subnet function."""
+        self.assertTrue(utils.is_in_same_subnet('192.168.0.0', '192.168.1.2',
+                                                23))
+        self.assertFalse(utils.is_in_same_subnet('192.168.0.0', '192.168.1.2',
+                                                24))
+        self.assertTrue(utils.is_in_same_subnet('192.168.0.0', '192.168.0.255',
+                                                24))
+        self.assertFalse(utils.is_in_same_subnet('191.168.0.0', '192.168.0.0',
+                                                24))
+
+
+class GetWirelessSsidUnittest(unittest.TestCase):
+    """Test get_wireless_ssid function."""
+
+    DEFAULT_SSID = 'default'
+    SSID_1 = 'ssid_1'
+    SSID_2 = 'ssid_2'
+    SSID_3 = 'ssid_3'
+
+    def test_get_wireless_ssid(self):
+        """Test is_in_same_subnet function."""
+        god = mock.mock_god()
+        god.stub_function_to_return(utils.CONFIG, 'get_config_value',
+                                    self.DEFAULT_SSID)
+        god.stub_function_to_return(utils.CONFIG, 'get_config_value_regex',
+                                    {'wireless_ssid_1.2.3.4/24': self.SSID_1,
+                                     'wireless_ssid_4.3.2.1/16': self.SSID_2,
+                                     'wireless_ssid_4.3.2.111/32': self.SSID_3})
+        self.assertEqual(self.SSID_1, utils.get_wireless_ssid('1.2.3.100'))
+        self.assertEqual(self.SSID_2, utils.get_wireless_ssid('4.3.2.100'))
+        self.assertEqual(self.SSID_3, utils.get_wireless_ssid('4.3.2.111'))
+        self.assertEqual(self.DEFAULT_SSID,
+                         utils.get_wireless_ssid('100.0.0.100'))
+
+
+class LaunchControlBuildParseUnittest(unittest.TestCase):
+    """Test various parsing functions related to Launch Control builds and
+    devices.
+    """
+
+    def test_parse_launch_control_target(self):
+        """Test parse_launch_control_target function."""
+        target_tests = {
+                ('shamu', 'userdebug'): 'shamu-userdebug',
+                ('shamu', 'eng'): 'shamu-eng',
+                ('shamu-board', 'eng'): 'shamu-board-eng',
+                (None, None): 'bad_target',
+                (None, None): 'target'}
+        for result, target in target_tests.items():
+            self.assertEqual(result, utils.parse_launch_control_target(target))
+
+
+class GetOffloaderUriTest(unittest.TestCase):
+    """Test get_offload_gsuri function."""
+    _IMAGE_STORAGE_SERVER = 'gs://test_image_bucket'
+
+    def setUp(self):
+        self.god = mock.mock_god()
+
+    def tearDown(self):
+        self.god.unstub_all()
+
+    def test_get_default_lab_offload_gsuri(self):
+        """Test default lab offload gsuri ."""
+        self.god.mock_up(utils.CONFIG, 'CONFIG')
+        self.god.stub_function_to_return(utils, 'is_moblab', False)
+        self.assertEqual(utils.DEFAULT_OFFLOAD_GSURI,
+                utils.get_offload_gsuri())
+
+        self.god.check_playback()
+
+    def test_get_default_moblab_offload_gsuri(self):
+        self.god.mock_up(utils.CONFIG, 'CONFIG')
+        self.god.stub_function_to_return(utils, 'is_moblab', True)
+        utils.CONFIG.get_config_value.expect_call(
+                'CROS', 'image_storage_server').and_return(
+                        self._IMAGE_STORAGE_SERVER)
+        self.god.stub_function_to_return(utils,
+                'get_interface_mac_address', 'test_mac')
+        self.god.stub_function_to_return(utils, 'get_moblab_id', 'test_id')
+        expected_gsuri = '%sresults/%s/%s/' % (
+                self._IMAGE_STORAGE_SERVER, 'test_mac', 'test_id')
+        cached_gsuri = utils.DEFAULT_OFFLOAD_GSURI
+        utils.DEFAULT_OFFLOAD_GSURI = None
+        gsuri = utils.get_offload_gsuri()
+        utils.DEFAULT_OFFLOAD_GSURI = cached_gsuri
+        self.assertEqual(expected_gsuri, gsuri)
+
+        self.god.check_playback()
+
+    def test_get_moblab_offload_gsuri(self):
+        """Test default lab offload gsuri ."""
+        self.god.mock_up(utils.CONFIG, 'CONFIG')
+        self.god.stub_function_to_return(utils, 'is_moblab', True)
+        self.god.stub_function_to_return(utils,
+                'get_interface_mac_address', 'test_mac')
+        self.god.stub_function_to_return(utils, 'get_moblab_id', 'test_id')
+        gsuri = '%s%s/%s/' % (
+                utils.DEFAULT_OFFLOAD_GSURI, 'test_mac', 'test_id')
+        self.assertEqual(gsuri, utils.get_offload_gsuri())
+
+        self.god.check_playback()
+
+
+class GetBuiltinEthernetNicNameTest(unittest.TestCase):
+    """Test get moblab public network interface name."""
+
+    def setUp(self):
+        self.god = mock.mock_god()
+
+    def tearDown(self):
+        self.god.unstub_all()
+
+    def test_is_eth0(self):
+        """Test when public network interface is eth0."""
+        run_func = self.god.create_mock_function('run_func')
+        self.god.stub_with(utils, 'run', run_func)
+        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
+                utils.CmdResult(exit_status=0, stdout='not_u_s_b'))
+        eth = utils.get_built_in_ethernet_nic_name()
+        self.assertEqual('eth0', eth)
+        self.god.check_playback()
+
+    def test_readlin_fails(self):
+        """Test when readlink does not work."""
+        run_func = self.god.create_mock_function('run_func')
+        self.god.stub_with(utils, 'run', run_func)
+        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
+                utils.CmdResult(exit_status=-1, stdout='blah'))
+        eth = utils.get_built_in_ethernet_nic_name()
+        self.assertEqual('eth0', eth)
+        self.god.check_playback()
+
+    def test_no_readlink(self):
+        """Test when readlink does not exist."""
+        run_func = self.god.create_mock_function('run_func')
+        self.god.stub_with(utils, 'run', run_func)
+        run_func.expect_call('readlink -f /sys/class/net/eth0').and_raises(
+                error.CmdError('readlink', 'no such command'))
+        eth = utils.get_built_in_ethernet_nic_name()
+        self.assertEqual('eth0', eth)
+        self.god.check_playback()
+
+    def test_is_eth1(self):
+        """Test when public network interface is eth1."""
+        run_func = self.god.create_mock_function('run_func')
+        self.god.stub_with(utils, 'run', run_func)
+        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
+                utils.CmdResult(exit_status=0, stdout='is usb'))
+        run_func.expect_call('readlink -f /sys/class/net/eth1').and_return(
+                utils.CmdResult(exit_status=0, stdout='not_u_s_b'))
+        eth = utils.get_built_in_ethernet_nic_name()
+        self.assertEqual('eth1', eth)
+        self.god.check_playback()
+
+
+class  MockMetricsTest(unittest.TestCase):
+    """Test metrics mock class can handle various metrics calls."""
+
+    def test_Counter(self):
+        """Test the mock class can create an instance and call any method.
+        """
+        c = metrics.Counter('counter')
+        c.increment(fields={'key': 1})
+
+
+    def test_Context(self):
+        """Test the mock class can handle context class.
+        """
+        test_value = None
+        with metrics.SecondsTimer('context') as t:
+            test_value = 'called_in_context'
+            t['random_key'] = 'pass'
+        self.assertEqual('called_in_context', test_value)
+
+
+    def test_decorator(self):
+        """Test the mock class can handle decorator.
+        """
+        class TestClass(object):
+
+            def __init__(self):
+                self.value = None
+
+        test_value = TestClass()
+        test_value.value = None
+        @metrics.SecondsTimerDecorator('decorator')
+        def test(arg):
+            arg.value = 'called_in_decorator'
+
+        test(test_value)
+        self.assertEqual('called_in_decorator', test_value.value)
+
+
+    def test_setitem(self):
+        """Test the mock class can handle set item call.
+        """
+        timer = metrics.SecondsTimer('name')
+        timer['random_key'] = 'pass'
+
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 import collections, logging, os, re, shutil, time
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import base_utils, error
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging, sys_power
 from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros import power_status
