@@ -142,8 +142,16 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     @property
     def environment(self):
         """The name of the enviroment for test tracker."""
-        return self.build_info.get('build_prop', {}).get('ro.product.board',
-                                                         UNKNOWN_ENV_NAME)
+        build_props = self.build_info.get('build_prop', {})
+
+        if 'ro.product.board' in build_props:
+            board = build_props['ro.product.board']
+        elif 'ro.build.product' in build_props:
+            board = build_props['ro.build.product']
+        else:
+            board = UNKNOWN_ENV_NAME
+
+        return board
 
     @property
     def extra_environment(self):
@@ -151,7 +159,7 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
         if 'param-testtracker_extra_env' in self.keyvals:
             extra = self.keyvals.get('param-testtracker_extra_env', [])
         else:
-            extra = self.keyvals.get('param-testtracker_extra_env', [])
+            extra = self.keyvals.get('param-test_tracker_extra_env', [])
 
         if not isinstance(extra, list):
             extra = [extra]
