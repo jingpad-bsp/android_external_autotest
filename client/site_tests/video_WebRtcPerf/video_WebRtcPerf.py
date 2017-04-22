@@ -204,7 +204,8 @@ class video_WebRtcPerf(test.test):
         # Start chrome with disabled video hardware decode flag.
         with chrome.Chrome(extra_browser_args=
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS +
-                EXTRA_BROWSER_ARGS, arc_mode=self.arc_mode) as cr:
+                EXTRA_BROWSER_ARGS, arc_mode=self.arc_mode,
+                init_network_controller=True) as cr:
             if utils.get_board() == 'daisy':
               logging.warning('Delay 30s for issue 588579 on daisy')
               time.sleep(30)
