@@ -711,6 +711,8 @@ class bluetooth_AdapterLEAdvertising(
         # Unregister all advertisements.
         self.unregister_advertisements(advertisements)
 
+    # SINGLE TEST CASES
+
     @test_case_log
     def test_case_SI200_RA1_CD_UA1(self):
         """Test Case: SI(200) - RA(1) - CD - UA(1)"""
@@ -732,6 +734,273 @@ class bluetooth_AdapterLEAdvertising(
 
         self.unregister_advertisements(advertisements)
 
+
+    @test_case_log
+    def test_case_SI200_RA1_CD_RS(self):
+        """Test Case: SI(200) - RA(1) - CD - RS"""
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.first_advertisement]
+
+        self.test_reset_advertising()
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.register_advertisements(advertisements, new_min_adv_interval_ms,
+                                     new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_reset_advertising()
+
+
+    @test_case_log
+    def test_case_SI200_RA1_CD_SR_CD_UA1(self):
+        """Test Case: SI(200) - RA(1) - CD - SR - CD - UA(1)"""
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.sixth_advertisement]
+
+        self.test_reset_advertising()
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.register_advertisements(advertisements, new_min_adv_interval_ms,
+                                     new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+        self.suspend_resume()
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(advertisements)
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_UA1(self):
+        """Test Case: RA(1) - CD - SI(200) - CD - UA(1)"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.first_advertisement]
+
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(advertisements)
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_RS(self):
+        """Test Case: RA(1) - CD - SI(200) - CD - RS"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.sixth_advertisement]
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+        self.test_reset_advertising()
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_FSI10_UA1_RA1_CD_UA1(self):
+        """Test Case:  RA(1) - CD - SI(200) - CD - FSI(10) - UA(1)
+         - RA(1) - CD - UA(1)"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        invalid_small_min_adv_interval_ms = 10
+        invalid_small_max_adv_interval_ms = 10
+        advertisements = [self.three_advertisements[1]]
+        new_advertisement = [self.three_advertisements[2]]
+
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        # Fails to set intervals that are too small. Intervals remain the same.
+        self.test_fail_to_set_advertising_intervals(
+                invalid_small_min_adv_interval_ms,
+                invalid_small_max_adv_interval_ms,
+                new_min_adv_interval_ms, new_max_adv_interval_ms)
+
+        self.unregister_advertisements(advertisements)
+
+        # Register a new advertisement in order to avoid kernel caching.
+        self.register_advertisements(new_advertisement, new_min_adv_interval_ms,
+                                     new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(new_advertisement)
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_FSI20000_UA1_RA1_CD_UA1(self):
+        """Test Case:  RA(1) - CD - SI(200) - CD - FSI(20000) - UA(1)
+         - RA(1) - CD - UA(1)"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        invalid_large_min_adv_interval_ms = 20000
+        invalid_large_max_adv_interval_ms = 20000
+        advertisements = [self.three_advertisements[1]]
+        new_advertisement = [self.three_advertisements[2]]
+
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+        # Fails to set intervals that are too large. Intervals remain the same.
+        self.test_fail_to_set_advertising_intervals(
+                invalid_large_min_adv_interval_ms,
+                invalid_large_max_adv_interval_ms,
+                new_min_adv_interval_ms, new_max_adv_interval_ms)
+
+        self.unregister_advertisements(advertisements)
+
+        # Register a new advertisement in order to avoid kernel caching.
+        self.register_advertisements(new_advertisement, new_min_adv_interval_ms,
+                                     new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(new_advertisement)
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_PC_CD_UA1(self):
+        """Test Case: RA(1) - CD - SI(200) - CD - PC - CD - UA(1)"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.sixth_advertisement]
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        # Turn off and then turn on the adapter.
+        self.test_power_off_adapter()
+        time.sleep(1)
+        self.test_power_on_adapter()
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(advertisements)
+
+
+    @test_case_log
+    def test_case_RA1_CD_SI200_CD_SR_CD_UA1(self):
+        """Test Case: RA(1) - CD - SI(200) - CD - SR - CD - UA(1)"""
+        orig_min_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        orig_max_adv_interval_ms = self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS
+        new_min_adv_interval_ms = 200
+        new_max_adv_interval_ms = 200
+        advertisements = [self.first_advertisement]
+        self.test_reset_advertising()
+
+        self.register_advertisements(advertisements, orig_min_adv_interval_ms,
+                                     orig_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(orig_min_adv_interval_ms,
+                                               orig_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.test_set_advertising_intervals(new_min_adv_interval_ms,
+                                            new_max_adv_interval_ms)
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+        self.suspend_resume()
+
+        self.test_check_duration_and_intervals(new_min_adv_interval_ms,
+                                               new_max_adv_interval_ms,
+                                               len(advertisements))
+
+        self.unregister_advertisements(advertisements)
+
+
     def run_once(self, host, advertisements, multi_advertising):
         """Running Bluetooth adapter LE advertising autotest.
 
@@ -742,6 +1011,7 @@ class bluetooth_AdapterLEAdvertising(
         """
         self.host = host
         self.advertisements = advertisements
+        self.first_advertisement = advertisements[0]
         self.five_advertisements = advertisements[0:5]
         self.three_advertisements = advertisements[0:3]
         self.two_advertisements = advertisements[3:5]
@@ -780,6 +1050,14 @@ class bluetooth_AdapterLEAdvertising(
             #       Otherwise, the advertisement data would be just cached and
             #       reused such that the data would not be visible in btmon.
             self.test_case_SI200_RA1_CD_UA1()
+            self.test_case_SI200_RA1_CD_RS()
+            self.test_case_SI200_RA1_CD_SR_CD_UA1()
+            self.test_case_RA1_CD_SI200_CD_UA1()
+            self.test_case_RA1_CD_SI200_CD_RS()
+            self.test_case_RA1_CD_SI200_CD_FSI10_UA1_RA1_CD_UA1()
+            self.test_case_RA1_CD_SI200_CD_FSI20000_UA1_RA1_CD_UA1()
+            self.test_case_RA1_CD_SI200_CD_PC_CD_UA1()
+            self.test_case_RA1_CD_SI200_CD_SR_CD_UA1()
 
         if self.fails:
             raise error.TestFail(self.fails)
