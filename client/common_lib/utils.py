@@ -2480,7 +2480,14 @@ def is_in_container():
     """
     result = run('grep -q "/lxc/" /proc/1/cgroup',
                             verbose=False, ignore_status=True)
-    return result.exit_status == 0
+    if result.exit_status == 0:
+        return True
+
+    # Check "container" environment variable for lxd/lxc containers.
+    if os.environ['container'] == 'lxc':
+        return True
+
+    return False
 
 
 def is_flash_installed():
