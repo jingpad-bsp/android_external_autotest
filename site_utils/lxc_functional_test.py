@@ -61,7 +61,7 @@ if not socket.gethostname().startswith('test_'):
     raise Exception('The container\\\'s hostname must start with `test_`.')
 
 # Test installing packages
-lxc.install_packages(['atop', 'libxslt-dev'], ['selenium', 'numpy'])
+lxc.install_packages(['atop'], ['acora'])
 
 """
 # Name of the test control file.
@@ -200,7 +200,7 @@ def test_package_install(container):
     # Packages are installed in TEST_SCRIPT_CONTENT. Verify the packages in
     # this method.
     container.attach_run('which atop')
-    container.attach_run('python -c "import selenium"')
+    container.attach_run('python -c "import acora"')
 
 
 def test_ssh(container, remote):
