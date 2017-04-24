@@ -2484,7 +2484,7 @@ def is_in_container():
         return True
 
     # Check "container" environment variable for lxd/lxc containers.
-    if os.environ['container'] == 'lxc':
+    if os.environ.get('container') == 'lxc':
         return True
 
     return False
