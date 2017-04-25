@@ -39,7 +39,6 @@ def install_sigalarm_handler(new_handler):
     # Installing signal handlers does not and is never expected to work if we're
     # running in a mod_wsgi process.
     if _in_mod_wsgi:
-        logging.warning('Cannot install sigalarm handler in mod_wsgi process.')
         return False
 
     if (new_handler is None or
