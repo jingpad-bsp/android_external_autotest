@@ -163,10 +163,22 @@ class BaseAgentTask(object):
 
     def _set_ids(self, host=None, queue_entries=None):
         if queue_entries and queue_entries != [None]:
-            self.host_ids = [entry.host.id for entry in queue_entries]
-            self.queue_entry_ids = [entry.id for entry in queue_entries]
-            self.hostnames = dict((entry.host.id, entry.host.hostname)
-                                  for entry in queue_entries)
+            self.host_ids = []
+            self.queue_entry_ids = []
+            self.hostnames = {}
+            for entry in queue_entries:
+                if entry.host is not None:
+                    self.host_ids.append(entry.host.id)
+                    self.queue_entry_ids.append(entry.id)
+                    self.hostnames[entry.host.id] = entry.host.hostname
+                else:
+                    logging.debug(
+                            'No host is found for host_queue_entry_id: %r',
+                            entry.id)
+                    raise scheduler_lib.NonHostExistError(
+                            'Failed to schedule a job whose '
+                            'host_queue_entry_id=%r due to no host_id '
+                            'exists.' % entry.id)
         else:
             assert host
             self.host_ids = [host.id]
