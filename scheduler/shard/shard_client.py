@@ -17,6 +17,7 @@ import urllib2
 import common
 
 from autotest_lib.frontend import setup_django_environment
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend.afe import models
@@ -308,10 +309,10 @@ class ShardClient(object):
                 'jobs': jobs, 'hqes': hqes}
 
 
-    def _heartbeat_failure(self, log_message):
+    def _heartbeat_failure(self, log_message, failure_type_str=''):
         logging.error("Heartbeat failed. %s", log_message)
         metrics.Counter('chromeos/autotest/shard_client/heartbeat_failure'
-                        ).increment()
+                        ).increment(fields={'failure_type': failure_type_str})
 
 
     @metrics.SecondsTimerDecorator(
@@ -333,16 +334,24 @@ class ShardClient(object):
         try:
             response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
         except urllib2.HTTPError as e:
-            self._heartbeat_failure("HTTPError %d: %s" % (e.code, e.reason))
+            self._heartbeat_failure('HTTPError %d: %s' % (e.code, e.reason),
+                                    'HTTPError')
             return
         except urllib2.URLError as e:
-            self._heartbeat_failure("URLError: %s" % e.reason)
+            self._heartbeat_failure('URLError: %s' % e.reason,
+                                    'URLError')
             return
         except httplib.HTTPException as e:
-            self._heartbeat_failure("HTTPException: %s" % e)
+            self._heartbeat_failure('HTTPException: %s' % e,
+                                    'HTTPException')
             return
         except timeout_util.TimeoutError as e:
-            self._heartbeat_failure("TimeoutError: %s" % e)
+            self._heartbeat_failure('TimeoutError: %s' % e,
+                                    'TimeoutError')
+            return
+        except proxy.JSONRPCException as e:
+            self._heartbeat_failure('JSONRPCException: %s' % e,
+                                    'JSONRPCException')
             return
 
         metrics.Gauge(heartbeat_metrics_prefix + 'response_size').set(
@@ -421,6 +430,8 @@ def main():
         metrics.Counter('chromeos/autotest/shard_client/start').increment()
         main_without_exception_handling()
     except Exception as e:
+        metrics.Counter('chromeos/autotest/shard_client/uncaught_exception'
+                        ).increment()
         message = 'Uncaught exception. Terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
