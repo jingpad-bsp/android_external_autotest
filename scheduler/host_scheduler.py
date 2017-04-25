@@ -331,20 +331,20 @@ class HostScheduler(BaseHostScheduler):
                 only_hostless=False)
         unverified_host_jobs = [job for job in queue_entries
                                 if not job.is_hostless()]
-        if not unverified_host_jobs:
-            return
-        for acquisition in self.find_hosts_for_jobs(unverified_host_jobs):
-            self.schedule_host_job(acquisition.host, acquisition.job)
-            self._record_host_assignment(acquisition.host, acquisition.job)
-            new_jobs_with_hosts += 1
-        metrics.Counter('%s/new_jobs_with_hosts' % _METRICS_PREFIX
-                        ).increment_by(new_jobs_with_hosts)
+        if unverified_host_jobs:
+            for acquisition in self.find_hosts_for_jobs(unverified_host_jobs):
+                self.schedule_host_job(acquisition.host, acquisition.job)
+                self._record_host_assignment(acquisition.host, acquisition.job)
+                new_jobs_with_hosts += 1
+            metrics.Counter('%s/new_jobs_with_hosts' % _METRICS_PREFIX
+                            ).increment_by(new_jobs_with_hosts)
 
-        num_jobs_without_hosts = len(unverified_host_jobs) - new_jobs_with_hosts
+        num_jobs_without_hosts = (len(unverified_host_jobs) -
+                                  new_jobs_with_hosts)
         metrics.Gauge('%s/current_jobs_without_hosts' % _METRICS_PREFIX
                       ).set(num_jobs_without_hosts)
-        metrics.Counter('%s/tick' % _METRICS_PREFIX).increment()
 
+        metrics.Counter('%s/tick' % _METRICS_PREFIX).increment()
 
     @metrics.SecondsTimerDecorator('%s/lease_hosts_duration' % _METRICS_PREFIX)
     def _lease_hosts_of_frontend_tasks(self):
