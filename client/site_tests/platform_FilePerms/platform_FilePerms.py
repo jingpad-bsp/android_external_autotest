@@ -118,13 +118,27 @@ class platform_FilePerms(test.test):
         '/sys/kernel/debug/tracing': {
             'type': 'tracefs',
             'options': standard_rw_options},
+        '/sys/kernel/security': {
+            'type': 'securityfs',
+            'options': standard_rw_options},
         '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
         '/var': {'type': 'ext4', 'options': standard_rw_options},
         '/usr/share/oem': {
             'type': 'ext4',
             'options': standard_ro_options},
     }
-    testmode_modded_fses = set(['/home', '/tmp', '/usr/local'])
+
+    # /var/run and /var/lock are bind mounts of /run and /run/lock,
+    # respectively. Duplicate the entries accordingly.
+    expected_mount_options['/var/run'] = expected_mount_options['/run']
+    expected_mount_options['/var/lock'] = expected_mount_options['/run/lock']
+
+    # This lists mount points that host mounts created in developer mode, after
+    # regular mount operations taking place during boot have completed. These
+    # are ignored when checking mounts present in the live system.
+    testmode_modded_fses = set(
+        ['/home', '/tmp', '/usr/local', '/var/db/pkg', '/var/lib/portage'])
+
     # TODO(yusukes): Remove shared_fonts_ variables once we switch to overlayfs.
     shared_fonts_pattern = (r'/opt/google/containers/android/rootfs/root/'
                             r'system/fonts/.*\.tt[cf]')
