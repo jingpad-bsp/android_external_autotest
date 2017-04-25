@@ -27,6 +27,15 @@ _DEV_MODE_ALLOWED_POOLS = set(
             default='',
             allow_blank=True).split(','))
 
+# Setting to suppress dev mode check; primarily used for moblab where all
+# DUT's are in dev mode.
+_DEV_MODE_ALWAYS_ALLOWED = global_config.global_config.get_config_value(
+            'CROS',
+            'dev_mode_allowed',
+            type=bool,
+            default=False)
+
+
 class ACPowerVerifier(hosts.Verifier):
     """Check for AC power and a reasonable battery charge."""
 
@@ -243,7 +252,8 @@ class DevModeVerifier(hosts.Verifier):
     def verify(self, host):
         # Some pools are allowed to be in dev mode
         info = host.host_info_store.get()
-        if (bool(info.pools & _DEV_MODE_ALLOWED_POOLS)):
+        if (_DEV_MODE_ALWAYS_ALLOWED or
+                bool(info.pools & _DEV_MODE_ALLOWED_POOLS)):
             return
 
         result = host.run('crossystem devsw_boot', ignore_status=True).stdout
