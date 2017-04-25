@@ -85,7 +85,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
         tests, passed, failed, not_executed, waived = self._parse_result_v2(
-            output, accumulative_count=True, waivers=self.waivers)
+            output, waivers=self.waivers)
         passed += waived
         failed -= waived
         if tests != passed or failed > 0 or not_executed > 0:
