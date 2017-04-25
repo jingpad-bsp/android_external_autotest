@@ -18,6 +18,7 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='wifi_scanner.config',
                  test_file='wifi_scanner',
+                 testtracker_project_id=733,
                  acts_timeout=18000)
 
 parallel_simple(run, machines)
