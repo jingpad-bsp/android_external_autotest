@@ -78,7 +78,7 @@ class shard_list(action_common.atest_list, shard):
 
     def output(self, results):
         self.warn_if_label_assigned_to_multiple_shards(results)
-        super(shard_list, self).output(results, ['hostname', 'labels'])
+        super(shard_list, self).output(results, ['id', 'hostname', 'labels'])
 
 
 class shard_create(action_common.atest_create, shard):
