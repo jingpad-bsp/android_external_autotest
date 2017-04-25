@@ -43,6 +43,10 @@ class SchedulerError(Exception):
     """Raised by the scheduler when an inconsistent state occurs."""
 
 
+class NonHostExistError(Exception):
+    """Raised by the scheduler when a non-hostless job's host is None."""
+
+
 class ConnectionManager(object):
     """Manager for the django database connections.
 
