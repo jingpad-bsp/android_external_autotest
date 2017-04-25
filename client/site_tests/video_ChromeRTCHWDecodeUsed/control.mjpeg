@@ -24,4 +24,5 @@ Verify MJPEG camera video streams are HW accelerated.
 job.run_test('video_ChromeRTCHWDecodeUsed',
              video_name='crowd720_25frames.mjpeg',
              histogram_name='Media.VideoCaptureGpuJpegDecoder.InitDecodeSuccess',
-             histogram_bucket_val=1)
+             histogram_bucket_val=1,
+             tag='mjpeg')

@@ -34,4 +34,4 @@ test_cases = [
     ['video_VDASanity/bear_profile3.vp9', 320, 240, 30, 30, 12],
 ]
 
-job.run_test('video_VDASanity', test_cases=test_cases)
+job.run_test('video_VDASanity', test_cases=test_cases, tag='vp9')

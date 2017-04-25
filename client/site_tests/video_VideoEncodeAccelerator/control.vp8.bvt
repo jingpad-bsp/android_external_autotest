@@ -30,4 +30,4 @@ streams = [('media/test/data/bear_320x192_40frames.yuv', 320, 192, 200000)]
 
 args_dict = utils.args_to_dict(args)
 job.run_test('video_VideoEncodeAccelerator', in_cloud=False, streams=streams,
-        profile=11, **args_dict)
+        profile=11, tag='vp8', **args_dict)
