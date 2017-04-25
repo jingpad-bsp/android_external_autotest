@@ -409,7 +409,11 @@ class BaseDroneUtility(object):
             link_to = os.readlink(source_path)
             os.symlink(link_to, destination_path)
         else:
-            shutil.copy(source_path, destination_path)
+            try:
+                shutil.copy(source_path, destination_path)
+            except IOError:
+                # Ignore copy error following the same above reason.
+                pass
 
 
     def _same_file(self, source_path, destination_path):
