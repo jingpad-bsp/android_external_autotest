@@ -543,17 +543,6 @@ class _ControlFileRetriever(object):
         return (path for path in paths if not matcher.match(path))
 
 
-    def _batch_get_control_file_texts(self, suite_info, paths):
-        """Get control file content for given files.
-
-        @param suite_info: dict mapping paths to control file text
-        @param paths: iterable of control file paths
-        @returns: generator yielding (path, text) tuples
-        """
-        for path in paths:
-            yield path, suite_info[path]
-
-
     def _nonbatch_get_control_file_texts(self, paths):
         """Get control file content for given files.
 
@@ -570,20 +559,37 @@ class _ControlFileRetriever(object):
         @param suite_name: If specified, this method will attempt to restrain
                            the search space to just this suite's control files.
         """
-        if _should_batch_with(self._cf_getter):
-            suite_info = self._cf_getter.get_suite_info(suite_name=suite_name)
-            files = suite_info.keys()
-            filtered_files = self._filter_cf_paths(files)
-            return self._batch_get_control_file_texts(
-                    suite_info, filtered_files)
-        else:
-            files = self._cf_getter.get_control_file_list(suite_name=suite_name)
-            filtered_files = self._filter_cf_paths(files)
-            return self._nonbatch_get_control_file_texts(filtered_files)
+        files = self._cf_getter.get_control_file_list(suite_name=suite_name)
+        filtered_files = self._filter_cf_paths(files)
+        return self._nonbatch_get_control_file_texts(filtered_files)
 
 
 class _BatchControlFileRetriever(_ControlFileRetriever):
     """Subclass that can retrieve suite control files in batch."""
+
+
+    def _get_control_file_texts_for_suite(self, suite_name):
+        """Get control file content for given suite.
+
+        @param suite_name: If specified, this method will attempt to restrain
+                           the search space to just this suite's control files.
+        """
+        suite_info = self._cf_getter.get_suite_info(suite_name=suite_name)
+        files = suite_info.keys()
+        filtered_files = self._filter_cf_paths(files)
+        return self._batch_get_control_file_texts(
+                suite_info, filtered_files)
+
+
+    def _batch_get_control_file_texts(self, suite_info, paths):
+        """Get control file content for given files.
+
+        @param suite_info: dict mapping paths to control file text
+        @param paths: iterable of control file paths
+        @returns: generator yielding (path, text) tuples
+        """
+        for path in paths:
+            yield path, suite_info[path]
 
 
 def _parse_control_file_texts(control_file_texts,
