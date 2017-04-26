@@ -525,13 +525,12 @@ class _ControlFileRetriever(object):
         if _should_batch_with(self._cf_getter):
             suite_info = self._cf_getter.get_suite_info(suite_name=suite_name)
             files = suite_info.keys()
-        else:
-            files = self._cf_getter.get_control_file_list(suite_name=suite_name)
-        filtered_files = self._filter_cf_paths(files)
-        if _should_batch_with(self._cf_getter):
+            filtered_files = self._filter_cf_paths(files)
             control_file_texts = self._batch_get_control_file_texts(
                     suite_info, filtered_files)
         else:
+            files = self._cf_getter.get_control_file_list(suite_name=suite_name)
+            filtered_files = self._filter_cf_paths(files)
             control_file_texts = self._nonbatch_get_control_file_texts(
                     filtered_files)
         return _parse_control_file_texts(
