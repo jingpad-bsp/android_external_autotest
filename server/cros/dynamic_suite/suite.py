@@ -527,9 +527,7 @@ class _ControlFileRetriever(object):
             files = suite_info.keys()
         else:
             files = self._cf_getter.get_control_file_list(suite_name=suite_name)
-
-        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
-        filtered_files = (path for path in files if not matcher.match(path))
+        filtered_files = self._filter_cf_paths(files)
         if _should_batch_with(self._cf_getter):
             control_file_texts = self._batch_get_control_file_texts(
                     suite_info, filtered_files)
@@ -541,6 +539,16 @@ class _ControlFileRetriever(object):
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args)
+
+
+    def _filter_cf_paths(self, paths):
+        """Remove certain control file paths
+
+        @param paths: Iterable of paths
+        @returns: generator yielding paths
+        """
+        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+        return (path for path in paths if not matcher.match(path))
 
 
     def _batch_get_control_file_texts(self, suite_info, paths):
