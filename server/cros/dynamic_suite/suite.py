@@ -534,7 +534,8 @@ class _ControlFileRetriever(object):
             control_file_texts = self._batch_get_control_file_texts(
                     suite_info, filtered_files)
         else:
-            control_file_texts = self._get_control_file_texts(filtered_files)
+            control_file_texts = self._nonbatch_get_control_file_texts(
+                    filtered_files)
         return _parse_control_file_texts(
                 control_file_texts=control_file_texts,
                 forgiving_parser=forgiving_parser,
@@ -553,7 +554,7 @@ class _ControlFileRetriever(object):
             yield path, suite_info[path]
 
 
-    def _get_control_file_texts(self, paths):
+    def _nonbatch_get_control_file_texts(self, paths):
         """Get control file content for given files.
 
         @param paths: iterable of control file paths
