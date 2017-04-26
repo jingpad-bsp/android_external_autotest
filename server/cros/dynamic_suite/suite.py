@@ -467,6 +467,18 @@ def _get_cf_retriever(cf_getter):
         return _ControlFileRetriever(cf_getter)
 
 
+def _should_batch_with(cf_getter):
+    """Return whether control files should be fetched in batch.
+
+    This depends on the control file getter and configuration options.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    """
+    return (ENABLE_CONTROLS_IN_BATCH
+            and isinstance(cf_getter, control_file_getter.DevServerGetter))
+
+
 class _ControlFileRetriever(object):
     """Retrieves control files.
 
@@ -633,18 +645,6 @@ def _parse_control_file_texts(control_file_texts,
                 found_test.require_ssp = False
             tests[path] = found_test
     return tests
-
-
-def _should_batch_with(cf_getter):
-    """Return whether control files should be fetched in batch.
-
-    This depends on the control file getter and configuration options.
-
-    @param cf_getter: a control_file_getter.ControlFileGetter used to list
-           and fetch the content of control files
-    """
-    return (ENABLE_CONTROLS_IN_BATCH
-            and isinstance(cf_getter, control_file_getter.DevServerGetter))
 
 
 def get_test_source_build(builds, **dargs):
