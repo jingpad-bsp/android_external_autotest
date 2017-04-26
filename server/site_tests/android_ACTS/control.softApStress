@@ -17,7 +17,7 @@ def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='softApStress.config',
-                 test_file='softApStress',
+                 test_file='wifi_softApStress',
                  additional_cmd_line_params="-r 10000",
                  acts_timeout=72000)
 
