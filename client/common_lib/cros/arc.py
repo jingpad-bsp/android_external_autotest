@@ -612,14 +612,13 @@ class ArcTest(test.test):
     def block_outbound(self):
         """ Blocks the connection from the container to outer network.
 
-            The iptables settings accept only 192.168.254.2 port 5555 (adb) and
+            The iptables settings accept only 100.115.92.2 port 5555 (adb) and
             all local connections, e.g. uiautomator.
         """
         logging.info('Blocking outbound connection')
         _android_shell('iptables -I OUTPUT -j REJECT')
-        _android_shell('iptables -I OUTPUT -p tcp -s 192.168.254.2 --sport 5555 -j ACCEPT')
+        _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 --sport 5555 -j ACCEPT')
         _android_shell('iptables -I OUTPUT -p tcp -d localhost -j ACCEPT')
-
 
     def unblock_outbound(self):
         """ Unblocks the connection from the container to outer network.
@@ -630,5 +629,4 @@ class ArcTest(test.test):
         """
         logging.info('Unblocking outbound connection')
         _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
-        _android_shell('iptables -D OUTPUT -p tcp -s 192.168.254.2 --sport 5555 -j ACCEPT')
-        _android_shell('iptables -D OUTPUT -j REJECT')
+        _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 -j ACCEPT')
