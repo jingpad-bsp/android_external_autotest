@@ -5,7 +5,6 @@
 # This module contains some commonly used time conversion function.
 
 import datetime
-import logging
 import time
 
 from autotest_lib.client.common_lib import decorators
@@ -15,14 +14,12 @@ try:
     import pytz
 except ImportError:
     pytz = None
-    logging.error('Could not import pytz.')
 
 
 try:
     import tzlocal
 except ImportError:
     tzlocal = None
-    logging.error('Could not import tzlocal.')
 
 
 # This format is used to parse datetime value in MySQL database and should not
