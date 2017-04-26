@@ -571,6 +571,10 @@ class _ControlFileRetriever(object):
             yield path, self._cf_getter.get_control_file_contents(path)
 
 
+class _BatchControlFileRetriever(_ControlFileRetriever):
+    """Subclass that can retrieve suite control files in batch."""
+
+
 def _parse_control_file_texts(control_file_texts,
                               forgiving_parser=True, run_prod_code=False,
                               test_args=None):
