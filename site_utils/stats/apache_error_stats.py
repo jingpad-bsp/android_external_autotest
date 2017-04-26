@@ -53,9 +53,9 @@ def EmitErrorLogMetric(m):
       'mod_wsgi': mod_wsgi_present})
 
 
-MATCHERS = {
-    ERROR_LOG_MATCHER: EmitErrorLogMetric,
-}
+MATCHERS = [
+    (ERROR_LOG_MATCHER, EmitErrorLogMetric),
+]
 
 
 def RunMatchers(stream, matchers):
@@ -70,10 +70,10 @@ def RunMatchers(stream, matchers):
     with contextlib.closing(ts_mon):
         for line in iter(stream.readline, ''):
             for matcher, emitter in matchers:
-                logging.debug('Emitting %s for input "%s"',
-                              emitter.__name__, line.strip())
                 m = matcher.match(line)
                 if m:
+                    logging.debug('Emitting %s for input "%s"',
+                                  emitter.__name__, line.strip())
                     emitter(m)
 
 
