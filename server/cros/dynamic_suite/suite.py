@@ -461,7 +461,10 @@ class _SuiteChildJobCreator(object):
 
 def _get_cf_retriever(cf_getter):
     """Returns the correct _ControlFileRetriever instance."""
-    return _ControlFileRetriever(cf_getter)
+    if _should_batch_with(cf_getter):
+        return _BatchControlFileRetriever(cf_getter)
+    else:
+        return _ControlFileRetriever(cf_getter)
 
 
 class _ControlFileRetriever(object):
