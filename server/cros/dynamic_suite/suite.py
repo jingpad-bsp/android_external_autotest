@@ -460,7 +460,22 @@ class _SuiteChildJobCreator(object):
 
 
 def _get_cf_retriever(cf_getter):
-    """Returns the correct _ControlFileRetriever instance."""
+    """Return the correct _ControlFileRetriever instance.
+
+    If cf_getter is a File system ControlFileGetter, return a
+    _ControlFileRetriever.  This performs a full parse of the root
+    directory associated with the getter. This is the case when it's
+    invoked from suite_preprocessor.
+
+    If cf_getter is a devserver getter, return a
+    _BatchControlFileRetriever.  This looks up the suite_name in a suite
+    to control file map generated at build time, and parses the relevant
+    control files alone. This lookup happens on the devserver, so as far
+    as this method is concerned, both cases are equivalent. If
+    enable_controls_in_batch is switched on, this function will call
+    cf_getter.get_suite_info() to get a dict of control files and
+    contents in batch.
+    """
     if _should_batch_with(cf_getter):
         return _BatchControlFileRetriever(cf_getter)
     else:
@@ -498,24 +513,7 @@ class _ControlFileRetriever(object):
     def find_test_control_data_for_suite(
             self, suite_name='',
             forgiving_parser=True, run_prod_code=False, test_args=None):
-        """
-        Function to scan through all tests and find all tests.
-
-        When this method is called with a file system ControlFileGetter, or
-        enable_controls_in_batch is set as false, this function will looks at
-        control files returned by cf_getter.get_control_file_list() for tests.
-
-        If cf_getter is a File system ControlFileGetter, it performs a full
-        parse of the root directory associated with the getter. This is the
-        case when it's invoked from suite_preprocessor.
-
-        If cf_getter is a devserver getter it looks up the suite_name in a
-        suite to control file map generated at build time, and parses the
-        relevant control files alone. This lookup happens on the devserver,
-        so as far as this method is concerned, both cases are equivalent. If
-        enable_controls_in_batch is switched on, this function will call
-        cf_getter.get_suite_info() to get a dict of control files and contents
-        in batch.
+        """Scan through all tests and find all tests.
 
         @param suite_name: If specified, this method will attempt to restrain
                            the search space to just this suite's control files.
