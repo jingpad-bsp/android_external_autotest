@@ -816,6 +816,11 @@ def _create_ds_getter(build, devserver):
     return control_file_getter.DevServerGetter(build, devserver)
 
 
+def _non_experimental_tests_predicate(test_data):
+    """Test predicate for non-experimental tests."""
+    return not test_data.experimental
+
+
 def find_and_parse_tests(cf_getter, predicate, suite_name='',
                          add_experimental=False, forgiving_parser=True,
                          run_prod_code=False, test_args=None):
@@ -858,10 +863,10 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
                                   run_prod_code=run_prod_code,
                                   test_args=test_args)
     tests = retriever.retrieve_for_suite(suite_name)
-    if not add_experimental:
-        tests = {path: test_data for path, test_data in tests.iteritems()
-                 if not test_data.experimental}
     logging.debug('Parsed %s control files.', len(tests))
+    if not add_experimental:
+        predicate = _ComposedPredicate([predicate,
+                                        _non_experimental_tests_predicate])
     tests = [test for test in tests.itervalues() if predicate(test)]
     tests.sort(key=lambda t:
                control_data.ControlData.get_test_time_index(t.time),
