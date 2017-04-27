@@ -110,16 +110,16 @@ class CacheingAndFilteringControlFileGetter(ControlFileGetter):
         pass
 
 
-    def get_control_file_contents_by_name(self, test_name):
+    def get_control_file_path(self, test_name):
         """
-        Given the name of a control file, return its contents.
+        Given the name of a control file, return its path.
 
         Searches through previously-compiled list in |self._files| for a
         test named |test_name| and returns the contents of the control file
         for that test if it is found.
 
         @param test_name: the name of the test whose control file is desired.
-        @return the contents of the control file specified by the name.
+        @return control file path
         @throws ControlFileNotFound if the file cannot be retrieved.
         """
         if not self._files and not self.get_control_file_list():
@@ -134,7 +134,23 @@ class CacheingAndFilteringControlFileGetter(ControlFileGetter):
             raise error.ControlFileNotFound('No control file for ' + test_name)
         if len(candidates) > 1:
             raise error.ControlFileNotFound(test_name + ' is not unique.')
-        return self.get_control_file_contents(candidates[0])
+        return candidates[0]
+
+
+    def get_control_file_contents_by_name(self, test_name):
+        """
+        Given the name of a control file, return its contents.
+
+        Searches through previously-compiled list in |self._files| for a
+        test named |test_name| and returns the contents of the control file
+        for that test if it is found.
+
+        @param test_name: the name of the test whose control file is desired.
+        @return the contents of the control file specified by the name.
+        @throws ControlFileNotFound if the file cannot be retrieved.
+        """
+        path = self.get_control_file_path(test_name)
+        return self.get_control_file_contents(path)
 
 
 class FileSystemGetter(CacheingAndFilteringControlFileGetter):
