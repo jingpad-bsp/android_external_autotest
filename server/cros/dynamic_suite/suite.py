@@ -892,9 +892,7 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    retriever = _get_cf_retriever(cf_getter,
-                                  forgiving_parser=True)
-    tests = retriever.retrieve_for_suite(suite_name)
+    tests = _get_cf_retriever(cf_getter).retrieve_for_suite(suite_name)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
     for test in tests.itervalues():
