@@ -536,7 +536,7 @@ class _ControlFileRetriever(object):
                  parameters.
         """
         control_file_texts = self._get_control_file_texts_for_suite(suite_name)
-        return _parse_control_file_texts(
+        return self._parse_control_file_texts(
                 control_file_texts=control_file_texts,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
@@ -566,6 +566,48 @@ class _ControlFileRetriever(object):
             yield path, self._cf_getter.get_control_file_contents(path)
 
 
+    def _parse_control_file_texts(self, control_file_texts,
+                                  forgiving_parser=True, run_prod_code=False,
+                                  test_args=None):
+        """Parse control file texts.
+
+        @param control_file_texts: iterable of (path, text) pairs
+        @param forgiving_parser: If False, will raise ControlVariableExceptions
+                                 if any are encountered when parsing control
+                                 files. Note that this can raise an exception
+                                 for syntax errors in unrelated files, because
+                                 we parse them before applying the predicate.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers by disabling SSP for the discovered
+                              tests.
+        @param test_args: A dict of args to be seeded in test control file under
+                          the name |args_dict|.
+        @returns: a dictionary of ControlData objects
+        """
+        tests = {}
+        for path, text in control_file_texts:
+            # Seed test_args into the control file.
+            if test_args:
+                text = tools.inject_vars(test_args, text)
+            try:
+                found_test = control_data.parse_control_string(
+                        text, raise_warnings=True, path=path)
+            except control_data.ControlVariableException, e:
+                if not forgiving_parser:
+                    msg = "Failed parsing %s\n%s" % (path, e)
+                    raise control_data.ControlVariableException(msg)
+                logging.warning("Skipping %s\n%s", path, e)
+            except Exception, e:
+                logging.error("Bad %s\n%s", path, e)
+            else:
+                found_test.text = text
+                if run_prod_code:
+                    found_test.require_ssp = False
+                tests[path] = found_test
+        return tests
+
+
 class _BatchControlFileRetriever(_ControlFileRetriever):
     """Subclass that can retrieve suite control files in batch."""
 
@@ -582,49 +624,6 @@ class _BatchControlFileRetriever(_ControlFileRetriever):
         filtered_files = self._filter_cf_paths(files)
         for path in filtered_files:
             yield path, suite_info[path]
-
-
-def _parse_control_file_texts(control_file_texts,
-                              forgiving_parser=True, run_prod_code=False,
-                              test_args=None):
-    """Parse control file texts.
-
-    @param control_file_texts: iterable of (path, text) pairs
-    @param forgiving_parser: If False, will raise ControlVariableExceptions
-                             if any are encountered when parsing control
-                             files. Note that this can raise an exception
-                             for syntax errors in unrelated files, because
-                             we parse them before applying the predicate.
-    @param run_prod_code: If true, the suite will run the test code that
-                          lives in prod aka the test code currently on the
-                          lab servers by disabling SSP for the discovered
-                          tests.
-    @param test_args: A dict of args to be seeded in test control file under
-                      the name |args_dict|.
-
-    @returns: a dictionary of ControlData objects
-    """
-    tests = {}
-    for path, text in control_file_texts:
-        # Seed test_args into the control file.
-        if test_args:
-            text = tools.inject_vars(test_args, text)
-        try:
-            found_test = control_data.parse_control_string(
-                    text, raise_warnings=True, path=path)
-        except control_data.ControlVariableException, e:
-            if not forgiving_parser:
-                msg = "Failed parsing %s\n%s" % (path, e)
-                raise control_data.ControlVariableException(msg)
-            logging.warning("Skipping %s\n%s", path, e)
-        except Exception, e:
-            logging.error("Bad %s\n%s", path, e)
-        else:
-            found_test.text = text
-            if run_prod_code:
-                found_test.require_ssp = False
-            tests[path] = found_test
-    return tests
 
 
 def get_test_source_build(builds, **dargs):
