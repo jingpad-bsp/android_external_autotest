@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import abc
+import logging
+import os
+import re
+
 import common
-import logging, os, re
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
 
@@ -16,10 +20,10 @@ class ControlFileGetter(object):
     Interface for classes that can list and fetch known control files.
     """
 
-    def __init__(self):
-        pass
+    __metaclass__ = abc.ABCMeta
 
 
+    @abc.abstractmethod
     def get_control_file_list(self, suite_name=''):
         """
         Gather a list of paths to control files.
@@ -31,6 +35,7 @@ class ControlFileGetter(object):
         pass
 
 
+    @abc.abstractmethod
     def get_control_file_contents(self, test_path):
         """
         Given a path to a control file, return its contents.
@@ -42,6 +47,7 @@ class ControlFileGetter(object):
         pass
 
 
+    @abc.abstractmethod
     def get_control_file_contents_by_name(self, test_name):
         """
         Given the name of a control file, return its contents.
@@ -53,6 +59,11 @@ class ControlFileGetter(object):
         pass
 
 
+class SuiteControlFileGetter(ControlFileGetter):
+    """Interface that additionally supports getting by suite."""
+
+
+    @abc.abstractmethod
     def get_suite_info(self, suite_name=''):
         """
         Gather the control paths and contents of all the control files.
@@ -92,6 +103,11 @@ class CacheingAndFilteringControlFileGetter(ControlFileGetter):
           files = filter(lambda path: not path.endswith(cf_filter), files)
         self._files = files
         return self._files
+
+
+    @abc.abstractmethod
+    def _get_control_file_list(self, suite_name=''):
+        pass
 
 
     def get_control_file_contents_by_name(self, test_name):
@@ -203,7 +219,8 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
             raise error.ControlFileNotFound(msg)
 
 
-class DevServerGetter(CacheingAndFilteringControlFileGetter):
+class DevServerGetter(CacheingAndFilteringControlFileGetter,
+                      SuiteControlFileGetter):
     """Class that can list and fetch known control files from DevServer.
 
     @var _CONTROL_PATTERN: control file name format to match.
