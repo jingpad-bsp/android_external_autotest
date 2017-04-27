@@ -578,8 +578,7 @@ class _ControlFileRetriever(object):
             if self._test_args:
                 text = tools.inject_vars(self._test_args, text)
             try:
-                found_test = control_data.parse_control_string(
-                        text, raise_warnings=True, path=path)
+                found_test = self._parse_control_file_text(path, text)
             except control_data.ControlVariableException, e:
                 if not self._forgiving_parser:
                     msg = "Failed parsing %s\n%s" % (path, e)
@@ -588,11 +587,26 @@ class _ControlFileRetriever(object):
             except Exception, e:
                 logging.error("Bad %s\n%s", path, e)
             else:
-                found_test.text = text
-                if self._run_prod_code:
-                    found_test.require_ssp = False
                 tests[path] = found_test
         return tests
+
+
+    def _parse_control_file_text(self, path, text):
+        """Parse control file text.
+
+        This ignores forgiving_parser because we cannot return a
+        forgiving value.
+
+        @param path: path to control file
+        @param text: control file text contents
+        @returns: a ControlData object
+        """
+        test = control_data.parse_control_string(
+                text, raise_warnings=True, path=path)
+        test.text = text
+        if self._run_prod_code:
+            test.require_ssp = False
+        return test
 
 
 class _BatchControlFileRetriever(_ControlFileRetriever):
