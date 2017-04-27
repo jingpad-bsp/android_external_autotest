@@ -14,6 +14,7 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import arc_common
+from telemetry.core import exceptions
 from telemetry.internal.browser import extension_page
 
 _ARC_SUPPORT_HOST_URL = 'chrome-extension://cnbgggchhmkkdmeppjobngjoejnihlei/'
@@ -143,47 +144,49 @@ def set_browser_options_for_opt_in(b_options):
     b_options.gaia_login = True
 
 
-def enable_arc_setting(browser):
+def enable_play_store(autotest_ext):
     """
-    Enable ARC++ via the settings page checkbox.
+    Enable ARC++ Play Store
 
     Do nothing if the account is managed.
 
-    @param browser: chrome.Chrome broswer object.
+    @param autotest_ext: autotest extension object.
 
     @returns: True if the opt-in should continue; else False.
 
     """
-    settings_tab = browser.tabs.New()
 
+    if autotest_ext is None:
+         raise error.TestFail(
+                 'Could not enable ARC because autotest API does not exist')
+
+    # Skip enabling for managed users, since value is policy enforced.
+    # Return early if a managed user has ArcEnabled set to false.
     try:
-        settings_tab.Navigate('chrome://settings-frame')
-        settings_tab.WaitForDocumentReadyStateToBeComplete()
-
-        try:
-            settings_tab.ExecuteJavaScript(
-                    'assert(document.getElementById("android-apps-enabled"))')
-        except Exception, e:
-            raise error.TestFail('Could not locate section in chrome://settings'
-                                 ' to enable arc. Make sure ARC is available.')
-
-        # Skip enabling for managed users, since value is policy enforced.
-        # Return early if a managed user has ArcEnabled set to false.
-        is_managed = settings_tab.EvaluateJavaScript(
-                'document.getElementById("android-apps-enabled").disabled')
+        autotest_ext.ExecuteJavaScript('''
+            chrome.autotestPrivate.getPlayStoreState(function(state) {
+              window.__play_store_state = state;
+            });
+        ''')
+        # Results must be available by the next invocation.
+        is_managed = autotest_ext.EvaluateJavaScript(
+            'window.__play_store_state.managed')
         if is_managed:
             logging.info('Determined that ARC is managed by user policy.')
-            policy_value = settings_tab.EvaluateJavaScript(
-                    'document.getElementById("android-apps-enabled").checked')
-            if not policy_value:
+            policy_enabled = autotest_ext.EvaluateJavaScript(
+                'window.__play_store_state.enabled')
+            if not policy_enabled:
                 logging.info(
-                        'Returning early since ARC is policy-enforced off.')
+                    'Returning early since ARC is policy-enforced off.')
                 return False
         else:
-            settings_tab.ExecuteJavaScript(
-                    'Preferences.setBooleanPref("arc.enabled", true, true)')
-    finally:
-        settings_tab.Close()
+            autotest_ext.ExecuteJavaScript('''
+                chrome.autotestPrivate.setPlayStoreEnabled(
+                    true, function(enabled) {});
+            ''')
+    except exceptions.EvaluateException as e:
+        raise error.TestFail(' Could not enable ARC via autotest API. "%s".'
+            % e)
 
     return True
 
@@ -268,19 +271,20 @@ def opt_in_and_wait_for_completion(extension_main_page):
                                  'seconds!' % SIGN_IN_TIMEOUT)
 
 
-def opt_in(browser):
+def opt_in(browser, autotest_ext):
     """
     Step through opt in and wait for it to complete.
 
     Return early if the arc_setting cannot be set True.
 
     @param browser: chrome.Chrome broswer object.
+    @param autotest_ext: autotest extension object.
 
     @raises: error.TestFail if opt in fails.
 
     """
     logging.info(_OPT_IN_BEGIN)
-    if not enable_arc_setting(browser):
+    if not enable_play_store(autotest_ext):
         return
     extension_main_page = find_opt_in_extension_page(browser)
     opt_in_and_wait_for_completion(extension_main_page)
