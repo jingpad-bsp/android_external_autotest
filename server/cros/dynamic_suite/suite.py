@@ -539,8 +539,8 @@ class _ControlFileRetriever(object):
         @returns a dictionary of ControlData objects that based on given
                  parameters.
         """
-        control_file_texts = self._get_control_file_texts_for_suite(suite_name)
-        return self._parse_control_file_texts(control_file_texts)
+        control_file_texts = self._get_cf_texts_for_suite(suite_name)
+        return self._parse_cf_text_many(control_file_texts)
 
 
     def _filter_cf_paths(self, paths):
@@ -553,7 +553,7 @@ class _ControlFileRetriever(object):
         return (path for path in paths if not matcher.match(path))
 
 
-    def _get_control_file_texts_for_suite(self, suite_name):
+    def _get_cf_texts_for_suite(self, suite_name):
         """Get control file content for given suite.
 
         @param suite_name: If specified, this method will attempt to restrain
@@ -566,7 +566,7 @@ class _ControlFileRetriever(object):
             yield path, self._cf_getter.get_control_file_contents(path)
 
 
-    def _parse_control_file_texts(self, control_file_texts):
+    def _parse_cf_text_many(self, control_file_texts):
         """Parse control file texts.
 
         @param control_file_texts: iterable of (path, text) pairs
@@ -578,7 +578,7 @@ class _ControlFileRetriever(object):
             if self._test_args:
                 text = tools.inject_vars(self._test_args, text)
             try:
-                found_test = self._parse_control_file_text(path, text)
+                found_test = self._parse_cf_text(path, text)
             except control_data.ControlVariableException, e:
                 if not self._forgiving_parser:
                     msg = "Failed parsing %s\n%s" % (path, e)
@@ -591,7 +591,7 @@ class _ControlFileRetriever(object):
         return tests
 
 
-    def _parse_control_file_text(self, path, text):
+    def _parse_cf_text(self, path, text):
         """Parse control file text.
 
         This ignores forgiving_parser because we cannot return a
@@ -613,7 +613,7 @@ class _BatchControlFileRetriever(_ControlFileRetriever):
     """Subclass that can retrieve suite control files in batch."""
 
 
-    def _get_control_file_texts_for_suite(self, suite_name):
+    def _get_cf_texts_for_suite(self, suite_name):
         """Get control file content for given suite.
 
         @param suite_name: If specified, this method will attempt to restrain
