@@ -478,11 +478,10 @@ def _get_cf_retriever(cf_getter, forgiving_parser=True, run_prod_code=False,
     contents in batch.
     """
     if _should_batch_with(cf_getter):
-        return _BatchControlFileRetriever(cf_getter, forgiving_parser,
-                                          run_prod_code, test_args)
+        cls = _BatchControlFileRetriever
     else:
-        return _ControlFileRetriever(cf_getter, forgiving_parser, run_prod_code,
-                                     test_args)
+        cls = _ControlFileRetriever
+    return cls(cf_getter, forgiving_parser, run_prod_code, test_args)
 
 
 def _should_batch_with(cf_getter):
