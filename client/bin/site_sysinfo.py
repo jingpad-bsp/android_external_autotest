@@ -12,7 +12,7 @@ from autotest_lib.client.cros import constants
 
 get_value = global_config.global_config.get_config_value
 collect_corefiles = get_value('CLIENT', 'collect_corefiles',
-                              type=bool, default=True)
+                              type=bool, default=False)
 
 
 logfile = base_sysinfo.logfile
@@ -277,9 +277,15 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
             purgeable_logdir(
                 os.path.join(constants.CRYPTOHOME_MOUNT_PT, "crash"),
                 additional_exclude=crash_exclude_string))
+        self.after_iteration_loggables.add(
+            purgeable_logdir(constants.CRASH_DIR,
+                             additional_exclude=crash_exclude_string))
         self.test_loggables.add(
             logfile(os.path.join(constants.USER_DATA_DIR,
                                  ".Google/Google Talk Plugin/gtbplugin.log")))
+        self.test_loggables.add(purgeable_logdir(
+                constants.CRASH_DIR,
+                additional_exclude=crash_exclude_string))
         # Collect files under /tmp/crash_reporter, which contain the procfs
         # copy of those crashed processes whose core file didn't get converted
         # into minidump. We need these additional files for post-mortem analysis
