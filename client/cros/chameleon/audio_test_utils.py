@@ -85,6 +85,13 @@ def check_audio_nodes(audio_facade, audio_nodes):
         sorted(curr_in_nodes) != sorted(in_audio_nodes)):
         raise error.TestFail('Wrong input node(s) selected %s '
                 'instead %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
+
+    # Treat line-out node as headphone node in Chameleon test since some
+    # Cros devices detect audio board as lineout. This actually makes sense
+    # because 3.5mm audio jack is connected to LineIn port on Chameleon.
+    if (out_audio_nodes == ['HEADPHONE'] and curr_out_nodes == ['LINEOUT']):
+        return
+
     if (out_audio_nodes != None and
         sorted(curr_out_nodes) != sorted(out_audio_nodes)):
         raise error.TestFail('Wrong output node(s) selected %s '
