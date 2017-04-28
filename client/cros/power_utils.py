@@ -127,7 +127,7 @@ def get_sleep_state():
     Can be "freeze" or "mem".
     """
     cmd = 'check_powerd_config --suspend_to_idle'
-    result = base_utils.run(cmd, ignore_status=True)
+    result = utils.run(cmd, ignore_status=True)
     return 'freeze' if result.exit_status == 0 else 'mem'
 
 def has_battery():
