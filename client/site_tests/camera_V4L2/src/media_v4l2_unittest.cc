@@ -22,9 +22,9 @@ void ExerciseControl(V4L2Device* v4l2_dev, uint32_t id, const char* control) {
   }
 }
 
-void TestMultipleOpen(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev1(dev_name, io, 4);
-  V4L2Device v4l2_dev2(dev_name, io, 4);
+void TestMultipleOpen(const char* dev_name) {
+  V4L2Device v4l2_dev1(dev_name, 4);
+  V4L2Device v4l2_dev2(dev_name, 4);
   if (!v4l2_dev1.OpenDevice()) {
     printf("[Error] Can not open device '%s' for the first time\n", dev_name);
   }
@@ -38,8 +38,8 @@ void TestMultipleOpen(const char* dev_name, V4L2Device::IOMethod io) {
 }
 
 void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev1(dev_name, io, 4);
-  V4L2Device v4l2_dev2(dev_name, io, 4);
+  V4L2Device v4l2_dev1(dev_name, 4);
+  V4L2Device v4l2_dev2(dev_name, 4);
   if (!v4l2_dev1.OpenDevice()) {
     printf("[Error] Can not open device '%s' for the first time\n", dev_name);
   }
@@ -47,12 +47,12 @@ void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
     printf("[Error] Can not open device '%s' for the second time\n", dev_name);
   }
 
-  if (!v4l2_dev1.InitDevice(640, 480, V4L2_PIX_FMT_YUYV, 0)) {
+  if (!v4l2_dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 0)) {
     printf("[Error] Can not init device '%s' for the first time\n", dev_name);
   }
 
   // multiple streaming request should fail.
-  if (v4l2_dev2.InitDevice(640, 480, V4L2_PIX_FMT_YUYV, 0)) {
+  if (v4l2_dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 0)) {
     printf("[Error] Multiple init device '%s' should fail\n", dev_name);
     exit(EXIT_FAILURE);
   }
@@ -64,8 +64,8 @@ void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.MultipleInit\n");
 }
 
-void TestEnumInputAndStandard(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev1(dev_name, io, 4);
+void TestEnumInputAndStandard(const char* dev_name) {
+  V4L2Device v4l2_dev1(dev_name, 4);
   if (!v4l2_dev1.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -75,8 +75,8 @@ void TestEnumInputAndStandard(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.EnumInputAndStandard\n");
 }
 
-void TestEnumControl(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestEnumControl(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -85,8 +85,8 @@ void TestEnumControl(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.EnumControl\n");
 }
 
-void TestSetControl(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestSetControl(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -101,8 +101,8 @@ void TestSetControl(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.SetControl\n");
 }
 
-void TestSetCrop(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestSetCrop(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -119,8 +119,8 @@ void TestSetCrop(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.SetCrop\n");
 }
 
-void TestGetCrop(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestGetCrop(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -132,8 +132,8 @@ void TestGetCrop(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.GetCrop\n");
 }
 
-void TestProbeCaps(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestProbeCaps(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -145,8 +145,8 @@ void TestProbeCaps(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.ProbeCaps\n");
 }
 
-void TestEnumFormats(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestEnumFormats(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -155,20 +155,20 @@ void TestEnumFormats(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.EnumFormats\n");
 }
 
-void TestEnumFrameSize(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestEnumFrameSize(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
   uint32_t format_count = 0;
   v4l2_dev.EnumFormat(&format_count);
   for (uint32_t i = 0; i < format_count; ++i) {
-    uint32_t pixfmt = v4l2_dev.GetPixelFormat(i);
-    if (pixfmt == 0xFFFFFFFF) {
+    uint32_t pixfmt;
+    if (!v4l2_dev.GetPixelFormat(i, &pixfmt)) {
       printf("[Error] Enumerate format error on device '%s'\n", dev_name);
       exit(EXIT_FAILURE);
     }
-    if (!v4l2_dev.EnumFrameSize(pixfmt)) {
+    if (!v4l2_dev.EnumFrameSize(pixfmt, NULL)) {
       printf("[Warning] Enumerate frame size error on device '%s'\n", dev_name);
     };
   }
@@ -176,8 +176,45 @@ void TestEnumFrameSize(const char* dev_name, V4L2Device::IOMethod io) {
   printf("[OK ] V4L2DeviceTest.EnumFrameSize\n");
 }
 
-void TestFrameRate(const char* dev_name, V4L2Device::IOMethod io) {
-  V4L2Device v4l2_dev(dev_name, io, 4);
+void TestEnumFrameInterval(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
+  if (!v4l2_dev.OpenDevice()) {
+    printf("[Error] Can not open device '%s'\n", dev_name);
+    exit(EXIT_FAILURE);
+  }
+  uint32_t format_count = 0;
+  v4l2_dev.EnumFormat(&format_count);
+  for (uint32_t i = 0; i < format_count; ++i) {
+    uint32_t pixfmt;
+    if (!v4l2_dev.GetPixelFormat(i, &pixfmt)) {
+      printf("[Error] Get format error on device '%s'\n", dev_name);
+      exit(EXIT_FAILURE);
+    }
+    uint32_t size_count;
+    if (!v4l2_dev.EnumFrameSize(pixfmt, &size_count)) {
+      printf("[Error] Enumerate frame size error on device '%s'\n", dev_name);
+      exit(EXIT_FAILURE);
+    };
+
+    for (uint32_t j = 0; j < size_count; ++j) {
+      uint32_t width, height;
+      if (!v4l2_dev.GetFrameSize(j, pixfmt, &width, &height)) {
+        printf("[Error] Get frame size error on device '%s'\n", dev_name);
+        exit(EXIT_FAILURE);
+      };
+      if (!v4l2_dev.EnumFrameInterval(pixfmt, width, height, NULL)) {
+        printf("[Error] Enumerate frame interval error on device '%s'\n",
+            dev_name);
+        exit(EXIT_FAILURE);
+      };
+    }
+  }
+  v4l2_dev.CloseDevice();
+  printf("[OK ] V4L2DeviceTest.EnumFrameInterval\n");
+}
+
+void TestFrameRate(const char* dev_name) {
+  V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
@@ -284,16 +321,16 @@ int main(int argc, char** argv) {
     }
   }
 
-  TestMultipleOpen(dev_name.c_str(), io);
+  TestMultipleOpen(dev_name.c_str());
   TestMultipleInit(dev_name.c_str(), io);
-  TestEnumInputAndStandard(dev_name.c_str(), io);
-  TestEnumControl(dev_name.c_str(), io);
-  TestSetControl(dev_name.c_str(), io);
-  TestSetCrop(dev_name.c_str(), io);
-  TestGetCrop(dev_name.c_str(), io);
-  TestProbeCaps(dev_name.c_str(), io);
-  TestEnumFormats(dev_name.c_str(), io);
-  TestEnumFrameSize(dev_name.c_str(), io);
-  TestFrameRate(dev_name.c_str(), io);
+  TestEnumInputAndStandard(dev_name.c_str());
+  TestEnumControl(dev_name.c_str());
+  TestSetControl(dev_name.c_str());
+  TestSetCrop(dev_name.c_str());
+  TestGetCrop(dev_name.c_str());
+  TestProbeCaps(dev_name.c_str());
+  TestEnumFormats(dev_name.c_str());
+  TestEnumFrameSize(dev_name.c_str());
+  TestEnumFrameInterval(dev_name.c_str());
+  TestFrameRate(dev_name.c_str());
 }
-

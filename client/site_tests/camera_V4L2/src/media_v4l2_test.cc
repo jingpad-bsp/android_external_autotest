@@ -4,51 +4,256 @@
 
 #include <getopt.h>
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
+#include "camera_characteristics.h"
+#include "common_types.h"
 #include "media_v4l2_device.h"
 
 static void PrintUsage(int argc, char** argv) {
   printf("Usage: %s [options]\n\n"
          "Options:\n"
-         "--device=DEVICE_NAME    Video device name [/dev/video]\n"
-         "--help                  Print usage\n"
-         "--mmap                  Use memory mapped buffers\n"
-         "--userp                 Use application allocated buffers\n"
-         "--buffers=[NUM]         Minimum buffers required\n"
-         "--width=[NUM]           Picture width to capture\n"
-         "--height=[NUM]          Picture height to capture\n"
-         "--pixel-format=[fourcc] Picture format fourcc code\n"
-         "--fps=[NUM]             Frame rate for capture\n"
-         "--time=[NUM]            Time to capture in seconds\n",
+         "--help               Print usage\n"
+         "--device=DEVICE_NAME Video device name [/dev/video]\n"
+         "--usb-info=VID:PID   Device vendor id and product id\n",
          argv[0]);
 }
 
-static const char short_options[] = "d:?mrun:f:w:h:t:x:z:";
+static const char short_options[] = "?d:u:";
 static const struct option
 long_options[] = {
-        { "device",       required_argument, NULL, 'd' },
-        { "help",         no_argument,       NULL, '?' },
-        { "mmap",         no_argument,       NULL, 'm' },
-        { "userp",        no_argument,       NULL, 'u' },
-        { "buffers",      required_argument, NULL, 'n' },
-        { "width",        required_argument, NULL, 'w' },
-        { "height",       required_argument, NULL, 'h' },
-        { "pixel-format", required_argument, NULL, 't' },
-        { "fps",          required_argument, NULL, 'x' },
-        { "time",         required_argument, NULL, 'z' },
+        { "help",     no_argument,       NULL, '?' },
+        { "device",   required_argument, NULL, 'd' },
+        { "usb-info", required_argument, NULL, 'u' },
         { 0, 0, 0, 0 }
 };
 
-int main(int argc, char** argv) {
-  std::string dev_name = "/dev/video";
-  V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
+int RunTest(V4L2Device* device, V4L2Device::IOMethod io,
+            uint32_t buffers, uint32_t capture_time_in_sec, uint32_t width,
+            uint32_t height, uint32_t pixfmt, uint32_t fps) {
+  int32_t retcode = 0;
+  if (!device->InitDevice(io, width, height, pixfmt, fps))
+    retcode = 1;
+
+  if (!retcode && !device->StartCapture())
+    retcode = 2;
+
+  if (!retcode && !device->Run(capture_time_in_sec))
+    retcode = 3;
+
+  if (!retcode && !device->StopCapture())
+    retcode = 4;
+
+  if (!retcode && !device->UninitDevice())
+    retcode = 5;
+
+  return retcode;
+}
+
+bool GetSupportedFormats(
+    V4L2Device* device, SupportedFormats* supported_formats) {
+  supported_formats->clear();
+
+  SupportedFormat format;
+  uint32_t num_format = 0;
+  device->EnumFormat(&num_format, false);
+  for (uint32_t i = 0; i < num_format; ++i) {
+    if (!device->GetPixelFormat(i, &format.fourcc)) {
+      printf("[Error] Get format error\n");
+      return false;
+    }
+    uint32_t num_frame_size;
+    if (!device->EnumFrameSize(format.fourcc, &num_frame_size, false)) {
+      printf("[Error] Enumerate frame size error\n");
+      return false;
+    };
+
+    for (uint32_t j = 0; j < num_frame_size; ++j) {
+      if (!device->GetFrameSize(j, format.fourcc, &format.width,
+                                &format.height)) {
+        printf("[Error] Get frame size error\n");
+        return false;
+      };
+      uint32_t num_frame_rate;
+      if (!device->EnumFrameInterval(format.fourcc, format.width,
+                                     format.height, &num_frame_rate, false)) {
+        printf("[Error] Enumerate frame interval error\n");
+        return false;
+      };
+
+      format.frame_rates.clear();
+      uint32_t frame_rate;
+      for (uint32_t k = 0; k < num_frame_rate; ++k) {
+        if (!device->GetFrameInterval(k, format.fourcc, format.width,
+                                      format.height, &frame_rate)) {
+          printf("[Error] Get frame interval error\n");
+          return false;
+        };
+        // All supported resolution should have at least 1 fps.
+        if (frame_rate == 0) {
+          printf("[Error] Frame rate should be at least 1.\n");
+          return false;
+        }
+        format.frame_rates.push_back(frame_rate);
+      }
+      supported_formats->push_back(format);
+    }
+  }
+  return true;
+}
+
+SupportedFormat GetMaximumResolution(const SupportedFormats& formats) {
+  SupportedFormat max_format;
+  memset(&max_format, 0, sizeof(max_format));
+  for (const auto& format : formats) {
+    if (format.width >= max_format.width &&
+        format.height >= max_format.height) {
+      max_format = format;
+    }
+  }
+  return max_format;
+}
+
+// Find format according to width and height. If multiple formats support the
+// same resolution, choose V4L2_PIX_FMT_MJPEG first.
+const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
+                                              uint32_t width,
+                                              uint32_t height) {
+  const SupportedFormat* result_format = nullptr;
+  for (const auto& format : formats) {
+    if (format.width == width && format.height == height) {
+      if (!result_format || format.fourcc == V4L2_PIX_FMT_MJPEG) {
+        result_format = &format;
+      }
+    }
+  }
+  return result_format;
+}
+
+bool TestIO(const std::string& dev_name) {
   uint32_t buffers = 4;
   uint32_t width = 640;
   uint32_t height = 480;
   uint32_t pixfmt = V4L2_PIX_FMT_YUYV;
-  uint32_t fps = 0;
+  uint32_t fps = 30;
   uint32_t time_to_capture = 3;  // The unit is second.
+  bool check_1280x960 = false;
+
+  std::unique_ptr<V4L2Device> device(
+      new V4L2Device(dev_name.c_str(), buffers));
+
+  if (!device->OpenDevice())
+    return false;
+
+  v4l2_capability cap;
+  if (!device->ProbeCaps(&cap))
+    return false;
+
+  if (cap.capabilities & V4L2_CAP_STREAMING) {
+    int mmap_ret = RunTest(device.get(), V4L2Device::IO_METHOD_MMAP, buffers,
+        time_to_capture, width, height, pixfmt, fps);
+    int userp_ret = RunTest(device.get(), V4L2Device::IO_METHOD_USERPTR,
+        buffers, time_to_capture, width, height, pixfmt, fps);
+    if (mmap_ret && userp_ret) {
+      printf("[Error] Stream I/O failed.\n");
+      return false;
+    }
+  } else {
+    printf("[Error] Streaming capability is mandatory.\n");
+    return false;
+  }
+
+  device->CloseDevice();
+  return true;
+}
+
+// Test all required resolutions with all fps which are larger than 30.
+bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
+  uint32_t buffers = 4;
+  uint32_t time_to_capture = 3;
+  V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
+  std::unique_ptr<V4L2Device> device(
+      new V4L2Device(dev_name.c_str(), buffers));
+
+  if (!device->OpenDevice())
+    return false;
+
+  SupportedFormats supported_formats;
+  if (!GetSupportedFormats(device.get(), &supported_formats)) {
+    printf("[Error] Get supported formats failed in %s.\n", dev_name.c_str());
+    return false;
+  }
+  SupportedFormat max_resolution = GetMaximumResolution(supported_formats);
+
+  SupportedFormats required_resolutions;
+  required_resolutions.push_back(SupportedFormat(320, 240, 0, 30));
+  required_resolutions.push_back(SupportedFormat(640, 480, 0, 30));
+  required_resolutions.push_back(SupportedFormat(1280, 720, 0, 30));
+  required_resolutions.push_back(SupportedFormat(1920, 1080, 0, 30));
+  required_resolutions.push_back(SupportedFormat(1600, 1200, 0, 30));
+  if (check_1280x960) {
+    required_resolutions.push_back(SupportedFormat(1280, 960, 0, 30));
+  }
+
+  for (const auto& test_resolution : required_resolutions) {
+    // Skip the resolution that is larger than the maximum.
+    if (max_resolution.width < test_resolution.width ||
+        max_resolution.height < test_resolution.height) {
+      continue;
+    }
+
+    const SupportedFormat* test_format = FindFormatByResolution(
+        supported_formats, test_resolution.width, test_resolution.height);
+    if (test_format == nullptr) {
+      printf("[Error] %dx%d not found in %s\n", test_resolution.width,
+          test_resolution.height, dev_name.c_str());
+      return false;
+    }
+
+    bool frame_rate_tested = false;
+    for (const auto& frame_rate : test_format->frame_rates) {
+      // If the fps is less than the fps that we want to test, skip it.
+      if (frame_rate < test_resolution.frame_rates[0]) {
+        continue;
+      }
+      frame_rate_tested = true;
+      if (RunTest(device.get(), io, buffers, time_to_capture,
+            test_format->width, test_format->height, test_format->fourcc,
+            frame_rate)) {
+        printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
+            test_format->width, test_format->height, test_format->fourcc,
+            dev_name.c_str());
+        return false;
+      }
+
+      // Make sure the driver didn't adjust the format.
+      v4l2_format fmt = device->GetActualPixelFormat();
+      if (test_format->width != fmt.fmt.pix.width ||
+          test_format->height != fmt.fmt.pix.height ||
+          test_format->fourcc != fmt.fmt.pix.pixelformat ||
+          frame_rate != device->GetFrameRate()) {
+        printf("[Error] Capture test %dx%d (%08X) failed in %s\n",
+            test_format->width, test_format->height, test_format->fourcc,
+            dev_name.c_str());
+      }
+    }
+    if (!frame_rate_tested) {
+      printf("[Error] Cannot test frame rate for %dx%d (%08X) failed in %s\n",
+          test_format->width, test_format->height, test_format->fourcc,
+          dev_name.c_str());
+      return false;
+    }
+  }
+  device->CloseDevice();
+
+  return true;
+}
+
+int main(int argc, char** argv) {
+  std::string dev_name = "/dev/video";
+  std::string usb_info = "";
 
   for (;;) {
     int32_t index;
@@ -58,42 +263,15 @@ int main(int argc, char** argv) {
     switch (c) {
       case 0:  // getopt_long() flag.
         break;
+      case '?':
+        PrintUsage(argc, argv);
+        exit (EXIT_SUCCESS);
       case 'd':
         // Initialize default v4l2 device name.
         dev_name = strdup(optarg);
         break;
-      case '?':
-        PrintUsage(argc, argv);
-        exit (EXIT_SUCCESS);
-      case 'm':
-        io = V4L2Device::IO_METHOD_MMAP;
-        break;
       case 'u':
-        io = V4L2Device::IO_METHOD_USERPTR;
-        break;
-      case 'n':
-        buffers = atoi(optarg);
-        break;
-      case 'w':
-        width = atoi(optarg);
-        break;
-      case 'h':
-        height = atoi(optarg);
-        break;
-      case 't': {
-        std::string fourcc = optarg;
-        if (fourcc.length() != 4) {
-          PrintUsage(argc, argv);
-          exit (EXIT_FAILURE);
-        }
-        pixfmt = V4L2Device::MapFourCC(fourcc.c_str());
-        break;
-      }
-      case 'x':
-        fps = atoi(optarg);
-        break;
-      case 'z':
-        time_to_capture = atoi(optarg);
+        usb_info = strdup(optarg);
         break;
       default:
         PrintUsage(argc, argv);
@@ -101,36 +279,26 @@ int main(int argc, char** argv) {
     }
   }
 
-  printf("capture %dx%d %c%c%c%c picture for %d seconds at %d fps\n",
-         width, height, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
-         (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, time_to_capture, fps);
+  std::unordered_map<std::string, std::string> mapping = {{usb_info, dev_name}};
+  CameraCharacteristics characteristics;
+  DeviceInfos device_infos =
+      characteristics.GetCharacteristicsFromFile(mapping);
 
-  V4L2Device* device = new V4L2Device(dev_name.c_str(), io, buffers);
+  bool check_1280x960 = false;
+  if (device_infos.size() > 1) {
+    printf("[Error] One device should not have multiple configs.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (device_infos.size() == 1) {
+    check_1280x960 = !device_infos[0].resolution_1280x960_unsupported;
+  }
+  printf("[Info] check 1280x960: %d\n", check_1280x960);
 
-  int32_t retcode = 0;
+  if (!TestIO(dev_name))
+    exit(EXIT_FAILURE);
 
-  if (!device->OpenDevice())
-    retcode = 1;
+  if (!TestResolutions(dev_name, check_1280x960))
+    exit(EXIT_FAILURE);
 
-  if (!retcode && !device->InitDevice(width, height, pixfmt, fps))
-    retcode = 2;
-
-  if (!retcode && !device->StartCapture())
-    retcode = 3;
-
-  if (!retcode && !device->Run(time_to_capture))
-    retcode = 4;
-
-  if (!retcode && !device->StopCapture())
-    retcode = 5;
-
-  if (!retcode && !device->UninitDevice())
-    retcode = 6;
-
-  device->CloseDevice();
-
-  delete device;
-
-  return retcode;
+  return EXIT_SUCCESS;
 }
-
