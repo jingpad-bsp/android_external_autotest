@@ -16,15 +16,21 @@
 #define V4L2_VIDEO_CAPTURE_MINOR_MAX  64
 
 V4L2Device::V4L2Device(const char* dev_name,
-                       IOMethod io,
                        uint32_t buffers)
     : dev_name_(dev_name),
-      io_(io),
+      io_(IO_METHOD_UNDEFINED),
       fd_(-1),
       v4l2_buffers_(NULL),
       num_buffers_(0),
       min_buffers_(buffers),
-      stopped_(false) {
+      stopped_(false),
+      initialized_(false) {
+}
+
+V4L2Device::~V4L2Device() {
+  if (initialized_)
+    UninitDevice();
+  CloseDevice();
 }
 
 bool V4L2Device::OpenDevice() {
@@ -64,16 +70,6 @@ bool V4L2Device::OpenDevice() {
     return false;
   }
 
-  switch (io_) {
-    case IO_METHOD_MMAP:
-    case IO_METHOD_USERPTR:
-      if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-        printf("<<< Error: %s does not support streaming.>>>\n", dev_name_);
-        return false;
-      }
-      break;
-  }
-
   return true;
 }
 
@@ -83,10 +79,12 @@ void V4L2Device::CloseDevice() {
   fd_ = -1;
 }
 
-bool V4L2Device::InitDevice(uint32_t width,
+bool V4L2Device::InitDevice(IOMethod io,
+                            uint32_t width,
                             uint32_t height,
                             uint32_t pixfmt,
                             uint32_t fps) {
+  io_ = io;
   // Crop/Format setting could live across session.
   // We should always initialized them when supported.
   v4l2_cropcap cropcap;
@@ -123,6 +121,19 @@ bool V4L2Device::InitDevice(uint32_t width,
   if (!ProbeCaps(&cap))
     return false;
 
+  switch (io_) {
+    case IO_METHOD_MMAP:
+    case IO_METHOD_USERPTR:
+      if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
+        printf("<<< Error: %s does not support streaming.>>>\n", dev_name_);
+        return false;
+      }
+      break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
+  }
+
   if (cap.capabilities & V4L2_CAP_TIMEPERFRAME) {
     if (fps > 0)
       SetFrameRate(fps);
@@ -140,18 +151,35 @@ bool V4L2Device::InitDevice(uint32_t width,
   height_ = fmt.fmt.pix.height;
   pixfmt_ = fmt;
 
+  bool ret = false;
   switch (io_) {
     case IO_METHOD_MMAP:
-      return InitMmapIO();
+      ret = InitMmapIO();
+      break;
     case IO_METHOD_USERPTR:
-      return InitUserPtrIO(fmt.fmt.pix.sizeimage);
+      ret = InitUserPtrIO(fmt.fmt.pix.sizeimage);
+      break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
   }
-  return false;
+  if (ret)
+    initialized_ = true;
+  return ret;
 }
 
 bool V4L2Device::UninitDevice() {
   switch (io_) {
     case IO_METHOD_MMAP:
+      v4l2_requestbuffers req;
+      memset(&req, 0, sizeof(req));
+      req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      req.memory = V4L2_MEMORY_MMAP;
+      if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
+        printf("<<< Error: VIDIOC_REQBUFS failed on %s.>>>\n", dev_name_);
+        return false;
+      }
+
       for (uint32_t i = 0; i < num_buffers_; ++i)
         if (-1 == munmap(v4l2_buffers_[i].start, v4l2_buffers_[i].length)) {
           printf("<<< Error: munmap() on %s failed.>>>\n", dev_name_);
@@ -162,8 +190,12 @@ bool V4L2Device::UninitDevice() {
       for (uint32_t i = 0; i < num_buffers_; ++i)
         free(v4l2_buffers_[i].start);
       break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
   }
   FreeBuffer();
+  initialized_ = false;
   return true;
 }
 
@@ -208,6 +240,9 @@ bool V4L2Device::StartCapture() {
         return false;
       }
       break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
   }
   return true;
 }
@@ -223,6 +258,9 @@ bool V4L2Device::StopCapture() {
         return false;
       }
       break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
   }
   return true;
 }
@@ -283,6 +321,7 @@ bool V4L2Device::Run(uint32_t time_in_sec) {
 
 bool V4L2Device::Stop() {
   stopped_ = true;
+  return true;
 }
 
 int32_t V4L2Device::DoIoctl(int32_t request, void* arg) {
@@ -353,6 +392,9 @@ int32_t V4L2Device::ReadOneFrame() {
         return -3;
       }
       break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return -1;
   }
   return 1;
 }
@@ -595,18 +637,22 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
   return true;
 }
 
-uint32_t V4L2Device::GetPixelFormat(uint32_t index) {
+bool V4L2Device::GetPixelFormat(uint32_t index, uint32_t* pixfmt) {
   v4l2_fmtdesc format_desc;
   memset(&format_desc, 0, sizeof(format_desc));
   format_desc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   format_desc.index = index;
   if (-1 == DoIoctl(VIDIOC_ENUM_FMT, &format_desc))
-    return 0xFFFFFFFF;
-  return format_desc.pixelformat;
+    return false;
+  if (pixfmt)
+    *pixfmt = format_desc.pixelformat;
+  return true;
 }
 
-bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
-  for (uint32_t i = 0; ; ++i) {
+bool V4L2Device::EnumFrameSize(
+    uint32_t pixfmt, uint32_t* num_sizes, bool show_frmsize) {
+  uint32_t i;
+  for (i = 0; ; ++i) {
     v4l2_frmsizeenum frmsize_desc;
     memset(&frmsize_desc, 0, sizeof(frmsize_desc));
     frmsize_desc.pixel_format = pixfmt;
@@ -623,7 +669,7 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
       switch (frmsize_desc.type) {
         case V4L2_FRMSIZE_TYPE_DISCRETE:
           printf("<<< Info supported discrete frame size #%d:"
-                 " for pixel foramt(%c%c%c%c): %dx%d >>>\n", i+1,
+                 " for pixel format(%c%c%c%c): %dx%d >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
                  frmsize_desc.discrete.width,
@@ -631,7 +677,7 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
           break;
         case V4L2_FRMSIZE_TYPE_CONTINUOUS:
           printf("<<< Info supported discrete frame size #%d:"
-                 " for pixel foramt(%c%c%c%c): "
+                 " for pixel format(%c%c%c%c): "
                  " from %dx%d to %dx%d >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
@@ -642,7 +688,7 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
           break;
         case V4L2_FRMSIZE_TYPE_STEPWISE:
           printf("<<< Info supported discrete frame size #%d:"
-                 " for pixel foramt(%c%c%c%c): "
+                 " for pixel format(%c%c%c%c): "
                  " from %dx%d to %dx%d step(%d,%d) >>>\n", i+1,
                  (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
                  (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
@@ -655,6 +701,132 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt, bool show_frmsize) {
           break;
       }
     }
+  }
+  if (num_sizes)
+    *num_sizes = i;
+  return true;
+}
+
+bool V4L2Device::GetFrameSize(
+    uint32_t index, uint32_t pixfmt, uint32_t *width, uint32_t *height) {
+  v4l2_frmsizeenum frmsize_desc;
+  memset(&frmsize_desc, 0, sizeof(frmsize_desc));
+  frmsize_desc.pixel_format = pixfmt;
+  frmsize_desc.index = index;
+  if (-1 == DoIoctl(VIDIOC_ENUM_FRAMESIZES, &frmsize_desc)) {
+    printf("<<< Error: VIDIOC_ENUM_FRAMESIZES not supported.>>>\n");
+    return false;
+  }
+  if (frmsize_desc.type != V4L2_FRMSIZE_TYPE_DISCRETE) {
+    printf("<<< Error: frame size type %d not supported.>>>\n",
+           frmsize_desc.type);
+    return false;
+  }
+
+  if (width && height) {
+    *width = frmsize_desc.discrete.width;
+    *height = frmsize_desc.discrete.height;
+  }
+  return true;
+}
+
+bool V4L2Device::EnumFrameInterval(
+    uint32_t pixfmt, uint32_t width, uint32_t height, uint32_t* num_intervals,
+    bool show_intervals) {
+  uint32_t i;
+  for (i = 0; ; ++i) {
+    v4l2_frmivalenum frm_interval;
+    memset(&frm_interval, 0, sizeof(frm_interval));
+    frm_interval.pixel_format = pixfmt;
+    frm_interval.width = width;
+    frm_interval.height = height;
+    frm_interval.index = i;
+    if (-1 == DoIoctl(VIDIOC_ENUM_FRAMEINTERVALS, &frm_interval)) {
+      if (i == 0) {
+        printf("<<< Error: VIDIOC_ENUM_FRAMEINTERVALS not supported.>>>\n");
+        return false;
+      } else {
+        break;
+      }
+    }
+    if (show_intervals) {
+      switch(frm_interval.type) {
+        case V4L2_FRMIVAL_TYPE_DISCRETE:
+          printf("<<< Info supported discrete frame interval #%d:"
+                 " for pixel format(%c%c%c%c): %dx%d: %d/%d >>>\n", i+1,
+                 (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+                 (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
+                 width, height, frm_interval.discrete.numerator,
+                 frm_interval.discrete.denominator);
+          break;
+        case V4L2_FRMIVAL_TYPE_CONTINUOUS:
+          printf("<<< Info supported continuous frame interval #%d:"
+                 " for pixel format(%c%c%c%c): %dx%d:"
+                 " from %d/%d to %d/%d >>>\n", i+1,
+                 (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+                 (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
+                 width, height,
+                 frm_interval.stepwise.min.numerator,
+                 frm_interval.stepwise.min.denominator,
+                 frm_interval.stepwise.max.numerator,
+                 frm_interval.stepwise.max.denominator);
+          break;
+        case V4L2_FRMIVAL_TYPE_STEPWISE:
+          printf("<<< Info supported stepwise frame interval #%d:"
+                 " for pixel format(%c%c%c%c): %dx%d:"
+                 " from %d/%d to %d/%d step(%d,%d) >>>\n", i+1,
+                 (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+                 (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
+                 width, height,
+                 frm_interval.stepwise.min.numerator,
+                 frm_interval.stepwise.min.denominator,
+                 frm_interval.stepwise.max.numerator,
+                 frm_interval.stepwise.max.denominator,
+                 frm_interval.stepwise.step.numerator,
+                 frm_interval.stepwise.step.denominator);
+          break;
+        default:
+          printf("<<< Error: unsupported frame interval type %d: for index %d"
+                 " pixel format(%c%c%c%c): %dx%d >>>\n", frm_interval.type,
+                 i+1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
+                 (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, width, height);
+          return false;
+      }
+    }
+  }
+  if (num_intervals)
+    *num_intervals = i;
+  return true;
+}
+
+bool V4L2Device::GetFrameInterval(
+    uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
+    uint32_t* frame_rate) {
+  v4l2_frmivalenum frm_interval;
+  memset(&frm_interval, 0, sizeof(frm_interval));
+  frm_interval.pixel_format = pixfmt;
+  frm_interval.width = width;
+  frm_interval.height = height;
+  frm_interval.index = index;
+  if (-1 == DoIoctl(VIDIOC_ENUM_FRAMEINTERVALS, &frm_interval)) {
+    printf("<<< Error: VIDIOC_ENUM_FRAMEINTERVALS not supported.>>>\n");
+    return false;
+  }
+  if (frm_interval.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
+    printf("<<< Error: frame interval type %d not supported.>>>\n",
+           frm_interval.type);
+    return false;
+  }
+
+  if (frame_rate) {
+    if (frm_interval.discrete.denominator %
+        frm_interval.discrete.numerator) {
+      printf("<<< Error: frame rate is a floating point %d/%d.>>>\n",
+          frm_interval.discrete.denominator, frm_interval.discrete.numerator);
+      return false;
+    }
+    *frame_rate = frm_interval.discrete.denominator /
+        frm_interval.discrete.numerator;
   }
   return true;
 }
