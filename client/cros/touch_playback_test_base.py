@@ -83,6 +83,10 @@ class touch_playback_test_base(test.test):
                  a hw_id but does not.
 
         """
+        if type(gestures) is not list:
+            raise error.TestError('find_test_files() takes a LIST, not a '
+                                   '%s!' % type(gestures))
+
         if not self.player.has(input_type):
             raise error.TestError('Device does not have a %s!' % input_type)
 
