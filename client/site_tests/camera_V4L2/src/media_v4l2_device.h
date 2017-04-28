@@ -20,6 +20,7 @@
 class V4L2Device {
  public:
   enum IOMethod {
+    IO_METHOD_UNDEFINED,
     IO_METHOD_MMAP,
     IO_METHOD_USERPTR,
   };
@@ -30,13 +31,13 @@ class V4L2Device {
   };
 
   V4L2Device(const char* dev_name,
-             IOMethod io,
              uint32_t buffers);
-  virtual ~V4L2Device() {}
+  virtual ~V4L2Device();
 
   virtual bool OpenDevice();
   virtual void CloseDevice();
-  virtual bool InitDevice(uint32_t width,
+  virtual bool InitDevice(IOMethod io,
+                          uint32_t width,
                           uint32_t height,
                           uint32_t pixfmt,
                           uint32_t fps);
@@ -51,7 +52,10 @@ class V4L2Device {
   bool EnumControl(bool show_menu = true);
   bool EnumControlMenu(const v4l2_queryctrl& query_ctrl);
   bool EnumFormat(uint32_t* num_formats, bool show_fmt = true);
-  bool EnumFrameSize(uint32_t pixfmt, bool show_frmsize = true);
+  bool EnumFrameSize(
+      uint32_t pixfmt, uint32_t* num_sizes, bool show_frmsize = true);
+  bool EnumFrameInterval(uint32_t pixfmt, uint32_t width, uint32_t height,
+                         uint32_t* num_intervals, bool show_intervals = true);
 
   bool QueryControl(uint32_t id, v4l2_queryctrl* ctrl);
   bool SetControl(uint32_t id, int32_t value);
@@ -62,7 +66,12 @@ class V4L2Device {
   bool GetParam(v4l2_streamparm* param);
   bool SetParam(v4l2_streamparm* param);
   bool SetFrameRate(uint32_t fps);
-  uint32_t GetPixelFormat(uint32_t index);
+  bool GetPixelFormat(uint32_t index, uint32_t* pixfmt);
+  bool GetFrameSize(
+      uint32_t index, uint32_t pixfmt, uint32_t *width, uint32_t *height);
+  bool GetFrameInterval(
+      uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
+      uint32_t* frame_rate);
   uint32_t GetFrameRate();
   bool Stop();
 
@@ -103,6 +112,8 @@ class V4L2Device {
   // Valid only after |InitDevice()|.
   uint32_t width_, height_;
   v4l2_format pixfmt_;
+  // Sets to true when buffers are initialized.
+  bool initialized_;
 };
 
 #endif  // MEDIA_V4L2_DEVICE_H_

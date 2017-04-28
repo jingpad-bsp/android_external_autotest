@@ -4,6 +4,7 @@
 
 import glob
 import logging
+import ntpath
 import os
 import re
 import stat
@@ -32,10 +33,20 @@ class camera_V4L2(test.test):
         self.find_video_capture_devices()
 
         for device in self.v4l2_devices:
+            self.usb_info = self.get_camera_device_usb_info(device)
             if run_unit_tests:
                 self.run_v4l2_unittests(device)
             if run_capture_tests:
-                self.run_v4l2_capture_tests(device)
+                self.run_v4l2_capture_test(device)
+
+    def get_camera_device_usb_info(self, device):
+        device_name = ntpath.basename(device)
+        vid_path = "/sys/class/video4linux/%s/device/../idVendor" % device_name
+        pid_path = "/sys/class/video4linux/%s/device/../idProduct" % device_name
+        with open(vid_path, 'r') as f_vid, open(pid_path, 'r') as f_pid:
+            vid = f_vid.read()
+            pid = f_pid.read()
+        return vid.strip() + ":" + pid.strip()
 
     def is_v4l2_capture_device(self, device):
         executable = os.path.join(self.bindir, "media_v4l2_is_capture_device")
@@ -114,13 +125,6 @@ class camera_V4L2(test.test):
         if not re.search(r"support video capture interface.>>>", stdout):
             raise error.TestFail(device + " does not support video capture!")
 
-        pattern = r"support streaming i/o interface.>>>"
-        self.support_streaming = True if re.search(pattern, stdout) else False
-
-        # Currently I assume streaming (mmap) is mandatroy.
-        if not self.support_streaming:
-            raise error.TestFail(device + " does not support streaming!")
-
         # 9. EnumFormats is always mandatory.
         if not self.unittest_passed("EnumFormats", stdout):
             raise error.TestError(device + " does not support enum formats!")
@@ -132,61 +136,14 @@ class camera_V4L2(test.test):
         logging.info("Supported pixel format: %s\n", self.supported_formats)
 
         # 10. Get/SetParam for framerate is optional.
-        # 11. EnumFrameSize is optional on some kernel/v4l2 version.
+        # 11. EnumFrameSize is optional.
 
-    def run_v4l2_capture_test(self, fail_okay, options):
+    def run_v4l2_capture_test(self, device):
+        options = ["--device=%s" % device]
+        options += ["--usb-info=%s" % self.usb_info]
+
         executable = os.path.join(self.bindir, "media_v4l2_test")
-        try:
-            cmd = "%s %s" % (executable, " ".join(options))
-            cmd = graphics_utils.xcommand(cmd)
-            logging.info("Running %s" % cmd)
-            stdout = utils.system_output(cmd, retain_output=True)
-        except:
-            if fail_okay:
-                stdout = ""
-                return (False, stdout)
-            else:
-                raise
-        else:
-            return (True, stdout)
-
-    def run_v4l2_capture_tests(self, device):
-        default_options = ["--device=%s" % device]
-
-        # If the device claims to support stream i/o.
-        # This could mean either mmap stream i/o or user pointer stream i/o.
-        if self.support_streaming:
-            option = default_options + ["--mmap"]
-            mmap_okay, stdout = self.run_v4l2_capture_test(True, option)
-
-            option = default_options + ["--userp"]
-            userp_okay, stdout = self.run_v4l2_capture_test(True, option)
-
-            if not userp_okay and not mmap_okay:
-                raise error.TestFail("Stream i/o failed!")
-
-        # TODO(jiesun): test with different mandatory resultions that
-        # the capture device must support without scaling by ourselves.
-        required_resolutions = [
-            (320, 240, 30),  # QVGA
-            (640, 480, 30)]  # VGA
-        for (width, height, minfps) in required_resolutions:
-            # Note use default mmap i/o here.
-            option = default_options[:]
-            # Note use first supported pixel format.
-            option.append("--pixel-format=%s" % self.supported_formats[0])
-            option.append("--width=%s" % width)
-            option.append("--height=%s" % height)
-            okay, stdout = self.run_v4l2_capture_test(False, option)
-            # Check if the actual format is desired.
-            pattern = (r"actual format for capture (\d+)x(\d+)"
-                       r" (....) picture at (\d+) fps")
-            match = re.search(pattern, stdout)
-            if (not match or
-                    int(match.group(1)) != width or
-                    int(match.group(2)) != height or
-                    match.group(3) != self.supported_formats[0] or
-                    int(match.group(4)) < minfps):
-                raise error.TestError("capture test failed")
-
-            okay, stdout = self.run_v4l2_capture_test(False, option)
+        cmd = "%s %s" % (executable, " ".join(options))
+        cmd = graphics_utils.xcommand(cmd)
+        logging.info("Running %s" % cmd)
+        stdout = utils.system_output(cmd, retain_output=True)
