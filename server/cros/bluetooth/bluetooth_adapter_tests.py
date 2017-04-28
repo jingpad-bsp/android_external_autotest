@@ -403,8 +403,8 @@ class BluetoothAdapterTests(test.test):
     ADVERTISING_INTERVAL_UNIT = 0.625
 
     # Error messages about advertising dbus methods.
-    ERROR_MAX_ADVERTISEMENTS = (
-            'org.bluez.Error.Failed: Maximum advertisements reached')
+    ERROR_FAILED_TO_REGISTER_ADVERTISEMENT = (
+            'org.bluez.Error.Failed: Failed to register advertisement')
     ERROR_INVALID_ADVERTISING_INTERVALS = (
             'org.bluez.Error.InvalidArguments: Invalid arguments')
 
@@ -1366,9 +1366,10 @@ class BluetoothAdapterTests(test.test):
                         advertisement_data),
                 logging_timespan=logging_timespan)
 
-        # Verify that max advertisements are reached.
-        max_advertisements_error = (
-                self.ERROR_MAX_ADVERTISEMENTS in self.advertising_msg)
+        # Verify that it failed to register advertisement due to the fact
+        # that max advertisements are reached.
+        failed_to_register_error = (self.ERROR_FAILED_TO_REGISTER_ADVERTISEMENT
+                                    in self.advertising_msg)
 
         # Verify that no new advertisement is added.
         advertisement_not_added = not self.bluetooth_le_facade.btmon_find(
@@ -1384,7 +1385,7 @@ class BluetoothAdapterTests(test.test):
                 'Advertising: Enabled (0x01)')
 
         self.results = {
-                'max_advertisements_error': max_advertisements_error,
+                'failed_to_register_error': failed_to_register_error,
                 'advertisement_not_added': advertisement_not_added,
                 'min_adv_interval_ms_found': min_adv_interval_ms_found,
                 'max_adv_interval_ms_found': max_adv_interval_ms_found,
