@@ -713,3 +713,25 @@ def check_and_set_chrome_active_node_types(audio_facade, output_type=None,
        raise error.TestError(
                'Target input type %s not present' % input_type)
    audio_facade.set_chrome_active_node_type(output_type, input_type)
+
+
+def check_hp_or_lineout_plugged(audio_facade):
+    """Checks whether line-out or headphone is plugged.
+
+    @param audio_facade: A RemoteAudioFacade to access audio functions on
+                         Cros device.
+
+    @returns: 'LINEOUT' if line-out node is plugged.
+              'HEADPHONE' if headphone node is plugged.
+
+    @raises: error.TestFail if the plugged nodes does not contain one of
+             'LINEOUT' and 'HEADPHONE'.
+
+    """
+    # Checks whether line-out or headphone is detected.
+    output_nodes, _ = audio_facade.get_plugged_node_types()
+    if 'LINEOUT' in output_nodes:
+        return 'LINEOUT'
+    if 'HEADPHONE' in output_nodes:
+        return 'HEADPHONE'
+    raise error.TestFail('Can not detect line-out or headphone')
