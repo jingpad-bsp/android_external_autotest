@@ -95,7 +95,7 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         audio_facade = self.factory.create_audio_facade()
         output_nodes, _ = audio_facade.get_selected_node_types()
         audio_jack_plugged = False
-        if output_nodes == ['HEADPHONE']:
+        if output_nodes == ['HEADPHONE'] or output_nodes == ['LINEOUT']:
             audio_jack_plugged = True
             logging.debug('Found audio jack plugged!')
 
