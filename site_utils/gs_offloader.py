@@ -949,7 +949,8 @@ def main():
 
     signal.signal(signal.SIGALRM, timeout_handler)
 
-    with ts_mon_config.SetupTsMonGlobalState('gs_offloader', indirect=True,
+    service_name = 'gs_offloader(%s)' % offloader_type
+    with ts_mon_config.SetupTsMonGlobalState(service_name, indirect=True,
                                              short_lived=False):
         offloader = Offloader(options)
         if not options.delete_only:
