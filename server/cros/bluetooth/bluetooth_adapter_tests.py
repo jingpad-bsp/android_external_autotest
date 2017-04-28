@@ -1281,8 +1281,10 @@ class BluetoothAdapterTests(test.test):
                 logging_timespan=logging_timespan)
 
         # Verify that a new advertisement is added.
-        advertisement_added = self.bluetooth_le_facade.btmon_find(
-                'Advertising Added: %d' % instance_id)
+        advertisement_added = (
+                self.bluetooth_le_facade.btmon_find('Advertising Added') and
+                self.bluetooth_le_facade.btmon_find('Instance: %d' %
+                                                    instance_id))
 
         # Verify that the manufacturer data could be found.
         manufacturer_data = advertisement_data.get('ManufacturerData', '')
@@ -1416,8 +1418,10 @@ class BluetoothAdapterTests(test.test):
                         advertisement_data))
 
         # Verify that the advertisement is removed.
-        advertisement_removed = self.bluetooth_le_facade.btmon_find(
-                'Advertising Removed: %d' % instance_id)
+        advertisement_removed = (
+                self.bluetooth_le_facade.btmon_find('Advertising Removed') and
+                self.bluetooth_le_facade.btmon_find('Instance: %d' %
+                                                    instance_id))
 
         # If advertising_disabled is True, there should be no log like
         #       'Advertising: Enabled (0x01)'
@@ -1609,16 +1613,22 @@ class BluetoothAdapterTests(test.test):
 
         # Verify that every advertisement is removed. When an advertisement
         # with instance id 1 is removed, the log looks like
-        #   @ Advertising Removed: 1
-        txt = 'Advertising Removed: %d'
-        for instance_id in instance_ids:
-            if not self.bluetooth_le_facade.btmon_find(txt % instance_id):
-                advertisement_removed = False
-                logging.error('Failed to remove advertisement instance: %d',
-                              instance_id)
-                break
+        #   Advertising Removed
+        #       instance: 1
+        if len(instance_ids) > 0:
+            advertisement_removed = self.bluetooth_le_facade.btmon_find(
+                    'Advertising Removed')
+            if advertisement_removed:
+                for instance_id in instance_ids:
+                    txt = 'Instance: %d' % instance_id
+                    if not self.bluetooth_le_facade.btmon_find(txt):
+                        advertisement_removed = False
+                        break
         else:
             advertisement_removed = True
+
+        if not advertisement_removed:
+            logging.error('Failed to remove advertisement')
 
         # Verify that "Reset Advertising Intervals" command has been issued.
         reset_advertising_intervals = self.bluetooth_le_facade.btmon_find(
