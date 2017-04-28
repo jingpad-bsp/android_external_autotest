@@ -83,8 +83,8 @@ def check_audio_nodes(audio_facade, audio_nodes):
     out_audio_nodes, in_audio_nodes = audio_nodes
     if (in_audio_nodes != None and
         sorted(curr_in_nodes) != sorted(in_audio_nodes)):
-        raise error.TestFail('Wrong input node(s) selected %s '
-                'instead %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
+        raise error.TestFail('Wrong input node(s) selected: %s '
+                'expected: %s' % (str(curr_in_nodes), str(in_audio_nodes)))
 
     # Treat line-out node as headphone node in Chameleon test since some
     # Cros devices detect audio board as lineout. This actually makes sense
@@ -95,7 +95,7 @@ def check_audio_nodes(audio_facade, audio_nodes):
     if (out_audio_nodes != None and
         sorted(curr_out_nodes) != sorted(out_audio_nodes)):
         raise error.TestFail('Wrong output node(s) selected %s '
-                'instead %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
+                'expected: %s' % (str(curr_out_nodes), str(out_audio_nodes)))
 
 
 def check_plugged_nodes(audio_facade, audio_nodes):
@@ -114,12 +114,12 @@ def check_plugged_nodes(audio_facade, audio_nodes):
     out_audio_nodes, in_audio_nodes = audio_nodes
     if (in_audio_nodes != None and
         sorted(curr_in_nodes) != sorted(in_audio_nodes)):
-        raise error.TestFail('Wrong input node(s) plugged %s '
-                'instead %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
+        raise error.TestFail('Wrong input node(s) plugged: %s '
+                'expected: %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
     if (out_audio_nodes != None and
         sorted(curr_out_nodes) != sorted(out_audio_nodes)):
-        raise error.TestFail('Wrong output node(s) plugged %s '
-                'instead %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
+        raise error.TestFail('Wrong output node(s) plugged: %s '
+                'expected: %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
 
 
 def bluetooth_nodes_plugged(audio_facade):
