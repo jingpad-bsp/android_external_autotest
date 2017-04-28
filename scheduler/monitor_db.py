@@ -193,8 +193,8 @@ def main_without_exception_handling():
           # for scheduler role. Thus do not send email for it.
           logging.exception(e)
       except Exception:
-          email_manager.manager.log_stacktrace(
-              "Uncaught exception; terminating monitor_db")
+          metrics.Counter('chromeos/autotest/scheduler/uncaught_exception'
+                          ).increment()
 
     metadata_reporter.abort()
     email_manager.manager.send_queued_emails()
