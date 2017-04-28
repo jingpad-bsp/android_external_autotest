@@ -25,6 +25,7 @@ class SystemFacadeNative(object):
             'performance',
             'ondemand',
             'powersave',
+            'sched'
             ]
 
     def set_scaling_governor_mode(self, index, mode):
