@@ -4,7 +4,9 @@
 #
 
 AUTHOR = "ARC Team"
-ATTRIBUTES = "suite:bvt-perbuild"
+# Do not remove any of these suites without wider discussion as it will cause
+# instability in the testing lab.
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq, suite:bvt-inline"
 NAME = "cheets_CTSHelper.stress.9"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
@@ -12,7 +14,9 @@ TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
-This sharded test verifies reliable and repeated login and start of ARC.
+This sharded test verifies reliable and repeated login to Chrome and start of
+the Android container. If this test is flaky every Android based test will be
+flaky as well.
 """
 
 job.run_test('cheets_CTSHelper', count=10, tag='stress')
