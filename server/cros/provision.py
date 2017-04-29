@@ -5,6 +5,7 @@
 
 import re
 import sys
+import warnings
 
 import common
 from autotest_lib.server.cros import provision_actionables as actionables
@@ -85,7 +86,9 @@ def cros_version_to_label(image):
     @returns: A string that is the appropriate label name.
 
     """
-    return CROS_VERSION_PREFIX + ':' + image
+    warnings.warn('cros_version_to_label is deprecated', stacklevel=2)
+    keyval_label = labellib.KeyvalLabel(Key.CROS_VERSION, image)
+    return labellib.format_keyval_label(keyval_label)
 
 
 def fwro_version_to_label(image):
@@ -96,7 +99,9 @@ def fwro_version_to_label(image):
     @returns: A string that is the appropriate label name.
 
     """
-    return FW_RO_VERSION_PREFIX + ':' + image
+    warnings.warn('fwro_version_to_label is deprecated', stacklevel=2)
+    keyval_label = labellib.KeyvalLabel(Key.FIRMWARE_RO_VERSION, image)
+    return labellib.format_keyval_label(keyval_label)
 
 
 def fwrw_version_to_label(image):
@@ -107,7 +112,9 @@ def fwrw_version_to_label(image):
     @returns: A string that is the appropriate label name.
 
     """
-    return FW_RW_VERSION_PREFIX + ':' + image
+    warnings.warn('fwrw_version_to_label is deprecated', stacklevel=2)
+    keyval_label = labellib.KeyvalLabel(Key.FIRMWARE_RW_VERSION, image)
+    return labellib.format_keyval_label(keyval_label)
 
 
 class _SpecialTaskAction(object):
