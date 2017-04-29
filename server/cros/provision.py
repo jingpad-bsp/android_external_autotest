@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
+import collections
 import re
 import sys
 import warnings
@@ -29,6 +29,26 @@ SKIP_PROVISION = 'skip_provision'
 # Default number of provisions attempts to try if we believe the devserver is
 # flaky.
 FLAKY_DEVSERVER_ATTEMPTS = 2
+
+
+_Action = collections.namedtuple('_Action', 'name, value')
+
+
+def _get_label_action(str_label):
+    """Get action represented by the label.
+
+    This is used for determine actions to perform based on labels, for
+    example for provisioning or repair.
+
+    @param str_label: label string
+    @returns: _Action instance
+    """
+    try:
+        keyval_label = labellib.parse_keyval_label(str_label)
+    except ValueError:
+        return _Action(str_label, None)
+    else:
+        return _Action(keyval_label.key, keyval_label.value)
 
 
 ### Helpers to convert value to label
