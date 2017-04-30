@@ -24,6 +24,7 @@ NUM_CAPTURE_TRIES = 10
 
 #Hardware decoding constants
 MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
+MEDIA_GVD_ERROR = 'Media.GpuVideoDecoderError'
 RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
 MEDIA_GVD_BUCKET = 0
 RTC_VIDEO_INIT_BUCKET = 1
