@@ -5,6 +5,7 @@
 import os
 import time
 import shutil
+import logging
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
@@ -82,9 +83,25 @@ class video_ChromeHWDecodeUsed(test.test):
                          event_timeout = 120)
                  player.load_video()
                  player.play()
+                 # Waits until the video ends or an error happens.
+                 player.wait_ended_or_error()
 
             # Waits for histogram updated for the test video.
             histogram_verifier.verify(
+                 cr,
+                 constants.MEDIA_GVD_INIT_STATUS,
+                 constants.MEDIA_GVD_BUCKET)
+
+            # Verify no GPU error happens.
+            if histogram_verifier.is_histogram_present(
                     cr,
-                    constants.MEDIA_GVD_INIT_STATUS,
-                    constants.MEDIA_GVD_BUCKET)
+                    constants.MEDIA_GVD_ERROR):
+                logging.info(histogram_verifier.get_histogram(
+                             cr, constants.MEDIA_GVD_ERROR))
+                raise error.TestError('GPU Video Decoder Error.')
+
+            # Verify the video ends successully for normal videos.
+            if not is_mse and player.check_error():
+                raise error.TestError('player did not end successully '\
+                                      '(HTML5 Player Error %s: %s)'
+                                      % player.get_error_info())
