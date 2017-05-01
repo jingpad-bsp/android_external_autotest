@@ -63,7 +63,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
             expected_plugged_nodes_without_audio_jack[1].append('KEYBOARD_MIC')
             expected_plugged_nodes_with_audio_jack[1].append('KEYBOARD_MIC')
 
-        if board_name == 'samus':
+        if board_name in ['samus', 'kevin']:
             expected_plugged_nodes_without_audio_jack[1].append('HOTWORD')
             expected_plugged_nodes_with_audio_jack[1].append('HOTWORD')
 
