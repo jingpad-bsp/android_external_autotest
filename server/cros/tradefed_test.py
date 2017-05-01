@@ -84,7 +84,7 @@ class _ChromeLogin(object):
         logging.info('Ensure Android is running...')
         # If we can't login to Chrome and launch Android we want this job to
         # die roughly after 5 minutes instead of hanging for the duration.
-        autotest.Autotest(self._host).run_timed_test('cheets_CTSHelper',
+        autotest.Autotest(self._host).run_timed_test('cheets_StartAndroid',
                                                      timeout=300,
                                                      check_client_result=True,
                                                      **self._cts_helper_kwargs)
