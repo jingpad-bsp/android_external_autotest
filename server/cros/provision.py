@@ -172,16 +172,16 @@ class _SpecialTaskAction(object):
 
 
     @classmethod
-    def test_for(cls, label):
+    def action_for(cls, name):
         """
-        Returns the test associated with the given (string) label name.
+        Returns the action associated with the given (string) name.
 
-        @param label: The label for which the action is being requested.
-        @returns: The string name of the test that should be run.
+        @param name: The name associated with the action requested.
+        @returns: The requested Actionable.
         @raises KeyError: If the name was not recognized as one we care about.
 
         """
-        return cls._actions[label]
+        return cls._actions[name]
 
 
     @classmethod
@@ -394,7 +394,7 @@ def run_special_task_actions(job, host, labels, task):
     # Sort the configuration labels based on `task._priorities`.
     sorted_configurations = task.sort_configurations(configurations)
     for name, value in sorted_configurations:
-        action_item = task.test_for(name)
+        action_item = task.action_for(name)
         success = action_item.execute(job=job, host=host, value=value)
         if not success:
             raise SpecialTaskActionException()
