@@ -20,6 +20,7 @@ def run(machine):
                  test_file='telephony_wfc_mobility_tmo',
                  additional_configs=['simcard_list.json'],
                  testtracker_project_id=11349,
+                 testtracker_extra_env="tmobile",
                  acts_timeout=25200)
 
 parallel_simple(run, machines)
