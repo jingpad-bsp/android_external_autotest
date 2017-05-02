@@ -20,6 +20,7 @@ class graphics_Drm(test.test):
 
     def initialize(self):
         self.GSC = graphics_utils.GraphicsStateChecker()
+        self._supported_apis = graphics_utils.GraphicsApiHelper().get_supported_apis()
         self._services = service_stopper.ServiceStopper(['ui'])
 
     def cleanup(self):
@@ -28,17 +29,32 @@ class graphics_Drm(test.test):
         if self._services:
             self._services.restore_services()
 
-    def run_once(self, cmd, stop_ui=True, display_required=True):
+    def run_once(self, cmd, **kargs):
+        opts = {
+            'stop_ui': True,
+            'display_required': True,
+            'vulkan_required': False,
+            'min_kernel_version': None
+        }
+        opts.update(kargs)
+
         num_displays = graphics_utils.get_num_outputs_on()
         # Sanity check to guard against incorrect silent passes.
         if num_displays == 0 and utils.get_device_type() == 'CHROMEBOOK':
             raise error.TestFail('Error: found Chromebook without display.')
-        if display_required and num_displays == 0:
+        if opts['display_required'] and num_displays == 0:
             # If a test needs a display and we don't have a display,
             # consider it a pass.
             logging.warning('No display connected, skipping test.')
             return
-        if stop_ui:
+        if opts['vulkan_required'] and 'vk' not in self._supported_apis:
+            # If a test needs vulkan to run and we don't have it,
+            # consider it a pass
+            logging.warning('Vulkan is required by test but is not available '
+                            'on system. Skipping test.')
+            return
+
+        if opts['stop_ui']:
             self._services.stop_services()
         try:
             result = utils.run(cmd,
@@ -55,4 +71,4 @@ class graphics_Drm(test.test):
         # Last but not least check return code and use it for triage.
         if result.exit_status != 0:
             raise error.TestFail('Failed: %s (exit=%d)' %
-                                    (cmd, result.exit_status))
+                                 (cmd, result.exit_status))
