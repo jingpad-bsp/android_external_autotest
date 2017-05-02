@@ -1,4 +1,3 @@
-from autotest_lib.scheduler import archive_results
-
-archiver = archive_results.ResultsArchiver()
-archiver.archive_results(job.resultdir)
+# TODO(ayatane): We don't rely on this for archiving (originally for
+# copying to cautotest).
+pass
