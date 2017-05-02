@@ -40,7 +40,7 @@ from autotest_lib.frontend import setup_django_environment
 from django.db import models as django_models
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.site_utils.suite_scheduler import constants
@@ -141,7 +141,7 @@ class _JobEvent(object):
         @return A URL to the requested results log.
 
         """
-        return os.path.join(site_utils.get_offload_gsuri(), logdir)
+        return os.path.join(utils.get_offload_gsuri(), logdir)
 
 
     def __init__(self, start_time, end_time):
