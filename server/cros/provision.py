@@ -167,7 +167,8 @@ class _SpecialTaskAction(object):
         @returns: True if there exists a test to run for this label.
 
         """
-        return label.split(':')[0] in cls._actions
+        action = _get_label_action(label)
+        return action.name in cls._actions
 
 
     @classmethod
