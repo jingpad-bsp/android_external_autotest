@@ -31,7 +31,6 @@ class graphics_dEQP(test.test):
     _cpu_type = None
     _gpu_type = None
     _surface = None
-    _can_run_executables = []
     _filter = None
     _width = 256  # Use smallest width for which all tests run/pass.
     _height = 256  # Use smallest height for which all tests run/pass.
@@ -42,9 +41,7 @@ class graphics_dEQP(test.test):
     _debug = False  # Analyze kernel messages.
     _log_reader = None  # Reader to analyze (kernel) messages log.
     _log_filter = re.compile('.* .* kernel:')  # kernel messages filter.
-    _env = None # environment for test processes
-
-    DEQP_BASEDIR = '/usr/local/deqp'
+    _env = None  # environment for test processes
     DEQP_MODULES = {
         'dEQP-EGL': 'egl',
         'dEQP-GLES2': 'gles2',
@@ -54,6 +51,7 @@ class graphics_dEQP(test.test):
     }
 
     def initialize(self):
+        self._api_helper = graphics_utils.GraphicsApiHelper()
         self._board = utils.get_board()
         self._cpu_type = utils.get_cpu_soc_family()
         self._gpu_type = utils.get_gpu_family()
@@ -66,30 +64,6 @@ class graphics_dEQP(test.test):
             self._env['LD_LIBRARY_PATH'] = '/usr/local/lib:/usr/local/lib64:' + old_ld_path
         else:
             self._env['LD_LIBRARY_PATH'] = '/usr/local/lib:/usr/local/lib64'
-
-        # Determine which executable should be run. Right now never egl.
-        major, minor = graphics_utils.get_gles_version()
-        logging.info('Found gles%d.%d.', major, minor)
-        if major is None or minor is None:
-            raise error.TestFail(
-                'Failed: Could not get gles version information (%d, %d).' %
-                (major, minor))
-        if major >= 2:
-            self._can_run_executables.append('gles2/deqp-gles2')
-        if major >= 3:
-            self._can_run_executables.append('gles3/deqp-gles3')
-            if major > 3 or minor >= 1:
-                self._can_run_executables.append('gles31/deqp-gles31')
-
-        # If libvulkan is installed, then assume the board supports vulkan.
-        has_libvulkan = False
-        for libdir in ('/usr/lib', '/usr/lib64', '/usr/local/lib', '/usr/local/lib64'):
-            if os.path.exists(os.path.join(libdir, 'libvulkan.so')):
-                has_libvulkan = True
-
-        if (has_libvulkan and
-                os.path.exists('/usr/local/deqp/external/vulkancts/modules/vulkan/deqp-vk')):
-            self._can_run_executables.append('external/vulkancts/modules/vulkan/deqp-vk')
 
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
         # Valid choices are fbo and pbuffer. The latter avoids dEQP assumptions.
@@ -169,28 +143,22 @@ class graphics_dEQP(test.test):
         not_passing_cases.sort()
         return not_passing_cases
 
-    def _get_executable(self, name):
-        # Determine module from test_names or filter.
+    def _translate_name_to_api(self, name):
+        """Translate test_names or test_filter to api."""
         test_prefix = name.split('.')[0]
         if test_prefix in self.DEQP_MODULES:
-            module = self.DEQP_MODULES[test_prefix]
+            api = self.DEQP_MODULES[test_prefix]
         else:
             raise error.TestFail('Failed: Invalid test name: %s' % name)
+        return api
 
-        if module == 'vk':
-            executable = os.path.join(self.DEQP_BASEDIR,
-                    'external/vulkancts/modules/vulkan/deqp-vk')
-        else:
-            executable = os.path.join(os.path.join(self.DEQP_BASEDIR,
-                'modules', module, 'deqp-%s' % module))
+    def _get_executable(self, api):
+        """Return the executable path of the api."""
+        return self._api_helper.get_deqp_executable(api)
 
-        return executable
-
-    def _can_run(self, executable):
-        for bin in self._can_run_executables:
-            if bin in executable:
-                return True
-        return False
+    def _can_run(self, api):
+        """Check if specific api is supported in this board."""
+        return api in self._api_helper.get_supported_apis()
 
     def _bootstrap_new_test_cases(self, test_filter):
         """Ask dEQP for all test cases and removes non-Pass'ing ones.
@@ -204,8 +172,10 @@ class graphics_dEQP(test.test):
         @return: List of dEQP tests to run.
         """
         test_cases = []
-        executable = self._get_executable(test_filter)
-        if not self._can_run(executable):
+        api = self._translate_name_to_api(test_filter)
+        if self._can_run(api):
+            executable = self._get_executable(api)
+        else:
             return test_cases
 
         # Must be in the executable directory when running for it to find it's
@@ -266,14 +236,32 @@ class graphics_dEQP(test.test):
         test_cases.sort()
         return test_cases
 
+    def _get_test_cases_from_names_file(self):
+        # Assume master file comes with '-master.txt' suffix,
+        # Ex. gles2-master.txt, gles31-master.txt, vk-master.txt
+        basename = os.path.basename(self._test_names_file)
+        groups = re.match(r'(.*)-master\.txt$', basename)
+        if groups is None:
+            logging.warning('File name \'%s\' could not be recognized.' %
+                            basename)
+        else:
+            api = groups.group(1)
+            if not api in self._api_helper.get_supported_apis():
+                logging.warning('\'%s\' is not supported in this board' % api)
+                return []
+
+            file_path = os.path.join(self.bindir, self._test_names_file)
+            test_cases = [line.rstrip('\n') for line in open(file_path)]
+            return [test for test in test_cases if test and not test.isspace()]
+
     def _get_test_cases(self, test_filter, subset):
         """Gets the test cases for 'Pass', 'Fail' etc. expectations.
 
         This function supports bootstrapping of new GPU families and dEQP
         binaries. In particular if there are not 'Pass' expectations found for
         this GPU family it will query the dEQP executable for a list of all
-        available tests. It will then remove known non-'Pass'ing tests from this
-        list to avoid getting into hangs/crashes etc.
+        available tests. It will then remove known non-'Pass'ing tests from
+        this list to avoid getting into hangs/crashes etc.
 
         @param test_filter: string like 'dEQP-GLES2.info', 'dEQP-GLES3.stress'.
         @param subset: string from 'Pass', 'Fail', 'Timeout' etc.
@@ -323,23 +311,28 @@ class graphics_dEQP(test.test):
             result_prefix = os.path.join(self._log_path, test_case)
             log_file = '%s.log' % result_prefix
             debug_file = '%s.debug' % result_prefix
-            executable = self._get_executable(test_case)
-            command = ('%s '
-                       '--deqp-case=%s '
-                       '--deqp-surface-type=%s '
-                       '--deqp-gl-config-name=rgba8888d24s8ms0 '
-                       '--deqp-log-images=disable '
-                       '--deqp-watchdog=enable '
-                       '--deqp-surface-width=%d '
-                       '--deqp-surface-height=%d '
-                       '--deqp-log-filename=%s' % (executable, test_case,
-                                                   self._surface, width, height,
-                                                   log_file))
-
-            if not self._can_run(executable):
+            api = self._translate_name_to_api(test_case)
+            if not self._can_run(api):
                 result = 'Skipped'
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
             else:
+                executable = self._get_executable(api)
+                command = ('%s '
+                           '--deqp-case=%s '
+                           '--deqp-surface-type=%s '
+                           '--deqp-gl-config-name=rgba8888d24s8ms0 '
+                           '--deqp-log-images=disable '
+                           '--deqp-watchdog=enable '
+                           '--deqp-surface-width=%d '
+                           '--deqp-surface-height=%d '
+                           '--deqp-log-filename=%s' % (
+                               executable,
+                               test_case,
+                               self._surface,
+                               width,
+                               height,
+                               log_file)
+                           )
                 logging.debug('Running single: %s', command)
 
                 # Must be in the executable directory when running for it to find it's
@@ -441,33 +434,37 @@ class graphics_dEQP(test.test):
             batch_cases = '\n'.join(test_cases[batch:batch_to])
             # This assumes all tests in the batch are kicked off via the same
             # executable.
-            executable = self._get_executable(test_cases[batch])
-            command = ('%s '
-                       '--deqp-stdin-caselist '
-                       '--deqp-surface-type=%s '
-                       '--deqp-gl-config-name=rgba8888d24s8ms0 '
-                       '--deqp-log-images=disable '
-                       '--deqp-visibility=hidden '
-                       '--deqp-watchdog=enable '
-                       '--deqp-surface-width=%d '
-                       '--deqp-surface-height=%d ' % (executable, self._surface,
-                                                      width, height))
-
-            log_file = os.path.join(self._log_path,
-                                    '%s_hasty_%d.log' % (self._filter, batch))
-
-            command += '--deqp-log-filename=' + log_file
-
-            if not self._can_run(executable):
+            api = self._translate_name_to_api(test_cases[batch])
+            if not self._can_run(api):
                 logging.info('Skipping tests on %s: %s', self._gpu_type,
                              batch_cases)
             else:
+                executable = self._get_executable(api)
+                log_file = os.path.join(self._log_path,
+                                        '%s_hasty_%d.log' % (self._filter, batch))
+                command = ('%s '
+                           '--deqp-stdin-caselist '
+                           '--deqp-surface-type=%s '
+                           '--deqp-gl-config-name=rgba8888d24s8ms0 '
+                           '--deqp-log-images=disable '
+                           '--deqp-visibility=hidden '
+                           '--deqp-watchdog=enable '
+                           '--deqp-surface-width=%d '
+                           '--deqp-surface-height=%d '
+                           '--deqp-log-filename=%s' % (
+                               executable,
+                               self._surface,
+                               width,
+                               height,
+                               log_file)
+                           )
+
                 logging.info('Running tests %d...%d out of %d:\n%s\n%s',
                              batch + 1, batch_to, num_test_cases, command,
                              batch_cases)
 
-                # Must be in the executable directory when running for it to find it's
-                # test data files!
+                # Must be in the executable directory when running for it to
+                # find it's test data files!
                 os.chdir(os.path.dirname(executable))
 
                 try:
@@ -513,40 +510,29 @@ class graphics_dEQP(test.test):
             if not self._filter:
                 raise error.TestFail('Failed: No dEQP test filter specified')
 
-        # Some information to help postprocess logs into blacklists later.
+        # Some information to help post-process logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
         logging.info('ChromeOS CPU family = %s', self._cpu_type)
         logging.info('ChromeOS GPU family = %s', self._gpu_type)
 
         # Create a place to put detailed test output logs.
-        if self._filter:
-            logging.info('dEQP test filter = %s', self._filter)
-            self._log_path = os.path.join(tempfile.gettempdir(),
-                                          '%s-logs' % self._filter)
-        else:
-            base = os.path.basename(self._test_names_file)
-            # TODO(ihf): Clean this up.
-            logging.info('dEQP test filter = %s', os.path.splitext(base)[0])
-            self._log_path = os.path.join(tempfile.gettempdir(),
-                                          '%s-logs' % base)
+        filter_name = self._filter or os.path.basename(self._test_names_file)
+        logging.info('dEQP test filter = %s', filter_name)
+        self._log_path = os.path.join(tempfile.gettempdir(), '%s-logs' %
+                                                             filter_name)
         shutil.rmtree(self._log_path, ignore_errors=True)
         os.mkdir(self._log_path)
 
         self._services.stop_services()
+        # Load either tests specified by test_names_file, test_names or filter.
+        test_cases = []
         if self._test_names_file:
-            test_cases = [
-                line.rstrip('\n')
-                for line in open(
-                    os.path.join(self.bindir, self._test_names_file))
-            ]
-            test_cases = [
-                test for test in test_cases if test and not test.isspace()
-            ]
-        if self._test_names:
+            test_cases = self._get_test_cases_from_names_file()
+        elif self._test_names:
             test_cases = []
             for name in self._test_names.split(','):
                 test_cases.extend(self._get_test_cases(name, 'Pass'))
-        if self._filter:
+        elif self._filter:
             test_cases = self._get_test_cases(self._filter,
                                               options['subset_to_run'])
 
@@ -592,17 +578,7 @@ class graphics_dEQP(test.test):
                 'subset_to_run'] != 'NotPass':
             logging.warning('No test cases found for filter: %s!', self._filter)
 
-        if options['subset_to_run'] == 'NotPass':
-            if test_passes:
-                # TODO(ihf): Make this an annotated TestPass once available.
-                raise error.TestWarn(
-                    '%d formerly failing tests are passing now.' % test_passes)
-        elif test_failures:
-            # TODO(ihf): Delete this once hasty expectations have been
-            # checked in.
-            if self._gpu_type.startswith('tegra'):
-                raise error.TestWarn('Failed: on %s %d/%d tests failed.' % (
-                                     self._gpu_type, test_failures, test_count))
+        if test_failures:
             raise error.TestFail('Failed: on %s %d/%d tests failed.' %
                                  (self._gpu_type, test_failures, test_count))
         if test_skipped > 0:
