@@ -427,7 +427,8 @@ class power_LoadTest(test.test):
             if self._gaia_login:
                 self.output_perf_value(description='minutes_battery_life',
                                        value=keyvals['minutes_battery_life'],
-                                       units='minutes')
+                                       units='minutes',
+                                       higher_is_better=True)
 
         if not self._gaia_login:
             keyvals = dict(map(lambda (key, value):
@@ -437,8 +438,9 @@ class power_LoadTest(test.test):
                 if key.startswith('percent_cpuidle') and \
                    key.endswith('C0_time'):
                     self.output_perf_value(description=key,
-                                       value=value,
-                                        units='percent')
+                                           value=value,
+                                           units='percent',
+                                           higher_is_better=False)
 
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
