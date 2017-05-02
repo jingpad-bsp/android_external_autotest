@@ -53,7 +53,7 @@ _BUG_TEMPLATE = {
     'title': None,
 }
 
-args_dict['max_runtime_mins'] = 60
+args_dict['max_runtime_mins'] = 90
 args_dict['name'] = 'bvt-cq'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
