@@ -1123,3 +1123,72 @@ class GraphicsStateChecker(object):
     def get_memory_keyvals(self):
         """ Returns memory stats. """
         return self.graphics_kernel_memory.get_memory_keyvals()
+
+class GraphicsApiHelper(object):
+    """
+    Report on the available graphics APIs.
+    Ex. gles2, gles3, gles31, and vk
+    """
+    _supported_apis = []
+
+    DEQP_BASEDIR = os.path.join('/usr', 'local', 'deqp')
+    DEQP_EXECUTABLE = {
+        'gles2': os.path.join('modules', 'gles2', 'deqp-gles2'),
+        'gles3': os.path.join('modules', 'gles3', 'deqp-gles3'),
+        'gles31': os.path.join('modules', 'gles31', 'deqp-gles31'),
+        'vk': os.path.join('external', 'vulkancts', 'modules',
+                           'vulkan', 'deqp-vk')
+    }
+
+    def __init__(self):
+        # Determine which executable should be run. Right now never egl.
+        major, minor = get_gles_version()
+        logging.info('Found gles%d.%d.', major, minor)
+        if major is None or minor is None:
+            raise error.TestFail(
+                'Failed: Could not get gles version information (%d, %d).' %
+                (major, minor)
+            )
+        if major >= 2:
+            self._supported_apis.append('gles2')
+        if major >= 3:
+            self._supported_apis.append('gles3')
+            if major > 3 or minor >= 1:
+                self._supported_apis.append('gles31')
+
+        # If libvulkan is installed, then assume the board supports vulkan.
+        has_libvulkan = False
+        for libdir in ('/usr/lib', '/usr/lib64',
+                       '/usr/local/lib', '/usr/local/lib64'):
+            if os.path.exists(os.path.join(libdir, 'libvulkan.so')):
+                has_libvulkan = True
+
+        if has_libvulkan:
+            executable_path = os.path.join(
+                self.DEQP_BASEDIR,
+                self.DEQP_EXECUTABLE['vk']
+            )
+            if os.path.exists(executable_path):
+                self._supported_apis.append('vk')
+            else:
+                logging.warning('Found libvulkan.so but did not find deqp-vk '
+                                'binary for testing.')
+
+    def get_supported_apis(self):
+        """Return the list of supported apis. eg. gles2, gles3, vk etc.
+        @returns: a copy of the supported api list will be returned
+        """
+        return list(self._supported_apis)
+
+    def get_deqp_executable(self, api):
+        """Return the path to the api executable."""
+        if api not in self.DEQP_EXECUTABLE:
+            raise KeyError(
+                "%s is not a supported api for GraphicsApiHelper." % api
+            )
+
+        executable = os.path.join(
+            self.DEQP_BASEDIR,
+            self.DEQP_EXECUTABLE[api]
+        )
+        return executable

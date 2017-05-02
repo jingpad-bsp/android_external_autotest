@@ -55,7 +55,7 @@ tests = [
     Test('dEQP-GLES31-master',     Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles31-master', test_file=GLES31_MASTER_FILE),
     Test('dEQP-GLES31.info',       Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
     Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-VK-master',         Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE),
+    Test('dEQP-VK-master',         Suite.none,  shards=1,  hasty=False, time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE),
     Test('dEQP-VK-master',         Suite.daily, shards=10, hasty=True,  time='FAST',     tag='vk-master',     test_file=VK_MASTER_FILE),
     Test('dEQP-VK.api',            Suite.none,  shards=1,  hasty=True,  time='LONG',     tag=None,            test_file=None),
     Test('dEQP-VK.api.smoke',      Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
@@ -102,8 +102,10 @@ job.run_test('graphics_dEQP',{% if tag != None %}
 #to reduce testing time. Unfortunately this is less robust and
 #can lead to spurious failures.
 
+
 def get_controlfilename(test, shard=0):
     return 'control.%s' % get_name(test, shard)
+
 
 def get_attributes(test):
     if test.suite == Suite.bvtcq:
@@ -114,8 +116,10 @@ def get_attributes(test):
         return ATTRIBUTES_DAILY
     return ''
 
+
 def get_time(test):
     return test.time
+
 
 def get_name(test, shard):
     name = test.filter.replace('dEQP-', '', 1).lower()
@@ -125,13 +129,16 @@ def get_name(test, shard):
         name = '%s.%d' % (name, shard)
     return name
 
+
 def get_testname(test, shard=0):
     return 'graphics_dEQP.%s' % get_name(test, shard)
+
 
 def write_controlfile(filename, content):
     print 'Writing %s.' % filename
     with open(filename, 'w+') as f:
         f.write(content)
+
 
 def write_controlfiles(test):
     attributes = get_attributes(test)
@@ -141,18 +148,19 @@ def write_controlfiles(test):
         testname = get_testname(test, shard)
         filename = get_controlfilename(test, shard)
         content = CONTROLFILE_TEMPLATE.render(
-                testname=testname,
-                attributes=attributes,
-                time=time,
-                filter=test.filter,
-                subset='Pass',
-                hasty=test.hasty,
-                shard=shard,
-                shards=test.shards,
-                test_file=test.test_file,
-                tag=test.tag
+            testname=testname,
+            attributes=attributes,
+            time=time,
+            filter=test.filter,
+            subset='Pass',
+            hasty=test.hasty,
+            shard=shard,
+            shards=test.shards,
+            test_file=test.test_file,
+            tag=test.tag
         )
         write_controlfile(filename, content)
+
 
 def main():
     for test in tests:
@@ -160,4 +168,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
