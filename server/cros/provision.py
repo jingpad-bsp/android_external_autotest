@@ -165,7 +165,6 @@ class _SpecialTaskAction(object):
 
         @param label: The label as a string.
         @returns: True if there exists a test to run for this label.
-
         """
         action = _get_label_action(label)
         return action.name in cls._actions
@@ -230,9 +229,11 @@ class _SpecialTaskAction(object):
             name, _, value = label.partition(':')
             split_configurations[name] = value
 
-        sort_key = (lambda config:
-                (cls._priorities.index(config[0])
-                 if (config[0] in cls._priorities) else sys.maxint))
+        def sort_key(config):
+            if config[0] in cls._priorities:
+                return cls._priorities.index(config[0])
+            else:
+                return sys.maxint
         return sorted(split_configurations.items(), key=sort_key)
 
 
