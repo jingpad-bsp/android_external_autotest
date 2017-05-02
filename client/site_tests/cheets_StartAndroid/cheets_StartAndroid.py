@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.bin import test
 
 
-class cheets_CTSHelper(test.test):
+class cheets_StartAndroid(test.test):
     """Helper to run Android's CTS on autotest.
 
     Android CTS needs a running Android, which depends on a logged in ChromeOS
@@ -25,7 +25,7 @@ class cheets_CTSHelper(test.test):
             # Run stress test by logging in and starting ARC several times.
             # Each iteration is about 15s on Samus.
             for i in range(count):
-                logging.info('cheets_CTSHelper iteration %d', i)
+                logging.info('cheets_StartAndroid iteration %d', i)
                 with chrome.Chrome(
                         arc_mode=arc.arc_common.ARC_MODE_ENABLED,
                         dont_override_profile=dont_override_profile) as _:
@@ -40,7 +40,7 @@ class cheets_CTSHelper(test.test):
             except:
                 # We are going to paper over some failures here. Notice these
                 # should still be detected by regularly running
-                # cheets_CTSHelper.stress.
+                # cheets_StartAndroid.stress.
                 logging.error('Could not start Chrome. Retrying soon...')
                 # Give system a chance to calm down.
                 time.sleep(20)
