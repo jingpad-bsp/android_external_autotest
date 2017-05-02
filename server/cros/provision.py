@@ -195,8 +195,8 @@ class _SpecialTaskAction(object):
                   labels, and the second element is a set of the actionable
                   labels.
         """
-        capabilities = set()
-        configurations = set()
+        unactionable = set()
+        actionable = set()
 
         for label in labels:
             if label == SKIP_PROVISION:
@@ -204,19 +204,19 @@ class _SpecialTaskAction(object):
                 # It doesn't need any handling.
                 continue
             elif cls.acts_on(label):
-                configurations.add(label)
+                actionable.add(label)
             else:
-                capabilities.add(label)
+                unactionable.add(label)
 
-        return capabilities, configurations
+        return unactionable, actionable
 
 
     @classmethod
-    def sort_configurations(cls, configurations):
+    def sort_actionable_labels(cls, labels):
         """
         Sort configurations based on the priority defined in cls._priorities.
 
-        @param configurations: A list of actionable labels.
+        @param labels: A list of actionable labels.
 
         @return: A sorted list of tuple of (label_prefix, value), the tuples are
                 sorted based on the label_prefix's index in cls._priorities.
@@ -226,7 +226,7 @@ class _SpecialTaskAction(object):
         # For example, label 'cros-version:lumpy-release/R28-3993.0.0' is split
         # to  {'cros-version': 'lumpy-release/R28-3993.0.0'}
         split_configurations = dict()
-        for label in configurations:
+        for label in labels:
             name, _, value = label.partition(':')
             split_configurations[name] = value
 
@@ -385,15 +385,15 @@ def run_special_task_actions(job, host, labels, task):
     @raises: SpecialTaskActionException if a test fails.
 
     """
-    capabilities, configurations = task.partition(labels)
+    unactionable, actionable = task.partition(labels)
 
-    for label in capabilities:
+    for label in unactionable:
         job.record('INFO', None, task.name,
                    "Can't %s label '%s'." % (task.name, label))
 
     # Sort the configuration labels based on `task._priorities`.
-    sorted_configurations = task.sort_configurations(configurations)
-    for name, value in sorted_configurations:
+    sorted_actionable = task.sort_actionable_labels(actionable)
+    for name, value in sorted_actionable:
         action_item = task.action_for(name)
         success = action_item.execute(job=job, host=host, value=value)
         if not success:
