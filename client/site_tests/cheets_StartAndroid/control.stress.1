@@ -7,7 +7,7 @@ AUTHOR = "ARC Team"
 # Do not remove any of these suites without wider discussion as it will cause
 # instability in the testing lab.
 ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq, suite:bvt-inline"
-NAME = "cheets_CTSHelper.stress.2"
+NAME = "cheets_StartAndroid.stress.1"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "login"
@@ -19,4 +19,4 @@ the Android container. If this test is flaky every Android based test will be
 flaky as well.
 """
 
-job.run_test('cheets_CTSHelper', count=10, tag='stress')
+job.run_test('cheets_StartAndroid', count=10, tag='stress')

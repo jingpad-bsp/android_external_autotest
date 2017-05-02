@@ -4,7 +4,7 @@
 #
 
 AUTHOR = "ARC Team"
-NAME = "cheets_CTSHelper"
+NAME = "cheets_StartAndroid"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
@@ -16,4 +16,4 @@ This is a helper utility to log-in Chrome for CTS.
 See also cheets_CTS for more details.
 """
 
-job.run_test('cheets_CTSHelper')
+job.run_test('cheets_StartAndroid')
