@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import time
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest, test
 
 LINE_STATUS_WAIT_TIME = 5
@@ -32,7 +33,8 @@ class power_RPMTest(test.test):
 
         if self._verify:
             time.sleep(LINE_STATUS_WAIT_TIME)
-            self._host_at.run_test('power_CheckAC', power_on=power_on)
+            if not self._host_at.run_test('power_CheckAC', power_on=power_on):
+                raise error.TestError('power_CheckAC failed')
 
 
     def run_once(self, power_sequence=[True]):
