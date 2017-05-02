@@ -5,7 +5,7 @@
 
 AUTHOR = "ARC Team"
 ATTRIBUTES = "suite:smoke"
-NAME = "cheets_CTSHelper.smoke"
+NAME = "cheets_StartAndroid.smoke"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
@@ -15,4 +15,4 @@ DOC = """
 This test verifies in the VM a single login to the browser and start of ARC.
 """
 
-job.run_test('cheets_CTSHelper', count=1, tag='sanity')
+job.run_test('cheets_StartAndroid', count=1, tag='sanity')
