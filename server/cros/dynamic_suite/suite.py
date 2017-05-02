@@ -527,6 +527,24 @@ class _ControlFileRetriever(object):
         self._test_args = test_args
 
 
+    def retrieve(self, test_name):
+        """Retrieve a test's control data.
+
+        This ignores forgiving_parser because we cannot return a
+        forgiving value.
+
+        @param test_name: Name of test to retrieve.
+
+        @raises ControlVariableException: There is a syntax error in a
+                                          control file.
+
+        @returns a ControlData object
+        """
+        path = self._cf_getter.get_control_file_path(test_name)
+        text = self._cf_getter.get_control_file_contents(path)
+        return self._parse_cf_text(path, text)
+
+
     def retrieve_for_suite(self, suite_name=''):
         """Scan through all tests and find all tests.
 
@@ -600,6 +618,9 @@ class _ControlFileRetriever(object):
         @param path: path to control file
         @param text: control file text contents
         @returns: a ControlData object
+
+        @raises ControlVariableException: There is a syntax error in a
+                                          control file.
         """
         test = control_data.parse_control_string(
                 text, raise_warnings=True, path=path)
