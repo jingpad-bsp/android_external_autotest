@@ -63,10 +63,7 @@ class security_AccountsBaseline(test.test):
 
         # TODO(spang): Remove this once per-board baselines are supported
         # (crbug.com/406013).
-        if utils.is_freon():
-            extra_baseline = 'baseline.%s.freon' % basename
-        else:
-            extra_baseline = 'baseline.%s.x11' % basename
+        extra_baseline = 'baseline.%s.freon' % basename
 
         expected_entries += self.load_path(
             os.path.join(self.bindir, extra_baseline))
