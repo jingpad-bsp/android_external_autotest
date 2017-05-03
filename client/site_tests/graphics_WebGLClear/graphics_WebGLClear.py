@@ -42,15 +42,7 @@ class graphics_WebGLClear(test.test):
 
     def cleanup(self):
         if self.GSC:
-            keyvals = self.GSC.get_memory_keyvals()
-            for key, val in keyvals.iteritems():
-                self.output_perf_value(
-                    description=key,
-                    value=val,
-                    units='bytes',
-                    higher_is_better=False)
             self.GSC.finalize()
-            self.write_perf_keyval(keyvals)
 
     def run_clear_test(self, browser, test_url):
         """Runs the clear test from the given url.

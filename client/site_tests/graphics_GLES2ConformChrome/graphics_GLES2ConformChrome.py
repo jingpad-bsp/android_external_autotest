@@ -25,12 +25,7 @@ class graphics_GLES2ConformChrome(chrome_binary_test.ChromeBinaryTest):
     def cleanup(self):
         super(graphics_GLES2ConformChrome, self).cleanup()
         if self.GSC:
-            keyvals = self.GSC.get_memory_keyvals()
-            for key, val in keyvals.iteritems():
-                self.output_perf_value(description=key, value=val,
-                                       units='bytes', higher_is_better=False)
             self.GSC.finalize()
-            self.write_perf_keyval(keyvals)
 
     def run_once(self):
         # TODO(ihf): Remove this once GLES2ConformChrome works on freon.
