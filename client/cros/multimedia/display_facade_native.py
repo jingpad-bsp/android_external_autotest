@@ -125,28 +125,6 @@ class DisplayFacadeNative(object):
                 % {'index': display_index}, timeout=timeout)
 
 
-    def _evaluate_display_expression(self, expression, display_index):
-        """Evaluate an expression on Chrome display settings page.
-
-        The result of the expression is obtained from
-        chrome://settings-frame/display via telemetry.
-
-        @param expression: Javascript expression.
-        @param display_index: index of the display to get modes from.
-
-        @return: A object of the result.
-
-        @raise TimeoutException when the operation is timed out.
-        """
-        try:
-            tab_descriptor = self.load_url('chrome://settings-frame/display')
-            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
-            self._wait_for_display_options_to_appear(tab, display_index)
-            return tab.EvaluateJavaScript(expression % {'index': display_index})
-        finally:
-            self.close_tab(tab_descriptor)
-
-
     def get_display_modes(self, display_index):
         """Gets all the display modes for the specified display.
 
@@ -154,10 +132,7 @@ class DisplayFacadeNative(object):
 
         @return: A list of DisplayMode dicts.
         """
-        return self._evaluate_display_expression(
-                "options.DisplayOptions.instance_"
-                "         .displays_[%(index)d].resolutions",
-                display_index)
+        return self.get_display_info()[display_index]['modes']
 
 
     def get_display_rotation(self, display_index):
@@ -167,10 +142,7 @@ class DisplayFacadeNative(object):
 
         @return: Degree of rotation.
         """
-        return self._evaluate_display_expression(
-                "options.DisplayOptions.instance_"
-                "         .displays_[%(index)d].rotation",
-                display_index)
+        return self.get_display_info()[display_index]['rotation']
 
 
     def set_display_rotation(self, display_index, rotation,
@@ -209,23 +181,11 @@ class DisplayFacadeNative(object):
 
         @return a list of (width, height) tuples.
         """
-        # Start from M38 (refer to http://codereview.chromium.org/417113012),
-        # a DisplayMode dict contains 'originalWidth'/'originalHeight'
-        # in addition to 'width'/'height'.
-        # OriginalWidth/originalHeight is what is supported by the display
-        # while width/height is what is shown to users in the display setting.
         modes = self.get_display_modes(display_index)
-        if modes:
-            if 'originalWidth' in modes[0]:
-                # M38 or newer
-                # TODO(tingyuan): fix loading image for cases where original
-                #                 width/height is different from width/height.
-                return list(set([(mode['originalWidth'], mode['originalHeight'])
-                        for mode in modes]))
-
-        # pre-M38
-        return [(mode['width'], mode['height']) for mode in modes
-                if 'scale' not in mode]
+        if 'widthInNativePixels' not in modes[0]:
+            raise RuntimeError('Cannot find widthInNativePixels attribute')
+        return list(set([(mode['widthInNativePixels'],
+                          mode['heightInNativePixels']) for mode in modes]))
 
 
     def get_first_external_display_index(self):
