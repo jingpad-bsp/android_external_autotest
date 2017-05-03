@@ -28,6 +28,7 @@ class graphics_Sanity(test.test):
 
     # None-init vars used by cleanup() here, in case setup() fails
     _services = None
+    _failures = 0
 
 
     def setup(self):
@@ -38,11 +39,19 @@ class graphics_Sanity(test.test):
         # If UI is running, we must stop it and restore later.
         self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
+        self._failures = 0
 
 
     def cleanup(self):
         if self._services:
           self._services.restore_services()
+
+        self.output_perf_value(
+            description='Failures',
+            value=self._failures,
+            units='count',
+            higher_is_better=False
+        )
 
 
     def run_once(self):
@@ -53,6 +62,7 @@ class graphics_Sanity(test.test):
         if graphics_utils.get_display_resolution() is None:
             logging.warning('Skipping test because there is no screen')
             return
+        self._failures += 1
 
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -97,3 +107,5 @@ class graphics_Sanity(test.test):
         diff_cmd = 'perceptualdiff -verbose %s %s'
         utils.system(diff_cmd % (screenshot1_reference, screenshot1_resized))
         utils.system(diff_cmd % (screenshot2_reference, screenshot2_resized))
+
+        self._failures -= 1
