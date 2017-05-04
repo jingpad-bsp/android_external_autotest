@@ -77,20 +77,19 @@ class performance_InboxInputLatency(test.test):
         self.tab.WaitForJavaScriptCondition(button_query + '.length == 1',
                                             timeout=_SCRIPT_TIMEOUT)
 
-        query = ('x=%s[0]; function getRect(r) { '
-                 'return {left: r.left, top: r.top,'
-                 '  width: r.width, height: r.height}};'
-                 'getRect(x.getBoundingClientRect());' % button_query)
+        query = ('(function(element) {'
+                 '  var rect = element.getBoundingClientRect();'
+                 '  return {left: rect.left, top: rect.top,'
+                 '          width: rect.width, height: rect.height};'
+                 ' })(%s[0]);' % button_query)
         target = self.tab.EvaluateJavaScript(query)
         logging.info(target)
 
-        query = ('function getDocumentRect() {'
-                 '  r = document.body.getBoundingClientRect();'
-                 '  return {'
-                 '    width: r.width,'
-                 '    height: r.height'
-                 '  };'
-                 '}; getDocumentRect();')
+        query = ('(function(element) {'
+                 '  var rect = element.getBoundingClientRect();'
+                 '  return {width: rect.width,'
+                 '          height: rect.height};'
+                 ' })(document.body);')
         window = self.tab.EvaluateJavaScript(query)
         logging.info(window)
 
