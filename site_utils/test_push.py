@@ -60,7 +60,6 @@ BUILD_REGEX = 'R[\d]+-[\d]+\.[\d]+\.[\d]+'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
-AU_SUITE = 'paygen_au_beta'
 TESTBED_SUITE = 'testbed_push'
 # TODO(shuqianz): Dynamically get android build after crbug.com/646068 fixed
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
@@ -95,11 +94,6 @@ EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
                                'dummy_Fail.Crash':   'GOOD',
                                'dummy_Fail.Error':   'ERROR',
                                'dummy_Fail.NAError': 'TEST_NA',}
-
-EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_beta_delta.*': 'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_beta_full.*':  'GOOD',
-         }
 
 EXPECTED_TEST_RESULTS_TESTBED = {'^SERVER_JOB$':      'GOOD',
                                  'testbed_DummyTest': 'GOOD',}
@@ -406,7 +400,7 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
     # therefore, skip verifying dut build for jobs running in shard.
     build_expected = (arguments.android_build if testbed_test
                       else arguments.build)
-    if suite_name != AU_SUITE and not use_shard and not testbed_test:
+    if not use_shard and not testbed_test:
         check_dut_image(build_expected, suite_job_id)
 
     # Verify test results are the expected results.
@@ -592,21 +586,11 @@ def main():
         push_to_prod_suite.daemon = use_daemon
         push_to_prod_suite.start()
 
-        # TODO(dshi): Remove following line after crbug.com/267644 is fixed.
-        # Also, merge EXPECTED_TEST_RESULTS_AU to EXPECTED_TEST_RESULTS
-        # AU suite will be on shard until crbug.com/634049 is fixed.
-        au_suite = multiprocessing.Process(
-                target=test_suite_wrapper,
-                args=(queue, AU_SUITE, EXPECTED_TEST_RESULTS_AU,
-                      arguments, True))
-        au_suite.daemon = use_daemon
-        au_suite.start()
-
         # suite test with --create_and_return flag
         asynchronous_suite = multiprocessing.Process(
                 target=test_suite_wrapper,
                 args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
-                      arguments, False, True))
+                      arguments, True, True))
         asynchronous_suite.daemon = True
         asynchronous_suite.start()
 
@@ -618,15 +602,15 @@ def main():
         testbed_suite.daemon = use_daemon
         testbed_suite.start()
 
-        while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
-               asynchronous_suite.is_alive() or testbed_suite.is_alive()):
+        while (push_to_prod_suite.is_alive()
+               or asynchronous_suite.is_alive()
+               or testbed_suite.is_alive()):
             check_queue(queue)
             time.sleep(5)
 
         check_queue(queue)
 
         push_to_prod_suite.join()
-        au_suite.join()
         asynchronous_suite.join()
         testbed_suite.join()
 
