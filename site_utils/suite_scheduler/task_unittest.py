@@ -81,6 +81,28 @@ class TaskCreateTest(TaskTestBase):
         self.assertFalse(new_task._FitsSpec('12'))
 
 
+    def testCreateFromConfigCheckBoards(self):
+        """Ensure a CrOS Task can be built from a correct config boards."""
+        board_whitelist = 'board2,board3'
+        board_lists = {self._BOARD: board_whitelist}
+        keyword, new_task = task.Task.CreateFromConfigSection(
+                self.config, self._TASK_NAME, board_lists=board_lists)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEquals(new_task.boards,
+                          set([x.strip() for x in board_whitelist.split(',')]))
+
+
+    def testCreateFromConfigCheckNonExistBoards(self):
+        """Ensure a CrOS Task can be built if board_list is not specified."""
+        board_whitelist = 'board2,board3'
+        board_lists = {'test-%s' % self._BOARD: board_whitelist}
+        keyword, new_task = task.Task.CreateFromConfigSection(
+                self.config, self._TASK_NAME, board_lists=board_lists)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEquals(new_task.boards,
+                          set([x.strip() for x in self._BOARD.split(',')]))
+
+
     def testCreateFromConfigEqualBranch(self):
         """Ensure a Task can be built from a correct config with support of
         branch_specs: ==RXX."""
