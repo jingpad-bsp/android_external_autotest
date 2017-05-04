@@ -75,8 +75,10 @@ class _CtrlDBypasser(_BaseFwBypasser):
         self.servo.switch_usbkey('host')
         time.sleep(self.faft_config.usb_plug)
         self.servo.switch_usbkey('dut')
+        logging.info('Enabled dut_sees_usb')
         if not self.client_host.ping_wait_up(
                 timeout=self.faft_config.delay_reboot_to_ping):
+            logging.info('ping timed out, try REC_ON')
             psc = self.servo.get_power_state_controller()
             psc.power_on(psc.REC_ON)
 
