@@ -32,7 +32,7 @@ long_options[] = {
 
 int RunTest(V4L2Device* device, V4L2Device::IOMethod io,
             uint32_t buffers, uint32_t capture_time_in_sec, uint32_t width,
-            uint32_t height, uint32_t pixfmt, uint32_t fps) {
+            uint32_t height, uint32_t pixfmt, float fps) {
   int32_t retcode = 0;
   if (!device->InitDevice(io, width, height, pixfmt, fps))
     retcode = 1;
@@ -84,7 +84,7 @@ bool GetSupportedFormats(
       };
 
       format.frame_rates.clear();
-      uint32_t frame_rate;
+      float frame_rate;
       for (uint32_t k = 0; k < num_frame_rate; ++k) {
         if (!device->GetFrameInterval(k, format.fourcc, format.width,
                                       format.height, &frame_rate)) {
@@ -92,7 +92,7 @@ bool GetSupportedFormats(
           return false;
         };
         // All supported resolution should have at least 1 fps.
-        if (frame_rate == 0) {
+        if (frame_rate < 1.0) {
           printf("[Error] Frame rate should be at least 1.\n");
           return false;
         }
@@ -137,7 +137,7 @@ bool TestIO(const std::string& dev_name) {
   uint32_t width = 640;
   uint32_t height = 480;
   uint32_t pixfmt = V4L2_PIX_FMT_YUYV;
-  uint32_t fps = 30;
+  float fps = 30.0;
   uint32_t time_to_capture = 3;  // The unit is second.
   bool check_1280x960 = false;
 
@@ -188,13 +188,13 @@ bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
   SupportedFormat max_resolution = GetMaximumResolution(supported_formats);
 
   SupportedFormats required_resolutions;
-  required_resolutions.push_back(SupportedFormat(320, 240, 0, 30));
-  required_resolutions.push_back(SupportedFormat(640, 480, 0, 30));
-  required_resolutions.push_back(SupportedFormat(1280, 720, 0, 30));
-  required_resolutions.push_back(SupportedFormat(1920, 1080, 0, 30));
-  required_resolutions.push_back(SupportedFormat(1600, 1200, 0, 30));
+  required_resolutions.push_back(SupportedFormat(320, 240, 0, 30.0));
+  required_resolutions.push_back(SupportedFormat(640, 480, 0, 30.0));
+  required_resolutions.push_back(SupportedFormat(1280, 720, 0, 30.0));
+  required_resolutions.push_back(SupportedFormat(1920, 1080, 0, 30.0));
+  required_resolutions.push_back(SupportedFormat(1600, 1200, 0, 30.0));
   if (check_1280x960) {
-    required_resolutions.push_back(SupportedFormat(1280, 960, 0, 30));
+    required_resolutions.push_back(SupportedFormat(1280, 960, 0, 30.0));
   }
 
   for (const auto& test_resolution : required_resolutions) {
@@ -222,9 +222,9 @@ bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
       if (RunTest(device.get(), io, buffers, time_to_capture,
             test_format->width, test_format->height, test_format->fourcc,
             frame_rate)) {
-        printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
-            test_format->width, test_format->height, test_format->fourcc,
-            dev_name.c_str());
+        printf("[Error] Could not capture frames for %dx%d (%08X) %.2f fps in "
+            "%s\n", test_format->width, test_format->height,
+            test_format->fourcc, frame_rate, dev_name.c_str());
         return false;
       }
 
@@ -234,9 +234,9 @@ bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
           test_format->height != fmt.fmt.pix.height ||
           test_format->fourcc != fmt.fmt.pix.pixelformat ||
           frame_rate != device->GetFrameRate()) {
-        printf("[Error] Capture test %dx%d (%08X) failed in %s\n",
+        printf("[Error] Capture test %dx%d (%08X) %.2f fps failed in %s\n",
             test_format->width, test_format->height, test_format->fourcc,
-            dev_name.c_str());
+            frame_rate, dev_name.c_str());
       }
     }
     if (!frame_rate_tested) {
