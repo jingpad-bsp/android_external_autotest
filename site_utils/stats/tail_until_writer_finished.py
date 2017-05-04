@@ -1,4 +1,4 @@
-#!/usr/bin/env python2 -u
+#!/usr/bin/env python2
 
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -60,6 +60,7 @@ def TailFile(path, sleep_interval, chunk_size,
         """
         for chunk in iter(lambda: fh.read(chunk_size), b''):
             print(chunk, end='', file=outfile)
+            outfile.flush()
 
     with WriterClosedFile(path) as IsClosed:
         with open(path) as fh:
