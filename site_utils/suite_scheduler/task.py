@@ -148,7 +148,7 @@ class Task(object):
 
 
     @staticmethod
-    def CreateFromConfigSection(config, section):
+    def CreateFromConfigSection(config, section, board_lists={}):
         """Create a Task from a section of a config file.
 
         The section to parse should look like this:
@@ -174,6 +174,7 @@ class Task(object):
 
         @param config: a ForgivingConfigParser.
         @param section: the section to parse into a Task.
+        @param board_lists: a dict including all board whitelist for tasks.
         @return keyword, Task object pair.  One or both will be None on error.
         @raise MalformedConfigEntry if there's a problem parsing |section|.
         """
@@ -299,6 +300,20 @@ class Task(object):
                         board_name, board_name)
                 boards += '%s,' % board_name
             boards = boards.strip(',')
+        elif os_type == OS_TYPE_CROS:
+            if board_lists:
+                if boards not in board_lists:
+                    logging.debug(
+                            'The board_list name %s does not exist in '
+                            'section board_lists in config.', boards)
+                    # TODO(xixuan): Raise MalformedConfigEntry when a CrOS task
+                    # specify a 'boards' which is not defined in board_lists.
+                    # Currently exception won't be raised to make sure suite
+                    # scheduler keeps running when developers are in the middle
+                    # of migrating boards.
+                else:
+                    boards = board_lists[boards]
+
 
         return keyword, Task(section, suite, specs, pool, num, boards,
                              priority, timeout,

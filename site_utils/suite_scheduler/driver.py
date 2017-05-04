@@ -22,6 +22,9 @@ except ImportError:
 
 POOL_SIZE = 32
 
+BOARD_WHITELIST_SECTION = 'board_lists'
+PRE_SECTIONS = [BOARD_WHITELIST_SECTION]
+
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
 
@@ -76,6 +79,26 @@ class Driver(object):
         self._events = self._CreateEventsWithTasks(config, mv)
 
 
+    def _ReadBoardWhitelist(self, config):
+        """Read board whitelist from config and save as dict.
+
+        @param config: an instance of ForgivingConfigParser.
+        """
+        board_lists = {}
+        if BOARD_WHITELIST_SECTION not in config.sections():
+            return board_lists
+
+        for option in config.options(BOARD_WHITELIST_SECTION):
+            if option in board_lists:
+                raise task.MalformedConfigEntry(
+                        'Board list name must be unique.')
+            else:
+                board_lists[option] = config.getstring(
+                        BOARD_WHITELIST_SECTION, option)
+
+        return board_lists
+
+
     def _CreateEventsWithTasks(self, config, mv):
         """Create task lists from config, and assign to newly-minted events.
 
@@ -109,12 +132,14 @@ class Driver(object):
         @return dict of {event_keyword: [tasks]} mappings.
         @raise MalformedConfigEntry on a task parsing error.
         """
+        board_lists = self._ReadBoardWhitelist(config)
         tasks = {}
         for section in config.sections():
-            if not base_event.HonoredSection(section):
+            if (not base_event.HonoredSection(section) and
+                section not in PRE_SECTIONS):
                 try:
                     keyword, new_task = task.Task.CreateFromConfigSection(
-                            config, section)
+                            config, section, board_lists=board_lists)
                 except task.MalformedConfigEntry as e:
                     logging.warning('%s is malformed: %s', section, str(e))
                     continue
