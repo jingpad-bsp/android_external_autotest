@@ -1952,6 +1952,24 @@ class ImageServer(ImageServerBase):
 
         return '(0) Unknown exception'
 
+
+    def _check_error_message(self, error_patterns_to_check, error_msg):
+        """Detect whether specific error pattern exist in error message.
+
+        @param error_patterns_to_check: the error patterns to check
+        @param error_msg: the error message which may include any error
+                          pattern.
+
+        @return A boolean variable, True if error_msg contains any error
+            pattern in error_patterns_to_check, False otherwise.
+        """
+        for err in error_patterns_to_check:
+            if err in error_msg:
+                return True
+
+        return False
+
+
     def _is_retryable(self, error_msg):
         """Detect whether we will retry auto-update based on error_msg.
 
@@ -1963,13 +1981,14 @@ class ImageServer(ImageServerBase):
         # For now we just hard-code the error message we think it's suspicious.
         # When we get more date about what's the json response when devserver
         # is overloaded, we can update this part.
-        retryable_errors = ['No JSON object could be decoded',
-                            'is not pingable']
-        for err in retryable_errors:
-            if err in error_msg:
-                return True
+        retryable_error_patterns = ['No JSON object could be decoded',
+                                    'is not pingable']
+        return self._check_error_message(retryable_error_patterns, error_msg)
 
-        return False
+
+    def _should_use_original_payload(self, error_msg):
+        devserver_error_patterns = ['DevserverCannotStartError']
+        return self._check_error_message(devserver_error_patterns, error_msg)
 
 
     def _parse_buildname_safely(self, build_name):
@@ -1993,7 +2012,7 @@ class ImageServer(ImageServerBase):
     def auto_update(self, host_name, build_name, original_board=None,
                     original_release_version=None, log_dir=None,
                     force_update=False, full_update=False,
-                    payload_filename=None):
+                    payload_filename=None, force_original=False):
         """Auto-update a CrOS host.
 
         @param host_name: The hostname of the DUT to auto-update.
@@ -2014,6 +2033,8 @@ class ImageServer(ImageServerBase):
                                  will be determined by build_name. You
                                  must have already staged this file before
                                  passing it in here.
+        @param force_original: Whether to force stateful update with the
+                               original payload.
 
         @return A set (is_success, is_retryable) in which:
             1. is_success indicates whether this auto_update succeeds.
@@ -2049,8 +2070,9 @@ class ImageServer(ImageServerBase):
             try:
                 # Try update with stateful.tgz of old release version in the
                 # last try of auto-update.
-                if (au_attempt > 0 and au_attempt  == AU_RETRY_LIMIT - 1 and
-                    original_release_version):
+                if (force_original or
+                    (au_attempt > 0 and au_attempt  == AU_RETRY_LIMIT - 1 and
+                     original_release_version)):
                     # Monitor this case in monarch
                     original_build = '%s/%s' % (original_board,
                                                 original_release_version)
@@ -2117,6 +2139,9 @@ class ImageServer(ImageServerBase):
                         error_list.append(self._parse_AU_error(str(raised_error)))
                         if self._is_retryable(str(raised_error)):
                             retry_with_another_devserver = True
+
+                        if self._should_use_original_payload(str(raised_error)):
+                            force_original = True
 
             finally:
                 if retry_with_another_devserver:

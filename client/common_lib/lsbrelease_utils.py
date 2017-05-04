@@ -61,6 +61,20 @@ def get_chromeos_release_version(lsb_release_content=None):
                               lsb_release_content=lsb_release_content)
 
 
+def get_chromeos_release_milestone(lsb_release_content=None):
+    """Get chromeos milestone in device under test as string. None on fail.
+
+    @param lsb_release_content: A string represents the content of lsb-release.
+            If the caller is from drone, it can pass in the file content here.
+
+    @return chromeos release milestone in device under test as string.
+            None on fail.
+    """
+    return _lsbrelease_search(r'^CHROMEOS_RELEASE_CHROME_MILESTONE=(.+)$',
+                              group_id=1,
+                              lsb_release_content=lsb_release_content)
+
+
 def is_moblab(lsb_release_content=None):
     """Return if we are running on a Moblab system or not.
 
