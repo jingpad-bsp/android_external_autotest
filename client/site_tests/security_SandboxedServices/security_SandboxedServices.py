@@ -73,7 +73,11 @@ def get_properties(service, init_process):
 
 
 def yes_or_no(value):
-    """Returns 'Yes' or 'No' based on the truthiness of a value."""
+    """Returns 'Yes' or 'No' based on the truthiness of a value.
+
+    @param value: boolean value.
+    """
+
     return 'Yes' if value else 'No'
 
 
@@ -229,7 +233,7 @@ class security_SandboxedServices(test.test):
         init_process = None
         running_services = {}
 
-        # Filter running processes list
+        # Filter running processes list.
         for process in running_processes:
             exe = process.comm
 
@@ -240,7 +244,7 @@ class security_SandboxedServices(test.test):
                 init_process = process
                 continue
 
-            # Don't worry about kernel threads
+            # Don't worry about kernel threads.
             if process.ppid == kthreadd_pid:
                 continue
 
@@ -252,29 +256,31 @@ class security_SandboxedServices(test.test):
         if not init_process:
             raise error.TestFail("Cannot find init process")
 
-        # Find differences between running services and baseline
+        # Find differences between running services and baseline.
         services_set = set(running_services.keys())
         baseline_set = set(baseline.keys())
 
         new_services = services_set.difference(baseline_set)
         stale_baselines = baseline_set.difference(services_set)
 
-        # Check baseline
+        # Check baseline.
         sandbox_delta = []
         for exe in services_set.intersection(baseline_set):
             process = running_services[exe]
 
-            # If the process is not running as the correct user
+            # If the process is not running as the correct user.
             if process.euser != baseline[exe]["euser"]:
                 logging.error('%s: bad user: wanted "%s" but got "%s"',
                               exe, baseline[exe]['euser'], process.euser)
+
                 sandbox_delta.append(exe)
                 continue
 
-            # If the process is not running as the correct group
+            # If the process is not running as the correct group.
             if process.egroup != baseline[exe]['egroup']:
                 logging.error('%s: bad group: wanted "%s" but got "%s"',
                               exe, baseline[exe]['egroup'], process.egroup)
+
                 sandbox_delta.append(exe)
                 continue
 
@@ -290,7 +296,7 @@ class security_SandboxedServices(test.test):
             elif (baseline[exe]['filter'] == 'Yes' and
                   process.seccomp != SECCOMP_MODE_FILTER and
                   not is_asan):
-                # Since minijail disables seccomp at runtime when ASAN is
+                # Since Minijail disables seccomp at runtime when ASAN is
                 # active, we can't enforce it on ASAN bots.  Just ignore
                 # the test entirely.  (Comment applies to "is_asan" above.)
                 logging.error('%s: missing seccomp usage: wanted %s (%s) but '
@@ -299,7 +305,7 @@ class security_SandboxedServices(test.test):
                               SECCOMP_MAP.get(process.seccomp, '???'))
                 sandbox_delta.append(exe)
 
-        # Save current run to results dir
+        # Save current run to results dir.
         running_services_properties = [get_properties(s, init_process)
                                        for s in running_services.values()]
         self.dump_services(fieldnames, running_services_properties)
