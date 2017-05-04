@@ -1963,7 +1963,8 @@ class ImageServer(ImageServerBase):
 
     def auto_update(self, host_name, build_name, original_board=None,
                     original_release_version=None, log_dir=None,
-                    force_update=False, full_update=False):
+                    force_update=False, full_update=False,
+                    payload_filename=None):
         """Auto-update a CrOS host.
 
         @param host_name: The hostname of the DUT to auto-update.
@@ -1979,6 +1980,11 @@ class ImageServer(ImageServerBase):
                              force a full reimage. If False, try stateful
                              update first if the dut is already installed
                              with the same version.
+        @param payload_filename: Used to specify the exact file to
+                                 use for autoupdating. If None, the payload
+                                 will be determined by build_name. You
+                                 must have already staged this file before
+                                 passing it in here.
 
         @return A set (is_success, is_retryable) in which:
             1. is_success indicates whether this auto_update succeeds.
@@ -1991,6 +1997,9 @@ class ImageServer(ImageServerBase):
                   'build_name': build_name,
                   'force_update': force_update,
                   'full_update': full_update}
+
+        if payload_filename is not None:
+            kwargs['payload_filename'] = payload_filename
 
         error_msg = 'CrOS auto-update failed for host %s: %s'
         error_msg_attempt = 'Exception raised on auto_update attempt #%s:\n%s'
