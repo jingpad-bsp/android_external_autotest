@@ -248,31 +248,36 @@ class power_Consumption(test.test):
             self._run_url_bg('bg_' + name, url, duration=self._duration_secs)
 
 
-    def _run_group_v8(self):
-        """Run the V8 benchmark suite as a sub-test.
+    def _run_group_speedometer(self):
+        """Run the Speedometer benchmark suite as a sub-test.
 
         Fire it up and wait until it displays "Score".
         """
 
-        url = 'http://v8.googlecode.com/svn/data/benchmarks/v7/run.html'
-        js = "document.getElementById('status').textContent"
+        # TODO: check in a local copy of the test if we can get permission if
+        # the network causes problems.
+        url = 'http://browserbench.org/Speedometer/'
+        start_js = 'startTest()'
+        score_js = "document.getElementById('result-number').innerText"
         tab = self._tab
 
-        def v8_func():
+        def speedometer_func():
             """To be passed as the callable to self._run_func()"""
             tab.Navigate(url)
-            # V8 test will usually take 17-25 seconds. Need some sleep here
-            # to let the V8 page load and create the 'status' div.
-            is_done = lambda: tab.EvaluateJavaScript(js).startswith('Score')
+            tab.WaitForDocumentReadyStateToBeComplete()
+            tab.EvaluateJavaScript(start_js)
+            # Speedometer test should be done in less than 15 minutes (actual
+            # runs are closer to 5).
+            is_done = lambda: tab.EvaluateJavaScript(score_js) != ""
             time.sleep(self._stabilization_seconds)
-            utils.poll_for_condition(is_done, timeout=60, desc='V8 score found')
+            utils.poll_for_condition(is_done, timeout=900,
+                                     desc='Speedometer score found')
 
-        self._run_func('V8', v8_func, repeat=self._repeats)
+        self._run_func('Speedometer', speedometer_func, repeat=self._repeats)
 
-        # Write v8 score from the last run to log
-        score = tab.EvaluateJavaScript(js)
-        score = score.strip().split()[1]
-        logging.info('V8 Score: %s', score)
+        # Write speedometer score from the last run to log
+        score = tab.EvaluateJavaScript(score_js)
+        logging.info('Speedometer Score: %s', score)
 
 
     def _run_group_video(self):
@@ -454,7 +459,7 @@ class power_Consumption(test.test):
         self._duration_secs = self._base_secs * reps
 
         # Lists of default tests to run
-        UI_TESTS = ['backlight', 'download', 'webpages', 'video', 'v8']
+        UI_TESTS = ['backlight', 'download', 'webpages', 'video', 'speedometer']
         NONUI_TESTS = ['backchannel', 'sound', 'lowlevel']
         DEFAULT_TESTS = UI_TESTS + NONUI_TESTS
         DEFAULT_SHORT_TESTS = ['download', 'webpages', 'video']
