@@ -17,7 +17,7 @@ class platform_LabFirmwareUpdate(test.test):
 
        - check software write protect, if enable, attemp reset.
        - fail test if software write protect is enabled.
-       - check if [ec, pd] is available on DUT.
+       - check if ec is available on DUT.
        - get RO, RW versions of firmware, if RO != RW, update=True
        - get shellball versions of firmware
        - compare shellball version to DUT, update=True if shellball != DUT.
@@ -38,15 +38,10 @@ class platform_LabFirmwareUpdate(test.test):
         # Check if DUT software write protect is disabled, failed otherwise.
         self._run_cmd('flashrom -p host --wp-status', checkfor='is disabled')
         self.has_ec = False
-        self.has_pd = False
         mosys_output = self._run_cmd('mosys')
         if 'EC information' in mosys_output:
             self.has_ec = True
             self._run_cmd('flashrom -p ec --wp-status', checkfor='is disabled')
-        if 'PD information' in mosys_output:
-            self.has_pd = True
-            self._run_cmd('flashrom -p ec:dev=1 --wp-status',
-                         checkfor='is disabled')
 
     def _run_cmd(self, command, checkfor=''):
         """Run command on dut and return output.
@@ -60,13 +55,11 @@ class platform_LabFirmwareUpdate(test.test):
                                  (checkfor, ' '.join(output)))
         return output
 
-    def _get_version(self, pd=False):
+    def _get_version(self):
         """Retrive RO, RW EC/PD version."""
         ro = None
         rw = None
-        opt_arg = ''
-        if pd: opt_arg = '--dev=1'
-        lines = self._run_cmd('/usr/sbin/ectool %s version' % opt_arg)
+        lines = self._run_cmd('/usr/sbin/ectool version')
         for line in lines.splitlines():
             if line.startswith('RO version:'):
                 parts = line.split()
@@ -85,11 +78,10 @@ class platform_LabFirmwareUpdate(test.test):
     def _get_version_all(self):
         """Retrive BIOS, EC, and PD firmware version.
 
-        @return firmware version tuple (bios, ec, pd)
+        @return firmware version tuple (bios, ec)
         """
-        pd_version = None
-        ec_version = None
         bios_version = None
+        ec_version = None
         if self.has_ec:
             (ec_ro, ec_rw) = self._get_version()
             if ec_ro == ec_rw:
@@ -97,29 +89,21 @@ class platform_LabFirmwareUpdate(test.test):
             else:
                 ec_version = '%s,%s' % (ec_ro, ec_rw)
             logging.info('Installed EC version: %s', ec_version)
-        if self.has_pd:
-            (pd_ro, pd_rw) = self._get_version(pd=True)
-            if pd_ro == pd_rw:
-                pd_version = pd_rw
-            else:
-                pd_version = '%s,%s' % (pd_ro, pd_rw)
-            logging.info('Installed PD version: %s', pd_version)
         (bios_ro, bios_rw) = self._bios_version()
         if bios_ro == bios_rw:
             bios_version = bios_rw
         else:
             bios_version = '%s,%s' % (bios_ro, bios_rw)
         logging.info('Installed BIOS version: %s', bios_version)
-        return (bios_version, ec_version, pd_version)
+        return (bios_version, ec_version)
 
     def _get_shellball_version(self):
         """Get shellball firmware version.
 
-        @return shellball firmware version tuple (bios, ec, pd)
+        @return shellball firmware version tuple (bios, ec)
         """
         ec = None
         bios = None
-        pd = None
         shellball = self._run_cmd('/usr/sbin/chromeos-firmwareupdate -V')
         for line in shellball.splitlines():
             if line.startswith('BIOS version:'):
@@ -130,18 +114,14 @@ class platform_LabFirmwareUpdate(test.test):
                 parts = line.split()
                 ec = parts[2].strip()
                 logging.info('shellball ec %s', ec)
-            elif line.startswith('PD version:'):
-                parts = line.split()
-                pd = parts[2].strip()
-                logging.info('shellball pd %s', pd)
-        return (bios, ec, pd)
+        return (bios, ec)
 
     def run_once(self, replace=True):
         # Get DUT installed firmware versions.
-        (installed_bios, installed_ec, installed_pd) = self._get_version_all()
+        (installed_bios, installed_ec) = self._get_version_all()
 
         # Get shellball firmware versions.
-        (shball_bios, shball_ec, shball_pd) = self._get_shellball_version()
+        (shball_bios, shball_ec) = self._get_shellball_version()
 
         # Figure out if update is needed.
         need_update = False
@@ -153,10 +133,6 @@ class platform_LabFirmwareUpdate(test.test):
             need_update = True
             logging.info('EC mismatch %s, will update to %s',
                          installed_ec, shball_ec)
-        if installed_pd != shball_pd:
-            need_update = True
-            logging.info('PD mismatch %s, will update to %s',
-                         installed_pd, shball_pd)
 
         # Update and reboot if needed.
         if need_update:
@@ -164,11 +140,11 @@ class platform_LabFirmwareUpdate(test.test):
                                    ' --mode=recovery', '(recovery) completed.')
             self.host.reboot()
             # Check that installed firmware match the shellball.
-            (bios, ec, pd) = self._get_version_all()
-            if (bios != shball_bios or ec != shball_ec or pd != shball_pd):
-                logging.info('shball bios/ec/pd: %s/%s/%s',
-                             shball_bios, shball_ec, shball_pd)
-                logging.info('installed bios/ec/pd: %s/%s/%s', bios, ec, pd)
+            (bios, ec) = self._get_version_all()
+            if (bios != shball_bios or ec != shball_ec):
+                logging.info('shball bios/ec: %s/%s',
+                             shball_bios, shball_ec)
+                logging.info('installed bios/ec: %s/%s', bios, ec)
                 raise error.TestFail('Version mismatch after firmware update')
             logging.info('*** Done firmware updated to match shellball. ***')
         else:
