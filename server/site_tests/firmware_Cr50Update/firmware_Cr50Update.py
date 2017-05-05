@@ -6,10 +6,10 @@ import logging
 import os
 import time
 
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
 from autotest_lib.server import autotest, test
-from autotest_lib.server.cros import debugd_dev_tools
+from autotest_lib.server.cros import debugd_dev_tools, gsutil_wrapper
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
@@ -36,10 +36,15 @@ class firmware_Cr50Update(FirmwareTest):
     RESTORE_ORIGINAL_TRIES = 3
     SUCCESS = 0
     UPDATE_OK = 1
+    TMP = '/tmp/'
+    GS_URL = 'gs://chromeos-localmirror-private/distfiles/chromeos-cr50-*/'
+    PROD_FILE = 'cr50.%s.bin.prod'
+    DBG_FILE = 'cr50_dbg_%s.bin'
 
 
-    def initialize(self, host, cmdline_args, release_image, dev_image,
-                   old_release_image="", test=""):
+    def initialize(self, host, cmdline_args, release_path="", release_ver="",
+                   old_release_path="", old_release_ver="", dev_path="",
+                   test=""):
         """Initialize servo and process the given images"""
         self.processed_images = False
 
@@ -47,6 +52,10 @@ class firmware_Cr50Update(FirmwareTest):
         if not hasattr(self, "cr50"):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
+
+        if not release_ver or release_path:
+            raise error.TestError('Need to specify a release version or path')
+
         # Make sure ccd is disabled so it won't interfere with the update
         self.cr50.ccd_disable()
 
@@ -80,11 +89,12 @@ class firmware_Cr50Update(FirmwareTest):
         # Process the given images in order of oldest to newest. Get the version
         # info and add them to the update order
         self.update_order = []
-        if not self.erase_nvmem and old_release_image:
+        if not self.erase_nvmem and (old_release_path or old_release_ver):
             self.add_image_to_update_order(self.OLD_RELEASE_NAME,
-                                           old_release_image)
-        self.add_image_to_update_order(self.RELEASE_NAME, release_image)
-        self.add_image_to_update_order(self.DEV_NAME, dev_image)
+                                           old_release_path, old_release_ver)
+        self.add_image_to_update_order(self.RELEASE_NAME, release_path,
+                                       release_ver)
+        self.add_image_to_update_order(self.DEV_NAME, dev_path)
         self.verify_update_order()
         self.processed_images = True
         logging.info("Update %s", self.update_order)
@@ -303,7 +313,39 @@ class firmware_Cr50Update(FirmwareTest):
                      image_name, image_ver_str)
 
 
-    def add_image_to_update_order(self, image_name, image_path):
+    def fetch_image(self, ver=None):
+        """Fetch the image from gs and copy it to the host.
+
+        @param ver: The rw version of the prod image. If it is not None then the
+                    image will be retrieved from chromeos-localmirror otherwise
+                    it will be gotten from chromeos-localmirror-private using
+                    the devids
+        """
+        devid = self.servo.get('cr50_devid').replace(' ', '_')
+
+        # Prod images are gotten with the ver. Debug images use the devid
+        filename = self.PROD_FILE % ver if ver else self.DBG_FILE % devid
+
+        # Make sure the file exists and get the right location
+        bucket, gs_file = utils.gs_ls(self.GS_URL + filename)[0].rsplit('/', 1)
+        tmp_file = self.TMP + gs_file
+        logging.info('Fetching %s%s' , bucket, gs_file)
+
+        # Copy the image to the dut
+        gsutil_wrapper.copy_private_bucket(host=self.host,
+                                           bucket=bucket,
+                                           filename=gs_file,
+                                           destination=self.TMP)
+
+        # Get the bin version from the image on the DUT
+        image_ver = cr50_utils.GetBinVersion(self.host, tmp_file)
+
+        # Copy the image to the host
+        self.host.get_file(tmp_file, tmp_file)
+        return tmp_file, image_ver
+
+
+    def add_image_to_update_order(self, image_name, image_path, ver=None):
         """Process the image. Add it to the update_order list and images dict.
 
         Copy the image to the DUT and get version information.
@@ -311,20 +353,19 @@ class firmware_Cr50Update(FirmwareTest):
         Store the image information in the images dictionary and add it to the
         update_order list.
 
-        Args:
-            image_name: string that is what the image should be called. Used as
-                        the key in the images dict.
-            image_path: the path for the image.
-
-        Raises:
-            TestError if the image could not be found.
+        @param image_name: string that is what the image should be called. Used
+                           as the key in the images dict.
+        @param image_path: the path for the image.
+        @param ver: If the image path isn't specified, this will be used to find
+                    the cr50 image in gs://chromeos-localmirror/distfiles.
         """
         tmp_file = '/tmp/%s.bin' % image_name
 
         if not os.path.isfile(image_path):
-            raise error.TestError("Failed to locate %s" % image_name)
+            image_path, ver = self.fetch_image(ver)
+        else:
+            _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
 
-        _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
         ver_str = cr50_utils.GetVersionString(ver)
 
         self.update_order.append(image_name)
@@ -384,7 +425,6 @@ class firmware_Cr50Update(FirmwareTest):
         logging.info("Update iteration %s ran successfully", self.iteration)
 
 
-    def run_once(self, host, cmdline_args, release_image, dev_image,
-                 old_release_image="", test=""):
+    def run_once(self):
         for name in self.update_order:
             self.run_update(name)
