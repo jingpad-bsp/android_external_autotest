@@ -60,6 +60,7 @@ class firmware_Cr50Update(FirmwareTest):
 
         self.host = host
         self.test = test.lower()
+        self.erase_nvmem = self.test == self.ERASE_NVMEM
 
         # A dict used to store relevant information for each image
         self.images = {}
@@ -79,7 +80,7 @@ class firmware_Cr50Update(FirmwareTest):
         # Process the given images in order of oldest to newest. Get the version
         # info and add them to the update order
         self.update_order = []
-        if self.test != self.ERASE_NVMEM and old_release_image:
+        if not self.erase_nvmem and old_release_image:
             self.add_image_to_update_order(self.OLD_RELEASE_NAME,
                                            old_release_image)
         self.add_image_to_update_order(self.RELEASE_NAME, release_image)
@@ -205,7 +206,7 @@ class firmware_Cr50Update(FirmwareTest):
         self.cr50.wait_for_ccd_disable(raise_error=is_newer)
 
 
-    def finish_rollback(self, image_rw, erase_nvmem):
+    def finish_rollback(self, image_rw):
         """Rollback to the image in the inactive partition.
 
         Use the cr50 'rw' command to set the reset counter high enough to
@@ -213,8 +214,6 @@ class firmware_Cr50Update(FirmwareTest):
         finish the rollback.
 
         @param image_rw: the rw version of the update image.
-        @param erase_nvmem: True if nvmem needs to be erased during the
-                            rollback.
         """
         self.cr50.ccd_enable()
         start_partition, _, _ = self.cr50.get_active_version_info()
@@ -232,7 +231,7 @@ class firmware_Cr50Update(FirmwareTest):
         self.cr50.wait_for_ccd_disable(timeout=15, raise_error=False)
         self.cr50.ccd_enable()
 
-        if erase_nvmem:
+        if self.erase_nvmem:
             logging.info("Erasing nvmem")
             self.cr50.erase_nvmem()
 
@@ -249,18 +248,15 @@ class firmware_Cr50Update(FirmwareTest):
                           {'mainfw_type': 'normal'}))
 
 
-    def run_update(self, image_name, erase_nvmem=False, use_usb_update=False):
+    def run_update(self, image_name, use_usb_update=False):
         """Copy the image to the DUT and upate to it.
 
         Normal updates will use the cr50-update script to update. If a rollback
         is True, use usb_update to flash the image and then use the 'rw'
-        commands to force a rollback. On rollback updates erase_nvmem can be
-        used to request that nvmem be erased during the rollback.
+        commands to force a rollback.
 
         @param image_name: the key in the images dict that can be used to
                            retrieve the image info.
-        @param erase_nvmem: True if nvmem needs to be erased during the
-                            rollback.
         @param use_usb_update: True if usb_updater should be used directly
                                instead of running the update script.
         """
@@ -289,7 +285,7 @@ class firmware_Cr50Update(FirmwareTest):
             self.run_usb_update(dest, not rollback)
         # Use cr50 console commands to rollback to the old image.
         if rollback:
-            self.finish_rollback(image_rw, erase_nvmem)
+            self.finish_rollback(image_rw)
         # Running the usb update or rollback will enable ccd. Disable it again.
         self.cr50.ccd_disable()
 
@@ -389,5 +385,4 @@ class firmware_Cr50Update(FirmwareTest):
     def run_once(self, host, cmdline_args, release_image, dev_image,
                  old_release_image="", test=""):
         for i, update_info in enumerate(self.update_order):
-            erase_nvmem = self.test == self.ERASE_NVMEM
-            self.run_update(update_info[0], erase_nvmem=erase_nvmem)
+            self.run_update(update_info[0])
