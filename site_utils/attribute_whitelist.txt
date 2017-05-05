@@ -70,6 +70,7 @@ suite:chameleon_hdmi_nightly
 suite:chameleon_hdmi_perbuild
 suite:chameleon_hdmi_stress
 suite:chameleon_vga
+suite:cr50_stress_experimental
 suite:crosbolt_arc_perf_perbuild
 suite:crosbolt_arc_perf_nightly
 suite:crosbolt_perf_nightly
