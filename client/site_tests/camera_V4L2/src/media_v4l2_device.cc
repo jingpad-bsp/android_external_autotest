@@ -83,7 +83,7 @@ bool V4L2Device::InitDevice(IOMethod io,
                             uint32_t width,
                             uint32_t height,
                             uint32_t pixfmt,
-                            uint32_t fps) {
+                            float fps) {
   io_ = io;
   // Crop/Format setting could live across session.
   // We should always initialized them when supported.
@@ -140,10 +140,10 @@ bool V4L2Device::InitDevice(IOMethod io,
     fps = GetFrameRate();
   } else {
     // TODO(jiesun): probably we should derive this from VIDIOC_G_STD
-    fps = 30;
+    fps = 30.0;
   }
 
-  printf("actual format for capture %dx%d %c%c%c%c picture at %d fps\n",
+  printf("actual format for capture %dx%d %c%c%c%c picture at %.2f fps\n",
          fmt.fmt.pix.width, fmt.fmt.pix.height,
          (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
          (pixfmt >> 16) & 0xff, (pixfmt >> 24 ) & 0xff, fps);
@@ -169,24 +169,32 @@ bool V4L2Device::InitDevice(IOMethod io,
 }
 
 bool V4L2Device::UninitDevice() {
+  v4l2_requestbuffers req;
+  memset(&req, 0, sizeof(req));
+  req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   switch (io_) {
     case IO_METHOD_MMAP:
-      v4l2_requestbuffers req;
-      memset(&req, 0, sizeof(req));
-      req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      req.memory = V4L2_MEMORY_MMAP;
-      if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
-        printf("<<< Error: VIDIOC_REQBUFS failed on %s.>>>\n", dev_name_);
-        return false;
-      }
-
       for (uint32_t i = 0; i < num_buffers_; ++i)
         if (-1 == munmap(v4l2_buffers_[i].start, v4l2_buffers_[i].length)) {
           printf("<<< Error: munmap() on %s failed.>>>\n", dev_name_);
           return false;
         }
+
+      req.memory = V4L2_MEMORY_MMAP;
+      if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
+        printf("<<< Error: VIDIOC_REQBUFS for MMAP failed on %s: %s.>>>\n",
+            dev_name_, strerror(errno));
+        return false;
+      }
       break;
     case IO_METHOD_USERPTR:
+      req.memory = V4L2_MEMORY_USERPTR;
+      if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
+        printf("<<< Error: VIDIOC_REQBUFS for USERPTR failed on %s.: %s>>>\n",
+            dev_name_, strerror(errno));
+        return false;
+      }
+
       for (uint32_t i = 0; i < num_buffers_; ++i)
         free(v4l2_buffers_[i].start);
       break;
@@ -424,7 +432,8 @@ bool V4L2Device::InitMmapIO() {
     if (EINVAL == errno)
       printf("<<< Error: mmap() io is not supported on %s.>>>\n", dev_name_);
     else
-      printf("<<< Error: VIDIOC_REQBUFS failed on %s.>>>\n", dev_name_);
+      printf("<<< Error: VIDIOC_REQBUFS for MMAP(%d) failed on %s: %s.>>>\n",
+          min_buffers_, dev_name_, strerror(errno));
     return false;
   }
 
@@ -476,7 +485,8 @@ bool V4L2Device::InitUserPtrIO(uint32_t buffer_size) {
     if (EINVAL == errno)
       printf("<<< Error: user pointer is not supported on %s.>>>\n", dev_name_);
     else
-      printf("<<< Error: VIDIOC_REQBUFS failed on %s.>>>\n", dev_name_);
+      printf("<<< Error: VIDIOC_REQBUFS for USERPTR(%d) failed on %s: %s.>>>\n",
+          min_buffers_, dev_name_, strerror(errno));
     return false;
   }
 
@@ -801,7 +811,7 @@ bool V4L2Device::EnumFrameInterval(
 
 bool V4L2Device::GetFrameInterval(
     uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
-    uint32_t* frame_rate) {
+    float* frame_rate) {
   v4l2_frmivalenum frm_interval;
   memset(&frm_interval, 0, sizeof(frm_interval));
   frm_interval.pixel_format = pixfmt;
@@ -819,13 +829,7 @@ bool V4L2Device::GetFrameInterval(
   }
 
   if (frame_rate) {
-    if (frm_interval.discrete.denominator %
-        frm_interval.discrete.numerator) {
-      printf("<<< Error: frame rate is a floating point %d/%d.>>>\n",
-          frm_interval.discrete.denominator, frm_interval.discrete.numerator);
-      return false;
-    }
-    *frame_rate = frm_interval.discrete.denominator /
+    *frame_rate = static_cast<float>(frm_interval.discrete.denominator) /
         frm_interval.discrete.numerator;
   }
   return true;
@@ -931,21 +935,23 @@ bool V4L2Device::SetParam(v4l2_streamparm* param) {
   return true;
 }
 
-bool V4L2Device::SetFrameRate(uint32_t fps) {
+bool V4L2Device::SetFrameRate(float fps) {
   v4l2_streamparm param;
   if (!GetParam(&param))
     return false;
-  param.parm.capture.timeperframe.numerator = 1;
-  param.parm.capture.timeperframe.denominator = fps;
+
+  const int kFrameRatePrecision = 10000;
+  param.parm.capture.timeperframe.numerator = kFrameRatePrecision;
+  param.parm.capture.timeperframe.denominator = fps * kFrameRatePrecision;
   return SetParam(&param);
 }
 
-uint32_t V4L2Device::GetFrameRate() {
+float V4L2Device::GetFrameRate() {
   v4l2_streamparm param;
   if (!GetParam(&param))
     return -1;
-  return (param.parm.capture.timeperframe.denominator /
-          param.parm.capture.timeperframe.numerator);
+  return static_cast<float>(param.parm.capture.timeperframe.denominator) /
+      param.parm.capture.timeperframe.numerator;
 }
 
 uint64_t V4L2Device::Now() {
