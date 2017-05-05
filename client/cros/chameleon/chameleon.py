@@ -11,7 +11,10 @@ import time
 import xmlrpclib
 from contextlib import contextmanager
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
