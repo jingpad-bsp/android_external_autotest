@@ -10,6 +10,7 @@ PURPOSE = "Verify deep sleep"
 ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "LONG"
 TEST_TYPE = "server"
+DEPENDENCIES = "servo"
 
 DOC = """
 Cr50 should enter deep sleep every time the system goes into S3. Run
