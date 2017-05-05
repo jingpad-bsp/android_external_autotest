@@ -40,7 +40,7 @@ class V4L2Device {
                           uint32_t width,
                           uint32_t height,
                           uint32_t pixfmt,
-                          uint32_t fps);
+                          float fps);
   virtual bool UninitDevice();
   virtual bool StartCapture();
   virtual bool StopCapture();
@@ -65,14 +65,14 @@ class V4L2Device {
   bool SetCrop(v4l2_crop* crop);
   bool GetParam(v4l2_streamparm* param);
   bool SetParam(v4l2_streamparm* param);
-  bool SetFrameRate(uint32_t fps);
+  bool SetFrameRate(float fps);
   bool GetPixelFormat(uint32_t index, uint32_t* pixfmt);
   bool GetFrameSize(
       uint32_t index, uint32_t pixfmt, uint32_t *width, uint32_t *height);
   bool GetFrameInterval(
       uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
-      uint32_t* frame_rate);
-  uint32_t GetFrameRate();
+      float* frame_rate);
+  float GetFrameRate();
   bool Stop();
 
   // Getter.
