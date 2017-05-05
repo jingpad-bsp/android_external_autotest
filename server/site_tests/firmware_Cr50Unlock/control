@@ -10,6 +10,7 @@ PURPOSE = "Verify console unlock"
 ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "SHORT"
 TEST_TYPE = "server"
+DEPENDENCIES = "servo"
 
 DOC = """
 Verify the console can be unlocked by pressing the power button.
