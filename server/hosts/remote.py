@@ -336,10 +336,9 @@ class RemoteHost(base_classes.Host):
         for label_function in self._LABEL_FUNCTIONS:
             try:
                 label = label_function(self)
-            except Exception as e:
-                logging.error('Label function %s failed; ignoring it.',
-                              label_function.__name__)
-                logging.exception(e)
+            except Exception:
+                logging.exception('Label function %s failed; ignoring it.',
+                                  label_function.__name__)
                 label = None
             if label:
                 if type(label) is str:
