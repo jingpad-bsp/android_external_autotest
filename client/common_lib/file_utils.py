@@ -165,4 +165,8 @@ def download_file(remote_path, local_path):
         raise
 
     with open(local_path, 'wb') as local_file:
-        local_file.write(remote_file.read())
+        while True:
+            block = remote_file.read(128 * 1024)
+            if not block:
+                break
+            local_file.write(block)

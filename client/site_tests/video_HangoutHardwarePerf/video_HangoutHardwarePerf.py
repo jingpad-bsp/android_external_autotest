@@ -165,7 +165,11 @@ class DownloadManager(object):
         file_utils.download_file(url, tmp.name)
         md5 = hashlib.md5()
         with open(tmp.name, 'r') as r:
-            md5.update(r.read())
+            while True:
+                block = r.read(128 * 1024)
+                if not block:
+                    break
+                md5.update(block)
 
         filename = os.path.basename(remote_path)
         m = RE_VERSIONING_FILE.match(filename)
