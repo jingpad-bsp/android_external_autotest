@@ -327,7 +327,7 @@ class firmware_Cr50Update(FirmwareTest):
         _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
         ver_str = cr50_utils.GetVersionString(ver)
 
-        self.update_order.append([image_name, ver[1]])
+        self.update_order.append(image_name)
         self.images[image_name] = (ver, ver_str, image_path)
         logging.info("%s stored at %s with version %s", image_name, image_path,
                      ver_str)
@@ -345,9 +345,11 @@ class firmware_Cr50Update(FirmwareTest):
         Raises:
             TestError if the versions are not in ascending order.
         """
-        for i, update_info in enumerate(self.update_order[1::]):
-            last_name, last_rw = self.update_order[i]
-            name, rw = update_info
+        for i, name in enumerate(self.update_order[1::]):
+            rw = self.images[name][0][1]
+
+            last_name = self.update_order[i]
+            last_rw = self.images[last_name][0][1]
             if cr50_utils.GetNewestVersion(last_rw, rw) != rw:
                 raise error.TestError("%s is version %s. %s needs to have a "
                                       "higher version, but it has %s" %
@@ -384,5 +386,5 @@ class firmware_Cr50Update(FirmwareTest):
 
     def run_once(self, host, cmdline_args, release_image, dev_image,
                  old_release_image="", test=""):
-        for i, update_info in enumerate(self.update_order):
-            self.run_update(update_info[0])
+        for name in self.update_order:
+            self.run_update(name)
