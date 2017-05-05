@@ -79,7 +79,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   const base::FilePath path(kCameraCharacteristicsConfigFile);
   FILE* file = base::OpenFile(path, "r");
   if (!file) {
-    LOG(ERROR) << __func__ << ": Can't open file "
+    LOG(INFO) << __func__ << ": Can't open file "
                << kCameraCharacteristicsConfigFile
                << ". Use default characteristics instead";
     DeviceInfos device_infos;
