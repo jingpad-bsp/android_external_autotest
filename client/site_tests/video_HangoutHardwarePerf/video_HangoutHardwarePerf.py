@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import contextlib, hashlib, logging, os, pipes, re, sys, time, tempfile
+import hashlib, logging, os, re, time, tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
