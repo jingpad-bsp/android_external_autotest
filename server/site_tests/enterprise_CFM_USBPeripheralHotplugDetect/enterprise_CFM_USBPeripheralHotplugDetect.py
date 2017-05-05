@@ -8,11 +8,15 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
-
+from autotest_lib.client.cros.crash.crash_test import CrashTest
 
 _SHORT_TIMEOUT = 2
 _WAIT_DELAY = 15
 _USB_DIR = '/sys/bus/usb/devices'
+_CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
+                CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
+                CrashTest._USER_CRASH_DIRS.replace("/crash","")]
+FILES_LIST = []
 
 
 class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
@@ -177,6 +181,41 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         return cfm_peripheral_dict
 
 
+    def _check_for_crash(self):
+        """Check for kernel, browser, process crashes
+
+        @returns True if there are no crashes; False otherwise
+        """
+        result = True
+        for crash_path in _CRASH_PATHS:
+            if str(self.client.run('ls %s' % crash_path,
+                   ignore_status=True)).find('crash') != -1:
+                crash_out = self.client.run('ls %s/crash/' % crash_path,
+                                            ignore_status=True).stdout
+                crash_files = crash_out.strip().split('\n')
+                for crash_file in crash_files:
+                    if ((crash_file is not '')
+                        and (crash_file not in FILES_LIST)):
+                        self._number_of_crashes(crash_file)
+                    if crash_file.find('.meta') != -1 and \
+                            crash_file.find('kernel_warning') == -1:
+                        logging.info('CRASH DETECTED in %s/crash: %s',
+                                     crash_path, crash_file)
+                        result = False
+        return result
+
+
+    def _number_of_crashes(self, crash_file):
+        """Appends new crash file name to FILES_LIST
+
+        @param crash_file: Crash files name from DUT
+
+        @returns crash file name list
+        """
+        FILES_LIST.append(crash_file)
+        return FILES_LIST
+
+
     def run_once(self, host, peripheral_whitelist_dict):
         """Main function to run autotest.
 
@@ -191,11 +230,25 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
 
+        self.crashes_list =[]
+        self.no_of_crashes = 0
+
+        if not self._check_for_crash():
+            self.no_of_crashes = len(FILES_LIST)
+            self.crashes_list.append('New Warning or Crash Detected before ' +
+                                     'plugging in usb peripherals.')
+
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
             time.sleep(_WAIT_DELAY)
             self._set_hub_power(True)
+
+        self._check_for_crash()
+        if (self.no_of_crashes < len(FILES_LIST)):
+            self.no_of_crashes = len(FILES_LIST)
+            self.crashes_list.append('New Warning or Crash Detected after ' +
+                                     'plugging in usb peripherals.')
 
         usb_list_dir_on = self._get_usb_device_dirs()
 
@@ -210,7 +263,17 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
             logging.debug('Peripherals detected by hotrod: %s',
                           cfm_peripheral_dict)
         except Exception as e:
-            raise error.TestFail(str(e))
+            exception_msg = str(e)
+            if self.crashes_list:
+                crash_identified_at = (' ').join(self.crashes_list)
+                exception_msg += '. ' + crash_identified_at
+            raise error.TestFail(str(exception_msg))
+
+        self._check_for_crash()
+        if (self.no_of_crashes < len(FILES_LIST)):
+            self.no_of_crashes = len(FILES_LIST)
+            self.crashes_list.append('New Warning or Crash detected after ' +
+                                     'device enrolled into CFM.')
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
 
@@ -219,9 +282,19 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
 
         peripheral_diff = cros_peripherals.difference(cfm_peripherals)
 
+        if self.crashes_list:
+            crash_identified_at = (', ').join(self.crashes_list)
+        else:
+            crash_identified_at = 'No Crash or Warning detected.'
+
         if peripheral_diff:
             no_match_list = list()
             for item in peripheral_diff:
                 no_match_list.append(item[0])
-            raise error.TestFail('Following peripherals do not match: %s' %
-                                 ', '.join(no_match_list))
+            peripherals_diff = ', '.join(no_match_list)
+            raise error.TestFail("Following peripherals do not match: {0}. "
+                                 "No of Crashes: {1}. Crashes: {2}".format
+                                 (peripherals_diff, int(self.no_of_crashes),
+                                 crash_identified_at))
+        if self.crashes_list:
+            raise error.TestNAError(crash_identified_at)
