@@ -79,7 +79,7 @@ class video_GlitchDetection(test.test):
                 player.verify_video_can_play()
 
                 display_facade.move_to_display(
-                    display_facade.get_first_external_display_index())
+                    display_facade.get_first_external_display_id())
                 display_facade.set_fullscreen(True)
                 # HACK: Unset and reset fullscreen. There is a bug in Chrome
                 # that fails to move the window to a correct position.
