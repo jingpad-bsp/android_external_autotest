@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 
+import mock
 import mox
 
 import common
@@ -820,9 +821,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
 
     def _mock_create_marker_file(self):
         self.mox.StubOutWithMock(__builtin__, 'open')
-        mock_marker_file = self.mox.CreateMock(file)
-        open(mox.IgnoreArg(), 'a').AndReturn(mock_marker_file)
-        mock_marker_file.close()
+        open(mox.IgnoreArg(), 'a').AndReturn(mock.MagicMock())
 
 
     def _mock_offload_dir_calls(self, command, queue_args,
