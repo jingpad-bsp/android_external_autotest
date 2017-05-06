@@ -185,7 +185,7 @@ class Task(object):
                        'boards', 'file_bugs', 'cros_build_spec',
                        'firmware_rw_build_spec', 'firmware_ro_build_spec',
                        'test_source', 'job_retry', 'hour', 'day', 'branches',
-                       'targets', 'os_type', 'no_delay'])
+                       'targets', 'os_type', 'no_delay', 'owner'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
