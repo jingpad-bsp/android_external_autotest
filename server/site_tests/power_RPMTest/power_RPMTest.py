@@ -29,7 +29,7 @@ class power_RPMTest(test.test):
 
         if self._verify:
             self._host_at.run_test('power_CheckAC', check_client_result=True,
-                                   power_on=power_on):
+                                   power_on=power_on)
 
 
     def run_once(self, power_sequence=[True]):
