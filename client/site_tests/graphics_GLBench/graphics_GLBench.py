@@ -195,6 +195,7 @@ class graphics_GLBench(test.test):
         test_ended_normal = True
 
     # Analyze individual test results in summary.
+    # TODO(pwang): Raise TestFail if an error is detected during glbench.
     keyvals = {}
     failed_tests = {}
     for line in results:
