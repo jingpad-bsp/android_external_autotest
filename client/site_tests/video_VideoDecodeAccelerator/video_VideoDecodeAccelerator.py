@@ -7,6 +7,7 @@ import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import helper_logger
 
 class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     """
@@ -17,7 +18,7 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     version = 1
     binary = 'video_decode_accelerator_unittest'
 
-
+    @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
     def run_once(self, videos, use_cr_source_dir=True, gtest_filter=None):
         """
@@ -45,6 +46,7 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             # along with test logs.
             cmd_line_list.append(
                 '--thumbnail_output_dir="%s"' % self.resultsdir)
+            cmd_line_list.append(helper_logger.chrome_vmodule_flag())
             cmd_line_list.append('--ozone-platform=gbm')
 
             if gtest_filter:

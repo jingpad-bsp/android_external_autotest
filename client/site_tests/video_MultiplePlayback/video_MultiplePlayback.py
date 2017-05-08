@@ -9,6 +9,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import youtube_helper
+from autotest_lib.client.cros.video import helper_logger
 
 
 FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
@@ -77,11 +78,14 @@ class video_MultiplePlayback(test.test):
         yh.verify_video_playback()
 
 
+    @helper_logger.video_log_wrapper
     def run_once(self):
         # TODO(scottz): Remove this when crbug.com/220147 is fixed.
         dut_board = utils.get_current_board()
         if dut_board == 'x86-mario':
            raise error.TestNAError('This test is not available on %s' %
                                     dut_board)
-        with chrome.Chrome(init_network_controller=True) as cr:
+        with chrome.Chrome(
+                extra_browser_args=helper_logger.chrome_vmodule_flag(),
+                init_network_controller=True) as cr:
             self.run_video_tests(cr.browser)
