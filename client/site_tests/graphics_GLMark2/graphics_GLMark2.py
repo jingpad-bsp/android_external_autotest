@@ -50,15 +50,7 @@ class graphics_GLMark2(test.test):
         if self._services:
             self._services.restore_services()
         if self.GSC:
-            keyvals = self.GSC.get_memory_keyvals()
-            for key, val in keyvals.iteritems():
-                self.output_perf_value(
-                    description=key,
-                    value=val,
-                    units='bytes',
-                    higher_is_better=False)
             self.GSC.finalize()
-            self.write_perf_keyval(keyvals)
 
     def run_once(self, size='800x600', hasty=False, min_score=None):
         dep = 'glmark2'
