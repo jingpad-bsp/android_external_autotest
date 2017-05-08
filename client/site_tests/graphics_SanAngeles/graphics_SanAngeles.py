@@ -35,15 +35,7 @@ class graphics_SanAngeles(test.test):
         if self._services:
             self._services.restore_services()
         if self.GSC:
-            keyvals = self.GSC.get_memory_keyvals()
-            for key, val in keyvals.iteritems():
-                self.output_perf_value(
-                    description=key,
-                    value=val,
-                    units='bytes',
-                    higher_is_better=False)
             self.GSC.finalize()
-            self.write_perf_keyval(keyvals)
 
     def run_once(self):
         cmd_gl = os.path.join(self.srcdir, 'SanOGL')
