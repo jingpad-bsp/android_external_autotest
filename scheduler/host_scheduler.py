@@ -501,7 +501,7 @@ def main():
         # for host-scheduler role. Thus do not send email for it.
         raise
     except Exception:
-        metrics('%s/uncaught_exception' % _METRICS_PREFIX).increment()
+        metrics.Counter('%s/uncaught_exception' % _METRICS_PREFIX).increment()
         raise
     finally:
         email_manager.manager.send_queued_emails()
