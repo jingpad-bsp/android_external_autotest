@@ -156,6 +156,7 @@ def QueryLoop(conn):
         QueryAndEmit(baselines, conn)
         time_spent = time.time() - now
         sleep_duration = LOOP_INTERVAL - time_spent
+        time.sleep(max(0, sleep_duration))
 
 
 if __name__ == '__main__':
