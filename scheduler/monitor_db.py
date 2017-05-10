@@ -47,7 +47,6 @@ except ImportError:
     ts_mon_config = utils.metrics_mock
 
 
-BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
 
 RESULTS_DIR = '.'
