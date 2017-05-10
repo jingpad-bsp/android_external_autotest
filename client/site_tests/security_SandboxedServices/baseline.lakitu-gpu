@@ -1,18 +1,19 @@
 exe,euser,egroup,pidns,caps,filter
 cloud-init,root,root,No,No,No
 device_policy_m,root,root,No,No,No
-ensure_gke_dock,root,root,No,No,No
 first-boot,root,root,No,No,No
-install_custom_,root,root,No,No,No
-get_metadata_va,root,root,No,No,No
 onboot,root,root,No,No,No
 systemd-journal,root,root,No,No,No
 systemd-logind,root,root,No,No,No
 systemd,root,root,No,No,No
 systemd-udevd,root,root,No,No,No
 
-# TODO: We need better filters on these.
+# TODO: These processes do not really need to run as root. Figure out a way to
+# run them unprivileged/sandboxed.
 curl,root,root,No,No,No
+wait_for_user_d,root,root,No,No,No
+get_metadata_va,root,root,No,No,No
+install_custom_,root,root,No,No,No
 
 # These processes won't run without network (which is the case for VMTests), but
 # they also run as root and are not sandboxed. You will hit these if you try to
