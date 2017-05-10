@@ -10,12 +10,7 @@ import __builtin__
 # The boto module is only available/used in Moblab for validation of cloud
 # storage access. The module is not available in the test lab environment,
 # and the import error is handled.
-try:
-    import boto
-except ImportError:
-    boto = None
 import ConfigParser
-import logging
 import mox
 import StringIO
 import unittest
@@ -31,6 +26,7 @@ from autotest_lib.frontend.afe import moblab_rpc_interface
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.client.common_lib import utils as common_lib_utils
 
 
 class MoblabRpcInterfaceTest(mox.MoxTestBase,
@@ -160,20 +156,6 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         moblab_rpc_interface.reset_config_settings()
 
 
-    def testSetBotoKey(self):
-        """Ensure that the botokey path supplied is copied correctly."""
-        self.setIsMoblab(True)
-        boto_key = '/tmp/boto'
-        moblab_rpc_interface.os.path = self.mox.CreateMockAnything()
-        moblab_rpc_interface.os.path.exists(boto_key).AndReturn(
-                True)
-        moblab_rpc_interface.shutil = self.mox.CreateMockAnything()
-        moblab_rpc_interface.shutil.copyfile(
-                boto_key, moblab_rpc_interface.MOBLAB_BOTO_LOCATION)
-        self.mox.ReplayAll()
-        moblab_rpc_interface.set_boto_key(boto_key)
-
-
     def testSetLaunchControlKey(self):
         """Ensure that the Launch Control key path supplied is copied correctly.
         """
@@ -278,16 +260,11 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
             'gs_secret_access_key': 'secret',
             'image_storage_server': 'gs://bucket1',
             'results_storage_server': 'gs://bucket2'}
-        self.mox.StubOutWithMock(moblab_rpc_interface, '_is_valid_boto_key')
-        self.mox.StubOutWithMock(moblab_rpc_interface, '_is_valid_bucket')
-        moblab_rpc_interface._is_valid_boto_key(
-                'key', 'secret').AndReturn((True, None))
-        moblab_rpc_interface._is_valid_bucket(
-                'key', 'secret', 'bucket1').AndReturn((True, None))
-        moblab_rpc_interface._is_valid_bucket(
-                'key', 'secret', 'bucket2').AndReturn((True, None))
-        rpc_utils.prepare_for_serialization(
-                {'status_ok': True })
+        self.mox.StubOutWithMock(moblab_rpc_interface,
+            '_run_bucket_performance_test')
+        moblab_rpc_interface._run_bucket_performance_test(
+            'key', 'secret', 'gs://bucket1').AndReturn((True, None))
+        rpc_utils.prepare_for_serialization({'status_ok': True })
         self.mox.ReplayAll()
         moblab_rpc_interface.validate_cloud_storage_info(cloud_storage_info)
         self.mox.VerifyAll()
@@ -309,75 +286,6 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
                     'gs://bucket_name-123/a/b/c'))
         self.assertIsNone(moblab_rpc_interface._get_bucket_name_from_url(
             'bucket_name-123/a/b/c'))
-
-
-    def testIsValidBotoKeyValid(self):
-        """Tests the boto key validation flow."""
-        if boto is None:
-            logging.info('skip test since boto module not installed')
-            return
-        conn = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(boto, 'connect_gs')
-        boto.connect_gs('key', 'secret').AndReturn(conn)
-        conn.get_all_buckets().AndReturn(['a', 'b'])
-        conn.close()
-        self.mox.ReplayAll()
-        valid, details = moblab_rpc_interface._is_valid_boto_key('key', 'secret')
-        self.assertTrue(valid)
-        self.mox.VerifyAll()
-
-
-    def testIsValidBotoKeyInvalid(self):
-        """Tests the boto key validation with invalid key."""
-        if boto is None:
-            logging.info('skip test since boto module not installed')
-            return
-        conn = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(boto, 'connect_gs')
-        boto.connect_gs('key', 'secret').AndReturn(conn)
-        conn.get_all_buckets().AndRaise(
-                boto.exception.GSResponseError('bad', 'reason'))
-        conn.close()
-        self.mox.ReplayAll()
-        valid, details = moblab_rpc_interface._is_valid_boto_key('key', 'secret')
-        self.assertFalse(valid)
-        self.assertEquals('The boto access key is not valid', details)
-        self.mox.VerifyAll()
-
-
-    def testIsValidBucketValid(self):
-        """Tests the bucket vaildation flow."""
-        if boto is None:
-            logging.info('skip test since boto module not installed')
-            return
-        conn = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(boto, 'connect_gs')
-        boto.connect_gs('key', 'secret').AndReturn(conn)
-        conn.lookup('bucket').AndReturn('bucket')
-        conn.close()
-        self.mox.ReplayAll()
-        valid, details = moblab_rpc_interface._is_valid_bucket(
-                'key', 'secret', 'bucket')
-        self.assertTrue(valid)
-        self.mox.VerifyAll()
-
-
-    def testIsValidBucketInvalid(self):
-        """Tests the bucket validation flow with invalid key."""
-        if boto is None:
-            logging.info('skip test since boto module not installed')
-            return
-        conn = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(boto, 'connect_gs')
-        boto.connect_gs('key', 'secret').AndReturn(conn)
-        conn.lookup('bucket').AndReturn(None)
-        conn.close()
-        self.mox.ReplayAll()
-        valid, details = moblab_rpc_interface._is_valid_bucket(
-                'key', 'secret', 'bucket')
-        self.assertFalse(valid)
-        self.assertEquals("Bucket bucket does not exist.", details)
-        self.mox.VerifyAll()
 
 
     def testGetShadowConfigFromPartialUpdate(self):
@@ -459,6 +367,28 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.assertFalse(shadow_config.has_option('section2', 'opt5'))
         # opt6 is updated.
         self.assertEquals('value6', shadow_config.get('section2', 'opt6'))
+        self.mox.VerifyAll()
+
+
+    def testRunBucketPerformanceTestFail(self):
+        self.mox.StubOutWithMock(common_lib_utils, 'run')
+        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+                  args=(
+                  '-o', 'Credentials:gs_access_key_id=key',
+                  '-o', 'Credentials:gs_secret_access_key=secret',
+                  'perfdiag', '-s', '1K',
+                  '-o', 'testoutput',
+                  '-n', '10',
+                  'gs://bucket1')).AndRaise(
+            error.CmdError("fakecommand", common_lib_utils.CmdResult(),
+                           "xxxxxx<Error>yyyyyyyyyy</Error>"))
+
+        self.mox.ReplayAll()
+        self.assertRaisesRegexp(
+            moblab_rpc_interface.BucketPerformanceTestException,
+            '<Error>yyyyyyyyyy',
+            moblab_rpc_interface._run_bucket_performance_test,
+            'key', 'secret', 'gs://bucket1', '1K', '10', 'testoutput')
         self.mox.VerifyAll()
 
 
