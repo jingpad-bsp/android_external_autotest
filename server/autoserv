@@ -762,11 +762,11 @@ def main():
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
-                logging.exception(e)
-        except Exception as e:
+                logging.exception('Uncaught SystemExit with code %s', exit_code)
+        except Exception:
             # If we don't know what happened, we'll classify it as
             # an 'abort' and return 1.
-            logging.exception(e)
+            logging.exception('Uncaught Exception, exit_code = 1.')
             exit_code = 1
     finally:
         if pid_file_manager:
