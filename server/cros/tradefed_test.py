@@ -340,7 +340,7 @@ class TradefedTest(test.test):
     def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
 
-        Please see also cheets_CTSHelper for details about how this works.
+        Please see also cheets_StartAndroid for details about how this works.
         """
         return _ChromeLogin(self._host, cts_helper_kwargs)
 
