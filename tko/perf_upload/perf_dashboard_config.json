@@ -32,11 +32,15 @@
     "master_name": "ChromeOSPower"
   },
   {
-    "autotest_name": "graphics_GLBench",
+    "autotest_name": "graphics_dEQP",
     "master_name": "ChromeOS_Graphics"
   },
   {
-    "autotest_name": "graphics_GLES2ConformChrome",
+    "autotest_name": "graphics_Drm",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_GLBench",
     "master_name": "ChromeOS_Graphics"
   },
   {
@@ -44,23 +48,23 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
-    "autotest_name": "graphics_GpuReset",
+    "autotest_name": "graphics_Gralloc",
     "master_name": "ChromeOS_Graphics"
   },
   {
-    "autotest_name": "graphics_KernelMemory",
+    "autotest_name": "graphics_Idle",
     "master_name": "ChromeOS_Graphics"
   },
   {
-    "autotest_name": "graphics_Piglit",
-    "master_name": "ChromeOS_Graphics"
-  },
-  {
-    "autotest_name": "graphics_PiglitBVT",
+    "autotest_name": "graphics_LibDRM",
     "master_name": "ChromeOS_Graphics"
   },
   {
     "autotest_name": "graphics_SanAngeles",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_Sanity",
     "master_name": "ChromeOS_Graphics"
   },
   {
