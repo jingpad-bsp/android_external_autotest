@@ -428,7 +428,7 @@ class ServoHost(ssh_host.SSHHost):
         except Exception as e:
             # Sometimes creating the job will raise an exception. We'll log it
             # but we don't want to fail because of it.
-            logging.exception('Scheduling reboot job failed: %s', e)
+            logging.exception('Scheduling reboot job failed due to Exception.')
             metadata = {'dut': dut,
                         'servo_host': self.hostname,
                         'error': str(e),
