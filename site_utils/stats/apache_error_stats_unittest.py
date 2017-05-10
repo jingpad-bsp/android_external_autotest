@@ -43,12 +43,23 @@ class ApacheErrorTest(unittest.TestCase):
           example_log = fh.readlines()
         matcher_output = [apache_error_stats.ERROR_LOG_MATCHER.match(line)
                           for line in example_log]
-        self.assertEqual(2, len(filter(bool, matcher_output)))
-        first, second = filter(bool, matcher_output)
-        self.assertEqual('error', first.group('log_level'))
-        self.assertEqual(None, first.group('mod_wsgi'))
-        self.assertEqual('warn', second.group('log_level'))
-        self.assertEqual('od_wsgi', second.group('mod_wsgi'))
+        matched = filter(bool, matcher_output)
+        self.assertEqual(5, len(matched))
+
+        self.assertEqual('error', matched[0].group('log_level'))
+        self.assertEqual(None, matched[0].group('mod_wsgi'))
+
+        self.assertEqual('warn', matched[1].group('log_level'))
+        self.assertEqual('od_wsgi', matched[1].group('mod_wsgi'))
+
+        self.assertEqual('error', matched[2].group('log_level'))
+        self.assertEqual(None, matched[2].group('mod_wsgi'))
+
+        self.assertEqual('error', matched[3].group('log_level'))
+        self.assertEqual(None, matched[3].group('mod_wsgi'))
+
+        self.assertEqual('error', matched[4].group('log_level'))
+        self.assertEqual(None, matched[4].group('mod_wsgi'))
 
 
 if __name__ == '__main__':
