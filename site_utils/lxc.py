@@ -25,6 +25,7 @@ import os
 import re
 import socket
 import sys
+import tempfile
 import time
 
 import common
@@ -286,10 +287,12 @@ def download_extract(url, target, extract_dir):
     # TODO(xixuan): Better to only ssh to devservers in lab, and continue using
     # wget for ganeti devservers.
     if remote_url in dev_server.ImageServerBase.servers():
-        tmp_file = '/tmp/%s' % os.path.basename(target)
-        dev_server.ImageServerBase.download_file(
-                url, tmp_file, timeout=DEVSERVER_CALL_TIMEOUT)
-        utils.run('sudo mv %s %s' % (tmp_file, target))
+        # This can be run in multiple threads, pick a unique tmp_file.name.
+        with tempfile.NamedTemporaryFile(prefix=os.path.basename(target) + '_',
+                                         delete=False) as tmp_file:
+            dev_server.ImageServerBase.download_file(
+                    url, tmp_file.name, timeout=DEVSERVER_CALL_TIMEOUT)
+            utils.run('sudo mv %s %s' % (tmp_file.name, target))
     else:
         utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target),
                   stderr_tee=utils.TEE_TO_LOGS)
