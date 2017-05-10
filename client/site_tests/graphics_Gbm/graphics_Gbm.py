@@ -31,7 +31,6 @@ class graphics_Gbm(test.test):
 
     def run_once(self):
         cmd = os.path.join(self.srcdir, 'gbmtest')
-        cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
                            stderr_is_expected=False,
                            stdout_tee=utils.TEE_TO_LOGS,
