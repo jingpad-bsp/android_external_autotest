@@ -277,7 +277,7 @@ class platform_KernelErrorPaths(test.test):
 
         # kcrash data is given by a dictionary with key lkdtm string to write
         # to /sys/kernel/debug/provoke-crash/DIRECT on the target. The dict
-        # value is a tupple conraining 1) the string to write to /proc/breakme.
+        # value is a tuple containing 1) the string to write to /proc/breakme.
         # if lkdtm is not available, 2) the timeout, and 3)whether we run
         # the tests on all CPUs or not. Some tests take less to run than other
         # (null pointer and panic) so it would be best if we would run them on
