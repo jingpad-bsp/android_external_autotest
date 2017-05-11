@@ -614,6 +614,30 @@ def get_firmware_for_board(board_name):
     return _get_builds_for_in_directory(board_name + '-firmware')
 
 
+def _get_sortable_build_number(sort_key):
+    """ Converts a build number line cyan-release/R59-9460.27.0 into an integer.
+
+        To be able to sort a list of builds you need to convert the build number
+        into an integer so it can be compared correctly to other build.
+
+        cyan-release/R59-9460.27.0 =>  5909460027000
+
+        If the sort key is not recognised as a build number 1 will be returned.
+
+    @param sort_key: A string that represents a build number like
+                     cyan-release/R59-9460.27.0
+    @return: An integer that represents that build number or 1 if not recognised
+             as a build.
+    """
+    build_number = re.search('.*/R([0-9]*)-([0-9]*)\.([0-9]*)\.([0-9]*)',
+                             sort_key)
+    if not build_number or not len(build_number.groups()) == 4:
+      return 1
+    return int("%d%05d%03d%03d" % (int(build_number.group(1)),
+                                   int(build_number.group(2)),
+                                   int(build_number.group(3)),
+                                   int(build_number.group(4))))
+
 def _get_builds_for_in_directory(directory_name, milestone_limit=3,
                                  build_limit=20):
     """ Fetch the most recent builds for the last three milestones from gcs.
@@ -650,6 +674,7 @@ def _get_builds_for_in_directory(directory_name, milestone_limit=3,
     build_list = []
     for milestone in milestones[:milestone_limit]:
          builds = build_map[milestone]
+         builds.sort(key=_get_sortable_build_number)
          builds.reverse()
          build_list.extend(builds[:build_limit])
     return build_list
