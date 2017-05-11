@@ -173,6 +173,9 @@ class ESMetadata(object):
         @return: True if post action succeeded. Otherwise return False.
 
         """
+        if not self.host:
+            return True
+
         if not metadata:
             return True
 
@@ -206,6 +209,9 @@ class ESMetadata(object):
         @return: True if post action succeeded. Otherwise return False.
 
         """
+        if not self.host:
+            return True
+
         if not data_list:
             return True
 
