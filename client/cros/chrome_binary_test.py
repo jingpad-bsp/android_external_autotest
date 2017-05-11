@@ -75,16 +75,10 @@ class ChromeBinaryTest(test.test):
         cmd = '%s %s' % (env_vars, prefix + cmd)
 
         try:
-            if utils.is_freon():
-                if as_chronos:
-                    utils.system('su %s -c \'%s\'' % ('chronos', cmd))
-                else:
-                    utils.system(cmd)
+            if as_chronos:
+                utils.system('su %s -c \'%s\'' % ('chronos', cmd))
             else:
-                if as_chronos:
-                    graphics_utils.xsystem(cmd, user='chronos')
-                else:
-                    graphics_utils.xsystem(cmd)
+                utils.system(cmd)
         except error.CmdError as e:
             raise error.TestFail('%s failed! %s' % (binary_to_run, e))
 
