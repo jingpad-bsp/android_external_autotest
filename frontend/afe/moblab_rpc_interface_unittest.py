@@ -369,6 +369,55 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals('value6', shadow_config.get('section2', 'opt6'))
         self.mox.VerifyAll()
 
+    def testGetBuildsForInDirectory(self):
+        config_mock = self.mox.CreateMockAnything()
+        moblab_rpc_interface._CONFIG = config_mock
+        config_mock.get_config_value(
+            'CROS', 'image_storage_server').AndReturn('gs://bucket1/')
+        self.mox.StubOutWithMock(common_lib_utils, 'run')
+        output = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(StringIO, 'StringIO', use_mock_anything=True)
+        StringIO.StringIO().AndReturn(output)
+        output.getvalue().AndReturn(
+        """gs://bucket1/dummy/R53-8480.0.0/\ngs://bucket1/dummy/R53-8530.72.0/\n
+        gs://bucket1/dummy/R54-8712.0.0/\ngs://bucket1/dummy/R54-8717.0.0/\n
+        gs://bucket1/dummy/R55-8759.0.0/\n
+        gs://bucket1/dummy/R55-8760.0.0-b5849/\n
+        gs://bucket1/dummy/R56-8995.0.0/\ngs://bucket1/dummy/R56-9001.0.0/\n
+        gs://bucket1/dummy/R57-9202.66.0/\ngs://bucket1/dummy/R58-9331.0.0/\n
+        gs://bucket1/dummy/R58-9334.15.0/\ngs://bucket1/dummy/R58-9334.17.0/\n
+        gs://bucket1/dummy/R58-9334.18.0/\ngs://bucket1/dummy/R58-9334.19.0/\n
+        gs://bucket1/dummy/R58-9334.22.0/\ngs://bucket1/dummy/R58-9334.28.0/\n
+        gs://bucket1/dummy/R58-9334.3.0/\ngs://bucket1/dummy/R58-9334.30.0/\n
+        gs://bucket1/dummy/R58-9334.36.0/\ngs://bucket1/dummy/R58-9334.55.0/\n
+        gs://bucket1/dummy/R58-9334.6.0/\ngs://bucket1/dummy/R58-9334.7.0/\n
+        gs://bucket1/dummy/R58-9334.9.0/\ngs://bucket1/dummy/R59-9346.0.0/\n
+        gs://bucket1/dummy/R59-9372.0.0/\ngs://bucket1/dummy/R59-9387.0.0/\n
+        gs://bucket1/dummy/R59-9436.0.0/\ngs://bucket1/dummy/R59-9452.0.0/\n
+        gs://bucket1/dummy/R59-9453.0.0/\ngs://bucket1/dummy/R59-9455.0.0/\n
+        gs://bucket1/dummy/R59-9460.0.0/\ngs://bucket1/dummy/R59-9460.11.0/\n
+        gs://bucket1/dummy/R59-9460.16.0/\ngs://bucket1/dummy/R59-9460.25.0/\n
+        gs://bucket1/dummy/R59-9460.8.0/\ngs://bucket1/dummy/R59-9460.9.0/\n
+        gs://bucket1/dummy/R60-9472.0.0/\ngs://bucket1/dummy/R60-9491.0.0/\n
+        gs://bucket1/dummy/R60-9492.0.0/\ngs://bucket1/dummy/R60-9497.0.0/\n
+        gs://bucket1/dummy/R60-9500.0.0/""")
+
+        output.close()
+
+        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+                             args=('ls', 'gs://bucket1/dummy'),
+                             stdout_tee=mox.IgnoreArg()).AndReturn(output)
+        self.mox.ReplayAll()
+        expected_results = ['dummy/R60-9500.0.0', 'dummy/R60-9497.0.0',
+            'dummy/R60-9492.0.0', 'dummy/R60-9491.0.0', 'dummy/R60-9472.0.0',
+            'dummy/R59-9460.25.0', 'dummy/R59-9460.16.0', 'dummy/R59-9460.11.0',
+            'dummy/R59-9460.9.0', 'dummy/R59-9460.8.0', 'dummy/R58-9334.55.0',
+            'dummy/R58-9334.36.0', 'dummy/R58-9334.30.0', 'dummy/R58-9334.28.0',
+            'dummy/R58-9334.22.0']
+        actual_results = moblab_rpc_interface._get_builds_for_in_directory(
+            "dummy",3, 5)
+        self.assertEquals(expected_results, actual_results)
+        self.mox.VerifyAll()
 
     def testRunBucketPerformanceTestFail(self):
         self.mox.StubOutWithMock(common_lib_utils, 'run')
