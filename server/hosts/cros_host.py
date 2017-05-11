@@ -11,6 +11,7 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp
+from autotest_lib.client.common_lib import decorators
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
@@ -328,6 +329,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     self._plankton_host.get_servod_server_proxy())
         else:
             self.plankton = None
+
+
+    @decorators.cached_property
+    def _lsb_release_content(self):
+        """Return lsb_release_content of the host.
+
+        @return the string of the content in /etc/lsb-release file
+        """
+        return self.run(
+                'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
 
 
     def _get_cros_repair_image_name(self):
@@ -1349,10 +1360,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns The version string in lsb-release, under attribute
                  CHROMEOS_RELEASE_VERSION.
         """
-        lsb_release_content = self.run(
-                    'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
         return lsbrelease_utils.get_chromeos_release_version(
-                    lsb_release_content=lsb_release_content)
+                lsb_release_content=self._lsb_release_content)
 
 
     def verify_cros_version_label(self):
