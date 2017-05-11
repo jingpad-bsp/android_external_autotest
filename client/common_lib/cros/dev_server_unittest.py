@@ -447,9 +447,9 @@ class DevServerTest(mox.MoxTestBase):
         argument2 = mox.And(mox.StrContains(self._HOST),
                             mox.StrContains('get_au_status'))
         argument3 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains('handler_cleanup'))
-        argument4 = mox.And(mox.StrContains(self._HOST),
                             mox.StrContains('collect_cros_au_log'))
+        argument4 = mox.And(mox.StrContains(self._HOST),
+                            mox.StrContains('handler_cleanup'))
         argument5 = mox.And(mox.StrContains(self._HOST),
                             mox.StrContains('kill_au_proc'))
 
@@ -487,21 +487,21 @@ class DevServerTest(mox.MoxTestBase):
                 dev_server.ImageServerBase.run_call(argument2).AndReturn(
                         json.dumps(response2))
 
-        if 'handler_cleanup_error' in kwargs:
-            if kwargs['handler_cleanup_error']:
+        if 'collect_au_log_error' in kwargs:
+            if kwargs['collect_au_log_error']:
                 dev_server.ImageServerBase.run_call(argument3).AndRaise(
                         raised_error)
             else:
-                dev_server.ImageServerBase.run_call(argument3).AndReturn('True')
+                dev_server.ImageServerBase.run_call(argument3).AndReturn('log')
+                os.path.exists(mox.IgnoreArg()).AndReturn(True)
+                self._mockWriteFile()
 
-        if 'collect_au_log_error' in kwargs:
-            if kwargs['collect_au_log_error']:
+        if 'handler_cleanup_error' in kwargs:
+            if kwargs['handler_cleanup_error']:
                 dev_server.ImageServerBase.run_call(argument4).AndRaise(
                         raised_error)
             else:
-                dev_server.ImageServerBase.run_call(argument4).AndReturn('log')
-                os.path.exists(mox.IgnoreArg()).AndReturn(True)
-                self._mockWriteFile()
+                dev_server.ImageServerBase.run_call(argument4).AndReturn('True')
 
         if 'kill_au_proc_error' in kwargs:
             if kwargs['kill_au_proc_error']:
