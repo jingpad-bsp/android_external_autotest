@@ -3,15 +3,15 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bettyzhou, krisr'
-NAME = 'android_ACTS.Telephony_MTV_Germany_Vodafone_Roaming'
+NAME = 'android_ACTS.Telephony_MTV_Japan_NTT_Roaming'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_international_roaming'
-DEPENDENCIES = 'carrier:germany_vodafone,location:mtv'
+DEPENDENCIES = 'carrier:japan_ntt,location:mtv'
 
 DOC = """
-This test runs telephony sanity against phones with Germany Vodaphone SIMs
-roaming in US.
+This test runs telephony sanity against phones with Japan NTT SIMs roaming
+in US.
 """
 
 def run(machine):
@@ -21,7 +21,7 @@ def run(machine):
                  test_file='telephony_international_roaming',
                  additional_configs=['simcard_list.json'],
                  testtracker_project_id=11349,
-                 testtracker_extra_env="germany_vodafone_mtv",
+                 testtracker_extra_env="japan_ntt_mtv",
                  acts_timeout=36000)
 
 parallel_simple(run, machines)
