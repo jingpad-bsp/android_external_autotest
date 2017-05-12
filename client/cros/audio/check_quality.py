@@ -28,19 +28,13 @@ def add_args(parser):
                         help='The wave file to check.')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Show debug message.')
-    parser.add_argument('--spectral', action='store_true', default=False,
-                        help='Spectral analysis on each channel.')
-    parser.add_argument('--quality', action='store_true', default=False,
-                        help='Quality analysis on each channel. Implies '
-                             '--spectral')
+    parser.add_argument('--spectral-only', action='store_true', default=False,
+                        help='Only do spectral analysis on each channel.')
 
 
 def parse_args(parser):
     """Parses args."""
     args = parser.parse_args()
-    # Quality is checked within spectral analysis.
-    if args.quality:
-        args.spectral = True
     return args
 
 
@@ -248,5 +242,4 @@ if __name__ == "__main__":
 
     checker = QualityChecker(wavefile.raw_data, wavefile.rate)
 
-    if args.spectral:
-        checker.do_spectral_analysis(check_quality=args.quality)
+    checker.do_spectral_analysis(check_quality=(not args.spectral_only))
