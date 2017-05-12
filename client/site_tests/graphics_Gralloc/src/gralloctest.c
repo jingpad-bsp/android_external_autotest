@@ -46,39 +46,39 @@ enum { GRALLOC_DRM_GET_STRIDE,
        GRALLOC_DRM_GET_BACKING_STORE,
 };
 
-/* See <system/graphics.h> for definitions. */
-static const uint32_t format_list[] = {
-	HAL_PIXEL_FORMAT_BGRA_8888,
-	HAL_PIXEL_FORMAT_BLOB,
-	HAL_PIXEL_FORMAT_FLEX_RGB_888,
-	HAL_PIXEL_FORMAT_FLEX_RGBA_8888,
-	HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-	HAL_PIXEL_FORMAT_RAW10,
-	HAL_PIXEL_FORMAT_RAW12,
-	HAL_PIXEL_FORMAT_RAW16,
-	HAL_PIXEL_FORMAT_RAW_OPAQUE,
-	HAL_PIXEL_FORMAT_RGB_565,
-	HAL_PIXEL_FORMAT_RGB_888,
-	HAL_PIXEL_FORMAT_RGBA_8888,
-	HAL_PIXEL_FORMAT_RGBX_8888,
-	HAL_PIXEL_FORMAT_Y16,
-	HAL_PIXEL_FORMAT_Y8,
-	HAL_PIXEL_FORMAT_YCbCr_420_888,
-	HAL_PIXEL_FORMAT_YCbCr_422_888,
-	HAL_PIXEL_FORMAT_YCbCr_422_I,
-	HAL_PIXEL_FORMAT_YCbCr_422_SP,
-	HAL_PIXEL_FORMAT_YCbCr_444_888,
-	HAL_PIXEL_FORMAT_YCrCb_420_SP,
-	HAL_PIXEL_FORMAT_YV12,
+struct combinations {
+	int32_t format;
+	int32_t usage;
 };
 
-/* See <hardware/gralloc.h> for descriptions. */
-static const uint32_t usage_list[] = {
-	GRALLOC_USAGE_CURSOR,	  GRALLOC_USAGE_HW_RENDER,
-	GRALLOC_USAGE_HW_TEXTURE,      GRALLOC_USAGE_SW_READ_OFTEN,
-	GRALLOC_USAGE_SW_WRITE_OFTEN,  GRALLOC_USAGE_SW_READ_RARELY,
-	GRALLOC_USAGE_SW_WRITE_RARELY,
+// clang-format off
+static struct combinations combos[] = {
+	{ HAL_PIXEL_FORMAT_RGBA_8888,
+	  GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN |
+	  GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_COMPOSER |
+	  GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_CURSOR },
+	{ HAL_PIXEL_FORMAT_RGBA_8888,
+	  GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_RENDER |
+	  GRALLOC_USAGE_HW_COMPOSER },
+	{ HAL_PIXEL_FORMAT_RGBX_8888,
+	  GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN },
+	{ HAL_PIXEL_FORMAT_YCbCr_420_888,
+	  GRALLOC_USAGE_EXTERNAL_DISP | GRALLOC_USAGE_HW_COMPOSER |
+	  GRALLOC_USAGE_HW_TEXTURE },
+	{ HAL_PIXEL_FORMAT_YCbCr_420_888,
+	  GRALLOC_USAGE_RENDERSCRIPT | GRALLOC_USAGE_SW_READ_OFTEN |
+	  GRALLOC_USAGE_SW_WRITE_OFTEN },
+	{ HAL_PIXEL_FORMAT_YV12,
+	  GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_COMPOSER |
+	  GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP },
+	{ HAL_PIXEL_FORMAT_RGB_565,
+	  GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN },
+	{ HAL_PIXEL_FORMAT_BGRA_8888,
+	  GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN },
+	{ HAL_PIXEL_FORMAT_BLOB,
+	  GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN },
 };
+// clang-format on
 
 struct gralloctest {
 	buffer_handle_t handle;     /* handle to the buffer */
@@ -300,26 +300,20 @@ static int test_alloc_varying_sizes(struct alloc_device_t *device)
 
 /*
  * This function tests that we find at least one working format for each
- * usage which we consider important.
+ * combos which we consider important.
  */
-static int test_alloc_usage(struct alloc_device_t *device)
+static int test_alloc_combinations(struct alloc_device_t *device)
 {
-	int i, j;
+	int i;
 
 	struct gralloctest test;
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
-			 GRALLOC_USAGE_SW_READ_OFTEN);
+	gralloctest_init(&test, 512, 512, 0, 0);
 
-	for (i = 0; i < ARRAY_SIZE(usage_list); i++) {
-		test.usage = usage_list[i];
-		int found = 0;
-		for (j = 0; j < ARRAY_SIZE(format_list); j++) {
-			test.format = format_list[j];
-			if (allocate(device, &test))
-				if (deallocate(device, &test))
-					found = 1;
-		}
-		CHECK(found);
+	for (i = 0; i < ARRAY_SIZE(combos); i++) {
+		test.format = combos[i].format;
+		test.usage = combos[i].usage;
+		CHECK(allocate(device, &test));
+		CHECK(deallocate(device, &test));
 	}
 
 	return 1;
@@ -634,7 +628,7 @@ static void print_help(const char *argv0)
 {
 	printf("usage: %s <test_name>\n\n", argv0);
 	printf("A valid test is one the following:\n");
-	printf("alloc_varying_sizes\nalloc_usage\napi\ngralloc_order\n");
+	printf("alloc_varying_sizes\nalloc_combinations\napi\ngralloc_order\n");
 	printf("uninitialized_handle\nfreed_handle\nmapping\nperform\n");
 	printf("ycbcr\nasync\n");
 }
@@ -669,8 +663,8 @@ int main(int argc, char *argv[])
 		if (strcmp(name, "alloc_varying_sizes") == 0) {
 			if (!test_alloc_varying_sizes(device))
 				goto fail;
-		} else if (strcmp(name, "alloc_usage") == 0) {
-			if (!test_alloc_usage(device))
+		} else if (strcmp(name, "alloc_combinations") == 0) {
+			if (!test_alloc_combinations(device))
 				goto fail;
 		} else if (strcmp(name, "api") == 0) {
 			if (!test_api(module))
