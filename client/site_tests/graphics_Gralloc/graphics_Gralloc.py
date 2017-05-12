@@ -49,7 +49,7 @@ class graphics_Gralloc(arc.ArcTest):
         failures = []
         # TODO(ihf): shard this test into multiple control files.
         test_names = [
-            'alloc_varying_sizes', 'alloc_usage', 'api', 'gralloc_order',
+            'alloc_varying_sizes', 'alloc_combinations', 'api', 'gralloc_order',
             'uninitialized_handle', 'freed_handle', 'mapping', 'perform',
             'ycbcr', 'async'
         ]
