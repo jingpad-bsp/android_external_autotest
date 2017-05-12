@@ -16,10 +16,17 @@ import subprocess
 import tempfile
 import wave
 
-import common
-from autotest_lib.client.cros.audio import audio_analysis
-from autotest_lib.client.cros.audio import audio_data
-from autotest_lib.client.cros.audio import audio_quality_measurement
+# Normal autotest environment.
+try:
+    import common
+    from autotest_lib.client.cros.audio import audio_analysis
+    from autotest_lib.client.cros.audio import audio_data
+    from autotest_lib.client.cros.audio import audio_quality_measurement
+# Standalone execution without autotest environment.
+except ImportError:
+    import audio_analysis
+    import audio_data
+    import audio_quality_measurement
 
 
 def add_args(parser):
