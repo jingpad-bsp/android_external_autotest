@@ -47,6 +47,8 @@ static const char kFramesToSkipAfterStreamon[] =
     "frames_to_skip_after_streamon";
 static const char kResolution1280x960Unsupported[] =
     "resolution_1280x960_unsupported";
+static const char kResolution1600x1200Unsupported[] =
+    "resolution_1600x1200_unsupported";
 static const char kConstantFramerateUnsupported[] =
     "constant_framerate_unsupported";
 
@@ -65,7 +67,10 @@ static const struct DeviceInfo kDefaultCharacteristics = {
   42.5,   // vertical_view_angle_16_9
   0.0,    // vertical_view_angle_4_3
   false,  // resolution_1280x960_unsupported
-  false   // constant_framerate_unsupported
+  false,  // resolution_1600x1200_unsupported
+  false,  // constant_framerate_unsupported
+  0,      // sensor_info_pixel_array_size_width
+  0       // sensor_info_pixel_array_size_height
 };
 
 CameraCharacteristics::CameraCharacteristics() {
@@ -80,8 +85,8 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   FILE* file = base::OpenFile(path, "r");
   if (!file) {
     LOG(INFO) << __func__ << ": Can't open file "
-               << kCameraCharacteristicsConfigFile
-               << ". Use default characteristics instead";
+              << kCameraCharacteristicsConfigFile
+              << ". Use default characteristics instead";
     DeviceInfos device_infos;
     for (const auto& device : devices) {
       device_infos.push_back(kDefaultCharacteristics);
@@ -90,6 +95,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
         // If configuration file doesn't exist, the two attributes should be
         // true.
         device_infos.back().resolution_1280x960_unsupported = true;
+        device_infos.back().resolution_1600x1200_unsupported = true;
         device_infos.back().constant_framerate_unsupported = true;
 
         device_infos.back().device_path = device.second;
@@ -197,6 +203,18 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
       device_infos.push_back(tmp_device_infos[id]);
     }
   }
+
+  // Check sensor array size to decide supported resolutions.
+  for (size_t id = 0; id < device_infos.size(); ++id) {
+    if (device_infos[id].sensor_info_pixel_array_size_width < 1280 ||
+        device_infos[id].sensor_info_pixel_array_size_height < 960) {
+      device_infos[id].resolution_1280x960_unsupported = true;
+    }
+    if (device_infos[id].sensor_info_pixel_array_size_width < 1600 ||
+        device_infos[id].sensor_info_pixel_array_size_height < 1200) {
+      device_infos[id].resolution_1600x1200_unsupported = true;
+    }
+  }
   return device_infos;
 }
 
@@ -208,14 +226,6 @@ void CameraCharacteristics::AddPerCameraCharacteristic(
     (*device_infos)[camera_id].lens_facing = strtol(value, NULL, 10);
   } else if (strcmp(characteristic, kSensorOrientation) == 0) {
     (*device_infos)[camera_id].sensor_orientation = strtol(value, NULL, 10);
-  } else if (strcmp(characteristic, kResolution1280x960Unsupported) == 0) {
-    std::istringstream is(value);
-    is >> std::boolalpha
-       >> (*device_infos)[camera_id].resolution_1280x960_unsupported;
-  } else if (strcmp(characteristic, kConstantFramerateUnsupported) == 0) {
-    std::istringstream is(value);
-    is >> std::boolalpha
-       >> (*device_infos)[camera_id].constant_framerate_unsupported;
   } else {
     LOG(ERROR) << __func__ << ": Unknown characteristic: " << characteristic
                << " value: " << value;
@@ -274,7 +284,30 @@ void CameraCharacteristics::AddPerModuleCharacteristic(
   } else if (strcmp(characteristic, kSensorInfoPhysicalSize) == 0) {
     /* Do nothing. This is for hal v3 */
   } else if (strcmp(characteristic, kSensorInfoPixelArraySize) == 0) {
-    /* Do nothing. This is for hal v3 */
+    int width, height;
+    if (sscanf(value, "%dx%d", &width, &height) != 2) {
+      LOG(ERROR) << __func__ << ": Illegal array size format: " << value;
+      return;
+    }
+    VLOG(1) << __func__ << ": " << characteristic << ": " << width
+            << "x" << height;
+    (*device_infos)[camera_id].sensor_info_pixel_array_size_width = width;
+    (*device_infos)[camera_id].sensor_info_pixel_array_size_height = height;
+  } else if (strcmp(characteristic, kResolution1280x960Unsupported) == 0) {
+    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    std::istringstream is(value);
+    is >> std::boolalpha
+       >> (*device_infos)[camera_id].resolution_1280x960_unsupported;
+  } else if (strcmp(characteristic, kResolution1600x1200Unsupported) == 0) {
+    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    std::istringstream is(value);
+    is >> std::boolalpha
+       >> (*device_infos)[camera_id].resolution_1600x1200_unsupported;
+  } else if (strcmp(characteristic, kConstantFramerateUnsupported) == 0) {
+    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    std::istringstream is(value);
+    is >> std::boolalpha
+       >> (*device_infos)[camera_id].constant_framerate_unsupported;
   } else {
     LOG(ERROR) << __func__ << ": Unknown characteristic: " << characteristic
                << " value: " << value;
