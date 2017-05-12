@@ -43,6 +43,7 @@
 enum { GRALLOC_DRM_GET_STRIDE,
        GRALLOC_DRM_GET_FORMAT,
        GRALLOC_DRM_GET_DIMENSIONS,
+       GRALLOC_DRM_GET_BACKING_STORE,
 };
 
 /* See <system/graphics.h> for definitions. */
@@ -492,8 +493,9 @@ static int test_mapping(struct gralloc_module_t *module,
 static int test_perform(struct gralloc_module_t *module,
 			struct alloc_device_t *device)
 {
-	struct gralloctest test;
+	struct gralloctest test, duplicate;
 	uint32_t stride, width, height;
+	uint64_t id1, id2;
 	int32_t format;
 
 	gralloctest_init(&test, 650, 408, HAL_PIXEL_FORMAT_BGRA_8888,
@@ -514,6 +516,20 @@ static int test_perform(struct gralloc_module_t *module,
 	CHECK(width == test.w);
 	CHECK(height == test.h);
 
+	native_handle_t *native_handle = duplicate_buffer_handle(test.handle);
+	duplicate.handle = native_handle;
+
+	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
+			      duplicate.handle, &id2));
+	CHECK(register_buffer(module, &duplicate));
+
+	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
+			      test.handle, &id1) == 0);
+	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
+			      duplicate.handle, &id2) == 0);
+	CHECK(id1 == id2);
+
+	CHECK(unregister_buffer(module, &duplicate));
 	CHECK(deallocate(device, &test));
 
 	return 1;
