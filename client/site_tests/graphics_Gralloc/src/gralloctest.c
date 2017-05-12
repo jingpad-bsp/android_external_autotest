@@ -411,43 +411,6 @@ static int test_gralloc_order(struct gralloc_module_t *module,
 	return 1;
 }
 
-/* This function tests uninitialized buffer handles. */
-static int test_uninitialized_handle(struct gralloc_module_t *module)
-{
-	struct gralloctest test;
-	buffer_handle_t handle = (buffer_handle_t)(intptr_t)0xdeadbeef;
-
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
-			 GRALLOC_USAGE_SW_READ_OFTEN);
-
-	test.handle = handle;
-
-	CHECK(register_buffer(module, &test) == 0);
-	CHECK(lock(module, &test) == 0);
-	CHECK(unlock(module, &test) == 0);
-	CHECK(unregister_buffer(module, &test) == 0);
-
-	return 1;
-}
-
-/* This function tests that deallocated buffer handles are invalid. */
-static int test_freed_handle(struct gralloc_module_t *module,
-			     struct alloc_device_t *device)
-{
-	struct gralloctest test;
-
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
-			 GRALLOC_USAGE_SW_READ_OFTEN);
-
-	CHECK(allocate(device, &test));
-	CHECK(deallocate(device, &test));
-
-	CHECK(lock(module, &test) == 0);
-	CHECK(unlock(module, &test) == 0);
-
-	return 1;
-}
-
 /* This function tests CPU reads and writes. */
 static int test_mapping(struct gralloc_module_t *module,
 			struct alloc_device_t *device)
@@ -629,8 +592,7 @@ static void print_help(const char *argv0)
 	printf("usage: %s <test_name>\n\n", argv0);
 	printf("A valid test is one the following:\n");
 	printf("alloc_varying_sizes\nalloc_combinations\napi\ngralloc_order\n");
-	printf("uninitialized_handle\nfreed_handle\nmapping\nperform\n");
-	printf("ycbcr\nasync\n");
+	printf("mapping\nperform\nycbcr\nasync\n");
 }
 
 int main(int argc, char *argv[])
@@ -671,12 +633,6 @@ int main(int argc, char *argv[])
 				goto fail;
 		} else if (strcmp(name, "gralloc_order") == 0) {
 			if (!test_gralloc_order(module, device))
-				goto fail;
-		} else if (strcmp(name, "uninitialized_handle") == 0) {
-			if (!test_uninitialized_handle(module))
-				goto fail;
-		} else if (strcmp(name, "freed_handle") == 0) {
-			if (!test_freed_handle(module, device))
 				goto fail;
 		} else if (strcmp(name, "mapping") == 0) {
 			if (!test_mapping(module, device))
