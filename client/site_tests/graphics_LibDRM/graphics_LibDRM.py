@@ -14,13 +14,19 @@ class graphics_LibDRM(test.test):
 
     def initialize(self):
         self._services = service_stopper.ServiceStopper(['ui'])
+        self._failures = 0
 
     def cleanup(self):
         if self._services:
             self._services.restore_services()
+        self.output_perf_value(
+            description='Failures',
+            value=self._failures,
+            units='count',
+            higher_is_better=False
+        )
 
     def run_once(self):
-        num_errors = 0
         keyvals = {}
 
         # These are tests to run for all platforms.
@@ -53,24 +59,24 @@ class graphics_LibDRM(test.test):
         self._services.stop_services()
 
         for test in tests:
+            self._failures += 1
             # Make sure the test exists on this system.  Not all tests may be
             # present on a given system.
             if utils.system('which %s' % test):
                 logging.error('Could not find test %s.', test)
                 keyvals[test] = 'NOT FOUND'
-                num_errors += 1
                 continue
 
             # Run the test and check for success based on return value.
             return_value = utils.system(test)
             if return_value:
                 logging.error('%s returned %d', test, return_value)
-                num_errors += 1
                 keyvals[test] = 'FAILED'
             else:
                 keyvals[test] = 'PASSED'
+                self._failures -= 1
 
         self.write_perf_keyval(keyvals)
-
-        if num_errors > 0:
-            raise error.TestFail('Failed: %d libdrm tests failed.' % num_errors)
+        if self._failures > 0:
+            raise error.TestFail('Failed: %d libdrm tests failed.'
+                                 % self._failures)
