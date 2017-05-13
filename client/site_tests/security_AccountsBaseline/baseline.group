@@ -100,3 +100,4 @@ arc-networkd:!:284:
 authpolicyd-exec:!:607:
 touch_keyboard:!:285:touch_keyboard
 midis:!:608:chronos
+atrus:!:286:atrus
