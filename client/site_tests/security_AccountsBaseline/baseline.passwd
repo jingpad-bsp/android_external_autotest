@@ -79,3 +79,4 @@ arc-networkd:!:284:284:CrOS ARC network service daemon:/dev/null:/bin/false
 authpolicyd-exec:!:607:607:authpolicy process executor:/dev/null:/bin/false
 touch_keyboard:!:285:285:touch keyboard interpreter:/dev/null:/bin/false
 midis:!:608:608:CrOS MIDI daemon:/dev/null:/bin/false
+atrus:!:286:286:Atrus daemon used by the atrusctl package:/dev/null:/bin/false
