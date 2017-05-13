@@ -26,117 +26,47 @@ from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import drm
 
 
-# TODO(ihf): Remove xcommand for non-freon builds.
-def xcommand(cmd, user=None):
-    """
-    Add the necessary X setup to a shell command that needs to connect to the X
-    server.
-    @param cmd: the command line string
-    @param user: if not None su command to desired user.
-    @return a modified command line string with necessary X setup
-    """
-    logging.warning('xcommand will be deprecated under freon!')
-    #traceback.print_stack()
-    if user is not None:
-        cmd = 'su %s -c \'%s\'' % (user, cmd)
-    if not utils.is_freon():
-        cmd = 'DISPLAY=:0 XAUTHORITY=/home/chronos/.Xauthority ' + cmd
-    return cmd
-
-# TODO(ihf): Remove xsystem for non-freon builds.
-def xsystem(cmd, user=None):
-    """
-    Run the command cmd, using utils.system, after adding the necessary
-    setup to connect to the X server.
-
-    @param cmd: The command.
-    @param user: The user to switch to, or None for the current user.
-    @param timeout: Optional timeout.
-    @param ignore_status: Whether to check the return code of the command.
-    """
-    return utils.system(xcommand(cmd, user))
-
-
-# TODO(ihf): Remove XSET for non-freon builds.
-XSET = 'LD_LIBRARY_PATH=/usr/local/lib xset'
-
 def screen_disable_blanking():
     """ Called from power_Backlight to disable screen blanking. """
-    if utils.is_freon():
-        # We don't have to worry about unexpected screensavers or DPMS here.
-        return
-    xsystem(XSET + ' s off')
-    xsystem(XSET + ' dpms 0 0 0')
-    xsystem(XSET + ' -dpms')
+    # We don't have to worry about unexpected screensavers or DPMS here.
+    return
 
 
 def screen_disable_energy_saving():
     """ Called from power_Consumption to immediately disable energy saving. """
-    if utils.is_freon():
-        # All we need to do here is enable displays via Chrome.
-        power_utils.set_display_power(power_utils.DISPLAY_POWER_ALL_ON)
-        return
-    # Disable X screen saver
-    xsystem(XSET + ' s 0 0')
-    # Disable DPMS Standby/Suspend/Off
-    xsystem(XSET + ' dpms 0 0 0')
-    # Force monitor on
-    screen_switch_on(on=1)
-    # Save off X settings
-    xsystem(XSET + ' q')
-
-
-def screen_switch_on(on):
-    """Turn the touch screen on/off."""
-    if on:
-        xsystem(XSET + ' dpms force on')
-    else:
-        xsystem(XSET + ' dpms force off')
+    # All we need to do here is enable displays via Chrome.
+    power_utils.set_display_power(power_utils.DISPLAY_POWER_ALL_ON)
+    return
 
 
 def screen_toggle_fullscreen():
     """Toggles fullscreen mode."""
-    if utils.is_freon():
-        press_keys(['KEY_F11'])
-    else:
-        press_key_X('F11')
+    press_keys(['KEY_F11'])
 
 
 def screen_toggle_mirrored():
     """Toggles the mirrored screen."""
-    if utils.is_freon():
-        press_keys(['KEY_LEFTCTRL', 'KEY_F4'])
-    else:
-        press_key_X('ctrl+F4')
+    press_keys(['KEY_LEFTCTRL', 'KEY_F4'])
 
 
 def hide_cursor():
     """Hides mouse cursor."""
     # Send a keystroke to hide the cursor.
-    if utils.is_freon():
-        press_keys(['KEY_UP'])
-    else:
-        press_key_X('Up')
+    press_keys(['KEY_UP'])
 
 
 def hide_typing_cursor():
     """Hides typing cursor."""
     # Press the tab key to move outside the typing bar.
-    if utils.is_freon():
-        press_keys(['KEY_TAB'])
-    else:
-        press_key_X('Tab')
+    press_keys(['KEY_TAB'])
 
 
 def screen_wakeup():
     """Wake up the screen if it is dark."""
     # Move the mouse a little bit to wake up the screen.
-    if utils.is_freon():
-        device = _get_uinput_device_mouse_rel()
-        _uinput_emit(device, 'REL_X', 1)
-        _uinput_emit(device, 'REL_X', -1)
-    else:
-        xsystem('xdotool mousemove_relative 1 1')
+    device = _get_uinput_device_mouse_rel()
+    _uinput_emit(device, 'REL_X', 1)
+    _uinput_emit(device, 'REL_X', -1)
 
 
 def switch_screen_on(on):
@@ -145,10 +75,7 @@ def switch_screen_on(on):
 
     @param on: On or off.
     """
-    if on:
-        xsystem(XSET + ' dpms force on')
-    else:
-        xsystem(XSET + ' dpms force off')
+    raise error.TestFail('switch_screen_on is not implemented.')
 
 
 # Don't create a device during build_packages or for tests that don't need it.
@@ -265,17 +192,6 @@ def press_keys(key_list):
     _uinput_emit_combo(_get_uinput_device_keyboard(), key_list)
 
 
-# TODO(ihf): Remove press_key_X for non-freon builds.
-def press_key_X(key_str):
-    """Presses the given keys as one combination.
-    @param key: A string of keys, e.g. 'ctrl+F4'.
-    """
-    if utils.is_freon():
-        raise error.TestFail('freon: press_key_X not implemented')
-    command = 'xdotool key %s' % key_str
-    xsystem(command)
-
-
 def click_mouse():
     """Just click the mouse.
     Presumably only hacky tests use this function.
@@ -388,7 +304,7 @@ def take_screenshot_crop_x(fullpath, box=None):
 
     old_exc_type = sys.exc_info()[0]
     try:
-        xsystem('%s %s' % (cmd, fullpath))
+        utils.system('%s %s' % (cmd, fullpath))
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
@@ -403,8 +319,6 @@ def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     @param fullpath: path, full path to save the image to.
     @param box: 4-tuple giving the upper left and lower right pixel coordinates.
     """
-    if not utils.is_freon():
-        return take_screenshot_crop_x(fullpath, box)
     if crtc_id is not None:
         image = drm.crtcScreenshot(crtc_id)
     else:
@@ -452,29 +366,10 @@ def get_display_resolution():
     Parses output of modetest to determine the display resolution of the dut.
     @return: tuple, (w,h) resolution of device under test.
     """
-    if not utils.is_freon():
-        return _get_display_resolution_x()
-
     connectors = get_modetest_connectors()
     for connector in connectors:
         if connector.connected:
             return connector.size
-    return None
-
-
-def _get_display_resolution_x():
-    """
-    Used temporarily while Daisy's modetest isn't working
-    TODO(dhaddock): remove when no longer needed
-    @return: tuple, (w,h) resolution of device under test.
-    """
-    env_vars = 'DISPLAY=:0.0 ' \
-                              'XAUTHORITY=/home/chronos/.Xauthority'
-    cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
-    output = utils.system_output(cmd)
-    match = re.search(r'(\d+) x (\d+)', output)
-    if len(match.groups()) == 2:
-        return int(match.group(1)), int(match.group(2))
     return None
 
 
@@ -614,16 +509,11 @@ def get_output_rect(output):
 
 
 def get_internal_resolution():
-    if utils.is_freon():
-        if has_internal_display():
-            crtcs = get_modetest_crtcs()
-            if len(crtcs) > 0:
-                return crtcs[0].size
-        return (-1, -1)
-    else:
-        connector = get_internal_connector_name()
-        width, height, _, _ = get_output_rect_x(connector)
-        return (width, height)
+    if has_internal_display():
+        crtcs = get_modetest_crtcs()
+        if len(crtcs) > 0:
+            return crtcs[0].size
+    return (-1, -1)
 
 
 def has_internal_display():
@@ -640,36 +530,11 @@ def get_external_resolution():
     @return A tuple of (width, height) or None if no external display is
             connected.
     """
-    if utils.is_freon():
-        offset = 1 if has_internal_display() else 0
-        crtcs = get_modetest_crtcs()
-        if len(crtcs) > offset and crtcs[offset].size != (0, 0):
-            return crtcs[offset].size
-        return None
-    else:
-        connector = get_external_connector_name()
-        width, height, _, _ = get_output_rect_x(connector)
-        if width == 0 and height == 0:
-            return None
-        return (width, height)
-
-
-def get_output_rect_x(output):
-    """Gets the size and position of the given output on the screen buffer.
-
-    @param output: The output name as a string.
-
-    @return A tuple of the rectangle (width, height, fb_offset_x,
-            fb_offset_y) of ints.
-    """
-    regexp = re.compile(
-            r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
-            re.M)
-    match = regexp.findall(call_xrandr())
-    for m in match:
-        if m[0] == output:
-            return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
-    return (0, 0, 0, 0)
+    offset = 1 if has_internal_display() else 0
+    crtcs = get_modetest_crtcs()
+    if len(crtcs) > offset and crtcs[offset].size != (0, 0):
+        return crtcs[offset].size
+    return None
 
 
 def get_display_output_state():
@@ -678,59 +543,7 @@ def get_display_output_state():
 
     Return value: dictionary of connected display states.
     """
-    if utils.is_freon():
-        return get_modetest_output_state()
-    else:
-        return get_xrandr_output_state()
-
-
-def get_xrandr_output_state():
-    """
-    Retrieves output status of connected display(s) using xrandr.
-
-    When xrandr report a display is "connected", it doesn't mean the
-    display is active. For active display, it will have '*' after display mode.
-
-    Return value: dictionary of connected display states.
-                  key = output name
-                  value = True if the display is active; False otherwise.
-    """
-    output = call_xrandr().split('\n')
-    xrandr_outputs = {}
-    current_output_name = ''
-
-    # Parse output of xrandr, line by line.
-    for line in output:
-        if line.startswith('Screen'):
-            continue
-        # If the line contains "connected", it is a connected display, as
-        # opposed to a disconnected output.
-        if line.find(' connected') != -1:
-            current_output_name = line.split()[0]
-            # Temporarily mark it as inactive until we see a '*' afterward.
-            xrandr_outputs[current_output_name] = False
-            continue
-
-        # If "connected" was not found, this is a line that shows a display
-        # mode, e.g:    1920x1080      50.0     60.0     24.0
-        # Check if this has an asterisk indicating it's on.
-        if line.find('*') != -1 and current_output_name:
-            xrandr_outputs[current_output_name] = True
-            # Reset the output name since this should not be set more than once.
-            current_output_name = ''
-
-    return xrandr_outputs
-
-
-def set_xrandr_output(output_name, enable):
-    """
-    Sets the output given by |output_name| on or off.
-
-    Parameters:
-        output_name       name of output, e.g. 'HDMI1', 'LVDS1', 'DP1'
-        enable            True or False, indicating whether to turn on or off
-    """
-    call_xrandr('--output %s --%s' % (output_name, 'auto' if enable else 'off'))
+    return get_modetest_output_state()
 
 
 def set_modetest_output(output_name, enable):
@@ -822,10 +635,7 @@ def set_content_protection(output_name, state):
     @param state: One of the states 'Undesired', 'Desired', or 'Enabled'
 
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: set_content_protection not implemented')
-    call_xrandr('--output %s --set "Content Protection" %s' %
-                (output_name, state))
+    raise error.TestFail('freon: set_content_protection not implemented')
 
 
 def get_content_protection(output_name):
@@ -837,26 +647,7 @@ def get_content_protection(output_name):
              False if not supported.
 
     """
-    if utils.is_freon():
-        raise error.TestFail('freon: get_content_protection not implemented')
-
-    output = call_xrandr('--verbose').split('\n')
-    current_output_name = ''
-
-    # Parse output of xrandr, line by line.
-    for line in output:
-        # If the line contains 'connected', it is a connected display.
-        if line.find(' connected') != -1:
-            current_output_name = line.split()[0]
-            continue
-        if current_output_name != output_name:
-            continue
-        # Search the line like: 'Content Protection:     Undesired'
-        match = re.search(r'Content Protection:\t(\w+)', line)
-        if match:
-            return match.group(1)
-
-    return False
+    raise error.TestFail('freon: get_content_protection not implemented')
 
 
 def is_sw_rasterizer():
