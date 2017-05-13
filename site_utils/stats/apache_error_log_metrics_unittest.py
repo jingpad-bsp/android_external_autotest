@@ -1,11 +1,19 @@
 """Tests for apache_error_log_metrics."""
 
 import os
+import re
+import subprocess
+import tempfile
 import unittest
 
 import common
 
 import apache_error_log_metrics
+
+
+SCRIPT_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+                 'apache_error_log_metrics.py'))
 
 
 class ApacheErrorTest(unittest.TestCase):
@@ -60,6 +68,53 @@ class ApacheErrorTest(unittest.TestCase):
 
         self.assertEqual('error', matched[4].group('log_level'))
         self.assertEqual(None, matched[4].group('mod_wsgi'))
+
+    def testApacheErrorLogScriptWithNonMatchingLine(self):
+        """Try shelling out the the script with --debug-file.
+
+        Sending it a non-matching line should result in no output from
+        ERROR_LOG_METRIC.
+        """
+        with tempfile.NamedTemporaryFile() as temp_file:
+            p = subprocess.Popen([SCRIPT_PATH,
+                                  '--debug-metrics-file', temp_file.name],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            p.communicate('an-example-log-line')
+
+            with open(temp_file.name) as fh:
+                contents = fh.read()
+
+            # We have to use re.search here with a word border character ('\b')
+            # because the ERROR_LOG_LINE_METRIC contains ERROR_LOG_METRIC as a
+            # substring.
+            self.assertTrue(re.search(
+                apache_error_log_metrics.ERROR_LOG_LINE_METRIC[1:] + r'\b',
+                contents))
+            self.assertFalse(re.search(
+                apache_error_log_metrics.ERROR_LOG_METRIC[1:] + r'\b',
+                contents))
+
+    def testApachErrorLogScriptWithMatchingLine(self):
+        """Try shelling out the the script with --debug-file.
+
+        Sending it a line which matches the first-line regex should result in
+        output from ERROR_LOG_METRIC.
+        """
+        with tempfile.NamedTemporaryFile() as temp_file:
+            p = subprocess.Popen([SCRIPT_PATH,
+                                  '--debug-metrics-file', temp_file.name],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            p.communicate('[foo] [:bar] [pid 123] WARNING')
+
+            with open(temp_file.name) as fh:
+                contents = fh.read()
+
+            self.assertTrue(re.search(
+                apache_error_log_metrics.ERROR_LOG_LINE_METRIC[1:] + r'\b',
+                contents))
+            self.assertTrue(re.search(
+                apache_error_log_metrics.ERROR_LOG_METRIC[1:] + r'\b',
+                contents))
 
 
 if __name__ == '__main__':
