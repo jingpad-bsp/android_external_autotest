@@ -28,6 +28,7 @@ from infra_libs import ts_mon
 
 LOOP_INTERVAL = 60
 ERROR_LOG_METRIC = '/chromeos/autotest/apache/error_log'
+ERROR_LOG_LINE_METRIC = '/chromeos/autotest/apache/error_log_line'
 ERROR_LOG_MATCHER = re.compile(
     r'^\[[^]]+\] ' # The timestamp. We don't need this.
     r'\[:(?P<log_level>\S+)\] '
@@ -55,8 +56,17 @@ def EmitErrorLogMetric(m):
       'mod_wsgi': mod_wsgi_present})
 
 
+def EmitErrorLogLineMetric(_m):
+  """Emits a Counter metric for each error log line.
+
+  @param _m: A regex match object.
+  """
+  metrics.Counter(ERROR_LOG_LINE_METRIC).increment()
+
+
 MATCHERS = [
     (ERROR_LOG_MATCHER, EmitErrorLogMetric),
+    (re.compile(r'.*'), EmitErrorLogLineMetric),
 ]
 
 
