@@ -31,7 +31,9 @@ ERROR_LOG_METRIC = '/chromeos/autotest/apache/error_log'
 ERROR_LOG_MATCHER = re.compile(
     r'^\[[^]]+\] ' # The timestamp. We don't need this.
     r'\[:(?P<log_level>\S+)\] '
-    r'\[pid \d+\] ' # The PID. We don't need this.
+    r'\[pid \d+[^]]+\] ' # The PID, possibly followed by a task id.
+    # There may be other sections, such as [remote <ip>]
+    r'(?P<sections>\[[^]]+\] )*'
     r'\S' # first character after pid must be non-space; otherwise it is
           # indented, meaning it is just a continuation of a previous message.
     r'(?P<mod_wsgi>od_wsgi)?' # Note: the 'm' of mod_wsgi was already matched.
