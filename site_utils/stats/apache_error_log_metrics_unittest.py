@@ -1,11 +1,11 @@
-"""Tests for mysql_stats."""
+"""Tests for apache_error_log_metrics."""
 
 import os
 import unittest
 
 import common
 
-import apache_error_stats
+import apache_error_log_metrics
 
 
 class ApacheErrorTest(unittest.TestCase):
@@ -22,16 +22,16 @@ class ApacheErrorTest(unittest.TestCase):
         ]
         for line in lines:
           self.assertEqual(
-              None, apache_error_stats.ERROR_LOG_MATCHER.match(line))
+              None, apache_error_log_metrics.ERROR_LOG_MATCHER.match(line))
 
     def testMatchingLines(self):
         """Test for lines that are expected to match the format."""
-        match = apache_error_stats.ERROR_LOG_MATCHER.match(
+        match = apache_error_log_metrics.ERROR_LOG_MATCHER.match(
             "[foo] [:bar] [pid 123] WARNING")
         self.assertEqual('bar', match.group('log_level'))
         self.assertEqual(None, match.group('mod_wsgi'))
 
-        match = apache_error_stats.ERROR_LOG_MATCHER.match(
+        match = apache_error_log_metrics.ERROR_LOG_MATCHER.match(
             "[foo] [:bar] [pid 123] mod_wsgi (pid=123)")
         self.assertEqual('bar', match.group('log_level'))
         self.assertEqual('od_wsgi', match.group('mod_wsgi'))
@@ -41,7 +41,7 @@ class ApacheErrorTest(unittest.TestCase):
         with open(os.path.join(os.path.dirname(__file__),
                                'apache_error_log_example.txt')) as fh:
           example_log = fh.readlines()
-        matcher_output = [apache_error_stats.ERROR_LOG_MATCHER.match(line)
+        matcher_output = [apache_error_log_metrics.ERROR_LOG_MATCHER.match(line)
                           for line in example_log]
         matched = filter(bool, matcher_output)
         self.assertEqual(5, len(matched))
