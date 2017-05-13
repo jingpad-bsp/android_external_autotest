@@ -1030,29 +1030,29 @@ class Urllib3Package(ExternalPackage):
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
 
-# TODO: @chingcodes: removing due to effbot.org being down
-# class ImagingLibraryPackage(ExternalPackage):
-#     """Python Imaging Library (PIL)."""
-#     version = '1.1.7'
-#     url_filename = 'Imaging-%s.tar.gz' % version
-#     local_filename = url_filename
-#     urls = ('http://effbot.org/downloads/%s' % url_filename,)
-#     hex_sum = '76c37504251171fda8da8e63ecb8bc42a69a5c81'
-#
-#     def _build_and_install(self, install_dir):
-#         #The path of zlib library might be different from what PIL setup.py is
-#         #expected. Following change does the best attempt to link the library
-#         #to a path PIL setup.py will try.
-#         libz_possible_path = '/usr/lib/x86_64-linux-gnu/libz.so'
-#         libz_expected_path = '/usr/lib/libz.so'
-#         if (os.path.exists(libz_possible_path) and
-#             not os.path.exists(libz_expected_path)):
-#             utils.run('sudo ln -s %s %s' %
-#                       (libz_possible_path, libz_expected_path))
-#         return self._build_and_install_from_package(install_dir)
-#
-#     _build_and_install_current_dir = (
-#             ExternalPackage._build_and_install_current_dir_noegg)
+class ImagingLibraryPackage(ExternalPackage):
+     """Python Imaging Library (PIL)."""
+     version = '1.1.7'
+     url_filename = 'Imaging-%s.tar.gz' % version
+     local_filename = url_filename
+     urls = ('http://commondatastorage.googleapis.com/chromeos-mirror/gentoo/'
+             'distfiles/%s' % url_filename,)
+     hex_sum = '76c37504251171fda8da8e63ecb8bc42a69a5c81'
+
+     def _build_and_install(self, install_dir):
+         #The path of zlib library might be different from what PIL setup.py is
+         #expected. Following change does the best attempt to link the library
+         #to a path PIL setup.py will try.
+         libz_possible_path = '/usr/lib/x86_64-linux-gnu/libz.so'
+         libz_expected_path = '/usr/lib/libz.so'
+         if (os.path.exists(libz_possible_path) and
+             not os.path.exists(libz_expected_path)):
+             utils.run('sudo ln -s %s %s' %
+                       (libz_possible_path, libz_expected_path))
+         return self._build_and_install_from_package(install_dir)
+
+     _build_and_install_current_dir = (
+             ExternalPackage._build_and_install_current_dir_noegg)
 
 
 class AstroidPackage(ExternalPackage):
