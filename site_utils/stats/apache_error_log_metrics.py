@@ -89,12 +89,22 @@ def RunMatchers(stream, matchers):
                     emitter(m)
 
 
-def Main():
-    """Sets up logging and runs matchers against stdin"""
+def ParseArgs():
+    """Parses the command line arguments."""
     p = argparse.ArgumentParser(
         description='Parses apache logs and emits metrics to Monarch')
     p.add_argument('--output-logfile')
-    args = p.parse_args()
+    p.add_argument('--debug-metrics-file',
+                   help='Output metrics to the given file instead of sending '
+                   'them to production.')
+    return p.parse_args()
+
+
+def Main():
+    """Sets up logging and runs matchers against stdin"""
+    args = ParseArgs()
+
+    # Set up logging.
     root = logging.getLogger()
     if args.output_logfile:
         handler = handlers.RotatingFileHandler(
@@ -104,8 +114,15 @@ def Main():
         root.addHandler(logging.StreamHandler(sys.stdout))
     root.setLevel(logging.DEBUG)
 
-    ts_mon_config.SetupTsMonGlobalState('apache_error_log_metrics')
-    RunMatchers(sys.stdin, MATCHERS)
+    # Set up metrics sending and go.
+    ts_mon_args = {}
+    if args.debug_metrics_file:
+        ts_mon_args['debug_file'] = args.debug_metrics_file
+
+    with ts_mon_config.SetupTsMonGlobalState('apache_error_log_metrics',
+                                             **ts_mon_args):
+      RunMatchers(sys.stdin, MATCHERS)
+      metrics.Flush()
 
 
 if __name__ == '__main__':
