@@ -66,9 +66,16 @@ class CFMFacadeNative(object):
                 self._resource._browser, self._EXT_ID)
         ext_urls = set([context.EvaluateJavaScript('location.href;')
                         for context in ext_contexts])
-        expected_urls = set(
+        if len(ext_urls) == 2:
+            expected_urls = set(
                 ['chrome-extension://' + self._EXT_ID + '/' + path
                  for path in ['hangoutswindow.html?windowid=0',
+                              '_generated_background_page.html']])
+        if len(ext_urls) == 3:
+            expected_urls = set(
+                ['chrome-extension://' + self._EXT_ID + '/' + path
+                 for path in ['hangoutswindow.html?windowid=0',
+                              'hangoutswindow.html?windowid=1',
                               '_generated_background_page.html']])
         if expected_urls != ext_urls:
             raise error.TestFail(
