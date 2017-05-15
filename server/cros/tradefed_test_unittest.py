@@ -22,6 +22,7 @@ class TradefedTestTest(unittest.TestCase):
 
         cts_waivers = set([
             'android.app.cts.SystemFeaturesTest#testUsbAccessory',
+            'android.widget.cts.GridViewTest#testSetNumColumns',
         ])
         gts_waivers = set([
             'com.google.android.gts.multiuser.RestrictedProfileHostTest'
@@ -95,6 +96,15 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((5, 1, 4, 0, 1),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsAppTestCases-retry.txt'),
+                accumulative_count=False,
+                waivers=cts_waivers))
+
+        # http://pantheon/storage/browser/chromeos-autotest-results/116875512-chromeos-test/
+        # When a test case crashed during teardown, tradefed prints the "fail"
+        # message twice. Tolerate it and still return an (inconsistent) count.
+        self.assertEquals((1194, 1185, 10, 0, 2),
+            tradefed_test.parse_tradefed_v2_result(
+                _load_data('CtsWidgetTestCases.txt'),
                 accumulative_count=False,
                 waivers=cts_waivers))
 
