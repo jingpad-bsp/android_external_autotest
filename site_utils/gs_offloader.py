@@ -814,6 +814,7 @@ class Offloader(object):
         self._processes = options.parallelism
         self._open_jobs = {}
         self._pusub_topic = None
+        self._offload_count_limit = 3
 
 
     def _add_new_jobs(self):
@@ -885,7 +886,18 @@ class Offloader(object):
                 self._offload_func, processes=self._processes) as queue:
             for job in self._open_jobs.values():
                 job.enqueue_offload(queue, self._upload_age_limit)
+        self._give_up_on_jobs_over_limit()
         self._update_offload_results()
+
+
+    def _give_up_on_jobs_over_limit(self):
+        """Give up on jobs that have gone over the offload limit.
+
+        We mark them as uploaded as we won't try to offload them any more.
+        """
+        for job in self._open_jobs.values():
+            if job.offload_count >= self._offload_count_limit:
+                _mark_uploaded(job.dirname)
 
 
     def _log_failed_jobs_locally(self, failed_jobs,
