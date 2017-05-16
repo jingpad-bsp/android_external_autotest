@@ -36,6 +36,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
+from chromite.lib import gs
 
 # Autotest requires the psutil module from site-packages, so it must be imported
 # after "import common".
@@ -141,6 +142,9 @@ NOTIFICATION_VERSION = '1'
 # the message data for new test result notification.
 NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'
 
+# Full path to the correct gsutil command to run.
+_GSUTIL_CMD = gs.GSContext.GetDefaultGSUtilBin()
+
 
 class TimeoutException(Exception):
     """Exception raised by the timeout_handler."""
@@ -172,7 +176,7 @@ def get_cmd_list(multiprocessing, dir_entry, gs_path):
 
     @return A command list to be executed by Popen.
     """
-    cmd = ['gsutil']
+    cmd = [_GSUTIL_CMD]
     if multiprocessing:
         cmd.append('-m')
     if USE_RSYNC_ENABLED:
@@ -663,7 +667,7 @@ def wait_for_gs_write_access(gs_uri):
         try:
             subprocess.check_call(test_cmd)
             subprocess.check_call(
-                    ['gsutil', 'rm',
+                    [_GSUTIL_CMD, 'rm',
                      os.path.join(gs_uri,
                                   os.path.basename(dummy_file.name))])
             break
