@@ -7,7 +7,6 @@
 import copy
 import logging
 import unittest
-import warnings
 
 import common
 from autotest_lib.utils import labellib
@@ -147,13 +146,13 @@ class CrosVersionTestCase(unittest.TestCase):
 
     def test_parse_cros_version_without_rc(self):
         got = labellib.parse_cros_version('lumpy-release/R27-3773.0.0')
-        self.assertEqual(got, labellib.CrosVersion('lumpy-release', 'R27',
-                                                   '3773.0.0', None))
+        self.assertEqual(got, labellib.CrosVersion('lumpy-release', 'lumpy',
+                                                   'R27', '3773.0.0', None))
 
     def test_parse_cros_version_with_rc(self):
         got = labellib.parse_cros_version('lumpy-release/R27-3773.0.0-rc1')
-        self.assertEqual(got, labellib.CrosVersion('lumpy-release', 'R27',
-                                                   '3773.0.0', 'rc1'))
+        self.assertEqual(got, labellib.CrosVersion('lumpy-release', 'lumpy',
+                                                   'R27', '3773.0.0', 'rc1'))
 
     def test_parse_cros_version_raises(self):
         with self.assertRaises(ValueError):
@@ -161,15 +160,32 @@ class CrosVersionTestCase(unittest.TestCase):
 
     def test_format_cros_version_without_rc(self):
         got = labellib.format_cros_version(
-                labellib.CrosVersion('lumpy-release', 'R27',
+                labellib.CrosVersion('lumpy-release', 'lumpy', 'R27',
                                      '3773.0.0', None))
         self.assertEqual(got, 'lumpy-release/R27-3773.0.0')
 
     def test_format_cros_version_with_rc(self):
         got = labellib.format_cros_version(
-                labellib.CrosVersion('lumpy-release', 'R27',
+                labellib.CrosVersion('lumpy-release', 'lumpy',  'R27',
                                      '3773.0.0', 'rc1'))
         self.assertEqual(got, 'lumpy-release/R27-3773.0.0-rc1')
+
+    def test_parse_cros_version_for_board(self):
+        test_builds = ['lumpy-release/R27-3773.0.0-rc1',
+                       'trybot-lumpy-paladin/R27-3773.0.0',
+                       'lumpy-pre-cq/R27-3773.0.0-rc1',
+                       'lumpy-test-ap/R27-3773.0.0-rc1',
+                       'lumpy-toolchain/R27-3773.0.0-rc1',
+                       ]
+        for build in test_builds:
+            cros_version = labellib.parse_cros_version(build)
+            self.assertEqual(cros_version.board, 'lumpy')
+            self.assertEqual(cros_version.milestone, 'R27')
+
+        build = 'trybot-lumpy-a-pre-cq/R27-3773.0.0-rc1'
+        cros_version = labellib.parse_cros_version(build)
+        self.assertEqual(cros_version.board, 'lumpy-a')
+        self.assertEqual(cros_version.milestone, 'R27')
 
 
 if __name__ == '__main__':
