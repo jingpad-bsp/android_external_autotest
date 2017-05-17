@@ -440,6 +440,39 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
             'key', 'secret', 'gs://bucket1', '1K', '10', 'testoutput')
         self.mox.VerifyAll()
 
+    def testEnableNotificationUsingCredentialsInBucketFail(self):
+        config_mock = self.mox.CreateMockAnything()
+        moblab_rpc_interface._CONFIG = config_mock
+        config_mock.get_config_value(
+            'CROS', 'image_storage_server').AndReturn('gs://bucket1/')
+        self.mox.StubOutWithMock(common_lib_utils, 'run')
+        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+            args=('cp', 'gs://bucket1/pubsub-key-do-not-delete.json',
+            '/tmp')).AndRaise(
+                error.CmdError("fakecommand", common_lib_utils.CmdResult(), ""))
+        self.mox.ReplayAll()
+        moblab_rpc_interface._enable_notification_using_credentials_in_bucket()
+
+    def testEnableNotificationUsingCredentialsInBucketSuccess(self):
+        config_mock = self.mox.CreateMockAnything()
+        moblab_rpc_interface._CONFIG = config_mock
+        config_mock.get_config_value(
+            'CROS', 'image_storage_server').AndReturn('gs://bucket1/')
+        self.mox.StubOutWithMock(common_lib_utils, 'run')
+        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+            args=('cp', 'gs://bucket1/pubsub-key-do-not-delete.json',
+            '/tmp'))
+        moblab_rpc_interface.shutil = self.mox.CreateMockAnything()
+        moblab_rpc_interface.shutil.copyfile(
+                '/tmp/pubsub-key-do-not-delete.json',
+                moblab_host.MOBLAB_SERVICE_ACCOUNT_LOCATION)
+        self.mox.StubOutWithMock(moblab_rpc_interface, '_update_partial_config')
+        moblab_rpc_interface._update_partial_config(
+            {'CROS': [(moblab_rpc_interface._CLOUD_NOTIFICATION_ENABLED, True)]}
+        )
+        self.mox.ReplayAll()
+        moblab_rpc_interface._enable_notification_using_credentials_in_bucket()
+
 
 if __name__ == '__main__':
     unittest.main()
