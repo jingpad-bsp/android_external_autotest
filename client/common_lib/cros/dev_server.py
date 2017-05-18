@@ -938,7 +938,11 @@ class ImageServerBase(DevServer):
 
         @return the results of this call.
         """
-        if not ENABLE_SSH_CONNECTION_FOR_DEVSERVER:
+        server_name = get_hostname(call)
+        is_in_restricted_subnet = utils.get_restricted_subnet(
+                server_name, utils.RESTRICTED_SUBNETS)
+        if (not ENABLE_SSH_CONNECTION_FOR_DEVSERVER or
+            not is_in_restricted_subnet):
             return super(ImageServerBase, cls).run_call(
                     call, readline=readline, timeout=timeout)
         else:
