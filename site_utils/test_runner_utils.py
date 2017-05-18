@@ -522,8 +522,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
         for suite, description in suites_and_descriptions:
             logging.info('Scheduling suite for %s...', description)
             ntests = suite.schedule(
-                    lambda log_entry, log_in_subdir=False: None,
-                    add_experimental=not no_experimental)
+                    lambda log_entry, log_in_subdir=False: None)
             logging.info('... scheduled %s job(s).', ntests)
 
     if not afe.get_jobs():
