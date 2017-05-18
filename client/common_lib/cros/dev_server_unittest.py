@@ -83,6 +83,7 @@ class RunCallTest(mox.MoxTestBase):
     def setUp(self):
         """Set up the test"""
         self.test_call = 'http://nothing/test'
+        self.hostname = 'nothing'
         self.contents = 'true'
         self.contents_readline = ['file/one', 'file/two']
         self.save_ssh_config = dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER
@@ -139,6 +140,10 @@ class RunCallTest(mox.MoxTestBase):
         """Test dev_server.ImageServerBase.run_call using ssh with arg:
         (call)."""
         dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER = True
+        self.mox.StubOutWithMock(utils, 'get_restricted_subnet')
+        utils.get_restricted_subnet(
+                self.hostname, utils.RESTRICTED_SUBNETS).AndReturn(
+                self.hostname)
 
         to_return = MockSshResponse(self.contents)
         utils.run(mox.StrContains(self.test_call),
@@ -152,6 +157,10 @@ class RunCallTest(mox.MoxTestBase):
         """Test dev_server.ImageServerBase.run_call using ssh with args:
         (call, readline=True)."""
         dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER = True
+        self.mox.StubOutWithMock(utils, 'get_restricted_subnet')
+        utils.get_restricted_subnet(
+                self.hostname, utils.RESTRICTED_SUBNETS).AndReturn(
+                self.hostname)
 
         to_return = MockSshResponse('\n'.join(self.contents_readline))
         utils.run(mox.StrContains(self.test_call),
@@ -166,6 +175,10 @@ class RunCallTest(mox.MoxTestBase):
         """Test dev_server.ImageServerBase.run_call using ssh with args:
         (call, timeout=xxx)."""
         dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER = True
+        self.mox.StubOutWithMock(utils, 'get_restricted_subnet')
+        utils.get_restricted_subnet(
+                self.hostname, utils.RESTRICTED_SUBNETS).AndReturn(
+                self.hostname)
 
         to_return = MockSshResponse(self.contents)
         utils.run(mox.StrContains(self.test_call),
@@ -191,6 +204,11 @@ class RunCallTest(mox.MoxTestBase):
         """Test dev_server.ImageServerBase.run_call using ssh with raising
         exception."""
         dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER = True
+        self.mox.StubOutWithMock(utils, 'get_restricted_subnet')
+        utils.get_restricted_subnet(
+                self.hostname, utils.RESTRICTED_SUBNETS).AndReturn(
+                self.hostname)
+
         utils.run(mox.StrContains(self.test_call),
                   timeout=mox.IgnoreArg()).AndRaise(MockSshError())
         self.mox.ReplayAll()
