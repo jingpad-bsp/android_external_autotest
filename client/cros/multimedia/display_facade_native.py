@@ -86,124 +86,115 @@ class DisplayFacadeNative(object):
         return extension.EvaluateJavaScript("window.__window_info")
 
 
-    def _wait_for_display_options_to_appear(self, tab, display_index,
-                                            timeout=16):
-        """Waits for option.DisplayOptions to appear.
+    def _get_display_by_id(self, display_id):
+        """Gets a display by ID.
 
-        The function waits until options.DisplayOptions appears or is timed out
-                after the specified time.
+        @param display_id: id of the display.
 
-        @param tab: the tab where the display options dialog is shown.
-        @param display_index: index of the display.
-        @param timeout: time wait for display options appear.
-
-        @raise RuntimeError when display_index is out of range
-        @raise TimeoutException when the operation is timed out.
+        @return: A dict of various display info.
         """
-
-        tab.WaitForJavaScriptCondition(
-                    "typeof options !== 'undefined' &&"
-                    "typeof options.DisplayOptions !== 'undefined' &&"
-                    "typeof options.DisplayOptions.instance_ !== 'undefined' &&"
-                    "typeof options.DisplayOptions.instance_"
-                    "       .displays_ !== 'undefined'", timeout=timeout)
-
-        if not tab.EvaluateJavaScript(
-                    "options.DisplayOptions.instance_.displays_.length > %d"
-                    % (display_index)):
-            raise RuntimeError('Display index out of range: '
-                    + str(tab.EvaluateJavaScript(
-                    "options.DisplayOptions.instance_.displays_.length")))
-
-        tab.WaitForJavaScriptCondition(
-                "typeof options.DisplayOptions.instance_"
-                "         .displays_[%(index)d] !== 'undefined' &&"
-                "typeof options.DisplayOptions.instance_"
-                "         .displays_[%(index)d].id !== 'undefined' &&"
-                "typeof options.DisplayOptions.instance_"
-                "         .displays_[%(index)d].resolutions !== 'undefined'"
-                % {'index': display_index}, timeout=timeout)
+        for display in self.get_display_info():
+            if display['id'] == display_id:
+                return display
+        raise RuntimeError('Cannot find display ' + display_id)
 
 
-    def get_display_modes(self, display_index):
+    def get_display_modes(self, display_id):
         """Gets all the display modes for the specified display.
 
-        @param display_index: index of the display to get modes from.
+        @param display_id: id of the display to get modes from.
 
         @return: A list of DisplayMode dicts.
         """
-        return self.get_display_info()[display_index]['modes']
+        display = self._get_display_by_id(display_id)
+        return display['modes']
 
 
-    def get_display_rotation(self, display_index):
+    def get_display_rotation(self, display_id):
         """Gets the display rotation for the specified display.
 
-        @param display_index: index of the display to get modes from.
+        @param display_id: id of the display to get modes from.
 
         @return: Degree of rotation.
         """
-        return self.get_display_info()[display_index]['rotation']
+        display = self._get_display_by_id(display_id)
+        return display['rotation']
 
 
-    def set_display_rotation(self, display_index, rotation,
+    def set_display_rotation(self, display_id, rotation,
                              delay_before_rotation=0, delay_after_rotation=0):
         """Sets the display rotation for the specified display.
 
-        @param display_index: index of the display to get modes from.
+        @param display_id: id of the display to get modes from.
         @param rotation: degree of rotation
         @param delay_before_rotation: time in second for delay before rotation
         @param delay_after_rotation: time in second for delay after rotation
         """
-        try:
-            tab_descriptor = self.load_url('chrome://settings-frame/display')
-            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
-            self._wait_for_display_options_to_appear(tab, display_index)
+        time.sleep(delay_before_rotation)
+        extension = self._resource.get_extension(
+                constants.MULTIMEDIA_TEST_EXTENSION)
+        extension.ExecuteJavaScript(
+                """
+                window.__set_display_rotation_has_error = null;
+                chrome.system.display.setDisplayProperties('%(id)s',
+                    {"rotation": %(rotation)d}, () => {
+                    if (runtime.lastError) {
+                        console.error('Failed to set display rotation',
+                            runtime.lastError);
+                        window.__set_display_rotation_has_error = "failure";
+                    } else {
+                        window.__set_display_rotation_has_error = "success";
+                    }
+                });
+                """
+                % {'id': display_id, 'rotation': rotation}
+        )
+        utils.wait_for_value(lambda: (
+                extension.EvaluateJavaScript(
+                    'window.__set_display_rotation_has_error') != None),
+                expected_value="success")
+        time.sleep(delay_after_rotation)
 
-            # Hide the typing cursor to reduce interference.
-            self.hide_typing_cursor()
 
-            time.sleep(delay_before_rotation)
-            tab.ExecuteJavaScript(
-                    """
-                    var display = options.DisplayOptions.instance_
-                            .displays_[%(index)d];
-                    chrome.send('setRotation', [display.id, %(rotation)d]);
-                    """
-                    % {'index': display_index, 'rotation': rotation}
-            )
-            time.sleep(delay_after_rotation)
-        finally:
-            self.close_tab(tab_descriptor)
-
-
-    def get_available_resolutions(self, display_index):
+    def get_available_resolutions(self, display_id):
         """Gets the resolutions from the specified display.
 
         @return a list of (width, height) tuples.
         """
-        modes = self.get_display_modes(display_index)
+        modes = self.get_display_modes(display_id)
         if 'widthInNativePixels' not in modes[0]:
             raise RuntimeError('Cannot find widthInNativePixels attribute')
         return list(set([(mode['widthInNativePixels'],
                           mode['heightInNativePixels']) for mode in modes]))
 
 
-    def get_first_external_display_index(self):
-        """Gets the first external display index.
+    def get_internal_display_id(self):
+        """Gets the internal display id.
 
-        @return the index of the first external display; False if not found.
+        @return the id of the internal display.
+        """
+        for display in self.get_display_info():
+            if display['isInternal']:
+                return display['id']
+        raise RuntimeError('Cannot find internal display')
+
+
+    def get_first_external_display_id(self):
+        """Gets the first external display id.
+
+        @return the id of the first external display; -1 if not found.
         """
         # Get the first external and enabled display
-        for index, display in enumerate(self.get_display_info()):
+        for display in self.get_display_info():
             if display['isEnabled'] and not display['isInternal']:
-                return index
-        return False
+                return display['id']
+        return -1
 
 
-    def set_resolution(self, display_index, width, height, timeout=3):
+    def set_resolution(self, display_id, width, height, timeout=3):
         """Sets the resolution of the specified display.
 
-        @param display_index: index of the display to set resolution for.
+        @param display_id: id of the display to set resolution for.
         @param width: width of the resolution
         @param height: height of the resolution
         @param timeout: maximal time in seconds waiting for the new resolution
@@ -211,56 +202,52 @@ class DisplayFacadeNative(object):
         @raise TimeoutException when the operation is timed out.
         """
 
-        try:
-            tab_descriptor = self.load_url('chrome://settings-frame/display')
-            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
-            self._wait_for_display_options_to_appear(tab, display_index)
-
-            tab.ExecuteJavaScript(
-                    # Start from M38 (refer to CR:417113012), a DisplayMode dict
-                    # contains 'originalWidth'/'originalHeight' in addition to
-                    # 'width'/'height'. OriginalWidth/originalHeight is what is
-                    # supported by the display while width/height is what is
-                    # shown to users in the display setting.
-                    """
-                    var display = options.DisplayOptions.instance_
-                              .displays_[%(index)d];
-                    var modes = display.resolutions;
-                    for (index in modes) {
-                        var mode = modes[index];
-                        if (mode.originalWidth == %(width)d &&
-                                mode.originalHeight == %(height)d) {
-                            chrome.send('setDisplayMode', [display.id, mode]);
+        extension = self._resource.get_extension(
+                constants.MULTIMEDIA_TEST_EXTENSION)
+        extension.ExecuteJavaScript(
+                """
+                window.__set_resolution_progress = null;
+                chrome.system.display.getInfo((info_array) => {
+                    var mode;
+                    for (var info of info_array) {
+                        if (info['id'] == '%(id)s') {
+                            for (var m of info['modes']) {
+                                if (m['width'] == %(width)d &&
+                                    m['height'] == %(height)d) {
+                                    window.__set_resolution_progress =
+                                        "found_mode";
+                                    mode = m;
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
-                    """
-                    % {'index': display_index, 'width': width, 'height': height}
-            )
+                    if (mode === undefined) {
+                        console.error('Failed to select the resolution ' +
+                            '%(width)dx%(height)d');
+                        window.__set_resolution_progress = "mode not found";
+                        return;
+                    }
 
-            def _get_selected_resolution():
-                modes = tab.EvaluateJavaScript(
-                        """
-                        options.DisplayOptions.instance_
-                                 .displays_[%(index)d].resolutions
-                        """
-                        % {'index': display_index})
-                for mode in modes:
-                    if mode['selected']:
-                        return (mode['originalWidth'], mode['originalHeight'])
-
-            # TODO(tingyuan):
-            # Support for multiple external monitors (i.e. for chromebox)
-            end_time = time.time() + timeout
-            while time.time() < end_time:
-                r = _get_selected_resolution()
-                if (width, height) == (r[0], r[1]):
-                    return True
-                time.sleep(0.1)
-            raise TimeoutException('Failed to change resolution to %r (%r'
-                                   ' detected)' % ((width, height), r))
-        finally:
-            self.close_tab(tab_descriptor)
+                    chrome.system.display.setDisplayProperties('%(id)s',
+                        {'displayMode': mode}, () => {
+                            if (runtime.lastError) {
+                                window.__set_resolution_progress = "failed " +
+                                    runtime.lastError;
+                            } else {
+                                window.__set_resolution_progress = "succeeded";
+                            }
+                        }
+                    );
+                });
+                """
+                % {'id': display_id, 'width': width, 'height': height}
+        )
+        utils.wait_for_value(lambda: (
+                extension.EvaluateJavaScript(
+                    'window.__set_resolution_progress') != None),
+                expected_value="success")
 
 
     @_retry_display_call
@@ -509,20 +496,18 @@ class DisplayFacadeNative(object):
 
 
     @facade_resource.retry_chrome_call
-    def move_to_display(self, display_index):
+    def move_to_display(self, display_id):
         """Moves the current window to the indicated display.
 
-        @param display_index: The index of the indicated display.
+        @param display_id: The id of the indicated display.
         @return True if success.
 
         @raise TimeoutException if it fails.
         """
-        display_info = self.get_display_info()
-        if (display_index is False or
-            display_index not in xrange(0, len(display_info)) or
-            not display_info[display_index]['isEnabled']):
+        display_info = self._get_display_by_id(display_id)
+        if not display_info['isEnabled']:
             raise RuntimeError('Cannot find the indicated display')
-        target_bounds = display_info[display_index]['bounds']
+        target_bounds = display_info['bounds']
 
         extension = self._resource.get_extension()
         # If the area of bounds is empty (here we achieve this by setting
