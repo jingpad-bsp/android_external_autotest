@@ -406,7 +406,7 @@ class ChromeCr50(ChromeConsole):
 
     def using_ccd(self):
         """Returns true if the console is being served using CCD"""
-        return self._servo.get_servo_version().startswith('servo_v4')
+        return 'ccd_cr50' in self._servo.get_servo_version()
 
 
     @ccd_command
