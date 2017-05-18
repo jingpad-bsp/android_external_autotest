@@ -108,9 +108,9 @@ NETWORK_INIT_TIMEOUT = 300
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
 # Number of seconds to download files from devserver.
-DEVSERVER_CALL_TIMEOUT = 300
+DEVSERVER_CALL_TIMEOUT = 3600
 # Number of retries to download files from devserver.
-DEVSERVER_CALL_RETRY = 3
+DEVSERVER_CALL_RETRY = 2
 
 # Type string for container related metadata.
 CONTAINER_CREATE_METADB_TYPE = 'container_create'
