@@ -46,12 +46,7 @@ arc-networkd,root,root,Yes,No,No
 arc-obb-mounter,root,root,Yes,No,No
 upstart-socket-,root,root,No,No,No
 timberslide,root,root,No,No,No
-
-# We need to run as root due to caps not preserving across execs.
-# firewalld will fork+exec iptables to handle requests, and it
-# takes care of dropping root/caps for those commands.
-# TODO: We can fix this when minijail supports ambient caps.  http://b/32066154
-firewalld,root,root,No,No,No
+firewalld,firewall,firewall,Yes,Yes,No
 
 # Broadcomm bluetooth firmware patch downloader runs on some veyron boards.
 brcm_patchram_p,root,root,No,No,No
