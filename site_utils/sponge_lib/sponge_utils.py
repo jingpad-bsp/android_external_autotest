@@ -6,7 +6,6 @@
 """
 
 import logging
-import traceback
 
 from autotest_lib.site_utils.sponge_lib import autotest_dynamic_job
 from autotest_lib.client.common_lib import decorators
@@ -53,9 +52,7 @@ def upload_results(job, log=logging.debug):
         info = autotest_dynamic_job.DynamicJobInfo(job)
         return upload_utils.UploadInfo(info)
     except:
-        stack = traceback.format_exc()
-        logging.info('Failed to upload to sponge.')
-        logging.info(str(stack))
+        logging.exception('Failed to upload to sponge.')
     finally:
         logging.getLogger().removeHandler(log_handler)
         logging.getLogger().setLevel(start_level)
