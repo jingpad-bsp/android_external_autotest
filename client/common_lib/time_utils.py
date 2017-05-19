@@ -112,6 +112,9 @@ def to_utc_timestamp(datetime_val):
     @returns A datetime as a UTC floating point timestamp in seconds since
              epoch.
     """
+    if datetime_val is None:
+        return None
+
     epoch = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
     local_datetime = datetime_val.replace(tzinfo=tzlocal.get_localzone())
     utc_datetime = local_datetime.astimezone(tz=pytz.utc)
