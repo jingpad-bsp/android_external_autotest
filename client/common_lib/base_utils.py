@@ -9,10 +9,10 @@ The real utils module is utils.py
 
 import warnings
 
+import common
+from autotest_lib.client.common_lib import deprecation
+
+# pylint: disable=wildcard-import,unused-wildcard-import,redefined-builtin
 from .utils import *
 
-
-warnings.warn(
-    '%s module is deprecated;'
-    ' use the equivalent utils module instead'
-    % __name__)
+warnings.warn(deprecation.APIDeprecationWarning(__name__), stacklevel=2)
