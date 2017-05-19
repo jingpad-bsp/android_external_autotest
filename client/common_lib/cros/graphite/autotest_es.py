@@ -69,7 +69,7 @@ from autotest_lib.client.common_lib import global_config
 
 # Server and ports for elasticsearch (for metadata use only)
 METADATA_ES_SERVER = global_config.global_config.get_config_value(
-        'CROS', 'ES_HOST', default='localhost')
+        'CROS', 'ES_HOST', default=None)
 ES_PORT = global_config.global_config.get_config_value(
         'CROS', 'ES_PORT', type=int, default=9200)
 ES_UDP_PORT = global_config.global_config.get_config_value(
@@ -99,6 +99,9 @@ def post(use_http=ES_USE_HTTP, host=METADATA_ES_SERVER, port=ES_PORT,
     its post() function. For an explanation of each, see those functions in
     es_utils.
     """
+    if not host:
+        return
+
     esmd = es_utils.ESMetadata(use_http=use_http, host=host, port=port,
                                timeout=timeout, index=index, udp_port=udp_port)
     return esmd.post(*args, **kwargs)
@@ -113,6 +116,9 @@ def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
     the performance of uploading data using HTTP.
     For an explanation of each argument, see those functions in es_utils.
     """
+    if not host:
+        return True
+    raise Exception(str(host) + '+'*99)
     esmd = es_utils.ESMetadata(use_http=True, host=host, port=port,
                                timeout=timeout, index=index,
                                udp_port=ES_UDP_PORT)
