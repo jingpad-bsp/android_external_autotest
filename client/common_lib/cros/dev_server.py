@@ -155,6 +155,9 @@ class DevServerOverloadException(Exception):
     """Raised when the dev server returns a 502 HTTP response."""
     pass
 
+class DevServerFailToLocateException(Exception):
+    """Raised when fail to locate any devserver."""
+    pass
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -623,6 +626,12 @@ class DevServer(object):
             server_name = get_hostname(server)
             server_names[server_name] = server
             all_devservers.append(server_name)
+        if not all_devservers:
+            devserver_type = 'unrestricted only' if unrestricted_only else 'all'
+            raise DevServerFailToLocateException(
+                'Fail to locate a devserver for dut %s in %s devservers'
+                % (ip, devserver_type))
+
         devservers = utils.get_servers_in_same_subnet(ip, mask_bits,
                                                       all_devservers)
         return [server_names[s] for s in devservers]
@@ -688,6 +697,7 @@ class DevServer(object):
                  used. For example, if hostname is in a restricted subnet,
                  can_retry will be False.
         """
+        logging.info('Getting devservers for host: %s',  hostname)
         host_ip = None
         if hostname:
             host_ip = bin_utils.get_ip_address(hostname)
