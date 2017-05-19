@@ -170,7 +170,9 @@ bool TestIO(const std::string& dev_name) {
 }
 
 // Test all required resolutions with all fps which are larger than 30.
-bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
+bool TestResolutions(const std::string& dev_name,
+                     bool check_1280x960,
+                     bool check_1600x1200) {
   uint32_t buffers = 4;
   uint32_t time_to_capture = 3;
   V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
@@ -192,7 +194,9 @@ bool TestResolutions(const std::string& dev_name, bool check_1280x960) {
   required_resolutions.push_back(SupportedFormat(640, 480, 0, 30.0));
   required_resolutions.push_back(SupportedFormat(1280, 720, 0, 30.0));
   required_resolutions.push_back(SupportedFormat(1920, 1080, 0, 30.0));
-  required_resolutions.push_back(SupportedFormat(1600, 1200, 0, 30.0));
+  if (check_1600x1200) {
+    required_resolutions.push_back(SupportedFormat(1600, 1200, 0, 30.0));
+  }
   if (check_1280x960) {
     required_resolutions.push_back(SupportedFormat(1280, 960, 0, 30.0));
   }
@@ -285,19 +289,22 @@ int main(int argc, char** argv) {
       characteristics.GetCharacteristicsFromFile(mapping);
 
   bool check_1280x960 = false;
+  bool check_1600x1200 = false;
   if (device_infos.size() > 1) {
     printf("[Error] One device should not have multiple configs.\n");
     exit(EXIT_FAILURE);
   }
   if (device_infos.size() == 1) {
     check_1280x960 = !device_infos[0].resolution_1280x960_unsupported;
+    check_1600x1200 = !device_infos[0].resolution_1600x1200_unsupported;
   }
   printf("[Info] check 1280x960: %d\n", check_1280x960);
+  printf("[Info] check 1600x1200: %d\n", check_1600x1200);
 
   if (!TestIO(dev_name))
     exit(EXIT_FAILURE);
 
-  if (!TestResolutions(dev_name, check_1280x960))
+  if (!TestResolutions(dev_name, check_1280x960, check_1600x1200))
     exit(EXIT_FAILURE);
 
   return EXIT_SUCCESS;
