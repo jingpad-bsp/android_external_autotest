@@ -28,6 +28,7 @@ from autotest_lib.server.hosts import factory
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import utils
+from autotest_lib.utils import labellib
 
 
 _autoserv_proc = None
@@ -476,7 +477,9 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
               provision failed prior to running any jobs.
     """
     # Create host in afe, add board and build labels.
-    cros_version_label = provision.cros_version_to_label(build)
+    cros_version_label = labellib.format_keyval_label(
+        labellib.KeyvalLabel(labellib.Key.CROS_VERSION, build))
+
     build_label = afe.create_label(cros_version_label)
     board_label = afe.create_label(constants.BOARD_PREFIX + board)
     new_host = afe.create_host(remote)
