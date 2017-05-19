@@ -223,21 +223,20 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
 
     def _append_freon_switch_if_needed(self, cmd_line):
-        if utils.is_freon():
-            return cmd_line + ' --ozone-platform=gbm'
-        else:
-            return cmd_line
+        return cmd_line + ' --ozone-platform=gbm'
 
 
     def _run_test_case(self, name, test_video_data, frame_num, rendering_fps):
 
         # Get frame delivery time, decode as fast as possible.
         test_log_file = self._results_file(name, 'no_rendering', OUTPUT_LOG)
-        cmd_line = self._append_freon_switch_if_needed(
+        cmd_line = (
             '--test_video_data="%s" ' % test_video_data +
             '--gtest_filter=DecodeVariations/*/0 ' +
             '--disable_rendering ' +
-            '--output_log="%s"' % test_log_file)
+            '--output_log="%s" ' % test_log_file +
+            '--ozone-platform=gbm'
+        )
 
         self.run_chrome_test_binary(BINARY, cmd_line)
 
@@ -251,12 +250,14 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         # Get frame drop rate & CPU usage, decode at the specified fps
         test_log_file = self._results_file(name, 'with_rendering', OUTPUT_LOG)
         time_log_file = self._results_file(name, 'with_rendering', TIME_LOG)
-        cmd_line = self._append_freon_switch_if_needed(
+        cmd_line = (
             '--test_video_data="%s" ' % test_video_data +
             '--gtest_filter=DecodeVariations/*/0 ' +
             '--rendering_warm_up=%d ' % RENDERING_WARM_UP_ITERS +
             '--rendering_fps=%s ' % rendering_fps +
-            '--output_log="%s"' % test_log_file)
+            '--output_log="%s" ' % test_log_file +
+            '--ozone-platform=gbm'
+        )
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(BINARY, cmd_line, prefix=time_cmd)
@@ -267,10 +268,12 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
 
         # Get decode time median.
         test_log_file = self._results_file(name, 'decode_time', OUTPUT_LOG)
-        cmd_line = self._append_freon_switch_if_needed(
+        cmd_line = (
             '--test_video_data="%s" ' % test_video_data +
             '--gtest_filter=*TestDecodeTimeMedian ' +
-            '--output_log="%s"' % test_log_file)
+            '--output_log="%s" ' % test_log_file +
+            '--ozone-platform=gbm'
+        )
         self.run_chrome_test_binary(BINARY, cmd_line)
         line = open(test_log_file, 'r').read()
         m = RE_DECODE_TIME_MEDIAN.match(line)

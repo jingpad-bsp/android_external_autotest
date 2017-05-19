@@ -29,12 +29,5 @@ class graphics_GLES2ConformChrome(chrome_binary_test.ChromeBinaryTest):
 
     def run_once(self):
         # TODO(ihf): Remove this once GLES2ConformChrome works on freon.
-        if utils.is_freon():
-            raise error.TestNAError(
-                   'Test needs work on Freon. See crbug.com/484463.')
-
-        if not os.path.exists(self.get_chrome_binary_path(self.BINARY)):
-            raise error.TestFail('%s not found. Use internal Chrome sources!' %
-                                 self.BINARY)
-
-        self.run_chrome_test_binary(self.BINARY)
+        raise error.TestError(
+           'Test is obsolete. See crbug.com/484463.')

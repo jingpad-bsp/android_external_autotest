@@ -45,9 +45,7 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             # along with test logs.
             cmd_line_list.append(
                 '--thumbnail_output_dir="%s"' % self.resultsdir)
-
-            if utils.is_freon():
-                cmd_line_list.append('--ozone-platform=gbm')
+            cmd_line_list.append('--ozone-platform=gbm')
 
             if gtest_filter:
                 cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)

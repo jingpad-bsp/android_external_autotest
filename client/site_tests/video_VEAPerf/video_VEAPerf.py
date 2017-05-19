@@ -187,11 +187,6 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                             '%s_%s_%s' % (test_name, subtype, suffix))
 
 
-    def _append_freon_switch_if_needed(self, cmd_line):
-        if utils.is_freon():
-            cmd_line.append('--ozone-platform=gbm')
-
-
     def _run_test_case(self, test_name, test_stream_data):
         """
         Runs a VEA unit test.
@@ -205,8 +200,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         vea_args = [
             '--gtest_filter=EncoderPerf/*/0',
             '--test_stream_data=%s' % test_stream_data,
-            '--output_log="%s"' % test_log_file]
-        self._append_freon_switch_if_needed(vea_args)
+            '--output_log="%s"' % test_log_file,
+            '--ozone-platform=gbm']
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
         self._analyze_fps(test_name, test_log_file)
 
@@ -219,8 +214,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
             '--gtest_filter=SimpleEncode/*/0',
             '--test_stream_data=%s' % test_stream_data,
             '--run_at_fps', '--measure_latency',
-            '--output_log="%s"' % test_log_file]
-        self._append_freon_switch_if_needed(vea_args)
+            '--output_log="%s"' % test_log_file,
+            '--ozone-platform=gbm']
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args),
