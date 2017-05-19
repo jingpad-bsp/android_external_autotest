@@ -47,7 +47,8 @@ class android_ACTS(test.test):
                  perma_path=None,
                  additional_cmd_line_params=None,
                  testtracker_project_id=None,
-                 testtracker_extra_env=None):
+                 testtracker_extra_env=None,
+                 testtracker_owner=None):
         """Runs an acts test case.
 
         @param testbed: The testbed to test on.
