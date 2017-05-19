@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import logging
 import time
 from autotest_lib.client.common_lib.cros import arc
@@ -20,6 +21,17 @@ class cheets_StartAndroid(test.test):
     """
     version = 1
 
+    def cleanup(self):
+        if hasattr(self, '_run_time'):
+            logging.debug("Combined time to start Chrome and Android was "
+                          "%lf seconds", self._run_time)
+            self.output_perf_value(
+                description='time to start Chrome and Android',
+                value=self._run_time,
+                units='seconds',
+                higher_is_better=False
+            )
+
     def run_once(self, count=None, dont_override_profile=False):
         if count:
             # Run stress test by logging in and starting ARC several times.
@@ -33,6 +45,7 @@ class cheets_StartAndroid(test.test):
         else:
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
+            start = datetime.datetime.now()
             try:
                 self.chrome = chrome.Chrome(
                             dont_override_profile=dont_override_profile,
@@ -48,3 +61,6 @@ class cheets_StartAndroid(test.test):
                             dont_override_profile=dont_override_profile,
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED,
                             num_tries=3)
+            finally:
+                self._run_time = (datetime.datetime.now() -
+                                  start).total_seconds()
