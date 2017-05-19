@@ -98,19 +98,6 @@ def image_version_to_label(image):
     return get_version_label_prefix(image) + ':' + image
 
 
-def cros_version_to_label(image):
-    """
-    Returns the proper label name for a ChromeOS build of |image|.
-
-    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
-    @returns: A string that is the appropriate label name.
-
-    """
-    warnings.warn('cros_version_to_label is deprecated', stacklevel=2)
-    keyval_label = labellib.KeyvalLabel(Key.CROS_VERSION, image)
-    return labellib.format_keyval_label(keyval_label)
-
-
 def fwro_version_to_label(image):
     """
     Returns the proper label name for a RO firmware build of |image|.
