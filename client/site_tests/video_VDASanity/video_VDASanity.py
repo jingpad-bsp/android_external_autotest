@@ -42,9 +42,8 @@ class video_VDASanity(chrome_binary_test.ChromeBinaryTest):
         cmd_line_list = [
             '--test_video_data="%s"' % test_video_data,
             '--gtest_filter=VideoDecodeAcceleratorTest.NoCrash',
+            '--ozone-platform=gbm'
             ]
-        if utils.is_freon():
-            cmd_line_list.append('--ozone-platform=gbm')
         cmd_line = ' '.join(cmd_line_list)
         self.run_chrome_test_binary(BINARY, cmd_line)
 

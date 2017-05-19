@@ -328,13 +328,7 @@ class DisplayFacadeNative(object):
 
         @param path: path to image file.
         """
-        if utils.is_freon():
-            self.take_screenshot_crtc(path, self.get_internal_crtc())
-        else:
-            output = self.get_internal_connector_name()
-            box = self.get_output_rect(output)
-            graphics_utils.take_screenshot_crop_x(path, box)
-            return output, box  # for logging/debugging
+        self.take_screenshot_crtc(path, self.get_internal_crtc())
 
 
     def take_external_screenshot(self, path):
@@ -342,13 +336,7 @@ class DisplayFacadeNative(object):
 
         @param path: path to image file.
         """
-        if utils.is_freon():
-            self.take_screenshot_crtc(path, self.get_external_crtc())
-        else:
-            output = self.get_external_connector_name()
-            box = self.get_output_rect(output)
-            graphics_utils.take_screenshot_crop_x(path, box)
-            return output, box  # for logging/debugging
+        self.take_screenshot_crtc(path, self.get_external_crtc())
 
 
     def take_screenshot_crtc(self, path, id):
