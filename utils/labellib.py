@@ -125,18 +125,26 @@ def format_keyval_label(keyval_label):
 
 
 CrosVersion = collections.namedtuple(
-        'CrosVersion', 'group, milestone, version, rc')
+        'CrosVersion', 'group, board, milestone, version, rc')
 
 
 _CROS_VERSION_REGEX = (
-    r'^'
-    r'(?P<group>[a-z0-9-]+)'
-    r'/'
-    r'(?P<milestone>R[0-9]+)'
-    r'-'
-    r'(?P<version>[0-9.]+)'
-    r'(-(?P<rc>rc[0-9]+))?'
-    r'$'
+        r'^'
+        r'(?P<group>[a-z0-9-]+)'
+        r'/'
+        r'(?P<milestone>R[0-9]+)'
+        r'-'
+        r'(?P<version>[0-9.]+)'
+        r'(-(?P<rc>rc[0-9]+))?'
+        r'$'
+)
+
+_CROS_BOARD_FROM_VERSION_REGEX = (
+        r'^'
+        r'(trybot-)?'
+        r'(?P<board>[a-z_-]+)-(release|paladin|pre-cq|test-ap|toolchain)'
+        r'/R.*'
+        r'$'
 )
 
 
@@ -149,7 +157,13 @@ def parse_cros_version(version_string):
     match = re.search(_CROS_VERSION_REGEX, version_string)
     if match is None:
         raise ValueError('Invalid cros version string: %r' % version_string)
-    return CrosVersion(**match.groupdict())
+    parts = match.groupdict()
+    match = re.search(_CROS_BOARD_FROM_VERSION_REGEX, version_string)
+    if match is None:
+        raise ValueError('Invalid cros version string: %r. Failed to parse '
+                         'board.' % version_string)
+    parts['board'] = match.group('board')
+    return CrosVersion(**parts)
 
 
 def format_cros_version(cros_version):
