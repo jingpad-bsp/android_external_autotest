@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import errno
+import fnmatch
 import hashlib
 import logging
 import os
@@ -43,21 +44,44 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
     version = 1
 
-    def get_filter_option(self):
+    def get_filter_option(self, profile):
         """Get option of filtering test
         """
 
+        # Profiles used in blacklist to filter test for specific profiles.
+        # Use FILTER_ALL for filtering all profiles.
+        FILTER_ALL = 0
+        FILTER_H264 = 1
+        FILTER_VP8 = 11
+        FILTER_VP9 = 12
+
         blacklist = {
-                # board: [tests to skip...]
+                # (board, profile): [tests to skip...]
+
+                # "board" supports Unix shell-type wildcards.
+
+                # It is possible to match multiple keys for board/profile in the
+                # blacklist, e.g. veyron_minnie could match both "veyron_*" and
+                # "veyron_minnie".
 
                 # Kevin doesn't support HW encode for plane sizes not multiple
-                # of cache line
-                'kevin': ['CacheLineUnalignedInputTest/*']
+                # of cache line.
+                ('kevin', FILTER_ALL): ['CacheLineUnalignedInputTest/*'],
+                # Still high failure rate of VP8 EncoderPerf for veyrons,
+                # disable it for now. crbug/720386
+                ('veyron_*', FILTER_VP8): ['EncoderPerf/*'],
                 }
 
         board = utils.get_current_board()
-        if board in blacklist:
-            return '-' + ':'.join(blacklist[board])
+
+        filter_list = []
+        for (board_key, profile_key), value in blacklist.items():
+            if (fnmatch.fnmatch(board, board_key) and
+                (profile_key == FILTER_ALL or profile == profile_key)):
+                filter_list += value
+
+        if filter_list:
+            return '-' + ':'.join(filter_list)
 
         return ''
 
@@ -91,7 +115,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 cmd_line_list.append('--ozone-platform=gbm')
 
             # Command line |gtest_filter| can override get_filter_option().
-            predefined_filter = self.get_filter_option()
+            predefined_filter = self.get_filter_option(profile)
             if gtest_filter and predefined_filter:
                 logging.warning('predefined gtest filter is suppressed: %s',
                     predefined_filter)
