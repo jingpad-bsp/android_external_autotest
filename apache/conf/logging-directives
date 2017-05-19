@@ -1,3 +1,4 @@
 # How do we format our log messages?
+# See https://httpd.apache.org/docs/current/mod/mod_log_config.html
 
-LogFormat "%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" %T" vhost_combined
+LogFormat "%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" request_ms=%{ms}T" vhost_combined
