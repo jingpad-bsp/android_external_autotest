@@ -111,8 +111,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             cmd_line_list = []
             cmd_line_list.append('--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
                     input_path, width, height, profile, output_path, bit_rate))
-            if utils.is_freon():
-                cmd_line_list.append('--ozone-platform=gbm')
+            cmd_line_list.append('--ozone-platform=gbm')
 
             # Command line |gtest_filter| can override get_filter_option().
             predefined_filter = self.get_filter_option(profile)

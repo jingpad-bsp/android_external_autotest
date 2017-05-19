@@ -210,8 +210,7 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             '--rendering_warm_up=%d' % RENDERING_WARM_UP,
             '--rendering_fps=%f' % RENDERING_FPS,
             '--num_play_throughs=%d' % MAX_INT]
-        if utils.is_freon():
-            cmd_line.append('--ozone-platform=gbm')
+        cmd_line.append('--ozone-platform=gbm')
         return cmd_line
 
 
@@ -233,8 +232,7 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             '--test_stream_data=%s' % ';'.join(test_stream_data),
             '--run_at_fps',
             '--num_frames_to_encode=%d' % MAX_INT]
-        if utils.is_freon():
-            cmd_line.append('--ozone-platform=gbm')
+        cmd_line.append('--ozone-platform=gbm')
         return cmd_line
 
     def run_in_parallel(self, *commands):
@@ -242,9 +240,6 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
 
         # To clear the temparory files created by vea_unittest.
         env['TMPDIR'] = self.tmpdir
-        if not utils.is_freon():
-            env['DISPLAY'] = ':0'
-            env['XAUTHORITY'] = '/home/chronos/.Xauthority'
         return map(lambda c: cmd_utils.popen(c, env=env), commands)
 
     def simulate_hangout(self, decode_videos, encode_videos, measurer):
