@@ -1001,12 +1001,13 @@ class bluetooth_AdapterLEAdvertising(
         self.unregister_advertisements(advertisements)
 
 
-    def run_once(self, host, advertisements, multi_advertising):
+    def run_once(self, host, advertisements, test_type):
         """Running Bluetooth adapter LE advertising autotest.
 
         @param host: device under test host.
         @param advertisements: a list of advertisement instances.
-        @param multi_advertising: indicating if this is multi-advertising.
+        @param test_type: indicating one of three test types: multi-advertising,
+                          single_advertising, reboot, or suspend_resume.
 
         """
         self.host = host
@@ -1024,14 +1025,12 @@ class bluetooth_AdapterLEAdvertising(
         # Reset the adapter to forget previous stored data and turn it on.
         self.test_reset_on_adapter()
 
-        if multi_advertising:
+        if test_type == 'multi_advertising':
             # Run all test cases for multiple advertisements.
             self.test_case_SI200_RA3_CD_UA3()
             self.test_case_SI200_RA3_CD_RA1_CD_UA1_CD_UA3()
             self.test_case_SI200_RA3_CD_RS()
             self.test_case_SI200_RA3_CD_UA1_CD_RS()
-            self.test_case_SI200_RA3_CD_PC_CD_UA3()
-            self.test_case_SI200_RA3_CD_SR_CD_UA3()
             self.test_case_SI200_RA3_CD_UA1_CD_RA2_CD_UA4()
             self.test_case_SI200_RA5_CD_FRA1_CD_UA5()
             self.test_case_RA3_CD_SI200_CD_UA3()
@@ -1040,10 +1039,8 @@ class bluetooth_AdapterLEAdvertising(
             self.test_case_RA3_CD_SI200_CD_SI2000_CD_UA3()
             self.test_case_RA5_CD_SI200_CD_FRA1_CD_UA5()
             self.test_case_RA3_CD_SI200_CD_FSI10_CD_FSI20000_CD_UA3()
-            self.test_case_RA3_CD_SI200_CD_PC_CD_UA3()
-            self.test_case_RA3_CD_SI200_CD_SR_CD_UA3()
 
-        else:
+        elif test_type == 'single_advertising':
             # Run all test cases for single advertisement.
             # Note: it is required to change the advertisement instance
             #       so that the advertisement data could be monitored by btmon.
@@ -1051,13 +1048,22 @@ class bluetooth_AdapterLEAdvertising(
             #       reused such that the data would not be visible in btmon.
             self.test_case_SI200_RA1_CD_UA1()
             self.test_case_SI200_RA1_CD_RS()
-            self.test_case_SI200_RA1_CD_SR_CD_UA1()
             self.test_case_RA1_CD_SI200_CD_UA1()
             self.test_case_RA1_CD_SI200_CD_RS()
             self.test_case_RA1_CD_SI200_CD_FSI10_UA1_RA1_CD_UA1()
             self.test_case_RA1_CD_SI200_CD_FSI20000_UA1_RA1_CD_UA1()
+
+        elif test_type == 'suspend_resume':
+           # Run all test cases for suspend resume testing.
+           self.test_case_SI200_RA3_CD_SR_CD_UA3()
+           self.test_case_RA3_CD_SI200_CD_SR_CD_UA3()
+           self.test_case_SI200_RA1_CD_SR_CD_UA1()
+           self.test_case_RA1_CD_SI200_CD_SR_CD_UA1()
+
+        elif test_type == 'reboot':
+            self.test_case_SI200_RA3_CD_PC_CD_UA3()
+            self.test_case_RA3_CD_SI200_CD_PC_CD_UA3()
             self.test_case_RA1_CD_SI200_CD_PC_CD_UA1()
-            self.test_case_RA1_CD_SI200_CD_SR_CD_UA1()
 
         if self.fails:
             raise error.TestFail(self.fails)
