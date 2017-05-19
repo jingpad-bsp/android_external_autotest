@@ -120,6 +120,16 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
         return self._records
 
     @property
+    def owner(self):
+        """The owner of the task."""
+        if 'param-testtracker_owner' in self.keyvals:
+            return self.keyvals['param-testtracker_owner']
+        elif 'param-test_tracker_owner' in self.keyvals:
+            return self.keyvals['param-testtracker_owner']
+        else:
+            return self._job.user
+
+    @property
     def effort_name(self):
         """The test tracker effort name."""
         build_id = self.build_info.get('build_prop', {}).get('ro.build.id')
