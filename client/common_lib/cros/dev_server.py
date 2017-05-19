@@ -1733,9 +1733,24 @@ class ImageServer(ImageServerBase):
         write_file = self._get_au_log_filename(
                 log_dir, kwargs['host_name'], kwargs['pid'])
         logging.debug('Saving auto-update logs into %s', write_file)
+
+        try:
+            au_logs = json.loads(response)
+            for k, v in au_logs['host_logs'].items():
+                log_name = '%s_%s_%s' % (k, kwargs['host_name'], kwargs['pid'])
+                log_path = os.path.join(log_dir, log_name)
+                with open(log_path, 'w') as out_log:
+                    out_log.write(v)
+            cros_au_log = au_logs['cros_au_log']
+        except ValueError:
+            logging.debug('collect_cros_au_log response was not json.')
+            cros_au_log = response
+        except:
+          raise DevServerException('Failed to write auto-update hostlogs')
+
         try:
             with open(write_file, 'w') as out_log:
-                out_log.write(response)
+                out_log.write(cros_au_log)
         except:
             raise DevServerException('Failed to write auto-update logs into '
                                      '%s' % write_file)
@@ -2062,13 +2077,6 @@ class ImageServer(ImageServerBase):
             else:
                 raised_error, pid = self.wait_for_auto_update_finished(response,
                                                                        **kwargs)
-                # Error happens in _clean_track_log won't be raised. Auto-update
-                # process will be retried.
-                # TODO(xixuan): Change kwargs['host_name'] back to host_name
-                # if crbug.com/651974 is fixed: host_name represents the host
-                # name of the host, and kwargs['host_name'] could be host_name
-                # or the IP of this host.
-                is_clean_success = self.clean_track_log(kwargs['host_name'], pid)
                 # Error happens in _collect_au_log won't be raised. Auto-update
                 # process will be retried.
                 if au_log_dir:
@@ -2076,8 +2084,17 @@ class ImageServer(ImageServerBase):
                             kwargs['host_name'], pid, au_log_dir)
                 else:
                     is_collect_success = True
+
+                # Error happens in _clean_track_log won't be raised. Auto-update
+                # process will be retried.
+                # TODO(xixuan): Change kwargs['host_name'] back to host_name
+                # if crbug.com/651974 is fixed: host_name represents the host
+                # name of the host, and kwargs['host_name'] could be host_name
+                # or the IP of this host.
+                is_clean_success = self.clean_track_log(kwargs['host_name'],
+                                                        pid)
                 # If any error is raised previously, log it and retry
-                # auto-update. Otherwise, claim a success CrOS auto-update.
+                # auto-update. Otherwise, claim a successful CrOS auto-update.
                 if not raised_error and is_clean_success and is_collect_success:
                     logging.debug('CrOS auto-update succeed for host %s',
                                   host_name)
