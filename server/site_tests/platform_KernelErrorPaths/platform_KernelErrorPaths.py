@@ -285,7 +285,6 @@ class platform_KernelErrorPaths(test.test):
         # The final component is the crash report string to look for in the
         # crash dump after target restarts.
         kcrash_types = {
-            'LOOP' : ('softlockup', 25, False, 'BUG: soft lockup'),
             'BUG' : ('bug', 10, False, 'kernel BUG at'),
             'HUNG_TASK' : ('hungtask', 300, False, 'hung_task: blocked tasks'),
             'SOFTLOCKUP' : (None, 25, False, 'BUG: soft lockup'),
