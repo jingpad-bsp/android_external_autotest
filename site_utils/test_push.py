@@ -65,7 +65,7 @@ TESTBED_SUITE = 'testbed_push'
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_EMAIL = CONFIG.get_config_value(
-        'SCHEDULER', 'notify_email', type=str, default='')
+        'SCHEDULER', 'notify_email', type=list, default=[])
 DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 1}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
@@ -235,7 +235,8 @@ def parse_arguments():
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
     parser.add_argument('-u', '--num', dest='num', type=int, default=3,
                         help='Run on at most NUM machines.')
-    parser.add_argument('-e', '--email', dest='email', default=DEFAULT_EMAIL,
+    parser.add_argument('-e', '--email', nargs='+', dest='email',
+                        default=DEFAULT_EMAIL,
                         help='Email address for the notification to be sent to '
                              'after the script finished running.')
     parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
@@ -563,6 +564,20 @@ def push_prod_next_branch(updated_repo_heads):
                                        shell=True)
 
 
+def send_notification_email(email_list, title, msg):
+    """Send notification to all email addresses in email list.
+
+    @param email_list: a email address list which receives notification email,
+        whose format is like:
+            [xxx@google.com, xxx@google.com, xxx@google.com,...]
+        so that users could also specify multiple email addresses by using
+        config '--email' or '-e'.
+    @param title: the title of the email to be sent.
+    @param msg: the content of the email to be sent.
+    """
+    gmail_lib.send_email(','.join(email_list), title, msg)
+
+
 def main():
     """Entry point for test_push script."""
     arguments = parse_arguments()
@@ -626,7 +641,7 @@ def main():
                     AFE.run('abort_host_queue_entries', job=suite_id)
         # Send out email about the test failure.
         if arguments.email:
-            gmail_lib.send_email(
+            send_notification_email(
                     arguments.email,
                     'Test for pushing to prod failed. Do NOT push!',
                     ('Test CLs of the following repos failed. Below are the '
@@ -648,7 +663,7 @@ def main():
     print message
     # Send out email about test completed successfully.
     if arguments.email:
-        gmail_lib.send_email(
+        send_notification_email(
                 arguments.email,
                 'Test for pushing to prod completed successfully',
                 message)
