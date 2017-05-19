@@ -68,7 +68,14 @@ _CHAMELEON_BOARD_INFO = {
         '94:eb:2c:00:01:00': ChameleonInfo('00:1F:84:01:03:54'),
         '94:eb:2c:00:01:01': ChameleonInfo('00:1F:84:01:03:3E'),
         '94:eb:2c:10:06:9e': ChameleonInfo('00:1F:84:01:03:97'),
-        '94:eb:2c:10:06:9f': ChameleonInfo('00:1F:84:01:03:49')
+        '94:eb:2c:10:06:9f': ChameleonInfo('00:1F:84:01:03:49'),
+
+        # Listed below added as of 5/12/17.
+        '94:eb:2c:10:06:98': ChameleonInfo('00:1F:84:01:03:65'),
+        '94:eb:2c:00:01:19': ChameleonInfo('00:1F:84:01:03:91'),
+        '94:eb:2c:10:06:8a': ChameleonInfo('00:1F:84:01:03:AB'),
+        '94:eb:2c:00:01:1d': ChameleonInfo('00:1F:84:01:03:A6'),
+        '94:eb:2c:10:06:95': ChameleonInfo('00:1F:84:01:03:66')
 }
 
 class ChameleonInfoError(Exception):
