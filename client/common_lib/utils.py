@@ -43,6 +43,7 @@ except ImportError:
 
 import common
 
+from autotest_lib.client.common_lib import env
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
@@ -324,7 +325,8 @@ class BgJob(object):
 
 
     def _reset_sigpipe(self):
-        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+        if not env.IN_MOD_WSGI:
+            signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 def ip_to_long(ip):
