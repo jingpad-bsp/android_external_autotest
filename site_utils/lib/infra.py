@@ -12,7 +12,6 @@ from autotest_lib.server.hosts import ssh_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 @contextlib.contextmanager
@@ -33,19 +32,20 @@ def chdir(dirname=None):
         os.chdir(curdir)
 
 
-def local_runner(cmd, stream_output=False):
+def local_runner(cmd, stream_output=False, shell=False):
     """
     Runs a command on the local system as the current user.
 
     @param cmd: The command to run.
     @param stream_output: If True, streams the stdout of the process.
+    @param shell: whether cmd will be executed through shell. Default is False.
 
     @returns: The output of cmd, will be stdout and stderr.
     @raises CalledProcessError: If there was a non-0 return code.
     """
     print 'Running command: %s' % cmd
     proc = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        cmd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if stream_output:
         output = ''
         for newline in iter(proc.stdout.readline, ''):
