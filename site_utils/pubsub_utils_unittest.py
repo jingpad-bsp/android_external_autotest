@@ -71,17 +71,17 @@ def _create_sample_message():
 class PubSubTests(mox.MoxTestBase):
     """Tests for pubsub related functios."""
 
-    def test_get_pubsub_service_no_service_account(self):
+    def test_ubsub_with_no_service_account(self):
         """Test getting the pubsub service"""
         self.mox.StubOutWithMock(os.path, 'isfile')
         os.path.isfile(pubsub_utils.CLOUD_SERVICE_ACCOUNT_FILE).AndReturn(False)
         self.mox.ReplayAll()
-        pubsub = pubsub_utils._get_pubsub_service()
-        self.assertIsNone(pubsub)
+        with self.assertRaises(pubsub_utils.PubSubException):
+            pubsub_utils.PubSubClient()
         self.mox.VerifyAll()
 
-    def test_get_pubsub_service_with_invalid_service_account(self):
-        """Test getting the pubsub service"""
+    def test_pubsub_with_corrupted_service_account(self):
+        """Test pubsub with corrupted service account."""
         self.mox.StubOutWithMock(os.path, 'isfile')
         self.mox.StubOutWithMock(GoogleCredentials, 'from_stream')
         os.path.isfile(pubsub_utils.CLOUD_SERVICE_ACCOUNT_FILE).AndReturn(True)
@@ -90,12 +90,12 @@ class PubSubTests(mox.MoxTestBase):
                 pubsub_utils.CLOUD_SERVICE_ACCOUNT_FILE).AndRaise(
                         ApplicationDefaultCredentialsError())
         self.mox.ReplayAll()
-        pubsub = pubsub_utils._get_pubsub_service()
-        self.assertIsNone(pubsub)
+        with self.assertRaises(pubsub_utils.PubSubException):
+            pubsub_utils.PubSubClient()
         self.mox.VerifyAll()
 
-    def test_get_pubsub_service_with_invalid_service_account(self):
-        """Test getting the pubsub service"""
+    def test_pubsub_with_invalid_service_account(self):
+        """Test pubsubwith invalid service account."""
         self.mox.StubOutWithMock(os.path, 'isfile')
         self.mox.StubOutWithMock(GoogleCredentials, 'from_stream')
         os.path.isfile(pubsub_utils.CLOUD_SERVICE_ACCOUNT_FILE).AndReturn(True)
@@ -110,11 +110,13 @@ class PubSubTests(mox.MoxTestBase):
                 pubsub_utils.PUBSUB_VERSION,
                 credentials=credentials).AndRaise(UnknownApiNameOrVersion())
         self.mox.ReplayAll()
-        pubsub = pubsub_utils._get_pubsub_service()
-        self.assertIsNone(pubsub)
+        with self.assertRaises(pubsub_utils.PubSubException):
+            msg = _create_sample_message()
+            pubsub_client = pubsub_utils.PubSubClient()
+            pubsub_client.publish_notifications('test_topic', [msg])
         self.mox.VerifyAll()
 
-    def test_get_pubsub_service_with_service_account(self):
+    def test_publish_notifications(self):
         """Test getting the pubsub service"""
         self.mox.StubOutWithMock(os.path, 'isfile')
         self.mox.StubOutWithMock(GoogleCredentials, 'from_stream')
@@ -126,29 +128,22 @@ class PubSubTests(mox.MoxTestBase):
         credentials.create_scoped(pubsub_utils.PUBSUB_SCOPES).AndReturn(
                 credentials)
         self.mox.StubOutWithMock(discovery, 'build')
+        msg = _create_sample_message()
         discovery.build(pubsub_utils.PUBSUB_SERVICE_NAME,
                 pubsub_utils.PUBSUB_VERSION,
-                credentials=credentials).AndReturn(1)
-        self.mox.ReplayAll()
-        pubsub = pubsub_utils._get_pubsub_service()
-        self.assertIsNotNone(pubsub)
-        self.mox.VerifyAll()
-
-    def test_publish_notifications(self):
-        """Tests publish notifications."""
-        self.mox.StubOutWithMock(pubsub_utils, '_get_pubsub_service')
-        msg = _create_sample_message()
-        pubsub_utils._get_pubsub_service().AndReturn(MockedPubSub(
-            self,
-            'test_topic',
-            msg,
-            pubsub_utils._PUBSUB_NUM_RETRIES,
-            # use tuple ('123') instead of list just for easy to write the test.
-            ret_val = {'messageIds', ('123')}))
+                credentials=credentials).AndReturn(MockedPubSub(
+                    self,
+                    'test_topic',
+                    msg,
+                    pubsub_utils._PUBSUB_NUM_RETRIES,
+                    # use tuple ('123') instead of list just for easy to
+                    # write the test.
+                    ret_val = {'messageIds', ('123')}))
 
         self.mox.ReplayAll()
-        pubsub_utils.publish_notifications(
-                'test_topic', [msg])
+        with self.assertRaises(pubsub_utils.PubSubException):
+            pubsub_client = pubsub_utils.PubSubClient()
+            pubsub_client.publish_notifications('test_topic', [msg])
         self.mox.VerifyAll()
 
 
