@@ -12,8 +12,10 @@ from autotest_lib.client.common_lib.cros import arc
 
 _SDCARD_EXEC = '/sdcard/gralloctest'
 _EXEC_DIRECTORY = '/data/executables/'
+# The tests still can be run individually, though we run with the 'all' option
+# Run ./gralloctest in Android to get a list of options.
 _ANDROID_EXEC = _EXEC_DIRECTORY + 'gralloctest'
-
+_OPTION = 'all'
 
 class graphics_Gralloc(arc.ArcTest):
     """gralloc test."""
@@ -55,24 +57,17 @@ class graphics_Gralloc(arc.ArcTest):
 
     def run_once(self):
         self._failures = []
-        # TODO(ihf): shard this test into multiple control files.
-        test_names = [
-            'alloc_varying_sizes', 'alloc_combinations', 'api', 'gralloc_order',
-            'mapping', 'perform', 'ycbcr', 'yuv_info', 'async'
-        ]
-
-        # Run the tests and capture stdout.
-        for test_name in test_names:
-            try:
-                cmd = '%s %s' % (_ANDROID_EXEC, test_name)
-                stdout = arc._android_shell(cmd)
-            except Exception:
-                logging.error('Exception running %s', cmd)
-            # Look for the regular expression indicating success.
-            match = re.search(r'\[  PASSED  \]', stdout)
-            if not match:
-                self._failures.append(test_name)
-                logging.error(stdout)
+        try:
+            cmd = '%s %s' % (_ANDROID_EXEC, _OPTION)
+            stdout = arc._android_shell(cmd)
+        except Exception:
+            logging.error('Exception running %s', cmd)
+        # Look for the regular expression indicating failure.
+        for line in stdout.splitlines():
+            match = re.search(r'\[  FAILED  \]', stdout)
+            if match:
+                self._failures.append(line)
+                logging.error(line)
             else:
                 logging.debug(stdout)
 
