@@ -11,19 +11,16 @@ metric for the beginning of each error message it recognizes.
 """
 from __future__ import print_function
 
-from logging import handlers
 import argparse
-import contextlib
 import re
 import sys
 
 import common
 
-from chromite.lib import cros_logging as logging
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config
 
-from infra_libs import ts_mon
+from autotest_lib.site_utils.stats import log_daemon_common
 
 
 LOOP_INTERVAL = 60
@@ -70,25 +67,6 @@ MATCHERS = [
 ]
 
 
-def RunMatchers(stream, matchers):
-    """Parses lines of |stream| using patterns and emitters from |matchers|
-
-    @param stream: A file object to read from.
-    @param matchers: A list of pairs of (matcher, emitter), where matcher is a
-        regex and emitter is a function called when the regex matches.
-    """
-    # The input might terminate if the log gets rotated. Make sure that Monarch
-    # flushes any pending metrics before quitting.
-    with contextlib.closing(ts_mon):
-        for line in iter(stream.readline, ''):
-            for matcher, emitter in matchers:
-                m = matcher.match(line)
-                if m:
-                    logging.debug('Emitting %s for input "%s"',
-                                  emitter.__name__, line.strip())
-                    emitter(m)
-
-
 def ParseArgs():
     """Parses the command line arguments."""
     p = argparse.ArgumentParser(
@@ -103,16 +81,7 @@ def ParseArgs():
 def Main():
     """Sets up logging and runs matchers against stdin"""
     args = ParseArgs()
-
-    # Set up logging.
-    root = logging.getLogger()
-    if args.output_logfile:
-        handler = handlers.RotatingFileHandler(
-            args.output_logfile, maxBytes=10**6, backupCount=5)
-        root.addHandler(handler)
-    else:
-        root.addHandler(logging.StreamHandler(sys.stdout))
-    root.setLevel(logging.DEBUG)
+    log_daemon_common.SetupLogging(args)
 
     # Set up metrics sending and go.
     ts_mon_args = {}
@@ -121,7 +90,7 @@ def Main():
 
     with ts_mon_config.SetupTsMonGlobalState('apache_error_log_metrics',
                                              **ts_mon_args):
-      RunMatchers(sys.stdin, MATCHERS)
+      log_daemon_common.RunMatchers(sys.stdin, MATCHERS)
       metrics.Flush()
 
 
