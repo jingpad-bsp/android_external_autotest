@@ -158,6 +158,34 @@ class _SpecialTaskAction(object):
 
 
     @classmethod
+    def run_task_actions(cls, job, host, labels):
+        """
+        Run task actions on host that correspond to the labels.
+
+        Emits status lines for each run test, and INFO lines for each
+        skipped label.
+
+        @param job: A job object from a control file.
+        @param host: The host to run actions on.
+        @param labels: The list of job labels to work on.
+        @raises: SpecialTaskActionException if a test fails.
+        """
+        unactionable, actionable = cls.partition(labels)
+
+        for label in unactionable:
+            job.record('INFO', None, cls.name,
+                       "Can't %s label '%s'." % (cls.name, label))
+
+        # Sort the configuration labels based on `cls._priorities`.
+        sorted_actionable = cls.sort_actionable_labels(actionable)
+        for name, value in sorted_actionable:
+            action_item = cls.action_for(name)
+            success = action_item.execute(job=job, host=host, value=value)
+            if not success:
+                raise SpecialTaskActionException()
+
+
+    @classmethod
     def action_for(cls, name):
         """
         Returns the action associated with the given (string) name.
@@ -373,16 +401,5 @@ def run_special_task_actions(job, host, labels, task):
     @raises: SpecialTaskActionException if a test fails.
 
     """
-    unactionable, actionable = task.partition(labels)
-
-    for label in unactionable:
-        job.record('INFO', None, task.name,
-                   "Can't %s label '%s'." % (task.name, label))
-
-    # Sort the configuration labels based on `task._priorities`.
-    sorted_actionable = task.sort_actionable_labels(actionable)
-    for name, value in sorted_actionable:
-        action_item = task.action_for(name)
-        success = action_item.execute(job=job, host=host, value=value)
-        if not success:
-            raise SpecialTaskActionException()
+    warnings.warn('run_special_task_actions is deprecated')
+    task.run_task_actions(job, host, labels)
