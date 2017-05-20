@@ -18,7 +18,6 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='wifi_softApStress.config',
                  test_file='wifi_softApStress',
-                 additional_cmd_line_params="-r 10000",
                  acts_timeout=72000)
 
 parallel_simple(run, machines)
