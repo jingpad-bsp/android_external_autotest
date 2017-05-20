@@ -1,5 +1,4 @@
 #!/usr/bin/python
-#pylint: disable-msg=C0111
 
 """Utility module that executes management commands on the drone.
 
@@ -10,17 +9,35 @@
 5. The caller is responsible for monitoring asynchronous calls through pidfiles.
 """
 
+#pylint: disable-msg=missing-docstring
 
 import argparse
-import pickle, subprocess, os, shutil, sys, time, signal, getpass
-import datetime, traceback, tempfile, itertools, logging
+import datetime
+import getpass
+import itertools
+import logging
+import os
+import pickle
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+
 import common
-from autotest_lib.client.common_lib import utils, global_config, error
+
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.scheduler import drone_logging_config
-from autotest_lib.scheduler import email_manager, scheduler_config
-from autotest_lib.server import hosts, subcommand
+from autotest_lib.scheduler import email_manager
+from autotest_lib.scheduler import scheduler_config
+from autotest_lib.server import hosts
+from autotest_lib.server import subcommand
 
 
 # An environment variable we add to the environment to enable us to
@@ -202,16 +219,16 @@ class BaseDroneUtility(object):
         * pidfiles_second_read: same info as pidfiles, but gathered after the
         processes are scanned.
         """
-        site_check_parse = utils.import_site_function(
-                __file__, 'autotest_lib.scheduler.site_drone_utility',
-                'check_parse', lambda x: False)
+        def check_parse(process_info):
+            return process_info['comm'] == 'site_parse'
+
         results = {
             'pidfiles' : self._read_pidfiles(pidfile_paths),
             # element 0 of _get_process_info() is the headers from `ps`
             'all_processes' : list(self._get_process_info())[1:],
             'autoserv_processes' : self._refresh_processes('autoserv'),
             'parse_processes' : self._refresh_processes(
-                    'parse', site_check_parse=site_check_parse),
+                    'parse', site_check_parse=check_parse),
             'pidfiles_second_read' : self._read_pidfiles(pidfile_paths),
         }
         return results
@@ -584,9 +601,7 @@ def _parse_args(args):
     return parser.parse_args(args)
 
 
-SiteDroneUtility = utils.import_site_class(
-   __file__, 'autotest_lib.scheduler.site_drone_utility',
-   'SiteDroneUtility', BaseDroneUtility)
+SiteDroneUtility = BaseDroneUtility
 
 
 class DroneUtility(SiteDroneUtility):
