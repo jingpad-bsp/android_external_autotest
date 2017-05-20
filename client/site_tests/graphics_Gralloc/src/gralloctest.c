@@ -21,6 +21,7 @@
 
 #include "sw_sync.h"
 
+#define ALIGN(A, B) (((A) + (B)-1) / (B) * (B))
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
 
 #define CHECK(cond)                                                            \
@@ -524,6 +525,65 @@ static int test_ycbcr(struct gralloc_module_t *module,
 	return 1;
 }
 
+/*
+ * This function tests a method ARC++ uses to query YUV buffer
+ * info -- not part of official gralloc API.  This is used in
+ * Mali, Mesa, the ArcCodec and  wayland_service.
+ */
+static int test_yuv_info(struct gralloc_module_t *module,
+			 struct alloc_device_t *device)
+{
+	struct gralloctest test;
+	uint32_t y_size, c_stride, c_size, cr_offset, cb_offset;
+	uint32_t width, height;
+	width = height = 512;
+
+	/* <system/graphics.h> defines YV12 as having:
+	 * - an even width
+	 * - an even height
+	 * - a horizontal stride multiple of 16 pixels
+	 * - a vertical stride equal to the height
+	 *
+	 *   y_size = stride * height.
+	 *   c_stride = ALIGN(stride/2, 16).
+	 *   c_size = c_stride * height/2.
+	 *   size = y_size + c_size * 2.
+	 *   cr_offset = y_size.
+	 *   cb_offset = y_size + c_size.
+	 */
+
+	gralloctest_init(&test, width, height, HAL_PIXEL_FORMAT_YV12,
+			 GRALLOC_USAGE_SW_READ_OFTEN);
+
+	CHECK(allocate(device, &test));
+
+	y_size = test.stride * height;
+	c_stride = ALIGN(test.stride / 2, 16);
+	c_size = c_stride * height / 2;
+	cr_offset = y_size;
+	cb_offset = y_size + c_size;
+
+	test.usage = 0;
+
+	/*
+	 * Check if the (*lock_ycbcr) with usage of zero returns the
+	 * offsets and strides of the YV12 buffer. This is unofficial
+	 * behavior we are testing here.
+	 */
+	CHECK(lock_ycbcr(module, &test));
+
+	CHECK(test.stride == test.ycbcr.ystride);
+	CHECK(c_stride == test.ycbcr.cstride);
+	CHECK(cr_offset == (uint32_t)test.ycbcr.cr);
+	CHECK(cb_offset == (uint32_t)test.ycbcr.cb);
+
+	CHECK(unlock(module, &test));
+
+	CHECK(deallocate(device, &test));
+
+	return 1;
+}
+
 /* This function tests asynchronous locking and unlocking of buffers. */
 static int test_async(struct gralloc_module_t *module,
 		      struct alloc_device_t *device)
@@ -642,6 +702,9 @@ int main(int argc, char *argv[])
 				goto fail;
 		} else if (strcmp(name, "ycbcr") == 0) {
 			if (api >= 2 && !test_ycbcr(module, device))
+				goto fail;
+		} else if (strcmp(name, "yuv_info") == 0) {
+			if (api >= 2 && !test_yuv_info(module, device))
 				goto fail;
 		} else if (strcmp(name, "async") == 0) {
 			if (api >= 3 && !test_async(module, device))
