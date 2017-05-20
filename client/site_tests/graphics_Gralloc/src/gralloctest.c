@@ -27,8 +27,8 @@
 #define CHECK(cond)                                                            \
 	do {                                                                   \
 		if (!(cond)) {                                                 \
-			printf("CHECK failed in %s() %s:%d\n", __func__,       \
-			       __FILE__, __LINE__);                            \
+			fprintf(stderr, "[  FAILED  ] check in %s() %s:%d\n",  \
+				__func__, __FILE__, __LINE__);                 \
 			return 0;                                              \
 		}                                                              \
 	} while (0)
@@ -45,6 +45,18 @@ enum { GRALLOC_DRM_GET_STRIDE,
        GRALLOC_DRM_GET_FORMAT,
        GRALLOC_DRM_GET_DIMENSIONS,
        GRALLOC_DRM_GET_BACKING_STORE,
+};
+
+struct gralloctest_context {
+	struct gralloc_module_t *module;
+	struct alloc_device_t *device;
+	int api;
+};
+
+struct gralloc_testcase {
+	const char *name;
+	int (*run_test)(struct gralloctest_context *ctx);
+	int required_api;
 };
 
 struct combinations {
@@ -81,7 +93,7 @@ static struct combinations combos[] = {
 };
 // clang-format on
 
-struct gralloctest {
+struct grallocinfo {
 	buffer_handle_t handle;     /* handle to the buffer */
 	int w;			    /* width  of buffer */
 	int h;			    /* height of buffer */
@@ -94,19 +106,19 @@ struct gralloctest {
 };
 
 /* This function is meant to initialize the test to commonly used defaults. */
-void gralloctest_init(struct gralloctest *test, int w, int h, int format,
+void grallocinfo_init(struct grallocinfo *info, int w, int h, int format,
 		      int usage)
 {
-	test->w = w;
-	test->h = h;
-	test->format = format;
-	test->usage = usage;
-	test->fence_fd = -1;
-	test->vaddr = NULL;
-	test->ycbcr.y = NULL;
-	test->ycbcr.cb = NULL;
-	test->ycbcr.cr = NULL;
-	test->stride = 0;
+	info->w = w;
+	info->h = h;
+	info->format = format;
+	info->usage = usage;
+	info->fence_fd = -1;
+	info->vaddr = NULL;
+	info->ycbcr.y = NULL;
+	info->ycbcr.cb = NULL;
+	info->ycbcr.cr = NULL;
+	info->stride = 0;
 }
 
 static native_handle_t *duplicate_buffer_handle(buffer_handle_t handle)
@@ -138,102 +150,102 @@ static native_handle_t *duplicate_buffer_handle(buffer_handle_t handle)
  * in theory.
  ***************************************************************/
 
-static int allocate(struct alloc_device_t *device, struct gralloctest *test)
+static int allocate(struct alloc_device_t *device, struct grallocinfo *info)
 {
 	int ret;
 
-	ret = device->alloc(device, test->w, test->h, test->format, test->usage,
-			    &test->handle, &test->stride);
+	ret = device->alloc(device, info->w, info->h, info->format, info->usage,
+			    &info->handle, &info->stride);
 
 	CHECK_NO_MSG(ret == 0);
-	CHECK_NO_MSG(test->handle->version > 0);
-	CHECK_NO_MSG(test->handle->numInts >= 0);
-	CHECK_NO_MSG(test->handle->numFds >= 0);
-	CHECK_NO_MSG(test->stride >= 0);
+	CHECK_NO_MSG(info->handle->version > 0);
+	CHECK_NO_MSG(info->handle->numInts >= 0);
+	CHECK_NO_MSG(info->handle->numFds >= 0);
+	CHECK_NO_MSG(info->stride >= 0);
 
 	return 1;
 }
 
-static int deallocate(struct alloc_device_t *device, struct gralloctest *test)
+static int deallocate(struct alloc_device_t *device, struct grallocinfo *info)
 {
 	int ret;
-	ret = device->free(device, test->handle);
+	ret = device->free(device, info->handle);
 	CHECK(ret == 0);
 	return 1;
 }
 
 static int register_buffer(struct gralloc_module_t *module,
-			   struct gralloctest *test)
+			   struct grallocinfo *info)
 {
 	int ret;
-	ret = module->registerBuffer(module, test->handle);
+	ret = module->registerBuffer(module, info->handle);
 	return (ret == 0);
 }
 
 static int unregister_buffer(struct gralloc_module_t *module,
-			     struct gralloctest *test)
+			     struct grallocinfo *info)
 {
 	int ret;
-	ret = module->unregisterBuffer(module, test->handle);
+	ret = module->unregisterBuffer(module, info->handle);
 	return (ret == 0);
 }
 
-static int lock(struct gralloc_module_t *module, struct gralloctest *test)
+static int lock(struct gralloc_module_t *module, struct grallocinfo *info)
 {
 	int ret;
 
-	ret = module->lock(module, test->handle, test->usage, 0, 0,
-			   (test->w) / 2, (test->h) / 2, &test->vaddr);
-
-	return (ret == 0);
-}
-
-static int unlock(struct gralloc_module_t *module, struct gralloctest *test)
-{
-	int ret;
-	ret = module->unlock(module, test->handle);
-	return (ret == 0);
-}
-
-static int lock_ycbcr(struct gralloc_module_t *module, struct gralloctest *test)
-{
-	int ret;
-
-	ret = module->lock_ycbcr(module, test->handle, test->usage, 0, 0,
-				 (test->w) / 2, (test->h) / 2, &test->ycbcr);
+	ret = module->lock(module, info->handle, info->usage, 0, 0,
+			   (info->w) / 2, (info->h) / 2, &info->vaddr);
 
 	return (ret == 0);
 }
 
-static int lock_async(struct gralloc_module_t *module, struct gralloctest *test)
+static int unlock(struct gralloc_module_t *module, struct grallocinfo *info)
+{
+	int ret;
+	ret = module->unlock(module, info->handle);
+	return (ret == 0);
+}
+
+static int lock_ycbcr(struct gralloc_module_t *module, struct grallocinfo *info)
 {
 	int ret;
 
-	ret = module->lockAsync(module, test->handle, test->usage, 0, 0,
-				(test->w) / 2, (test->h) / 2, &test->vaddr,
-				test->fence_fd);
+	ret = module->lock_ycbcr(module, info->handle, info->usage, 0, 0,
+				 (info->w) / 2, (info->h) / 2, &info->ycbcr);
+
+	return (ret == 0);
+}
+
+static int lock_async(struct gralloc_module_t *module, struct grallocinfo *info)
+{
+	int ret;
+
+	ret = module->lockAsync(module, info->handle, info->usage, 0, 0,
+				(info->w) / 2, (info->h) / 2, &info->vaddr,
+				info->fence_fd);
 
 	return (ret == 0);
 }
 
 static int unlock_async(struct gralloc_module_t *module,
-			struct gralloctest *test)
+			struct grallocinfo *info)
 {
 	int ret;
 
-	ret = module->unlockAsync(module, test->handle, &test->fence_fd);
+	ret = module->unlockAsync(module, info->handle, &info->fence_fd);
 
 	return (ret == 0);
 }
 
 static int lock_async_ycbcr(struct gralloc_module_t *module,
-			    struct gralloctest *test)
+			    struct grallocinfo *info)
 {
 	int ret;
 
-	ret = module->lockAsync_ycbcr(module, test->handle, test->usage, 0, 0,
-				      (test->w) / 2, (test->h) / 2,
-				      &test->ycbcr, test->fence_fd);
+	ret = module->lockAsync_ycbcr(module, info->handle, info->usage, 0, 0,
+				      (info->w) / 2, (info->h) / 2,
+				      &info->ycbcr, info->fence_fd);
 
 	return (ret == 0);
 }
@@ -243,57 +255,69 @@ static int lock_async_ycbcr(struct gralloc_module_t *module,
  **************************************************************/
 
 /* This function tests initialization of gralloc module and allocator. */
-static int test_init_gralloc(gralloc_module_t **module, alloc_device_t **device)
+static struct gralloctest_context *test_init_gralloc()
 {
-	hw_module_t const *hw_module;
 	int err;
+	hw_module_t const *hw_module;
+	struct gralloctest_context *ctx = calloc(1, sizeof(*ctx));
 
 	err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &hw_module);
-	CHECK(err == 0);
+	if (err)
+		return NULL;
 
-	gralloc_open(hw_module, device);
-	*module = (gralloc_module_t *)hw_module;
+	gralloc_open(hw_module, &ctx->device);
+	ctx->module = (gralloc_module_t *)hw_module;
+	if (!ctx->module || !ctx->device)
+		return NULL;
 
-	CHECK(*module);
-	CHECK(*device);
+	switch (ctx->module->common.module_api_version) {
+	case GRALLOC_MODULE_API_VERSION_0_3:
+		ctx->api = 3;
+		break;
+	case GRALLOC_MODULE_API_VERSION_0_2:
+		ctx->api = 2;
+		break;
+	default:
+		ctx->api = 1;
+	}
 
-	return 1;
+	return ctx;
 }
 
-static int test_close_allocator(alloc_device_t *device)
+static int test_close_gralloc(struct gralloctest_context *ctx)
 {
-	CHECK(gralloc_close(device) == 0);
+	CHECK(gralloc_close(ctx->device) == 0);
 	return 1;
 }
 
 /* This function tests allocation with varying buffer dimensions. */
-static int test_alloc_varying_sizes(struct alloc_device_t *device)
+static int test_alloc_varying_sizes(struct gralloctest_context *ctx)
 {
-	struct gralloctest test;
+	struct grallocinfo info;
 	int i;
 
-	gralloctest_init(&test, 0, 0, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&info, 0, 0, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
 	for (i = 1; i < 1920; i++) {
-		test.w = i;
-		test.h = i;
-		CHECK(allocate(device, &test));
-		CHECK(deallocate(device, &test));
+		info.w = i;
+		info.h = i;
+		CHECK(allocate(ctx->device, &info));
+		CHECK(deallocate(ctx->device, &info));
 	}
 
-	test.w = 1;
+	info.w = 1;
 	for (i = 1; i < 1920; i++) {
-		test.h = i;
-		CHECK(allocate(device, &test));
-		CHECK(deallocate(device, &test));
+		info.h = i;
+		CHECK(allocate(ctx->device, &info));
+		CHECK(deallocate(ctx->device, &info));
 	}
 
-	test.h = 1;
+	info.h = 1;
 	for (i = 1; i < 1920; i++) {
-		test.w = i;
-		CHECK(allocate(device, &test));
-		CHECK(deallocate(device, &test));
+		info.w = i;
+		CHECK(allocate(ctx->device, &info));
+		CHECK(deallocate(ctx->device, &info));
 	}
 
 	return 1;
@@ -303,18 +327,18 @@ static int test_alloc_varying_sizes(struct alloc_device_t *device)
  * This function tests that we find at least one working format for each
  * combos which we consider important.
  */
-static int test_alloc_combinations(struct alloc_device_t *device)
+static int test_alloc_combinations(struct gralloctest_context *ctx)
 {
 	int i;
 
-	struct gralloctest test;
-	gralloctest_init(&test, 512, 512, 0, 0);
+	struct grallocinfo info;
+	grallocinfo_init(&info, 512, 512, 0, 0);
 
 	for (i = 0; i < ARRAY_SIZE(combos); i++) {
-		test.format = combos[i].format;
-		test.usage = combos[i].usage;
-		CHECK(allocate(device, &test));
-		CHECK(deallocate(device, &test));
+		info.format = combos[i].format;
+		info.usage = combos[i].usage;
+		CHECK(allocate(ctx->device, &info));
+		CHECK(deallocate(ctx->device, &info));
 	}
 
 	return 1;
@@ -325,32 +349,32 @@ static int test_alloc_combinations(struct alloc_device_t *device)
  * Version_0_2 added (*lock_ycbcr)() method.
  * Version_0_3 added fence passing to/from lock/unlock.
  */
-static int test_api(struct gralloc_module_t *module)
+static int test_api(struct gralloctest_context *ctx)
 {
 
-	CHECK(module->registerBuffer);
-	CHECK(module->unregisterBuffer);
-	CHECK(module->lock);
-	CHECK(module->unlock);
+	CHECK(ctx->module->registerBuffer);
+	CHECK(ctx->module->unregisterBuffer);
+	CHECK(ctx->module->lock);
+	CHECK(ctx->module->unlock);
 
-	switch (module->common.module_api_version) {
+	switch (ctx->module->common.module_api_version) {
 	case GRALLOC_MODULE_API_VERSION_0_3:
-		CHECK(module->lock_ycbcr);
-		CHECK(module->lockAsync);
-		CHECK(module->unlockAsync);
-		CHECK(module->lockAsync_ycbcr);
+		CHECK(ctx->module->lock_ycbcr);
+		CHECK(ctx->module->lockAsync);
+		CHECK(ctx->module->unlockAsync);
+		CHECK(ctx->module->lockAsync_ycbcr);
 		break;
 	case GRALLOC_MODULE_API_VERSION_0_2:
-		CHECK(module->lock_ycbcr);
-		CHECK(module->lockAsync == NULL);
-		CHECK(module->unlockAsync == NULL);
-		CHECK(module->lockAsync_ycbcr == NULL);
+		CHECK(ctx->module->lock_ycbcr);
+		CHECK(ctx->module->lockAsync == NULL);
+		CHECK(ctx->module->unlockAsync == NULL);
+		CHECK(ctx->module->lockAsync_ycbcr == NULL);
 		break;
 	case GRALLOC_MODULE_API_VERSION_0_1:
-		CHECK(module->lockAsync == NULL);
-		CHECK(module->unlockAsync == NULL);
-		CHECK(module->lockAsync_ycbcr == NULL);
-		CHECK(module->lock_ycbcr == NULL);
+		CHECK(ctx->module->lockAsync == NULL);
+		CHECK(ctx->module->unlockAsync == NULL);
+		CHECK(ctx->module->lockAsync_ycbcr == NULL);
+		CHECK(ctx->module->lock_ycbcr == NULL);
 		break;
 	default:
 		return 0;
@@ -363,48 +387,47 @@ static int test_api(struct gralloc_module_t *module)
  * This function registers, unregisters, locks and unlocks the buffer in
  * various orders.
  */
-static int test_gralloc_order(struct gralloc_module_t *module,
-			      struct alloc_device_t *device)
+static int test_gralloc_order(struct gralloctest_context *ctx)
 {
-	struct gralloctest test, duplicate;
+	struct grallocinfo info, duplicate;
 
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&info, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	gralloctest_init(&duplicate, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&duplicate, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	CHECK(allocate(device, &test));
+	CHECK(allocate(ctx->device, &info));
 
 	/*
 	 * Duplicate the buffer handle to simulate an additional reference
 	 * in same process.
 	 */
-	native_handle_t *native_handle = duplicate_buffer_handle(test.handle);
+	native_handle_t *native_handle = duplicate_buffer_handle(info.handle);
 	duplicate.handle = native_handle;
 
-	CHECK(unregister_buffer(module, &duplicate) == 0);
-	CHECK(register_buffer(module, &duplicate));
+	CHECK(unregister_buffer(ctx->module, &duplicate) == 0);
+	CHECK(register_buffer(ctx->module, &duplicate));
 
 	/* This should be a no-op when the buffer wasn't previously locked. */
-	CHECK(unlock(module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate));
 
-	CHECK(lock(module, &duplicate));
+	CHECK(lock(ctx->module, &duplicate));
 	CHECK(duplicate.vaddr);
-	CHECK(unlock(module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate));
 
-	CHECK(unregister_buffer(module, &duplicate));
+	CHECK(unregister_buffer(ctx->module, &duplicate));
 
-	CHECK(register_buffer(module, &duplicate));
-	CHECK(unregister_buffer(module, &duplicate));
-	CHECK(unregister_buffer(module, &duplicate) == 0);
+	CHECK(register_buffer(ctx->module, &duplicate));
+	CHECK(unregister_buffer(ctx->module, &duplicate));
+	CHECK(unregister_buffer(ctx->module, &duplicate) == 0);
 
-	CHECK(register_buffer(module, &duplicate));
-	CHECK(deallocate(device, &test));
+	CHECK(register_buffer(ctx->module, &duplicate));
+	CHECK(deallocate(ctx->device, &info));
 
-	CHECK(lock(module, &duplicate));
-	CHECK(unlock(module, &duplicate));
-	CHECK(unregister_buffer(module, &duplicate));
+	CHECK(lock(ctx->module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate));
+	CHECK(unregister_buffer(ctx->module, &duplicate));
 
 	CHECK(native_handle_close(duplicate.handle) == 0);
 	CHECK(native_handle_delete(native_handle) == 0);
@@ -413,114 +436,112 @@ static int test_gralloc_order(struct gralloc_module_t *module,
 }
 
 /* This function tests CPU reads and writes. */
-static int test_mapping(struct gralloc_module_t *module,
-			struct alloc_device_t *device)
+static int test_mapping(struct gralloctest_context *ctx)
 {
-	struct gralloctest test;
+	struct grallocinfo info;
 	uint32_t *ptr = NULL;
 	uint32_t magic_number = 0x000ABBA;
 
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&info, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN |
 			     GRALLOC_USAGE_SW_WRITE_OFTEN);
 
-	CHECK(allocate(device, &test));
-	CHECK(lock(module, &test));
+	CHECK(allocate(ctx->device, &info));
+	CHECK(lock(ctx->module, &info));
 
-	ptr = (uint32_t *)test.vaddr;
+	ptr = (uint32_t *)info.vaddr;
 	CHECK(ptr);
-	ptr[(test.w) / 2] = magic_number;
+	ptr[(info.w) / 2] = magic_number;
 
-	CHECK(unlock(module, &test));
-	test.vaddr = NULL;
+	CHECK(unlock(ctx->module, &info));
+	info.vaddr = NULL;
 	ptr = NULL;
 
-	CHECK(lock(module, &test));
-	ptr = (uint32_t *)test.vaddr;
+	CHECK(lock(ctx->module, &info));
+	ptr = (uint32_t *)info.vaddr;
 	CHECK(ptr);
-	CHECK(ptr[test.w / 2] == magic_number);
+	CHECK(ptr[info.w / 2] == magic_number);
 
-	CHECK(unlock(module, &test));
-	CHECK(deallocate(device, &test));
+	CHECK(unlock(ctx->module, &info));
+	CHECK(deallocate(ctx->device, &info));
 
 	return 1;
 }
 
 /* This function tests the private API we use in ARC++ -- not part of official
  * gralloc. */
-static int test_perform(struct gralloc_module_t *module,
-			struct alloc_device_t *device)
+static int test_perform(struct gralloctest_context *ctx)
 {
-	struct gralloctest test, duplicate;
-	uint32_t stride, width, height;
-	uint64_t id1, id2;
 	int32_t format;
+	uint64_t id1, id2;
+	uint32_t stride, width, height;
+	struct grallocinfo info, duplicate;
+	struct gralloc_module_t *mod = ctx->module;
 
-	gralloctest_init(&test, 650, 408, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&info, 650, 408, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	CHECK(allocate(device, &test));
+	CHECK(allocate(ctx->device, &info));
 
-	CHECK(module->perform(module, GRALLOC_DRM_GET_STRIDE, test.handle,
-			      &stride) == 0);
-	CHECK(stride == test.stride);
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_STRIDE, info.handle, &stride) ==
+	      0);
+	CHECK(stride == info.stride);
 
-	CHECK(module->perform(module, GRALLOC_DRM_GET_FORMAT, test.handle,
-			      &format) == 0);
-	CHECK(format == test.format);
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_FORMAT, info.handle, &format) ==
+	      0);
+	CHECK(format == info.format);
 
-	CHECK(module->perform(module, GRALLOC_DRM_GET_DIMENSIONS, test.handle,
-			      &width, &height) == 0);
-	CHECK(width == test.w);
-	CHECK(height == test.h);
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_DIMENSIONS, info.handle, &width,
+			   &height) == 0);
+	CHECK(width == info.w);
+	CHECK(height == info.h);
 
-	native_handle_t *native_handle = duplicate_buffer_handle(test.handle);
+	native_handle_t *native_handle = duplicate_buffer_handle(info.handle);
 	duplicate.handle = native_handle;
 
-	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
-			      duplicate.handle, &id2));
-	CHECK(register_buffer(module, &duplicate));
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_BACKING_STORE, duplicate.handle,
+			   &id2));
+	CHECK(register_buffer(mod, &duplicate));
 
-	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
-			      test.handle, &id1) == 0);
-	CHECK(module->perform(module, GRALLOC_DRM_GET_BACKING_STORE,
-			      duplicate.handle, &id2) == 0);
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_BACKING_STORE, info.handle,
+			   &id1) == 0);
+	CHECK(mod->perform(mod, GRALLOC_DRM_GET_BACKING_STORE, duplicate.handle,
+			   &id2) == 0);
 	CHECK(id1 == id2);
 
-	CHECK(unregister_buffer(module, &duplicate));
-	CHECK(deallocate(device, &test));
+	CHECK(unregister_buffer(mod, &duplicate));
+	CHECK(deallocate(ctx->device, &info));
 
 	return 1;
 }
 
 /* This function tests that only YUV buffers work with *lock_ycbcr. */
-static int test_ycbcr(struct gralloc_module_t *module,
-		      struct alloc_device_t *device)
+static int test_ycbcr(struct gralloctest_context *ctx)
 
 {
-	struct gralloctest test;
-	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_YCbCr_420_888,
+	struct grallocinfo info;
+	grallocinfo_init(&info, 512, 512, HAL_PIXEL_FORMAT_YCbCr_420_888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	CHECK(allocate(device, &test));
+	CHECK(allocate(ctx->device, &info));
 
-	CHECK(lock(module, &test) == 0);
-	CHECK(lock_ycbcr(module, &test));
-	CHECK(test.ycbcr.y);
-	CHECK(test.ycbcr.cb);
-	CHECK(test.ycbcr.cr);
-	CHECK(unlock(module, &test));
+	CHECK(lock(ctx->module, &info) == 0);
+	CHECK(lock_ycbcr(ctx->module, &info));
+	CHECK(info.ycbcr.y);
+	CHECK(info.ycbcr.cb);
+	CHECK(info.ycbcr.cr);
+	CHECK(unlock(ctx->module, &info));
 
-	CHECK(deallocate(device, &test));
+	CHECK(deallocate(ctx->device, &info));
 
-	test.format = HAL_PIXEL_FORMAT_BGRA_8888;
-	CHECK(allocate(device, &test));
+	info.format = HAL_PIXEL_FORMAT_BGRA_8888;
+	CHECK(allocate(ctx->device, &info));
 
-	CHECK(lock_ycbcr(module, &test) == 0);
-	CHECK(lock(module, &test));
-	CHECK(unlock(module, &test));
+	CHECK(lock_ycbcr(ctx->module, &info) == 0);
+	CHECK(lock(ctx->module, &info));
+	CHECK(unlock(ctx->module, &info));
 
-	CHECK(deallocate(device, &test));
+	CHECK(deallocate(ctx->device, &info));
 
 	return 1;
 }
@@ -530,10 +551,9 @@ static int test_ycbcr(struct gralloc_module_t *module,
  * info -- not part of official gralloc API.  This is used in
  * Mali, Mesa, the ArcCodec and  wayland_service.
  */
-static int test_yuv_info(struct gralloc_module_t *module,
-			 struct alloc_device_t *device)
+static int test_yuv_info(struct gralloctest_context *ctx)
 {
-	struct gralloctest test;
+	struct grallocinfo info;
 	uint32_t y_size, c_stride, c_size, cr_offset, cb_offset;
 	uint32_t width, height;
 	width = height = 512;
@@ -552,180 +572,171 @@ static int test_yuv_info(struct gralloc_module_t *module,
 	 *   cb_offset = y_size + c_size.
 	 */
 
-	gralloctest_init(&test, width, height, HAL_PIXEL_FORMAT_YV12,
+	grallocinfo_init(&info, width, height, HAL_PIXEL_FORMAT_YV12,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	CHECK(allocate(device, &test));
+	CHECK(allocate(ctx->device, &info));
 
-	y_size = test.stride * height;
-	c_stride = ALIGN(test.stride / 2, 16);
+	y_size = info.stride * height;
+	c_stride = ALIGN(info.stride / 2, 16);
 	c_size = c_stride * height / 2;
 	cr_offset = y_size;
 	cb_offset = y_size + c_size;
 
-	test.usage = 0;
+	info.usage = 0;
 
 	/*
 	 * Check if the (*lock_ycbcr) with usage of zero returns the
 	 * offsets and strides of the YV12 buffer. This is unofficial
 	 * behavior we are testing here.
 	 */
-	CHECK(lock_ycbcr(module, &test));
+	CHECK(lock_ycbcr(ctx->module, &info));
 
-	CHECK(test.stride == test.ycbcr.ystride);
-	CHECK(c_stride == test.ycbcr.cstride);
-	CHECK(cr_offset == (uint32_t)test.ycbcr.cr);
-	CHECK(cb_offset == (uint32_t)test.ycbcr.cb);
+	CHECK(info.stride == info.ycbcr.ystride);
+	CHECK(c_stride == info.ycbcr.cstride);
+	CHECK(cr_offset == (uint32_t)info.ycbcr.cr);
+	CHECK(cb_offset == (uint32_t)info.ycbcr.cb);
 
-	CHECK(unlock(module, &test));
+	CHECK(unlock(ctx->module, &info));
 
-	CHECK(deallocate(device, &test));
+	CHECK(deallocate(ctx->device, &info));
 
 	return 1;
 }
 
 /* This function tests asynchronous locking and unlocking of buffers. */
-static int test_async(struct gralloc_module_t *module,
-		      struct alloc_device_t *device)
+static int test_async(struct gralloctest_context *ctx)
 
 {
-	struct gralloctest rgba_test, ycbcr_test;
+	struct grallocinfo rgba_info, ycbcr_info;
 	int fd;
 
-	gralloctest_init(&rgba_test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
+	grallocinfo_init(&rgba_info, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
-	gralloctest_init(&ycbcr_test, 512, 512, HAL_PIXEL_FORMAT_YCbCr_420_888,
+	grallocinfo_init(&ycbcr_info, 512, 512, HAL_PIXEL_FORMAT_YCbCr_420_888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
 
 	fd = sw_sync_timeline_create();
-	rgba_test.fence_fd = sw_sync_fence_create(fd, "fence", 1);
-	ycbcr_test.fence_fd = sw_sync_fence_create(fd, "ycbcr_fence", 2);
+	rgba_info.fence_fd = sw_sync_fence_create(fd, "fence", 1);
+	ycbcr_info.fence_fd = sw_sync_fence_create(fd, "ycbcr_fence", 2);
 
-	CHECK(allocate(device, &rgba_test));
-	CHECK(allocate(device, &ycbcr_test));
+	CHECK(allocate(ctx->device, &rgba_info));
+	CHECK(allocate(ctx->device, &ycbcr_info));
 
 	/*
 	 * Buffer data should only be available after the fence has been
 	 * signaled.
 	 */
-	CHECK(lock_async(module, &rgba_test));
-	CHECK(lock_async_ycbcr(module, &ycbcr_test));
+	CHECK(lock_async(ctx->module, &rgba_info));
+	CHECK(lock_async_ycbcr(ctx->module, &ycbcr_info));
 
-	CHECK(rgba_test.vaddr == NULL);
+	CHECK(rgba_info.vaddr == NULL);
 	CHECK(sw_sync_timeline_inc(fd, 1));
-	CHECK(rgba_test.vaddr);
-	CHECK(ycbcr_test.ycbcr.y == NULL);
-	CHECK(ycbcr_test.ycbcr.cb == NULL);
-	CHECK(ycbcr_test.ycbcr.cr == NULL);
+	CHECK(rgba_info.vaddr);
+	CHECK(ycbcr_info.ycbcr.y == NULL);
+	CHECK(ycbcr_info.ycbcr.cb == NULL);
+	CHECK(ycbcr_info.ycbcr.cr == NULL);
 
 	CHECK(sw_sync_timeline_inc(fd, 1));
-	CHECK(ycbcr_test.ycbcr.y);
-	CHECK(ycbcr_test.ycbcr.cb);
-	CHECK(ycbcr_test.ycbcr.cr);
+	CHECK(ycbcr_info.ycbcr.y);
+	CHECK(ycbcr_info.ycbcr.cb);
+	CHECK(ycbcr_info.ycbcr.cr);
 
 	/*
 	 * Wait on the fence returned from unlock_async and check it doesn't
 	 * return an error.
 	 */
-	CHECK(unlock_async(module, &rgba_test));
-	CHECK(unlock_async(module, &ycbcr_test));
+	CHECK(unlock_async(ctx->module, &rgba_info));
+	CHECK(unlock_async(ctx->module, &ycbcr_info));
 
-	CHECK(rgba_test.fence_fd > 0);
-	CHECK(ycbcr_test.fence_fd > 0);
-	CHECK(sync_wait(rgba_test.fence_fd, 10000) >= 0);
-	CHECK(sync_wait(ycbcr_test.fence_fd, 10000) >= 0);
+	CHECK(rgba_info.fence_fd > 0);
+	CHECK(ycbcr_info.fence_fd > 0);
+	CHECK(sync_wait(rgba_info.fence_fd, 10000) >= 0);
+	CHECK(sync_wait(ycbcr_info.fence_fd, 10000) >= 0);
 
-	CHECK(close(rgba_test.fence_fd) == 0);
-	CHECK(close(ycbcr_test.fence_fd) == 0);
+	CHECK(close(rgba_info.fence_fd) == 0);
+	CHECK(close(ycbcr_info.fence_fd) == 0);
 
-	CHECK(deallocate(device, &rgba_test));
-	CHECK(deallocate(device, &ycbcr_test));
+	CHECK(deallocate(ctx->device, &rgba_info));
+	CHECK(deallocate(ctx->device, &ycbcr_info));
 
 	close(fd);
 
 	return 1;
 }
 
+static const struct gralloc_testcase tests[] = {
+	{ "alloc_varying_sizes", test_alloc_varying_sizes, 1 },
+	{ "alloc_combinations", test_alloc_combinations, 1 },
+	{ "api", test_api, 1 },
+	{ "gralloc_order", test_gralloc_order, 1 },
+	{ "mapping", test_mapping, 1 },
+	{ "perform", test_perform, 1 },
+	{ "ycbcr", test_ycbcr, 2 },
+	{ "yuv_info", test_yuv_info, 2 },
+	{ "async", test_async, 3 },
+};
+
 static void print_help(const char *argv0)
 {
+	uint32_t i;
 	printf("usage: %s <test_name>\n\n", argv0);
-	printf("A valid test is one the following:\n");
-	printf("alloc_varying_sizes\nalloc_combinations\napi\ngralloc_order\n");
-	printf("mapping\nperform\nycbcr\nasync\n");
+	printf("A valid name test is one the following:\n");
+	for (i = 0; i < ARRAY_SIZE(tests); i++)
+		printf("%s\n", tests[i].name);
 }
 
 int main(int argc, char *argv[])
 {
-	gralloc_module_t *module = NULL;
-	alloc_device_t *device = NULL;
+	int ret = 0;
+	uint32_t num_run = 0;
 
 	setbuf(stdout, NULL);
-
 	if (argc == 2) {
+		uint32_t i;
 		char *name = argv[1];
-		int api;
 
-		if (!test_init_gralloc(&module, &device))
-			goto fail;
-
-		switch (module->common.module_api_version) {
-		case GRALLOC_MODULE_API_VERSION_0_3:
-			api = 3;
-			break;
-		case GRALLOC_MODULE_API_VERSION_0_2:
-			api = 2;
-			break;
-		default:
-			api = 1;
+		struct gralloctest_context *ctx = test_init_gralloc();
+		if (!ctx) {
+			fprintf(stderr,
+				"[  FAILED  ] to initialize gralloc.\n");
+			return 1;
 		}
 
-		printf("[ RUN      ] gralloctest.%s\n", name);
+		for (i = 0; i < ARRAY_SIZE(tests); i++) {
+			if (strcmp(tests[i].name, name) && strcmp("all", name))
+				continue;
 
-		if (strcmp(name, "alloc_varying_sizes") == 0) {
-			if (!test_alloc_varying_sizes(device))
-				goto fail;
-		} else if (strcmp(name, "alloc_combinations") == 0) {
-			if (!test_alloc_combinations(device))
-				goto fail;
-		} else if (strcmp(name, "api") == 0) {
-			if (!test_api(module))
-				goto fail;
-		} else if (strcmp(name, "gralloc_order") == 0) {
-			if (!test_gralloc_order(module, device))
-				goto fail;
-		} else if (strcmp(name, "mapping") == 0) {
-			if (!test_mapping(module, device))
-				goto fail;
-		} else if (strcmp(name, "perform") == 0) {
-			if (!test_perform(module, device))
-				goto fail;
-		} else if (strcmp(name, "ycbcr") == 0) {
-			if (api >= 2 && !test_ycbcr(module, device))
-				goto fail;
-		} else if (strcmp(name, "yuv_info") == 0) {
-			if (api >= 2 && !test_yuv_info(module, device))
-				goto fail;
-		} else if (strcmp(name, "async") == 0) {
-			if (api >= 3 && !test_async(module, device))
-				goto fail;
-		} else {
-			print_help(argv[0]);
-			goto fail;
+			int success = 1;
+			if (ctx->api >= tests[i].required_api)
+				success = tests[i].run_test(ctx);
+
+			printf("[ RUN      ] gralloctest.%s\n", tests[i].name);
+			if (!success) {
+				fprintf(stderr, "[  FAILED  ] gralloctest.%s\n",
+					tests[i].name);
+				ret |= 1;
+			} else {
+				printf("[  PASSED  ] gralloctest.%s\n",
+				       tests[i].name);
+			}
+
+			num_run++;
 		}
 
-		if (!test_close_allocator(device))
-			goto fail;
+		if (!test_close_gralloc(ctx)) {
+			fprintf(stderr, "[  FAILED  ] to close gralloc.\n");
+			return 1;
+		}
 
-		printf("[  PASSED  ] gralloctest.%s\n", name);
-		return 0;
+		if (!num_run)
+			goto print_usage;
 
-	fail:
-		printf("[  FAILED  ] gralloctest.%s\n", name);
-
-	} else {
-		print_help(argv[0]);
+		return ret;
 	}
 
+print_usage:
+	print_help(argv[0]);
 	return 0;
 }
