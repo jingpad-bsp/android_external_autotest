@@ -177,7 +177,7 @@ class _SpecialTaskAction(object):
                        "Can't %s label '%s'." % (cls.name, label))
 
         # Sort the configuration labels based on `cls._priorities`.
-        sorted_actionable = cls.sort_actionable_labels(actionable)
+        sorted_actionable = cls._sort_actionable_labels(actionable)
         for name, value in sorted_actionable:
             action_item = cls.action_for(name)
             success = action_item.execute(job=job, host=host, value=value)
@@ -226,7 +226,7 @@ class _SpecialTaskAction(object):
 
 
     @classmethod
-    def sort_actionable_labels(cls, labels):
+    def _sort_actionable_labels(cls, labels):
         """
         Sort configurations based on the priority defined in cls._priorities.
 
