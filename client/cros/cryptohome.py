@@ -14,6 +14,8 @@ CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 GUEST_USER_NAME = '$guest'
 UNAVAILABLE_ACTION = 'Unknown action or no action given.'
 MOUNT_RETRY_COUNT = 20
+TEMP_MOUNT_PATTERN = '/home/.shadow/%s/temporary_mount'
+VAULT_PATH_PATTERN = '/home/.shadow/%s/vault'
 
 class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -37,6 +39,22 @@ def user_path(user):
 def system_path(user):
     """Get the system mount point for the given user."""
     return utils.system_output(['cryptohome-path', 'system', user])
+
+
+def temporary_mount_path(user):
+    """Get the vault mount path used during crypto-migration for the user.
+
+    @param user: user the temporary mount should be for
+    """
+    return TEMP_MOUNT_PATTERN % (get_user_hash(user))
+
+
+def vault_path(user):
+    """ Get the vault path for the given user.
+
+    @param user: The user who's vault path should be returned.
+    """
+    return VAULT_PATH_PATTERN % (get_user_hash(user))
 
 
 def ensure_clean_cryptohome_for(user, password=None):
@@ -406,6 +424,61 @@ def crash_cryptohomed():
             timeout=180,
             exception=error.TestError(
                 'Timeout waiting for cryptohomed to coredump'))
+
+
+def create_ecryptfs_homedir(user, password):
+    """Creates a new home directory as ecryptfs.
+
+    If a home directory for the user exists already, it will be removed.
+    The resulting home directory will be mounted.
+
+    @param user: Username to create the home directory for.
+    @param password: Password to use when creating the home directory.
+    """
+    unmount_vault(user)
+    remove_vault(user)
+    args = [
+            CRYPTOHOME_CMD,
+            '--action=mount_ex',
+            '--user=%s' % user,
+            '--password=%s' % password,
+            '--key_label=foo',
+            '--ecryptfs',
+            '--create']
+    logging.info(__run_cmd(' '.join(args)))
+    if not is_vault_mounted(user, regexes={
+        constants.CRYPTOHOME_FS_REGEX_ECRYPTFS :
+            constants.CRYPTOHOME_DEV_REGEX_REGULAR_USER_SHADOW
+    }, allow_fail=True):
+        raise ChromiumOSError('Ecryptfs home could not be created')
+
+
+def do_dircrypto_migration(user, password, timeout=600):
+    """Start dircrypto migration for the user.
+
+    @param user: The user to migrate.
+    @param password: The password used to mount the users vault
+    @param timeout: How long in seconds to wait for the migration to finish
+    before failing.
+    """
+    unmount_vault(user)
+    args = [
+            CRYPTOHOME_CMD,
+            '--action=mount_ex',
+            '--to_migrate_from_ecryptfs',
+            '--user=%s' % user,
+            '--password=%s' % password]
+    logging.info(__run_cmd(' '.join(args)))
+    if not __get_mount_info(temporary_mount_path(user), allow_fail=True):
+        raise ChromiumOSError('Failed to mount home for migration')
+    args = [CRYPTOHOME_CMD, '--action=migrate_to_dircrypto', '--user=%s' % user]
+    logging.info(__run_cmd(' '.join(args)))
+    utils.poll_for_condition(
+        lambda: not __get_mount_info(
+                temporary_mount_path(user), allow_fail=True),
+        timeout=timeout,
+        exception=error.TestError(
+                'Timeout waiting for dircrypto migration to finish'))
 
 
 class CryptohomeProxy(DBusClient):
