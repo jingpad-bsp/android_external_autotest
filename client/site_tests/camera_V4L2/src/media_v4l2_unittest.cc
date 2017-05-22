@@ -218,48 +218,15 @@ void TestFrameRate(const char* dev_name) {
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
   }
-  v4l2_capability caps;
-  if (!v4l2_dev.ProbeCaps(&caps, true)) {
-    printf("[Error] Can not probe caps on device '%s'\n", dev_name);
+  v4l2_streamparm param;
+  if (!v4l2_dev.GetParam(&param)) {
+    printf("[Error] Can not get stream param on device '%s'\n", dev_name);
     exit(EXIT_FAILURE);
   }
   // we only try to adjust frame rate when it claims can.
-  if (caps.capabilities & V4L2_CAP_TIMEPERFRAME) {
-    v4l2_streamparm param;
-    if (!v4l2_dev.GetParam(&param)) {
-      printf("[Error] Can not get stream param on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
+  if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
     if (!v4l2_dev.SetParam(&param)) {
       printf("[Error] Can not set stream param on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-
-    if (!v4l2_dev.SetFrameRate(15)) {
-      printf("[Error] SetFrameRate failed on '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-    if (!v4l2_dev.GetParam(&param)) {
-      printf("[Error] Can not get stream param on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-    if (param.parm.capture.timeperframe.denominator !=
-              param.parm.capture.timeperframe.numerator * 15) {
-      printf("[Error] Can not set frame rate to 15 on '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-
-    if (!v4l2_dev.SetFrameRate(10)) {
-      printf("[Error] SetFrameRate failed on '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-    if (!v4l2_dev.GetParam(&param)) {
-      printf("[Error] Can not get stream param on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-    if (param.parm.capture.timeperframe.denominator !=
-              param.parm.capture.timeperframe.numerator * 10) {
-      printf("[Error] Can not set frame rate to 10 on '%s'\n", dev_name);
       exit(EXIT_FAILURE);
     }
   }
