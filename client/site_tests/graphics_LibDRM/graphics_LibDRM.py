@@ -6,25 +6,20 @@ import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 
-
-class graphics_LibDRM(test.test):
+class graphics_LibDRM(graphics_utils.GraphicsTest):
     version = 1
     _services = None
 
     def initialize(self):
+        super(graphics_LibDRM, self).initialize()
         self._services = service_stopper.ServiceStopper(['ui'])
-        self._failures = 0
 
     def cleanup(self):
+        super(graphics_LibDRM, self).cleanup()
         if self._services:
             self._services.restore_services()
-        self.output_perf_value(
-            description='Failures',
-            value=self._failures,
-            units='count',
-            higher_is_better=False
-        )
 
     def run_once(self):
         keyvals = {}
@@ -59,7 +54,7 @@ class graphics_LibDRM(test.test):
         self._services.stop_services()
 
         for test in tests:
-            self._failures += 1
+            self.add_failures(test)
             # Make sure the test exists on this system.  Not all tests may be
             # present on a given system.
             if utils.system('which %s' % test):
@@ -74,9 +69,9 @@ class graphics_LibDRM(test.test):
                 keyvals[test] = 'FAILED'
             else:
                 keyvals[test] = 'PASSED'
-                self._failures -= 1
+                self.remove_failures(test)
 
         self.write_perf_keyval(keyvals)
-        if self._failures > 0:
+        if self.get_failures():
             raise error.TestFail('Failed: %d libdrm tests failed.'
-                                 % self._failures)
+                                 % len(self.get_failures()))

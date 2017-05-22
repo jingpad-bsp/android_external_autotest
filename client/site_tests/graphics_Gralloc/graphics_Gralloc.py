@@ -9,6 +9,7 @@ import re
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import arc
+from autotest_lib.client.cros.graphics import graphics_utils
 
 _SDCARD_EXEC = '/sdcard/gralloctest'
 _EXEC_DIRECTORY = '/data/executables/'
@@ -17,7 +18,9 @@ _EXEC_DIRECTORY = '/data/executables/'
 _ANDROID_EXEC = _EXEC_DIRECTORY + 'gralloctest'
 _OPTION = 'all'
 
-class graphics_Gralloc(arc.ArcTest):
+# GraphicsTest should go first as it will pass initialize/cleanup function
+# to ArcTest. GraphicsTest initialize would not be called if ArcTest goes first
+class graphics_Gralloc(graphics_utils.GraphicsTest, arc.ArcTest):
     """gralloc test."""
     version = 1
 
@@ -28,14 +31,6 @@ class graphics_Gralloc(arc.ArcTest):
 
     def initialize(self):
         super(graphics_Gralloc, self).initialize(autotest_ext=True)
-
-    def cleanup(self):
-        self.output_perf_value(
-            description='Failures',
-            value=len(self._failures),
-            units='count',
-            higher_is_better=False
-        )
 
     def arc_setup(self):
         super(graphics_Gralloc, self).arc_setup()
@@ -56,7 +51,6 @@ class graphics_Gralloc(arc.ArcTest):
         super(graphics_Gralloc, self).arc_teardown()
 
     def run_once(self):
-        self._failures = []
         try:
             cmd = '%s %s' % (_ANDROID_EXEC, _OPTION)
             stdout = arc._android_shell(cmd)
@@ -66,12 +60,12 @@ class graphics_Gralloc(arc.ArcTest):
         for line in stdout.splitlines():
             match = re.search(r'\[  FAILED  \]', stdout)
             if match:
-                self._failures.append(line)
+                self.add_failures(line)
                 logging.error(line)
             else:
                 logging.debug(stdout)
 
-        if self._failures:
+        if self.get_failures():
             gpu_family = utils.get_gpu_family()
             raise error.TestFail('Failed: gralloc on %s in %s.' %
-                                 (gpu_family, self._failures))
+                                 (gpu_family, self.get_failures()))
