@@ -2178,22 +2178,12 @@ def get_ui_use_flags():
     return flags
 
 
-def is_freon():
-    """Returns False if the system uses X, True otherwise."""
-    return 'X' not in get_ui_use_flags()
-
-
 def graphics_platform():
     """
     Return a string identifying the graphics platform,
     e.g. 'glx' or 'x11_egl' or 'gbm'
     """
-    use_flags = get_ui_use_flags()
-    if 'X' not in use_flags:
-        return 'null'
-    elif 'opengles' in use_flags:
-        return 'x11_egl'
-    return 'glx'
+    return 'null'
 
 
 def graphics_api():
@@ -2202,14 +2192,6 @@ def graphics_api():
     if 'opengles' in use_flags:
         return 'gles2'
     return 'gl'
-
-
-def assert_has_X_server():
-    """Using X is soon to be deprecated. Print warning or raise error."""
-    if is_freon():
-        # TODO(ihf): Think about if we could support X for testing for a while.
-        raise error.TestFail('freon: can\'t use X server.')
-    logging.warning('freon: Using the X server will be deprecated soon.')
 
 
 def is_vm():
