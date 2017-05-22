@@ -36,6 +36,10 @@ class V4L2Device {
 
   virtual bool OpenDevice();
   virtual void CloseDevice();
+  // After this function is called, the driver may adjust the settings if they
+  // are unsupported.  Caller can use GetV4L2Format() and GetFrameRate() to know
+  // the actual settings.  If V4L2_CAP_TIMEPERFRAME is unsupported, fps will be
+  // ignored.
   virtual bool InitDevice(IOMethod io,
                           uint32_t width,
                           uint32_t height,
@@ -73,20 +77,8 @@ class V4L2Device {
       uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
       float* frame_rate);
   float GetFrameRate();
+  bool GetV4L2Format(v4l2_format* format);
   bool Stop();
-
-  // Getter.
-  int32_t GetActualWidth() {
-    return width_;
-  }
-
-  int32_t GetActualHeight() {
-    return height_;
-  }
-
-  v4l2_format& GetActualPixelFormat() {
-    return pixfmt_;
-  }
 
   static uint32_t MapFourCC(const char* fourcc);
 
@@ -109,9 +101,6 @@ class V4L2Device {
   uint32_t min_buffers_;  // Minimum buffers requirement.
   bool stopped_;
 
-  // Valid only after |InitDevice()|.
-  uint32_t width_, height_;
-  v4l2_format pixfmt_;
   // Sets to true when buffers are initialized.
   bool initialized_;
 };
