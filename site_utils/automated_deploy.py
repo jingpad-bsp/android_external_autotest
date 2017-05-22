@@ -167,7 +167,7 @@ def kick_off_deploy():
         # Then kick off the deploy script.
         deploy_cmd = ('runlocalssh ./site_utils/deploy_server.py --afe=%s' %
                       MASTER_AFE)
-        infra.local_runner(deploy_cmd, stream_output=True, shell=True)
+        infra.local_runner(deploy_cmd, stream_output=True)
         print 'Successfully deploy changes to all lab servers.!'
 
 
