@@ -76,6 +76,8 @@ IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
 IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
 IW_LINK_KEY_FREQUENCY = 'freq'
 IW_LINK_KEY_SIGNAL = 'signal'
+IW_LINK_KEY_RX_BITRATE = 'rx bitrate'
+IW_LINK_KEY_TX_BITRATE = 'tx bitrate'
 IW_LOCAL_EVENT_LOG_FILE = './debug/iw_event_%d.log'
 
 
@@ -358,12 +360,17 @@ class IwRunner(object):
         for peer in peer_list_raw:
             peer_link_keys = _get_all_link_keys(peer)
             rssi_str = peer_link_keys[IW_LINK_KEY_SIGNAL]
+            tx_bitrate = peer_link_keys.get(IW_LINK_KEY_TX_BITRATE)
+            # Station may not have rx_bitrate in station dump
+            rx_bitrate = peer_link_keys.get(IW_LINK_KEY_RX_BITRATE)
             rssi_int = int(rssi_str.split()[0])
             mac = _extract_bssid(link_information=peer,
                                  interface_name=interface,
                                  station_dump=True)
             parsed_peer_info.append({'rssi_int': rssi_int,
                                      'rssi_str': rssi_str,
+                                     'tx_bitrate': tx_bitrate,
+                                     'rx_bitrate': rx_bitrate,
                                      'mac': mac})
         return sorted(parsed_peer_info, key=operator.itemgetter('mac'))
 
