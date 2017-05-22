@@ -99,13 +99,8 @@ bool V4L2Device::InitDevice(IOMethod io,
   }
 
   v4l2_format fmt;
-  memset(&fmt, 0, sizeof(fmt));
-  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-  if (-1 == DoIoctl(VIDIOC_G_FMT, &fmt)) {
-    printf("<<< Error: VIDIOC_G_FMT on %s.>>>\n", dev_name_);
+  if (!GetV4L2Format(&fmt))
     return false;
-  }
 
   fmt.fmt.pix.width = width;
   fmt.fmt.pix.height = height;
@@ -134,22 +129,24 @@ bool V4L2Device::InitDevice(IOMethod io,
       return false;
   }
 
-  if (cap.capabilities & V4L2_CAP_TIMEPERFRAME) {
-    if (fps > 0)
+  v4l2_streamparm param;
+  if (!GetParam(&param))
+    return false;
+
+  if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+    if (fps > 0) {
       SetFrameRate(fps);
-    fps = GetFrameRate();
-  } else {
-    // TODO(jiesun): probably we should derive this from VIDIOC_G_STD
-    fps = 30.0;
+    } else {
+      printf("<<< Error: fps %f should be a positive number.>>>\n", fps);
+      return false;
+    }
   }
+  float actual_fps = GetFrameRate();
 
   printf("actual format for capture %dx%d %c%c%c%c picture at %.2f fps\n",
          fmt.fmt.pix.width, fmt.fmt.pix.height,
          (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
-         (pixfmt >> 16) & 0xff, (pixfmt >> 24 ) & 0xff, fps);
-  width_ = fmt.fmt.pix.width;
-  height_ = fmt.fmt.pix.height;
-  pixfmt_ = fmt;
+         (pixfmt >> 16) & 0xff, (pixfmt >> 24 ) & 0xff, actual_fps);
 
   bool ret = false;
   switch (io_) {
@@ -906,8 +903,6 @@ bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
 
     if (cap->capabilities & V4L2_CAP_STREAMING)
       printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
-    if (cap->capabilities & V4L2_CAP_TIMEPERFRAME)
-      printf("<<< Info: %s support flexible frame period.>>>\n", dev_name_);
   }
 
   return true;
@@ -952,6 +947,17 @@ float V4L2Device::GetFrameRate() {
     return -1;
   return static_cast<float>(param.parm.capture.timeperframe.denominator) /
       param.parm.capture.timeperframe.numerator;
+}
+
+bool V4L2Device::GetV4L2Format(v4l2_format* format) {
+  memset(format, 0, sizeof(v4l2_format));
+  format->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+  if (-1 == DoIoctl(VIDIOC_G_FMT, format)) {
+    printf("<<< Error: VIDIOC_G_FMT on %s.>>>\n", dev_name_);
+    return false;
+  }
+  return true;
 }
 
 uint64_t V4L2Device::Now() {
