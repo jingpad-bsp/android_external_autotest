@@ -64,9 +64,11 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 # blacklist, e.g. veyron_minnie could match both "veyron_*" and
                 # "veyron_minnie".
 
-                # Kevin doesn't support HW encode for plane sizes not multiple
+                # rk3399 doesn't support HW encode for plane sizes not multiple
                 # of cache line.
                 ('kevin', FILTER_ALL): ['CacheLineUnalignedInputTest/*'],
+                ('bob', FILTER_ALL): ['CacheLineUnalignedInputTest/*'],
+
                 # Still high failure rate of VP8 EncoderPerf for veyrons,
                 # disable it for now. crbug/720386
                 ('veyron_*', FILTER_VP8): ['EncoderPerf/*'],
