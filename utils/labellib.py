@@ -130,7 +130,7 @@ CrosVersion = collections.namedtuple(
 
 _CROS_VERSION_REGEX = (
         r'^'
-        r'(?P<group>[a-z0-9-]+)'
+        r'(?P<group>[a-z0-9_-]+)'
         r'/'
         r'(?P<milestone>R[0-9]+)'
         r'-'
