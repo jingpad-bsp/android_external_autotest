@@ -107,10 +107,18 @@ NETWORK_INIT_TIMEOUT = 300
 # Network bring up is slower in Moblab.
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
-# Number of seconds to download files from devserver.
+# Number of seconds to download files from devserver. We chose a timeout that
+# is on the same order as the permitted CTS runtime for normal jobs (1h). In
+# principle we should not retry timeouts as they indicate server/network
+# overload, but we may be tempted to retry for other failures.
 DEVSERVER_CALL_TIMEOUT = 3600
-# Number of retries to download files from devserver.
+# Number of retries to download files from devserver. There is no point in
+# having more than one retry for a file download.
 DEVSERVER_CALL_RETRY = 2
+# Average delay before attempting a retry to download from devserver. This
+# value needs to be large enough to allow an overloaded server/network to
+# calm down even in the face of retries.
+DEVSERVER_CALL_DELAY = 600
 
 # Type string for container related metadata.
 CONTAINER_CREATE_METADB_TYPE = 'container_create'
@@ -271,13 +279,13 @@ def cleanup_if_fail():
     return deco_cleanup_if_fail
 
 
-@retry.retry((error.CmdError, error.CmdTimeoutError),
-             timeout_min=DEVSERVER_CALL_TIMEOUT * DEVSERVER_CALL_RETRY / 60)
+# Make sure retries only happen in the non-timeout case.
+@retry.retry((error.CmdError),
+             blacklist=[error.CmdTimeoutError],
+             timeout_min=DEVSERVER_CALL_TIMEOUT * DEVSERVER_CALL_RETRY / 60,
+             delay_sec=DEVSERVER_CALL_DELAY)
 def download_extract(url, target, extract_dir):
     """Download the file from given url and save it to the target, then extract.
-
-    Retry download_file in case it hang there. Actually it may only be tried
-    DEVSERVER_CALL_RETRY - 1 times due to race condition.
 
     @param url: Url to download the file.
     @param target: Path of the file to save to.
@@ -294,8 +302,10 @@ def download_extract(url, target, extract_dir):
                     url, tmp_file.name, timeout=DEVSERVER_CALL_TIMEOUT)
             utils.run('sudo mv %s %s' % (tmp_file.name, target))
     else:
-        utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target),
-                  stderr_tee=utils.TEE_TO_LOGS)
+        # We do not want to retry on CmdTimeoutError but still retry on
+        # CmdError. Hence we can't use wget --timeout=...
+        utils.run('sudo wget -nv %s -O %s' % (url, target),
+                  stderr_tee=utils.TEE_TO_LOGS, timeout=DEVSERVER_CALL_TIMEOUT)
 
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
