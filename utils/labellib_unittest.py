@@ -187,6 +187,11 @@ class CrosVersionTestCase(unittest.TestCase):
         self.assertEqual(cros_version.board, 'lumpy-a')
         self.assertEqual(cros_version.milestone, 'R27')
 
+        build = 'trybot-lumpy_a-pre-cq/R27-3773.0.0-rc1'
+        cros_version = labellib.parse_cros_version(build)
+        self.assertEqual(cros_version.board, 'lumpy_a')
+        self.assertEqual(cros_version.milestone, 'R27')
+
 
 if __name__ == '__main__':
     unittest.main()
