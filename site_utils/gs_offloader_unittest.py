@@ -1168,6 +1168,24 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         shutil.rmtree(results_folder)
 
 
+    def test_get_metrics_fields(self):
+        """Test method _get_metrics_fields."""
+        results_folder, host_folder, _ = self.create_results_folder()
+        models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn({
+                'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
+                'parent_job_id': 'p_id',
+                'suite': 'arc-cts'
+            })
+        try:
+            self.mox.ReplayAll()
+            self.assertEqual({'board': 'veyron_minnie-cheets',
+                              'milestone': 'R52'},
+                             gs_offloader._get_metrics_fields(host_folder))
+            self.mox.VerifyAll()
+        finally:
+            shutil.rmtree(results_folder)
+
+
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
     """Tests for `_JobDirectory.enqueue_offload()`.
 
