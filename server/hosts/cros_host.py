@@ -652,7 +652,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _retry_auto_update_with_new_devserver(self, build, last_devserver,
-                                              force_update, force_full_update):
+                                              force_update, force_full_update,
+                                              force_original):
         """Kick off auto-update by devserver and send metrics.
 
         @param build: the build to update.
@@ -661,6 +662,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                              for details.
         @param force_full_update: see |machine_install_by_devserver|'s
                                   force_full_update for details.
+        @param force_original: Whether to force stateful update with the
+                               original payload.
 
         @return the result of |auto_update| in dev_server.
         """
@@ -688,7 +691,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 original_release_version=self.get_release_version(),
                 log_dir=self.job.resultdir,
                 force_update=force_update,
-                full_update=force_full_update)
+                full_update=force_full_update,
+                force_original=force_original)
 
 
     def machine_install_by_devserver(self, update_url=None, force_update=False,
@@ -778,6 +782,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         metrics.Counter('chromeos/autotest/provision/resolve'
                         ).increment(fields=monarch_fields)
 
+        force_original = self.get_chromeos_release_milestone() is None
+
         success, retryable = devserver.auto_update(
                 self.hostname, build,
                 original_board=self.get_board().replace(
@@ -785,7 +791,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 original_release_version=self.get_release_version(),
                 log_dir=self.job.resultdir,
                 force_update=force_update,
-                full_update=force_full_update)
+                full_update=force_full_update,
+                force_original=force_original)
         if not success and retryable:
           # It indicates that last provision failed due to devserver load
           # issue, so another devserver is resolved to kick off provision
@@ -798,7 +805,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
           logging.debug('Checking whether host %s is online.', self.hostname)
           if utils.ping(self.hostname, tries=1, deadline=1) == 0:
               self._retry_auto_update_with_new_devserver(
-                      build, devserver, force_update, force_full_update)
+                      build, devserver, force_update, force_full_update,
+                      force_original)
           else:
               raise error.AutoservError(
                       'No answer to ping from %s' % self.hostname)
@@ -1343,16 +1351,31 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         cros_ui.wait_for_chrome_ready(prompt, self)
 
 
+    def _get_lsb_release_content(self):
+        """Return the content of lsb-release file of host."""
+        return self.run(
+                'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
+
+
     def get_release_version(self):
         """Get the value of attribute CHROMEOS_RELEASE_VERSION from lsb-release.
 
         @returns The version string in lsb-release, under attribute
                  CHROMEOS_RELEASE_VERSION.
         """
-        lsb_release_content = self.run(
-                    'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
         return lsbrelease_utils.get_chromeos_release_version(
-                    lsb_release_content=lsb_release_content)
+                lsb_release_content=self._get_lsb_release_content())
+
+
+    def get_chromeos_release_milestone(self):
+        """Get the value of attribute CHROMEOS_RELEASE_BUILD_TYPE
+        from lsb-release.
+
+        @returns The version string in lsb-release, under attribute
+                 CHROMEOS_RELEASE_BUILD_TYPE.
+        """
+        return lsbrelease_utils.get_chromeos_release_milestone(
+                lsb_release_content=self._get_lsb_release_content())
 
 
     def verify_cros_version_label(self):
