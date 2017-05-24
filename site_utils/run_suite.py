@@ -1697,7 +1697,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     original_suite_name = get_original_suite_name(options.name,
                                                     options.suite_args)
     # Start collecting test results.
-    logging.info('%s Start collectint test results and dump them to json.',
+    logging.info('%s Start collecting test results and dump them to json.',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
