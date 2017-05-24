@@ -20,10 +20,75 @@ import time
 # input library in the future easier.
 import uinput
 
+from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import test as test_utils
 from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import drm
+
+
+class GraphicsTest(test.test):
+    """Base class for graphics test."""
+    version = 1
+    _GSC = None
+
+    _test_failure_description = "Failures"
+    _test_failure_report_enable = True
+
+    def __init__(self, *args, **kwargs):
+        """Initialize flag setting."""
+        super(GraphicsTest, self).__init__(*args, **kwargs)
+        self._failures = []
+
+    def initialize(self, *args, **kwargs):
+        """Initial state checker and report initial value to perf dashboard."""
+        self._GSC = GraphicsStateChecker()
+
+        self.output_perf_value(
+            description='Timeout_Reboot',
+            value=1,
+            units='count',
+            higher_is_better=False
+        )
+
+        if hasattr(super(GraphicsTest, self), "initialize"):
+            test_utils._cherry_pick_call(super(GraphicsTest, self).initialize,
+                                         *args, **kwargs)
+
+    def cleanup(self, *args, **kwargs):
+        """Finalize state checker and report values to perf dashboard."""
+        if self._GSC:
+            self._GSC.finalize()
+
+        self.output_perf_value(
+            description='Timeout_Reboot',
+            value=0,
+            units='count',
+            higher_is_better=False,
+            replace_existing_values=True
+        )
+
+        if self._test_failure_report_enable:
+            self.output_perf_value(
+                description=self._test_failure_description,
+                value=len(self._failures),
+                units='count',
+                higher_is_better=False
+            )
+
+        if hasattr(super(GraphicsTest, self), "cleanup"):
+            test_utils._cherry_pick_call(super(GraphicsTest, self).cleanup,
+                                         *args, **kwargs)
+
+    def add_failures(self, failure_description):
+        self._failures.append(failure_description)
+
+    def remove_failures(self, failure_description):
+        self._failures.remove(failure_description)
+
+    def get_failures(self):
+        return list(self._failures)
 
 
 def screen_disable_blanking():
