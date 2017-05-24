@@ -11,6 +11,16 @@ import urllib
 import warnings
 
 
+def warn(deprecated_name, stacklevel=3):
+    """Convenience function for making deprecation warnings.
+
+    @param deprecated_name: The name of the deprecated function or module
+    @param stacklevel: See warnings.warn().
+    """
+    warnings.warn(APIDeprecationWarning(deprecated_name),
+                  stacklevel=stacklevel)
+
+
 class APIDeprecationWarning(UserWarning):
     """API deprecation warning.
 
