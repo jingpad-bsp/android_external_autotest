@@ -1832,6 +1832,16 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
         return u"%s/%d (%d)" % (hostname, self.job.id, self.id)
 
 
+class HostQueueEntryStartTimes(dbmodels.Model):
+    """An auxilary table to HostQueueEntry to index by start time."""
+    insert_time = dbmodels.DateField()
+    highest_hqe_id = dbmodels.IntegerField()
+
+    class Meta:
+        """Metadata for class HostQueueEntryStartTimes."""
+        db_table = 'host_queue_entry_start_times'
+
+
 class AbortedHostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     """Represents an aborted host queue entry."""
     queue_entry = dbmodels.OneToOneField(HostQueueEntry, primary_key=True)
