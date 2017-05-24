@@ -9,6 +9,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
+from autotest_lib.client.cros.graphics import graphics_utils
 
 # Kernel 3.8 to 3.14 has cur_delay_info, 3.18+ has frequency_info.
 CLOCK_PATHS = [
@@ -25,25 +26,20 @@ PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_status']
 RC6_PATHS = ['/sys/kernel/debug/dri/0/i915_drpc_info']
 
 
-class graphics_Idle(test.test):
+class graphics_Idle(graphics_utils.GraphicsTest):
     """Class for graphics_Idle.  See 'control' for details."""
     version = 1
     _gpu_type = None
     _cpu_type = None
     _board = None
-    _failures = 0
-
-    def cleanup(self):
-        self.output_perf_value(
-            description='Failures',
-            value=self._failures,
-            units='count',
-            higher_is_better=False
-        )
 
     def run_once(self, arc_mode=None):
+        # If we are in arc_mode, do not report failures to perf dashboard.
+        if arc_mode:
+            self._test_failure_report_enable = False
+
         # We use kiosk mode to make sure Chrome is idle.
-        self._failures += 1
+        self.add_failures('Graphics_Idle')
         with chrome.Chrome(
                 logged_in=False, extra_browser_args=['--kiosk'],
                 arc_mode=arc_mode):
@@ -64,7 +60,7 @@ class graphics_Idle(test.test):
             errors += self.verify_short_blanking()
             if errors:
                 raise error.TestFail('Failed: %s' % errors)
-        self._failures -= 1
+        self.remove_failures('Graphics_Idle')
 
     def get_valid_path(self, paths):
         for path in paths:

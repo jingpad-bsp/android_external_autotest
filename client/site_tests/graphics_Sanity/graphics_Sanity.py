@@ -20,7 +20,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 #        "/usr/local/autotest/bin/screenshot.py screenshot2_generated.png"
 # start ui
 
-class graphics_Sanity(test.test):
+class graphics_Sanity(graphics_utils.GraphicsTest):
     """
     This test is meant to be used as a quick sanity check for GL/GLES.
     """
@@ -28,7 +28,6 @@ class graphics_Sanity(test.test):
 
     # None-init vars used by cleanup() here, in case setup() fails
     _services = None
-    _failures = 0
 
 
     def setup(self):
@@ -36,22 +35,16 @@ class graphics_Sanity(test.test):
 
 
     def initialize(self):
+        super(graphics_Sanity, self).initialize()
         # If UI is running, we must stop it and restore later.
         self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
-        self._failures = 0
 
 
     def cleanup(self):
+        super(graphics_Sanity, self).cleanup()
         if self._services:
           self._services.restore_services()
-
-        self.output_perf_value(
-            description='Failures',
-            value=self._failures,
-            units='count',
-            higher_is_better=False
-        )
 
 
     def run_once(self):
@@ -62,7 +55,7 @@ class graphics_Sanity(test.test):
         if graphics_utils.get_display_resolution() is None:
             logging.warning('Skipping test because there is no screen')
             return
-        self._failures += 1
+        self.add_failures('graphics_Sanity')
 
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -108,4 +101,4 @@ class graphics_Sanity(test.test):
         utils.system(diff_cmd % (screenshot1_reference, screenshot1_resized))
         utils.system(diff_cmd % (screenshot2_reference, screenshot2_resized))
 
-        self._failures -= 1
+        self.remove_failures('graphics_Sanity')
