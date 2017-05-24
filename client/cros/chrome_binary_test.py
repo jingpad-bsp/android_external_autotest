@@ -88,9 +88,9 @@ class ChromeBinaryTest(test.test):
                 reasons[testname] = reason
 
         if reasons:
-            message = '%d failures.' % len(reasons)
+            message = '%d failures' % len(reasons)
             for testname, reason in sorted(reasons.items()):
-                message += '\n%s: %s' % (testname, reason)
+                message += '; <%s>: %s' % (testname, reason.replace('\n', '; '))
             return message
 
         return 'Unable to parse fail reason: ' + str(err)
