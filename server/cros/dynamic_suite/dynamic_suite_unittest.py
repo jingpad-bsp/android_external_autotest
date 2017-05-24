@@ -6,10 +6,12 @@
 
 """Unit tests for server/cros/dynamic_suite/dynamic_suite.py."""
 
-import mox
 import os
 import signal
 import unittest
+
+import mox
+import mock
 
 import common
 from autotest_lib.client.common_lib import base_job, error
@@ -143,17 +145,11 @@ class DynamicSuiteTest(mox.MoxTestBase):
             raise UnhandledSIGTERM()
 
         signal.signal(signal.SIGTERM, handler)
-        spec = self.mox.CreateMock(dynamic_suite.SuiteSpec)
+        spec = mock.MagicMock()
         spec.builds = self._BUILDS
         spec.test_source_build = Suite.get_test_source_build(self._BUILDS)
-        spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
-        spec.devserver.stage_artifacts(
-                image=spec.builds[provision.CROS_VERSION_PREFIX],
-                artifacts=['control_files', 'test_suites']
-                ).WithSideEffects(suicide)
+        spec.devserver.stage_artifacts.side_effect = suicide
         spec.run_prod_code = False
-
-        self.mox.ReplayAll()
 
         self.assertRaises(UnhandledSIGTERM,
                           dynamic_suite._perform_reimage_and_run,
