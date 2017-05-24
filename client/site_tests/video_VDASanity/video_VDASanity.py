@@ -8,6 +8,7 @@ import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import helper_logger
 
 
 DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com'
@@ -21,6 +22,7 @@ class video_VDASanity(chrome_binary_test.ChromeBinaryTest):
     """
     version = 1
 
+    @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
     def run_once(self, test_cases):
         for (path, width, height, frame_num, frag_num, profile) in test_cases:
@@ -42,8 +44,9 @@ class video_VDASanity(chrome_binary_test.ChromeBinaryTest):
         cmd_line_list = [
             '--test_video_data="%s"' % test_video_data,
             '--gtest_filter=VideoDecodeAcceleratorTest.NoCrash',
-            '--ozone-platform=gbm'
-            ]
+            helper_logger.chrome_vmodule_flag(),
+            '--ozone-platform=gbm',
+        ]
         cmd_line = ' '.join(cmd_line_list)
         self.run_chrome_test_binary(BINARY, cmd_line)
 
@@ -52,4 +55,3 @@ class video_VDASanity(chrome_binary_test.ChromeBinaryTest):
             os.remove(filepath)
         except OSError:
             pass
-

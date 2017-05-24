@@ -11,6 +11,7 @@ from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import cmd_utils
+from autotest_lib.client.cros.video import helper_logger
 
 # The download base for test assets.
 DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com'
@@ -209,7 +210,9 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             '--test_video_data=%s' % ';'.join(test_video_data),
             '--rendering_warm_up=%d' % RENDERING_WARM_UP,
             '--rendering_fps=%f' % RENDERING_FPS,
-            '--num_play_throughs=%d' % MAX_INT]
+            '--num_play_throughs=%d' % MAX_INT,
+            helper_logger.chrome_vmodule_flag(),
+        ]
         cmd_line.append('--ozone-platform=gbm')
         return cmd_line
 
@@ -231,7 +234,9 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             '--gtest_filter=SimpleEncode/*/0',
             '--test_stream_data=%s' % ';'.join(test_stream_data),
             '--run_at_fps',
-            '--num_frames_to_encode=%d' % MAX_INT]
+            '--num_frames_to_encode=%d' % MAX_INT,
+            helper_logger.chrome_vmodule_flag(),
+        ]
         cmd_line.append('--ozone-platform=gbm')
         return cmd_line
 
@@ -260,6 +265,7 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
         finally:
             cmd_utils.kill_or_log_returncode(*popens)
 
+    @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
     def run_once(self, resources, decode_videos, encode_videos, measurement):
         self._downloads = DownloadManager(tmpdir = self.tmpdir)
