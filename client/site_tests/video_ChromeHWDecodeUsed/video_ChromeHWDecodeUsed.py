@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import native_html5_player
+from autotest_lib.client.cros.video import helper_logger
 
 
 class video_ChromeHWDecodeUsed(test.test):
@@ -41,7 +42,7 @@ class video_ChromeHWDecodeUsed(test.test):
 
         return False
 
-
+    @helper_logger.video_log_wrapper
     def run_once(self, codec, is_mse, video_file, arc_mode=None):
         """
         Tests whether VDA works by verifying histogram for the loaded video.
@@ -53,8 +54,10 @@ class video_ChromeHWDecodeUsed(test.test):
         if self.is_skipping_test(codec):
             raise error.TestNAError('Skipping test run on this board.')
 
-        with chrome.Chrome(arc_mode=arc_mode,
-                           init_network_controller=True) as cr:
+        with chrome.Chrome(
+                extra_browser_args=helper_logger.chrome_vmodule_flag(),
+                arc_mode=arc_mode,
+                init_network_controller=True) as cr:
             # This will execute for MSE video by accesing shaka player
             if is_mse:
                  tab1 = cr.browser.tabs.New()
