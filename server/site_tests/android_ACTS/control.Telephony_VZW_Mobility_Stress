@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'jaineelm, bettyzhou, krisr'
-NAME = 'android_ACTS.Telephony_TMO_Mobility'
+NAME = 'android_ACTS.Telephony_VZW_Mobility'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_telephony_mobility'
