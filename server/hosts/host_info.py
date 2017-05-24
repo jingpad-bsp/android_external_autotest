@@ -124,6 +124,18 @@ class HostInfo(object):
                 % (self.labels, self.attributes))
 
 
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return (self.labels == other.labels
+                    and self.attributes == other.attributes)
+        else:
+            return NotImplemented
+
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class StoreError(Exception):
     """Raised when a CachingHostInfoStore operation fails."""
 
