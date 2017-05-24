@@ -14,6 +14,43 @@ class HostInfoTest(unittest.TestCase):
     def setUp(self):
         self.info = host_info.HostInfo()
 
+    def test_info_comparison_to_wrong_type(self):
+        """Comparing HostInfo to a different type always returns False."""
+        self.assertNotEqual(host_info.HostInfo(), 42)
+        self.assertNotEqual(host_info.HostInfo(), None)
+        # equality and non-equality are unrelated by the data model.
+        self.assertFalse(host_info.HostInfo() == 42)
+        self.assertFalse(host_info.HostInfo() == None)
+
+
+    def test_empty_infos_are_equal(self):
+        """Tests that empty HostInfo objects are considered equal."""
+        self.assertEqual(host_info.HostInfo(), host_info.HostInfo())
+        # equality and non-equality are unrelated by the data model.
+        self.assertFalse(host_info.HostInfo() != host_info.HostInfo())
+
+
+    def test_non_trivial_infos_are_equal(self):
+        """Tests that the most complicated infos are correctly stated equal."""
+        info1 = host_info.HostInfo(
+                labels=['label1', 'label2', 'label1'],
+                attributes={'attrib1': None, 'attrib2': 'val2'})
+        info2 = host_info.HostInfo(
+                labels=['label1', 'label2', 'label1'],
+                attributes={'attrib1': None, 'attrib2': 'val2'})
+        self.assertEqual(info1, info2)
+        # equality and non-equality are unrelated by the data model.
+        self.assertFalse(info1 != info2)
+
+
+    def test_non_equal_infos(self):
+        """Tests that HostInfo objects with different information are unequal"""
+        info1 = host_info.HostInfo(labels=['label'])
+        info2 = host_info.HostInfo(attributes={'attrib': 'value'})
+        self.assertNotEqual(info1, info2)
+        # equality and non-equality are unrelated by the data model.
+        self.assertFalse(info1 == info2)
+
 
     def test_build_needs_prefix(self):
         """The build prefix is of the form '<type>-version:'"""
@@ -262,6 +299,7 @@ class GetStoreFromMachineTest(unittest.TestCase):
     """Tests the get_store_from_machine function."""
 
     def test_machine_is_dict(self):
+        """We extract the store when machine is a dict."""
         machine = {
                 'something': 'else',
                 'host_info_store': 5
@@ -270,6 +308,7 @@ class GetStoreFromMachineTest(unittest.TestCase):
 
 
     def test_machine_is_string(self):
+        """We return a trivial store when machine is a string."""
         machine = 'hostname'
         self.assertTrue(isinstance(host_info.get_store_from_machine(machine),
                                    host_info.InMemoryHostInfoStore))
