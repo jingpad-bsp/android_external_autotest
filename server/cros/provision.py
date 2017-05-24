@@ -170,32 +170,54 @@ class _SpecialTaskAction(object):
         @param labels: The list of job labels to work on.
         @raises: SpecialTaskActionException if a test fails.
         """
-        unactionable, actionable = cls.partition(labels)
-
+        unactionable = cls._filter_unactionable_labels(labels)
         for label in unactionable:
             job.record('INFO', None, cls.name,
                        "Can't %s label '%s'." % (cls.name, label))
 
-        # Sort the configuration labels based on `cls._priorities`.
-        sorted_actionable = cls._sort_actionable_labels(actionable)
-        for name, value in sorted_actionable:
-            action_item = cls.action_for(name)
+        for action_item, value in cls._actions_and_values_iter(labels):
             success = action_item.execute(job=job, host=host, value=value)
             if not success:
                 raise SpecialTaskActionException()
 
 
     @classmethod
-    def action_for(cls, name):
-        """
-        Returns the action associated with the given (string) name.
+    def _actions_and_values_iter(cls, labels):
+        """Return sorted action and value pairs to run for labels.
 
-        @param name: The name associated with the action requested.
-        @returns: The requested Actionable.
-        @raises KeyError: If the name was not recognized as one we care about.
-
+        @params: An iterable of label strings.
+        @returns: A generator of Actionable and value pairs.
         """
-        return cls._actions[name]
+        actionable = cls._filter_actionable_labels(labels)
+        keyval_mapping = labellib.LabelsMapping(actionable)
+        sorted_names = sorted(keyval_mapping, key=cls._get_action_priority)
+        for name in sorted_names:
+            action_item = cls._actions[name]
+            value = keyval_mapping[name]
+            yield action_item, value
+
+
+    @classmethod
+    def _filter_unactionable_labels(cls, labels):
+        """
+        Return labels that we cannot act on.
+
+        @param labels: A list of strings of labels.
+        @returns: A set of unactionable labels
+        """
+        return {label for label in labels
+                if not (label == SKIP_PROVISION or cls.acts_on(label))}
+
+
+    @classmethod
+    def _filter_actionable_labels(cls, labels):
+        """
+        Return labels that we can act on.
+
+        @param labels: A list of strings of labels.
+        @returns: A set of actionable labels
+        """
+        return {label for label in labels if cls.acts_on(label)}
 
 
     @classmethod
@@ -226,30 +248,12 @@ class _SpecialTaskAction(object):
 
 
     @classmethod
-    def _sort_actionable_labels(cls, labels):
-        """
-        Sort configurations based on the priority defined in cls._priorities.
-
-        @param labels: A list of actionable labels.
-
-        @return: A sorted list of tuple of (label_prefix, value), the tuples are
-                sorted based on the label_prefix's index in cls._priorities.
-        """
-        # Split a list of labels into a dict mapping name to value.  All labels
-        # must be provisionable labels, or else a ValueError
-        # For example, label 'cros-version:lumpy-release/R28-3993.0.0' is split
-        # to  {'cros-version': 'lumpy-release/R28-3993.0.0'}
-        split_configurations = dict()
-        for label in labels:
-            name, _, value = label.partition(':')
-            split_configurations[name] = value
-
-        def sort_key(config):
-            if config[0] in cls._priorities:
-                return cls._priorities.index(config[0])
-            else:
-                return sys.maxint
-        return sorted(split_configurations.items(), key=sort_key)
+    def _get_action_priority(cls, name):
+        """Return priority for the action with the given name."""
+        if name in cls._priorities:
+            return cls._priorities.index(name)
+        else:
+            return sys.maxint
 
 
 class Verify(_SpecialTaskAction):
@@ -401,5 +405,5 @@ def run_special_task_actions(job, host, labels, task):
     @raises: SpecialTaskActionException if a test fails.
 
     """
-    warnings.warn('run_special_task_actions is deprecated')
+    warnings.warn('run_special_task_actions is deprecated', stacklevel=2)
     task.run_task_actions(job, host, labels)
