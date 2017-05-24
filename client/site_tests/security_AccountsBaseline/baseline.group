@@ -99,6 +99,7 @@ imageloaderd:!:220:
 arc-networkd:!:284:
 authpolicyd-exec:!:607:
 touch_keyboard:!:285:touch_keyboard
+rtanalytics:!:289:rtanalytics
 midis:!:608:chronos
 atrus:!:286:atrus
 cfm-firmware-updaters:!:288:cfm-firmware-updaters
