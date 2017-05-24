@@ -493,7 +493,16 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             run_prod_code=spec.run_prod_code,
             job_keyvals=spec.job_keyvals,
             test_args=spec.test_args)
+    _run_suite_with_spec(suite, spec)
 
+
+def _run_suite_with_spec(suite, spec):
+    """
+    Do the work of reimaging hosts and running tests.
+
+    @param suite: _BaseSuite instance to run.
+    @param spec: a populated SuiteSpec object.
+    """
     _run_suite(
         suite=suite,
         job=spec.job,
