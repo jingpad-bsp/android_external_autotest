@@ -14,6 +14,7 @@ from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
+from autotest_lib.client.cros.video import helper_logger
 
 
 EXTRA_BROWSER_ARGS = ['--use-fake-device-for-media-stream',
@@ -125,6 +126,7 @@ class video_WebRtcPerf(test.test):
         return tab
 
 
+    @helper_logger.video_log_wrapper
     def run_once(self, decode_time_test=False, cpu_test=False,
                  power_test=False, arc_mode=None):
         """
@@ -178,7 +180,8 @@ class video_WebRtcPerf(test.test):
         keyvals = {}
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
 
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS +\
+                           [helper_logger.chrome_vmodule_flag()],
                            arc_mode=self.arc_mode,
                            init_network_controller=True) as cr:
             # On daisy, Chrome freezes about 30 seconds after login because of
