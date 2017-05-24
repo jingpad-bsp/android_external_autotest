@@ -171,7 +171,7 @@ class FirmwareUpdater(object):
             command = 'if [ -e %s ]; then %s; else %s; fi' % (
                     new_command, new_command, command)
 
-            self.os_if.run_shell_command(command)
+        self.os_if.run_shell_command(command)
 
 
     def get_temp_path(self):
