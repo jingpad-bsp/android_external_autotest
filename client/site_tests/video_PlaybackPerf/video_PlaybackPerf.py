@@ -14,6 +14,7 @@ from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
+from autotest_lib.client.cros.video import helper_logger
 
 
 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
@@ -78,6 +79,7 @@ class video_PlaybackPerf(test.test):
                                "loop=true")
 
 
+    @helper_logger.video_log_wrapper
     def run_once(self, video_name, video_description, power_test=False,
                  arc_mode=None):
         """
@@ -233,8 +235,10 @@ class video_PlaybackPerf(test.test):
         """
         keyvals = {}
 
-        with chrome.Chrome(arc_mode=self.arc_mode,
-                           init_network_controller=True) as cr:
+        with chrome.Chrome(
+                extra_browser_args=helper_logger.chrome_vmodule_flag(),
+                arc_mode=self.arc_mode,
+                init_network_controller=True) as cr:
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)
