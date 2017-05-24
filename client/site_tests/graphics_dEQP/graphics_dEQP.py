@@ -17,6 +17,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging, service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
+RERUN_RATIO = 0.02  # Ratio to rerun failing test for hasty mode
+
 
 class graphics_dEQP(test.test):
     """Run the drawElements Quality Program test suite.
@@ -562,6 +564,21 @@ class graphics_dEQP(test.test):
             test_results = self.run_tests_hasty(test_cases, failing_test)
 
             logging.info("Failing Tests: %s", str(failing_test))
+            if len(failing_test) > 0:
+                if len(failing_test) < sum(test_results.values()) * RERUN_RATIO:
+                    logging.info("Because we are in hasty mode, we will rerun"
+                                 "the failing tests one at a time")
+                    rerun_results = self.run_tests_individually(failing_test)
+                    # Update failing test result from the test_results
+                    for result in test_results:
+                        if result.lower() not in self.TEST_RESULT_FILTER:
+                            test_results[result] = 0
+                    for result in rerun_results:
+                        test_results[result] = (test_results.get(result, 0) +
+                                                rerun_results[result])
+                else:
+                    logging.info("There are too many failing tests. It would "
+                                 "take too long to rerun them. Giving up.")
         else:
             logging.info('Running each test individually.')
             test_results = self.run_tests_individually(test_cases)
