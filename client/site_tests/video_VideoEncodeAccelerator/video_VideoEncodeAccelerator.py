@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import helper_logger
 
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 BINARY = 'video_encode_accelerator_unittest'
@@ -87,6 +88,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
         return ''
 
+    @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
     def run_once(self, in_cloud, streams, profile, gtest_filter=None):
         """Runs video_encode_accelerator_unittest on the streams.
@@ -113,6 +115,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             cmd_line_list = []
             cmd_line_list.append('--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
                     input_path, width, height, profile, output_path, bit_rate))
+            cmd_line_list.append(helper_logger.chrome_vmodule_flag())
             cmd_line_list.append('--ozone-platform=gbm')
 
             # Command line |gtest_filter| can override get_filter_option().
