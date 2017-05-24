@@ -51,11 +51,11 @@ CONFIG_JSON_TEMPLATE = '''
     },
     {
         "destination": "/dev",
-        "type": "tmpfs",
-        "source": "tmpfs",
+        "type": "bind",
+        "source": "/dev",
         "options": [
-            "nosuid",
-            "noexec"
+            "bind",
+            "recursive"
         ]
     }
     ],
@@ -84,6 +84,21 @@ CONFIG_JSON_TEMPLATE = '''
             "type": "mount"
         }
         ],
+        "resources": {
+            "devices": [
+                {
+                    "allow": false,
+                    "access": "rwm"
+                },
+                {
+                    "allow": true,
+                    "type": "c",
+                    "major": 1,
+                    "minor": 5,
+                    "access": "r"
+                }
+            ]
+        },
         "uidMappings": [
         {
             "hostID": 1000,
