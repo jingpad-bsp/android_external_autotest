@@ -618,7 +618,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                     if pubsub_topic:
                         message = _create_test_result_notification(
                                 gs_path, dir_entry)
-                        msg_ids = pubsub_utils.publish_notifications(
+                        pubsub_client = pubsub_utils.PubSubClient()
+                        msg_ids = pubsub_client.publish_notifications(
                                 pubsub_topic, [message])
                         if not msg_ids:
                             error = True
