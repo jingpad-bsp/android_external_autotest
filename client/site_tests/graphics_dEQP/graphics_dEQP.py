@@ -251,22 +251,11 @@ class graphics_dEQP(test.test):
         return test_cases
 
     def _get_test_cases_from_names_file(self):
-        # Assume master file comes with '-master.txt' suffix,
-        # Ex. gles2-master.txt, gles31-master.txt, vk-master.txt
-        basename = os.path.basename(self._test_names_file)
-        groups = re.match(r'(.*)-master\.txt$', basename)
-        if groups is None:
-            logging.warning('File name \'%s\' could not be recognized.' %
-                            basename)
-        else:
-            api = groups.group(1)
-            if not api in self._api_helper.get_supported_apis():
-                logging.warning('\'%s\' is not supported in this board' % api)
-                return []
-
-            file_path = os.path.join(self.bindir, self._test_names_file)
+        if os.path.exists(self._test_names_file):
+            file_path = self._test_names_file
             test_cases = [line.rstrip('\n') for line in open(file_path)]
             return [test for test in test_cases if test and not test.isspace()]
+        return []
 
     def _get_test_cases(self, test_filter, subset):
         """Gets the test cases for 'Pass', 'Fail' etc. expectations.
@@ -613,5 +602,5 @@ class graphics_dEQP(test.test):
             raise error.TestFail('Failed: on %s %d/%d tests failed.' %
                                  (self._gpu_type, test_failures, test_count))
         if test_skipped > 0:
-            raise error.TestFail('Failed: on %s %d tests skipped, %d passes' %
-                                 (self._gpu_type, test_skipped, test_passes))
+            logging.info('On %s %d tests skipped, %d passes' %
+                         (self._gpu_type, test_skipped, test_passes))
