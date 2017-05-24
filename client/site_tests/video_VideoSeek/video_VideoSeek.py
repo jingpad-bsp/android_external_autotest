@@ -29,7 +29,7 @@ class video_VideoSeek(test.test):
 
                 # Disable vp8 switchres for nyan devices temporarily due to:
                 # crbug/699260
-                ('nyan', 'vp8', True), ('nyan-*', 'vp8', True)
+                ('nyan', 'vp8', True), ('nyan_*', 'vp8', True)
         ]
 
         board = utils.get_current_board()
