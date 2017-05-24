@@ -18,6 +18,7 @@ suite:android_telephony_nightly_security
 suite:android_telephony_power
 suite:android_telephony_power_security
 suite:android_wifi_connect
+suite:android_wifi_dynamicAP
 suite:android_wifi_ent_roaming
 suite:android_wifi_interop
 suite:android_wifi_iot_ent
