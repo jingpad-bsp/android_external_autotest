@@ -41,6 +41,7 @@ _GS_ACCESS_KEY_ID = 'gs_access_key_id'
 _GS_SECRET_ACCESS_KEY = 'gs_secret_access_key'
 _RESULT_STORAGE_SERVER = 'results_storage_server'
 _USE_EXISTING_BOTO_FILE = 'use_existing_boto_file'
+_CLOUD_NOTIFICATION_ENABLED = 'cloud_notification_enabled'
 
 # Location where dhcp leases are stored.
 _DHCPD_LEASES = '/var/lib/dhcp/dhcpd.leases'
@@ -391,9 +392,6 @@ def submit_wizard_config_info(cloud_storage_info):
 
     @param cloud_storage_info: The JSON RPC object for cloud storage info.
     """
-    valid, details = _validate_cloud_storage_info(cloud_storage_info)
-    if not valid:
-        return _create_operation_status_response(valid, details)
     config_update = {}
     config_update['CROS'] = [
         (_IMAGE_STORAGE_SERVER, cloud_storage_info[_IMAGE_STORAGE_SERVER]),
@@ -411,13 +409,21 @@ def submit_wizard_config_info(cloud_storage_info):
         _write_config_file(MOBLAB_BOTO_LOCATION, boto_config, True)
 
     _CONFIG.parse_config_file()
+    _enable_notification_using_credentials_in_bucket()
     services = ['moblab-devserver-init',
-    'moblab-devserver-cleanup-init', ' moblab-gsoffloader_s-init',
-    'moblab-base-container-init', 'moblab-scheduler-init',
-    'moblab-gsoffloader-init']
-    cmd = ';sudo /sbin/restart '.join(services)
-    cmd += ';sudo /usr/sbin/apache2 -k graceful'
-    os.system("export ATEST_RESULTS_DIR=/usr/local/autotest/results;" + cmd)
+    'moblab-devserver-cleanup-init', 'moblab-gsoffloader_s-init',
+    'moblab-scheduler-init', 'moblab-gsoffloader-init']
+    cmd = 'export ATEST_RESULTS_DIR=/usr/local/autotest/results;'
+    cmd += 'sudo stop ' + ';sudo stop '.join(services)
+    cmd += ';sudo start ' + ';sudo start '.join(services)
+    cmd += ';sudo apache2 -k graceful'
+    logging.info(cmd)
+    try:
+        utils.run(cmd)
+    except error.CmdError as e:
+        logging.error(e)
+        # if all else fails reboot the device.
+        utils.run('sudo reboot')
 
     return _create_operation_status_response(True, None)
 
@@ -740,3 +746,23 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     pool=pool, run_prod_code=False, test_source_build=build,
     wait_for_results=False)
 
+
+def _enable_notification_using_credentials_in_bucket():
+    """ Check and enable cloud notification if a credentials file exits.
+    @return: None
+    """
+    gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
+    try:
+        utils.run(_GSUTIL_CMD, args=(
+            'cp', gs_image_location + 'pubsub-key-do-not-delete.json', '/tmp'))
+        # This runs the copy as moblab user
+        shutil.copyfile('/tmp/pubsub-key-do-not-delete.json',
+                        moblab_host.MOBLAB_SERVICE_ACCOUNT_LOCATION)
+
+    except error.CmdError as e:
+        logging.error(e)
+    else:
+        logging.info('Enabling cloud notifications')
+        config_update = {}
+        config_update['CROS'] = [(_CLOUD_NOTIFICATION_ENABLED, True)]
+        _update_partial_config(config_update)
