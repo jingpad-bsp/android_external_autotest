@@ -128,7 +128,7 @@ class RetryingAFE(frontend.AFE):
                 c = metrics.Counter(
                         'chromeos/autotest/retrying_afe/retry_timeout')
                 # Reserve field job_details for future use.
-                f = {'destination_server': self.server,
+                f = {'destination_server': self.server.split(':')[0],
                      'call': call,
                      'job_details': ''}
                 c.increment(fields=f)
