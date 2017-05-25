@@ -789,10 +789,59 @@ class ContainerBucket(object):
         if self.exist(name) and not force_cleanup:
             raise error.ContainerError('Container %s already exists.' % name)
 
+        use_snapshot = SUPPORT_SNAPSHOT_CLONE and not disable_snapshot_clone
+
+        try:
+            return self.clone_container(path=self.container_path,
+                                        name=BASE,
+                                        new_path=self.container_path,
+                                        new_name=name,
+                                        snapshot=use_snapshot,
+                                        cleanup=force_cleanup)
+        except error.CmdError:
+            if not use_snapshot:
+                raise
+            else:
+                # Snapshot clone failed, retry clone without snapshot.
+                container = self.clone_container(path=self.container_path,
+                                                 name=BASE,
+                                                 new_path=self.container_path,
+                                                 new_name=name,
+                                                 snapshot=False,
+                                                 cleanup=force_cleanup)
+                # Report metadata about retry success.
+                autotest_es.post(use_http=True,
+                                 type_str=CONTAINER_CREATE_RETRY_METADB_TYPE,
+                                 metadata={'drone': socket.gethostname(),
+                                           'name': name,
+                                           'success': True})
+                return container
+
+
+    def clone_container(self, path, name, new_path, new_name, snapshot=False,
+                        cleanup=False):
+        """Clone one container from another.
+
+        @param path: LXC path for the source container.
+        @param name: Name of the source container.
+        @param new_path: LXC path for the cloned container.
+        @param new_name: Name for the cloned container.
+        @param snapshot: Whether to snapshot, or create a full clone.
+        @param cleanup: If a container with the given name and path already
+                exist, clean it up first.
+
+        @return: A Container object for the created container.
+
+        @raise ContainerError: If the container already exists.
+        @raise error.CmdError: If lxc-clone call failed for any reason.
+        """
         # Cleanup existing container with the given name.
-        container_folder = os.path.join(self.container_path, name)
-        if lxc_utils.path_exists(container_folder) and force_cleanup:
-            container = Container(self.container_path, {'name': name})
+        container_folder = os.path.join(new_path, new_name)
+        if lxc_utils.path_exists(container_folder):
+            if not cleanup:
+                raise error.ContainerError('Container %s already exists.' %
+                                           new_name)
+            container = Container(new_path, {'name': name})
             try:
                 container.destroy()
             except error.CmdError as e:
@@ -802,33 +851,16 @@ class ContainerBucket(object):
                              name, e)
                 utils.run('sudo rm -rf "%s"' % container_folder)
 
-        use_snapshot = SUPPORT_SNAPSHOT_CLONE and not disable_snapshot_clone
-        snapshot = '-s' if  use_snapshot else ''
+        snapshot_arg = '-s' if snapshot else ''
         # overlayfs is the default clone backend storage. However it is not
         # supported in Ganeti yet. Use aufs as the alternative.
-        aufs = '-B aufs' if utils.is_vm() and use_snapshot else ''
-        cmd = ('sudo lxc-clone -p %s -P %s %s' %
-               (self.container_path, self.container_path,
-                ' '.join([BASE, name, snapshot, aufs])))
-        try:
-            utils.run(cmd)
-            return self.get(name)
-        except error.CmdError:
-            if not use_snapshot:
-                raise
-            else:
-                # Snapshot clone failed, retry clone without snapshot. The retry
-                # won't hit the code here and cause an infinite loop as
-                # disable_snapshot_clone is set to True.
-                container = self.create_from_base(
-                        name, disable_snapshot_clone=True, force_cleanup=True)
-                # Report metadata about retry success.
-                autotest_es.post(use_http=True,
-                                 type_str=CONTAINER_CREATE_RETRY_METADB_TYPE,
-                                 metadata={'drone': socket.gethostname(),
-                                           'name': name,
-                                           'success': True})
-                return container
+        aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
+        cmd = (('sudo lxc-clone --lxcpath %s --newpath %s '
+                '--orig %s --new %s %s %s') %
+               (path, new_path, name, new_name, snapshot_arg, aufs_arg))
+
+        utils.run(cmd)
+        return self.get(new_name)
 
 
     @cleanup_if_fail()
