@@ -1040,7 +1040,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.TestError('Host %s does not have servo.' %
                                   self.hostname)
 
-        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
+        # Get the DUT board name from servod.
+        board = self.servo.get_board()
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
