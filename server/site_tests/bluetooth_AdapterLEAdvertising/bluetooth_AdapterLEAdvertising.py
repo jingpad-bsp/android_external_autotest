@@ -56,8 +56,6 @@ class bluetooth_AdapterLEAdvertising(
 
     """
 
-    SUSPEND_TIME = 10
-
     @staticmethod
     def get_instance_ids(advertisements):
         """Get the list of instace IDs starting at 1.
@@ -66,17 +64,6 @@ class bluetooth_AdapterLEAdvertising(
 
         """
         return range(1, len(advertisements) + 1)
-
-
-    def suspend_resume(self, suspend_time=SUSPEND_TIME):
-        """Suspend the DUT for a while and then resume.
-
-        @param suspend_time: the suspend time in seconds.
-
-        """
-        logging.info('The DUT suspends for %d seconds...', suspend_time)
-        self.host.suspend(suspend_time=suspend_time)
-        logging.info('The DUT is waken up.')
 
 
     def register_advertisements(self, advertisements, min_adv_interval_ms,
