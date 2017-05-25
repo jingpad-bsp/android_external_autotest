@@ -404,6 +404,11 @@ class ChromeCr50(ChromeConsole):
         return self.get_version_info(self.ACTIVE)
 
 
+    def using_servo_v4(self):
+        """Returns true if the console is being served using servo v4"""
+        return 'servo_v4' in self._servo.get_servo_version()
+
+
     def using_ccd(self):
         """Returns true if the console is being served using CCD"""
         return 'ccd_cr50' in self._servo.get_servo_version()
@@ -453,12 +458,12 @@ class ChromeCr50(ChromeConsole):
         self.wait_for_ccd_state('on', timeout)
 
 
-    @ccd_command
     def ccd_disable(self):
         """Change the values of the CC lines to disable CCD"""
-        logging.info("disable ccd")
-        self._servo.set_nocheck('servo_v4_ccd_mode', 'disconnect')
-        self.wait_for_ccd_disable()
+        if self.using_servo_v4():
+            logging.info("disable ccd")
+            self._servo.set_nocheck('servo_v4_dts_mode', 'off')
+            self.wait_for_ccd_disable()
 
 
     @ccd_command
@@ -466,6 +471,6 @@ class ChromeCr50(ChromeConsole):
         """Reenable CCD and reset servo interfaces"""
         logging.info("reenable ccd")
         self._servo.set_nocheck('servo_v4_ccd_mode', 'ccd')
-        self._servo.set('sbu_mux_enable', 'on')
+        self._servo.set_nocheck('servo_v4_dts_mode', 'on')
         self._servo.set_nocheck('power_state', 'ccd_reset')
         self.wait_for_ccd_enable()
