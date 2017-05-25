@@ -125,9 +125,11 @@ CONTAINER_CREATE_METADB_TYPE = 'container_create'
 CONTAINER_CREATE_RETRY_METADB_TYPE = 'container_create_retry'
 CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 
-# The container's hostname MUST start with `test_`. DHCP server in MobLab uses
-# that prefix to determine the lease time.
-CONTAINER_UTSNAME_FORMAT = 'test_%s'
+# The container's hostname MUST start with `test-` or `test_`. DHCP server in
+# MobLab uses that prefix to determine the lease time.  Note that `test_` is not
+# a valid hostname as hostnames cannot contain underscores.  Work is underway to
+# migrate to `test-`.  See crbug/726131.
+CONTAINER_UTSNAME_FORMAT = 'test-%s'
 
 STATS_KEY = 'chromeos/autotest/lxc'
 
@@ -976,7 +978,7 @@ class ContainerBucket(object):
         # Create test container from the base container.
         container = self.create_from_base(name)
 
-        # Update the hostname of the test container to be `dut_name`.
+        # Update the hostname of the test container to be `dut-name`.
         # Some TradeFed tests use hostname in test results, which is used to
         # group test results in dashboard. The default container name is set to
         # be the name of the folder, which is unique (as it is composed of job
@@ -986,7 +988,7 @@ class ContainerBucket(object):
             config_file = os.path.join(container.container_path, name, 'config')
             lxc_utsname_setting = (
                     'lxc.utsname = ' +
-                    CONTAINER_UTSNAME_FORMAT % dut_name.replace('.', '_'))
+                    CONTAINER_UTSNAME_FORMAT % dut_name.replace('.', '-'))
             utils.run(APPEND_CMD_FMT % {'content': lxc_utsname_setting,
                                         'file': config_file})
 
