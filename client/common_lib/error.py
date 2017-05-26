@@ -37,8 +37,6 @@ class JobComplete(SystemExit):
 
 class AutotestError(Exception):
     """The parent of all errors deliberatly thrown within the client code."""
-    def __str__(self):
-        return Exception.__str__(self)
 
 
 class JobError(AutotestError):
