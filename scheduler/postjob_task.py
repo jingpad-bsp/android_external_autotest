@@ -362,13 +362,8 @@ class ArchiveResultsTask(SelfThrottledPostJobTask):
         return drone_manager.ARCHIVER_PID_FILE
 
 
-    # TODO: Refactor into autoserv_utils. crbug.com/243090
     def _generate_command(self, results_dir):
-        return [autoserv_utils.autoserv_path , '-p',
-                '--pidfile-label=%s' % self._pidfile_label(), '-r', results_dir,
-                '--use-existing-results', '--control-filename=control.archive',
-                os.path.join(drones.AUTOTEST_INSTALL_DIR, 'scheduler',
-                             'archive_results.control.srv')]
+        return ['true']
 
 
     @classmethod
