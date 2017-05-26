@@ -253,6 +253,8 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(os.path, 'exists')
         # Hide local restricted_subnets setting.
         dev_server.RESTRICTED_SUBNETS = []
+        self.mox.StubOutWithMock(dev_server.ImageServer,
+                                 '_read_json_response_from_devserver')
 
 
     def testSimpleResolve(self):
@@ -442,6 +444,8 @@ class DevServerTest(mox.MoxTestBase):
         devserver."""
         response1 = (True, 100)
         response2 = (True, 'Completed')
+        response3 = {'host_logs': {'a': 'log'}, 'cros_au_log': 'logs'}
+
         argument1 = mox.And(mox.StrContains(self._HOST),
                             mox.StrContains('cros_au'))
         argument2 = mox.And(mox.StrContains(self._HOST),
@@ -492,8 +496,13 @@ class DevServerTest(mox.MoxTestBase):
                 dev_server.ImageServerBase.run_call(argument3).AndRaise(
                         raised_error)
             else:
+                dev_server.ImageServer._read_json_response_from_devserver(
+                        mox.IgnoreArg()).AndReturn(response3)
                 dev_server.ImageServerBase.run_call(argument3).AndReturn('log')
                 os.path.exists(mox.IgnoreArg()).AndReturn(True)
+
+                # We write two log files: host_log and cros_au_log
+                self._mockWriteFile()
                 self._mockWriteFile()
 
         if 'handler_cleanup_error' in kwargs:
