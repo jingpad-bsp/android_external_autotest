@@ -62,11 +62,11 @@ class platform_LabFirmwareUpdate(test.test):
         lines = self._run_cmd('/usr/sbin/ectool version')
         for line in lines.splitlines():
             if line.startswith('RO version:'):
-                parts = line.split()
-                ro = parts[2].strip()
+                parts = line.split(':')
+                ro = parts[1].strip()
             if line.startswith('RW version:'):
-                parts = line.split()
-                rw = parts[2].strip()
+                parts = line.split(':')
+                rw = parts[1].strip()
         return (ro, rw)
 
     def _bios_version(self):
@@ -107,12 +107,12 @@ class platform_LabFirmwareUpdate(test.test):
         shellball = self._run_cmd('/usr/sbin/chromeos-firmwareupdate -V')
         for line in shellball.splitlines():
             if line.startswith('BIOS version:'):
-                parts = line.split()
-                bios = parts[2].strip()
+                parts = line.split(':')
+                bios = parts[1].strip()
                 logging.info('shellball bios %s', bios)
             elif line.startswith('EC version:'):
-                parts = line.split()
-                ec = parts[2].strip()
+                parts = line.split(':')
+                ec = parts[1].strip()
                 logging.info('shellball ec %s', ec)
         return (bios, ec)
 
