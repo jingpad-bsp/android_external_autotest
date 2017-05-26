@@ -218,11 +218,39 @@ class IwRunnerTest(unittest.TestCase):
         '        WMM/WME:        yes\n'
         '        MFP:            yes\n'
         '        TDLS peer:      no\n'
-        '        connected time: 8724 seconds\n')
+        '        connected time: 8724 seconds\n'
+        'Station ff:aa:bb:aa:44:55 (on mesh-5000mhz)\n'
+        '        inactive time:  304 ms\n'
+        '        rx bytes:       18816\n'
+        '        rx packets:     75\n'
+        '        tx bytes:       5386\n'
+        '        tx packets:     21\n'
+        '        signal:         -29 dBm\n'
+        '        tx bitrate:     65.0 MBit/s VHT-MCS 0 80MHz short GI VHT-NSS 2\n'
+        '        mesh llid:      0\n'
+        '        mesh plid:      0\n'
+        '        mesh plink:     ESTAB\n'
+        '        mesh local PS mode:     ACTIVE\n'
+        '        mesh peer PS mode:      ACTIVE\n'
+        '        mesh non-peer PS mode:  ACTIVE\n'
+        '        authorized:     yes\n'
+        '        authenticated:  yes\n'
+        '        preamble:       long\n'
+        '        WMM/WME:        yes\n'
+        '        MFP:            yes\n'
+        '        TDLS peer:      no\n'
+        '        connected time: 824 seconds\n')
 
     STATION_DUMP_INFORMATION_PARSED = [
-        {'mac': 'aa:bb:cc:00:11:22', 'rssi_str': '-21 dBm', 'rssi_int': -21},
-        {'mac': 'dd:ee:ff:33:44:55', 'rssi_str': '-4 dBm', 'rssi_int': -4},
+        {'mac': 'aa:bb:cc:00:11:22', 'rssi_str': '-21 dBm', 'rssi_int': -21,
+        'tx_bitrate': '866.7 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2',
+        'rx_bitrate': '650.0 MBit/s VHT-MCS 7 80MHz short GI VHT-NSS 2'},
+        {'mac': 'dd:ee:ff:33:44:55', 'rssi_str': '-4 dBm', 'rssi_int': -4,
+        'tx_bitrate': '866.7 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2',
+        'rx_bitrate': '866.7 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2'},
+        {'mac': 'ff:aa:bb:aa:44:55', 'rssi_str': '-29 dBm', 'rssi_int': -29,
+        'tx_bitrate': '65.0 MBit/s VHT-MCS 0 80MHz short GI VHT-NSS 2',
+        'rx_bitrate': None},
         ]
 
     STATION_DUMP_IFACE = 'mesh-5000mhz'
