@@ -576,8 +576,7 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
         metrics_fields = _get_metrics_fields(dir_entry)
         es_metadata = _get_es_metadata(dir_entry)
         try:
-            upload_signal_filename = '%s/.GS_UPLOADED' % (dir_entry,)
-            if not os.path.isfile(upload_signal_filename):
+            if not _is_uploaded(dir_entry):
                 sanitize_dir(dir_entry)
                 if DEFAULT_CTS_RESULTS_GSURI:
                     upload_testresult_files(dir_entry, multiprocessing)
@@ -624,9 +623,9 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                             error = True
 
                     if not error:
-                        open(upload_signal_filename, 'a').close()
+                        _mark_uploaded(dir_entry)
 
-            if os.path.isfile(upload_signal_filename):
+            if _is_uploaded(dir_entry):
                 if job_directories.is_job_expired(delete_age, job_complete_time):
                     shutil.rmtree(dir_entry)
 
@@ -705,6 +704,31 @@ def delete_files(dir_entry, dest_path, job_complete_time):
     @param job_complete_time: NOT USED.
     """
     shutil.rmtree(dir_entry)
+
+
+def _is_uploaded(dirpath):
+    """Return whether directory has been uploaded.
+
+    @param dirpath: Directory path string.
+    """
+    return os.path.isfile(_get_uploaded_marker_file(dirpath))
+
+
+def _mark_uploaded(dirpath):
+    """Mark directory as uploaded.
+
+    @param dirpath: Directory path string.
+    """
+    with open(_get_uploaded_marker_file(dirpath), 'a'):
+        pass
+
+
+def _get_uploaded_marker_file(dirpath):
+    """Return path to upload marker file for directory.
+
+    @param dirpath: Directory path string.
+    """
+    return '%s/.GS_UPLOADED' % (dirpath,)
 
 
 def _format_job_for_failure_reporting(job):
