@@ -576,14 +576,15 @@ def get_tests_status_counts_by_job_name_label(job_name_prefix, label_name):
     """Gets the counts of all passed and failed tests from the matching jobs.
 
     @param job_name_prefix: Name prefix of the jobs to get the summary
-           from, e.g., 'butterfly-release/R40-6457.21.0/bvt-cq/'.
+           from, e.g., 'butterfly-release/r40-6457.21.0/bvt-cq/'. Prefix
+           matching is case insensitive.
     @param label_name: Label that must be set in the jobs, e.g.,
             'cros-version:butterfly-release/R40-6457.21.0'.
 
     @returns A summary of the counts of all the passed and failed tests.
     """
     job_ids = list(models.Job.objects.filter(
-            name__startswith=job_name_prefix,
+            name__istartswith=job_name_prefix,
             dependency_labels__name=label_name).values_list(
                 'pk', flat=True))
     summary = {'passed': 0, 'failed': 0}
