@@ -8,7 +8,8 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-ROOTFS_SIZE = 2 * 1024 * 1024 * 1024
+ROOTFS_SIZE_2G = 2 * 1024 * 1024 * 1024
+ROOTFS_SIZE_4G = 4 * 1024 * 1024 * 1024
 
 class platform_PartitionCheck(test.test):
     """
@@ -64,7 +65,7 @@ class platform_PartitionCheck(test.test):
         for p in partitions:
             pblocks = self.get_partition_size(device, p)
             psize = pblocks * block_size
-            if psize != ROOTFS_SIZE:
+            if psize != ROOTFS_SIZE_2G and psize != ROOTFS_SIZE_4G:
                 errmsg = ('%s is %d bytes, expected %d' %
                           (p, psize, ROOTFS_SIZE))
                 logging.warning(errmsg)
