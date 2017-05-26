@@ -267,6 +267,11 @@ def make_parser():
         action='store', default=None,
         help=('A dict of args passed all the way to each individual test that '
               'will be actually ran.'))
+
+    # Used for monitoring purposes, to measure no-op swarming proxy latency.
+    parser.add_argument('--do_nothing', action='store_true',
+                        help=argparse.SUPPRESS)
+
     return parser
 
 
@@ -1792,6 +1797,9 @@ def main():
 
     parser = make_parser()
     options = parser.parse_args()
+    if options.do_nothing:
+      return
+
     try:
         # Silence the log when dumping outputs into json
         if options.json_dump:
