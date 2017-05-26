@@ -73,6 +73,13 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 # Still high failure rate of VP8 EncoderPerf for veyrons,
                 # disable it for now. crbug/720386
                 ('veyron_*', FILTER_VP8): ['EncoderPerf/*'],
+
+                # Disable mid_stream_bitrate_switch test cases for elm/hana.
+                # crbug/725087
+                ('elm', FILTER_ALL): ['MidStreamParamSwitchBitrate/*',
+                                      'MultipleEncoders/*'],
+                ('hana', FILTER_ALL): ['MidStreamParamSwitchBitrate/*',
+                                       'MultipleEncoders/*'],
                 }
 
         board = utils.get_current_board()
