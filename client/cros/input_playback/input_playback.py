@@ -153,19 +153,28 @@ class InputPlayback(object):
         if not os.path.isfile(property_file):
             raise error.TestError('Property file %s not found!' % property_file)
 
-        logging.info('Emulating %s %s', input_type, property_file)
-        num_events_before = len(self._get_input_events())
-        new_device.emulation_process = subprocess.Popen(
-                ['evemu-device', property_file], stdout=subprocess.PIPE)
-        utils.poll_for_condition(
-                lambda: len(self._get_input_events()) > num_events_before,
-                exception=error.TestError('Error emulating %s!' % input_type))
-
         with open(property_file) as fh:
             name_line = fh.readline()  # Format "N: NAMEOFDEVICE"
             new_device.name = name_line[3:-1]
 
+        logging.info('Emulating %s %s (%s).', input_type, new_device.name,
+                     property_file)
+        num_events_before = len(self._get_input_events())
+        new_device.emulation_process = subprocess.Popen(
+                ['evemu-device', property_file], stdout=subprocess.PIPE)
+
         self._emulated_device = new_device
+
+        # Ensure there are more input events than there were before.
+        try:
+            expected = num_events_before + 1
+            exception = error.TestError('Error emulating %s!' % input_type)
+            utils.poll_for_condition(
+                    lambda: len(self._get_input_events()) == expected,
+                    exception=exception)
+        except error.TestError as e:
+            self.close()
+            raise e
 
 
     def _find_device_properties(self, device):
@@ -488,7 +497,21 @@ class InputPlayback(object):
     def close(self):
         """Kill emulation if necessary."""
         if self._emulated_device:
+            num_events_before = len(self._get_input_events())
+            device_name = self._emulated_device.name
+
             self._emulated_device.emulation_process.kill()
+
+            # Ensure there is one fewer input event before returning.
+            try:
+                expected = num_events_before - 1
+                utils.poll_for_condition(
+                        lambda: len(self._get_input_events()) == expected,
+                        exception=error.TestError())
+            except error.TestError as e:
+                logging.warning('Could not kill emulated %s!', device_name)
+
+            self._emulated_device = None
 
 
     def __exit__(self):
