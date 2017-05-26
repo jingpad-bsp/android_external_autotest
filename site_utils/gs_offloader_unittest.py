@@ -984,7 +984,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.assertTrue(gs_offloader._is_valid_result(
             release_build, gs_offloader.CTS_RESULT_PATTERN, 'test_that_wrapper'))
         self.assertFalse(gs_offloader._is_valid_result(
-            release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-bvt-cq'))
+            release_build, gs_offloader.CTS_RESULT_PATTERN, 'bvt-arc'))
         self.assertTrue(gs_offloader._is_valid_result(
             release_build, gs_offloader.CTS_V2_RESULT_PATTERN, 'arc-gts'))
         self.assertFalse(gs_offloader._is_valid_result(
