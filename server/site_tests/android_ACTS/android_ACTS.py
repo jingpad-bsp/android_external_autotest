@@ -7,6 +7,7 @@ import os
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.site_utils import acts_lib
@@ -108,6 +109,10 @@ class android_ACTS(test.test):
             package = acts_lib.create_acts_package_from_zip(
                 test_station, override_acts_zip, target_zip)
         elif override_build_url:
+            devserver = dev_server.AndroidBuildServer.resolve(
+                    override_build_url,
+                    dev_server.AndroidBuildServer.get_server_url(job_repo_url))
+            override_build_url = devserver.translate(override_build_url)
             build_url_pieces = override_build_url.split('/')
             if len(build_url_pieces) != 3:
                 raise error.TestError(
