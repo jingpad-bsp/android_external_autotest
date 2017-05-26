@@ -62,7 +62,8 @@ RewriteRule ^/afe/server/admin - [R=404]
     <IfDefine !MOBLAB_INSTANCE>
       # Moblab runs its own WSGI with different settings due to different memory
       # limitations.
-      WSGIDaemonProcess autotestapache processes=65 threads=1 maximum-requests=200
+      WSGIDaemonProcess autotestapache processes=65 threads=1
+      maximum-requests=200 request-timeout=60
     </IfDefine>
     WSGIProcessGroup autotestapache
     WSGIPassAuthorization On
