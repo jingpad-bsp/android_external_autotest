@@ -96,6 +96,23 @@ class video_WebRtcPerf(test.test):
     arc_mode = None
 
 
+    def initialize(self):
+        self._service_stopper = None
+        self._original_governors = None
+        self._backlight = None
+
+
+    def cleanup(self):
+        if self._backlight:
+            self._backlight.restore()
+        if self._service_stopper:
+            self._service_stopper.restore_services()
+        if self._original_governors:
+            utils.restore_scaling_governor_states(self._original_governors)
+
+        super(video_WebRtcPerf, self).cleanup()
+
+
     def start_loopback(self, cr):
         """
         Opens WebRTC loopback page.
@@ -248,16 +265,12 @@ class video_WebRtcPerf(test.test):
         if not utils.wait_for_cool_machine():
             raise error.TestError('Could not get cool machine.')
         # Stop the thermal service that may change the cpu frequency.
-        services = service_stopper.ServiceStopper(THERMAL_SERVICES)
-        services.stop_services()
+        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
+        self._service_stopper.stop_services()
         # Set the scaling governor to performance mode to set the cpu to the
         # highest frequency available.
-        original_governors = utils.set_high_performance_mode()
-        try:
-            return self.test_webrtc(local_path, get_cpu_usage)
-        finally:
-            services.restore_services()
-            utils.restore_scaling_governor_states(original_governors)
+        self._original_governors = utils.set_high_performance_mode()
+        return self.test_webrtc(local_path, get_cpu_usage)
 
 
     def test_power(self, local_path):
@@ -268,6 +281,12 @@ class video_WebRtcPerf(test.test):
 
         @return a dictionary that contains the test result.
         """
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_default()
+        self._service_stopper = service_stopper.ServiceStopper(
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._service_stopper.stop_services()
+
         # Verify that we are running on battery and the battery is sufficiently
         # charged.
         current_power_status = power_status.get_status()
@@ -286,16 +305,7 @@ class video_WebRtcPerf(test.test):
             keyval = power_logger.calc()
             return keyval['result_' + measurements[0].domain + '_pwr']
 
-        backlight = power_utils.Backlight()
-        backlight.set_default()
-        services = service_stopper.ServiceStopper(
-                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
-        services.stop_services()
-        try:
-            return self.test_webrtc(local_path, get_power)
-        finally:
-            backlight.restore()
-            services.restore_services()
+        return self.test_webrtc(local_path, get_power)
 
 
     def test_decode_time(self, local_path):
