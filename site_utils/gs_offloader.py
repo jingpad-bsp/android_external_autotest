@@ -576,8 +576,7 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
         metrics_fields = _get_metrics_fields(dir_entry)
         es_metadata = _get_es_metadata(dir_entry)
         try:
-            upload_signal_filename = '%s/%s/.GS_UPLOADED' % (
-                    RESULTS_DIR, dir_entry)
+            upload_signal_filename = '%s/.GS_UPLOADED' % (dir_entry,)
             if not os.path.isfile(upload_signal_filename):
                 sanitize_dir(dir_entry)
                 if DEFAULT_CTS_RESULTS_GSURI:
