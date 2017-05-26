@@ -169,10 +169,11 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
                            "enough space available: %s" % (temp_dir, e))
                     raise error.RepoDiskFullError(msg)
 
-                # Check if tarball already exists. If it does, don't duplicate
-                # the effort.
+                # Check if tarball already exists. If it does, and the checksum
+                # is the same as what is in the checksum dictionary, then don't
+                # create a tarball again.
                 tarball_path = os.path.join(pkg_dir, pkg_name);
-                if os.path.exists(tarball_path):
+                if os.path.exists(tarball_path) and pkgmgr.compare_checksum(tarball_path):
                     print("process_packages: Tarball %s already exists" %
                           tarball_path)
                 else:
