@@ -264,8 +264,8 @@ class HostQueueEntryTest(BaseSchedulerModelsTest):
         hqe.status = models.HostQueueEntry.Status.STARTING
         hqe.started_on = datetime.datetime.now()
 
-        dispatcher = self.god.create_mock_class(monitor_db.BaseDispatcher,
-                                                'BaseDispatcher')
+        dispatcher = self.god.create_mock_class(monitor_db.Dispatcher,
+                                                'Dispatcher')
         agent = self.god.create_mock_class(monitor_db.Agent, 'Agent')
         dispatcher.get_agents_for_entry.expect_call(hqe).and_return([agent])
         agent.is_done.expect_call().and_return(agent_finished)
