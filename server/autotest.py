@@ -294,7 +294,7 @@ class BaseAutotest(installable_object.InstallableObject):
         # if that fails try to install using svn
         if utils.run('which svn').exit_status:
             raise error.AutoservError('svn not found on target machine: %s' %
-                                      host.name)
+                                      host.hostname)
         try:
             host.run('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
         except error.AutoservRunError, e:
@@ -940,7 +940,7 @@ class _BaseRun(object):
                     self.host.wait_up(
                         self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
                     logging.debug('Unexpected final status message from '
-                                  'client %s: %s', (self.host.name, last))
+                                  'client %s: %s', self.host.hostname, last)
                     # The line 'last' may have sensitive phrases, like
                     # 'END GOOD', which breaks the tko parser. So the error
                     # message will exclude it, since it will be recorded to
