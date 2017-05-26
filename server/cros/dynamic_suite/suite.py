@@ -1730,7 +1730,7 @@ class _ComposedPredicate(object):
 
     def __repr__(self):
         return '{cls}({this._predicates!r})'.format(
-            cls=type(self).__qualname__,
+            cls=type(self).__name__,
             this=self,
         )
 
