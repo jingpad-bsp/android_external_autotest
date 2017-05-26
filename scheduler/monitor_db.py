@@ -271,7 +271,7 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     return command
 
 def _calls_log_tick_msg(func):
-    """Used to trace functions called by BaseDispatcher.tick."""
+    """Used to trace functions called by Dispatcher.tick."""
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         self._log_tick_msg('Starting %s' % func.__name__)
@@ -280,7 +280,7 @@ def _calls_log_tick_msg(func):
     return wrapper
 
 
-class BaseDispatcher(object):
+class Dispatcher(object):
 
 
     def __init__(self):
@@ -685,23 +685,26 @@ class BaseDispatcher(object):
 
 
     def _check_for_unrecovered_verifying_entries(self):
+        # Verify is replaced by Reset.
         queue_entries = scheduler_models.HostQueueEntry.fetch(
-                where='status = "%s"' % models.HostQueueEntry.Status.VERIFYING)
-        unrecovered_hqes = []
+                where='status = "%s"' % models.HostQueueEntry.Status.RESETTING)
         for queue_entry in queue_entries:
             special_tasks = models.SpecialTask.objects.filter(
                     task__in=(models.SpecialTask.Task.CLEANUP,
-                              models.SpecialTask.Task.VERIFY),
+                              models.SpecialTask.Task.VERIFY,
+                              models.SpecialTask.Task.RESET),
                     queue_entry__id=queue_entry.id,
                     is_complete=False)
             if special_tasks.count() == 0:
-                unrecovered_hqes.append(queue_entry)
-
-        if unrecovered_hqes:
-            message = '\n'.join(str(hqe) for hqe in unrecovered_hqes)
-            raise scheduler_lib.SchedulerError(
-                    '%d unrecovered verifying host queue entries:\n%s' %
-                    (len(unrecovered_hqes), message))
+                logging.error('Unrecovered Resetting host queue entry: %s. '
+                              'Setting status to Queued.', str(queue_entry))
+                # Essentially this host queue entry was set to be Verifying
+                # however no special task exists for entry. This occurs if the
+                # scheduler dies between changing the status and creating the
+                # special task. By setting it to queued, the job can restart
+                # from the beginning and proceed correctly. This is much more
+                # preferable than having monitor_db not launching.
+                queue_entry.set_status('Queued')
 
 
     @_calls_log_tick_msg
@@ -737,6 +740,9 @@ class BaseDispatcher(object):
                 print_message=message)
 
 
+    DEFAULT_REQUESTED_BY_USER_ID = 1
+
+
     def _reverify_hosts_where(self, where,
                               print_message='Reverifying host %s'):
         full_where='locked = 0 AND invalid = 0 AND ' + where
@@ -745,13 +751,19 @@ class BaseDispatcher(object):
                 # host has already been recovered in some way
                 continue
             if self._host_has_scheduled_special_task(host):
-                # host will have a special task scheduled on the next tick
+                # host will have a special task scheduled on the next cycle
                 continue
             if print_message:
-                logging.info(print_message, host.hostname)
+                logging.error(print_message, host.hostname)
+            try:
+                user = models.User.objects.get(login='autotest_system')
+            except models.User.DoesNotExist:
+                user = models.User.objects.get(
+                        id=self.DEFAULT_REQUESTED_BY_USER_ID)
             models.SpecialTask.objects.create(
-                    task=models.SpecialTask.Task.CLEANUP,
-                    host=models.Host.objects.get(id=host.id))
+                    task=models.SpecialTask.Task.RESET,
+                    host=models.Host.objects.get(id=host.id),
+                    requested_by=user)
 
 
     def _recover_hosts(self):
@@ -1077,14 +1089,6 @@ class BaseDispatcher(object):
     def _log_extra_msg(self, msg):
         if self._extra_debugging:
             logging.debug(msg)
-
-
-SiteDispatcher = utils.import_site_class(
-    __file__, 'autotest_lib.scheduler.site_monitor_db',
-    'SiteDispatcher', BaseDispatcher)
-
-class Dispatcher(SiteDispatcher):
-    pass
 
 
 class Agent(object):
