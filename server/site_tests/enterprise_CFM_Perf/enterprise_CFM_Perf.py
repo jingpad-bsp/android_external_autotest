@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, datetime, glob, math, os, re, time
+import csv, datetime, glob, json, math, os, re, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -15,6 +15,7 @@ _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 900
 _PERF_RESULT_FILE = 'perf.csv'
+_JMI_RESULT_FILE = 'jmidata.json'
 
 _BASE_DIR = '/home/chronos/user/Storage/ext/'
 _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
@@ -251,13 +252,64 @@ class enterprise_CFM_Perf(test.test):
         return newest_file
 
 
+    def _dump_raw_jmi_data(self, jmidata):
+        """
+        Write the raw JMI data into the _JMI_RESULT_FILE for later processing.
+        """
+        data_types = [
+            'frames_decoded',
+            'frames_encoded',
+            'adaptation_changes',
+            'average_encode_time',
+            'bandwidth_adaptation',
+            'cpu_adaptation',
+            'video_received_frame_height',
+            'video_sent_frame_height',
+            'framerate_decoded',
+            'framerate_outgoing',
+            'framerate_to_renderer',
+            'framerate_received',
+            'framerate_sent',
+            'video_received_frame_width',
+            'video_sent_frame_width',
+            'video_encode_cpu_usage',
+            'video_packets_sent',
+            'video_packets_lost',
+            'cpu_processors',
+            'cpu_percent',
+            'renderer_cpu_percent',
+            'browser_cpu_percent',
+            'gpu_cpu_percent',
+            'num_active_vid_in_streams',
+        ]
+
+        # Collect all the raw JMI values into a dictionary.
+        results = {}
+        for data_type in data_types:
+            data = self._get_data_from_jmifile(data_type, jmidata)
+            if not data:
+                data = -1
+            results[data_type] = data
+
+        # Dump the dictionary as json into a log file.
+        result_file_path = os.path.join(self.resultsdir, _JMI_RESULT_FILE)
+        with open(result_file_path, 'w') as fp:
+            fp.write(json.dumps(results, indent=2))
+
+
     def upload_jmidata(self):
-        """Write jmidata results to results-chart.json file for Perf Dashboard.
+        """
+        Write jmidata results to results-chart.json file for Perf Dashboard
+        and also save the raw data.
         """
         jmi_file = self._get_file_to_parse()
         jmifile_to_parse = open(jmi_file, 'r')
         jmidata = jmifile_to_parse.read()
 
+        # Start by saving the jmi data separately as raw values in a json file.
+        self._dump_raw_jmi_data(jmidata)
+
+        # Compute and save aggregated stats from JMI.
         self.output_perf_value(description='sum_vid_in_frames_decoded',
                 value=self._get_sum('frames_decoded', jmidata), units='frames',
                 higher_is_better=True)
