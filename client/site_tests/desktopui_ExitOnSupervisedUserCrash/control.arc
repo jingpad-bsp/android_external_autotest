@@ -4,7 +4,7 @@
 
 AUTHOR = "cmasone, antrim"
 NAME = "desktopui_ExitOnSupervisedUserCrash.arc"
-ATTRIBUTES = "suite:bvt-arc, suite:arc-bvt-cq, suite:bvt-cq"
+ATTRIBUTES = "suite:bvt-arc, suite:arc-bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
