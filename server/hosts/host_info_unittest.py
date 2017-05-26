@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import cStringIO
+import inspect
+import json
 import unittest
 
 import common
@@ -312,6 +315,139 @@ class GetStoreFromMachineTest(unittest.TestCase):
         machine = 'hostname'
         self.assertTrue(isinstance(host_info.get_store_from_machine(machine),
                                    host_info.InMemoryHostInfoStore))
+
+
+class HostInfoJsonSerializationTestCase(unittest.TestCase):
+    """Tests the json_serialize and json_deserialize functions."""
+
+    CURRENT_SERIALIZATION_VERSION = host_info._CURRENT_SERIALIZATION_VERSION
+
+    def test_serialize_empty(self):
+        """Serializing empty HostInfo results in the expected json."""
+        info = host_info.HostInfo()
+        file_obj = cStringIO.StringIO()
+        host_info.json_serialize(info, file_obj)
+        file_obj.seek(0)
+        expected_dict = {
+                'serializer_version': self.CURRENT_SERIALIZATION_VERSION,
+                'attributes' : {},
+                'labels': [],
+        }
+        self.assertEqual(json.load(file_obj), expected_dict)
+
+
+    def test_serialize_non_empty(self):
+        """Serializing a populated HostInfo results in expected json."""
+        info = host_info.HostInfo(labels=['label1'],
+                                  attributes={'attrib': 'val'})
+        file_obj = cStringIO.StringIO()
+        host_info.json_serialize(info, file_obj)
+        file_obj.seek(0)
+        expected_dict = {
+                'serializer_version': self.CURRENT_SERIALIZATION_VERSION,
+                'attributes' : {'attrib': 'val'},
+                'labels': ['label1'],
+        }
+        self.assertEqual(json.load(file_obj), expected_dict)
+
+
+    def test_round_trip_empty(self):
+        """Serializing - deserializing empty HostInfo keeps it unchanged."""
+        info = host_info.HostInfo()
+        serialized_fp = cStringIO.StringIO()
+        host_info.json_serialize(info, serialized_fp)
+        serialized_fp.seek(0)
+        got = host_info.json_deserialize(serialized_fp)
+        self.assertEqual(got, info)
+
+
+    def test_round_trip_non_empty(self):
+        """Serializing - deserializing non-empty HostInfo keeps it unchanged."""
+        info = host_info.HostInfo(
+                labels=['label1'],
+                attributes = {'attrib': 'val'})
+        serialized_fp = cStringIO.StringIO()
+        host_info.json_serialize(info, serialized_fp)
+        serialized_fp.seek(0)
+        got = host_info.json_deserialize(serialized_fp)
+        self.assertEqual(got, info)
+
+
+    def test_deserialize_malformed_json_raises(self):
+        """Deserializing a malformed string raises."""
+        with self.assertRaises(host_info.DeserializationError):
+            host_info.json_deserialize(cStringIO.StringIO('{labels:['))
+
+
+    def test_deserialize_no_version_raises(self):
+        """Deserializing a string with no serializer version raises."""
+        info = host_info.HostInfo()
+        serialized_fp = cStringIO.StringIO()
+        host_info.json_serialize(info, serialized_fp)
+        serialized_fp.seek(0)
+
+        serialized_dict = json.load(serialized_fp)
+        del serialized_dict['serializer_version']
+        serialized_no_version_str = json.dumps(serialized_dict)
+
+        with self.assertRaises(host_info.DeserializationError):
+            host_info.json_deserialize(
+                    cStringIO.StringIO(serialized_no_version_str))
+
+
+    def test_deserialize_malformed_host_info_raises(self):
+        """Deserializing a malformed host_info raises."""
+        info = host_info.HostInfo()
+        serialized_fp = cStringIO.StringIO()
+        host_info.json_serialize(info, serialized_fp)
+        serialized_fp.seek(0)
+
+        serialized_dict = json.load(serialized_fp)
+        del serialized_dict['labels']
+        serialized_no_version_str = json.dumps(serialized_dict)
+
+        with self.assertRaises(host_info.DeserializationError):
+            host_info.json_deserialize(
+                    cStringIO.StringIO(serialized_no_version_str))
+
+
+    def test_enforce_compatibility_version_1(self):
+        """Tests that required fields are never dropped.
+
+        Never change this test. If you must break compatibility, uprev the
+        serializer version and add a new test for the newer version.
+
+        Adding a field to compat_info_str means we're making the new field
+        mandatory. This breaks backwards compatibility.
+        Removing a field from compat_info_str means we're no longer requiring a
+        field to be mandatory. This breaks forwards compatibility.
+        """
+        compat_dict = {
+                'serializer_version': 1,
+                'attributes': {},
+                'labels': []
+        }
+        serialized_str = json.dumps(compat_dict)
+        serialized_fp = cStringIO.StringIO(serialized_str)
+        host_info.json_deserialize(serialized_fp)
+
+
+    def test_serialize_pretty_print(self):
+        """Serializing a host_info dumps the json in human-friendly format"""
+        info = host_info.HostInfo(labels=['label1'],
+                                  attributes={'attrib': 'val'})
+        serialized_fp = cStringIO.StringIO()
+        host_info.json_serialize(info, serialized_fp)
+        expected = """{
+            "attributes": {
+                "attrib": "val"
+            },
+            "labels": [
+                "label1"
+            ],
+            "serializer_version": %d
+        }""" % self.CURRENT_SERIALIZATION_VERSION
+        self.assertEqual(serialized_fp.getvalue(), inspect.cleandoc(expected))
 
 
 if __name__ == '__main__':
