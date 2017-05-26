@@ -17,7 +17,6 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.tko import utils as tko_utils
 
@@ -194,8 +193,6 @@ Step by step:
 """
 
 
-DEFAULT_TRY_JOB_TIMEOUT_MINS = tools.try_job_timeout_mins()
-
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 class SuiteSpec(object):
@@ -228,9 +225,7 @@ class SuiteSpec(object):
             file_bugs=False,
             file_experimental_bugs=False,
             max_runtime_mins=24*60,
-            # TODO(derat): Remove this in favor of timeout_mins; it's unused.
-            timeout=24,
-            timeout_mins=None,
+            timeout_mins=24*60,
             suite_dependencies=None,
             bug_template=None,
             priority=priorities.Priority.DEFAULT,
@@ -269,8 +264,6 @@ class SuiteSpec(object):
                                        this suite fail.
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
-        @param timeout: Max lifetime in hours for each of the sub-jobs that this
-                        suite runs.
         @param timeout_mins: Max lifetime in minutes for each of the sub-jobs
                              that this suite runs.
         @param suite_dependencies: A list of strings of suite level
@@ -332,8 +325,7 @@ class SuiteSpec(object):
         self.file_experimental_bugs = file_experimental_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
-        self.timeout_mins = timeout_mins or timeout * 60
-        self.timeout = timeout
+        self.timeout_mins = timeout_mins
         self.bug_template = {} if bug_template is None else bug_template
         self.priority = priority
         self.wait_for_results = wait_for_results
