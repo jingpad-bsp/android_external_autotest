@@ -199,40 +199,7 @@ DEFAULT_TRY_JOB_TIMEOUT_MINS = tools.try_job_timeout_mins()
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 class SuiteSpec(object):
-    """
-    This class contains the info that defines a suite run.
-
-    Currently required:
-    @var build: the build to install e.g.
-                  x86-alex-release/R18-1655.0.0-a1-b1584.
-    @var board: which kind of devices to reimage.
-    @var devserver: An instance of the devserver to use with this suite.
-    @var name: a value of the SUITE control file variable to search for.
-    @var job: an instance of client.common_lib.base_job representing the
-                currently running suite job.
-
-    Currently supported optional fields:
-    @var pool: specify the pool of machines to use for scheduling purposes.
-               Default: None
-    @var num: the maximum number of devices to reimage.
-              Default in global_config
-    @var check_hosts: require appropriate hosts to be available now.
-    @var add_experimental: schedule experimental tests as well, or not.
-                           Default: True
-    @var dependencies: map of test names to dependency lists.
-                       Initially {'': []}.
-    @param suite_dependencies: A string with a comma separated list of suite
-                               level dependencies, which act just like test
-                               dependencies and are appended to each test's
-                               set of dependencies at job creation time.
-    @param predicate: Optional argument. If present, should be a function
-                      mapping ControlData objects to True if they should be
-                      included in suite. If argument is absent, suite
-                      behavior will default to creating a suite of based
-                      on the SUITE field of control files.
-    @param test_args: A dict of args passed all the way to each individual test
-                      that will be actually ran.
-    """
+    """This class contains the info that defines a suite run."""
 
     _REQUIRED_KEYWORDS = {
             'board': str,
@@ -253,6 +220,7 @@ class SuiteSpec(object):
             board=None,
             name=None,
             job=None,
+            devserver_url=None,
             pool=None,
             num=None,
             check_hosts=True,
@@ -260,11 +228,11 @@ class SuiteSpec(object):
             file_bugs=False,
             file_experimental_bugs=False,
             max_runtime_mins=24*60,
+            # TODO(derat): Remove this in favor of timeout_mins; it's unused.
             timeout=24,
             timeout_mins=None,
             suite_dependencies=None,
             bug_template=None,
-            devserver_url=None,
             priority=priorities.Priority.DEFAULT,
             predicate=None,
             wait_for_results=True,
@@ -282,36 +250,29 @@ class SuiteSpec(object):
         values.
 
         Currently required args:
+        @param builds: the builds to install e.g.
+                       {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                        'fwrw-version:': 'x86-alex-firmware/R36-5771.50.0'}
         @param board: which kind of devices to reimage.
         @param name: a value of the SUITE control file variable to search for.
         @param job: an instance of client.common_lib.base_job representing the
                     currently running suite job.
         @param devserver_url: url to the selected devserver.
-        @param builds: the builds to install e.g.
-                       {'cros-version:': 'x86-alex-release/R18-1655.0.0',
-                        'fwrw-version:': 'x86-alex-firmware/R36-5771.50.0'}
 
         Currently supported optional args:
-        @param test_source_build: Build that contains the server-side test code,
-                e.g., it can be the value of builds['cros-version:'] or
-                builds['fw-version:']. Default is None, that is, use
-                the server-side test code from builds['cros-version:']
-        @param pool: specify the pool of machines to use for scheduling purposes
-                     Default: None
+        @param pool: the pool of machines to use for scheduling purposes.
         @param num: the maximum number of devices to reimage.
-                    Default in global_config
         @param check_hosts: require appropriate hosts to be available now.
         @param add_experimental: schedule experimental tests as well, or not.
-                                 Default: True
         @param file_bugs: File bugs when tests in this suite fail.
-                          Default: False
         @param file_experimental_bugs: File bugs when experimental tests in
                                        this suite fail.
-                                       Default: False
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
-        @param timeout: Max lifetime in hours for each of the sub-jobs that
-                        this suite run.
+        @param timeout: Max lifetime in hours for each of the sub-jobs that this
+                        suite runs.
+        @param timeout_mins: Max lifetime in minutes for each of the sub-jobs
+                             that this suite runs.
         @param suite_dependencies: A list of strings of suite level
                                    dependencies, which act just like test
                                    dependencies and are appended to each test's
@@ -327,17 +288,18 @@ class SuiteSpec(object):
                           behavior will default to creating a suite of based
                           on the SUITE field of control files.
         @param wait_for_results: Set to False to run the suite job without
-                                 waiting for test jobs to finish. Default is
-                                 True.
-        @param job_retry: Set to True to enable job-level retry. Default is
-                          False.
-        @param max_retries: Maximum retry limit at suite level.
+                                 waiting for test jobs to finish.
+        @param job_retry: Set to True to enable job-level retry.
+        @param max_retries: Maximum retry limit at suite level if not None.
                             Regardless how many times each individual test
                             has been retried, the total number of retries
-                            happening in the suite can't exceed _max_retries.
-                            Default to None, no max.
+                            happening in the suite can't exceed max_retries.
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
+        @param test_source_build: Build that contains the server-side test code,
+                e.g., it can be the value of builds['cros-version:'] or
+                builds['fw-version:']. None uses the server-side test code from
+                builds['cros-version:'].
         @param run_prod_code: If true, the suite will run the test code that
                               lives in prod aka the test code currently on the
                               lab servers.
@@ -370,8 +332,8 @@ class SuiteSpec(object):
         self.file_experimental_bugs = file_experimental_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
-        self.timeout = timeout
         self.timeout_mins = timeout_mins or timeout * 60
+        self.timeout = timeout
         self.bug_template = {} if bug_template is None else bug_template
         self.priority = priority
         self.wait_for_results = wait_for_results
@@ -479,48 +441,7 @@ def reimage_and_run(**dargs):
     provided builds, and then run the indicated test suite on them.
     Guaranteed to be compatible with any build from stable to dev.
 
-    @param dargs: Dictionary containing the arguments listed below.
-
-    Currently required args:
-    @param board: which kind of devices to reimage.
-    @param name: a value of the SUITE control file variable to search for.
-    @param job: an instance of client.common_lib.base_job representing the
-                currently running suite job.
-
-    Currently supported optional args:
-    @param builds: the builds to install e.g.
-                   {'cros-version:': 'x86-alex-release/R18-1655.0.0',
-                    'fw-version:':  'x86-alex-firmware/R36-5771.50.0'}
-    @param pool: specify the pool of machines to use for scheduling purposes.
-                 Default: None
-    @param num: the maximum number of devices to reimage.
-                Default in global_config
-    @param check_hosts: require appropriate hosts to be available now.
-    @param add_experimental: schedule experimental tests as well, or not.
-                             Default: True
-    @param file_bugs: automatically file bugs on test failures.
-                      Default: False
-    @param suite_dependencies: A string with a comma separated list of suite
-                               level dependencies, which act just like test
-                               dependencies and are appended to each test's
-                               set of dependencies at job creation time.
-    @param devserver_url: url to the selected devserver.
-    @param predicate: Optional argument. If present, should be a function
-                      mapping ControlData objects to True if they should be
-                      included in suite. If argument is absent, suite
-                      behavior will default to creating a suite of based
-                      on the SUITE field of control files.
-    @param job_retry: A bool value indicating whether jobs should be retired
-                      on failure. If True, the field 'JOB_RETRIES' in control
-                      files will be respected. If False, do not retry.
-    @param max_retries: Maximum retry limit at suite level.
-                        Regardless how many times each individual test
-                        has been retried, the total number of retries
-                        happening in the suite can't exceed _max_retries.
-                        Default to None, no max.
-    @param offload_failures_only: Only enable gs_offloading for failed jobs.
-    @param test_args: A dict of args passed all the way to each individual test
-                      that will be actually ran.
+    @param dargs: Dictionary containing the arguments passed to SuiteSpec().
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
