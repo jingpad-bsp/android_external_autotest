@@ -46,6 +46,8 @@ EMITTED_STATUSES_COUNTERS = [
     'connections',
     'Innodb_buffer_pool_read_requests',
     'Innodb_buffer_pool_reads',
+    'Innodb_row_lock_time_avg',
+    'Innodb_row_lock_current_waits',
     'questions',
     'slow_queries',
     'threads_created',
