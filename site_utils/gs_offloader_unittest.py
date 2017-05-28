@@ -389,7 +389,7 @@ class CommandListTests(unittest.TestCase):
                 multi, job.queue_args[0],
                 os.path.join(test_bucket_uri, job.queue_args[1]))
 
-        self.assertEqual(command[0], gs_offloader._GSUTIL_CMD)
+        self.assertEqual(command[0], 'gsutil')
         if multi:
             self.assertEqual(command[1], '-m')
         self.assertEqual(command[-2], job.queue_args[0])
