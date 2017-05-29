@@ -10,65 +10,127 @@ from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_Drm(test.test):
-    """Runs one of the drm-tests.
-    """
-    version = 1
-    GSC = None
-    _services = None
-    _timeout = 120
+class DrmTest(object):
+    # Default argument dictionary
+    _command = None
 
-    def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
-        self._supported_apis = graphics_utils.GraphicsApiHelper().get_supported_apis()
-        self._services = service_stopper.ServiceStopper(['ui'])
-
-    def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
-        if self._services:
-            self._services.restore_services()
-
-    def run_once(self, cmd, **kargs):
-        opts = {
-            'stop_ui': True,
+    def __init__(self, command, **kargs):
+        self._opts = {
+            'timeout': 20,
             'display_required': True,
             'vulkan_required': False,
             'min_kernel_version': None
         }
-        opts.update(kargs)
+        self._opts.update(kargs)
+        self._command = command
 
+    def can_run(self):
+        """Indicate if the test can be run on the configuration."""
         num_displays = graphics_utils.get_num_outputs_on()
-        # Sanity check to guard against incorrect silent passes.
         if num_displays == 0 and utils.get_device_type() == 'CHROMEBOOK':
-            raise error.TestFail('Error: found Chromebook without display.')
-        if opts['display_required'] and num_displays == 0:
+            # Sanity check to guard against incorrect silent passes.
+            logging.error('Error: found Chromebook without display.')
+            return False
+        return True
+
+    def should_run(self):
+        """Indicate if the test should be run on current configuration."""
+        supported_apis = graphics_utils.GraphicsApiHelper().get_supported_apis()
+        num_displays = graphics_utils.get_num_outputs_on()
+        if num_displays == 0 and self._opts['display_required']:
             # If a test needs a display and we don't have a display,
             # consider it a pass.
             logging.warning('No display connected, skipping test.')
-            return
-        if opts['vulkan_required'] and 'vk' not in self._supported_apis:
+            return False
+        if self._opts['vulkan_required'] and 'vk' not in supported_apis:
             # If a test needs vulkan to run and we don't have it,
             # consider it a pass
-            logging.warning('Vulkan is required by test but is not available '
-                            'on system. Skipping test.')
-            return
+            logging.warning('Vulkan is required by test but is not '
+                            'available on system. Skipping test.')
+            return False
+        return True
 
-        if opts['stop_ui']:
-            self._services.stop_services()
+    def run(self):
         try:
-            result = utils.run(cmd,
-                               timeout=self._timeout,
-                               ignore_status=True,
-                               stderr_is_expected=True,
-                               verbose=True,
-                               stdout_tee=utils.TEE_TO_LOGS,
-                               stderr_tee=utils.TEE_TO_LOGS)
-        except Exception:
-            # Fail on exceptions.
-            raise error.TestFail('Failed: Exception running %s' % cmd)
+            # TODO(pwang): consider TEE to another file if drmtests keep
+            # spewing so much output.
+            utils.run(
+                self._command,
+                timeout=self._opts['timeout'],
+                stderr_is_expected=True,
+                verbose=True,
+                stdout_tee=utils.TEE_TO_LOGS,
+                stderr_tee=utils.TEE_TO_LOGS
+            )
+        except error.CmdTimeoutError as e:
+            logging.error('Failed: Timeout while running %s' % self._command)
+            logging.debug(e)
+            return False
+        except error.CmdError as e:
+            logging.error('Failed: %s (exit=%d)' % (self._command,
+                                                    e.result_obj.exit_status))
+            logging.debug(e)
+            return False
+        except Exception as e:
+            logging.error('Failed: Unexpected exception while running %s'
+                          % self._command)
+            logging.debug(e)
+            return False
+        logging.info('Passed: %s', self._command)
+        return True
 
-        # Last but not least check return code and use it for triage.
-        if result.exit_status != 0:
-            raise error.TestFail('Failed: %s (exit=%d)' %
-                                 (cmd, result.exit_status))
+
+drm_tests = {
+    'atomictest': DrmTest('atomictest'),
+    'drm_cursor_test': DrmTest('drm_cursor_test'),
+    'gamma_test': DrmTest('gamma_test'),
+    'linear_bo_test': DrmTest('linear_bo_test'),
+    'mmap_test': DrmTest('mmap_test'),
+    'null_platform_test': DrmTest('null_platform_test'),
+    'swrast_test': DrmTest('swrast_test', display_required=False),
+    'vgem_test': DrmTest('vgem_test', display_required=False),
+    'vk_glow': DrmTest('vk_glow', vulkan_required=True),
+}
+
+
+class graphics_Drm(test.test):
+    """Runs one, several or all of the drm-tests."""
+    version = 1
+    _services = None
+    _GSC = None
+
+    def initialize(self):
+        self._failures = []
+        self._GSC = graphics_utils.GraphicsStateChecker()
+        self._services = service_stopper.ServiceStopper(['ui'])
+        self._services.stop_services()
+
+    def cleanup(self):
+        if self._services:
+            self._services.restore_services()
+        if self._GSC:
+            self._GSC.finalize()
+
+    # graphics_Drm runs all available tests if tests = None.
+    def run_once(self, tests=None):
+        for test_name in drm_tests:
+            if tests and test_name not in tests:
+                continue
+
+            test = drm_tests.get(test_name)
+            logging.info('-----------------[%s]-----------------' % test_name)
+            if test.should_run():
+                if test.can_run():
+                    logging.debug('Running test %s.', test_name)
+                    passed = test.run()
+                    if not passed:
+                        self._failures.append(test_name)
+                else:
+                    logging.info('Failed: test %s can not be run on current '
+                                 'configurations.' % test_name)
+                    self._failures.append(test_name)
+            else:
+                logging.info('Skipping test: %s.' % test_name)
+
+        if self._failures:
+            raise error.TestFail('Failed: %s' % self._failures)
