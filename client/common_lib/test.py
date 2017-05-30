@@ -77,8 +77,7 @@ class base_test(object):
 
 
     def write_test_keyval(self, attr_dict):
-        utils.write_keyval(self.outputdir, attr_dict,
-                           tap_report=self.job._tap)
+        utils.write_keyval(self.outputdir, attr_dict)
 
 
     @staticmethod
@@ -224,29 +223,25 @@ class base_test(object):
 
 
     def write_perf_keyval(self, perf_dict):
-        self.write_iteration_keyval({}, perf_dict,
-                                    tap_report=self.job._tap)
+        self.write_iteration_keyval({}, perf_dict)
 
 
     def write_attr_keyval(self, attr_dict):
-        self.write_iteration_keyval(attr_dict, {},
-                                    tap_report=self.job._tap)
+        self.write_iteration_keyval(attr_dict, {})
 
 
-    def write_iteration_keyval(self, attr_dict, perf_dict, tap_report=None):
+    def write_iteration_keyval(self, attr_dict, perf_dict):
         # append the dictionaries before they have the {perf} and {attr} added
         self._keyvals.append({'attr':attr_dict, 'perf':perf_dict})
         self._new_keyval = True
 
         if attr_dict:
             attr_dict = self._append_type_to_keys(attr_dict, "attr")
-            utils.write_keyval(self.resultsdir, attr_dict, type_tag="attr",
-                               tap_report=tap_report)
+            utils.write_keyval(self.resultsdir, attr_dict, type_tag="attr")
 
         if perf_dict:
             perf_dict = self._append_type_to_keys(perf_dict, "perf")
-            utils.write_keyval(self.resultsdir, perf_dict, type_tag="perf",
-                               tap_report=tap_report)
+            utils.write_keyval(self.resultsdir, perf_dict, type_tag="perf")
 
         keyval_path = os.path.join(self.resultsdir, "keyval")
         print >> open(keyval_path, "a"), ""

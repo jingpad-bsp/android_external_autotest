@@ -169,7 +169,6 @@ class Test_base_test_execute(TestTestCase):
         """
         # Stubbed out for the write_keyval call.
         self.test.outputdir = '/tmp'
-        self.test.job._tap = None
 
         num_to_fail = 2
         self.test.job.test_retry = 5
