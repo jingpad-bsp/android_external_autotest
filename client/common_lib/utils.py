@@ -517,7 +517,7 @@ def read_keyval(path, type_tag=None):
     return keyval
 
 
-def write_keyval(path, dictionary, type_tag=None, tap_report=None):
+def write_keyval(path, dictionary, type_tag=None):
     """
     Write a key-value pair format file out to a file. This uses append
     mode to open the file, so existing text will not be overwritten or
@@ -550,10 +550,6 @@ def write_keyval(path, dictionary, type_tag=None, tap_report=None):
             keyval.write('%s=%s\n' % (key, dictionary[key]))
     finally:
         keyval.close()
-
-    # same for tap
-    if tap_report is not None and tap_report.do_tap_report:
-        tap_report.record_keyval(path, dictionary, type_tag=type_tag)
 
 
 def is_url(path):
