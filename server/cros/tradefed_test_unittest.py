@@ -108,5 +108,14 @@ class TradefedTestTest(unittest.TestCase):
                 accumulative_count=False,
                 waivers=cts_waivers))
 
+        # http://pantheon/storage/browser/chromeos-autotest-results/117914707-chromeos-test/
+        # When a test case unrecoverably crashed during teardown, tradefed
+        # prints the "fail" and failure summary message twice. Tolerate it.
+        self.assertEquals((71, 70, 1, 0, 0),
+            tradefed_test.parse_tradefed_v2_result(
+                _load_data('CtsPrintTestCases.txt'),
+                accumulative_count=False,
+                waivers=cts_waivers))
+
 if __name__ == '__main__':
     unittest.main()
