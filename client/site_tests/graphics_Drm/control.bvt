@@ -21,7 +21,9 @@ DOC = """
 Runs various graphics_Drm related tests.
 """
 
-job.run_test('graphics_Drm', tests=['drm_cursor_test',
-                                    'linear_bo_test',
-                                    'null_platform_test',
-                                    'swrast_test'])
+job.run_test('graphics_Drm',
+             tests=['drm_cursor_test',
+                    'linear_bo_test',
+                    'null_platform_test',
+                    'swrast_test'],
+             perf_report=True)
