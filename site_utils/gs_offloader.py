@@ -179,7 +179,10 @@ def _get_metrics_fields(dir_entry):
         # There could be multiple hosts in the job directory, use the first one
         # available.
         for host in glob.glob(os.path.join(dir_entry, '*')):
-            keyval = models.test.parse_job_keyval(host)
+            try:
+                keyval = models.test.parse_job_keyval(host)
+            except ValueError:
+                continue
             build = keyval.get('build')
             if build:
                 try:
@@ -892,7 +895,7 @@ class Offloader(object):
         We mark them as uploaded as we won't try to offload them any more.
         """
         for job in self._open_jobs.values():
-            if job.offload_count >= self._offload_count_limit:
+            if job.get_failure_count() >= self._offload_count_limit:
                 _mark_uploaded(job.dirname)
 
 
