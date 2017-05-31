@@ -27,6 +27,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
 
+
     def setup(self, uri=None):
         """Set up GTS bundle from Google Storage.
 
@@ -41,24 +42,29 @@ class cheets_GTS(tradefed_test.TradefedTest):
         self.waivers = self._get_expected_failures('expectations')
 
 
-    def _run_gts_tradefed(self, target_package):
-        """This tests runs the GTS(XTS) tradefed binary and collects results.
+    def _get_gts_test_args(self, target_package):
+        """ This is the command to run GTS tests.
 
         @param target_package: the name of test package to be run. If None is
                 set, full GTS set will run.
-        @raise TestFail: when a test failure is detected.
         """
         self._target_package = target_package
+        #TODO(dhaddock): remove --skip-device-info with GTS 4.1_r2 (b/32889514)
+        return ['run', 'commandAndExit', 'gts', '--skip-device-info',
+                '--module', target_package]
+
+
+    def _run_gts_tradefed(self, gts_tradefed_args):
+        """This tests runs the GTS(XTS) tradefed binary and collects results.
+
+        @raise TestFail: when a test failure is detected.
+        """
         gts_tradefed = os.path.join(
                 self._android_gts,
                 'android-gts',
                 'tools',
                 'gts-tradefed')
         logging.info('GTS-tradefed path: %s', gts_tradefed)
-        #TODO(dhaddock): remove --skip-device-info with GTS 4.1_r2 (b/32889514)
-        gts_tradefed_args = ['run', 'commandAndExit', 'gts',
-                             '--skip-device-info', '--module',
-                             self._target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
         with tradefed_test.adb_keepalive(self._get_adb_target(),
                                          self._install_paths):
@@ -109,10 +115,12 @@ class cheets_GTS(tradefed_test.TradefedTest):
                      datetime_id)
         return datetime_id
 
-    def run_once(self, target_package=None):
+    def run_once(self, target_package=None, gts_tradefed_args=None):
         """Runs GTS target package exactly once."""
         with self._login_chrome():
             self._connect_adb()
             self._disable_adb_install_dialog()
             self._wait_for_arc_boot()
-            self._run_gts_tradefed(target_package)
+            if not gts_tradefed_args:
+                gts_tradefed_args = self._get_gts_test_args(target_package)
+            self._run_gts_tradefed(gts_tradefed_args)
