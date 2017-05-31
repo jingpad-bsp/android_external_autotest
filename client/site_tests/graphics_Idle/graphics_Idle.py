@@ -53,7 +53,9 @@ class graphics_Idle(graphics_utils.GraphicsTest):
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
             errors += self.verify_graphics_psr()
-            errors += self.verify_graphics_gem_idle()
+            # TODO(ihf): enable once crbug.com/727983 is fixed.
+            if not utils.system_output('uname -r').startswith('4.4.'):
+                errors += self.verify_graphics_gem_idle()
             errors += self.verify_graphics_i915_min_clock()
             errors += self.verify_graphics_rc6()
             errors += self.verify_lvds_downclock()
