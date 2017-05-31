@@ -676,6 +676,9 @@ class FirmwareTest(FAFTBase):
             self.servo.set('cr50_console_capture', 'on')
             self.cr50_console_file = os.path.join(self.resultsdir,
                                                   'cr50_console.txt')
+            # Check that the console works before declaring the cr50 console
+            # connection exists.
+            self.servo.get('ccd_lock')
             self.cr50 = chrome_cr50.ChromeCr50(self.servo)
         except error.TestFail as e:
             if 'No control named' in str(e):
