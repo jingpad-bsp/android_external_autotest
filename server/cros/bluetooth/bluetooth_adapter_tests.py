@@ -391,6 +391,9 @@ class BluetoothAdapterTests(test.test):
 
     HID_REPORT_SLEEP_SECS = 1
 
+    # Default suspend time in seconds for suspend resume.
+    SUSPEND_TIME_SECS=10
+
     # hci0 is the default hci device if there is no external bluetooth dongle.
     EXPECTED_HCI = 'hci0'
 
@@ -431,6 +434,17 @@ class BluetoothAdapterTests(test.test):
             self.devices[device_type] = get_bluetooth_emulated_device(
                     self.host, device_type)
         return self.devices[device_type]
+
+
+    def suspend_resume(self, suspend_time=SUSPEND_TIME_SECS):
+        """Suspend the DUT for a while and then resume.
+
+        @param suspend_time: the suspend time in secs
+
+        """
+        logging.info('The DUT suspends for %d seconds...', suspend_time)
+        self.host.suspend(suspend_time=suspend_time)
+        logging.info('The DUT is waken up.')
 
 
     def _wait_for_condition(self, func, method_name,
