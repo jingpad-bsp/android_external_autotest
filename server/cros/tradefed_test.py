@@ -222,6 +222,7 @@ def parse_tradefed_v2_result(result, accumulative_count=False, waivers=None):
     # ABI and the test count for the current chunk.
     abi = None
     ntest = None
+    prev_npass = prev_nfail = prev_nnotexec = None
 
     for line in result.splitlines():
         # Beginning of a chunk of tests.
@@ -231,15 +232,22 @@ def parse_tradefed_v2_result(result, accumulative_count=False, waivers=None):
                raise error.TestFail('Error: Unexpected test start: ' + line)
            abi = match.group(1)
            ntest = int(match.group(2).replace(',',''))
+           prev_npass = prev_nfail = prev_nnotexec = None
         else:
            # End of the current chunk.
            match = end_re.search(line)
            if not match:
                continue
 
-           if abi != match.group(1):
-               raise error.TestFail('Error: Unexpected test end: ' + line)
            npass, nfail, nnotexec = map(int, match.group(2,3,4))
+           if abi != match.group(1):
+               # When the last case crashed during teardown, tradefed emits two
+               # end-messages with possibly increased fail count. Ignore it.
+               if (prev_npass == npass and (prev_nfail == nfail or
+                   prev_nfail == nfail - 1) and prev_nnotexec == nnotexec):
+                   continue
+               raise error.TestFail('Error: Unexpected test end: ' + line)
+           prev_npass, prev_nfail, prev_nnotexec = npass, nfail, nnotexec
 
            # When the test crashes too ofen, tradefed seems to finish the
            # iteration by running "0 tests, 0 passed, ...". Do not count
