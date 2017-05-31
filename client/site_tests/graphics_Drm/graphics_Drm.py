@@ -93,26 +93,24 @@ drm_tests = {
 }
 
 
-class graphics_Drm(test.test):
+class graphics_Drm(graphics_utils.GraphicsTest):
     """Runs one, several or all of the drm-tests."""
     version = 1
     _services = None
-    _GSC = None
 
     def initialize(self):
-        self._failures = []
-        self._GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_Drm, self).initialize()
         self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
 
     def cleanup(self):
         if self._services:
             self._services.restore_services()
-        if self._GSC:
-            self._GSC.finalize()
+        super(graphics_Drm, self).cleanup()
 
     # graphics_Drm runs all available tests if tests = None.
-    def run_once(self, tests=None):
+    def run_once(self, tests=None, perf_report=False):
+        self._test_failure_report_enable = perf_report
         for test_name in drm_tests:
             if tests and test_name not in tests:
                 continue
@@ -124,13 +122,13 @@ class graphics_Drm(test.test):
                     logging.debug('Running test %s.', test_name)
                     passed = test.run()
                     if not passed:
-                        self._failures.append(test_name)
+                        self.add_failures(test_name)
                 else:
                     logging.info('Failed: test %s can not be run on current '
                                  'configurations.' % test_name)
-                    self._failures.append(test_name)
+                    self.add_failures(test_name)
             else:
                 logging.info('Skipping test: %s.' % test_name)
 
-        if self._failures:
-            raise error.TestFail('Failed: %s' % self._failures)
+        if self.get_failures():
+            raise error.TestFail('Failed: %s' % self.get_failures())
