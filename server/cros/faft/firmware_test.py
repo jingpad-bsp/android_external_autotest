@@ -19,7 +19,7 @@ from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 from autotest_lib.server.cros.faft.utils import mode_switcher
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
-from autotest_lib.server.cros.servo import chrome_ec
+from autotest_lib.server.cros.servo import chrome_cr50, chrome_ec
 
 ConnectionError = mode_switcher.ConnectionError
 
@@ -676,7 +676,7 @@ class FirmwareTest(FAFTBase):
             self.servo.set('cr50_console_capture', 'on')
             self.cr50_console_file = os.path.join(self.resultsdir,
                                                   'cr50_console.txt')
-            self.cr50 = chrome_ec.ChromeCr50(self.servo)
+            self.cr50 = chrome_cr50.ChromeCr50(self.servo)
         except error.TestFail as e:
             if 'No control named' in str(e):
                 logging.warn('cr50 console not supported.')
