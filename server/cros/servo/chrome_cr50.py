@@ -33,6 +33,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
     ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
     WAKE_CHAR = '\n'
+    START_UNLOCK_TIMEOUT = 20
+    UNLOCK = ['Unlock sequence starting. Continue until (\S+)']
+    GETTIME = ['= (\S+)']
 
 
     def __init__(self, servo):
@@ -202,3 +205,72 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self._servo.set_nocheck('servo_v4_dts_mode', 'on')
         self._servo.set_nocheck('power_state', 'ccd_reset')
         self.wait_for_ccd_enable()
+
+
+    def lock_enable(self):
+        """Enable the lock on cr50"""
+        # Lock enable can be run, but we won't be able to use the power button
+        # to disable the lock. Let's not allow the console lock to be enabled
+        # if it can't be disabled without some change to the test setup
+        if self.using_ccd():
+            raise error.TestError("Cannot run 'lock enable' using CCD.")
+        self.send_command_get_output('lock enable',
+                                     ['The restricted console lock is enabled'])
+
+
+    def press_pwrbtn_and_get_lock(self):
+        """Press the power button then return the lock state"""
+        self._servo.power_short_press()
+        return self._servo.get('ccd_lock')
+
+
+    def _attempt_unlock(self):
+        """Try to unlock the console.
+
+        Raises:
+            TestError if the unlock process fails.
+        """
+        # Get the current time.
+        rv = self.send_command_get_output('gettime', self.GETTIME)
+        current_time = float(rv[0][1])
+
+        # Start the unlock process.
+        rv = self.send_command_get_output('lock disable', self.UNLOCK)
+        unlock_finished = float(rv[0][1])
+
+        # Calculate the unlock timeout. There is a 10s countdown to start the
+        # unlock process, so unlock_timeout will be around 10s longer than
+        # necessary.
+        unlock_timeout = int(unlock_finished - current_time)
+        logging.info('Pressing power button up to %ds to perform unlock',
+                     unlock_timeout)
+
+        # Press the power button until the lock is disabled.
+        lock_state = utils.wait_for_value(self.press_pwrbtn_and_get_lock,
+                                          'off',
+                                          timeout_sec=unlock_timeout)
+        if lock_state != 'off':
+            raise error.TestError('Could not disable lock')
+
+
+    def lock_disable(self):
+        """Increase the console timeout and try disabling the lock."""
+        # We cannot press the power button using ccd.
+        if self.using_ccd():
+            raise error.TestError("Cannot run 'lock disable' using CCD.")
+
+        # The unlock process takes a while to start. Increase the cr50 console
+        # timeout so we can get the entire output of the 'lock disable' start
+        # process
+        original_timeout = self._servo.get('cr50_console_timeout')
+        self._servo.set_nocheck('cr50_console_timeout',
+                                self.START_UNLOCK_TIMEOUT)
+
+        try:
+            # Try to disable the lock
+            self._attempt_unlock()
+        finally:
+            # Reset the cr50_console timeout
+            self._servo.set_nocheck('cr50_console_timeout', original_timeout)
+
+        logging.info('Successfully disabled the lock')
