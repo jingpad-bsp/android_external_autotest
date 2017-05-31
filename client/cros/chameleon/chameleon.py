@@ -345,6 +345,14 @@ class ChameleonBoard(object):
         return self._chameleond_proxy.avsync_probe
 
 
+    def get_motor_board(self):
+        """Gets the motor_board device on Chameleon.
+
+        @return: An MotorBoard object.
+        """
+        return self._chameleond_proxy.motor_board
+
+
     def get_mac_address(self):
         """Gets the MAC address of Chameleon.
 
