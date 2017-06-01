@@ -4,6 +4,7 @@
 
 import functools
 import logging
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -220,12 +221,6 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                                      ['The restricted console lock is enabled'])
 
 
-    def press_pwrbtn_and_get_lock(self):
-        """Press the power button then return the lock state"""
-        self._servo.power_short_press()
-        return self._servo.get('ccd_lock')
-
-
     def _attempt_unlock(self):
         """Try to unlock the console.
 
@@ -244,14 +239,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # unlock process, so unlock_timeout will be around 10s longer than
         # necessary.
         unlock_timeout = int(unlock_finished - current_time)
-        logging.info('Pressing power button up to %ds to perform unlock',
-                     unlock_timeout)
+        end_time = time.time() + unlock_timeout
 
-        # Press the power button until the lock is disabled.
-        lock_state = utils.wait_for_value(self.press_pwrbtn_and_get_lock,
-                                          'off',
-                                          timeout_sec=unlock_timeout)
-        if lock_state != 'off':
+        logging.info('Pressing power button for %ds to unlock the console.',
+                     unlock_timeout)
+        logging.info('The process should end at %s', time.ctime(end_time))
+
+        # Press the power button once a second to unlock the console.
+        while time.time() < end_time:
+            self._servo.power_short_press()
+            time.sleep(1)
+
+        if self._servo.get('ccd_lock') != 'off':
             raise error.TestError('Could not disable lock')
 
 
