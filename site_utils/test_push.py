@@ -685,7 +685,8 @@ def _main(arguments):
 def main():
     """Entry point."""
     arguments = parse_arguments()
-    with ts_mon_config.SetupTsMonGlobalState(service_name='test_push'):
+    with ts_mon_config.SetupTsMonGlobalState(service_name='test_push',
+                                             indirect=True):
         return _main(arguments)
 
 if __name__ == '__main__':
