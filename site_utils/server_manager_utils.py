@@ -191,6 +191,15 @@ def format_servers_summary(servers):
     return '\n'.join(result_lines)
 
 
+def format_servers_nameonly(servers):
+    """format servers for printing names only
+
+    @param servers: Sequence of Server instances.
+    @returns: Formatted output as string.
+    """
+    return '\n'.join(s.hostname for s in servers)
+
+
 def _get_servers_by_role(servers):
     """Return a mapping from roles to servers.
 
