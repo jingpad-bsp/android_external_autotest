@@ -404,7 +404,11 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
 
         output.close()
 
-        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+        self.mox.StubOutWithMock(moblab_rpc_interface.GsUtil, 'get_gsutil_cmd')
+        moblab_rpc_interface.GsUtil.get_gsutil_cmd().AndReturn(
+            '/path/to/gsutil')
+
+        common_lib_utils.run('/path/to/gsutil',
                              args=('ls', 'gs://bucket1/dummy'),
                              stdout_tee=mox.IgnoreArg()).AndReturn(output)
         self.mox.ReplayAll()
@@ -420,8 +424,11 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.VerifyAll()
 
     def testRunBucketPerformanceTestFail(self):
+        self.mox.StubOutWithMock(moblab_rpc_interface.GsUtil, 'get_gsutil_cmd')
+        moblab_rpc_interface.GsUtil.get_gsutil_cmd().AndReturn(
+            '/path/to/gsutil')
         self.mox.StubOutWithMock(common_lib_utils, 'run')
-        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+        common_lib_utils.run('/path/to/gsutil',
                   args=(
                   '-o', 'Credentials:gs_access_key_id=key',
                   '-o', 'Credentials:gs_secret_access_key=secret',
@@ -445,8 +452,13 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         moblab_rpc_interface._CONFIG = config_mock
         config_mock.get_config_value(
             'CROS', 'image_storage_server').AndReturn('gs://bucket1/')
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.GsUtil, 'get_gsutil_cmd')
+        moblab_rpc_interface.GsUtil.get_gsutil_cmd().AndReturn(
+            '/path/to/gsutil')
+
         self.mox.StubOutWithMock(common_lib_utils, 'run')
-        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+        common_lib_utils.run('/path/to/gsutil',
             args=('cp', 'gs://bucket1/pubsub-key-do-not-delete.json',
             '/tmp')).AndRaise(
                 error.CmdError("fakecommand", common_lib_utils.CmdResult(), ""))
@@ -458,8 +470,13 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         moblab_rpc_interface._CONFIG = config_mock
         config_mock.get_config_value(
             'CROS', 'image_storage_server').AndReturn('gs://bucket1/')
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.GsUtil, 'get_gsutil_cmd')
+        moblab_rpc_interface.GsUtil.get_gsutil_cmd().AndReturn(
+            '/path/to/gsutil')
+
         self.mox.StubOutWithMock(common_lib_utils, 'run')
-        common_lib_utils.run(moblab_rpc_interface._GSUTIL_CMD,
+        common_lib_utils.run('/path/to/gsutil',
             args=('cp', 'gs://bucket1/pubsub-key-do-not-delete.json',
             '/tmp'))
         moblab_rpc_interface.shutil = self.mox.CreateMockAnything()
