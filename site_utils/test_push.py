@@ -49,6 +49,13 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
+try:
+    from chromite.lib import metrics
+    from chromite.lib import ts_mon_config
+except ImportError:
+    metrics = site_utils.metrics_mock
+    ts_mon_config = site_utils.metrics_mock
+
 AUTOTEST_DIR=common.autotest_dir
 CONFIG = global_config.global_config
 
@@ -578,12 +585,15 @@ def send_notification_email(email_list, title, msg):
     gmail_lib.send_email(','.join(email_list), title, msg)
 
 
-def main():
-    """Entry point for test_push script."""
-    arguments = parse_arguments()
+def _main(arguments):
+    """Running tests.
+
+    @param arguments: command line arguments.
+    """
     updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
     updated_repo_msg = '\n'.join(
         ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
+    test_push_success = False
 
     try:
         # Use daemon flag will kill child processes when parent process fails.
@@ -631,6 +641,7 @@ def main():
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
         push_prod_next_branch(updated_repo_heads)
+        test_push_success = True
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
@@ -653,6 +664,8 @@ def main():
                      (updated_repo_msg, str(e)) + '\n'.join(run_suite_output)))
         raise
     finally:
+        metrics.Counter('chromeos/autotest/test_push/completed').increment(
+            fields={'success': test_push_success})
         # Reverify all the hosts
         reverify_all_push_duts()
 
@@ -668,6 +681,12 @@ def main():
                 'Test for pushing to prod completed successfully',
                 message)
 
+
+def main():
+    """Entry point."""
+    arguments = parse_arguments()
+    with ts_mon_config.SetupTsMonGlobalState(service_name='test_push'):
+        return _main(arguments)
 
 if __name__ == '__main__':
     sys.exit(main())
