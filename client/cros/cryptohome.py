@@ -136,6 +136,66 @@ def get_tpm_more_status():
     return status
 
 
+def get_fwmp(cleared_fwmp=False):
+    """Get the firmware management parameters.
+
+    Args:
+        cleared_fwmp: True if the space should not exist.
+
+    Returns:
+        The dictionary with the FWMP contents, for example:
+        { 'flags': 0xbb41,
+          'developer_key_hash':
+            "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+             000\000\000\000\000\000\000\000\000\000\000",
+        }
+        or a dictionary with the Error if the FWMP doesn't exist and
+        cleared_fwmp is True
+        { 'error': 'CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID' }
+
+    Raises:
+         ChromiumOSError if any expected field is not found in the cryptohome
+         output. This would typically happen when FWMP state does not match
+         'clreared_fwmp'
+    """
+    out = __run_cmd(CRYPTOHOME_CMD +
+                    ' --action=get_firmware_management_parameters')
+
+    if cleared_fwmp:
+        fields = ['error']
+    else:
+        fields = ['flags', 'developer_key_hash']
+
+    status = {}
+    for field in fields:
+        match = re.search('%s: (\S+)\n' % field, out)
+        if not match:
+            raise ChromiumOSError('Invalid FWMP field %s: "%s".' %
+                                  (field, out))
+        status[field] = match.group(1)
+    return status
+
+
+def set_fwmp(flags, developer_key_hash=None):
+    """Set the firmware management parameter contents.
+
+    Args:
+        developer_key_hash: a string with the developer key hash
+
+    Raises:
+         ChromiumOSError cryptohome cannot set the FWMP contents
+    """
+    cmd = (CRYPTOHOME_CMD +
+          ' --action=set_firmware_management_parameters '
+          '--flags=' + flags)
+    if developer_key_hash:
+        cmd += ' --developer_key_hash=' + developer_key_hash
+
+    out = __run_cmd(cmd)
+    if 'SetFirmwareManagementParameters success' not in out:
+        raise ChromiumOSError('failed to set FWMP: %s' % out)
+
+
 def is_tpm_lockout_in_effect():
     """Returns true if the TPM lockout is in effect; false otherwise."""
     status = get_tpm_more_status()
