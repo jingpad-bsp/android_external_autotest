@@ -724,7 +724,7 @@ def _run_bucket_performance_test(key_id, key_secret, bucket_name,
 
 @rpc_utils.moblab_only
 def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
-              pool=None):
+              pool=None, suite_args=None):
     """ RPC handler to run a test suite.
 
     @param board: a board name connected to the moblab.
@@ -733,6 +733,7 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     @param ro_firmware: Optional ro firmware build number to use.
     @param rw_firmware: Optional rw firmware build number to use.
     @param pool: Optional pool name to run the suite in.
+    @param suite_args: Arguments to be used in the suite control file.
 
     @return: None
     """
@@ -741,10 +742,11 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
         builds['fwrw-version'] = rw_firmware
     if ro_firmware:
         builds['fwro-version'] = ro_firmware
+    list_suite_args = map(lambda s: s.strip(), suite_args.split(','))
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
     pool=pool, run_prod_code=False, test_source_build=build,
-    wait_for_results=False)
+    wait_for_results=False, suite_args=list_suite_args)
 
 
 def _enable_notification_using_credentials_in_bucket():
