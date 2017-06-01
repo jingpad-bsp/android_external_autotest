@@ -34,8 +34,10 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
-    UNLOCK = ['Unlock sequence starting. Continue until (\S+)']
     GETTIME = ['= (\S+)']
+    UNLOCK = ['Unlock sequence starting. Continue until (\S+)']
+    FWMP_LOCKED_PROD = ["Managed device console can't be unlocked"]
+    FWMP_LOCKED_DBG = ['Ignoring FWMP unlock setting']
 
 
     def __init__(self, servo):
