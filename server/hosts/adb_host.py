@@ -1741,8 +1741,30 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         logging.info('Skipping setup wizard on %s.', self.adb_serial)
         self.check_boot_to_adb_complete()
-        self.run('am start -n com.google.android.setupwizard/'
-                 '.SetupWizardExitActivity')
+        result = self.run('am start -n com.google.android.setupwizard/'
+                          '.SetupWizardExitActivity')
+
+        if result.exit_status != 0:
+            if result.stdout.startswith('ADB_CMD_OUTPUT:255'):
+                # If the result returns ADB_CMD_OUTPUT:255, then run the above
+                # as root.
+                logging.debug('Need root access to bypass setup wizard.')
+                self._restart_adbd_with_root_permissions()
+                result = self.run('am start -n com.google.android.setupwizard/'
+                                  '.SetupWizardExitActivity')
+
+            if result.stdout == 'ADB_CMD_OUTPUT:0':
+                # If the result returns ADB_CMD_OUTPUT:0, Error type 3, then the
+                # setup wizard does not exist, so we do not have to bypass it.
+                if result.stderr and not \
+                        result.stderr.startswith('Error type 3\n'):
+                    logging.error('Unrecoverable skip setup wizard failure:'
+                                  ' %s', result.stderr)
+                    raise error.TestError()
+                logging.debug('Skip setup wizard received harmless error: '
+                              'No setup to bypass.')
+
+        logging.debug('Bypass setup wizard was successful.')
 
 
     def get_attributes_to_clear_before_provision(self):
