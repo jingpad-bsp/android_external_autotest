@@ -57,7 +57,7 @@ _BUG_TEMPLATE = {
     'title': None,
 }
 
-args_dict['max_runtime_mins'] = 90
+args_dict['max_runtime_mins'] = 30
 args_dict['name'] = 'bvt-inline'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
