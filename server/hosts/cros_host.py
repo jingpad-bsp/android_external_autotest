@@ -488,9 +488,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns: True if the DUT was updated with stateful update.
 
         """
-        # Stop service ap-update-manager to prevent rebooting during autoupdate.
-        # The service is used in jetstream boards, but not other CrOS devices.
-        self.run('sudo stop ap-update-manager', ignore_status=True)
+        self.prepare_for_update()
 
         # TODO(jrbarnette):  Yes, I hate this re.match() test case.
         # It's better than the alternative:  see crbug.com/360944.
@@ -820,6 +818,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return build, {ds_constants.JOB_REPO_URL: repo_url}
 
 
+    def prepare_for_update(self):
+        """Prepares the DUT for an update.
+
+        Subclasses may override this to perform any special actions
+        required before updating.
+        """
+        # Stop service ap-update-manager to prevent rebooting during autoupdate.
+        # The service is used in jetstream boards, but not other CrOS devices.
+        # TODO(lgoodby): Remove this when jetstream hosts are specialized.
+        self.run('sudo stop ap-update-manager', ignore_status=True)
+
+
     def machine_install(self, update_url=None, force_update=False,
                         local_devserver=False, repair=False,
                         force_full_update=False):
@@ -909,10 +919,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             logging.info('DUT requires full update.')
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-            # Stop service ap-update-manager to prevent rebooting during
-            # autoupdate. The service is used in jetstream boards, but not other
-            # CrOS devices.
-            self.run('sudo stop ap-update-manager', ignore_status=True)
+            self.prepare_for_update()
 
             num_of_attempts = provision.FLAKY_DEVSERVER_ATTEMPTS
 
@@ -1418,10 +1425,28 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('The host has wrong cros-version label.')
 
 
+    def cleanup_services(self):
+        """Reinitializes the device for cleanup.
+
+        Subclasses may override this to customize the cleanup method.
+
+        To indicate failure of the reset, the implementation may raise
+        any of:
+            error.AutoservRunError
+            error.AutotestRunError
+            FactoryImageCheckerException
+
+        @raises error.AutoservRunError
+        @raises error.AutotestRunError
+        @raises error.FactoryImageCheckerException
+        """
+        self._restart_ui()
+
+
     def cleanup(self):
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
-            self._restart_ui()
+            self.cleanup_services()
         except (error.AutotestRunError, error.AutoservRunError,
                 FactoryImageCheckerException):
             logging.warning('Unable to restart ui, rebooting device.')
