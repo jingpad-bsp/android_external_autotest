@@ -742,7 +742,10 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
         builds['fwrw-version'] = rw_firmware
     if ro_firmware:
         builds['fwro-version'] = ro_firmware
-    list_suite_args = map(lambda s: s.strip(), suite_args.split(','))
+    if suite_args:
+        list_suite_args = map(lambda s: s.strip(), suite_args.split(','))
+    else:
+        list_suite_args = None
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
     pool=pool, run_prod_code=False, test_source_build=build,
