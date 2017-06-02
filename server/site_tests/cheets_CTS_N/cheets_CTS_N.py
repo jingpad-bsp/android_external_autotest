@@ -263,6 +263,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  target_method=None,
                  needs_push_media=False,
                  max_retry=None,
+                 cts_tradefed_args=None,
                  timeout=_CTS_TIMEOUT_SECONDS):
         """Runs the specified CTS once, but with several retries.
 
@@ -272,6 +273,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         3. Run all the test cases of class named |target_class|.
         4. Run a specific test method named |target_method| of class
            |target_class|.
+        5. Run an arbitrary tradefed command.
 
         @param target_module: the name of test module to run.
         @param target_plan: the name of the test plan to run.
@@ -280,6 +282,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @param needs_push_media: need to push test media streams.
         @param max_retry: number of retry steps before reporting results.
         @param timeout: time after which tradefed can be interrupted.
+        @param cts_tradefed_args: a list of args to pass to tradefed.
         """
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
@@ -313,6 +316,10 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 test_class=target_class,
                 test_method=target_method,
                 session_id=session_id)
+        elif cts_tradefed_args is not None:
+            test_name = 'run tradefed %s' % ' '.join(cts_tradefed_args)
+            test_command = cts_tradefed_args
+
         else:
             test_command = self._tradefed_run_command()
             test_name = 'all_CTS'
