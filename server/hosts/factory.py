@@ -9,8 +9,8 @@ from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import adb_host, cros_host, emulated_adb_host
-from autotest_lib.server.hosts import iota_host, moblab_host, sonic_host
-from autotest_lib.server.hosts import ssh_host, testbed
+from autotest_lib.server.hosts import iota_host, jetstream_host, moblab_host
+from autotest_lib.server.hosts import sonic_host, ssh_host, testbed
 
 
 CONFIG = global_config.global_config
@@ -37,6 +37,7 @@ OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'cros' : cros_host.CrosHost,
                 'emulated_brillo': emulated_adb_host.EmulatedADBHost,
                 'iota': iota_host.IotaHost,
+                'jetstream': jetstream_host.JetstreamHost,
                 'moblab': moblab_host.MoblabHost}
 
 
