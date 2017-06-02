@@ -56,9 +56,9 @@ from autotest_lib.site_utils import lxc
 with open(sys.argv[1], 'w') as f:
     f.write('test')
 
-# Confirm hostname starts with `test_`
-if not socket.gethostname().startswith('test_'):
-    raise Exception('The container\\\'s hostname must start with `test_`.')
+# Confirm hostname starts with `test-`
+if not socket.gethostname().startswith('test-'):
+    raise Exception('The container\\\'s hostname must start with `test-`.')
 
 # Test installing packages
 lxc.install_packages(['atop'], ['acora'])
