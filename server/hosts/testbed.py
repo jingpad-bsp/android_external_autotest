@@ -425,6 +425,7 @@ class TestBed(object):
         build_url, build_local_path, teststation = self._stage_shared_build(
                 serial_build_map)
 
+        thread_pool = None
         try:
             arguments = []
             for serial, build in serial_build_map.iteritems():
@@ -445,7 +446,12 @@ class TestBed(object):
             thread_pool = pool.ThreadPool(_POOL_SIZE)
             thread_pool.map(self._install_device, arguments)
             thread_pool.close()
+        except Exception as err:
+            logging.error(err.message)
         finally:
+            if thread_pool:
+                thread_pool.join()
+
             if build_local_path:
                 logging.debug('Clean up build artifacts %s:%s',
                               teststation.hostname, build_local_path)
