@@ -298,6 +298,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         Refer to _device_run method for docstring for parameters.
         """
+        # Suppresses 'adb devices' from printing to the logs, which often
+        # causes large log files.
+        if command == "devices":
+            kwargs['verbose'] = False
         return self._device_run(ADB_CMD, command, **kwargs)
 
 
