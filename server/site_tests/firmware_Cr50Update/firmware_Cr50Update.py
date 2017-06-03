@@ -68,8 +68,7 @@ class firmware_Cr50Update(FirmwareTest):
             self.rootfs_tool.enable()
 
         self.host = host
-        self.test = test.lower()
-        self.erase_nvmem = self.test == self.ERASE_NVMEM
+        self.erase_nvmem = test.lower() == self.ERASE_NVMEM
 
         # A dict used to store relevant information for each image
         self.images = {}
