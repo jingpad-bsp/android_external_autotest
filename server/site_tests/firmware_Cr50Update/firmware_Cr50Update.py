@@ -73,17 +73,8 @@ class firmware_Cr50Update(FirmwareTest):
         # A dict used to store relevant information for each image
         self.images = {}
 
-        running_rw = cr50_utils.GetRunningVersion(self.host)[1]
         # Get the original image from the cr50 firmware directory on the dut
         self.save_original_image(cr50_utils.CR50_FILE)
-
-        # If Cr50 is not running the image from the cr50 firmware directory,
-        # then raise an error, otherwise the test will not be able to restore
-        # the original state during cleanup.
-        if running_rw != self.original_rw:
-            raise error.TestError("Can't determine original Cr50 version. "
-                                  "Running %s, but saved %s." %
-                                  (running_rw, self.original_rw))
 
         # Process the given images in order of oldest to newest. Get the version
         # info and add them to the update order
@@ -109,8 +100,13 @@ class firmware_Cr50Update(FirmwareTest):
         failed.
         """
         rv = self.SUCCESS
+
+        original_ver, _, original_path = self.images[self.ORIGINAL_NAME]
+        original_rw = original_ver[1]
+        cr50_utils.InstallImage(self.host, original_path)
+
         _, running_rw, is_dev = self.cr50.get_active_version_info()
-        new_rw = cr50_utils.GetNewestVersion(running_rw, self.original_rw)
+        new_rw = cr50_utils.GetNewestVersion(running_rw, original_rw)
 
         # If Cr50 is running the original image, then no update is needed.
         if new_rw is None:
@@ -119,16 +115,16 @@ class firmware_Cr50Update(FirmwareTest):
         try:
             # If a rollback is needed, update to the dev image so it can
             # rollback to the original image.
-            if new_rw != self.original_rw and not is_dev:
+            if new_rw != original_rw and not is_dev:
                 logging.info("Updating to dev image to enable rollback")
                 self.run_update(self.DEV_NAME, use_usb_update=True)
 
             logging.info("Updating to the original image %s",
-                         self.original_rw)
+                         original_rw)
             self.run_update(self.ORIGINAL_NAME, use_usb_update=True)
         except Exception, e:
             logging.info("cleanup update from %s to %s failed", running_rw,
-                          self.original_rw)
+                          original_rw)
             logging.debug(e)
             rv = e
         self.cr50.ccd_enable()
@@ -400,23 +396,38 @@ class firmware_Cr50Update(FirmwareTest):
         """Save the image currently running on the DUT.
 
         Copy the image from the DUT to the local tmp directory and get version
-        information. Store the information in the images dict.
+        information. Store the information in the images dict. Make sure the
+        saved version matches the running version.
 
-        @param dut_path: the location of the cr50 prod image on the DUT.
+        Args:
+            dut_path: the location of the cr50 prod image on the DUT.
+
+        Raises:
+            error.TestError if the saved cr50 image version does not match the
+            version cr50 is running.
         """
         name = self.ORIGINAL_NAME
         local_dest = '/tmp/%s.bin' % name
 
+        running_ver = cr50_utils.GetRunningVersion(self.host)
+        running_ver_str = cr50_utils.GetVersionString(running_ver)
+
         self.host.get_file(dut_path, local_dest)
 
-        ver = cr50_utils.GetBinVersion(self.host, dut_path)
-        ver_str = cr50_utils.GetVersionString(ver)
+        saved_ver = cr50_utils.GetBinVersion(self.host, dut_path)
+        saved_ver_str = cr50_utils.GetVersionString(saved_ver)
 
-        self.images[name] = (ver, ver_str, local_dest)
+        # If Cr50 is not running the image in the cr50 firmware directory, then
+        # raise an error. We can't run this test unless we can restore the
+        # original state during cleanup.
+        if running_ver[1] != saved_ver[1]:
+            raise error.TestError("Can't determine original Cr50 version. "
+                                  "Running %s, but saved %s." %
+                                  (running_ver_str, saved_ver_str))
+
+        self.images[name] = (saved_ver, saved_ver_str, local_dest)
         logging.info("%s stored at %s with version %s", name, local_dest,
-                     ver_str)
-
-        self.original_rw = ver[1]
+                     saved_ver_str)
 
 
     def after_run_once(self):
