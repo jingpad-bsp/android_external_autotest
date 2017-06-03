@@ -151,63 +151,26 @@ class firmware_Cr50Update(FirmwareTest):
         super(firmware_Cr50Update, self).cleanup()
 
 
-    def run_usb_update(self, dest, is_newer):
+    def run_usb_update(self, dest):
         """Run usb_update with the given image.
-
-        If the new image version is newer than the one Cr50 is running, then
-        the upstart option will be used. This will reboot the AP after
-        usb_updater runs, so Cr50 will finish the update and jump to the new
-        image.
 
         If the new image version is older than the one Cr50 is running, then the
         best usb_updater can do is flash the image into the inactive partition.
-        To finish th update, the 'rw' command will need to be used to force a
+        To finish the update, the 'rw' command will need to be used to force a
         rollback.
 
         @param dest: the image location.
-        @param is_newer: True if the rw version of the update image is newer
-                         than the one Cr50 is running.
         """
-
-        result = self.host.run("status trunksd")
-        if 'running' in result.stdout:
-            self.host.run("stop trunksd")
 
         # Enable CCD, so we can detect the Cr50 reboot.
         self.cr50.ccd_enable()
-        if is_newer:
-            # Using -u usb_updater will post a reboot request but not reboot
-            # immediately.
-            result = self.host.run("usb_updater -s -u %s" % dest,
-                                   ignore_status=True)
-            exit_status = result.exit_status
-        else:
-            logging.info("Flashing image into inactive partition")
-            # The image at 'dest' is older than the one Cr50 is running, so
-            # upstart cannot be used. Without -u Cr50 will flash the image into
-            # the inactive partition and reboot immediately.
-            result = self.host.run("usb_updater -s %s" % dest,
-                                   ignore_status=True,
-                                   ignore_timeout=True,
-                                   timeout=self.UPDATE_TIMEOUT)
-            # If the command timed out result will be None. That is expected if
-            # Cr50 reboots
-            exit_status = result.exit_status if result else self.UPDATE_OK
 
-        # After a posted reboot, the usb_update exit code should equal 1.
-        if exit_status and exit_status != self.UPDATE_OK:
-            logging.debug(result)
-            raise error.TestError("Got unexpected usb_update exit code %d" %
-                                  result.exit_status)
-
-        # Reset the AP to finish the Cr50 update.
-        if is_newer:
-            self.cr50.send_command("sysrst pulse")
+        cr50_utils.UsbUpdate(self.host, ['-s', dest])
 
         # After usb_updater finishes running, Cr50 will reboot. Wait until Cr50
         # reboots before continuing. Cr50 reboot can be detected by detecting
         # when CCD stops working.
-        self.cr50.wait_for_ccd_disable(raise_error=is_newer)
+        self.cr50.wait_for_ccd_disable()
 
 
     def finish_rollback(self, image_rw):
@@ -286,7 +249,7 @@ class firmware_Cr50Update(FirmwareTest):
         # If a rollback is needed, flash the image into the inactive partition,
         # on or use usb_update to update to the new image if it is requested.
         if use_usb_update or rollback:
-            self.run_usb_update(dest, not rollback)
+            self.run_usb_update(dest)
         # Use cr50 console commands to rollback to the old image.
         if rollback:
             self.finish_rollback(image_rw)
