@@ -53,7 +53,7 @@ class firmware_Cr50Update(FirmwareTest):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
 
-        if not release_ver or release_path:
+        if not release_ver and not os.path.isfile(release_path):
             raise error.TestError('Need to specify a release version or path')
 
         # Make sure ccd is disabled so it won't interfere with the update
