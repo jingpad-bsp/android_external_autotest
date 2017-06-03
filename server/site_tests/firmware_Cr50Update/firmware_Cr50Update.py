@@ -147,11 +147,10 @@ class firmware_Cr50Update(FirmwareTest):
         # Restore the original Cr50 image
         if self.processed_images:
             for i in xrange(self.RESTORE_ORIGINAL_TRIES):
-                rv = self.restore_original_image()
-                if rv == self.SUCCESS:
+                if self.restore_original_image() == self.SUCCESS:
                     logging.info("Successfully restored the original image")
                     break
-            if rv != self.SUCCESS:
+            else:
                 raise error.TestError("Could not restore the original image")
 
         super(firmware_Cr50Update, self).cleanup()
