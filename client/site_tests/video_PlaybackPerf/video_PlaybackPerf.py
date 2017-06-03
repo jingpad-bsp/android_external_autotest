@@ -202,13 +202,8 @@ class video_PlaybackPerf(test.test):
         self._service_stopper.stop_services()
 
         self._power_status = power_status.get_status()
-        # We expect the DUT is powered by battery now. But this is not always
-        # true due to other bugs. Disable this test temporarily as workaround.
-        # TODO(kcwu): remove this workaround after AC control is stable
-        #             crbug.com/723968
-        if self._power_status.on_ac():
-            raise error.TestNAError('Still powered by AC. Skip this test')
-        # Verify that the battery is sufficiently charged.
+        # Verify that we are running on battery and the battery is sufficiently
+        # charged.
         self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
 
         measurements = [power_status.SystemPower(
