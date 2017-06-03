@@ -319,6 +319,7 @@ class firmware_Cr50Update(FirmwareTest):
                     it will be gotten from chromeos-localmirror-private using
                     the devids
         """
+        self.cr50.ccd_enable()
         devid = self.servo.get('cr50_devid').replace(' ', '_')
 
         # Prod images are gotten with the ver. Debug images use the devid
