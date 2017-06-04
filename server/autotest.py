@@ -1,15 +1,23 @@
 # Copyright 2007 Google Inc. Released under the GPL v2
 #pylint: disable-msg=C0111
 
-import re, os, sys, traceback, time, glob, tempfile
+import glob
 import logging
+import os
+import re
+import sys
+import tempfile
+import time
+import traceback
 
 import common
-from autotest_lib.server import installable_object, prebuild, utils
 from autotest_lib.client.common_lib import base_job, error, autotemp
 from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils as client_utils
+from autotest_lib.server import installable_object
+from autotest_lib.server import prebuild
+from autotest_lib.server import utils
 
 try:
     from chromite.lib import metrics
@@ -20,6 +28,8 @@ except ImportError:
 AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
 
+BUILD_DIR_SUMMARY_CMD = '%s/bin/result_utils.py -p %s'
+BUILD_DIR_SUMMARY_TIMEOUT = 120
 
 get_value = global_config.global_config.get_config_value
 autoserv_prebuild = get_value('AUTOSERV', 'enable_server_prebuild',
@@ -996,6 +1006,22 @@ class log_collector(object):
 
         # Copy all dirs in default to results_dir
         try:
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/job/dir_summary_collection_duration',
+                    fields={'dut_host_name': self.host.hostname}):
+                try:
+                    # Build test result directory summary
+                    logging.debug('Getting directory summary for %s.',
+                                  self.client_results_dir)
+                    cmd = (BUILD_DIR_SUMMARY_CMD %
+                           (self.host.autodir, self.client_results_dir + '/'))
+                    self.host.run(cmd, ignore_status=False,
+                                  timeout=BUILD_DIR_SUMMARY_TIMEOUT)
+                except error.AutoservRunError:
+                    logging.exception(
+                            'Failed to create directory summary for %s.',
+                            self.client_results_dir)
+
             with metrics.SecondsTimer(
                     'chromeos/autotest/job/log_collection_duration',
                     fields={'dut_host_name': self.host.hostname}):
