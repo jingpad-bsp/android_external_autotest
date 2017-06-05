@@ -334,8 +334,10 @@ class ServoLabel(base_label.BaseLabel):
 
         @returns True if a servo host is detected, False otherwise.
         """
+        servo_host_hostname = None
         servo_args, _ = servo_host._get_standard_servo_args(host)
-        servo_host_hostname = servo_args.get(servo_host.SERVO_HOST_ATTR)
+        if servo_args:
+            servo_host_hostname = servo_args.get(servo_host.SERVO_HOST_ATTR)
         return (servo_host_hostname is not None
                 and servo_host.servo_host_is_up(servo_host_hostname))
 
