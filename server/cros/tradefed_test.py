@@ -194,12 +194,10 @@ def pushd(d):
         os.chdir(current)
 
 
-def parse_tradefed_v2_result(result, accumulative_count=False, waivers=None):
+def parse_tradefed_v2_result(result, waivers=None):
     """Check the result from the tradefed-v2 output.
 
     @param result: The result stdout string from the tradefed command.
-    @param accumulative_count: set True if using an old version of tradefed
-                               that prints test count in accumulative way.
     @param waivers: a set() of tests which are permitted to fail.
     @return 5-tuple (tests, passed, failed, notexecuted, waived)
     """
@@ -253,15 +251,10 @@ def parse_tradefed_v2_result(result, accumulative_count=False, waivers=None):
            # iteration by running "0 tests, 0 passed, ...". Do not count
            # that in.
            if ntest > 0:
-               if accumulative_count:
-                   total_test[abi] = ntest
-                   total_pass[abi] = npass
-                   total_fail[abi] = nfail
-               else:
-                   total_test[abi] = (total_test.get(abi, 0) + ntest -
-                       last_notexec.get(abi, 0))
-                   total_pass[abi] = total_pass.get(abi, 0) + npass
-                   total_fail[abi] = total_fail.get(abi, 0) + nfail
+               total_test[abi] = (total_test.get(abi, 0) + ntest -
+                   last_notexec.get(abi, 0))
+               total_pass[abi] = total_pass.get(abi, 0) + npass
+               total_fail[abi] = total_fail.get(abi, 0) + nfail
                last_notexec[abi] = nnotexec
            abi = None
 
@@ -786,7 +779,7 @@ class TradefedTest(test.test):
                      datetime_id)
         return datetime_id
 
-    def _parse_tradefed_datetime_N(self, result, summary=None):
+    def _parse_tradefed_datetime_v2(self, result, summary=None):
         """Get the tradefed provided result ID consisting of a datetime stamp.
 
         Unfortunately we are unable to tell tradefed where to store the results.
@@ -866,19 +859,16 @@ class TradefedTest(test.test):
                                  'become inconsistent.')
         return (tests, passed, failed, not_executed, waived)
 
-    def _parse_result_v2(self, result, accumulative_count=False, waivers=None):
+    def _parse_result_v2(self, result, waivers=None):
         """Check the result from the tradefed-v2 output.
 
         This extracts the test pass/fail/executed list from the output of
         tradefed. It is up to the caller to handle inconsistencies.
 
         @param result: The result object from utils.run.
-        @param accumulative_count: set True if using an old version of tradefed
-                                   that prints test count in accumulative way.
         @param waivers: a set() of tests which are permitted to fail.
         """
-        return parse_tradefed_v2_result(result.stdout, accumulative_count,
-                                        waivers)
+        return parse_tradefed_v2_result(result.stdout, waivers)
 
     def _collect_logs(self, repository, datetime, destination):
         """Collects the tradefed logs.
