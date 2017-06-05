@@ -261,7 +261,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
             '--ozone-platform=gbm',
             helper_logger.chrome_vmodule_flag(),
         ]
-        cmd_line = ' '.jon(cmd_line_list)
+        cmd_line = ' '.join(cmd_line_list)
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(BINARY, cmd_line, prefix=time_cmd)
