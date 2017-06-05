@@ -195,7 +195,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         if not datetime_id:
             # Parse stdout to obtain datetime of the session. This is needed to
             # locate result xml files and logs.
-            datetime_id = self._parse_tradefed_datetime_N(output, self.summary)
+            datetime_id = self._parse_tradefed_datetime_v2(output, self.summary)
         # Collect tradefed logs for autotest.
         tradefed = os.path.join(self._android_cts, 'android-cts')
         self._collect_logs(tradefed, datetime_id, result_destination)
