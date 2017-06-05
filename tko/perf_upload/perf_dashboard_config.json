@@ -20,6 +20,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "cheets_StartAndroid",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "enterprise_CFM_Perf",
     "master_name": "ChromeOS_Enterprise"
   },
