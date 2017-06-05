@@ -86,6 +86,47 @@ def cleanup():
         os.unlink(ENTRY)
 
 
+def repo_is_dirty():
+    """Checks if a repo is dirty by git diff command.
+
+    @returns: True if there are uncommitted changes. False otherwise.
+
+    """
+    try:
+        subprocess.check_call(['git', 'diff', '--quiet'])
+        subprocess.check_call(['git', 'diff', '--cached', '--quiet'])
+    except subprocess.CalledProcessError:
+        return True
+    return False
+
+
+def get_git_sha1():
+    """Returns git SHA-1 hash of HEAD.
+
+    @returns: git SHA-1 has of HEAD with minimum length 9.
+
+    """
+    return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD']).strip()
+
+
+def append_name_with_git_hash(out_file):
+    """Append the file with git SHA-1 hash.
+
+    For out_file like ABC.xyz, append the name ABC with git SHA-1 of HEAD, like
+    ABC_f4610bdd3.xyz.
+    If current repo contains uncommitted changes, it will be
+    ABC_f4610bdd3_dirty.xyz.
+
+    """
+    basename, ext = os.path.splitext(out_file)
+    basename += '_'
+    basename += get_git_sha1()
+    if repo_is_dirty():
+        basename += '_dirty'
+    return basename + ext
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Pack audio related modules into a zip file.')
@@ -97,7 +138,7 @@ if __name__ == '__main__':
     format = '%(asctime)-15s:%(levelname)s:%(pathname)s:%(lineno)d: %(message)s'
     logging.basicConfig(format=format, level=level)
 
-    out_file = args.out
+    out_file = append_name_with_git_hash(args.out)
 
     try:
         create_link()
