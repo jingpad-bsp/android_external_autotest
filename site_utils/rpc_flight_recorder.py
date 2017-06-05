@@ -95,7 +95,7 @@ class AfeMonitor(object):
         metric_fields['failure_reason'] = ''
 
         with metrics.SecondsTimer(METRIC_RPC_CALL_DURATIONS,
-                fields=dict(self._metric_fields)) as f:
+                fields=dict(metric_fields)) as f:
             try:
                 result = self._afe.run(cmd)
                 f['success'] = True
