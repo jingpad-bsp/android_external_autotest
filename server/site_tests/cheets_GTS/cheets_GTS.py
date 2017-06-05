@@ -14,7 +14,6 @@
 
 import logging
 import os
-import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
@@ -49,9 +48,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 set, full GTS set will run.
         """
         self._target_package = target_package
-        #TODO(dhaddock): remove --skip-device-info with GTS 4.1_r2 (b/32889514)
-        return ['run', 'commandAndExit', 'gts', '--skip-device-info',
-                '--module', target_package]
+        return ['run', 'commandAndExit', 'gts', '--module', target_package]
 
 
     def _run_gts_tradefed(self, gts_tradefed_args):
@@ -84,7 +81,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
         # Parse stdout to obtain datetime IDs of directories into which tradefed
         # wrote result xml files and logs.
-        datetime_id = self._parse_tradefed_datetime(output)
+        datetime_id = self._parse_tradefed_datetime_v2(output)
         repository = os.path.join(self._android_gts, 'android-gts')
         self._collect_logs(repository, datetime_id, result_destination)
 
@@ -102,25 +99,10 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # All test has passed successfully, here.
         logging.info('The test has passed successfully.')
 
-    def _parse_tradefed_datetime(self, result):
-        """This parses the tradefed datetime object from the GTS output.
-        :param result: the tradefed result object
-        :return: the datetime
-        """
-        #TODO(dhaddock): Merge this into tradefed_test when N is working
-        match = re.search(r': Starting invocation for .+ (\S+) on device',
-                          result.stdout)
-        datetime_id = match.group(1)
-        logging.info('Tradefed identified results and logs with %s.',
-                     datetime_id)
-        return datetime_id
-
     def run_once(self, target_package=None, gts_tradefed_args=None):
         """Runs GTS target package exactly once."""
         with self._login_chrome():
-            self._connect_adb()
-            self._disable_adb_install_dialog()
-            self._wait_for_arc_boot()
+            self._ready_arc()
             if not gts_tradefed_args:
                 gts_tradefed_args = self._get_gts_test_args(target_package)
             self._run_gts_tradefed(gts_tradefed_args)
