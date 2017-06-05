@@ -20,32 +20,10 @@ class TradefedTestTest(unittest.TestCase):
     def test_parse_tradefed_v2_result(self):
         """Test for parse_tradefed_v2_result."""
 
-        cts_waivers = set([
+        waivers = set([
             'android.app.cts.SystemFeaturesTest#testUsbAccessory',
             'android.widget.cts.GridViewTest#testSetNumColumns',
         ])
-        gts_waivers = set([
-            'com.google.android.gts.multiuser.RestrictedProfileHostTest'
-                '#testRestrictedProfile',
-        ])
-
-        # b/36288975
-        # http://pantheon/storage/browser/chromeos-autotest-results/106523703-chromeos-test/
-        # For a single-test chunk, tradefed prints "1 test", not "1 tests".
-        self.assertEquals((178, 172, 6, 0, 2),
-            tradefed_test.parse_tradefed_v2_result(
-                _load_data('GtsGmscoreHostTestCases.txt'),
-                accumulative_count=True,
-                waivers=gts_waivers))
-
-        # b/35605415
-        # http://pantheon/storage/browser/chromeos-autotest-results/106915033-chromeos-test/
-        # GTS: Tradefed may split a module to multiple chunks.
-        self.assertEquals((4, 4, 0, 0, 0),
-            tradefed_test.parse_tradefed_v2_result(
-                _load_data('GtsSearchHostTestCases.txt'),
-                accumulative_count=True,
-                waivers=gts_waivers))
 
         # b/35605415 and b/36520623
         # http://pantheon/storage/browser/chromeos-autotest-results/108103986-chromeos-test/
@@ -54,8 +32,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((35, 33, 2, 0, 0),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsHostsideNetworkTests.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # b/35530394
         # http://pantheon/storage/browser/chromeos-autotest-results/108291418-chromeos-test/
@@ -63,8 +40,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((1395, 1386, 9, 0, 0),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsMediaTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # b/35530394
         # http://pantheon/storage/browser/chromeos-autotest-results/106540705-chromeos-test/
@@ -72,8 +48,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((110, 27, 1, 82, 0),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsSecurityTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # b/36629187
         # http://pantheon/storage/browser/chromeos-autotest-results/108855595-chromeos-test/
@@ -81,8 +56,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((739, 573, 3, 163, 0),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsViewTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # b/36375690
         # http://pantheon/storage/browser/chromeos-autotest-results/109040174-chromeos-test/
@@ -90,14 +64,12 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((321, 316, 5, 0, 1),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsAppTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
         # ... and the retry of the above failing iteration.
         self.assertEquals((5, 1, 4, 0, 1),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsAppTestCases-retry.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # http://pantheon/storage/browser/chromeos-autotest-results/116875512-chromeos-test/
         # When a test case crashed during teardown, tradefed prints the "fail"
@@ -105,8 +77,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((1194, 1185, 10, 0, 2),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsWidgetTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
         # http://pantheon/storage/browser/chromeos-autotest-results/117914707-chromeos-test/
         # When a test case unrecoverably crashed during teardown, tradefed
@@ -114,8 +85,7 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals((71, 70, 1, 0, 0),
             tradefed_test.parse_tradefed_v2_result(
                 _load_data('CtsPrintTestCases.txt'),
-                accumulative_count=False,
-                waivers=cts_waivers))
+                waivers=waivers))
 
 if __name__ == '__main__':
     unittest.main()
