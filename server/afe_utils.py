@@ -197,7 +197,9 @@ def machine_install_and_update_labels(host, *args, **dargs):
     @param *args: Args list to pass to machine_install.
     @param **dargs: dargs dict to pass to machine_install.
     """
-    clear_version_labels(host)
+    info = host.host_info_store.get()
+
+    info.clear_version_labels()
     clear_host_attributes_before_provision(host)
     # If ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE is enabled and the host is a
     # CrosHost, devserver will be used to trigger auto-update.
@@ -208,4 +210,6 @@ def machine_install_and_update_labels(host, *args, **dargs):
         image_name, host_attributes = host.machine_install(*args, **dargs)
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
-    add_version_label(host, image_name)
+    info.set_version_label(host.VERSION_PREFIX, image_name)
+
+    host.host_info_store.commit(info)
