@@ -112,7 +112,9 @@ class TestProcessRefresher(unittest.TestCase):
     def test_respect_dark_mark(self):
         """When check_mark=True, dark mark check is performed and respected.
 
-        Only filtered processes with dark mark should be returned.
+        Only filtered processes with dark mark should be returned. We only test
+        this with use_pool=False because mocking out _process_has_dark_mark with
+        multiprocessing.Pool is hard.
         """
         self.maxDiff = None
         process_refresher = drone_utility.ProcessRefresher(check_mark=True)
