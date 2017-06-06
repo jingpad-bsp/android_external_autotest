@@ -59,7 +59,7 @@ class platform_LabFirmwareUpdate(test.test):
         """Retrive RO, RW EC/PD version."""
         ro = None
         rw = None
-        lines = self._run_cmd('/usr/sbin/ectool version')
+        lines = self._run_cmd('ectool version', checkfor='version')
         for line in lines.splitlines():
             if line.startswith('RO version:'):
                 parts = line.split(':')
@@ -75,6 +75,22 @@ class platform_LabFirmwareUpdate(test.test):
         rw = self.faft_client.system.get_crossystem_value('fwid')
         return (ro, rw)
 
+    def _construct_fw_version(self, fw_ro, fw_rw):
+        """Construct a firmware version string in a consistent manner.
+
+        @param fw_ro: A string representing the version of a read-only
+                      firmware.
+        @param fw_rw: A string representing the version of a read-write
+                      firmware.
+
+        @returns a string constructed from fw_ro and fw_rw
+
+        """
+        if fw_ro == fw_rw:
+            return fw_rw
+        else:
+            return '%s,%s' % (fw_ro, fw_rw)
+
     def _get_version_all(self):
         """Retrive BIOS, EC, and PD firmware version.
 
@@ -84,16 +100,10 @@ class platform_LabFirmwareUpdate(test.test):
         ec_version = None
         if self.has_ec:
             (ec_ro, ec_rw) = self._get_version()
-            if ec_ro == ec_rw:
-                ec_version = ec_rw
-            else:
-                ec_version = '%s,%s' % (ec_ro, ec_rw)
+            ec_version = self._construct_fw_version(ec_ro, ec_rw)
             logging.info('Installed EC version: %s', ec_version)
         (bios_ro, bios_rw) = self._bios_version()
-        if bios_ro == bios_rw:
-            bios_version = bios_rw
-        else:
-            bios_version = '%s,%s' % (bios_ro, bios_rw)
+        bios_version = self._construct_fw_version(bios_ro, bios_rw)
         logging.info('Installed BIOS version: %s', bios_version)
         return (bios_version, ec_version)
 
@@ -104,16 +114,27 @@ class platform_LabFirmwareUpdate(test.test):
         """
         ec = None
         bios = None
+        bios_ro = None
+        bios_rw = None
         shellball = self._run_cmd('/usr/sbin/chromeos-firmwareupdate -V')
         for line in shellball.splitlines():
             if line.startswith('BIOS version:'):
                 parts = line.split(':')
-                bios = parts[1].strip()
-                logging.info('shellball bios %s', bios)
+                bios_ro = parts[1].strip()
+                logging.info('shellball ro bios %s', bios_ro)
+            if line.startswith('BIOS (RW) version:'):
+                parts = line.split(':')
+                bios_rw = parts[1].strip()
+                logging.info('shellball rw bios %s', bios_rw)
             elif line.startswith('EC version:'):
                 parts = line.split(':')
                 ec = parts[1].strip()
                 logging.info('shellball ec %s', ec)
+        # Shellballs do not always contain a RW version.
+        if bios_rw is not None:
+          bios = self._construct_fw_version(bios_ro, bios_rw)
+        else:
+          bios = bios_ro
         return (bios, ec)
 
     def run_once(self, replace=True):
@@ -141,6 +162,8 @@ class platform_LabFirmwareUpdate(test.test):
             self.host.reboot()
             # Check that installed firmware match the shellball.
             (bios, ec) = self._get_version_all()
+            # TODO(kmshelton): Refactor this test to use named tuples so that
+            # the comparison is eaiser to grok.
             if (bios != shball_bios or ec != shball_ec):
                 logging.info('shball bios/ec: %s/%s',
                              shball_bios, shball_ec)
