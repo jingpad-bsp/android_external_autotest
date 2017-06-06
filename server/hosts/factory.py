@@ -5,12 +5,20 @@ from contextlib import closing
 
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
-from autotest_lib.server.hosts import adb_host, cros_host, emulated_adb_host
-from autotest_lib.server.hosts import iota_host, jetstream_host, moblab_host
-from autotest_lib.server.hosts import sonic_host, ssh_host, testbed
+from autotest_lib.server.hosts import adb_host
+from autotest_lib.server.hosts import cros_host
+from autotest_lib.server.hosts import emulated_adb_host
+from autotest_lib.server.hosts import host_info
+from autotest_lib.server.hosts import iota_host
+from autotest_lib.server.hosts import jetstream_host
+from autotest_lib.server.hosts import moblab_host
+from autotest_lib.server.hosts import sonic_host
+from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server.hosts import testbed
 
 
 CONFIG = global_config.global_config
@@ -58,20 +66,20 @@ def _get_host_arguments(machine):
     """
     hostname, afe_host = server_utils.get_host_info_from_machine(
             machine)
+    host_info_store = host_info.get_store_from_machine(machine)
+    info = host_info_store.get()
 
     g = globals()
-    user = afe_host.attributes.get('ssh_user', g.get('ssh_user',
-                                                     DEFAULT_SSH_USER))
-    password = afe_host.attributes.get('ssh_pass', g.get('ssh_pass',
-                                                         DEFAULT_SSH_PASS))
-    port = afe_host.attributes.get('ssh_port', g.get('ssh_port',
-                                                     DEFAULT_SSH_PORT))
-    ssh_verbosity_flag = afe_host.attributes.get('ssh_verbosity_flag',
-                                                 g.get('ssh_verbosity_flag',
-                                                       DEFAULT_SSH_VERBOSITY))
-    ssh_options = afe_host.attributes.get('ssh_options',
-                                          g.get('ssh_options',
-                                                DEFAULT_SSH_OPTIONS))
+    user = info.attributes.get('ssh_user', g.get('ssh_user', DEFAULT_SSH_USER))
+    password = info.attributes.get('ssh_pass', g.get('ssh_pass',
+                                                     DEFAULT_SSH_PASS))
+    port = info.attributes.get('ssh_port', g.get('ssh_port', DEFAULT_SSH_PORT))
+    ssh_verbosity_flag = info.attributes.get('ssh_verbosity_flag',
+                                             g.get('ssh_verbosity_flag',
+                                                   DEFAULT_SSH_VERBOSITY))
+    ssh_options = info.attributes.get('ssh_options',
+                                      g.get('ssh_options',
+                                            DEFAULT_SSH_OPTIONS))
 
     hostname, user, password, port = server_utils.parse_machine(hostname, user,
                                                                 password, port)
@@ -79,14 +87,13 @@ def _get_host_arguments(machine):
     host_args = {
             'hostname': hostname,
             'afe_host': afe_host,
+            'host_info_store': host_info_store,
             'user': user,
             'password': password,
             'port': int(port),
             'ssh_verbosity_flag': ssh_verbosity_flag,
             'ssh_options': ssh_options,
     }
-    if isinstance(machine, dict) and 'host_info_store' in machine:
-        host_args['host_info_store'] = machine['host_info_store']
     return host_args
 
 
