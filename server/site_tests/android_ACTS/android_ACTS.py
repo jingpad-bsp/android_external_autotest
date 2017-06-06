@@ -8,7 +8,6 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.site_utils import acts_lib
 
@@ -92,8 +91,8 @@ class android_ACTS(test.test):
             raise error.TestError('No hosts defined for this test, cannot'
                                   ' determine build to grab artifact from.')
 
-        job_repo_url = afe_utils.get_host_attribute(
-            host, host.job_repo_url_attribute)
+        info = host.host_info_store.get()
+        job_repo_url = info.attributes.get(host.job_repo_url_attribute, '')
         test_station = testbed.teststation
         if not perma_path:
             ts_tempfolder = test_station.get_tmp_dir()
