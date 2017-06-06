@@ -28,6 +28,7 @@ from chromite.lib import gs
 
 _CONFIG = global_config.global_config
 MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
+CROS_CACHEDIR = '/mnt/moblab/cros_cache_apache'
 
 # Google Cloud Storage bucket url regex pattern. The pattern is used to extract
 # the bucket name from the bucket URL. For example, "gs://image_bucket/google"
@@ -50,7 +51,17 @@ _DHCPD_LEASES = '/var/lib/dhcp/dhcpd.leases'
 _ETC_LSB_RELEASE = '/etc/lsb-release'
 
 # Full path to the correct gsutil command to run.
-_GSUTIL_CMD = gs.GSContext.GetDefaultGSUtilBin()
+class GsUtil:
+    _GSUTIL_CMD = None
+
+    @classmethod
+    def get_gsutil_cmd(cls):
+      if not cls._GSUTIL_CMD:
+         cls._GSUTIL_CMD = gs.GSContext.GetDefaultGSUtilBin(
+           cache_dir=CROS_CACHEDIR)
+
+      return cls._GSUTIL_CMD
+
 
 class BucketPerformanceTestException(Exception):
   pass
@@ -660,7 +671,8 @@ def _get_builds_for_in_directory(directory_name, milestone_limit=3,
     """
     output = StringIO.StringIO()
     gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
-    utils.run(_GSUTIL_CMD, args=('ls', gs_image_location + directory_name),
+    utils.run(GsUtil.get_gsutil_cmd(),
+              args=('ls', gs_image_location + directory_name),
               stdout_tee=output)
     lines = output.getvalue().split('\n')
     output.close()
@@ -703,7 +715,7 @@ def _run_bucket_performance_test(key_id, key_secret, bucket_name,
        @raises BucketPerformanceTestException if the command fails.
     """
     try:
-      utils.run(_GSUTIL_CMD, args=(
+      utils.run(GsUtil.get_gsutil_cmd(), args=(
           '-o', 'Credentials:gs_access_key_id=%s' % key_id,
           '-o', 'Credentials:gs_secret_access_key=%s' % key_secret,
           'perfdiag', '-s', test_size, '-o', result_file,
@@ -758,7 +770,7 @@ def _enable_notification_using_credentials_in_bucket():
     """
     gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
     try:
-        utils.run(_GSUTIL_CMD, args=(
+        utils.run(GsUtil.get_gsutil_cmd(), args=(
             'cp', gs_image_location + 'pubsub-key-do-not-delete.json', '/tmp'))
         # This runs the copy as moblab user
         shutil.copyfile('/tmp/pubsub-key-do-not-delete.json',
