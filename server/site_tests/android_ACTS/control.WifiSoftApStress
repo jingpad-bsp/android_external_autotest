@@ -19,6 +19,7 @@ def run(machine):
                  config_file='wifi_softApStress.config',
                  testtracker_owner='android-comms-tvc@google.com',
                  test_file='wifi_softApStress',
+                 additional_cmd_line_params="-ti 1000",
                  acts_timeout=72000)
 
 parallel_simple(run, machines)
