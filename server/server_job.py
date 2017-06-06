@@ -95,17 +95,32 @@ def get_machine_dicts(machine_names, in_lab, host_attributes=None):
             'host_info_store': A host_info.CachingHostInfoStore object to obtain
                     host information. A stub if in_lab is False.
     """
-    if host_attributes is None:
-        host_attributes = dict()
     machine_dict_list = []
     for machine in machine_names:
-        afe_host = _create_afe_host(machine, in_lab)
-        afe_host.attributes.update(host_attributes)
+        # See autoserv_parser.parse_args. Only one of in_lab or host_attributes
+        # can be provided.
+        if not in_lab:
+            afe_host = server_utils.EmptyAFEHost()
+            host_info_store = host_info.InMemoryHostInfoStore()
+            if host_attributes is not None:
+                afe_host.attributes.update(host_attributes)
+                info = host_info.HostInfo(attributes=host_attributes)
+                host_info_store.commit(info)
+        elif host_attributes:
+            raise error.AutoservError(
+                    'in_lab and host_attribute are mutually exclusive. '
+                    'Obtained in_lab:%s, host_attributes:%s'
+                    % (in_lab, host_attributes))
+        else:
+            afe_host = _create_afe_host(machine)
+            host_info_store = _create_host_info_store(machine)
+
         machine_dict_list.append({
                 'hostname' : machine,
                 'afe_host' : afe_host,
-                'host_info_store': _create_host_info_store(machine, in_lab),
+                'host_info_store': host_info_store,
         })
+
     return machine_dict_list
 
 
@@ -1427,16 +1442,12 @@ def _is_current_server_job(test):
     return test.testname == 'SERVER_JOB'
 
 
-def _create_afe_host(hostname, in_lab):
-    """Create a real or stub frontend.Host object.
+def _create_afe_host(hostname):
+    """Create an afe_host object backed by the AFE.
 
     @param hostname: Name of the host for which we want the Host object.
-    @param in_lab: (bool) whether we have access to the AFE.
     @returns: An object of type frontend.AFE
     """
-    if not in_lab:
-        return server_utils.EmptyAFEHost()
-
     afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
     hosts = afe.get_hosts(hostname=hostname)
     if not hosts:
@@ -1445,16 +1456,12 @@ def _create_afe_host(hostname, in_lab):
     return hosts[0]
 
 
-def _create_host_info_store(hostname, in_lab):
+def _create_host_info_store(hostname):
     """Create a real or stub afe_store.AfeStore object.
 
     @param hostname: Name of the host for which we want the store.
-    @param in_lab: (bool) whether we have access to the AFE.
     @returns: An object of type afe_store.AfeStore
     """
-    if not in_lab:
-        return host_info.InMemoryHostInfoStore()
-
     host_info_store = afe_store.AfeStore(hostname)
     try:
         host_info_store.get(force_refresh=True)
