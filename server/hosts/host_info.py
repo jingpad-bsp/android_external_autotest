@@ -37,6 +37,12 @@ class HostInfo(object):
     _OS_PREFIX = 'os'
     _POOL_PREFIX = 'pool'
 
+    _VERSION_LABELS = (
+            provision.CROS_VERSION_PREFIX,
+            provision.ANDROID_BUILD_VERSION_PREFIX,
+            provision.TESTBED_BUILD_VERSION_PREFIX,
+    )
+
     def __init__(self, labels=None, attributes=None):
         """
         @param labels: (optional list) labels to set on the HostInfo.
@@ -56,9 +62,7 @@ class HostInfo(object):
         @returns The first build label for this host (if there are multiple).
                 None if no build label is found.
         """
-        for label_prefix in [provision.CROS_VERSION_PREFIX,
-                            provision.ANDROID_BUILD_VERSION_PREFIX,
-                            provision.TESTBED_BUILD_VERSION_PREFIX]:
+        for label_prefix in self._VERSION_LABELS:
             build_labels = self._get_stripped_labels_with_prefix(label_prefix)
             if build_labels:
                 return build_labels[0]
@@ -102,6 +106,33 @@ class HostInfo(object):
         """
         values = self._get_stripped_labels_with_prefix(prefix)
         return values[0] if values else ''
+
+
+    def clear_version_labels(self):
+        """Clear all version labels for the host."""
+        self.labels = [
+                label for label in self.labels if
+                not any(label.startswith(prefix + ':')
+                        for prefix in self._VERSION_LABELS)]
+
+
+    def set_version_label(self, version_prefix, version):
+        """Sets the version label for the host.
+
+        If a label with version_prefix exists, this updates the value for that
+        label, else appends a new label to the end of the label list.
+
+        @param version_prefix: The prefix to use (without the infix ':').
+        @param version: The version label value to set.
+        """
+        full_prefix = _to_label_prefix(version_prefix)
+        new_version_label = full_prefix + version
+        for index, label in enumerate(self.labels):
+            if label.startswith(full_prefix):
+                self.labels[index] = new_version_label
+                return
+        else:
+            self.labels.append(new_version_label)
 
 
     def _get_stripped_labels_with_prefix(self, prefix):
@@ -340,3 +371,12 @@ def json_deserialize(file_obj):
                         deserialized_json['attributes'])
     except KeyError as e:
         raise DeserializationError('Malformed serialized host_info: %r' % e)
+
+
+def _to_label_prefix(prefix):
+    """Ensure that prefix has the expected format for label prefixes.
+
+    @param prefix: The (str) prefix to sanitize.
+    @returns: The sanitized (str) prefix.
+    """
+    return prefix if prefix.endswith(':') else prefix + ':'
