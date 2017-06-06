@@ -100,19 +100,13 @@ void TestSetControl(const char* dev_name) {
     printf("[Error] Can not open device '%s'\n", dev_name);
     exit(EXIT_FAILURE);
   }
-  // Test mandatory controls.
-  if (!ExerciseControl(&v4l2_dev, V4L2_CID_BRIGHTNESS, "brightness"))
-    exit(EXIT_FAILURE);
-  if (!ExerciseControl(&v4l2_dev, V4L2_CID_CONTRAST, "contrast"))
-    exit(EXIT_FAILURE);
-  if (!ExerciseControl(&v4l2_dev, V4L2_CID_SATURATION, "saturation"))
-    exit(EXIT_FAILURE);
-  if (!ExerciseControl(&v4l2_dev, V4L2_CID_GAMMA, "gamma"))
-    exit(EXIT_FAILURE);
-  if (!ExerciseControl(&v4l2_dev, V4L2_CID_HUE, "hue"))
-    exit(EXIT_FAILURE);
 
   // Test optional controls.
+  ExerciseControl(&v4l2_dev, V4L2_CID_BRIGHTNESS, "brightness");
+  ExerciseControl(&v4l2_dev, V4L2_CID_CONTRAST, "contrast");
+  ExerciseControl(&v4l2_dev, V4L2_CID_SATURATION, "saturation");
+  ExerciseControl(&v4l2_dev, V4L2_CID_GAMMA, "gamma");
+  ExerciseControl(&v4l2_dev, V4L2_CID_HUE, "hue");
   ExerciseControl(&v4l2_dev, V4L2_CID_GAIN, "gain");
   ExerciseControl(&v4l2_dev, V4L2_CID_SHARPNESS, "sharpness");
   v4l2_dev.CloseDevice();
