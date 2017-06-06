@@ -255,6 +255,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         return result
 
 
+    @metrics.SecondsTimerDecorator(
+            'chromeos/autotest/ssh/master_ssh_time')
     def run(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
             connect_timeout=30, options='', stdin=None, verbose=True, args=(),
