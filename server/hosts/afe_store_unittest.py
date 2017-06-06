@@ -68,9 +68,9 @@ class AfeStoreTest(unittest.TestCase):
         self.assertEqual(self.mock_afe.run.call_count, 2)
         expected_run_calls = [
                 mock.call('host_remove_labels', id='some-host',
-                          labels={'label1'}),
+                          labels=['label1']),
                 mock.call('host_add_labels', id='some-host',
-                          labels={'label2'}),
+                          labels=['label2']),
         ]
         self.mock_afe.run.assert_has_calls(expected_run_calls,
                                            any_order=True)
