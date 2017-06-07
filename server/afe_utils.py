@@ -155,19 +155,18 @@ def get_host_attribute(host, attribute, use_local_value=True):
         return local_value
 
 
-def _clear_host_attributes_before_provision(host):
+def _clear_host_attributes_before_provision(host, info):
     """Clear host attributes before provision, e.g., job_repo_url.
 
     @param host: A Host object to clear attributes before provision.
+    @param info: A HostInfo to update the attributes in.
     """
     attributes = host.get_attributes_to_clear_before_provision()
     if not attributes:
         return
 
-    info = host.host_info_store.get()
     for key in attributes:
         info.attributes.pop(key, None)
-    host.host_info_store.commit(info)
 
 
 def update_host_attribute(host, attribute, value):
@@ -199,9 +198,9 @@ def machine_install_and_update_labels(host, *args, **dargs):
     @param **dargs: dargs dict to pass to machine_install.
     """
     info = host.host_info_store.get()
-
     info.clear_version_labels()
-    _clear_host_attributes_before_provision(host)
+    _clear_host_attributes_before_provision(host, info)
+    host.host_info_store.commit(info)
     # If ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE is enabled and the host is a
     # CrosHost, devserver will be used to trigger auto-update.
     if host.support_devserver_provision:
@@ -209,7 +208,10 @@ def machine_install_and_update_labels(host, *args, **dargs):
             *args, **dargs)
     else:
         image_name, host_attributes = host.machine_install(*args, **dargs)
+        info = host.host_info_store.get()
         info.attributes.update(host_attributes)
-    info.set_version_label(host.VERSION_PREFIX, image_name)
+        host.host_info_store.commit(info)
 
+    info = host.host_info_store.get()
+    info.set_version_label(host.VERSION_PREFIX, image_name)
     host.host_info_store.commit(info)
