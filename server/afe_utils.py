@@ -208,10 +208,8 @@ def machine_install_and_update_labels(host, *args, **dargs):
             *args, **dargs)
     else:
         image_name, host_attributes = host.machine_install(*args, **dargs)
-        info = host.host_info_store.get()
-        info.attributes.update(host_attributes)
-        host.host_info_store.commit(info)
 
     info = host.host_info_store.get()
+    info.attributes.update(host_attributes)
     info.set_version_label(host.VERSION_PREFIX, image_name)
     host.host_info_store.commit(info)
