@@ -453,6 +453,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     ds = dev_server.ImageServer.resolve(image_name)
             elif info.build is not None:
                 ds = dev_server.ImageServer.resolve(info.build, hostname)
+                image_name = info.build
             else:
                 raise error.AutoservError(
                         'Failed to stage server-side package. The host has '
