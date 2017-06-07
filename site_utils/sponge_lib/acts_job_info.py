@@ -123,11 +123,11 @@ class ACTSTaskInfo(autotest_job_info.AutotestTaskInfo):
     def owner(self):
         """The owner of the task."""
         if 'param-testtracker_owner' in self.keyvals:
-            return self.keyvals['param-testtracker_owner']
+            return self.keyvals['param-testtracker_owner'].strip("'").strip('"')
         elif 'param-test_tracker_owner' in self.keyvals:
-            return self.keyvals['param-testtracker_owner']
+            return self.keyvals['param-testtracker_owner'].strip("'").strip('"')
         else:
-            return self._job.user
+            return self._job.user.strip("'").strip('"')
 
     @property
     def effort_name(self):
