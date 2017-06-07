@@ -7,6 +7,7 @@ NAME = "firmware_Cr50Update"
 PURPOSE = "Verify Cr50 update"
 TIME = "SHORT"
 TEST_TYPE = "server"
+DEPENDENCIES = "servo"
 
 DOC = """
 This test verifies Cr50 update works or recovery from erased nvmem.
