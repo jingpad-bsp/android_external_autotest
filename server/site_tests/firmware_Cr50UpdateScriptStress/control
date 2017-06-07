@@ -10,6 +10,7 @@ PURPOSE = "Verify cr50-update"
 ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "LONG"
 TEST_TYPE = "server"
+DEPENDENCIES = "servo"
 
 DOC = """
 This test clears the cr50 update state and reboots the device many times
