@@ -79,7 +79,7 @@ def call(method, *args, **kwargs):
     return _MethodCall(method, args, kwargs)
 
 
-class BaseDroneUtility(object):
+class DroneUtility(object):
     """
     This class executes actual OS calls on the drone machine.
 
@@ -599,13 +599,6 @@ def _parse_args(args):
                         help='Time this process was invoked from the master',
                         default=None, type=float)
     return parser.parse_args(args)
-
-
-SiteDroneUtility = BaseDroneUtility
-
-
-class DroneUtility(SiteDroneUtility):
-    pass
 
 
 def return_data(data):
