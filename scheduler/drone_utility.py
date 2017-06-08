@@ -167,8 +167,7 @@ class DroneUtility(object):
 
         results = {
             'pidfiles' : _read_pidfiles(pidfile_paths),
-            # element 0 of _get_process_info() is the headers from `ps`
-            'all_processes' : list(_get_process_info())[1:],
+            'all_processes' : list(_get_process_info()),
             'autoserv_processes' : self._refresh_processes('autoserv'),
             'parse_processes' : self._refresh_processes(
                     'parse', site_check_parse=check_parse),
@@ -578,7 +577,7 @@ def _get_process_info():
                     timeout_min=0.5, delay_sec=0.25)
     def run_ps():
         return subprocess.check_output(
-                ['/bin/ps', 'x', '-o', ','.join(_PS_ARGS)])
+                ['/bin/ps', '--no-header', 'x', '-o', ','.join(_PS_ARGS)])
 
     ps_output = run_ps()
     # split each line into the columns output by ps
