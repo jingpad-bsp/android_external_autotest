@@ -38,6 +38,7 @@ STATUS_FIELDS = (
     'CapEff',
     'CapBnd',
     'CapAmb',
+    'NoNewPrivs',
     'Seccomp',
 )
 PsOutput = namedtuple("PsOutput",
@@ -68,6 +69,7 @@ def get_properties(service, init_process):
     properties['exe'] = service.comm
     properties['pidns'] = yes_or_no(service.pidns != init_process.pidns)
     properties['caps'] = yes_or_no(service.capeff != init_process.capeff)
+    properties['nonewprivs'] = yes_or_no(service.nonewprivs == '1')
     properties['filter'] = yes_or_no(service.seccomp == SECCOMP_MODE_FILTER)
     return properties
 
@@ -293,6 +295,10 @@ class security_SandboxedServices(test.test):
                   process.capeff == init_process.capeff):
                 logging.error('%s: missing caps usage', exe)
                 sandbox_delta.append(exe)
+            elif (baseline[exe]['nonewprivs'] == 'Yes' and
+                  process.nonewprivs != '1'):
+                logging.error('%s: missing NoNewPrivs', exe)
+                sandbox_delta.append(exe)
             elif (baseline[exe]['filter'] == 'Yes' and
                   process.seccomp != SECCOMP_MODE_FILTER and
                   not is_asan):
@@ -330,4 +336,4 @@ class security_SandboxedServices(test.test):
 
         if len(sandbox_delta) > 0:
             logging.error('Failed sandboxing: %r', sandbox_delta)
-            raise error.TestFail("One or more processes failed sandboxing")
+            raise error.TestFail('One or more processes failed sandboxing')
