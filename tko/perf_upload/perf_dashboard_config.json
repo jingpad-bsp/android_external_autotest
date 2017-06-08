@@ -44,6 +44,14 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_Gbm",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_GLAPICheck",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_GLBench",
     "master_name": "ChromeOS_Graphics"
   },
@@ -53,6 +61,14 @@
   },
   {
     "autotest_name": "graphics_Gralloc",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_GpuReset",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_KernelMemory",
     "master_name": "ChromeOS_Graphics"
   },
   {
@@ -76,6 +92,10 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_PerfControl",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_WebGLAquarium",
     "master_name": "ChromeOS_Graphics"
   },
@@ -89,6 +109,10 @@
   },
   {
     "autotest_name": "graphics_WebGLPerformance",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
+    "autotest_name": "graphics_VTSwitch",
     "master_name": "ChromeOS_Graphics"
   },
   {
