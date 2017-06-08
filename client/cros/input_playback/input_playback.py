@@ -291,7 +291,10 @@ class InputPlayback(object):
             if len(contents_of_input_folder) != 0:
                 i2c_name = i2c_path[len('/dev/'):]
                 cmd = 'wacom_flash dummy -a %s' % i2c_name
-                fw_id = utils.run(cmd).stdout.split()[-1]
+                # Do not throw an exception if wacom_flash does not exist.
+                result = utils.run(cmd, ignore_status=True)
+                if result.exit_status == 0:
+                    fw_id = result.stdout.split()[-1]
                 break
 
         if fw_id == '':
