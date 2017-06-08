@@ -119,49 +119,6 @@ class DroneUtility(object):
         self.warnings.append(warning)
 
 
-    @staticmethod
-    def _check_pid_for_dark_mark(pid, open=open):
-        try:
-            env_file = open('/proc/%s/environ' % pid, 'rb')
-        except EnvironmentError:
-            return False
-        try:
-            env_data = env_file.read()
-        finally:
-            env_file.close()
-        return DARK_MARK_ENVIRONMENT_VAR in env_data
-
-
-    _PS_ARGS = ('pid', 'pgid', 'ppid', 'comm', 'args')
-
-
-    @classmethod
-    def _get_process_info(cls):
-        """Parse ps output for all process information.
-
-        @returns A generator of dicts with cls._PS_ARGS as keys and
-            string values each representing a running process. eg:
-            {
-                'comm': command_name,
-                'pgid': process group id,
-                'ppid': parent process id,
-                'pid': process id,
-                'args': args the command was invoked with,
-            }
-        """
-        @retry.retry(subprocess.CalledProcessError,
-                     timeout_min=0.5, delay_sec=0.25)
-        def run_ps():
-            return subprocess.check_output(
-                    ['/bin/ps', 'x', '-o', ','.join(cls._PS_ARGS)])
-
-        ps_output = run_ps()
-        # split each line into the columns output by ps
-        split_lines = [line.split(None, 4) for line in ps_output.splitlines()]
-        return (dict(itertools.izip(cls._PS_ARGS, line_components))
-                for line_components in split_lines)
-
-
     def _refresh_processes(self, command_name, open=open,
                            site_check_parse=None):
         """Refreshes process info for the given command_name.
@@ -178,31 +135,17 @@ class DroneUtility(object):
         check_mark = global_config.global_config.get_config_value(
             'SCHEDULER', 'check_processes_for_dark_mark', bool, False)
         processes = []
-        for info in self._get_process_info():
+        for info in _get_process_info():
             is_parse = (site_check_parse and site_check_parse(info))
             if info['comm'] == command_name or is_parse:
                 if (check_mark and not
-                        self._check_pid_for_dark_mark(info['pid'], open=open)):
+                        _check_pid_for_dark_mark(info['pid'], open=open)):
                     self._warn('%(comm)s process pid %(pid)s has no '
                                'dark mark; ignoring.' % info)
                     continue
                 processes.append(info)
 
         return processes
-
-
-    def _read_pidfiles(self, pidfile_paths):
-        pidfiles = {}
-        for pidfile_path in pidfile_paths:
-            if not os.path.exists(pidfile_path):
-                continue
-            try:
-                file_object = open(pidfile_path, 'r')
-                pidfiles[pidfile_path] = file_object.read()
-                file_object.close()
-            except IOError:
-                continue
-        return pidfiles
 
 
     def refresh(self, pidfile_paths):
@@ -223,13 +166,13 @@ class DroneUtility(object):
             return process_info['comm'] == 'site_parse'
 
         results = {
-            'pidfiles' : self._read_pidfiles(pidfile_paths),
+            'pidfiles' : _read_pidfiles(pidfile_paths),
             # element 0 of _get_process_info() is the headers from `ps`
-            'all_processes' : list(self._get_process_info())[1:],
+            'all_processes' : list(_get_process_info())[1:],
             'autoserv_processes' : self._refresh_processes('autoserv'),
             'parse_processes' : self._refresh_processes(
                     'parse', site_check_parse=check_parse),
-            'pidfiles_second_read' : self._read_pidfiles(pidfile_paths),
+            'pidfiles_second_read' : _read_pidfiles(pidfile_paths),
         }
         return results
 
@@ -603,6 +546,59 @@ def _parse_args(args):
 
 def return_data(data):
     print pickle.dumps(data)
+
+
+def _check_pid_for_dark_mark(pid, open=open):
+    try:
+        env_file = open('/proc/%s/environ' % pid, 'rb')
+    except EnvironmentError:
+        return False
+    try:
+        env_data = env_file.read()
+    finally:
+        env_file.close()
+    return DARK_MARK_ENVIRONMENT_VAR in env_data
+
+
+_PS_ARGS = ('pid', 'pgid', 'ppid', 'comm', 'args')
+def _get_process_info():
+    """Parse ps output for all process information.
+
+    @returns A generator of dicts with _PS_ARGS as keys and
+        string values each representing a running process. eg:
+        {
+            'comm': command_name,
+            'pgid': process group id,
+            'ppid': parent process id,
+            'pid': process id,
+            'args': args the command was invoked with,
+        }
+    """
+    @retry.retry(subprocess.CalledProcessError,
+                    timeout_min=0.5, delay_sec=0.25)
+    def run_ps():
+        return subprocess.check_output(
+                ['/bin/ps', 'x', '-o', ','.join(_PS_ARGS)])
+
+    ps_output = run_ps()
+    # split each line into the columns output by ps
+    split_lines = [line.split(None, 4) for line in ps_output.splitlines()]
+    return (dict(itertools.izip(_PS_ARGS, line_components))
+            for line_components in split_lines)
+
+
+def _read_pidfiles(pidfile_paths):
+    pidfiles = {}
+    for pidfile_path in pidfile_paths:
+        if not os.path.exists(pidfile_path):
+            continue
+        try:
+            file_object = open(pidfile_path, 'r')
+            pidfiles[pidfile_path] = file_object.read()
+            file_object.close()
+        except IOError:
+            continue
+    return pidfiles
 
 
 def main():
