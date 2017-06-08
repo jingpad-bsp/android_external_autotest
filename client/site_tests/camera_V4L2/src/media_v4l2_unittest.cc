@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include "camera_characteristics.h"
+#include "common_types.h"
 #include "media_v4l2_device.h"
 
 bool ExerciseControl(V4L2Device* v4l2_dev, uint32_t id, const char* control) {
@@ -41,6 +43,8 @@ void TestMultipleOpen(const char* dev_name) {
 }
 
 void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
+  V4L2Device::ConstantFramerate constant_framerate =
+      V4L2Device::DEFAULT_FRAMERATE_SETTING;
   V4L2Device v4l2_dev1(dev_name, 4);
   V4L2Device v4l2_dev2(dev_name, 4);
   if (!v4l2_dev1.OpenDevice()) {
@@ -52,13 +56,15 @@ void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
     exit(EXIT_FAILURE);
   }
 
-  if (!v4l2_dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30)) {
+  if (!v4l2_dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                            constant_framerate)) {
     printf("[Error] Can not init device '%s' for the first time\n", dev_name);
     exit(EXIT_FAILURE);
   }
 
   // multiple streaming request should fail.
-  if (v4l2_dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30)) {
+  if (v4l2_dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                           constant_framerate)) {
     printf("[Error] Multiple init device '%s' should fail\n", dev_name);
     exit(EXIT_FAILURE);
   }
@@ -94,10 +100,16 @@ void TestEnumControl(const char* dev_name) {
   printf("[OK ] V4L2DeviceTest.EnumControl\n");
 }
 
-void TestSetControl(const char* dev_name) {
+void TestSetControl(const char* dev_name, bool constant_framerate_supported) {
   V4L2Device v4l2_dev(dev_name, 4);
   if (!v4l2_dev.OpenDevice()) {
     printf("[Error] Can not open device '%s'\n", dev_name);
+    exit(EXIT_FAILURE);
+  }
+  // Test mandatory controls.
+  if (constant_framerate_supported &&
+      !ExerciseControl(&v4l2_dev, V4L2_CID_EXPOSURE_AUTO_PRIORITY,
+                       "exposure_auto_priority")) {
     exit(EXIT_FAILURE);
   }
 
@@ -276,18 +288,22 @@ void TestFrameRate(const char* dev_name) {
 static void PrintUsage() {
   printf("Usage: media_v4l2_unittest [options]\n\n"
          "Options:\n"
-         "--help                 Print usage\n"
-         "--device=DEVICE_NAME   Video device name [/dev/video]\n");
+         "--help               Print usage\n"
+         "--device=DEVICE_NAME Video device name [/dev/video]\n"
+         "--usb-info=VID:PID   Device vendor id and product id\n");
 }
 
-static const char short_options[] = "?d:";
+static const char short_options[] = "?d:u:";
 static const struct option long_options[] = {
-        { "help",   no_argument,       NULL, '?' },
-        { "device", required_argument, NULL, 'd' },
+        { "help",     no_argument,       NULL, '?' },
+        { "device",   required_argument, NULL, 'd' },
+        { "usb-info", required_argument, NULL, 'u' },
+        { 0, 0, 0, 0 }
 };
 
 int main(int argc, char** argv) {
   std::string dev_name = "/dev/video";
+  std::string usb_info = "";
 
   // Parse the command line.
   for (;;) {
@@ -303,7 +319,10 @@ int main(int argc, char** argv) {
         exit (EXIT_SUCCESS);
       case 'd':
         // Initialize default v4l2 device name.
-        dev_name = strdup(optarg);
+        dev_name = optarg;
+        break;
+      case 'u':
+        usb_info = optarg;
         break;
       default:
         PrintUsage();
@@ -311,12 +330,27 @@ int main(int argc, char** argv) {
     }
   }
 
+  std::unordered_map<std::string, std::string> mapping = {{usb_info, dev_name}};
+  CameraCharacteristics characteristics;
+  DeviceInfos device_infos =
+      characteristics.GetCharacteristicsFromFile(mapping);
+
+  bool constant_framerate = false;
+  if (device_infos.size() > 1) {
+    printf("[Error] One device should not have multiple configs.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (device_infos.size() == 1) {
+    constant_framerate = !device_infos[0].constant_framerate_unsupported;
+  }
+  printf("[Info] constant framerate: %d\n", constant_framerate);
+
   TestMultipleOpen(dev_name.c_str());
   TestMultipleInit(dev_name.c_str(), V4L2Device::IO_METHOD_MMAP);
   TestMultipleInit(dev_name.c_str(), V4L2Device::IO_METHOD_USERPTR);
   TestEnumInputAndStandard(dev_name.c_str());
   TestEnumControl(dev_name.c_str());
-  TestSetControl(dev_name.c_str());
+  TestSetControl(dev_name.c_str(), constant_framerate);
   TestSetCrop(dev_name.c_str());
   TestGetCrop(dev_name.c_str());
   TestProbeCaps(dev_name.c_str());
