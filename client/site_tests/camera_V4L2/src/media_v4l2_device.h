@@ -17,12 +17,20 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <vector>
+
 class V4L2Device {
  public:
   enum IOMethod {
     IO_METHOD_UNDEFINED,
     IO_METHOD_MMAP,
     IO_METHOD_USERPTR,
+  };
+
+  enum ConstantFramerate {
+    DEFAULT_FRAMERATE_SETTING,
+    ENABLE_CONSTANT_FRAMERATE,
+    DISABLE_CONSTANT_FRAMERATE,
   };
 
   struct Buffer {
@@ -44,7 +52,8 @@ class V4L2Device {
                           uint32_t width,
                           uint32_t height,
                           uint32_t pixfmt,
-                          float fps);
+                          float fps,
+                          ConstantFramerate constant_framerate);
   virtual bool UninitDevice();
   virtual bool StartCapture();
   virtual bool StopCapture();
@@ -80,6 +89,13 @@ class V4L2Device {
   bool GetV4L2Format(v4l2_format* format);
   bool Stop();
 
+  // Getter.
+  uint32_t GetNumFrames() const { return frame_timestamps_.size(); }
+
+  const std::vector<int64_t>& GetFrameTimestamps() const {
+    return frame_timestamps_;
+  }
+
   static uint32_t MapFourCC(const char* fourcc);
 
   virtual void ProcessImage(const void* p);
@@ -103,6 +119,7 @@ class V4L2Device {
 
   // Sets to true when buffers are initialized.
   bool initialized_;
+  std::vector<int64_t> frame_timestamps_;
 };
 
 #endif  // MEDIA_V4L2_DEVICE_H_
