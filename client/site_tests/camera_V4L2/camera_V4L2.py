@@ -10,7 +10,6 @@ import re
 import stat
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class camera_V4L2(test.test):
@@ -70,15 +69,14 @@ class camera_V4L2(test.test):
             raise error.TestFail("No V4L2 devices found!")
 
     def run_v4l2_unittests(self, device):
-        self.executable = os.path.join(self.bindir, "media_v4l2_unittest")
-        cmd = "%s --device=%s" % (self.executable, device)
+        options = ["--device=%s" % device, "--usb-info=%s" % self.usb_info]
+        executable = os.path.join(self.bindir, "media_v4l2_unittest")
+        cmd = "%s %s" % (executable, " ".join(options))
         logging.info("Running %s" % cmd)
         stdout = utils.system_output(cmd, retain_output=True)
 
     def run_v4l2_capture_test(self, device):
-        options = ["--device=%s" % device]
-        options += ["--usb-info=%s" % self.usb_info]
-
+        options = ["--device=%s" % device, "--usb-info=%s" % self.usb_info]
         executable = os.path.join(self.bindir, "media_v4l2_test")
         cmd = "%s %s" % (executable, " ".join(options))
         logging.info("Running %s" % cmd)
