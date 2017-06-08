@@ -18,6 +18,7 @@ class camera_V4L2(test.test):
     v4l2_major_dev_num = 81
     v4l2_minor_dev_num_min = 0
     v4l2_minor_dev_num_max = 64
+    test_constant_framerate = False
 
     def setup(self):
         # TODO(jiesun): make binary here when cross compile issue is resolved.
@@ -25,18 +26,15 @@ class camera_V4L2(test.test):
         utils.make('clean')
         utils.make()
 
-    def run_once(self, run_unit_tests=True, run_capture_tests=True,
-                 assert_mandatory_controls=False):
+    def run_once(self, test_constant_framerate=False):
 
-        self.assert_mandatory_controls = assert_mandatory_controls
+        self.test_constant_framerate = test_constant_framerate
         self.find_video_capture_devices()
 
         for device in self.v4l2_devices:
             self.usb_info = self.get_camera_device_usb_info(device)
-            if run_unit_tests:
-                self.run_v4l2_unittests(device)
-            if run_capture_tests:
-                self.run_v4l2_capture_test(device)
+            self.run_v4l2_unittests(device)
+            self.run_v4l2_capture_test(device)
 
     def get_camera_device_usb_info(self, device):
         device_name = ntpath.basename(device)
@@ -77,6 +75,8 @@ class camera_V4L2(test.test):
 
     def run_v4l2_capture_test(self, device):
         options = ["--device=%s" % device, "--usb-info=%s" % self.usb_info]
+        if self.test_constant_framerate:
+            options += ["--constant-framerate"]
         executable = os.path.join(self.bindir, "media_v4l2_test")
         cmd = "%s %s" % (executable, " ".join(options))
         logging.info("Running %s" % cmd)
