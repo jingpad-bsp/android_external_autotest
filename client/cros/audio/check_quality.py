@@ -31,8 +31,11 @@ except ImportError:
 
 def add_args(parser):
     """Adds command line arguments."""
-    parser.add_argument('filename', metavar='WAV_FILE', type=str,
-                        help='The wave file to check.')
+    parser.add_argument('filename', metavar='FILE', type=str,
+                        help='The wav or raw file to check.'
+                             'The file format is determined by file extension.'
+                             'For raw format, user must also pass -b, -r, -c'
+                             'for bit width, rate, and number of channels.')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Show debug message.')
     parser.add_argument('--spectral-only', action='store_true', default=False,
@@ -51,6 +54,19 @@ def add_args(parser):
                         default=5,
                         help='Frequency difference threshold in Hz. '
                              'Default is 5Hz')
+    parser.add_argument('-b', '--bit-width', metavar='BIT_WIDTH', type=int,
+                        default=32,
+                        help='For raw file. Bit width of a sample. '
+                             'Assume sample format is little-endian signed int. '
+                             'Default is 32')
+    parser.add_argument('-r', '--rate', metavar='RATE', type=int,
+                        default=48000,
+                        help='For raw file. Sampling rate. Default is 48000')
+    parser.add_argument('-c', '--channel', metavar='CHANNEL', type=int,
+                        default=8,
+                        help='For raw file. Number of channels. '
+                             'Default is 8.')
+
 
 
 
@@ -276,6 +292,40 @@ class QualityChecker(object):
                         'Failed at channel %d: %f is too far away from %f' % (
                                 idx, dominant_freq, expected_freq))
 
+class CheckQualityError(Exception):
+    """Error in check_quality main function."""
+    pass
+
+
+def read_audio_file(args):
+    """Reads audio file.
+
+    @param args: The namespace parsed from command line arguments.
+
+    @returns: A tuple (raw_data, rate) where raw_data is
+              audio_data.AudioRawData, rate is sampling rate.
+
+    """
+    if args.filename.endswith('.wav'):
+        wavefile = WaveFile(args.filename)
+        raw_data = wavefile.raw_data
+        rate = wavefile.rate
+    elif args.filename.endswith('.raw'):
+        binary = None
+        with open(args.filename, 'r') as f:
+            binary = f.read()
+
+        raw_data = audio_data.AudioRawData(
+                binary=binary,
+                channel=args.channel,
+                sample_format='S%d_LE' % args.bit_width)
+        rate = args.rate
+    else:
+        raise CheckQualityError(
+                'File format for %s is not supported' % args.filename)
+
+    return raw_data, rate
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -288,9 +338,9 @@ if __name__ == "__main__":
     format = '%(asctime)-15s:%(levelname)s:%(pathname)s:%(lineno)d: %(message)s'
     logging.basicConfig(format=format, level=level)
 
-    wavefile = WaveFile(args.filename)
+    raw_data, rate = read_audio_file(args)
 
-    checker = QualityChecker(wavefile.raw_data, wavefile.rate)
+    checker = QualityChecker(raw_data, rate)
 
     checker.do_spectral_analysis(check_quality=(not args.spectral_only))
 
