@@ -37,6 +37,21 @@ def add_args(parser):
                         help='Show debug message.')
     parser.add_argument('--spectral-only', action='store_true', default=False,
                         help='Only do spectral analysis on each channel.')
+    parser.add_argument('--freqs', metavar='FREQ', type=float,
+                        nargs='*',
+                        help='Expected frequencies in the channels. '
+                             'Frequencies are separated by space. '
+                             'E.g.: --freqs 1000 2000. '
+                             'It means only the first two '
+                             'channels (1000Hz, 2000Hz) are to be checked. '
+                             'Unwanted channels can be specified by 0. '
+                             'E.g.: --freqs 1000 0 2000 0 3000. '
+                             'It means only channe 0,2,4 are to be examined.')
+    parser.add_argument('--freq_threshold', metavar='FREQ_THRESHOLD', type=float,
+                        default=5,
+                        help='Frequency difference threshold in Hz. '
+                             'Default is 5Hz')
+
 
 
 def parse_args(parser):
@@ -175,6 +190,11 @@ class QualityCheckerError(Exception):
     pass
 
 
+class CompareFailure(QualityCheckerError):
+    """Exception when frequency comparison failes."""
+    pass
+
+
 class QualityChecker(object):
     """Quality checker controls the flow of checking quality of raw data."""
     def __init__(self, raw_data, rate):
@@ -186,6 +206,7 @@ class QualityChecker(object):
         """
         self._raw_data = raw_data
         self._rate = rate
+        self._spectrals = []
 
 
     def do_spectral_analysis(self, check_quality=False):
@@ -223,6 +244,8 @@ class QualityChecker(object):
                 logging.info('Channel %d quality:\n%s', channel_idx,
                              pprint.pformat(quality))
 
+            self._spectrals.append(spectral)
+
 
     def has_data(self):
         """Checks if data has been set.
@@ -232,6 +255,26 @@ class QualityChecker(object):
         """
         if not self._raw_data or not self._rate:
             raise QualityCheckerError('Data and rate is not set yet')
+
+
+    def check_freqs(self, expected_freqs, freq_threshold):
+        """Checks the dominant frequencies in the channels.
+
+        @param expected_freq: A list of frequencies. If frequency is 0, it
+                              means this channel should be ignored.
+        @param freq_threshold: The difference threshold to compare two
+                               frequencies.
+
+        """
+        logging.debug('expected_freqs: %s', expected_freqs)
+        for idx, expected_freq in enumerate(expected_freqs):
+            if expected_freq == 0:
+                continue
+            dominant_freq = self._spectrals[idx][0][0]
+            if abs(dominant_freq - expected_freq) > freq_threshold:
+                raise CompareFailure(
+                        'Failed at channel %d: %f is too far away from %f' % (
+                                idx, dominant_freq, expected_freq))
 
 
 if __name__ == "__main__":
@@ -250,3 +293,6 @@ if __name__ == "__main__":
     checker = QualityChecker(wavefile.raw_data, wavefile.rate)
 
     checker.do_spectral_analysis(check_quality=(not args.spectral_only))
+
+    if args.freqs:
+        checker.check_freqs(args.freqs, args.freq_threshold)
