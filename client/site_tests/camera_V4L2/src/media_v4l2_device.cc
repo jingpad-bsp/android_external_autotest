@@ -87,7 +87,8 @@ bool V4L2Device::InitDevice(IOMethod io,
                             uint32_t height,
                             uint32_t pixfmt,
                             float fps,
-                            ConstantFramerate constant_framerate) {
+                            ConstantFramerate constant_framerate,
+                            uint32_t num_skip_frames) {
   io_ = io;
   // Crop/Format setting could live across session.
   // We should always initialized them when supported.
@@ -174,6 +175,7 @@ bool V4L2Device::InitDevice(IOMethod io,
          (pixfmt >> 16) & 0xff, (pixfmt >> 24 ) & 0xff, actual_fps,
          constant_framerate_msg.c_str());
   frame_timestamps_.clear();
+  num_skip_frames_ = num_skip_frames;
 
   bool ret = false;
   switch (io_) {
@@ -232,50 +234,24 @@ bool V4L2Device::UninitDevice() {
 }
 
 bool V4L2Device::StartCapture() {
-  v4l2_buffer buf;
-  uint32_t i;
-  v4l2_buf_type type;
-  switch (io_) {
-    case IO_METHOD_MMAP:
-      for (i = 0; i < num_buffers_; ++i) {
-        memset(&buf, 0, sizeof(buf));
-        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index  = i;
-        if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-          printf("<<< Error: VIDIOC_QBUF on %s.>>>\n", dev_name_);
-          return false;
-        }
-      }
-      type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      if (-1 == DoIoctl(VIDIOC_STREAMON, &type)) {
-        printf("<<< Error: VIDIOC_STREAMON on %s.>>>\n", dev_name_);
-        return false;
-      }
-      break;
-    case IO_METHOD_USERPTR:
-      for (i = 0; i < num_buffers_; ++i) {
-        memset(&buf, 0, sizeof(buf));
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_USERPTR;
-        buf.index = i;
-        buf.m.userptr = (unsigned long) v4l2_buffers_[i].start;
-        buf.length = v4l2_buffers_[i].length;
-        if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-          printf("<<< Error: VIDIOC_QBUF on %s.>>>\n", dev_name_);
-          return false;
-        }
-      }
-      type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      if (-1 == DoIoctl(VIDIOC_STREAMON, &type)) {
-        printf("<<< Error: VIDIOC_STREAMON on %s.>>>\n", dev_name_);
-        return false;
-      }
-      break;
-    default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+  for (uint32_t i = 0; i < num_buffers_; ++i) {
+    if (!EnqueueBuffer(i))
       return false;
   }
+  v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  if (-1 == DoIoctl(VIDIOC_STREAMON, &type)) {
+    printf("<<< Error: VIDIOC_STREAMON on %s.>>>\n", dev_name_);
+    return false;
+  }
+
+  uint32_t buf_index, data_size;
+  for (size_t i = 0; i < num_skip_frames_; i++) {
+    if (!ReadOneFrame(&buf_index, &data_size))
+      return false;
+    if (!EnqueueBuffer(buf_index))
+      return false;
+  }
+
   return true;
 }
 
@@ -309,30 +285,16 @@ bool V4L2Device::Run(uint32_t time_in_sec) {
     return false;
 
   uint64_t start_in_nanosec = Now();
-  int32_t timeout = 5;  // Used 5 seconds for initial delay.
+  uint32_t buffer_index, data_size;
   while (!stopped_) {
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(fd_, &fds);
-    timeval tv;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    timeout = 2;  // Normal timeout will be 2 seconds.
-    int32_t r = select(fd_ + 1, &fds, NULL, NULL, &tv);
-    if (-1 == r) {
-      if (EINTR == errno)  // If interrupted, continue.
-        continue;
-      printf("<<< Error: select() failed on %s.>>>\n", dev_name_);
-      return false;
-    }
-    if (0 == r) {
-      printf("<<< Error: select() timeout on %s.>>>\n", dev_name_);
-      return false;
-    }
-    r = ReadOneFrame();
+    int32_t r = ReadOneFrame(&buffer_index, &data_size);
     if (r < 0)
       return false;
-
+    if (r) {
+      ProcessImage(v4l2_buffers_[buffer_index].start);
+      if (!EnqueueBuffer(buffer_index))
+        return false;
+    }
     uint64_t end_in_nanosec = Now();
     if ( end_in_nanosec - start_in_nanosec >= time_in_sec * 1000000000ULL)
       break;
@@ -363,7 +325,25 @@ int32_t V4L2Device::DoIoctl(int32_t request, void* arg) {
 // return 1 : successful to retrieve a frame from device
 // return 0 : EAGAIN
 // negative : error
-int32_t V4L2Device::ReadOneFrame() {
+int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
+  fd_set fds;
+  FD_ZERO(&fds);
+  FD_SET(fd_, &fds);
+  timeval tv;
+  tv.tv_sec = 2;  // Normal timeout will be 2 seconds.
+  tv.tv_usec = 0;
+  int32_t r = select(fd_ + 1, &fds, NULL, NULL, &tv);
+  if (-1 == r) {
+    if (EINTR == errno)  // If interrupted, try again.
+      return 0;
+    printf("<<< Error: select() failed on %s.>>>\n", dev_name_);
+    return -1;
+  }
+  if (0 == r) {
+    printf("<<< Error: select() timeout on %s.>>>\n", dev_name_);
+    return -1;
+  }
+
   v4l2_buffer buf;
   memset(&buf, 0, sizeof(buf));
   switch (io_) {
@@ -394,11 +374,6 @@ int32_t V4L2Device::ReadOneFrame() {
       // TODO: uvcvideo driver ignores this field. This is negligible,
       // so disabling this for now until we get a fix into the upstream driver.
       // CHECK(buf.field == V4L2_FIELD_NONE);  // progressive only.
-      ProcessImage(v4l2_buffers_[buf.index].start);
-      if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
-        return -3;
-      }
       break;
     case IO_METHOD_USERPTR:
       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -416,24 +391,48 @@ int32_t V4L2Device::ReadOneFrame() {
         }
       }
       frame_timestamps_.push_back(Now());
-      uint32_t i;
-      for (i = 0; i < num_buffers_; ++i) {
-        if (buf.m.userptr == (unsigned long) v4l2_buffers_[i].start
-            && buf.length == v4l2_buffers_[i].length)
-          break;
-      }
-      CHECK(i < num_buffers_);
-      ProcessImage(reinterpret_cast<void*>(buf.m.userptr));
-      if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
-        return -3;
-      }
+      CHECK(buf.index < num_buffers_);
       break;
     default:
       printf("<<< Error: IO method should be defined.>>>\n");
       return -1;
   }
+  if (buffer_index)
+    *buffer_index = buf.index;
+  if (data_size)
+    *data_size = buf.bytesused;
   return 1;
+}
+
+bool V4L2Device::EnqueueBuffer(uint32_t buffer_index) {
+  v4l2_buffer buf;
+  memset(&buf, 0, sizeof(buf));
+  switch (io_) {
+    case IO_METHOD_MMAP:
+      buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      buf.memory = V4L2_MEMORY_MMAP;
+      buf.index = buffer_index;
+      if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
+        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
+        return false;
+      }
+      break;
+    case IO_METHOD_USERPTR:
+      buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      buf.memory = V4L2_MEMORY_USERPTR;
+      buf.index = buffer_index;
+      buf.m.userptr = (unsigned long) v4l2_buffers_[buffer_index].start;
+      buf.length = v4l2_buffers_[buffer_index].length;
+      if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
+        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
+        return false;
+      }
+      break;
+    default:
+      printf("<<< Error: IO method should be defined.>>>\n");
+      return false;
+  }
+  return true;
 }
 
 bool V4L2Device::AllocateBuffer(uint32_t buffer_count) {
