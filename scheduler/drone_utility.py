@@ -12,10 +12,12 @@
 #pylint: disable-msg=missing-docstring
 
 import argparse
+import collections
 import datetime
 import getpass
 import itertools
 import logging
+import multiprocessing
 import os
 import pickle
 import shutil
@@ -126,7 +128,9 @@ class DroneUtility(object):
         """
         check_mark = global_config.global_config.get_config_value(
             'SCHEDULER', 'check_processes_for_dark_mark', bool, False)
-        result, warnings = ProcessRefresher(check_mark)(pidfile_paths)
+        use_pool = global_config.global_config.get_config_value(
+            'SCHEDULER', 'drone_utility_refresh_use_pool', bool, False)
+        result, warnings = ProcessRefresher(check_mark, use_pool)(pidfile_paths)
         self.warnings += warnings
         return result
 
@@ -464,19 +468,25 @@ class DroneUtility(object):
         return dict(results=results, warnings=warnings)
 
 
+_MAX_REFRESH_POOL_SIZE = 50
+
 class ProcessRefresher(object):
     """Object to refresh process information from give pidfiles.
 
     Usage: ProcessRefresh(True)(pidfile_list)
     """
 
-    def __init__(self, check_mark):
+    def __init__(self, check_mark, use_pool=False):
         """
         @param check_mark: If True, only consider processes that were
                 explicitly marked by a former drone_utility call as autotest
                 related processes.
+        @param use_pool: If True, use a multiprocessing.Pool to parallelize
+                costly operations.
         """
         self._check_mark = check_mark
+        self._use_pool = use_pool
+        self._pool = None
 
 
     def __call__(self, pidfile_paths):
@@ -496,6 +506,17 @@ class ProcessRefresher(object):
               the processes are scanned.
             and warnings is a list of warnings genearted during process refresh.
         """
+
+        if self._use_pool:
+            pool_size = max(
+                    min(len(pidfile_paths), _MAX_REFRESH_POOL_SIZE),
+                    1)
+            self._pool = multiprocessing.Pool(pool_size)
+        else:
+            pool_size = 0
+        logging.info('Refreshing %d pidfiles with %d helper processes',
+                     len(pidfile_paths), pool_size)
+
         warnings = []
         # It is necessary to explicitly force this to be a list because results
         # are pickled by DroneUtility.
@@ -512,13 +533,29 @@ class ProcessRefresher(object):
         warnings += extra_warnings
 
         result = {
-                'pidfiles': _read_pidfiles(pidfile_paths),
+                'pidfiles': self._read_pidfiles(pidfile_paths),
                 'all_processes': proc_infos,
                 'autoserv_processes': autoserv_processes,
                 'parse_processes': (parse_processes + site_parse_processes),
-                'pidfiles_second_read': _read_pidfiles(pidfile_paths)
+                'pidfiles_second_read': self._read_pidfiles(pidfile_paths),
         }
         return result, warnings
+
+
+    def _read_pidfiles(self, pidfile_paths):
+        """Uses a process pool to read requested pidfile_paths."""
+        if self._use_pool:
+            contents = self._pool.map(_read_pidfile, pidfile_paths)
+            contents = [c for c in contents if c is not None]
+            return {k: v for k, v in contents}
+        else:
+            pidfiles = {}
+            for path in pidfile_paths:
+                content = _read_pidfile(path)
+                if content is None:
+                    continue
+                pidfiles[content.path] = content.content
+            return pidfiles
 
 
     def _filter_proc_infos(self, proc_infos, command_name):
@@ -626,18 +663,20 @@ def _get_process_info():
             for line_components in split_lines)
 
 
-def _read_pidfiles(pidfile_paths):
-    pidfiles = {}
-    for pidfile_path in pidfile_paths:
-        if not os.path.exists(pidfile_path):
-            continue
-        try:
-            file_object = open(pidfile_path, 'r')
-            pidfiles[pidfile_path] = file_object.read()
-            file_object.close()
-        except IOError:
-            continue
-    return pidfiles
+_PidfileContent = collections.namedtuple('_PidfileContent', ['path', 'content'])
+def _read_pidfile(pidfile_path):
+    """Reads the content of the given pidfile if it exists
+
+    @param: pidfile_path: Path of the file to read.
+    @returns: _PidfileContent tuple on success, None otherwise.
+    """
+    if not os.path.exists(pidfile_path):
+        return None
+    try:
+        with open(pidfile_path, 'r') as file_object:
+            return _PidfileContent(pidfile_path, file_object.read())
+    except IOError:
+        return None
 
 
 def main():
