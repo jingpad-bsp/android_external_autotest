@@ -481,24 +481,26 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_job_scheduling(recorder, add_experimental=True)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
-        self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
-                                       self.devserver,
-                                       afe=self.afe, tko=self.tko,
-                                       job_retry=True)
-        suite.schedule(recorder.record_entry, add_experimental=True)
+
         all_files = self.files.items()
         # Sort tests in self.files so that they are in the same
         # order as they are scheduled.
         all_files.sort(key=lambda record: record[1].experimental)
         expected_retry_map = {}
         for n in range(len(all_files)):
-             test = all_files[n][1]
-             job_id = n + 1
-             if test.job_retries > 0:
-                 expected_retry_map[job_id] = {
-                         'state': RetryHandler.States.NOT_ATTEMPTED,
-                         'retry_max': test.job_retries}
+            test = all_files[n][1]
+            job_id = n + 1
+            expected_retry_map[job_id] = {
+                    'state': RetryHandler.States.NOT_ATTEMPTED,
+                    'retry_max': max(test.job_retries, 1)}
+
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko,
+                                       job_retry=True)
+        suite.schedule(recorder.record_entry, add_experimental=True)
+
         self.assertEqual(expected_retry_map, suite._retry_handler._retry_map)
 
 

@@ -1200,7 +1200,13 @@ class _BaseSuite(object):
             if self._job_keyvals:
                 utils.write_keyval(self._results_dir, self._job_keyvals)
 
-            for test in test_filter.get_tests_to_schedule():
+            tests = test_filter.get_tests_to_schedule()
+            # TODO(crbug.com/730885): This is a hack to protect tests that are
+            # not usually retried from getting hit by a provision error when run
+            # as part of a suite. Remove this hack once provision is separated
+            # out in its own suite.
+            self._bump_up_test_retries(tests)
+            for test in tests:
                 scheduled_job = self._schedule_test(record, test)
                 if scheduled_job is not None:
                     scheduled_test_names.append(test.name)
@@ -1221,6 +1227,21 @@ class _BaseSuite(object):
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
         return len(scheduled_test_names)
+
+
+    def _bump_up_test_retries(self, tests):
+        """Bump up individual test retries to match suite retry options."""
+        if not self._job_retry:
+            return
+
+        for test in tests:
+            if not test.job_retries:
+                logging.debug(
+                        'Test %s requested no retries, but suite requires '
+                        'retries. Bumping retries up to 1. '
+                        '(See crbug.com/730885)',
+                        test.name)
+                test.job_retries = 1
 
 
     def _make_scheduled_tests_keyvals(self, scheduled_test_names):
