@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <getopt.h>
+#include <libyuv.h>
 #include <math.h>
 
 #include <cmath>
@@ -39,9 +40,11 @@ long_options[] = {
 int RunTest(V4L2Device* device, V4L2Device::IOMethod io,
             uint32_t buffers, uint32_t capture_time_in_sec, uint32_t width,
             uint32_t height, uint32_t pixfmt, float fps,
-            V4L2Device::ConstantFramerate constant_framerate) {
+            V4L2Device::ConstantFramerate constant_framerate,
+            uint32_t skip_frames) {
   int32_t retcode = 0;
-  if (!device->InitDevice(io, width, height, pixfmt, fps, constant_framerate))
+  if (!device->InitDevice(io, width, height, pixfmt, fps, constant_framerate,
+                          skip_frames))
     retcode = 1;
 
   if (!retcode && !device->StartCapture())
@@ -139,6 +142,18 @@ const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
   return result_format;
 }
 
+// Find format according to V4L2 fourcc. If multiple resolution support the
+// same fourcc, choose the first one.
+const SupportedFormat* FindFormatByFourcc(const SupportedFormats& formats,
+                                          uint32_t fourcc) {
+  for (const auto& format : formats) {
+    if (format.fourcc == V4L2_PIX_FMT_MJPEG) {
+      return &format;
+    }
+  }
+  return nullptr;
+}
+
 // This is for Android testCameraToSurfaceTextureMetadata CTS test case.
 bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
                             uint32_t capture_time_in_sec,
@@ -164,12 +179,14 @@ bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
 }
 
 bool TestIO(const std::string& dev_name) {
+  printf("[Info] TestIO\n");
   uint32_t buffers = 4;
   uint32_t width = 640;
   uint32_t height = 480;
   uint32_t pixfmt = V4L2_PIX_FMT_YUYV;
   float fps = 30.0;
   uint32_t time_to_capture = 3;  // The unit is second.
+  uint32_t skip_frames = 0;
   bool check_1280x960 = false;
   V4L2Device::ConstantFramerate constant_framerate =
       V4L2Device::DEFAULT_FRAMERATE_SETTING;
@@ -186,10 +203,11 @@ bool TestIO(const std::string& dev_name) {
 
   if (cap.capabilities & V4L2_CAP_STREAMING) {
     int mmap_ret = RunTest(device.get(), V4L2Device::IO_METHOD_MMAP, buffers,
-        time_to_capture, width, height, pixfmt, fps, constant_framerate);
+        time_to_capture, width, height, pixfmt, fps, constant_framerate,
+        skip_frames);
     int userp_ret = RunTest(device.get(), V4L2Device::IO_METHOD_USERPTR,
         buffers, time_to_capture, width, height, pixfmt, fps,
-        constant_framerate);
+        constant_framerate, skip_frames);
     if (mmap_ret && userp_ret) {
       printf("[Error] Stream I/O failed.\n");
       return false;
@@ -200,6 +218,7 @@ bool TestIO(const std::string& dev_name) {
   }
 
   device->CloseDevice();
+  printf("[Info] TestIO pass\n");
   return true;
 }
 
@@ -211,8 +230,10 @@ bool TestResolutions(const std::string& dev_name,
                      bool check_1280x960,
                      bool check_1600x1200,
                      bool test_constant_framerate) {
+  printf("[Info] TestResolutions\n");
   uint32_t buffers = 4;
   uint32_t time_to_capture = 3;
+  uint32_t skip_frames = 0;
   V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
   std::unique_ptr<V4L2Device> device(
       new V4L2Device(dev_name.c_str(), buffers));
@@ -290,7 +311,7 @@ bool TestResolutions(const std::string& dev_name,
     for (const auto& constant_framerate : constant_framerate_setting) {
       if (RunTest(device.get(), io, buffers, time_to_capture,
             test_format->width, test_format->height, test_format->fourcc,
-            kFrameRate, constant_framerate)) {
+            kFrameRate, constant_framerate, skip_frames)) {
         printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
             test_format->width, test_format->height, test_format->fourcc,
             dev_name.c_str());
@@ -339,7 +360,75 @@ bool TestResolutions(const std::string& dev_name,
     }
   }
   device->CloseDevice();
+  printf("[Info] TestResolutions pass\n");
+  return true;
+}
 
+bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
+                                 uint32_t skip_frames) {
+  printf("[Info] TestFirstFrameAfterStreamOn\n");
+  uint32_t buffers = 4;
+  uint32_t pixfmt = V4L2_PIX_FMT_MJPEG;
+  uint32_t fps = 30;
+  V4L2Device::ConstantFramerate constant_framerate =
+      V4L2Device::DEFAULT_FRAMERATE_SETTING;
+  V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
+
+  std::unique_ptr<V4L2Device> device(
+      new V4L2Device(dev_name.c_str(), buffers));
+  if (!device->OpenDevice())
+    return false;
+
+  SupportedFormats supported_formats;
+  if (!GetSupportedFormats(device.get(), &supported_formats)) {
+    printf("[Error] Get supported formats failed in %s.\n", dev_name.c_str());
+    return false;
+  }
+  const SupportedFormat* test_format = FindFormatByFourcc(
+      supported_formats, V4L2_PIX_FMT_MJPEG);
+  uint32_t width = test_format->width;
+  uint32_t height = test_format->height;
+
+  const int kTestLoop = 20;
+  for (size_t i = 0; i < kTestLoop; i++) {
+    if (!device->InitDevice(io, width, height, pixfmt, fps, constant_framerate,
+                            skip_frames))
+      return false;
+
+    if (!device->StartCapture())
+      return false;
+
+    uint32_t buf_index, data_size;
+    if (!device->ReadOneFrame(&buf_index, &data_size))
+      return false;
+
+    const V4L2Device::Buffer& buffer = device->GetBufferInfo(buf_index);
+    std::unique_ptr<uint8_t[]> yuv_buffer(new uint8_t[width * height * 2]);
+
+    int res = libyuv::MJPGToI420(
+        reinterpret_cast<uint8_t*>(buffer.start), data_size,
+        yuv_buffer.get(), width,
+        yuv_buffer.get() + width * height, width / 2,
+        yuv_buffer.get() + width * height * 5 / 4, width / 2,
+        width, height, width, height);
+    if (res) {
+      printf("[Error] First frame is not a valid mjpeg image.\n");
+      return false;
+    }
+
+    if (!device->EnqueueBuffer(buf_index))
+      return false;
+
+    if (!device->StopCapture())
+      return false;
+
+    if (!device->UninitDevice())
+      return false;
+
+  }
+
+  device->CloseDevice();
+  printf("[Info] TestFirstFrameAfterStreamOn pass\n");
   return true;
 }
 
@@ -383,6 +472,7 @@ int main(int argc, char** argv) {
   bool check_1280x960 = false;
   bool check_1600x1200 = false;
   bool support_constant_framerate = false;
+  uint32_t skip_frames = 0;
   if (device_infos.size() > 1) {
     printf("[Error] One device should not have multiple configs.\n");
     return EXIT_FAILURE;
@@ -392,17 +482,22 @@ int main(int argc, char** argv) {
     check_1600x1200 = !device_infos[0].resolution_1600x1200_unsupported;
     support_constant_framerate =
         !device_infos[0].constant_framerate_unsupported;
+    skip_frames = device_infos[0].frames_to_skip_after_streamon;
   }
   printf("[Info] check 1280x960: %d\n", check_1280x960);
   printf("[Info] check 1600x1200: %d\n", check_1600x1200);
   printf("[Info] check constant framerate: %d\n",
       only_test_constant_framerate & support_constant_framerate);
+  printf("[Info] num of skip frames after stream on: %d\n", skip_frames);
 
   if (!only_test_constant_framerate) {
     if (!TestIO(dev_name)) {
       return EXIT_FAILURE;
     }
     if (!TestResolutions(dev_name, check_1280x960, check_1600x1200, false)) {
+      return EXIT_FAILURE;
+    }
+    if (!TestFirstFrameAfterStreamOn(dev_name, skip_frames)) {
       return EXIT_FAILURE;
     }
   } else if (support_constant_framerate) {
