@@ -3,7 +3,6 @@
 """Tests for drone_utility."""
 
 import os
-import sys
 import unittest
 
 import common
@@ -32,21 +31,50 @@ class TestProcessRefresher(unittest.TestCase):
     def tearDown(self):
         self.god.unstub_all()
 
-
-    def test_read_pidfiles(self):
-        """Readable subset of pidfile paths are included in the result."""
+    def test_no_processes(self):
+        """Sanity check the case when there is nothing to do"""
         self._mock_get_process_info.expect_call().and_return([])
-        path1 = self._write_pidfile('pidfile1', 'first pidfile')
-        path2 = self._write_pidfile('pidfile2', 'second pidfile',
-                                    subdir='somedir')
         process_refresher = drone_utility.ProcessRefresher(check_mark=False)
-        got, warnings = process_refresher(
-                [path1, path2,
-                 os.path.join(self._tempdir.name, 'non_existent')])
-        expected_pidfiles = {
-                path1: 'first pidfile',
-                path2: 'second pidfile',
+        got, warnings = process_refresher([])
+        expected = {
+                'pidfiles': dict(),
+                'all_processes': [],
+                'autoserv_processes': [],
+                'parse_processes': [],
+                'pidfiles_second_read': dict(),
         }
+        self.god.check_playback()
+        self.assertEqual(got, expected)
+
+
+    def test_read_pidfiles_use_pool(self):
+        """Readable subset of pidfile paths are included in the result
+
+        Uses process pools.
+        """
+        self._parameterized_test_read_pidfiles(use_pool=True)
+
+
+    def test_read_pidfiles_no_pool(self):
+        """Readable subset of pidfile paths are included in the result
+
+        Does not use process pools.
+        """
+        self._parameterized_test_read_pidfiles(use_pool=False)
+
+
+    def test_read_many_pidfiles(self):
+        """Read a large number of pidfiles (more than pool size)."""
+        self._mock_get_process_info.expect_call().and_return([])
+        expected_pidfiles = {}
+        for i in range(1000):
+            data = 'data number %d' % i
+            path = self._write_pidfile('pidfile%d' % i, data)
+            expected_pidfiles[path] = data
+
+        process_refresher = drone_utility.ProcessRefresher(check_mark=False,
+                                                           use_pool=True)
+        got, _ = process_refresher(expected_pidfiles.keys())
         expected = {
                 'pidfiles': expected_pidfiles,
                 'all_processes': [],
@@ -107,6 +135,34 @@ class TestProcessRefresher(unittest.TestCase):
         self.assertEqual(len(warnings), 1)
         self.assertRegexpMatches(warnings[0], '.*autoserv.*369.*')
 
+
+    def _parameterized_test_read_pidfiles(self, use_pool):
+        """Readable subset of pidfile paths are included in the result
+
+        @param: use_pool: Argument use_pool for ProcessRefresher
+        """
+        self._mock_get_process_info.expect_call().and_return([])
+        path1 = self._write_pidfile('pidfile1', 'first pidfile')
+        path2 = self._write_pidfile('pidfile2', 'second pidfile',
+                                    subdir='somedir')
+        process_refresher = drone_utility.ProcessRefresher(check_mark=False,
+                                                           use_pool=use_pool)
+        got, warnings = process_refresher(
+                [path1, path2,
+                 os.path.join(self._tempdir.name, 'non_existent')])
+        expected_pidfiles = {
+                path1: 'first pidfile',
+                path2: 'second pidfile',
+        }
+        expected = {
+                'pidfiles': expected_pidfiles,
+                'all_processes': [],
+                'autoserv_processes': [],
+                'parse_processes': [],
+                'pidfiles_second_read': expected_pidfiles,
+        }
+        self.god.check_playback()
+        self.assertEqual(got, expected)
 
 
     def _write_pidfile(self, filename, content, subdir=''):
