@@ -38,7 +38,8 @@ _started_hostnames = set()
 # A list of all the possible host types, ordered according to frequency of
 # host types in the lab, so the more common hosts don't incur a repeated ssh
 # overhead in checking for less common host types.
-host_types = [cros_host.CrosHost, moblab_host.MoblabHost, sonic_host.SonicHost,
+host_types = [cros_host.CrosHost, moblab_host.MoblabHost,
+              jetstream_host.JetstreamHost, sonic_host.SonicHost,
               adb_host.ADBHost,]
 OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'brillo': adb_host.ADBHost,
