@@ -53,11 +53,14 @@ class V4L2Device {
                           uint32_t height,
                           uint32_t pixfmt,
                           float fps,
-                          ConstantFramerate constant_framerate);
+                          ConstantFramerate constant_framerate,
+                          uint32_t num_skip_frames);
   virtual bool UninitDevice();
   virtual bool StartCapture();
   virtual bool StopCapture();
   virtual bool Run(uint32_t time_in_sec);
+  virtual int32_t ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size);
+  virtual bool EnqueueBuffer(uint32_t buffer_index);
 
   // Helper methods.
   bool EnumInput();
@@ -96,13 +99,16 @@ class V4L2Device {
     return frame_timestamps_;
   }
 
+  const Buffer& GetBufferInfo(uint32_t index) {
+    return v4l2_buffers_[index];
+  }
+
   static uint32_t MapFourCC(const char* fourcc);
 
   virtual void ProcessImage(const void* p);
 
  private:
   int32_t DoIoctl(int32_t request, void* arg);
-  int32_t ReadOneFrame();
   bool InitMmapIO();
   bool InitUserPtrIO(uint32_t buffer_size);
   bool AllocateBuffer(uint32_t buffer_count);
@@ -120,7 +126,8 @@ class V4L2Device {
   // Sets to true when buffers are initialized.
   bool initialized_;
   std::vector<int64_t> frame_timestamps_;
+  // The number of frames should be skipped after stream on.
+  uint32_t num_skip_frames_;
 };
 
 #endif  // MEDIA_V4L2_DEVICE_H_
-
