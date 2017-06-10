@@ -32,6 +32,7 @@ from optparse import OptionParser
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
@@ -236,36 +237,6 @@ def get_cmd_list(multiprocessing, dir_entry, gs_path):
         target = gs_path
     cmd += ['-eR', dir_entry, target]
     return cmd
-
-
-def get_directory_size_kibibytes_cmd_list(directory):
-    """Returns command to get a directory's total size."""
-    # Having this in its own method makes it easier to mock in
-    # unittests.
-    return ['du', '-sk', directory]
-
-
-def get_directory_size_kibibytes(directory):
-    """Calculate the total size of a directory with all its contents.
-
-    @param directory: Path to the directory
-
-    @return Size of the directory in kibibytes.
-    """
-    cmd = get_directory_size_kibibytes_cmd_list(directory)
-    process = subprocess.Popen(cmd,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    stdout_data, stderr_data = process.communicate()
-
-    if process.returncode != 0:
-        # This function is used for statistics only, if it fails,
-        # nothing else should crash.
-        logging.warning('Getting size of %s failed. Stderr:', directory)
-        logging.warning(stderr_data)
-        return 0
-
-    return int(stdout_data.split('\t', 1)[0])
 
 
 def get_sanitized_name(name):
@@ -582,7 +553,7 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
 
                 if LIMIT_FILE_COUNT:
                     limit_file_count(dir_entry)
-                dir_size = get_directory_size_kibibytes(dir_entry)
+                dir_size = file_utils.get_directory_size_kibibytes(dir_entry)
                 es_metadata['size_kb'] = dir_size
 
                 stdout_file = tempfile.TemporaryFile('w+')
