@@ -348,11 +348,11 @@ class DBObject(object):
 
 
     @classmethod
-    def fetch(cls, where='', params=(), joins='', order_by=''):
+    def fetch_rows(cls, where='', params=(), joins='', order_by=''):
         """
-        Construct instances of our class based on the given database query.
+        Fetch the rows based on the given database query.
 
-        @yields One class instance for each row fetched.
+        @yields the rows fetched by the given query.
         """
         order_by = cls._prefix_with(order_by, 'ORDER BY ')
         where = cls._prefix_with(where, 'WHERE ')
@@ -362,6 +362,17 @@ class DBObject(object):
                                              'where' : where,
                                              'order_by' : order_by})
         rows = _db.execute(query, params)
+        return rows
+
+    @classmethod
+    def fetch(cls, where='', params=(), joins='', order_by=''):
+        """
+        Construct instances of our class based on the given database query.
+
+        @yields One class instance for each row fetched.
+        """
+        rows = cls.fetch_rows(where=where, params=params, joins=joins,
+                              order_by=order_by)
         return [cls(id=row[0], row=row) for row in rows]
 
 
@@ -470,10 +481,17 @@ class HostQueueEntry(DBObject):
     _COMPLETION_COUNT_METRIC = metrics.Counter(
         'chromeos/autotest/scheduler/hqe_completion_count')
 
-    def __init__(self, id=None, row=None, **kwargs):
+    def __init__(self, id=None, row=None, job_row=None, **kwargs):
+        """
+        @param id: ID field from afe_host_queue_entries table.
+                   Either id or row should be specified for initialization.
+        @param row: The DB row for a particular HostQueueEntry.
+                    Either id or row should be specified for initialization.
+        @param job_row: The DB row for the job of this HostQueueEntry.
+        """
         assert id or row
         super(HostQueueEntry, self).__init__(id=id, row=row, **kwargs)
-        self.job = Job(self.job_id)
+        self.job = Job(self.job_id, row=job_row)
 
         if self.host_id:
             self.host = rdb_lib.get_hosts([self.host_id])[0]
@@ -496,6 +514,29 @@ class HostQueueEntry(DBObject):
         clone = cls(row=new_row, new_record=True)
         clone.id = None
         return clone
+
+
+    @classmethod
+    def fetch(cls, where='', params=(), joins='', order_by=''):
+        """
+        Construct instances of our class based on the given database query.
+
+        @yields One class instance for each row fetched.
+        """
+        # Override the original fetch method to pre-fetch the jobs from the DB
+        # in order to prevent each HQE making separate DB queries.
+        rows = cls.fetch_rows(where=where, params=params, joins=joins,
+                              order_by=order_by)
+        if len(rows) <= 1:
+            return [cls(id=row[0], row=row) for row in rows]
+
+        job_params = ', '.join([str(row[1]) for row in rows])
+        job_rows = Job.fetch_rows(where='id IN (%s)' % (job_params))
+        # Create a Job_id to Job_row match dictionary to match the HQE
+        # to its corresponding job.
+        job_dict = {job_row[0]: job_row for job_row in job_rows}
+        return [cls(id=row[0], row=row, job_row=job_dict.get(row[1]))
+                for row in rows]
 
 
     def _view_job_url(self):

@@ -152,7 +152,7 @@ class DBObjectTest(BaseSchedulerModelsTest):
     def test_save(self):
         # Dummy Job to avoid creating a one in the HostQueueEntry __init__.
         class MockJob(object):
-            def __init__(self, id):
+            def __init__(self, id, row):
                 pass
             def tag(self):
                 return 'MockJob'
