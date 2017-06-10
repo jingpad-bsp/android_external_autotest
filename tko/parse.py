@@ -13,6 +13,8 @@ import sys
 import traceback
 
 import common
+from autotest_lib.client.bin import result_utils
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
@@ -30,6 +32,25 @@ from autotest_lib.tko.perf_upload import perf_uploader
 _ParseOptions = collections.namedtuple(
     'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
                      'datastore_creds', 'export_to_gcloud_path'])
+
+# Key names related to test result sizes to be stored in tko_job_keyvals.
+# The total size (in kB) of test results that generated during the test,
+# including:
+#  * server side test logs and result files.
+#  * client side test logs, sysinfo, system logs and crash dumps.
+# Note that a test can collect the same test result files from DUT multiple
+# times during the test, before and after each iteration/test. So the value of
+# CLIENT_RESULT_COLLECTED_KB could be larger than the value of
+# RESULT_UPLOADED_KB, which is the size of result directory on the server side,
+# even if the test result throttling is not applied.
+# The total size (in KB) of test results collected from test device.
+CLIENT_RESULT_COLLECTED_KB = 'client_result_collected_KB'
+# The original size (in KB) of test results before being trimmed.
+ORIGINAL_RESULT_TOTAL_KB = 'original_result_total_KB'
+# The total size (in KB) of test results to be uploaded by gs_offloader.
+RESULT_UPLOADED_KB = 'result_uploaded_KB'
+# Flag to indicate if test results collection is throttled.
+RESULT_THROTTLED = 'result_throttled'
 
 def parse_args():
     """Parse args."""
@@ -232,6 +253,51 @@ def _invalidate_original_tests(orig_job_idx, retry_job_idx):
     tko_utils.dprint('DEBUG: Invalidated tests associated to job: ' + msg)
 
 
+def _get_result_sizes(path):
+    """Get the result sizes information.
+
+    It first tries to merge directory summaries and calculate the result sizes
+    including:
+    CLIENT_RESULT_COLLECTED_KB: The volume in KB that's transfered from the test
+            device.
+    ORIGINAL_RESULT_TOTAL_KB: The volume in KB that's the original size of the
+            result files before being trimmed.
+    RESULT_UPLOADED_KB: The volume in KB that will be uploaded.
+    RESULT_THROTTLED: Indicating if the result files were throttled.
+
+    If directory summary merging failed for any reason, fall back to use the
+    total size of the given result directory.
+
+    @param path: Path of the result directory to get size information.
+    @return: A dictionary of result sizes information.
+    """
+    sizes = {}
+    try:
+        client_collected_bytes, summary = result_utils.merge_summaries(path)
+        root_entry = summary[result_utils.ROOT_DIR]
+        sizes[CLIENT_RESULT_COLLECTED_KB] = client_collected_bytes / 1024
+        sizes[ORIGINAL_RESULT_TOTAL_KB] = (
+                root_entry[result_utils.ORIGINAL_SIZE_BYTES]) / 1024
+        sizes[RESULT_UPLOADED_KB] = (
+                root_entry[result_utils.TRIMMED_SIZE_BYTES])/ 1024
+        # Test results are considered to be throttled if the total size of
+        # results collected is different from the total size of trimmed results
+        # from the client side.
+        sizes[RESULT_THROTTLED] = (
+                root_entry[result_utils.ORIGINAL_SIZE_BYTES] !=
+                root_entry[result_utils.TRIMMED_SIZE_BYTES])
+    except:
+        tko_utils.dprint('Failed to calculate result sizes based on directory '
+                         'summaries. Fall back to record the total size.\n'
+                         'Exception: %s' % traceback.format_exc())
+        total_size = file_utils.get_directory_size_kibibytes(path);
+        sizes[CLIENT_RESULT_COLLECTED_KB] = total_size
+        sizes[ORIGINAL_RESULT_TOTAL_KB] = total_size
+        sizes[RESULT_UPLOADED_KB] = total_size
+        sizes[RESULT_THROTTLED] = 0
+    return sizes
+
+
 def parse_one(db, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
@@ -330,6 +396,10 @@ def parse_one(db, jobname, path, parse_options):
         sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
         if sponge_url:
             job.keyval_dict['sponge_url'] = sponge_url
+
+    # Record test result size to job_keyvals
+    sizes = _get_result_sizes(path)
+    job.keyval_dict.update(sizes)
 
     # check for failures
     message_lines = [""]
