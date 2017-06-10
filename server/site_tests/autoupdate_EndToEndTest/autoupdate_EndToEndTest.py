@@ -1444,7 +1444,8 @@ class autoupdate_EndToEndTest(test.test):
     # TODO(sosa): Investigate why this needs to be so long (this used to be
     # 120 and regressed).
     _WAIT_FOR_DOWNLOAD_STARTED_SECONDS = 4 * 60
-    _WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS = 10 * 60
+    # See https://crbug.com/731214 before changing WAIT_FOR_DOWNLOAD
+    _WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS = 20 * 60
     _WAIT_FOR_UPDATE_COMPLETED_SECONDS = 4 * 60
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
