@@ -10,6 +10,7 @@ import mox, unittest
 
 # driver must be imported first due to circular imports in base_event and task
 import driver  # pylint: disable-msg=W0611
+import error
 import deduping_scheduler, forgiving_config_parser, task, build_event
 
 
@@ -189,7 +190,7 @@ class TaskCreateTest(TaskTestBase):
     def testCreateFromNoSuiteConfig(self):
         """Ensure we require a suite in Task config."""
         self.config.remove_option(self._TASK_NAME, 'suite')
-        self.assertRaises(task.MalformedConfigEntry,
+        self.assertRaises(error.MalformedConfigEntry,
                           task.Task.CreateFromConfigSection,
                           self.config,
                           self._TASK_NAME)
@@ -198,7 +199,7 @@ class TaskCreateTest(TaskTestBase):
     def testCreateFromNoKeywordConfig(self):
         """Ensure we require a run_on event in Task config."""
         self.config.remove_option(self._TASK_NAME, 'run_on')
-        self.assertRaises(task.MalformedConfigEntry,
+        self.assertRaises(error.MalformedConfigEntry,
                           task.Task.CreateFromConfigSection,
                           self.config,
                           self._TASK_NAME)
@@ -206,7 +207,7 @@ class TaskCreateTest(TaskTestBase):
 
     def testCreateFromNonexistentConfig(self):
         """Ensure we fail gracefully if we pass in a bad section name."""
-        self.assertRaises(task.MalformedConfigEntry,
+        self.assertRaises(error.MalformedConfigEntry,
                           task.Task.CreateFromConfigSection,
                           self.config,
                           'not_a_thing')
@@ -216,7 +217,7 @@ class TaskCreateTest(TaskTestBase):
         """Ensure testbed_dut_count specified in boards is only applicable for
         testing Launch Control builds."""
         self.config.set(self._TASK_NAME, 'boards', 'shamu-2')
-        self.assertRaises(task.MalformedConfigEntry,
+        self.assertRaises(error.MalformedConfigEntry,
                           task.Task.CreateFromConfigSection,
                           self.config,
                           self._TASK_NAME)
