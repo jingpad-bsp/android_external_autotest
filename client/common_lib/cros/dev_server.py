@@ -1981,7 +1981,7 @@ class ImageServer(ImageServerBase):
         # For now we just hard-code the error message we think it's suspicious.
         # When we get more date about what's the json response when devserver
         # is overloaded, we can update this part.
-        retryable_error_patterns = ['No JSON object could be decoded',
+        retryable_error_patterns = [ERR_MSG_FOR_INVALID_DEVSERVER_RESPONSE,
                                     'is not pingable']
         return self._check_error_message(retryable_error_patterns, error_msg)
 
