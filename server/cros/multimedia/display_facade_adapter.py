@@ -352,19 +352,12 @@ class DisplayFacadeRemoteAdapter(object):
 
 
     def reset_connector_if_applicable(self, connector_type):
-        """Resets video connector from host end if applicable.
+        """Resets Type-C video connector from host end if applicable.
 
-        This is currently for samus machine with hdmi only. It's the workaround
-        sequence since sometimes samus hdmi dongle becomes corrupted and needs
-        to be re-plugged.
+        It's the workaround sequence since sometimes Type-C dongle becomes
+        corrupted and needs to be re-plugged.
 
         @param connector_type: A string, like "VGA", "DVI", "HDMI", or "DP".
         """
-        board = self._client.get_board()
-        if 'samus' in board and connector_type == 'HDMI':
-            logging.info('Force PD re-communication for video connector. This '
-                         'is the workaround for samus with hdmi connection.')
-            self._client.run_short('ectool --name=cros_pd usbpd 0 sink')
-            self._client.run_short('ectool --name=cros_pd usbpd 0 auto')
-            self._client.run_short('ectool --name=cros_pd usbpd 1 sink')
-            self._client.run_short('ectool --name=cros_pd usbpd 1 auto')
+        logging.info('Connector Type %s.', connector_type)
+        return self._display_proxy.reset_connector_if_applicable(connector_type)

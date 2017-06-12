@@ -4,6 +4,7 @@
 
 """Facade to access the display-related functionality."""
 
+import logging
 import multiprocessing
 import numpy
 import os
@@ -11,6 +12,7 @@ import re
 import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -663,3 +665,36 @@ class DisplayFacadeNative(object):
         self.set_fullscreen(False)
         self._resource.close_tab(tab_descriptor)
         return True
+
+
+    def reset_connector_if_applicable(self, connector_type):
+        """Resets Type-C video connector from host end if applicable.
+
+        It's the workaround sequence since sometimes Type-C dongle becomes
+        corrupted and needs to be re-plugged.
+
+        @param connector_type: A string, like "VGA", "DVI", "HDMI", or "DP".
+        """
+        if connector_type != 'HDMI' and connector_type != 'DP':
+            return
+        # Decide if we need to add --name=cros_pd
+        usbpd_command = 'ectool --name=cros_pd usbpd'
+        try:
+            common_utils.run('%s 0' % usbpd_command)
+        except error.CmdError:
+            usbpd_command = 'ectool usbpd'
+
+        port = 0
+        while True:
+            # We use usbpd to get Role information and then power cycle the
+            # SRC one.
+            command = '%s %d' % (usbpd_command, port)
+            try:
+                output = common_utils.run(command).stdout
+                if re.compile('Role.*SRC').search(output):
+                    logging.info('power-cycle Type-C port %d', port)
+                    common_utils.run('%s sink' % command)
+                    common_utils.run('%s auto' % command)
+                port += 1
+            except error.CmdError:
+                break
