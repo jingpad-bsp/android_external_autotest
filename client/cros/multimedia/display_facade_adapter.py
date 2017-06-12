@@ -339,12 +339,12 @@ class DisplayFacadeLocalAdapter(object):
 
 
     def reset_connector_if_applicable(self, connector_type):
-        """Resets video connector from host end if applicable.
+        """Resets Type-C video connector from host end if applicable.
 
-        This is the workaround method for remote display facade adapter only.
-        Put an empty method here in local adapter to prevent AttributeError of
-        client test.
+        It's the workaround sequence since sometimes Type-C dongle becomes
+        corrupted and needs to be re-plugged.
 
         @param connector_type: A string, like "VGA", "DVI", "HDMI", or "DP".
         """
-        pass
+        return self._display_component.reset_connector_if_applicable(
+                connector_type)
