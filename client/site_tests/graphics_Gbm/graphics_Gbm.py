@@ -9,13 +9,12 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_Gbm(test.test):
+class graphics_Gbm(graphics_utils.GraphicsTest):
     """
     Test the gbm implementation.
     """
     version = 1
     preserve_srcdir = True
-    GSC = None
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -23,12 +22,12 @@ class graphics_Gbm(test.test):
         utils.make('all')
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_Gbm, self).initialize()
 
     def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_Gbm, self).cleanup()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_Gbm')
     def run_once(self):
         cmd = os.path.join(self.srcdir, 'gbmtest')
         result = utils.run(cmd,
