@@ -43,6 +43,7 @@ class DisplayFacadeNative(object):
     CALIBRATION_IMAGE_PATH = '/tmp/calibration.svg'
     MINIMUM_REFRESH_RATE_EXPECTED = 25.0
     DELAY_TIME = 3
+    MAX_TYPEC_PORT = 6
 
     def __init__(self, resource):
         """Initializes a DisplayFacadeNative.
@@ -685,7 +686,7 @@ class DisplayFacadeNative(object):
             usbpd_command = 'ectool usbpd'
 
         port = 0
-        while True:
+        while port < self.MAX_TYPEC_PORT:
             # We use usbpd to get Role information and then power cycle the
             # SRC one.
             command = '%s %d' % (usbpd_command, port)
