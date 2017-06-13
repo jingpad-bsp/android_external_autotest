@@ -2070,9 +2070,7 @@ class ImageServer(ImageServerBase):
             try:
                 # Try update with stateful.tgz of old release version in the
                 # last try of auto-update.
-                if (force_original or
-                    (au_attempt > 0 and au_attempt  == AU_RETRY_LIMIT - 1 and
-                     original_release_version)):
+                if force_original and original_release_version:
                     # Monitor this case in monarch
                     original_build = '%s/%s' % (original_board,
                                                 original_release_version)
