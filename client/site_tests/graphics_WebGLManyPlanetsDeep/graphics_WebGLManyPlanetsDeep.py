@@ -14,10 +14,9 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_WebGLManyPlanetsDeep(test.test):
+class graphics_WebGLManyPlanetsDeep(graphics_utils.GraphicsTest):
     """WebGL many planets deep graphics test."""
     version = 1
-    GSC = None
     frame_data = {}
     perf_keyval = {}
     test_duration_secs = 30
@@ -27,11 +26,10 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         self.job.setup_dep(['graphics'])
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_WebGLManyPlanetsDeep, self).initialize()
 
     def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_WebGLManyPlanetsDeep, self).cleanup()
 
     def run_many_planets_deep_test(self, browser, test_url):
         """Runs the many planets deep test from the given url.
@@ -98,6 +96,7 @@ class graphics_WebGLManyPlanetsDeep(test.test):
                                        d['frame_elapsed_time'],
                                        d['js_elapsed_time']))
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_WebGLManyPlanetsDeep')
     def run_once(self, test_duration_secs=30, fullscreen=True):
         """Finds a brower with telemetry, and run the test.
 

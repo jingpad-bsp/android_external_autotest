@@ -21,10 +21,9 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_WebGLPerformance(test.test):
+class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
     """WebGL performance graphics test."""
     version = 1
-    GSC = None
     _test_duration_secs = 0
     perf_keyval = {}
 
@@ -33,11 +32,10 @@ class graphics_WebGLPerformance(test.test):
         self.job.setup_dep(['graphics'])
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_WebGLPerformance, self).initialize()
 
     def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_WebGLPerformance, self).cleanup()
 
     def run_performance_test(self, browser, test_url):
         """Runs the performance test from the given url.
@@ -95,6 +93,7 @@ class graphics_WebGLPerformance(test.test):
 
         tab.Close()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_WebGLPerformance')
     def run_once(self, test_duration_secs=2700, fullscreen=True):
         """Finds a brower with telemetry, and run the test.
 

@@ -10,14 +10,13 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_GLAPICheck(test.test):
+class graphics_GLAPICheck(graphics_utils.GraphicsTest):
     """
     Verify correctness of OpenGL/GLES and X11 versions/extensions.
     """
     version = 1
     preserve_srcdir = True
     error_message = ''
-    GSC = None
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -82,15 +81,14 @@ class graphics_GLAPICheck(test.test):
         return False
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_GLAPICheck, self).initialize()
 
     def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_GLAPICheck, self).cleanup()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_GLAPICheck')
     def run_once(self):
         if not self.__check_wflinfo():
             raise error.TestFail('Failed: GLES API insufficient:' +
                                  self.error_message)
         return
-
