@@ -8,6 +8,7 @@ import time
 from multiprocessing import pool
 
 import base_event, board_enumerator, build_event, deduping_scheduler
+import error
 import task, timed_event
 
 import common
@@ -90,7 +91,7 @@ class Driver(object):
 
         for option in config.options(BOARD_WHITELIST_SECTION):
             if option in board_lists:
-                raise task.MalformedConfigEntry(
+                raise error.MalformedConfigEntry(
                         'Board list name must be unique.')
             else:
                 board_lists[option] = config.getstring(
@@ -140,7 +141,7 @@ class Driver(object):
                 try:
                     keyword, new_task = task.Task.CreateFromConfigSection(
                             config, section, board_lists=board_lists)
-                except task.MalformedConfigEntry as e:
+                except error.MalformedConfigEntry as e:
                     logging.warning('%s is malformed: %s', section, str(e))
                     continue
                 tasks.setdefault(keyword, []).append(new_task)
