@@ -82,7 +82,7 @@ DEVSERVER_IS_STAGING_RETRY_MIN = 100
 DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN = 100
 
 # The total times of devserver triggering CrOS auto-update.
-AU_RETRY_LIMIT = 3
+AU_RETRY_LIMIT = 2
 
 # Number of seconds for caller to poll devserver's get_au_status call to
 # check if cros auto-update is finished.
