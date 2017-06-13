@@ -31,6 +31,10 @@ class AfeStore(host_info.CachingHostInfoStore):
                     delay_sec=self._RETRYING_AFE_RETRY_DELAY_SEC)
 
 
+    def __str__(self):
+        return '%s[%s]' % (type(self).__name__, self._hostname)
+
+
     def _refresh_impl(self):
         """Obtains HostInfo directly from the AFE."""
         try:
