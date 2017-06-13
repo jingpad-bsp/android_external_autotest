@@ -30,18 +30,17 @@ description_table = string.maketrans(':,=;', '.-__')
 description_delete = '<>'
 
 
-class graphics_GLMark2(test.test):
+class graphics_GLMark2(graphics_utils.GraphicsTest):
     """Runs glmark2, which benchmarks only calls compatible with OpenGL ES 2.0"""
     version = 1
     preserve_srcdir = True
     _services = None
-    GSC = None
 
     def setup(self):
         self.job.setup_dep(['glmark2'])
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_GLMark2, self).initialize()
         # If UI is running, we must stop it and restore later.
         self._services = service_stopper.ServiceStopper(['ui'])
         self._services.stop_services()
@@ -49,9 +48,9 @@ class graphics_GLMark2(test.test):
     def cleanup(self):
         if self._services:
             self._services.restore_services()
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_GLMark2, self).cleanup()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_GLMark2')
     def run_once(self, size='800x600', hasty=False, min_score=None):
         dep = 'glmark2'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
