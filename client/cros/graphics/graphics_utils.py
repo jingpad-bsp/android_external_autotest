@@ -8,6 +8,7 @@ the state of the graphics driver.
 """
 
 import collections
+import contextlib
 import glob
 import logging
 import os
@@ -26,10 +27,24 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import test as test_utils
 from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import drm
+from functools import wraps
 
 
 class GraphicsTest(test.test):
-    """Base class for graphics test."""
+    """Base class for graphics test.
+
+    GraphicsTest is the base class for graphics tests.
+    Every subclass of GraphicsTest should call GraphicsTests initialize/cleanup
+    method as they will do GraphicsStateChecker as well as report states to
+    Chrome Perf dashboard.
+
+    Attributes:
+        _test_failure_description(str): Failure name reported to chrome perf
+                                        dashboard. (Default: Failures)
+        _test_failure_report_enable(bool): Enable/Disable reporting
+                                            failures to chrome perf dashboard
+                                            automatically. (Default: True)
+    """
     version = 1
     _GSC = None
 
@@ -41,9 +56,9 @@ class GraphicsTest(test.test):
         super(GraphicsTest, self).__init__(*args, **kwargs)
         self._failures = []
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self, raise_error_on_hang=False, *args, **kwargs):
         """Initial state checker and report initial value to perf dashboard."""
-        self._GSC = GraphicsStateChecker()
+        self._GSC = GraphicsStateChecker(raise_error_on_hang)
 
         self.output_perf_value(
             description='Timeout_Reboot',
@@ -69,6 +84,7 @@ class GraphicsTest(test.test):
             replace_existing_values=True
         )
 
+        logging.debug('GraphicsTest recorded failures: %s', self.get_failures())
         if self._test_failure_report_enable:
             self.output_perf_value(
                 description=self._test_failure_description,
@@ -81,13 +97,90 @@ class GraphicsTest(test.test):
             test_utils._cherry_pick_call(super(GraphicsTest, self).cleanup,
                                          *args, **kwargs)
 
+    @contextlib.contextmanager
+    def failure_report(self, name):
+        """Record the failure of an operation to the self._failures.
+
+        Records if the operation taken inside executed normally or not.
+        If the operation taken inside raise unexpected failure, failure named
+        |name|, will be added to the self._failures list and reported to the
+        chrome perf dashboard in the cleanup stage.
+
+        Usage:
+            # Record failure of doSomething
+            with failure_report('doSomething'):
+                doSomething()
+        """
+        # Assume failed at the beginning
+        self.add_failures(name)
+        yield {}
+        self.remove_failures(name)
+
+    @classmethod
+    def failure_report_decorator(cls, name):
+        """Record the failure if the function failed to finish.
+        This method should only decorate to functions of GraphicsTest.
+        In addition, functions with this decorator should be called with no
+        unnamed arguments.
+        Usage:
+            @GraphicsTest.test_run_decorator('graphics_test')
+            def Foo(self, bar='test'):
+                return doStuff()
+
+            is equivalent to
+
+            def Foo(self, bar):
+                with failure_reporter('graphics_test'):
+                    return doStuff()
+
+            # Incorrect usage.
+            @GraphicsTest.test_run_decorator('graphics_test')
+            def Foo(self, bar='test'):
+                pass
+            self.Foo('test_name', bar='test_name') # call Foo with named args
+
+            # Incorrect usage.
+            @GraphicsTest.test_run_decorator('graphics_test')
+            def Foo(self, bar='test'):
+                pass
+            self.Foo('test_name') # call Foo with unnamed args
+         """
+        def decorator(fn):
+            @wraps(fn)
+            def wrapper(*args, **kwargs):
+                if len(args) > 1:
+                    raise error.TestError('Unnamed arguments is not accepted. '
+                                          'Please apply this decorator to '
+                                          'function without unnamed args.')
+                # A member function of GraphicsTest is decorated. The first
+                # argument is the instance itself.
+                instance = args[0]
+                with instance.failure_report(name):
+                    # Cherry pick the arguments for the wrapped function.
+                    d_args, d_kwargs = test_utils._cherry_pick_args(fn, args,
+                                                                    kwargs)
+                    return fn(instance, *d_args, **d_kwargs)
+            return wrapper
+        return decorator
+
     def add_failures(self, failure_description):
+        """
+        Add a record to failures list which will report back to chrome perf
+        dashboard at the cleanup stage.
+        """
         self._failures.append(failure_description)
 
     def remove_failures(self, failure_description):
+        """
+        Remove a record from failures list which will report back to chrome perf
+        dashboard at the cleanup stage.
+        """
         self._failures.remove(failure_description)
 
     def get_failures(self):
+        """
+        Get currently recorded failures list.
+        """
         return list(self._failures)
 
 
