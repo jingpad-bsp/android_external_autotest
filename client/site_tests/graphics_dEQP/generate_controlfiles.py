@@ -15,7 +15,7 @@ from enum import Enum
 # Use 'sudo pip install jinja2' to install.
 from jinja2 import Template
 
-Test = namedtuple('Test', 'filter, suite, shards, time, hasty, tag, test_file')
+Test = namedtuple('Test', 'filter, suite, shards, time, hasty, tag, test_file, perf_failure_description')
 
 
 ATTRIBUTES_BVT_CQ = (
@@ -39,25 +39,27 @@ GLES3_MASTER_FILE = os.path.join(test_file_folder, 'gles3-master.txt')
 GLES31_MASTER_FILE = os.path.join(test_file_folder, 'gles31-master.txt')
 VK_MASTER_FILE = os.path.join(test_file_folder, 'vk-master.txt')
 
+# List of tests' filter that should not append 'hasty' to its name.
+hasty_exclude_list = ['dEQP-VK-master']
+
 tests = [
-    Test('bvt',                    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag='bvt',           test_file=BVT_MASTER_FILE),
-    Test('dEQP-GLES2-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles2-master',  test_file=GLES2_MASTER_FILE),
-    Test('dEQP-GLES2-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles2-master',  test_file=GLES2_MASTER_FILE),
+    Test('bvt',                    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag='bvt',           test_file=BVT_MASTER_FILE,    perf_failure_description='Failures_BVT'),
+    Test('dEQP-GLES2-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles2-master',  test_file=GLES2_MASTER_FILE,  perf_failure_description='Failures_GLES2'),
+    Test('dEQP-GLES2-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles2-master',  test_file=GLES2_MASTER_FILE,  perf_failure_description=None),
     # The stress, accuracy and performance tests are not part of -master lists.
     # Hence we create control files in case we want to run them. But there is
     # no strict requirement to keep them passing.
-    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None),
-    Test('dEQP-GLES3.accuracy',    Suite.none,  shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES3-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles3-master',  test_file=GLES3_MASTER_FILE),
-    Test('dEQP-GLES3-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles3-master',  test_file=GLES3_MASTER_FILE),
-    Test('dEQP-GLES3.performance', Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-GLES3.stress',      Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-GLES31-master',     Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles31-master', test_file=GLES31_MASTER_FILE),
-    Test('dEQP-GLES31-master',     Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles31-master', test_file=GLES31_MASTER_FILE),
-    Test('dEQP-GLES31.stress',     Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None),
-    Test('dEQP-VK-master',         Suite.none,  shards=1,  hasty=False, time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE),
-    # TODO(pwang): fix VK-master.hasty
-    Test('dEQP-VK-master',         Suite.none,  shards=10, hasty=True,  time='FAST',     tag='vk-master',     test_file=VK_MASTER_FILE),
+    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None,               perf_failure_description=None),
+    Test('dEQP-GLES3.accuracy',    Suite.none,  shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None,               perf_failure_description=None),
+    Test('dEQP-GLES3-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles3-master',  test_file=GLES3_MASTER_FILE,  perf_failure_description='Failures_GLES3'),
+    Test('dEQP-GLES3-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles3-master',  test_file=GLES3_MASTER_FILE,  perf_failure_description=None),
+    Test('dEQP-GLES3.performance', Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None,               perf_failure_description=None),
+    # It is not worth running GLES3.stress in addition to GLES2.stress and GLES31.stress just to find stability issues.
+    Test('dEQP-GLES3.stress',      Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None,               perf_failure_description=None),
+    Test('dEQP-GLES31-master',     Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles31-master', test_file=GLES31_MASTER_FILE, perf_failure_description='Failures_GLES31'),
+    Test('dEQP-GLES31-master',     Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles31-master', test_file=GLES31_MASTER_FILE, perf_failure_description=None),
+    Test('dEQP-GLES31.stress',     Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None,               perf_failure_description=None),
+    Test('dEQP-VK-master',         Suite.bvtpb, shards=1,  hasty=True,  time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE,     perf_failure_description='Failures_VK'),
 ]
 
 CONTROLFILE_TEMPLATE = Template(
@@ -87,7 +89,8 @@ job.run_test('graphics_dEQP',{% if tag != None %}
                  'subset_to_run={{subset}}',
                  {% else %}'test_names_file={{test_file}}',
                  {% endif %}'hasty={{hasty}}',
-                 'shard_number={{shard}}',
+                 {% if perf_failure_description %}'perf_failure_description={{perf_failure_description}}',
+                 {% endif %}'shard_number={{shard}}',
                  'shard_count={{shards}}'
              ])"""
     )
@@ -117,7 +120,7 @@ def get_time(test):
 
 def get_name(test, shard):
     name = test.filter.replace('dEQP-', '', 1).lower()
-    if test.hasty:
+    if test.hasty and test.filter not in hasty_exclude_list:
         name = '%s.hasty' % name
     if test.shards > 1:
         name = '%s.%d' % (name, shard)
@@ -151,7 +154,8 @@ def write_controlfiles(test):
             shard=shard,
             shards=test.shards,
             test_file=test.test_file,
-            tag=test.tag
+            tag=test.tag,
+            perf_failure_description=test.perf_failure_description
         )
         write_controlfile(filename, content)
 
