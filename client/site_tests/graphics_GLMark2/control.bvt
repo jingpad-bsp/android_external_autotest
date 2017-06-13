@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'graphics_GLMark2.bvt-cq'
+NAME = 'graphics_GLMark2.bvt'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
-ATTRIBUTES = 'suite:bvt-cq'
+# It is intentional that this suite is part of bvt-inline and bvt-perbuild
+# suites to get more stability data. Do not change this.
+ATTRIBUTES = 'suite:bvt-inline, suite:bvt-perbuild, suite:graphics, suite:graphics_per-day, suite:graphics_system'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
