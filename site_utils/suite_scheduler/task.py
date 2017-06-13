@@ -10,6 +10,7 @@ import subprocess
 import base_event
 import deduping_scheduler
 import driver
+import error
 import manifest_versions
 from distutils import version
 from constants import Labels
@@ -35,11 +36,6 @@ _WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 # regex to parse the dut count from board label. Note that the regex makes sure
 # there is only one board specified in `boards`
 TESTBED_DUT_COUNT_REGEX = '[^,]*-(\d+)'
-
-class MalformedConfigEntry(Exception):
-    """Raised to indicate a failure to parse a Task out of a config."""
-    pass
-
 
 BARE_BRANCHES = ['factory', 'firmware']
 
@@ -124,7 +120,7 @@ class TotMilestoneManager(object):
         tot_spec = tot_spec.lower()
         match = re.match('(tot)[-]?(1$|2$)?', tot_spec)
         if not match:
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     "%s isn't a valid branch spec." % tot_spec)
         tot_mstone = self.tot
         num_back = match.groups()[1]
@@ -179,7 +175,7 @@ class Task(object):
         @raise MalformedConfigEntry if there's a problem parsing |section|.
         """
         if not config.has_section(section):
-            raise MalformedConfigEntry('unknown section %s' % section)
+            raise error.MalformedConfigEntry('unknown section %s' % section)
 
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
@@ -193,7 +189,7 @@ class Task(object):
         # comparison against the allowed set.
         section_headers = allowed.union(dict(config.items(section)).keys())
         if allowed != section_headers:
-            raise MalformedConfigEntry('unknown entries: %s' %
+            raise error.MalformedConfigEntry('unknown entries: %s' %
                       ", ".join(map(str, section_headers.difference(allowed))))
 
         keyword = config.getstring(section, 'run_on')
@@ -222,20 +218,20 @@ class Task(object):
         try:
             num = config.getint(section, 'num')
         except ValueError as e:
-            raise MalformedConfigEntry("Ill-specified 'num': %r" % e)
+            raise error.MalformedConfigEntry("Ill-specified 'num': %r" % e)
         if not keyword:
-            raise MalformedConfigEntry('No event to |run_on|.')
+            raise error.MalformedConfigEntry('No event to |run_on|.')
         if not suite:
-            raise MalformedConfigEntry('No |suite|')
+            raise error.MalformedConfigEntry('No |suite|')
         try:
             hour = config.getint(section, 'hour')
         except ValueError as e:
-            raise MalformedConfigEntry("Ill-specified 'hour': %r" % e)
+            raise error.MalformedConfigEntry("Ill-specified 'hour': %r" % e)
         if hour is not None and (hour < 0 or hour > 23):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`hour` must be an integer between 0 and 23.')
         if hour is not None and keyword != 'nightly':
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`hour` is the trigger time that can only apply to nightly '
                     'event.')
 
@@ -248,13 +244,13 @@ class Task(object):
         try:
             day = config.getint(section, 'day')
         except ValueError as e:
-            raise MalformedConfigEntry("Ill-specified 'day': %r" % e)
+            raise error.MalformedConfigEntry("Ill-specified 'day': %r" % e)
         if day is not None and (day < 0 or day > 6):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`day` must be an integer between 0 and 6, where 0 is for '
                     'Monday and 6 is for Sunday.')
         if day is not None and keyword != 'weekly':
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`day` is the trigger of the day of a week, that can only '
                     'apply to weekly events.')
 
@@ -265,27 +261,28 @@ class Task(object):
 
         os_type = config.getstring(section, 'os_type') or OS_TYPE_CROS
         if os_type not in OS_TYPES:
-            raise MalformedConfigEntry('`os_type` must be one of %s' % OS_TYPES)
+            raise error.MalformedConfigEntry(
+                    '`os_type` must be one of %s' % OS_TYPES)
 
         lc_branches = config.getstring(section, 'branches')
         lc_targets = config.getstring(section, 'targets')
         if os_type == OS_TYPE_CROS and (lc_branches or lc_targets):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`branches` and `targets` are only supported for Launch '
                     'Control builds, not ChromeOS builds.')
         if (os_type in OS_TYPES_LAUNCH_CONTROL and
             (not lc_branches or not lc_targets)):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`branches` and `targets` must be specified for Launch '
                     'Control builds.')
         if (os_type in OS_TYPES_LAUNCH_CONTROL and boards and
             not testbed_dut_count):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     '`boards` for Launch Control builds are retrieved from '
                     '`targets` setting, it should not be set for Launch '
                     'Control builds.')
         if os_type == OS_TYPE_CROS and testbed_dut_count:
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     'testbed_dut_count is only supported for Launch Control '
                     'builds testing with testbed.')
 
@@ -353,7 +350,8 @@ class Task(object):
                             branch[branch.index('tot'):])
                     have_seen_numeric_constraint = True
                 continue
-            raise MalformedConfigEntry("%s isn't a valid branch spec." % branch)
+            raise error.MalformedConfigEntry(
+                    "%s isn't a valid branch spec.'" % branch)
 
 
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
@@ -483,11 +481,11 @@ class Task(object):
              cros_build_spec) and
             not self.test_source in [Builds.FIRMWARE_RW, Builds.FIRMWARE_RO,
                                      Builds.CROS]):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     'You must specify the build for test source. It can only '
                     'be `firmware_rw`, `firmware_ro` or `cros`.')
         if self._firmware_rw_build_spec and cros_build_spec:
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     'You cannot specify both firmware_rw_build_spec and '
                     'cros_build_spec. firmware_rw_build_spec is used to specify'
                     ' a firmware build when the suite requires firmware to be '
@@ -496,12 +494,12 @@ class Task(object):
                     'build when build_specs is set to firmware.')
         if (self._firmware_rw_build_spec and
             self._firmware_rw_build_spec not in ['firmware', 'cros']):
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     'firmware_rw_build_spec can only be empty, firmware or '
                     'cros. It does not support other build type yet.')
 
         if os_type not in OS_TYPES_LAUNCH_CONTROL and self._testbed_dut_count:
-            raise MalformedConfigEntry(
+            raise error.MalformedConfigEntry(
                     'testbed_dut_count is only applicable to testbed to run '
                     'test with builds from Launch Control.')
 
