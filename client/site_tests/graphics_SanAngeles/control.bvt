@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = 'graphics_SanAngeles.bvt-cq'
+NAME = 'graphics_SanAngeles.bvt'
 PURPOSE = 'Benchmark OpenGL object rendering.'
 CRITERIA = 'This test is a benchmark. It will fail if it fails to complete.'
-ATTRIBUTES = "suite:bvt-cq"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"

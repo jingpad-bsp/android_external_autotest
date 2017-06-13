@@ -17,6 +17,7 @@ DOC = """
 This test runs the drawElements Quality Program test suite.
 """
 job.run_test('graphics_dEQP',
+             tag = 'stress',
              opts = args + [
                  'filter=dEQP-GLES2.stress',
                  'subset_to_run=Pass',
