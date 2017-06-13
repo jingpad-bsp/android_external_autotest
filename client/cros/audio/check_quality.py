@@ -7,6 +7,7 @@
 """Command line tool to analyze wave file and detect artifacts."""
 
 import argparse
+import json
 import logging
 import math
 import numpy
@@ -58,6 +59,8 @@ def add_args(parser):
                         type=float, default=5000,
                         help='Frequency threshold in Hz to be ignored for '
                              'high frequency. Default is 5KHz')
+    parser.add_argument('--output-file', metavar='OUTPUT_FILE', type=str,
+                        help='Output file to dump analysis result in JSON format')
     parser.add_argument('-b', '--bit-width', metavar='BIT_WIDTH', type=int,
                         default=32,
                         help='For raw file. Bit width of a sample. '
@@ -227,6 +230,7 @@ class QualityChecker(object):
         self._raw_data = raw_data
         self._rate = rate
         self._spectrals = []
+        self._quality_result = []
 
 
     def do_spectral_analysis(self, ignore_high_freq, check_quality=False):
@@ -270,8 +274,9 @@ class QualityChecker(object):
                         signal=normalized_signal,
                         rate=self._rate,
                         dominant_frequency=spectral[0][0])
-                logging.info('Channel %d quality:\n%s', channel_idx,
-                             pprint.pformat(quality))
+                logging.debug('Channel %d quality:\n%s', channel_idx,
+                              pprint.pformat(quality))
+                self._quality_result.append(quality)
 
             self._spectrals.append(spectral)
 
@@ -307,6 +312,22 @@ class QualityChecker(object):
                 raise CompareFailure(
                         'Failed at channel %d: %f is too far away from %f' % (
                                 idx, dominant_freq, expected_freq))
+
+
+    def dump(self, output_file):
+        """Dumps the result into a file in json format.
+
+        @param output_file: A file path to dump spectral and quality
+                            measurement result of each channel.
+
+        """
+        dump_dict = {
+            'spectrals': self._spectrals,
+            'quality_result': self._quality_result
+        }
+        with open(output_file, 'w') as f:
+            json.dump(dump_dict, f)
+
 
 class CheckQualityError(Exception):
     """Error in check_quality main function."""
@@ -361,6 +382,8 @@ if __name__ == "__main__":
     checker.do_spectral_analysis(ignore_high_freq=args.ignore_high_freq,
                                  check_quality=(not args.spectral_only))
 
+    if args.output_file:
+        checker.dump(args.output_file)
 
     if args.freqs:
         checker.check_freqs(args.freqs, args.freq_threshold)
