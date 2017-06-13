@@ -19,7 +19,7 @@ Test = namedtuple('Test', 'filter, suite, shards, time, hasty, tag, test_file')
 
 
 ATTRIBUTES_BVT_CQ = (
-    'suite:deqp, suite:graphics_per-day, suite:graphics_system, suite:bvt-cq')
+    'suite:deqp, suite:graphics_per-day, suite:graphics_system, suite:bvt-inline')
 ATTRIBUTES_BVT_PB = (
     'suite:deqp, suite:graphics_per-day, suite:graphics_system, '
     'suite:bvt-perbuild'
@@ -43,29 +43,21 @@ tests = [
     Test('bvt',                    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag='bvt',           test_file=BVT_MASTER_FILE),
     Test('dEQP-GLES2-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles2-master',  test_file=GLES2_MASTER_FILE),
     Test('dEQP-GLES2-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles2-master',  test_file=GLES2_MASTER_FILE),
-    Test('dEQP-GLES2.accuracy',    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES2.capability',  Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES2.info',        Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-GLES3.accuracy',    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
+    # The stress, accuracy and performance tests are not part of -master lists.
+    # Hence we create control files in case we want to run them. But there is
+    # no strict requirement to keep them passing.
+    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None),
+    Test('dEQP-GLES3.accuracy',    Suite.none,  shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
     Test('dEQP-GLES3-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles3-master',  test_file=GLES3_MASTER_FILE),
     Test('dEQP-GLES3-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles3-master',  test_file=GLES3_MASTER_FILE),
-    Test('dEQP-GLES3.info',        Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES3.performance', Suite.daily, shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-GLES3.stress',      Suite.daily, shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
+    Test('dEQP-GLES3.performance', Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
+    Test('dEQP-GLES3.stress',      Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
     Test('dEQP-GLES31-master',     Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles31-master', test_file=GLES31_MASTER_FILE),
     Test('dEQP-GLES31-master',     Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles31-master', test_file=GLES31_MASTER_FILE),
-    Test('dEQP-GLES31.info',       Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, time='LONG',     tag=None,            test_file=None),
+    Test('dEQP-GLES31.stress',     Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None),
     Test('dEQP-VK-master',         Suite.none,  shards=1,  hasty=False, time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE),
-    Test('dEQP-VK-master',         Suite.daily, shards=10, hasty=True,  time='FAST',     tag='vk-master',     test_file=VK_MASTER_FILE),
-    Test('dEQP-VK.api',            Suite.none,  shards=1,  hasty=True,  time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-VK.api.smoke',      Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-VK.binding_model',  Suite.none,  shards=1,  hasty=True,  time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-VK.glsl',           Suite.none,  shards=1,  hasty=True,  time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-VK.info',           Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag=None,            test_file=None),
-    Test('dEQP-VK.pipeline',       Suite.none,  shards=1,  hasty=True,  time='LONG',     tag=None,            test_file=None),
-    Test('dEQP-VK.spirv_assembly', Suite.none,  shards=1,  hasty=True,  time='SHORT',    tag=None,            test_file=None),
+    # TODO(pwang): fix VK-master.hasty
+    Test('dEQP-VK-master',         Suite.none,  shards=10, hasty=True,  time='FAST',     tag='vk-master',     test_file=VK_MASTER_FILE),
 ]
 
 CONTROLFILE_TEMPLATE = Template(
