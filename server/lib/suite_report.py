@@ -23,8 +23,10 @@ TKO_STATUS_MAP = {
     'FAIL': 'fail',
     'GOOD': 'pass',
     'PASS': 'pass',
+    'ABORT': 'aborted',
     'Failed': 'fail',
     'Completed': 'pass',
+    'Aborted': 'aborted',
 }
 
 
