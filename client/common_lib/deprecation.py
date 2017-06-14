@@ -37,8 +37,7 @@ class APIDeprecationWarning(UserWarning):
         self._deprecated_name = deprecated_name
 
     def __str__(self):
-        return ('(NOT AN ERROR) %s is deprecated;'
-                ' please file a fixit bug: %s'
+        return ('%s is deprecated; please file a fixit bug: %s'
                 % (self._deprecated_name, self._get_fixit_bug_url()))
 
     def _get_fixit_bug_url(self):
