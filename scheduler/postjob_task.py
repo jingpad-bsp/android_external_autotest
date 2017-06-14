@@ -345,7 +345,7 @@ class FinalReparseTask(SelfThrottledPostJobTask):
 
     def epilog(self):
         super(FinalReparseTask, self).epilog()
-        self._archive_results(self.queue_entries)
+        self._set_all_statuses(self._final_status())
 
 
 class ArchiveResultsTask(SelfThrottledPostJobTask):
