@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite.suite import ProvisionSuite
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.tko import utils as tko_utils
 
@@ -423,6 +424,67 @@ def skip_reimage(g):
     @return:  Value associated with SKIP-IMAGE
     """
     return False
+
+
+def run_provision_suite(**dargs):
+    """
+    Run a provision suite.
+
+    Will re-image a number of devices (of the specified board) with the
+    provided builds by scheduling dummy_Pass.
+
+    @param job: an instance of client.common_lib.base_job representing the
+                currently running suite job.
+    @param suite_args: keyword arguments passed to suite.
+
+    @raises AsynchronousBuildFailure: if there was an issue finishing staging
+                                      from the devserver.
+    @raises MalformedDependenciesException: if the dependency_info file for
+                                            the required build fails to parse.
+    """
+    spec = SuiteSpec(**dargs)
+
+    afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
+                                        user=spec.job.user, debug=False)
+    tko = frontend_wrappers.RetryingTKO(timeout_min=30, delay_sec=10,
+                                        user=spec.job.user, debug=False)
+
+    try:
+        my_job_id = int(tko_utils.get_afe_job_id(spec.job.tag))
+        logging.debug('Determined own job id: %d', my_job_id)
+    except ValueError:
+        my_job_id = None
+        logging.warning('Could not determine own job id.')
+
+    suite = ProvisionSuite(
+            tag=spec.name,
+            builds=spec.builds,
+            board=spec.board,
+            devserver=spec.devserver,
+            count=1,
+            afe=afe,
+            tko=tko,
+            pool=spec.pool,
+            results_dir=spec.job.resultdir,
+            max_runtime_mins=spec.max_runtime_mins,
+            timeout_mins=spec.timeout_mins,
+            file_bugs=spec.file_bugs,
+            file_experimental_bugs=spec.file_experimental_bugs,
+            suite_job_id=my_job_id,
+            extra_deps=spec.suite_dependencies,
+            priority=spec.priority,
+            wait_for_results=spec.wait_for_results,
+            job_retry=spec.job_retry,
+            max_retries=spec.max_retries,
+            offload_failures_only=spec.offload_failures_only,
+            test_source_build=spec.test_source_build,
+            run_prod_code=spec.run_prod_code,
+            job_keyvals=spec.job_keyvals,
+            test_args=spec.test_args)
+
+    _run_suite_with_spec(suite, spec)
+
+    logging.debug('Returning from dynamic_suite.run_provision_suite')
 
 
 def reimage_and_run(**dargs):
