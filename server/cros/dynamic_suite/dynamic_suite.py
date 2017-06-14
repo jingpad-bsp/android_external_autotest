@@ -472,7 +472,7 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     # control_files and test_suites packages so that we can get the control
     # files we should schedule.
     if not spec.run_prod_code:
-        _stage_artifacts(spec)
+        _stage_artifacts_for_build(spec.devserver, spec.test_source_build)
 
     timestamp = datetime.datetime.now().strftime(time_utils.TIME_FMT)
     utils.write_keyval(
@@ -525,14 +525,15 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
                      'without waiting for test jobs to finish.')
 
 
-def _stage_artifacts(suite_spec):
+def _stage_artifacts_for_build(devserver, build):
     """Stage artifacts for a suite job.
 
-    @param suite_spec: a populated SuiteSpec object.
+    @param devserver: devserver to stage artifacts with.
+    @param build: image to stage artifacts for.
     """
     try:
-        suite_spec.devserver.stage_artifacts(
-                image=suite_spec.test_source_build,
+        devserver.stage_artifacts(
+                image=build,
                 artifacts=['control_files', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
