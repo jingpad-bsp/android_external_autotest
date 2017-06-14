@@ -1733,6 +1733,85 @@ class Suite(_BaseSuite):
                 job_keyvals=job_keyvals)
 
 
+class ProvisionSuite(_BaseSuite):
+    """
+    A suite for provisioning DUTs.
+
+    This is done by creating dummy_Pass tests.
+    """
+
+
+    def __init__(
+            self,
+            tag,
+            builds,
+            board,
+            count,
+            devserver,
+            cf_getter=None,
+            run_prod_code=False,
+            test_args=None,
+            test_source_build=None,
+            **suite_args):
+        """
+        Constructor
+
+        @param tag: a string with which to tag jobs run in this suite.
+        @param builds: the builds on which we're running this suite.
+        @param board: the board on which we're running this suite.
+        @param count: number of dummy tests to make
+        @param devserver: the devserver which contains the build.
+        @param cf_getter: a control_file_getter.ControlFileGetter.
+        @param test_args: A dict of args passed all the way to each individual
+                          test that will be actually ran.
+        @param test_source_build: Build that contains the server-side test code.
+        @param suite_args: Various keyword arguments passed to
+                           _BaseSuite constructor.
+        """
+        dummy_test = _load_dummy_test(
+                builds, devserver, cf_getter,
+                run_prod_code, test_args, test_source_build)
+
+        super(ProvisionSuite, self).__init__(
+                tests=[dummy_test] * count,
+                tag=tag,
+                builds=builds,
+                board=board,
+                **suite_args)
+
+
+def _load_dummy_test(
+        builds,
+        devserver,
+        cf_getter=None,
+        run_prod_code=False,
+        test_args=None,
+        test_source_build=None):
+    """
+    Load and return the dummy pass test.
+
+    @param builds: the builds on which we're running this suite.
+    @param devserver: the devserver which contains the build.
+    @param cf_getter: a control_file_getter.ControlFileGetter.
+    @param test_args: A dict of args passed all the way to each individual
+                      test that will be actually ran.
+    @param test_source_build: Build that contains the server-side test code.
+    @param suite_args: Various keyword arguments passed to
+                       _BaseSuite constructor.
+    """
+    if cf_getter is None:
+        if run_prod_code:
+            cf_getter = create_fs_getter(_AUTOTEST_DIR)
+        else:
+            build = get_test_source_build(
+                    builds, test_source_build=test_source_build)
+            cf_getter = _create_ds_getter(build, devserver)
+    retriever = _get_cf_retriever(cf_getter,
+                                  run_prod_code=run_prod_code,
+                                  test_args=test_args)
+    return retriever.retrieve('dummy_Pass')
+
+
 class _ComposedPredicate(object):
     """Return the composition of the predicates.
 
