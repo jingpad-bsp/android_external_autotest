@@ -693,8 +693,7 @@ def list_all_suites(build, devserver, cf_getter=None):
 
     suites = set()
     predicate = lambda t: True
-    for test in find_and_parse_tests(cf_getter, predicate,
-                                     add_experimental=True):
+    for test in find_and_parse_tests(cf_getter, predicate):
         suites.update(test.suite_tag_parts)
     return list(suites)
 
@@ -1703,7 +1702,6 @@ class Suite(_BaseSuite):
                 cf_getter,
                 _ComposedPredicate(predicates),
                 tag,
-                add_experimental=True,
                 forgiving_parser=forgiving_parser,
                 run_prod_code=run_prod_code,
                 test_args=test_args,
