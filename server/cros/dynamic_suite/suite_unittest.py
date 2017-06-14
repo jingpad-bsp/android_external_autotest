@@ -70,7 +70,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.files = OrderedDict(
                 [('one', FakeControlData(self._TAG, self._ATTR, 'data_one',
-                                         'FAST', expr=True)),
+                                         'FAST')),
                  ('two', FakeControlData(self._TAG, self._ATTR, 'data_two',
                                          'SHORT', dependencies=['feta'])),
                  ('three', FakeControlData(self._TAG, self._ATTR, 'data_three',
@@ -166,8 +166,7 @@ class SuiteTest(mox.MoxTestBase):
         predicate = lambda d: d.suite == self._TAG
         tests = SuiteBase.find_and_parse_tests(self.getter,
                                                predicate,
-                                               self._TAG,
-                                               add_experimental=True)
+                                               self._TAG)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -179,7 +178,7 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def testFindAndParseStableTests(self):
-        """Should find only non-experimental tests that match a predicate."""
+        """Should find only tests that match a predicate."""
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
 
@@ -203,7 +202,6 @@ class SuiteTest(mox.MoxTestBase):
         fs_getter = Suite.create_fs_getter(autodir)
         predicate = lambda t: hasattr(t, 'suite')
         SuiteBase.find_and_parse_tests(fs_getter, predicate,
-                                       add_experimental=True,
                                        forgiving_parser=False)
 
 
@@ -215,8 +213,7 @@ class SuiteTest(mox.MoxTestBase):
         predicate = lambda d: d.suite == self._TAG
         tests = SuiteBase.find_and_parse_tests(self.getter,
                                                predicate,
-                                               self._TAG,
-                                               add_experimental=True)
+                                               self._TAG)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -234,8 +231,7 @@ class SuiteTest(mox.MoxTestBase):
         predicate = Suite.matches_attribute_expression_predicate('attr:attr')
         tests = SuiteBase.find_and_parse_tests(self.getter,
                                                predicate,
-                                               self._TAG,
-                                               add_experimental=True)
+                                               self._TAG)
         self.assertEquals(len(tests), 6)
         self.assertTrue(self.files['one'] in tests)
         self.assertTrue(self.files['two'] in tests)
@@ -261,33 +257,6 @@ class SuiteTest(mox.MoxTestBase):
         self.assertFalse(self.files['four'] in suite.tests)
         self.assertTrue(self.files['five'] in suite.tests)
 
-        discoverer = SuiteBase._ExperimentalTestFilter(suite.tests)
-        self.assertFalse(self.files['one'] in discoverer.unstable_tests)
-        self.assertFalse(self.files['two'] in discoverer.stable_tests)
-        self.assertFalse(self.files['one'] in discoverer.stable_tests)
-        self.assertFalse(self.files['two'] in discoverer.unstable_tests)
-
-
-    def testStableUnstableFilter(self):
-        """Should distinguish between experimental and stable tests."""
-        self.expect_control_file_parsing()
-        self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
-                                       devserver=None,
-                                       cf_getter=self.getter,
-                                       afe=self.afe, tko=self.tko)
-
-        self.assertTrue(self.files['one'] in suite.tests)
-        self.assertTrue(self.files['two'] in suite.tests)
-        # Sanity check.
-        self.assertFalse(self.files['four'] in suite.tests)
-
-        discoverer = SuiteBase._ExperimentalTestFilter(suite.tests)
-        self.assertTrue(self.files['one'] in discoverer.unstable_tests)
-        self.assertTrue(self.files['two'] in discoverer.stable_tests)
-        self.assertFalse(self.files['one'] in discoverer.stable_tests)
-        self.assertFalse(self.files['two'] in discoverer.unstable_tests)
-
 
     def mock_control_file_parsing(self):
         """Fake out find_and_parse_tests(), returning content from |self.files|.
@@ -299,18 +268,16 @@ class SuiteTest(mox.MoxTestBase):
             mox.IgnoreArg(),
             mox.IgnoreArg(),
             mox.IgnoreArg(),
-            add_experimental=True,
             forgiving_parser=True,
             run_prod_code=False,
             test_args=None).AndReturn(self.files.values())
 
 
-    def expect_job_scheduling(self, recorder, add_experimental,
+    def expect_job_scheduling(self, recorder,
                               tests_to_skip=[], ignore_deps=False,
                               raises=False, suite_deps=[], suite=None):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
-        @param add_experimental: expect jobs for experimental tests as well.
         @param recorder: object with a record_entry to be used to record test
                          results.
         @param tests_to_skip: [list, of, test, names] that we expect to skip.
@@ -325,11 +292,8 @@ class SuiteTest(mox.MoxTestBase):
             StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG),
             log_in_subdir=False)
         tests = self.files.values()
-        tests.sort(key=lambda test: test.experimental)
         n = 1
         for test in tests:
-            if not add_experimental and test.experimental:
-                continue
             if test.name in tests_to_skip:
                 continue
             dependencies = []
@@ -378,9 +342,9 @@ class SuiteTest(mox.MoxTestBase):
 
     def testScheduleTestsAndRecord(self):
         """Should schedule stable and experimental tests with the AFE."""
-        name_list = ['name-data_two', 'name-data_three',
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
-                     'name-data_seven', 'experimental_name-data_one']
+                     'name-data_seven']
         keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
@@ -392,28 +356,27 @@ class SuiteTest(mox.MoxTestBase):
                                        results_dir=self.tmpdir)
         self.mox.ResetAll()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=True, suite=suite)
+        self.expect_job_scheduling(recorder, suite=suite)
 
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(self.tmpdir, keyval_dict)
         self.mox.ReplayAll()
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         for job in suite._jobs:
             self.assertTrue(hasattr(job, 'test_name'))
 
 
-    def testScheduleStableTests(self):
-        """Should schedule only stable tests with the AFE."""
-        # Since test data_one is experimental, it will be skip.
-        name_list = ['name-data_two', 'name-data_three',
+    def testScheduleTests(self):
+        """Should schedule tests with the AFE."""
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
                      'name-data_seven']
-        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: len(name_list),
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=False)
+        self.expect_job_scheduling(recorder)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
 
@@ -421,22 +384,19 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
-        suite.schedule(recorder.record_entry, add_experimental=False)
+        suite.schedule(recorder.record_entry)
 
 
-    def testScheduleStableTestsIgnoreDeps(self):
-        """Should schedule only stable tests with the AFE."""
-        # Since test data_one is experimental, it will be skip.
-        name_list = ['name-data_two', 'name-data_three',
+    def testScheduleTestsIgnoreDeps(self):
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
                      'name-data_seven']
-        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: len(name_list),
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=False,
-                                   ignore_deps=True)
+        self.expect_job_scheduling(recorder, ignore_deps=True)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
 
@@ -445,7 +405,7 @@ class SuiteTest(mox.MoxTestBase):
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        ignore_deps=True)
-        suite.schedule(recorder.record_entry, add_experimental=False)
+        suite.schedule(recorder.record_entry)
 
 
     def testScheduleUnrunnableTestsTESTNA(self):
@@ -458,34 +418,33 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=True, raises=True)
+        self.expect_job_scheduling(recorder, raises=True)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
                                        afe=self.afe, tko=self.tko)
-        suite.schedule(recorder.record_entry, add_experimental=True)
+        suite.schedule(recorder.record_entry)
 
 
     def testRetryMapAfterScheduling(self):
         """Test job-test and test-job mapping are correctly updated."""
-        name_list = ['name-data_two', 'name-data_three',
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
-                     'name-data_seven', 'experimental_name-data_one']
+                     'name-data_seven']
         keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=True)
+        self.expect_job_scheduling(recorder)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
 
         all_files = self.files.items()
         # Sort tests in self.files so that they are in the same
         # order as they are scheduled.
-        all_files.sort(key=lambda record: record[1].experimental)
         expected_retry_map = {}
         for n in range(len(all_files)):
             test = all_files[n][1]
@@ -506,15 +465,15 @@ class SuiteTest(mox.MoxTestBase):
 
     def testSuiteMaxRetries(self):
         """Test suite max retries."""
-        name_list = ['name-data_two', 'name-data_three',
-                     'name-data_four', 'name-data_five', 'name-data_six',
-                     'name-data_seven', 'experimental_name-data_one']
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five',
+                     'name-data_six', 'name-data_seven']
         keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=True)
+        self.expect_job_scheduling(recorder)
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
         self.mox.ReplayAll()
@@ -522,7 +481,7 @@ class SuiteTest(mox.MoxTestBase):
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        job_retry=True, max_retries=1)
-        suite.schedule(recorder.record_entry, add_experimental=True)
+        suite.schedule(recorder.record_entry)
         self.assertEqual(suite._retry_handler._max_retries, 1)
         # Find the job_id of the test that allows retry
         job_id = suite._retry_handler._retry_map.iterkeys().next()
@@ -532,17 +491,15 @@ class SuiteTest(mox.MoxTestBase):
 
     def testSuiteDependencies(self):
         """Should add suite dependencies to tests scheduled."""
-        # Since add_experimental set to False, will skip experimental data_one.
-        name_list = ['name-data_two', 'name-data_three',
+        name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
                      'name-data_seven']
-        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: len(name_list),
                        constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
 
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
-        self.expect_job_scheduling(recorder, add_experimental=False,
-                                   suite_deps=['extra'])
+        self.expect_job_scheduling(recorder, suite_deps=['extra'])
         self.mox.StubOutWithMock(utils, 'write_keyval')
         utils.write_keyval(None, keyval_dict)
 
@@ -550,7 +507,7 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver, extra_deps=['extra'],
                                        afe=self.afe, tko=self.tko)
-        suite.schedule(recorder.record_entry, add_experimental=False)
+        suite.schedule(recorder.record_entry)
 
 
     def _createSuiteWithMockedTestsAndControlFiles(self, file_bugs=False):
@@ -645,7 +602,7 @@ class SuiteTest(mox.MoxTestBase):
                     yield None
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         suite._retry_handler = RetryHandler({})
 
         self.mox.StubOutWithMock(job_status, 'wait_for_results')
@@ -665,7 +622,7 @@ class SuiteTest(mox.MoxTestBase):
         self.schedule_and_expect_these_results(suite, results, recorder)
         self.mox.ReplayAll()
 
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         suite.wait(recorder.record_entry)
 
 
@@ -679,7 +636,7 @@ class SuiteTest(mox.MoxTestBase):
             log_in_subdir=False)
 
         self.mox.StubOutWithMock(suite, 'schedule')
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         self.mox.StubOutWithMock(job_status, 'wait_for_results')
         job_status.wait_for_results(mox.IgnoreArg(),
                                     mox.IgnoreArg(),
@@ -687,7 +644,7 @@ class SuiteTest(mox.MoxTestBase):
                                             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         suite.wait(recorder.record_entry)
 
 
@@ -710,7 +667,7 @@ class SuiteTest(mox.MoxTestBase):
             Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.schedule(recorder.record_entry, True)
+        suite.schedule(recorder.record_entry)
         suite.wait(recorder.record_entry)
 
 
@@ -721,8 +678,7 @@ class SuiteTest(mox.MoxTestBase):
         # Get all tests.
         tests = SuiteBase.find_and_parse_tests(self.getter,
                                                lambda d: True,
-                                               self._TAG,
-                                               add_experimental=True)
+                                               self._TAG)
         self.assertEquals(len(tests), 7)
         times = [control_data.ControlData.get_test_time_index(test.time)
                  for test in tests]
@@ -805,7 +761,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mock_bug_filing(test_results)
         self.mox.ReplayAll()
 
-        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry)
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
         self.suite.wait(self.recorder.record_entry)
 
@@ -828,7 +784,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry)
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
         self.suite.wait(self.recorder.record_entry)
 
@@ -850,7 +806,7 @@ class SuiteTest(mox.MoxTestBase):
                 test_to_retry,
                 retry_for=self._FAKE_JOB_ID).AndReturn(fake_new_job)
         self.mox.ReplayAll()
-        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry)
         self.suite._retry_handler._retry_map = {
                 self._FAKE_JOB_ID: {'state': RetryHandler.States.NOT_ATTEMPTED,
                                     'retry_max': 1}
@@ -884,7 +840,7 @@ class SuiteTest(mox.MoxTestBase):
         # A bug should be filed if test warns.
         self.mock_bug_filing(test_results)
         self.mox.ReplayAll()
-        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry)
         self.suite._retry_handler._retry_map = {
                 self._FAKE_JOB_ID: {'state': RetryHandler.States.NOT_ATTEMPTED,
                                     'retry_max': 1}
@@ -919,7 +875,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        self.suite.schedule(self.recorder.record_entry, True)
+        self.suite.schedule(self.recorder.record_entry)
         self.suite._retry_handler._retry_map = {
                 self._FAKE_JOB_ID: {
                         'state': RetryHandler.States.NOT_ATTEMPTED,
