@@ -37,12 +37,12 @@ _DEFAULT_ALSA_CAPTURE_GAIN = '25dB'
 # Minimum RMS value to pass when checking recorded file.
 _DEFAULT_SOX_RMS_THRESHOLD = 0.08
 
-_JACK_VALUE_ON_RE = re.compile('.*values=on')
-_HP_JACK_CONTROL_RE = re.compile('numid=(\d+).*Headphone\sJack')
-_MIC_JACK_CONTROL_RE = re.compile('numid=(\d+).*Mic\sJack')
+_JACK_VALUE_ON_RE = re.compile(r'.*values=on')
+_HP_JACK_CONTROL_RE = re.compile(r'numid=(\d+).*Headphone\sJack')
+_MIC_JACK_CONTROL_RE = re.compile(r'numid=(\d+).*Mic\sJack')
 
-_SOX_RMS_AMPLITUDE_RE = re.compile('RMS\s+amplitude:\s+(.+)')
-_SOX_ROUGH_FREQ_RE = re.compile('Rough\s+frequency:\s+(.+)')
+_SOX_RMS_AMPLITUDE_RE = re.compile(r'RMS\s+amplitude:\s+(.+)')
+_SOX_ROUGH_FREQ_RE = re.compile(r'Rough\s+frequency:\s+(.+)')
 
 _AUDIO_NOT_FOUND_RE = r'Audio\snot\sdetected'
 _MEASURED_LATENCY_RE = r'Measured\sLatency:\s(\d+)\suS'
@@ -926,20 +926,25 @@ def alsa_rms_test_setup():
     if board in ['daisy_spring', 'daisy_skate']:
         # The MIC controls of the boards do not support dB syntax.
         alsa_utils.mixer_cmd(card_id,
-                             'sset Headphone ' + _DEFAULT_ALSA_MAX_VOLUME)
-        alsa_utils.mixer_cmd(card_id, 'sset MIC1 ' + _DEFAULT_ALSA_MAX_VOLUME)
-        alsa_utils.mixer_cmd(card_id, 'sset MIC2 ' + _DEFAULT_ALSA_MAX_VOLUME)
+                             ['sset', 'Headphone', _DEFAULT_ALSA_MAX_VOLUME])
+        alsa_utils.mixer_cmd(card_id, ['sset', 'MIC1',
+                                       _DEFAULT_ALSA_MAX_VOLUME])
+        alsa_utils.mixer_cmd(card_id, ['sset', 'MIC2',
+                                       _DEFAULT_ALSA_MAX_VOLUME])
     elif arch in ['armv7l', 'aarch64'] or uses_max98090:
         # ARM platforms or Intel platforms that uses max98090 codec driver.
         alsa_utils.mixer_cmd(card_id,
-                             'sset Headphone ' + _DEFAULT_ALSA_MAX_VOLUME)
-        alsa_utils.mixer_cmd(card_id, 'sset MIC1 ' + _DEFAULT_ALSA_CAPTURE_GAIN)
-        alsa_utils.mixer_cmd(card_id, 'sset MIC2 ' + _DEFAULT_ALSA_CAPTURE_GAIN)
+                             ['sset', 'Headphone', _DEFAULT_ALSA_MAX_VOLUME])
+        alsa_utils.mixer_cmd(card_id, ['sset', 'MIC1',
+                                       _DEFAULT_ALSA_CAPTURE_GAIN])
+        alsa_utils.mixer_cmd(card_id, ['sset', 'MIC2',
+                                       _DEFAULT_ALSA_CAPTURE_GAIN])
     else:
         # The rest of Intel platforms.
-        alsa_utils.mixer_cmd(card_id, 'sset Master ' + _DEFAULT_ALSA_MAX_VOLUME)
+        alsa_utils.mixer_cmd(card_id, ['sset', 'Master',
+                                       _DEFAULT_ALSA_MAX_VOLUME])
         alsa_utils.mixer_cmd(card_id,
-                             'sset Capture ' + _DEFAULT_ALSA_CAPTURE_GAIN)
+                             ['sset', 'Capture', _DEFAULT_ALSA_CAPTURE_GAIN])
 
 
 class alsa_rms_test(_base_rms_test):
