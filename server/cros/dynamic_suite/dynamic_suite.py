@@ -468,17 +468,6 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     @param suite_job_id: Job id that will act as parent id to all sub jobs.
                          Default: None
     """
-    # We can't do anything else until the devserver has finished downloading
-    # control_files and test_suites packages so that we can get the control
-    # files we should schedule.
-    if not spec.run_prod_code:
-        _stage_artifacts_for_build(spec.devserver, spec.test_source_build)
-
-    timestamp = datetime.datetime.now().strftime(time_utils.TIME_FMT)
-    utils.write_keyval(
-        spec.job.resultdir,
-        {constants.ARTIFACT_FINISHED_TIME: timestamp})
-
     suite = Suite.create_from_predicates(
             predicates=[spec.predicate],
             name=spec.name,
@@ -505,19 +494,62 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             job_keyvals=spec.job_keyvals,
             test_args=spec.test_args)
 
-    if spec.delay_minutes:
+    _run_suite(
+        suite=suite,
+        job=spec.job,
+        run_prod_code=spec.run_prod_code,
+        devserver=spec.devserver,
+        build=spec.test_source_build,
+        delay_minutes=spec.delay_minutes,
+        bug_template=spec.bug_template)
+
+
+def _run_suite(
+        suite,
+        job,
+        run_prod_code,
+        devserver,
+        build,
+        delay_minutes,
+        bug_template):
+    """
+    Run a suite.
+
+    @param suite: _BaseSuite instance.
+    @param job: an instance of client.common_lib.base_job representing the
+                currently running suite job.
+    @param run_prod_code: whether to use prod test code.
+    @param devserver: devserver for staging artifacts.
+    @param build: the build to install e.g. 'x86-alex-release/R18-1655.0.0'
+    @param delay_minutes: Delay the creation of test jobs for a given number
+                          of minutes.
+    @param bug_template: A template dictionary specifying the default bug
+                         filing options for failures in this suite.
+    """
+    # We can't do anything else until the devserver has finished downloading
+    # control_files and test_suites packages so that we can get the control
+    # files we should schedule.
+    if not run_prod_code:
+        _stage_artifacts_for_build(devserver, build)
+
+    timestamp = datetime.datetime.now().strftime(time_utils.TIME_FMT)
+    utils.write_keyval(
+        job.resultdir,
+        {constants.ARTIFACT_FINISHED_TIME: timestamp})
+
+    if delay_minutes:
         logging.debug('delay_minutes is set. Sleeping %d minutes before '
-                      'creating test jobs.', spec.delay_minutes)
-        time.sleep(spec.delay_minutes*60)
+                      'creating test jobs.', delay_minutes)
+        time.sleep(delay_minutes*60)
         logging.debug('Finished waiting for %d minutes before creating test '
-                      'jobs.', spec.delay_minutes)
+                      'jobs.', delay_minutes)
 
     # Now we get to asychronously schedule tests.
-    suite.schedule(spec.job.record_entry, spec.add_experimental)
+    suite.schedule(job.record_entry)
 
     if suite.wait_for_results:
         logging.debug('Waiting on suite.')
-        suite.wait(spec.job.record_entry, spec.bug_template)
+        suite.wait(job.record_entry, bug_template)
         logging.debug('Finished waiting on suite. '
                       'Returning from _perform_reimage_and_run.')
     else:
