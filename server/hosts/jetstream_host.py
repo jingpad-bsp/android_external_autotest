@@ -7,22 +7,13 @@
 Host customization provided for fine-tuning autotest reset, verification,
 and provisioning on Jetstream devices. A more customized host wrapper is
 typicaly used in Jetstream autotests.
-
-This host is not currently probed for in the create_host autodetection logic.
-
-To use this host, the |os_type| host attribute must be set:
-
-  os_type: jetstream
-
-Otherwise, CrosHost will be used for Jetstream devices.
-
-TODO(lgoodby): when known stable, plug this host into the autodection logic.
 """
 
 import logging
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import cros_repair
 
@@ -36,6 +27,24 @@ RESET_TIMEOUT_SECONDS = 60
 
 class JetstreamHost(cros_host.CrosHost):
     """Jetstream-specific host class."""
+
+    @staticmethod
+    def check_host(host, timeout=10):
+        """
+        Check if the given host is jetstream host.
+
+        @param host: An ssh host representing a device.
+        @param timeout: The timeout for the run command.
+
+        @return: True if the host is a Jetstream device, otherwise False.
+        """
+        try:
+            lsb_release_content = host.run(
+                'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release').stdout
+            return lsbrelease_utils.is_jetstream(
+                lsb_release_content=lsb_release_content)
+        except (error.AutoservRunError, error.AutoservSSHTimeout):
+            return False
 
     def _initialize(self, *args, **dargs):
         logging.debug('Initializing Jetstream host')
