@@ -6,7 +6,7 @@ AUTHOR = 'bettyzhou, jaineelm, krisr'
 NAME = 'android_ACTS.Telephony_UK_EE_WFC'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_international_roaming'
+ATTRIBUTES = 'suite:android_telephony_nightly'
 DEPENDENCIES = 'carrier:england_ee,location:london'
 
 DOC = """
