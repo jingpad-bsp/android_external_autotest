@@ -13,7 +13,6 @@ from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import emulated_adb_host
 from autotest_lib.server.hosts import host_info
-from autotest_lib.server.hosts import iota_host
 from autotest_lib.server.hosts import jetstream_host
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.hosts import sonic_host
@@ -45,7 +44,6 @@ OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'brillo': adb_host.ADBHost,
                 'cros' : cros_host.CrosHost,
                 'emulated_brillo': emulated_adb_host.EmulatedADBHost,
-                'iota': iota_host.IotaHost,
                 'jetstream': jetstream_host.JetstreamHost,
                 'moblab': moblab_host.MoblabHost}
 
