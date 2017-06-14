@@ -1711,6 +1711,18 @@ class ImageServer(ImageServerBase):
         return os.path.join(log_dir, CROS_AU_LOG_FILENAME % (
                     host_name, pid))
 
+    def _read_json_response_from_devserver(self, response):
+        """Reads the json response from the devserver.
+
+        This is extracted to its own function so that it can be easily mocked.
+        @param response: the response for a devserver.
+        """
+        try:
+            return json.loads(response)
+        except ValueError as e:
+            raise DevServerException(e)
+
+
     @remote_devserver_call()
     def _collect_au_log(self, log_dir, **kwargs):
         """Collect logs from devserver after cros-update process is finished.
@@ -1734,23 +1746,21 @@ class ImageServer(ImageServerBase):
                 log_dir, kwargs['host_name'], kwargs['pid'])
         logging.debug('Saving auto-update logs into %s', write_file)
 
+        au_logs = self._read_json_response_from_devserver(response)
+
         try:
-            au_logs = json.loads(response)
             for k, v in au_logs['host_logs'].items():
                 log_name = '%s_%s_%s' % (k, kwargs['host_name'], kwargs['pid'])
                 log_path = os.path.join(log_dir, log_name)
                 with open(log_path, 'w') as out_log:
                     out_log.write(v)
-            cros_au_log = au_logs['cros_au_log']
-        except ValueError:
-            logging.debug('collect_cros_au_log response was not json.')
-            cros_au_log = response
-        except:
-          raise DevServerException('Failed to write auto-update hostlogs')
+        except IOError as e:
+            raise DevServerException('Failed to write auto-update hostlogs: '
+                                     '%s' % e)
 
         try:
             with open(write_file, 'w') as out_log:
-                out_log.write(cros_au_log)
+                out_log.write(au_logs['cros_au_log'])
         except:
             raise DevServerException('Failed to write auto-update logs into '
                                      '%s' % write_file)
