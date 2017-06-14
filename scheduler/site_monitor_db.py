@@ -14,15 +14,6 @@ from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config, scheduler_models
 
 
-# Override default parser with our site parser.
-def parser_path(install_dir):
-    """Return site implementation of parser.
-
-    @param install_dir: installation directory.
-    """
-    return os.path.join(install_dir, 'tko', 'site_parse')
-
-
 class SiteAgentTask(object):
     """
     SiteAgentTask subclasses BaseAgentTask in monitor_db.
