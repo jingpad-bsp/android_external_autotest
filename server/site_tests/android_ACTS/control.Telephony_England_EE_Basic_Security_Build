@@ -6,7 +6,7 @@ AUTHOR = 'bettyzhou, jaineelm, krisr'
 NAME = 'android_ACTS.Telephony_England_EE_Basic_Security_Build'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_international_roaming_security'
+ATTRIBUTES = 'suite:android_telephony_nightly_security'
 DEPENDENCIES = 'carrier:england_ee,location:london'
 
 DOC = """
