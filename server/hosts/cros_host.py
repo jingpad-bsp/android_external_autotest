@@ -192,9 +192,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     '! test -f /mnt/stateful_partition/.android_tester && '
                     '! grep -q moblab /etc/lsb-release',
                     ignore_status=True, timeout=timeout)
+            if result.exit_status == 0:
+                lsb_release_content = host.run(
+                    'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release',
+                    timeout=timeout).stdout
+                return not lsbrelease_utils.is_jetstream(
+                    lsb_release_content=lsb_release_content)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
-        return result.exit_status == 0
+
+        return False
 
 
     @staticmethod
@@ -824,10 +831,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         Subclasses may override this to perform any special actions
         required before updating.
         """
-        # Stop service ap-update-manager to prevent rebooting during autoupdate.
-        # The service is used in jetstream boards, but not other CrOS devices.
-        # TODO(lgoodby): Remove this when jetstream hosts are specialized.
-        self.run('sudo stop ap-update-manager', ignore_status=True)
+        pass
 
 
     def machine_install(self, update_url=None, force_update=False,
