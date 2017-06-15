@@ -102,7 +102,7 @@ def _get_machines(parser):
     return machines
 
 
-def _stage_ssp(parser):
+def _stage_ssp(parser, resultsdir):
     """Stage server-side package.
 
     This function calls a control segment to stage server-side package based on
@@ -114,6 +114,10 @@ def _stage_ssp(parser):
     server-side package) not found.
 
     @param parser: Command line arguments parser passed in the autoserv process.
+    @param resultsdir: Folder to store results. This could be different from
+            parser.options.results: parser.options.results  can be set to None
+            for results to be stored in a temp folder. resultsdir can be None
+            for autoserv run requires no logging.
 
     @return: (ssp_url, error_msg), where
               ssp_url is a url to the autotest server-side package. None if
@@ -122,8 +126,9 @@ def _stage_ssp(parser):
               side package is staged successfully.
     """
     machines_list = _get_machines(parser)
-    machines_list = server_job.get_machine_dicts(
-            machines_list, parser.options.lab, parser.options.host_attributes)
+    machines_list = server_job.get_machine_dicts(machines_list, resultsdir,
+                                                 parser.options.lab,
+                                                 parser.options.host_attributes)
 
     # If test_source_build is not specified, default to use server-side test
     # code from build specified in --image.
@@ -631,7 +636,7 @@ def main():
     ssp_url = None
     ssp_url_warning = False
     if (not parser.options.warn_no_ssp and parser.options.require_ssp):
-        ssp_url, ssp_error_msg = _stage_ssp(parser)
+        ssp_url, ssp_error_msg = _stage_ssp(parser, results)
         # The build does not have autotest server package. Fall back to not
         # to use server-side package. Logging is postponed until logging being
         # set up.
