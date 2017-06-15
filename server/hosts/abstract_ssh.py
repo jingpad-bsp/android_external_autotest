@@ -807,9 +807,10 @@ class AbstractSSHHost(remote.RemoteHost):
                 master_cmd = self.ssh_command(
                         options="-N -o ControlMaster=yes")
                 logging.info("Starting master ssh connection '%s'", master_cmd)
-                self.master_ssh_job = utils.BgJob(master_cmd,
-                                                  nickname='master-ssh',
-                                                  no_pipes=True)
+                self.master_ssh_job = utils.BgJob(
+                    master_cmd, nickname='master-ssh',
+                    stdout_tee=utils.DEVNULL, stderr_tee=utils.DEVNULL,
+                    unjoinable=True)
                 # To prevent a race between the the master ssh connection
                 # startup and its first attempted use, wait for socket file to
                 # exist before returning.
