@@ -386,6 +386,11 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
   }
   const SupportedFormat* test_format = FindFormatByFourcc(
       supported_formats, V4L2_PIX_FMT_MJPEG);
+  if (test_format == nullptr) {
+    printf("[Info] The camera doesn't support MJPEG format.\n");
+    return true;
+  }
+
   uint32_t width = test_format->width;
   uint32_t height = test_format->height;
 
