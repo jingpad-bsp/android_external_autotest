@@ -11,6 +11,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import afe_utils
 from autotest_lib.server import crashcollect
 from autotest_lib.server.hosts import repair
@@ -298,10 +299,17 @@ class DevModeVerifier(hosts.Verifier):
 class JetstreamServicesVerifier(hosts.Verifier):
     """Verify that Jetstream services are running."""
 
+    # Retry for b/62576902
+    @retry.retry(error.AutoservError, timeout_min=1, delay_sec=10)
     def verify(self, host):
-        if not host.upstart_status('ap-controller'):
+        try:
+            if not host.upstart_status('ap-controller'):
+                raise hosts.AutoservVerifyError(
+                    'ap-controller service is not running')
+        except error.AutoservRunError:
             raise hosts.AutoservVerifyError(
-                'ap-controller service is not running')
+                'ap-controller service not found')
+
         try:
             host.run('pgrep ap-controller')
         except error.AutoservRunError:
