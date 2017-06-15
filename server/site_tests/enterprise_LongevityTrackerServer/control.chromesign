@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "krishnargv"
-NAME = "enterprise_LongevityTrackerServer.chromesign.short"
+NAME = "enterprise_LongevityTrackerServer.chromesign"
 PURPOSE = "Tracks Chrome OS performance over long periods."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
