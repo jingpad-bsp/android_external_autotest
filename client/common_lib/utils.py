@@ -78,6 +78,8 @@ class _NullStream(object):
 TEE_TO_LOGS = object()
 _the_null_stream = _NullStream()
 
+DEVNULL = object()
+
 DEFAULT_STDOUT_LEVEL = logging.DEBUG
 DEFAULT_STDERR_LEVEL = logging.ERROR
 
@@ -101,6 +103,8 @@ warnings.showwarning = custom_warning_handler
 def get_stream_tee_file(stream, level, prefix=''):
     if stream is None:
         return _the_null_stream
+    if stream is DEVNULL:
+        return None
     if stream is TEE_TO_LOGS:
         return logging_manager.LoggingFile(level=level, prefix=prefix)
     return stream
@@ -112,13 +116,13 @@ def _join_with_nickname(base_string, nickname):
     return base_string
 
 
-# TODO: Cleanup and possibly eliminate no_pipes, which is only used
-# in our master-ssh connection process, while fixing underlying
+# TODO: Cleanup and possibly eliminate |unjoinable|, which is only used in our
+# master-ssh connection process, while fixing underlying
 # semantics problem in BgJob. See crbug.com/279312
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
                  stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None,
-                 no_pipes=False, env=None, extra_paths=None):
+                 unjoinable=False, env=None, extra_paths=None):
         """Create and start a new BgJob.
 
         This constructor creates a new BgJob, and uses Popen to start a new
@@ -134,10 +138,22 @@ class BgJob(object):
         @param command: command to be executed in new subprocess. May be either
                         a list, or a string (in which case Popen will be called
                         with shell=True)
-        @param stdout_tee: Optional additional stream that the process's stdout
-                           stream output will be written to. Or, specify
-                           TEE_TO_LOGS and the output will handled by
+        @param stdout_tee: (Optional) a file like object, TEE_TO_LOGS or
+                           DEVNULL.
+                           If not given, after finishing the process, the
+                           stdout data from subprocess is available in
+                           result.stdout.
+                           If a file like object is given, in process_output(),
+                           the stdout data from the subprocess will be handled
+                           by the given file like object.
+                           If TEE_TO_LOGS is given, in process_output(), the
+                           stdout data from the subprocess will be handled by
                            the standard logging_manager.
+                           If DEVNULL is given, the stdout of the subprocess
+                           will be just discarded. In addition, even after
+                           cleanup(), result.stdout will be just an empty
+                           string (unlike the case where stdout_tee is not
+                           given).
         @param stderr_tee: Same as stdout_tee, but for stderr.
         @param verbose: Boolean, make BgJob logging more verbose.
         @param stdin: Stream object, will be passed to Popen as the new
@@ -147,32 +163,33 @@ class BgJob(object):
                              stderr output will be logged at. Ignored
                              otherwise.
         @param nickname: Optional string, to be included in logging messages
-        @param no_pipes: Boolean, default False. If True, this subprocess
-                         created by this BgJob does NOT use subprocess.PIPE
-                         for its stdin or stderr streams. Instead, these
-                         streams are connected to the logging manager
-                         (regardless of the values of stdout_tee and
-                         stderr_tee).
-                         If no_pipes is True, then calls to output_prepare,
-                         process_output, and cleanup will result in an
-                         InvalidBgJobCall exception. no_pipes should be
-                         True for BgJobs that do not interact via stdout/stderr
-                         with other BgJobs, or long runing background jobs that
-                         will never be joined with join_bg_jobs, such as the
-                         master-ssh connection BgJob.
+        @param unjoinable: Optional bool, default False.
+                           This should be True for BgJobs running in background
+                           and will never be joined with join_bg_jobs(), such
+                           as the master-ssh connection. Instead, it is
+                           caller's responsibility to terminate the subprocess
+                           correctly, e.g. by calling nuke_subprocess().
+                           This will lead that, calling join_bg_jobs(),
+                           process_output() or cleanup() will result in an
+                           InvalidBgJobCall exception.
+                           Also, |stdout_tee| and |stderr_tee| must be set to
+                           DEVNULL, otherwise InvalidBgJobCall is raised.
         @param env: Dict containing environment variables used in subprocess.
         @param extra_paths: Optional string list, to be prepended to the PATH
                             env variable in env (or os.environ dict if env is
                             not specified).
         """
         self.command = command
-        self._no_pipes = no_pipes
-        if no_pipes:
-            stdout_tee = TEE_TO_LOGS
-            stderr_tee = TEE_TO_LOGS
-        self.stdout_tee = get_stream_tee_file(stdout_tee, DEFAULT_STDOUT_LEVEL,
+        self.unjoinable = unjoinable
+        if (unjoinable and (stdout_tee != DEVNULL or stderr_tee != DEVNULL)):
+            raise error.InvalidBgJobCall(
+                'stdout_tee and stderr_tee must be DEVNULL for '
+                'unjoinable BgJob')
+        self._stdout_tee = get_stream_tee_file(
+                stdout_tee, DEFAULT_STDOUT_LEVEL,
                 prefix=_join_with_nickname(STDOUT_PREFIX, nickname))
-        self.stderr_tee = get_stream_tee_file(stderr_tee, stderr_level,
+        self._stderr_tee = get_stream_tee_file(
+                stderr_tee, stderr_level,
                 prefix=_join_with_nickname(STDERR_PREFIX, nickname))
         self.result = CmdResult(command)
 
@@ -184,14 +201,6 @@ class BgJob(object):
         else:
             self.string_stdin = None
 
-
-        if no_pipes:
-            stdout_param = self.stdout_tee
-            stderr_param = self.stderr_tee
-        else:
-            stdout_param = subprocess.PIPE
-            stderr_param = subprocess.PIPE
-
         # Prepend extra_paths to env['PATH'] if necessary.
         if extra_paths:
             env = (os.environ if env is None else env).copy()
@@ -201,54 +210,29 @@ class BgJob(object):
 
         if verbose:
             logging.debug("Running '%s'", command)
+
         if type(command) == list:
-            self.sp = subprocess.Popen(command,
-                                       stdout=stdout_param,
-                                       stderr=stderr_param,
-                                       preexec_fn=self._reset_sigpipe,
-                                       stdin=stdin,
-                                       env=env,
-                                       close_fds=True)
+            shell = False
+            executable = None
         else:
-            self.sp = subprocess.Popen(command, stdout=stdout_param,
-                                       stderr=stderr_param,
-                                       preexec_fn=self._reset_sigpipe, shell=True,
-                                       executable="/bin/bash",
-                                       stdin=stdin,
-                                       env=env,
-                                       close_fds=True)
+            shell = True
+            executable = '/bin/bash'
 
-        self._output_prepare_called = False
-        self._process_output_warned = False
+        with open('/dev/null', 'w') as devnull:
+            self.sp = subprocess.Popen(
+                command,
+                stdin=stdin,
+                stdout=devnull if stdout_tee == DEVNULL else subprocess.PIPE,
+                stderr=devnull if stderr_tee == DEVNULL else subprocess.PIPE,
+                preexec_fn=self._reset_sigpipe,
+                shell=shell, executable=executable,
+                env=env, close_fds=True)
+
         self._cleanup_called = False
-        self.stdout_file = _the_null_stream
-        self.stderr_file = _the_null_stream
-
-    def output_prepare(self, stdout_file=_the_null_stream,
-                       stderr_file=_the_null_stream):
-        """Connect the subprocess's stdout and stderr to streams.
-
-        Subsequent calls to output_prepare are permitted, and will reassign
-        the streams. However, this will have the side effect that the ultimate
-        call to cleanup() will only remember the stdout and stderr data up to
-        the last output_prepare call when saving this data to BgJob.result.
-
-        @param stdout_file: Stream that output from the process's stdout pipe
-                            will be written to. Default: a null stream.
-        @param stderr_file: Stream that output from the process's stdout pipe
-                            will be written to. Default: a null stream.
-        """
-        if self._no_pipes:
-            raise error.InvalidBgJobCall('Cannot call output_prepare on a '
-                                         'job with no_pipes=True.')
-        if self._output_prepare_called:
-            logging.warning('BgJob [%s] received a duplicate call to '
-                            'output prepare. Allowing, but this may result '
-                            'in data missing from BgJob.result.')
-        self.stdout_file = stdout_file
-        self.stderr_file = stderr_file
-        self._output_prepare_called = True
-
+        self._stdout_file = (
+            None if stdout_tee == DEVNULL else StringIO.StringIO())
+        self._stderr_file = (
+            None if stderr_tee == DEVNULL else StringIO.StringIO())
 
     def process_output(self, stdout=True, final_read=False):
         """Read from process's output stream, and write data to destinations.
@@ -268,20 +252,18 @@ class BgJob(object):
                            read and process all data until end of the stream.
 
         """
-        if self._no_pipes:
+        if self.unjoinable:
             raise error.InvalidBgJobCall('Cannot call process_output on '
-                                         'a job with no_pipes=True')
-        if not self._output_prepare_called and not self._process_output_warned:
-            logging.warning('BgJob with command [%s] handled a process_output '
-                            'call before output_prepare was called. '
-                            'Some output data discarded. '
-                            'Future warnings suppressed.',
-                            self.command)
-            self._process_output_warned = True
+                                         'a job with unjoinable BgJob')
         if stdout:
-            pipe, buf, tee = self.sp.stdout, self.stdout_file, self.stdout_tee
+            pipe, buf, tee = (
+                self.sp.stdout, self._stdout_file, self._stdout_tee)
         else:
-            pipe, buf, tee = self.sp.stderr, self.stderr_file, self.stderr_tee
+            pipe, buf, tee = (
+                self.sp.stderr, self._stderr_file, self._stderr_tee)
+
+        if not pipe:
+            return
 
         if final_read:
             # read in all the data we can from pipe and then stop
@@ -297,7 +279,6 @@ class BgJob(object):
         buf.write(data)
         tee.write(data)
 
-
     def cleanup(self):
         """Clean up after BgJob.
 
@@ -306,23 +287,25 @@ class BgJob(object):
         the configured stdout and stderr destination streams to
         self.result. Duplicate calls ignored with a warning.
         """
-        if self._no_pipes:
+        if self.unjoinable:
             raise error.InvalidBgJobCall('Cannot call cleanup on '
-                                         'a job with no_pipes=True')
+                                         'a job with a unjoinable BgJob')
         if self._cleanup_called:
             logging.warning('BgJob [%s] received a duplicate call to '
                             'cleanup. Ignoring.', self.command)
             return
         try:
-            self.stdout_tee.flush()
-            self.stderr_tee.flush()
-            self.sp.stdout.close()
-            self.sp.stderr.close()
-            self.result.stdout = self.stdout_file.getvalue()
-            self.result.stderr = self.stderr_file.getvalue()
+            if self.sp.stdout:
+                self._stdout_tee.flush()
+                self.sp.stdout.close()
+                self.result.stdout = self._stdout_file.getvalue()
+
+            if self.sp.stderr:
+                self._stderr_tee.flush()
+                self.sp.stderr.close()
+                self.result.stderr = self._stderr_file.getvalue()
         finally:
             self._cleanup_called = True
-
 
     def _reset_sigpipe(self):
         if not env.IN_MOD_WSGI:
@@ -798,10 +781,11 @@ def join_bg_jobs(bg_jobs, timeout=None):
 
     Returns the same list of bg_jobs objects that was passed in.
     """
-    ret, timeout_error = 0, False
-    for bg_job in bg_jobs:
-        bg_job.output_prepare(StringIO.StringIO(), StringIO.StringIO())
+    if any(bg_job.unjoinable for bg_job in bg_jobs):
+        raise error.InvalidBgJobCall(
+                'join_bg_jobs cannot be called for unjoinable bg_job')
 
+    timeout_error = False
     try:
         # We are holding ends to stdin, stdout pipes
         # hence we need to be sure to close those fds no mater what
@@ -848,10 +832,12 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
     reverse_dict = {}
 
     for bg_job in bg_jobs:
-        read_list.append(bg_job.sp.stdout)
-        read_list.append(bg_job.sp.stderr)
-        reverse_dict[bg_job.sp.stdout] = (bg_job, True)
-        reverse_dict[bg_job.sp.stderr] = (bg_job, False)
+        if bg_job.sp.stdout:
+            read_list.append(bg_job.sp.stdout)
+            reverse_dict[bg_job.sp.stdout] = (bg_job, True)
+        if bg_job.sp.stderr:
+            read_list.append(bg_job.sp.stderr)
+            reverse_dict[bg_job.sp.stderr] = (bg_job, False)
         if bg_job.string_stdin is not None:
             write_list.append(bg_job.sp.stdin)
             reverse_dict[bg_job.sp.stdin] = bg_job
@@ -905,10 +891,12 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
             if bg_job.result.exit_status is not None:
                 # process exited, remove its stdout/stdin from the select set
                 bg_job.result.duration = time.time() - start_time
-                read_list.remove(bg_job.sp.stdout)
-                read_list.remove(bg_job.sp.stderr)
-                del reverse_dict[bg_job.sp.stdout]
-                del reverse_dict[bg_job.sp.stderr]
+                if bg_job.sp.stdout:
+                    read_list.remove(bg_job.sp.stdout)
+                    del reverse_dict[bg_job.sp.stdout]
+                if bg_job.sp.stderr:
+                    read_list.remove(bg_job.sp.stderr)
+                    del reverse_dict[bg_job.sp.stderr]
             else:
                 all_jobs_finished = False
 
