@@ -86,9 +86,13 @@ def is_moblab(lsb_release_content=None):
 
     @return the board string if this is a Moblab device or None if it is not.
     """
+    if lsb_release_content is not None:
+        return _lsbrelease_search(r'.*moblab',
+                                  lsb_release_content=lsb_release_content)
+
     if os.path.exists(constants.LSB_RELEASE):
-        return _lsbrelease_search(
-                r'.*moblab', lsb_release_content=lsb_release_content)
+        return _lsbrelease_search(r'.*moblab')
+
     try:
         from chromite.lib import cros_build_lib
         if cros_build_lib.IsInsideChroot():
