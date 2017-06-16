@@ -56,3 +56,11 @@ GS_OFFLOADER_INSTRUCTIONS = '.GS_OFFLOADER_INSTRUCTIONS'
 GS_OFFLOADER_NO_OFFLOAD = 'no_offload'
 
 PARENT_JOB_ID = 'parent_job_id'
+
+# Keys of keyvals inherited from a suite job to test jobs.
+KEYVAL_CIDB_BUILD_ID = 'cidb_build_id'
+KEYVAL_CIDB_BUILD_STAGE_ID = 'cidb_build_stage_id'
+INHERITED_KEYVALS = (
+    KEYVAL_CIDB_BUILD_ID,
+    KEYVAL_CIDB_BUILD_STAGE_ID,
+)
