@@ -976,6 +976,83 @@ class BluetoothAdapterTests(test.test):
                 'disconnection_seen_by_adapter': disconnection_seen_by_adapter}
         return all(self.results.values())
 
+    @_test_retry_and_log
+    def test_device_is_connected(self, device_address):
+        """Test that device address given is currently connected.
+
+        @param device_address: Address of the device.
+
+        @returns: True if the device is connected.
+                  False otherwise.
+
+        """
+        def _is_connected():
+            """Test if device is connected.
+
+            @returns: True if device is connected. False otherwise.
+
+            """
+            return self.bluetooth_facade.device_is_connected(device_address)
+
+
+        method_name = 'test_device_is_connected'
+        has_device = False
+        connected = False
+        if self.bluetooth_facade.has_device(device_address):
+            has_device = True
+            try:
+                utils.poll_for_condition(
+                        condition=_is_connected,
+                        timeout=self.ADAPTER_CONNECTION_TIMEOUT_SECS,
+                        sleep_interval=self.ADAPTER_PAIRING_POLLING_SLEEP_SECS,
+                        desc='Waiting for connection to %s' % device_address)
+                connected = True
+            except utils.TimeoutError as e:
+                logging.error('%s: %s', method_name, e)
+            except:
+                logging.error('%s: unexpected error', method_name)
+        self.results = {'has_device': has_device, 'connected': connected}
+        return all(self.results.values())
+
+
+    @_test_retry_and_log
+    def test_device_is_paired(self, device_address):
+        """Test that the device address given is currently paired.
+
+        @param device_address: Address of the device.
+
+        @returns: True if the device is paired.
+                  False otherwise.
+
+        """
+        def _is_paired():
+            """Test if device is paired.
+
+            @returns: True if device is paired. False otherwise.
+
+            """
+            return self.bluetooth_facade.device_is_paired(device_address)
+
+
+        method_name = 'test_device_is_paired'
+        has_device = False
+        paired = False
+        if self.bluetooth_facade.has_device(device_address):
+            has_device = True
+            try:
+                utils.poll_for_condition(
+                        condition=_is_paired,
+                        timeout=self.ADAPTER_PAIRING_TIMEOUT_SECS,
+                        sleep_interval=self.ADAPTER_PAIRING_POLLING_SLEEP_SECS,
+                        desc='Waiting for connection to %s' % device_address)
+                paired = True
+            except utils.TimeoutError as e:
+                logging.error('%s: %s', method_name, e)
+            except:
+                logging.error('%s: unexpected error', method_name)
+        self.results = {'has_device': has_device, 'paired': paired}
+        return all(self.results.values())
+
 
     def _get_device_name(self, device_address):
         """Get the device name.
