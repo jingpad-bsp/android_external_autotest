@@ -107,13 +107,8 @@ class LsbreleaseUtilsTestCase(unittest.TestCase):
         self.assertTrue(lsbrelease_utils.is_jetstream(
             _WHIRLWIND_LSB_RELEASE_REDACTED))
 
-    @unittest.expectedFailure
     def test_is_moblab_with_empty_lsbrelease(self):
-        """is_moblab correctly validates trivial lsb-release information.
-
-        TODO(pprabhu) This test currently fails because _lsbrelease_search does
-        not respect its arguments. Fix it in a separate CL.
-        """
+        """is_moblab correctly validates trivial lsb-release information."""
         self.assertFalse(lsbrelease_utils.is_moblab(''))
 
     def test_is_moblab_with_link_lsbrelease(self):
