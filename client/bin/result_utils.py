@@ -342,7 +342,11 @@ def merge_summaries(path):
         _merge(merged_summary, summary)
     # After all summaries from the test device (client side) are merged, we can
     # get the total size of result files being transfered from the test device.
-    client_collected_bytes = merged_summary[ROOT_DIR][COLLECTED_SIZE_BYTES]
+    # If there is no directory summary collected, default client_collected_bytes
+    # to 0.
+    client_collected_bytes = 0
+    if merged_summary:
+        client_collected_bytes = merged_summary[ROOT_DIR][COLLECTED_SIZE_BYTES]
 
     # Get the summary of current directory
 
