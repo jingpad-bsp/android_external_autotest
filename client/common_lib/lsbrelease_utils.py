@@ -30,7 +30,7 @@ def _lsbrelease_search(regex, group_id=0, lsb_release_content=None):
 
     @raises IOError if /etc/lsb-release can not be accessed.
     """
-    if not lsb_release_content:
+    if lsb_release_content is None:
         with open(constants.LSB_RELEASE) as lsb_release_file:
             lsb_release_content = lsb_release_file.read()
     for line in lsb_release_content.split('\n'):
