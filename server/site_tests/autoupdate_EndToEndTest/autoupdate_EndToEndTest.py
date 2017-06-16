@@ -812,6 +812,30 @@ class TestPlatform(object):
         raise NotImplementedError
 
 
+    def oobe_triggers_update(self):
+        """Returns True if this host has an OOBE flow during which
+        it will perform an update check and perhaps an update.
+        One example of such a flow is Hands-Off Zero-Touch Enrollment.
+
+        @return Boolean indicating whether the DUT's OOBE triggers an update.
+        """
+        raise NotImplementedError
+
+
+    def verify_version(self, version):
+        """Compares the OS version on the DUT with the provided version.
+
+        @param version: The version to compare with (string).
+        @raise error.TestFail if the versions differ.
+        """
+        actual_version = self._host.get_release_version()
+        if actual_version != version:
+            err_msg = 'Failed to verify OS version. Expected %s, was %s' % (
+                version, actual_version)
+            logging.error(err_msg)
+            raise error.TestFail(err_msg)
+
+
 class ChromiumOSTestPlatform(TestPlatform):
     """A TestPlatform implementation for Chromium OS."""
 
@@ -1195,6 +1219,10 @@ class ChromiumOSTestPlatform(TestPlatform):
         self._run_login_test(target_release)
 
 
+    def oobe_triggers_update(self):
+        return self._host.oobe_triggers_update()
+
+
 class BrilloTestPlatform(TestPlatform):
     """A TestPlatform implementation for Brillo."""
 
@@ -1378,6 +1406,10 @@ class BrilloTestPlatform(TestPlatform):
         # Instead we reboot the device, which has the side-effect of flushing
         # all forwarding rules. Once fixed, the following should be removed.
         self.reboot_device()
+
+
+    def oobe_triggers_update(self):
+        return False
 
 
 class autoupdate_EndToEndTest(test.test):
@@ -1714,34 +1746,42 @@ class autoupdate_EndToEndTest(test.test):
         # Trigger a second update check (again, test vs MP).
         test_platform.trigger_update(self._omaha_devserver)
 
-        # Observe post-reboot update check, which should indicate that the
-        # image version has been updated.
-        chain = ExpectedUpdateEventChain()
-        expected_events = [
-            ExpectedUpdateEvent(
-                event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                event_result=EVENT_RESULT_SUCCESS_REBOOT,
-                version=target_release,
-                previous_version=source_release,
-                on_error=self._error_reboot_after_update),
-            # Newer versions send a "rebooted_after_update" message after reboot
-            # with the previous version instead of another "update_complete".
-            ExpectedUpdateEvent(
-                event_type=EVENT_TYPE_REBOOTED_AFTER_UPDATE,
-                event_result=EVENT_RESULT_SUCCESS,
-                version=target_release,
-                previous_version=source_release,
-                on_error=self._error_reboot_after_update),
-        ]
-        chain.add_event(
-                expected_events,
-                self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
-                on_timeout=self._timeout_err(
-                        'a successful reboot notification',
-                        self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
-                        event_type=EVENT_TYPE_UPDATE_COMPLETE))
+        if test_platform.oobe_triggers_update():
+            # If DUT automatically checks for update during OOBE,
+            # checking the post-update CrOS version and slot is sufficient.
+            # This command checks the OS version.
+            # The slot is checked a little later, after the else block.
+            test_platform.verify_version(target_release)
+        else:
+            # Observe post-reboot update check, which should indicate that the
+            # image version has been updated.
+            chain = ExpectedUpdateEventChain()
+            expected_events = [
+                ExpectedUpdateEvent(
+                    event_type=EVENT_TYPE_UPDATE_COMPLETE,
+                    event_result=EVENT_RESULT_SUCCESS_REBOOT,
+                    version=target_release,
+                    previous_version=source_release,
+                    on_error=self._error_reboot_after_update),
+                # Newer versions send a "rebooted_after_update" message
+                # after reboot with the previous version instead of another
+                # "update_complete".
+                ExpectedUpdateEvent(
+                    event_type=EVENT_TYPE_REBOOTED_AFTER_UPDATE,
+                    event_result=EVENT_RESULT_SUCCESS,
+                    version=target_release,
+                    previous_version=source_release,
+                    on_error=self._error_reboot_after_update),
+            ]
+            chain.add_event(
+                    expected_events,
+                    self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                    on_timeout=self._timeout_err(
+                            'a successful reboot notification',
+                            self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                            event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
-        log_verifier.verify_expected_events_chain(chain)
+            log_verifier.verify_expected_events_chain(chain)
 
         # Make sure we're using a different slot after the update.
         target_active_slot = test_platform.get_active_slot()
