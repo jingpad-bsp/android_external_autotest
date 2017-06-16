@@ -458,7 +458,7 @@ class SuiteTest(mox.MoxTestBase):
                                        self.devserver,
                                        afe=self.afe, tko=self.tko,
                                        job_retry=True)
-        suite.schedule(recorder.record_entry, add_experimental=True)
+        suite.schedule(recorder.record_entry)
 
         self.assertEqual(expected_retry_map, suite._retry_handler._retry_map)
 
