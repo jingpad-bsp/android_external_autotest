@@ -234,13 +234,13 @@ class MergeSummaryTest(unittest.TestCase):
         create_file(file1)
 
         # Save summary file to test_dir
-        summary_1 = os.path.join(self.test_dir, 'dir_summary_1.json')
-        with open(summary_1, 'w') as f:
+        self.summary_1 = os.path.join(self.test_dir, 'dir_summary_1.json')
+        with open(self.summary_1, 'w') as f:
             json.dump(SUMMARY_1, f)
         # Wait for 10ms, to make sure summary_2 has a later time stamp.
         time.sleep(0.01)
-        summary_2 = os.path.join(self.test_dir, 'dir_summary_2.json')
-        with open(summary_2, 'w') as f:
+        self.summary_2 = os.path.join(self.test_dir, 'dir_summary_2.json')
+        with open(self.summary_2, 'w') as f:
             json.dump(SUMMARY_2, f)
 
     def tearDown(self):
@@ -253,6 +253,15 @@ class MergeSummaryTest(unittest.TestCase):
                 self.test_dir)
         self.assertEqual(EXPECTED_MERGED_SUMMARY, merged_summary)
         self.assertEqual(client_collected_bytes, 9 * SIZE)
+
+    def testMergeSummariesFromNoHistory(self):
+        """Test method merge_summaries can handle results with no existing
+        summary.
+        """
+        os.remove(self.summary_1)
+        os.remove(self.summary_2)
+        client_collected_bytes, _ = result_utils.merge_summaries(self.test_dir)
+        self.assertEqual(client_collected_bytes, 0)
 
 
 # this is so the test can be run in standalone mode
