@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
@@ -48,6 +49,14 @@ class DrmTest(object):
             logging.warning('Vulkan is required by test but is not '
                             'available on system. Skipping test.')
             return False
+        if self._opts['min_kernel_version']:
+            kernel_version = os.uname()[2]
+            min_kernel_version = self._opts['min_kernel_version']
+            if utils.compare_versions(kernel_version, min_kernel_version) < 0:
+                logging.warning('Test requires kernel version >= %s,'
+                                'have version %s. Skipping test.'
+                                % (min_kernel_version, kernel_version))
+                return False
         return True
 
     def run(self):
@@ -81,7 +90,8 @@ class DrmTest(object):
 
 
 drm_tests = {
-    'atomictest': DrmTest('atomictest'),
+    'atomictest': DrmTest('atomictest -t primary_pageflip',
+                          min_kernel_version='4.4'),
     'drm_cursor_test': DrmTest('drm_cursor_test'),
     'gamma_test': DrmTest('gamma_test'),
     'linear_bo_test': DrmTest('linear_bo_test'),
