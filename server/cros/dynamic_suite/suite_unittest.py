@@ -56,6 +56,7 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def setUp(self):
+        """Setup."""
         super(SuiteTest, self).setUp()
         self.maxDiff = None
         self.use_batch = SuiteBase.ENABLE_CONTROLS_IN_BATCH
@@ -93,6 +94,7 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def tearDown(self):
+        """Teardown."""
         SuiteBase.ENABLE_CONTROLS_IN_BATCH = self.use_batch
         super(SuiteTest, self).tearDown()
         shutil.rmtree(self.tmpdir, ignore_errors=True)
@@ -275,7 +277,8 @@ class SuiteTest(mox.MoxTestBase):
 
     def expect_job_scheduling(self, recorder,
                               tests_to_skip=[], ignore_deps=False,
-                              raises=False, suite_deps=[], suite=None):
+                              raises=False, suite_deps=[], suite=None,
+                              extra_keyvals={}):
         """Expect jobs to be scheduled for 'tests' in |self.files|.
 
         @param recorder: object with a record_entry to be used to record test
@@ -284,6 +287,7 @@ class SuiteTest(mox.MoxTestBase):
         @param ignore_deps: If true, ignore tests' dependencies.
         @param raises: If True, expect exceptions.
         @param suite_deps: If True, add suite level dependencies.
+        @param extra_keyvals: Extra keyvals set to tests.
         """
         record_job_id = suite and suite._results_dir
         if record_job_id:
@@ -303,6 +307,13 @@ class SuiteTest(mox.MoxTestBase):
                 dependencies.extend(suite_deps)
             dependencies.append(self._BOARD)
             build = self._BUILDS[provision.CROS_VERSION_PREFIX]
+            keyvals = {
+                'build': build,
+                'suite': self._TAG,
+                'builds': SuiteTest._BUILDS,
+                'experimental':test.experimental,
+            }
+            keyvals.update(extra_keyvals)
             job_mock = self.afe.create_job(
                 control_file=test.text,
                 name=mox.And(mox.StrContains(build),
@@ -310,9 +321,7 @@ class SuiteTest(mox.MoxTestBase):
                 control_type=mox.IgnoreArg(),
                 meta_hosts=[self._BOARD],
                 dependencies=dependencies,
-                keyvals={'build': build, 'suite': self._TAG,
-                         'builds': SuiteTest._BUILDS,
-                         'experimental':test.experimental},
+                keyvals=keyvals,
                 max_runtime_mins=24*60,
                 timeout_mins=1440,
                 parent_job_id=None,
@@ -388,6 +397,7 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def testScheduleTestsIgnoreDeps(self):
+        """Test scheduling tests ignoring deps."""
         name_list = ['name-data_one', 'name-data_two', 'name-data_three',
                      'name-data_four', 'name-data_five', 'name-data_six',
                      'name-data_seven']
@@ -507,6 +517,36 @@ class SuiteTest(mox.MoxTestBase):
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver, extra_deps=['extra'],
                                        afe=self.afe, tko=self.tko)
+        suite.schedule(recorder.record_entry)
+
+
+    def testInheritedKeyvals(self):
+        """Tests should inherit some whitelisted job keyvals."""
+        # Only keyvals in constants.INHERITED_KEYVALS are inherited to tests.
+        job_keyvals = {
+            constants.KEYVAL_CIDB_BUILD_ID: '111',
+            constants.KEYVAL_CIDB_BUILD_STAGE_ID: '222',
+            'your': 'name',
+        }
+        test_keyvals = {
+            constants.KEYVAL_CIDB_BUILD_ID: '111',
+            constants.KEYVAL_CIDB_BUILD_STAGE_ID: '222',
+        }
+
+        self.mock_control_file_parsing()
+        recorder = self.mox.CreateMock(base_job.base_job)
+        self.expect_job_scheduling(
+            recorder,
+            extra_keyvals=test_keyvals)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, job_keyvals)
+        utils.write_keyval(None, mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
+                                       self.devserver,
+                                       afe=self.afe, tko=self.tko,
+                                       job_keyvals=job_keyvals)
         suite.schedule(recorder.record_entry)
 
 
