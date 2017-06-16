@@ -267,7 +267,8 @@ class _SuiteChildJobCreator(object):
             extra_deps=(),
             priority=priorities.Priority.DEFAULT,
             offload_failures_only=False,
-            test_source_build=None):
+            test_source_build=None,
+            job_keyvals=None):
         """
         Constructor
 
@@ -288,6 +289,8 @@ class _SuiteChildJobCreator(object):
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
         @param test_source_build: Build that contains the server-side test code.
+        @param job_keyvals: General job keyvals to be inserted into keyval file,
+                            which will be used by tko/parse later.
         """
         self._tag = tag
         self._builds = builds
@@ -303,6 +306,7 @@ class _SuiteChildJobCreator(object):
         self._priority = priority
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
+        self._job_keyvals = job_keyvals
 
 
     @property
@@ -410,6 +414,10 @@ class _SuiteChildJobCreator(object):
             keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
         if self._offload_failures_only:
             keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
+        if self._job_keyvals:
+            for key in constants.INHERITED_KEYVALS:
+                if key in self._job_keyvals:
+                    keyvals[key] = self._job_keyvals[key]
         return keyvals
 
 
@@ -909,6 +917,7 @@ def _deprecated_suite_method(func):
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        """Wraps |func| for warning."""
         warnings.warn('Calling this method from Suite is deprecated')
         return func(*args, **kwargs)
     return staticmethod(wrapper)
@@ -1047,6 +1056,7 @@ class _BaseSuite(object):
             priority=priority,
             offload_failures_only=offload_failures_only,
             test_source_build=test_source_build,
+            job_keyvals=job_keyvals,
         )
 
 
