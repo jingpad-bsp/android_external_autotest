@@ -395,7 +395,7 @@ class EnterprisePolicyTest(test.test):
                                 username=self.username,
                                 password=self.password,
                                 gaia_login=not self.dms_is_fake,
-                                disable_gaia_services=False,
+                                disable_gaia_services=self.dms_is_fake,
                                 autotest_ext=True)
 
 
