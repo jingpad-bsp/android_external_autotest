@@ -35,10 +35,6 @@ class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
 
 
-class BrilloError(error.InstallError):
-    """Generic error for Brillo-specific exceptions."""
-
-
 class RootFSUpdateError(ChromiumOSError):
     """Raised when the RootFS fails to update."""
 
@@ -736,15 +732,3 @@ class ChromiumOSUpdater(BaseUpdater):
                     'within %d seconds' % (event,
                                            self.KERNEL_UPDATE_TIMEOUT))
 
-
-class BrilloUpdater(BaseUpdater):
-    """Helper class for updating a Brillo DUT."""
-
-    def __init__(self, update_url, host=None):
-        """Initialize the object.
-
-        @param update_url: The URL we want the update to use.
-        @param host: A client.common_lib.hosts.Host implementation.
-        """
-        super(BrilloUpdater, self).__init__(
-                '/system/bin/update_engine_client', update_url, host)
