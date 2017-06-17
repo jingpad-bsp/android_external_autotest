@@ -294,11 +294,6 @@ class BaseAgentTask(object):
             queue_entry.set_status(models.HostQueueEntry.Status.PARSING)
 
 
-    def _archive_results(self, queue_entries):
-        for queue_entry in queue_entries:
-            queue_entry.set_status(models.HostQueueEntry.Status.ARCHIVING)
-
-
     def _command_line(self):
         """
         Return the command line to run.  Must be overridden.
@@ -734,10 +729,10 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
                 pidfile_name=drone_manager.AUTOSERV_PID_FILE)
         self._drone_manager.register_pidfile(pidfile_id)
 
-        if self.queue_entry.job.parse_failed_repair:
-            self._parse_results([self.queue_entry])
-        else:
-            self._archive_results([self.queue_entry])
+        # TODO(ayatane): This should obey self.queue_entry.job.parse_failed_repair
+        # But nothing sets self.queue_entry.job.parse_failed_repair?
+        # Check Git blame
+        self._parse_results([self.queue_entry])
 
         # Also fail all other special tasks that have not yet run for this HQE
         pending_tasks = models.SpecialTask.objects.filter(
