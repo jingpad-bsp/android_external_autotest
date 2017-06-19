@@ -116,9 +116,9 @@ def _parse_dbus_send_output(dbus_send_stdout):
     # For backward compatibility, match old dbus-send output too.
     # TODO: drop this when dbus is upgraded to 1.10.12+.
     if match is None:
-      match = re.match(r'method return sender=(%s) -> dest=(%s) '
-                       r'reply_serial=\d+' %
-                       (dbus_address_pattern, dbus_address_pattern), header)
+        match = re.match(r'method return sender=(%s) -> dest=(%s) '
+                         r'reply_serial=\d+' %
+                         (dbus_address_pattern, dbus_address_pattern), header)
 
     if match is None:
         raise error.TestError('Could not parse dbus-send header: %s' % header)
@@ -132,14 +132,13 @@ def _parse_dbus_send_output(dbus_send_stdout):
     return DBusSendResult(sender=sender, responder=responder, response=ret_val)
 
 
-def _build_arg_string(raw_args):
-    """Construct a string of arguments to a DBus method as dbus-send expects.
+def _dbus2string(raw_arg):
+    """Turn a dbus.* type object into a string that dbus-send expects.
 
-    @param raw_args list of dbus.* type objects to seriallize.
+    @param raw_dbus dbus.* type object to stringify.
     @return string suitable for dbus-send.
 
     """
-    dbus.Boolean
     int_map = {
             dbus.Int16: 'int16:',
             dbus.Int32: 'int32:',
@@ -150,25 +149,31 @@ def _build_arg_string(raw_args):
             dbus.Double: 'double:',
             dbus.Byte: 'byte:',
     }
-    arg_list = []
-    for arg in raw_args:
-        if isinstance(arg, dbus.String):
-            arg_list.append(pipes.quote('string:%s' %
-                                        arg.replace('"', r'\"')))
-            continue
-        if isinstance(arg, dbus.Boolean):
-            if arg:
-                arg_list.append('boolean:true')
-            else:
-                arg_list.append('boolean:false')
-            continue
-        for prim_type, prefix in int_map.iteritems():
-            if isinstance(arg, prim_type):
-                arg_list.append(prefix + str(arg))
-                continue
 
-        raise error.TestError('No support for serializing %r' % arg)
-    return ' '.join(arg_list)
+    if isinstance(raw_arg, dbus.String):
+        return pipes.quote('string:%s' % raw_arg.replace('"', r'\"'))
+
+    if isinstance(raw_arg, dbus.Boolean):
+        if raw_arg:
+            return 'boolean:true'
+        else:
+            return 'boolean:false'
+
+    for prim_type, prefix in int_map.iteritems():
+        if isinstance(raw_arg, prim_type):
+            return prefix + str(raw_arg)
+
+    raise error.TestError('No support for serializing %r' % raw_arg)
+
+
+def _build_arg_string(raw_args):
+    """Construct a string of arguments to a DBus method as dbus-send expects.
+
+    @param raw_args list of dbus.* type objects to seriallize.
+    @return string suitable for dbus-send.
+
+    """
+    return ' '.join([_dbus2string(arg) for arg in raw_args])
 
 
 def dbus_send(bus_name, interface, object_path, method_name, args=None,
