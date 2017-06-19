@@ -2,7 +2,7 @@
 
 """ This is the module for everything related to the AgentTask.
 
-The BaseAgentTask imposes an interface through which the scheduler can monitor
+The AgentTask imposes an interface through which the scheduler can monitor
 a processes; Examples of such processes include Verify, Cleanup and the Queue
 Tasks that run the tests. The scheduler itself only understands Agents.
 Agents:
@@ -89,7 +89,7 @@ The first special task for an HQE is usually Reset.
                       scheduler.
 By this point the is_done flag is set, which results in the Agent noticing that
 the task has finished and unregistering it from the dispatcher.Class hierarchy:
-BaseAgentTask
+AgentTask
  |--->SpecialAgentTask (prejob_task.py)
       |--->RepairTask
       |--->PreJobTask
@@ -109,15 +109,20 @@ BaseAgentTask
 
 import logging
 import os
-import urllib
 import time
+import urllib
+
+import common
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models
-from autotest_lib.scheduler import drone_manager, pidfile_monitor
-from autotest_lib.scheduler import scheduler_lib
+from autotest_lib.scheduler import drone_manager
+from autotest_lib.scheduler import email_manager
+from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import rdb_lib
+from autotest_lib.scheduler import scheduler_config
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import system_utils
@@ -136,7 +141,7 @@ ENABLE_DRONE_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
         default=False)
 
 
-class BaseAgentTask(object):
+class AgentTask(object):
     class _NullMonitor(object):
         pidfile_id = None
 
@@ -304,7 +309,7 @@ class BaseAgentTask(object):
     @property
     def num_processes(self):
         """
-        Return the number of processes forked by this BaseAgentTask's process.
+        Return the number of processes forked by this AgentTask's process.
         It may only be approximate.  To be overridden if necessary.
         """
         return 1
@@ -312,7 +317,7 @@ class BaseAgentTask(object):
 
     def _paired_with_monitor(self):
         """
-        If this BaseAgentTask's process must run on the same machine as some
+        If this AgentTask's process must run on the same machine as some
         previous process, this method should be overridden to return a
         PidfileRunMonitor for that process.
         """
@@ -330,7 +335,7 @@ class BaseAgentTask(object):
 
     def _working_directory(self):
         """
-        Return the directory where this BaseAgentTask's process executes.
+        Return the directory where this AgentTask's process executes.
         Must be overridden.
         """
         raise NotImplementedError
@@ -338,7 +343,7 @@ class BaseAgentTask(object):
 
     def _pidfile_name(self):
         """
-        Return the name of the pidfile this BaseAgentTask's process uses.  To be
+        Return the name of the pidfile this AgentTask's process uses.  To be
         overridden if necessary.
         """
         return drone_manager.AUTOSERV_PID_FILE
@@ -438,7 +443,7 @@ class BaseAgentTask(object):
                     self.task, self.task.requested_by)
 
         job_ids = hqes.values_list('job', flat=True).distinct()
-        assert job_ids.count() == 1, ("BaseAgentTask's queue entries "
+        assert job_ids.count() == 1, ("AgentTask's queue entries "
                                       "span multiple jobs")
 
         job = models.Job.objects.get(id=job_ids[0])
@@ -505,25 +510,33 @@ class BaseAgentTask(object):
         class_name = self.__class__.__name__
         for entry in queue_entries:
             if entry.status not in allowed_hqe_statuses:
-                raise scheduler_lib.SchedulerError(
-                        '%s attempting to start entry with invalid status %s: '
-                        '%s' % (class_name, entry.status, entry))
+                # In the orignal code, here we raise an exception. In an
+                # effort to prevent downtime we will instead abort the job and
+                # send out an email notifying us this has occured.
+                error_message = ('%s attempting to start entry with invalid '
+                                 'status %s: %s. Aborting Job: %s.'
+                                 % (class_name, entry.status, entry,
+                                    entry.job))
+                logging.error(error_message)
+                email_manager.manager.enqueue_notify_email(
+                    'Job Aborted - Invalid Host Queue Entry Status',
+                    error_message)
+                entry.job.request_abort()
             invalid_host_status = (
                     allowed_host_statuses is not None
                     and entry.host.status not in allowed_host_statuses)
             if invalid_host_status:
-                raise scheduler_lib.SchedulerError(
-                        '%s attempting to start on queue entry with invalid '
-                        'host status %s: %s'
-                        % (class_name, entry.host.status, entry))
-
-
-SiteAgentTask = utils.import_site_class(
-    __file__, 'autotest_lib.scheduler.site_monitor_db',
-    'SiteAgentTask', BaseAgentTask)
-
-class AgentTask(SiteAgentTask):
-    pass
+                # In the orignal code, here we raise an exception. In an
+                # effort to prevent downtime we will instead abort the job and
+                # send out an email notifying us this has occured.
+                error_message = ('%s attempting to start on queue entry with '
+                                 'invalid host status %s: %s. Aborting Job: %s'
+                                 % (class_name, entry.host.status, entry,
+                                    entry.job))
+                logging.error(error_message)
+                email_manager.manager.enqueue_notify_email(
+                    'Job Aborted - Invalid Host Status', error_message)
+                entry.job.request_abort()
 
 
 class TaskWithJobKeyvals(object):
