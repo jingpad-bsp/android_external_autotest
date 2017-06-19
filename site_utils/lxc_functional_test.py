@@ -64,6 +64,87 @@ if not socket.gethostname().startswith('test-'):
 lxc.install_packages(['atop'], ['acora'])
 
 """
+
+TEST_SCRIPT_CONTENT_TS_MON = """
+# Test ts_mon metrics can be set up.
+from chromite.lib import ts_mon_config
+ts_mon_config.SetupTsMonGlobalState('some_test', suppress_exception=False)
+"""
+
+CREATE_FAKE_TS_MON_CONFIG_SCRIPT = 'create_fake_key.py'
+
+CREATE_FAKE_TS_MON_CONFIG_SCRIPT_CONTENT = """
+import os
+import rsa
+
+EXPECTED_TS_MON_CONFIG_NAME = '/etc/chrome-infra/ts-mon.json'
+
+FAKE_TS_MON_CONFIG_CONTENT = '''
+    {
+        "credentials":"/tmp/service_account_prodx_mon.json",
+        "endpoint":"https://xxx.googleapis.com/v1:insert",
+        "use_new_proto": true
+    }'''
+
+FAKE_SERVICE_ACCOUNT_CRED_JSON = '''
+    {
+        "type": "service_account",
+        "project_id": "test_project",
+        "private_key_id": "aaa",
+        "private_key": "%s",
+        "client_email": "xxx",
+        "client_id": "111",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://accounts.google.com/o/oauth2/token",
+        "auth_provider_x509_cert_url":
+                "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url":
+                "https://www.googleapis.com/robot/v1/metadata/x509/xxx"
+    }'''
+
+
+TEST_KEY = '''------BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCzg4K2SXqf9LAM
+52a/t2HfpY5y49sbrgRb1llP6c8RVWhUX/pGdjbcIM97+1CJEWBN8Vmraoe4+71o
+1idTPehJfHRNeyXQUnro8CmnSxE9tLHtdKj0pzvO+yqT66O6Iw1aUAIX+dG4Us9Q
+Z22ypFHaJ74lKw9JFwAFTJ/TF1rXUXqgufYTNNqP3Ra7wCHF8BmtjwRYAlvsR9CO
+c4eVC1+qhq/8/EOMCgF/rsbZW93r/nz5xgsSX0k6WkAz5WX2mniHfmBFpmr039jZ
+0eI1mEMGDAYuUn05++dNveo/ZOZj3wBlFzyfNSeeWJB5SdKPTvN3H/Iu0Aw+Rtb6
+szwNClaFAgMBAAECggEAHZ8cjVRUJ/tiJorzlTyfKZ6hwhsPv4JIRVg6LhnceZWA
+jPW2cHSWyl2epyx55lhH7iyeeY7vXOqrX1aBMDb1stSWw2dH/tdxYSkqEmksa+R6
+fL6kl5RV5epjpPt77Z3VmPq9UbP/M310qKWcgB8lw4wN0AfKMqsZLYauk9BVhNRu
+Bgah9O7BmcXS+mp49w0Xyfo1UBvzW8R6UnBhHbf9aOY8ObMD0Jj/wDjlYMqSSIKR
+9/8GZWQEKe6q0PyRRdNNtdzbpBrR0fIw6/T9pfDR2fBAcpNvD50eJk2jRiRDTWFJ
+rVSc0bvZFb74Rc3LbMSXW/6Kb7I2IG1XsWw7nxp92QKBgQDgzdIxZrkNZ3Tbuzng
+SG4atjnaCXoekOHK7VZVYd30S0AAizeGu1sjpUVQgsf+qkFskXAQp2/2f+Wiuq2G
++nJYvXwZ/r9IcUs/oD3Fa2ezCVz1N/HOSPFAZK9XZuZbL8sXEYIPGJWH5F8Sanmb
+xNp9IUynlpwgM2JlZNeTCkv4PQKBgQDMbL/AF3LSpKvwi+QvYVkX/gChQmNMr4pP
+TM/GI4D03tNrzsut3oerKMUw0c5MxonkAJpuACN6baRyBOBxRYQSt8wWkORg9iqy
+a7aHnQqIGRafydW1/Snhr2DJSSaViHfO0oaA1r61zgMUTnSGb3UjyxJQp65dvPac
+BhpR9wpz6QKBgQDR2S/CL8rEqXObfi1roREu3DYqw7f8enBb1qtFrsLbPbd0CoD9
+wz0zjB6lJj/9CP9jkmwTD8njR8ab3jkIDBfboJ4NQhFbVW7R6QpglH9L0Iy2189g
+KhUScCqBoyubqYSidxR6dQ94uATLkxsL/nmaXxBITL5XDMBoN/dIak86XQKBgDqa
+oo4LKtvAYZpgQFZk7gm2w693PMhrOpdpSddfrkSE7M9nRXTe6r3ivkU0oJPaBwXa
+Nmt6lrEuZYpaY42VhDtpfZSqjQ5PBAaKYpWWK8LAjn/YeO/nV+5fPLv3wJv1t4MP
+T4f4CExOdwuHQliX81kDioicyZwN5BTumvUMgW6hAoGAF29kI1KthKaHN9P1DchI
+qqoHb9FPdZ5I6HDQpn6fr9ut7+9kVqexUrQ2AMvcVei6gDWW6P3yDCdTKcV9qtts
+1JOP2aSmXvibflx/bNfnhu988qJDhJ3CCjfc79fjwntUIXNPsFmwC9W5lnlSMKHM
+rH4RdmnjeCIG1PZ35m/yUSU=
+-----END PRIVATE KEY-----'''
+
+if not os.path.exists(EXPECTED_TS_MON_CONFIG_NAME):
+    try:
+        os.makedirs(os.path.dirname(EXPECTED_TS_MON_CONFIG_NAME))
+    except OSError:
+        # Directory already exists.
+        pass
+
+    with open(EXPECTED_TS_MON_CONFIG_NAME, 'w') as f:
+        f.write(FAKE_TS_MON_CONFIG_CONTENT)
+    with open ('/tmp/service_account_prodx_mon.json', 'w') as f:
+        f.write(FAKE_SERVICE_ACCOUNT_CRED_JSON % repr(TEST_KEY)[2:-1])
+"""
+
 # Name of the test control file.
 TEST_CONTROL_FILE = 'attach.1'
 TEST_DUT = '172.27.213.193'
@@ -134,6 +215,18 @@ def setup_test(bucket, name, skip_cleanup):
     # Inject "AUTOSERV/testing_mode: True" in shadow config to test autoserv.
     container.attach_run('echo $\'[AUTOSERV]\ntesting_mode: True\' >>'
                          ' /usr/local/autotest/shadow_config.ini')
+
+    if not utils.is_moblab():
+        # Create fake '/etc/chrome-infra/ts-mon.json' if it doesn't exist.
+        create_key_script = os.path.join(
+                RESULT_PATH, CREATE_FAKE_TS_MON_CONFIG_SCRIPT)
+        with open(create_key_script, 'w') as script:
+            script.write(CREATE_FAKE_TS_MON_CONFIG_SCRIPT_CONTENT)
+        container_result_path = lxc.RESULT_DIR_FMT % TEST_JOB_FOLDER
+        container_create_key_script = os.path.join(
+                container_result_path, CREATE_FAKE_TS_MON_CONFIG_SCRIPT)
+        container.attach_run('python %s' % container_create_key_script)
+
     return container
 
 
@@ -146,7 +239,10 @@ def test_share(container):
                  'from the host running the container..')
     host_test_script = os.path.join(RESULT_PATH, TEST_SCRIPT)
     with open(host_test_script, 'w') as script:
-        script.write(TEST_SCRIPT_CONTENT)
+        if utils.is_moblab():
+            script.write(TEST_SCRIPT_CONTENT)
+        else:
+            script.write(TEST_SCRIPT_CONTENT + TEST_SCRIPT_CONTENT_TS_MON)
 
     container_result_path = lxc.RESULT_DIR_FMT % TEST_JOB_FOLDER
     container_test_script = os.path.join(container_result_path, TEST_SCRIPT)
