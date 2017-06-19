@@ -133,7 +133,7 @@ def _run():
                 sleep_time = 0.5
             _abort.wait(timeout=sleep_time)
     except Exception as e:
-        logging.error('Metadata reporter thread failed with error: %s', e)
+        logging.exception('Metadata reporter thread failed with error: %s', e)
         raise
     finally:
         logging.info('Metadata reporting thread is exiting.')

@@ -118,7 +118,6 @@ def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
     """
     if not host:
         return True
-    raise Exception(str(host) + '+'*99)
     esmd = es_utils.ESMetadata(use_http=True, host=host, port=port,
                                timeout=timeout, index=index,
                                udp_port=ES_UDP_PORT)
