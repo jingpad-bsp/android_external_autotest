@@ -1743,7 +1743,20 @@ class DiskStateLogger(threading.Thread):
         """Returns the _error exception... please only call after result()."""
         return self._error
 
-def parse_reef_s0ix_residency_info():
+def parse_pmc_s0ix_residency_info():
+    """
+    Parses s0ix residency for PMC based intel systems (skylake/kabylake).
+
+    @returns residency in seconds.
+    @raises error.TestNAError if the debugfs file not found.
+    """
+    info_path = '/sys/kernel/debug/pmc_core/slp_s0_residency_usec'
+    if not os.path.exists(info_path):
+        raise error.TestNAError('File: ' + info_path + ' used to'
+                                ' measure s0ix residency does not exist')
+    return float(utils.read_one_line(info_path)) * 1e-6
+
+def parse_telemetry_s0ix_residency_info():
     """
     Parses the ioss_info file which contains the S0ix residency counter
     on reef variants.
@@ -1753,10 +1766,8 @@ def parse_reef_s0ix_residency_info():
     --------------------------------------
     SOC_S0IX_TOTAL_RES               0xd241b68
 
-    @returns Residency(secs) for Reef platform.
-    @raises TestError if the debugfs file for this
-        specific board is not found or if S0ix residency info is not
-        found in the debugfs file.
+    @returns residency in seconds.
+    @raises error.TestNAError if the debugfs file not found.
     """
 
     ioss_info_path = '/sys/kernel/debug/telemetry/ioss_info'
@@ -1788,22 +1799,21 @@ class S0ixResidencyStats(object):
     about S0ix residency might differ for every platform, we have a platform
     specific parser.
     """
-    S0IX_PARSERS_PER_PLATFORM = {
-        'Google_Reef' : parse_reef_s0ix_residency_info,
-    }
-
     def __init__(self):
-        try:
-            current_plat = utils.run('mosys platform family',
-                                     verbose=False).stdout.strip()
-        except error.CmdError:
-            raise error.TestNAError('Could not find the platform family.')
-        if current_plat not in self.S0IX_PARSERS_PER_PLATFORM:
-            raise error.TestNAError('No Residency counter parser for' +
-                                    ' the board: ' + current_plat)
-        self._parse_function = \
-                self.S0IX_PARSERS_PER_PLATFORM[current_plat]
-        self._initial_residency = self._parse_function()
+        parsers = [parse_pmc_s0ix_residency_info,
+                   parse_telemetry_s0ix_residency_info]
+
+        self._parse_function = None
+
+        for fx in parsers:
+            try:
+                self._initial_residency = fx()
+                self._parse_function = fx
+                break
+            except error.TestNAError:
+                pass
+        if not self._parse_function:
+            raise error.TestNAError("No S0ix residency data found")
 
     def get_accumulated_residency_secs(self):
         """
