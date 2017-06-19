@@ -8,6 +8,7 @@ import logging
 import numpy
 import os
 import re
+import subprocess
 import tempfile
 import threading
 import time
@@ -496,10 +497,10 @@ def get_channel_sox_stat(
             sox_utils.extract_channel_cmd(
                     input_audio, '-', channel_index,
                     channels=channels, bits=bits, rate=rate),
-            stdout=cmd_utils.PIPE)
+            stdout=subprocess.PIPE)
     p2 = cmd_utils.popen(
             sox_utils.stat_cmd('-', channels=1, bits=bits, rate=rate),
-            stdin=p1.stdout, stderr=cmd_utils.PIPE)
+            stdin=p1.stdout, stderr=subprocess.PIPE)
     stat_output = p2.stderr.read()
     cmd_utils.wait_and_check_returncode(p1, p2)
     return sox_utils.parse_stat_output(stat_output)
@@ -537,7 +538,7 @@ def reduce_noise_and_get_rms(
                 sox_utils.noise_profile_cmd(
                         noise_file, '-', channels=channels, bits=bits,
                         rate=rate),
-                stdout=cmd_utils.PIPE)
+                stdout=subprocess.PIPE)
         p2 = cmd_utils.popen(
                 sox_utils.noise_reduce_cmd(
                         input_audio, reduced_file.name, '-',
@@ -590,7 +591,7 @@ def get_audio_diagnostics():
     @returns: a string containing diagnostic results.
 
     """
-    return cmd_utils.execute([_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE)
+    return cmd_utils.execute([_AUDIO_DIAGNOSTICS_PATH], stdout=subprocess.PIPE)
 
 
 def get_max_cross_correlation(signal_a, signal_b):
