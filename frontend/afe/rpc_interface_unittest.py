@@ -73,6 +73,10 @@ class RpcInterfaceTest(unittest.TestCase,
                           set(expected_hostnames))
 
 
+    def test_ping_db(self):
+        self.assertEquals(rpc_interface.ping_db(), [True])
+
+
     def test_get_hosts(self):
         hosts = rpc_interface.get_hosts()
         self._check_hostnames(hosts, [host.hostname for host in self.hosts])

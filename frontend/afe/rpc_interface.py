@@ -37,8 +37,10 @@ import logging
 import os
 import sys
 
+from django.db import connection as db_connection
 from django.db import transaction
 from django.db.models import Count
+from django.db.utils import DatabaseError
 
 import common
 # TODO(akeshet): Replace with monarch stats once we know how to instrument rpc
@@ -1594,6 +1596,15 @@ def get_static_data():
 
 def get_server_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+def ping_db():
+    """Simple connection test to db"""
+    try:
+        db_connection.cursor()
+    except DatabaseError:
+        return [False]
+    return [True]
 
 
 def get_hosts_by_attribute(attribute, value):
