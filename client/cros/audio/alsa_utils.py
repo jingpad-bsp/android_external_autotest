@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import re
+import subprocess
 
 from autotest_lib.client.cros.audio import cmd_utils
 
@@ -72,7 +73,7 @@ def _get_soundcard_controls(card_id):
     '''
 
     cmd = [AMIXER_PATH, '-c', str(card_id), 'controls']
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('amixer command failed')
@@ -105,7 +106,7 @@ def _get_soundcard_scontrols(card_id):
     '''
 
     cmd = [AMIXER_PATH, '-c', str(card_id), 'scontrols']
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('amixer command failed')
@@ -154,7 +155,7 @@ def get_record_card_name(card_idx):
     '''
     card_name_re = re.compile(r'card %d: .*?\[(.*?)\]' % card_idx)
     cmd = [ARECORD_PATH, '-l']
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('arecord -l command failed')
@@ -195,7 +196,7 @@ def get_default_record_device():
 
     # Get first device id of this card.
     cmd = [ARECORD_PATH, '-l']
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('arecord -l command failed')
@@ -211,7 +212,7 @@ def get_default_record_device():
 
 
 def _get_sysdefault(cmd):
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('%s failed' % cmd)
@@ -315,7 +316,7 @@ def mixer_cmd(card_id, cmd):
     '''
 
     cmd = [AMIXER_PATH, '-c', str(card_id)] + cmd
-    p = cmd_utils.popen(cmd, stdout=cmd_utils.PIPE)
+    p = cmd_utils.popen(cmd, stdout=subprocess.PIPE)
     output, _ = p.communicate()
     if p.wait() != 0:
         raise RuntimeError('amixer command failed')
