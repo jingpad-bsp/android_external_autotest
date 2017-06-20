@@ -172,7 +172,7 @@ def UsbUpdate(client, args):
     if result.exit_status and result.exit_status != UPDATE_OK:
         logging.debug(result)
         raise error.TestError("Unexpected usb_update exit code after %s %d" %
-                              ' '.join(args), result.exit_status)
+                              (' '.join(args), result.exit_status))
     return result
 
 
