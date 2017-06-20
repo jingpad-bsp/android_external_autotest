@@ -59,11 +59,6 @@ class power_Consumption(test.test):
             # sufficiently charged
             self._power_status.assert_battery_state(30)
 
-        # Find the battery capacity to report expected battery life in hours
-        batinfo = self._power_status.battery[0]
-        self.energy_full_design = batinfo.energy_full_design
-        logging.info("energy_full_design = %0.3f Wh", self.energy_full_design)
-
         # Local data and web server settings. Tarballs with traditional names
         # like *.tgz don't get copied to the image by ebuilds (see
         # AUTOTEST_FILE_MASK in autotest-chrome ebuild).
@@ -475,11 +470,12 @@ class power_Consumption(test.test):
         self._backlight = power_utils.Backlight()
         self._backlight.set_default()
 
-        measurements = \
-            [power_status.SystemPower(self._power_status.battery_path)]
+        measure = []
+        if not self._power_status.on_ac():
+            measure += power_status.SystemPower(self._power_status.battery_path)
         if power_utils.has_rapl_support():
-            measurements += power_rapl.create_rapl()
-        self._plog = power_status.PowerLogger(measurements)
+            measure += power_rapl.create_rapl()
+        self._plog = power_status.PowerLogger(measure)
         self._plog.start()
 
         # Log in.
@@ -509,28 +505,38 @@ class power_Consumption(test.test):
         keyvals.update(self._tmp_keyvals)
         keyvals.update(self._statomatic.publish())
 
-        # Calculate expected battery life time with ChromeVer power draw
-        idle_name = 'ChromeVer_system_pwr'
-        if idle_name in keyvals:
-            hours_life = self.energy_full_design / keyvals[idle_name]
-            keyvals['hours_battery_ChromeVer'] = hours_life
+        # check AC status is still the same as init
+        self._power_status.refresh()
+        on_ac = self._power_status.on_ac()
+        if keyvals['b_on_ac'] != on_ac:
+            raise error.TestError('on AC changed between start & stop of test')
 
-        # Calculate a weighted power draw and battery life time. The weights
-        # are intended to represent "typical" usage. Some video, some Flash ...
-        # and most of the time idle.
-        # see http://www.chromium.org/chromium-os/testing/power-testing
-        weights = {'vid400p_h264_system_pwr':0.1,
-                   # TODO(chromium:309403) re-enable BallsFlex once Flash in
-                   # test-lab understood and re-distribute back to 60/20/10/10.
-                   # 'BallsFlex_system_pwr':0.1,
-                   'BallsDHTML_system_pwr':0.3,
-                   }
-        weights[idle_name] = 1 - sum(weights.values())
+        if not on_ac:
+            whrs = self._power_status.battery[0].energy_full_design
+            logging.info("energy_full_design = %0.3f Wh", whrs)
 
-        if set(weights).issubset(set(keyvals)):
-            p = sum(w * keyvals[k] for (k, w) in weights.items())
-            keyvals['w_Weighted_system_pwr'] = p
-            keyvals['hours_battery_Weighted'] = self.energy_full_design / p
+            # Calculate expected battery life time with ChromeVer power draw
+            idle_name = 'ChromeVer_system_pwr'
+            if idle_name in keyvals:
+                hours_life = whrs / keyvals[idle_name]
+                keyvals['hours_battery_ChromeVer'] = hours_life
+
+            # Calculate a weighted power draw and battery life time. The weights
+            # are intended to represent "typical" usage. Some video, some Flash
+            # ... and most of the time idle. see,
+            # http://www.chromium.org/chromium-os/testing/power-testing
+            weights = {'vid400p_h264_system_pwr':0.1,
+                       # TODO(chromium:309403) re-enable BallsFlex once Flash in
+                       # test-lab understood and re-distribute back to 60/20/10/10.
+                       # 'BallsFlex_system_pwr':0.1,
+                       'BallsDHTML_system_pwr':0.3,
+                       }
+            weights[idle_name] = 1 - sum(weights.values())
+
+            if set(weights).issubset(set(keyvals)):
+                p = sum(w * keyvals[k] for (k, w) in weights.items())
+                keyvals['w_Weighted_system_pwr'] = p
+                keyvals['hours_battery_Weighted'] = whrs / p
 
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
