@@ -141,10 +141,11 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             if gtest_filter and predefined_filter:
                 logging.warning('predefined gtest filter is suppressed: %s',
                     predefined_filter)
-            if not gtest_filter:
-                gtest_filter = predefined_filter
-            if gtest_filter:
-                cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)
+                applied_filter = gtest_filter
+            else:
+                applied_filter = predefined_filter
+            if applied_filter:
+                cmd_line_list.append('--gtest_filter="%s"' % applied_filter)
 
             cmd_line = ' '.join(cmd_line_list)
             try:
