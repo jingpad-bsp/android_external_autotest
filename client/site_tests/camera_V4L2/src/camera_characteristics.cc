@@ -85,27 +85,8 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   FILE* file = base::OpenFile(path, "r");
   if (!file) {
     LOG(INFO) << __func__ << ": Can't open file "
-              << kCameraCharacteristicsConfigFile
-              << ". Use default characteristics instead";
-    DeviceInfos device_infos;
-    for (const auto& device : devices) {
-      device_infos.push_back(kDefaultCharacteristics);
-      size_t pos = device.first.find(":");
-      if (pos != std::string::npos) {
-        // If configuration file doesn't exist, the two attributes should be
-        // true.
-        device_infos.back().resolution_1280x960_unsupported = true;
-        device_infos.back().resolution_1600x1200_unsupported = true;
-        device_infos.back().constant_framerate_unsupported = true;
-
-        device_infos.back().device_path = device.second;
-        device_infos.back().usb_vid = device.first.substr(0, pos - 1);
-        device_infos.back().usb_pid = device.first.substr(pos + 1);
-      } else {
-        LOG(ERROR) << __func__ << ": Invalid device: " << device.first;
-      }
-    }
-    return device_infos;
+              << kCameraCharacteristicsConfigFile;
+    return DeviceInfos();
   }
 
   DeviceInfos tmp_device_infos;
