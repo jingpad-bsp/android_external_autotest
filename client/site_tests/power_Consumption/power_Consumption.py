@@ -221,9 +221,8 @@ class power_Consumption(test.test):
 
         more_urls = [('BallsDHTML',
                       data_url + 'balls/DHTMLBalls/dhtml.htm'),
-                     # Disabling FlexBalls as experiment http://crbug.com/309403
-                     # ('BallsFlex',
-                     #  data_url + 'balls/FlexBalls/flexballs.html'),
+                     ('BallsFlex',
+                      data_url + 'balls/FlexBalls/flexballs.html'),
                     ]
 
         if self.short:
@@ -526,11 +525,9 @@ class power_Consumption(test.test):
             # ... and most of the time idle. see,
             # http://www.chromium.org/chromium-os/testing/power-testing
             weights = {'vid400p_h264_system_pwr':0.1,
-                       # TODO(chromium:309403) re-enable BallsFlex once Flash in
-                       # test-lab understood and re-distribute back to 60/20/10/10.
-                       # 'BallsFlex_system_pwr':0.1,
+                       'BallsFlex_system_pwr':0.1,
                        'BallsDHTML_system_pwr':0.3,
-                       }
+                      }
             weights[idle_name] = 1 - sum(weights.values())
 
             if set(weights).issubset(set(keyvals)):
