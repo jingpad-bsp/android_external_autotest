@@ -50,6 +50,12 @@ import sys
 # Test import
 import common
 import chromite
+
+# This test has to be before the import of autotest_lib, because ts_mon requires
+# httplib2 module in chromite/third_party. The one in Autotest site-packages is
+# out dated.
+%(ts_mon_test)s
+
 from autotest_lib.server import utils
 from autotest_lib.site_utils import lxc
 
@@ -242,7 +248,8 @@ def test_share(container):
         if utils.is_moblab():
             script.write(TEST_SCRIPT_CONTENT)
         else:
-            script.write(TEST_SCRIPT_CONTENT + TEST_SCRIPT_CONTENT_TS_MON)
+            script.write(TEST_SCRIPT_CONTENT %
+                         {'ts_mon_test': TEST_SCRIPT_CONTENT_TS_MON})
 
     container_result_path = lxc.RESULT_DIR_FMT % TEST_JOB_FOLDER
     container_test_script = os.path.join(container_result_path, TEST_SCRIPT)
