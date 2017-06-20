@@ -257,22 +257,30 @@ class BaseUpdater(object):
             self._base_update_handler(run_args, err_prefix)
             metric_fields['success'] = True
         finally:
-            build_name = url_to_image_name(self.update_url)
-            try:
-                board, build_type, milestone, _ = server_utils.ParseBuildName(
-                    build_name)
-            except server_utils.ParseBuildNameException:
-                logging.warning('Unable to parse build name %s for metrics. '
-                                'Continuing anyway.', build_name)
-                board, build_type, milestone = ('', '', '')
             c = metrics.Counter('chromeos/autotest/autoupdater/trigger')
-            metric_fields.update({
-                'dev_server': dev_server.get_hostname(self.update_url),
-                'board': board,
-                'build_type': build_type,
-                'milestone': milestone,
-            })
+            metric_fields.update(self._get_metric_fields())
             c.increment(fields=metric_fields)
+
+
+    def _get_metric_fields(self):
+        """Return a dict of metric fields.
+
+        This is used for sending autoupdate metrics for this instance.
+        """
+        build_name = url_to_image_name(self.update_url)
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(
+                build_name)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s for metrics. '
+                            'Continuing anyway.', build_name)
+            board, build_type, milestone = ('', '', '')
+        return {
+            'dev_server': dev_server.get_hostname(self.update_url),
+            'board': board,
+            'build_type': build_type,
+            'milestone': milestone,
+        }
 
 
     def _verify_update_completed(self):
@@ -303,21 +311,8 @@ class BaseUpdater(object):
             self._base_update_handler(run_args, err_prefix)
             metric_fields['success'] = True
         finally:
-            build_name = url_to_image_name(self.update_url)
-            try:
-                board, build_type, milestone, _ = server_utils.ParseBuildName(
-                    build_name)
-            except server_utils.ParseBuildNameException:
-                logging.warning('Unable to parse build name %s for metrics. '
-                                'Continuing anyway.', build_name)
-                board, build_type, milestone = ('', '', '')
             c = metrics.Counter('chromeos/autotest/autoupdater/update')
-            metric_fields.update({
-                'dev_server': dev_server.get_hostname(self.update_url),
-                'board': board,
-                'build_type': build_type,
-                'milestone': milestone,
-            })
+            metric_fields.update(self._get_metric_fields())
             c.increment(fields=metric_fields)
 
         self._verify_update_completed()
