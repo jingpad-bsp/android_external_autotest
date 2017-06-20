@@ -294,6 +294,18 @@ def parse_tradefed_v2_result(result, waivers=None):
     return counts
 
 
+def select_32bit_java():
+    """Switches to 32 bit java if installed (like in lab lxc images) to save
+    about 30-40% server/shard memory during the run."""
+    if utils.is_in_container() and not client_utils.is_moblab():
+        java = '/usr/lib/jvm/java-8-openjdk-i386'
+        if os.path.exists(java):
+            logging.info('Found 32 bit java, switching to use it.')
+            os.environ['JAVA_HOME'] = java
+            os.environ['PATH'] = (os.path.join(java, 'bin') + os.pathsep +
+                                  os.environ['PATH'])
+
+
 class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
@@ -310,6 +322,9 @@ class TradefedTest(test.test):
             cache_root = _TRADEFED_CACHE_CONTAINER
         else:
             cache_root = _TRADEFED_CACHE_LOCAL
+
+        # Try to save server memory (crbug.com/717413).
+        select_32bit_java()
         # Quick sanity check and spew of java version installed on the server.
         utils.run('java', args=('-version',), ignore_status=False, verbose=True,
                   stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
