@@ -252,30 +252,27 @@ class BaseUpdater(object):
         run_args = {'command': autoupdate_cmd}
         err_prefix = 'Failed to trigger an update on %s. ' % self.host.hostname
         logging.info('Triggering update via: %s', autoupdate_cmd)
+        metric_fields = {'success': False}
         try:
-            to_raise = None
             self._base_update_handler(run_args, err_prefix)
-        except Exception as e:
-            to_raise = e
-
-        build_name = url_to_image_name(self.update_url)
-        try:
-            board, build_type, milestone, _ = server_utils.ParseBuildName(
-                build_name)
-        except server_utils.ParseBuildNameException:
-            logging.warning('Unable to parse build name %s for metrics. '
-                            'Continuing anyway.', build_name)
-            board, build_type, milestone = ('', '', '')
-        c = metrics.Counter('chromeos/autotest/autoupdater/trigger')
-        f = {'dev_server':
-             dev_server.get_hostname(self.update_url),
-             'success': to_raise is None,
-             'board': board,
-             'build_type': build_type,
-             'milestone': milestone}
-        c.increment(fields=f)
-        if to_raise:
-            raise to_raise
+            metric_fields['success'] = True
+        finally:
+            build_name = url_to_image_name(self.update_url)
+            try:
+                board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+            except server_utils.ParseBuildNameException:
+                logging.warning('Unable to parse build name %s for metrics. '
+                                'Continuing anyway.', build_name)
+                board, build_type, milestone = ('', '', '')
+            c = metrics.Counter('chromeos/autotest/autoupdater/trigger')
+            metric_fields.update({
+                'dev_server': dev_server.get_hostname(self.update_url),
+                'board': board,
+                'build_type': build_type,
+                'milestone': milestone,
+            })
+            c.increment(fields=metric_fields)
 
 
     def _verify_update_completed(self):
@@ -301,30 +298,28 @@ class BaseUpdater(object):
         err_prefix = ('Failed to install device image using payload at %s '
                       'on %s. ' % (self.update_url, self.host.hostname))
         logging.info('Updating image via: %s', autoupdate_cmd)
+        metric_fields = {'success': False}
         try:
-            to_raise = None
             self._base_update_handler(run_args, err_prefix)
-        except Exception as e:
-            to_raise = e
+            metric_fields['success'] = True
+        finally:
+            build_name = url_to_image_name(self.update_url)
+            try:
+                board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+            except server_utils.ParseBuildNameException:
+                logging.warning('Unable to parse build name %s for metrics. '
+                                'Continuing anyway.', build_name)
+                board, build_type, milestone = ('', '', '')
+            c = metrics.Counter('chromeos/autotest/autoupdater/update')
+            metric_fields.update({
+                'dev_server': dev_server.get_hostname(self.update_url),
+                'board': board,
+                'build_type': build_type,
+                'milestone': milestone,
+            })
+            c.increment(fields=metric_fields)
 
-        build_name = url_to_image_name(self.update_url)
-        try:
-            board, build_type, milestone, _ = server_utils.ParseBuildName(
-                build_name)
-        except server_utils.ParseBuildNameException:
-            logging.warning('Unable to parse build name %s for metrics. '
-                            'Continuing anyway.', build_name)
-            board, build_type, milestone = ('', '', '')
-        c = metrics.Counter('chromeos/autotest/autoupdater/update')
-        f = {'dev_server':
-             dev_server.get_hostname(self.update_url),
-             'success': to_raise is None,
-             'board': board,
-             'build_type': build_type,
-             'milestone': milestone}
-        c.increment(fields=f)
-        if to_raise:
-            raise to_raise
         self._verify_update_completed()
 
 
