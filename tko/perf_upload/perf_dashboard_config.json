@@ -608,15 +608,35 @@
     "master_name": "ChromeOSVideo"
   },
   {
-    "autotest_name": "video_VDAPerf",
+    "autotest_name": "video_VDAPerf.h264",
     "master_name": "ChromeOSVideo"
   },
   {
-    "autotest_name": "video_VEAPerf",
+    "autotest_name": "video_VDAPerf.vp8",
     "master_name": "ChromeOSVideo"
   },
   {
-    "autotest_name": "video_VideoDecodeMemoryUsage",
+    "autotest_name": "video_VDAPerf.vp9",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VEAPerf.h264",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VEAPerf.vp8",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VideoDecodeMemoryUsage.h264",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VideoDecodeMemoryUsage.vp8",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VideoDecodeMemoryUsage.vp9",
     "master_name": "ChromeOSVideo"
   },
   {
