@@ -22,7 +22,7 @@ static void PrintUsage(int argc, char** argv) {
          "Options:\n"
          "--help               Print usage\n"
          "--device=DEVICE_NAME Video device name [/dev/video]\n"
-         "--usb-info=VID:PID   Device vendor id and product id\n",
+         "--usb-info=VID:PID   Device vendor id and product id\n"
          "--constant-framerate Only test constant framerate\n",
          argv[0]);
 }
@@ -477,6 +477,7 @@ int main(int argc, char** argv) {
   bool check_1280x960 = false;
   bool check_1600x1200 = false;
   bool support_constant_framerate = false;
+  bool check_first_jpeg_frame_valid = false;
   uint32_t skip_frames = 0;
   if (device_infos.size() > 1) {
     printf("[Error] One device should not have multiple configs.\n");
@@ -488,6 +489,7 @@ int main(int argc, char** argv) {
     support_constant_framerate =
         !device_infos[0].constant_framerate_unsupported;
     skip_frames = device_infos[0].frames_to_skip_after_streamon;
+    check_first_jpeg_frame_valid = true;
   }
   printf("[Info] check 1280x960: %d\n", check_1280x960);
   printf("[Info] check 1600x1200: %d\n", check_1600x1200);
@@ -502,7 +504,8 @@ int main(int argc, char** argv) {
     if (!TestResolutions(dev_name, check_1280x960, check_1600x1200, false)) {
       return EXIT_FAILURE;
     }
-    if (!TestFirstFrameAfterStreamOn(dev_name, skip_frames)) {
+    if (check_first_jpeg_frame_valid &&
+        !TestFirstFrameAfterStreamOn(dev_name, skip_frames)) {
       return EXIT_FAILURE;
     }
   } else if (support_constant_framerate) {
