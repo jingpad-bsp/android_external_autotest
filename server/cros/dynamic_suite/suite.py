@@ -918,7 +918,8 @@ def _deprecated_suite_method(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         """Wraps |func| for warning."""
-        warnings.warn('Calling this method from Suite is deprecated')
+        warnings.warn('Calling method "%s" from Suite is deprecated' %
+                      func.__name__)
         return func(*args, **kwargs)
     return staticmethod(wrapper)
 
