@@ -20,7 +20,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 RERUN_RATIO = 0.02  # Ratio to rerun failing test for hasty mode
 
 
-class graphics_dEQP(test.test):
+class graphics_dEQP(graphics_utils.GraphicsTest):
     """Run the drawElements Quality Program test suite.
     """
     version = 1
@@ -58,6 +58,7 @@ class graphics_dEQP(test.test):
     ]
 
     def initialize(self):
+        super(graphics_dEQP, self).initialize()
         self._api_helper = graphics_utils.GraphicsApiHelper()
         self._board = utils.get_board()
         self._cpu_type = utils.get_cpu_soc_family()
@@ -75,10 +76,12 @@ class graphics_dEQP(test.test):
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
         # Valid choices are fbo and pbuffer. The latter avoids dEQP assumptions.
         self._surface = 'pbuffer'
+        self._services.stop_services()
 
     def cleanup(self):
         if self._services:
             self._services.restore_services()
+        super(graphics_dEQP, self).cleanup()
 
     def _parse_test_results(self, result_filename,
                             test_results=None, failing_test=None):
@@ -292,7 +295,7 @@ class graphics_dEQP(test.test):
                 'Failed: No test cases found in subset file %s!' % subset_path)
         return test_cases
 
-    def run_tests_individually(self, test_cases):
+    def run_tests_individually(self, test_cases, failing_test=None):
         """Runs tests as isolated from each other, but slowly.
 
         This function runs each test case separately as a command.
@@ -300,6 +303,7 @@ class graphics_dEQP(test.test):
         isolated, but runtime quite high due to overhead.
 
         @param test_cases: List of dEQP test case strings.
+        @param failing_test: Tests considered failed will be appended to it.
 
         @return: dictionary of test results.
         """
@@ -352,7 +356,9 @@ class graphics_dEQP(test.test):
                                            timeout=self._timeout,
                                            stderr_is_expected=False,
                                            ignore_status=True)
-                    result_counts = self._parse_test_results(log_file)
+                    result_counts = self._parse_test_results(
+                        log_file,
+                        failing_test=failing_test)
                     if result_counts:
                         result = result_counts.keys()[0]
                     else:
@@ -497,7 +503,8 @@ class graphics_dEQP(test.test):
                        hasty='False',
                        shard_number='0',
                        shard_count='1',
-                       debug='False')
+                       debug='False',
+                       perf_failure_description=None)
         if opts is None:
             opts = []
         options.update(utils.args_to_dict(opts))
@@ -514,6 +521,11 @@ class graphics_dEQP(test.test):
             self._filter = options['filter']
             if not self._filter:
                 raise error.TestFail('Failed: No dEQP test filter specified')
+        if options['perf_failure_description']:
+            self._test_failure_description = options['perf_failure_description']
+        else:
+            # Do not report failure if failure description is not specified.
+            self._test_failure_report_enable = False
 
         # Some information to help post-process logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
@@ -528,7 +540,6 @@ class graphics_dEQP(test.test):
         shutil.rmtree(self._log_path, ignore_errors=True)
         os.mkdir(self._log_path)
 
-        self._services.stop_services()
         # Load either tests specified by test_names_file, test_names or filter.
         test_cases = []
         if self._test_names_file:
@@ -546,18 +557,27 @@ class graphics_dEQP(test.test):
             self._log_reader = cros_logging.LogReader()
             self._log_reader.set_start_by_current()
 
+        # Assume all tests failed at the beginning.
+        for test_case in test_cases:
+            self.add_failures(test_case)
+
+        failing_test = []
         test_results = {}
         if self._hasty:
             logging.info('Running in hasty mode.')
-            failing_test = []
             test_results = self.run_tests_hasty(test_cases, failing_test)
 
             logging.info("Failing Tests: %s", str(failing_test))
             if len(failing_test) > 0:
-                if len(failing_test) < sum(test_results.values()) * RERUN_RATIO:
+                if (len(failing_test) <
+                   sum(test_results.values()) * RERUN_RATIO):
                     logging.info("Because we are in hasty mode, we will rerun"
                                  "the failing tests one at a time")
-                    rerun_results = self.run_tests_individually(failing_test)
+                    test_cases = failing_test
+                    failing_test = []
+                    rerun_results = self.run_tests_individually(
+                        test_cases,
+                        failing_test)
                     # Update failing test result from the test_results
                     for result in test_results:
                         if result.lower() not in self.TEST_RESULT_FILTER:
@@ -570,7 +590,13 @@ class graphics_dEQP(test.test):
                                  "take too long to rerun them. Giving up.")
         else:
             logging.info('Running each test individually.')
-            test_results = self.run_tests_individually(test_cases)
+            test_results = self.run_tests_individually(test_cases,
+                                                       failing_test)
+
+        # Update failing tests to the chrome perf dashboard records.
+        for test_case in test_cases:
+            if test_case not in failing_test:
+                self.remove_failures(test_case)
 
         logging.info('Test results:')
         logging.info(test_results)
