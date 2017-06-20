@@ -21,6 +21,7 @@ job.run_test('graphics_dEQP',
              opts = args + [
                  'test_names_file=/usr/local/deqp/master/gles31-master.txt',
                  'hasty=False',
+                 'perf_failure_description=Failures_GLES31',
                  'shard_number=0',
                  'shard_count=1'
              ])

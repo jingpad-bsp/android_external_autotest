@@ -21,6 +21,7 @@ job.run_test('graphics_dEQP',
              opts = args + [
                  'test_names_file=/usr/local/autotest/tests/graphics_dEQP/master/bvt.txt',
                  'hasty=False',
+                 'perf_failure_description=Failures_BVT',
                  'shard_number=0',
                  'shard_count=1'
              ])
