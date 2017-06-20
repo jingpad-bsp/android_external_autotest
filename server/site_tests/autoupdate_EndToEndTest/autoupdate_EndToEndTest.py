@@ -30,9 +30,6 @@ def _wait(secs, desc=None):
 class ExpectedUpdateEventChainFailed(error.TestFail):
     """Raised if we fail to receive an expected event in a chain."""
 
-class RequiredArgumentMissing(error.TestError):
-    """Raised if the test is missing a required argument."""
-
 
 # Update event types.
 EVENT_TYPE_DOWNLOAD_COMPLETE = '1'
@@ -1618,14 +1615,11 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('Update successful, test completed')
 
 
-    # TODO(garnold) Remove the use_servo argument once control files on all
-    # release branches have caught up.
-    def run_once(self, host, test_conf, use_servo=False):
+    def run_once(self, host, test_conf):
         """Performs a complete auto update test.
 
         @param host: a host object representing the DUT
         @param test_conf: a dictionary containing test configuration values
-        @param use_servo: DEPRECATED
 
         @raise error.TestError if anything went wrong with setting up the test;
                error.TestFail if any part of the test has failed.
