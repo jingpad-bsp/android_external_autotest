@@ -92,7 +92,9 @@ class accessibility_ChromeVoxSound(a11y_test_base.a11y_test_base):
         # self._detect_audio('enable ChromeVox ding', 1, 2)
 
         # "ChromeVox Spoken Feedback is ready!"
-        self._detect_audio('welcome message', 2, 6)
+        # This sound can vary in length when extra messages are added, so
+        # max_time is intentionally very long.
+        self._detect_audio('welcome message', 2, 20)
         chromevox_open_time = time.time() - chromevox_start_time
         logging.info('ChromeVox took %f seconds to start.')
 
