@@ -151,6 +151,13 @@ class enterprise_CFM_Perf(test.test):
         self.output_perf_value(description='average_temperature',
                 value=avg_temp, units='Celsius', higher_is_better=False)
 
+        self.output_perf_value(description='cpu_usage',
+                value=cpu_usage, units='percent', higher_is_better=False)
+        self.output_perf_value(description='memory_usage',
+                value=memory_usage, units='percent', higher_is_better=False)
+        self.output_perf_value(description='temperature',
+                value=temperature, units='Celsius', higher_is_better=False)
+
         self.output_perf_value(description='peak_cpu_usage',
                 value=peak_cpu_usage, units='percent', higher_is_better=False)
         self.output_perf_value(description='peak_memory_usage',
@@ -326,6 +333,11 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_average('average_encode_time', jmidata),
                 units='ms', higher_is_better=False)
 
+        self.output_perf_value(description='video_out_encode_time',
+                value=self._get_data_from_jmifile(
+                        'average_encode_time', jmidata),
+                units='ms', higher_is_better=False)
+
         self.output_perf_value(description='std_dev_video_out_encode_time',
                 value=self._get_std_dev('average_encode_time', jmidata),
                 units='ms', higher_is_better=False)
@@ -346,8 +358,18 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_average('video_received_frame_height', jmidata),
                 units='resolution', higher_is_better=True)
 
+        self.output_perf_value(description='video_in_res',
+                value=self._get_data_from_jmifile(
+                        'video_received_frame_height', jmidata),
+                units='resolution', higher_is_better=True)
+
         self.output_perf_value(description='avg_video_out_res',
                 value=self._get_average('video_sent_frame_height', jmidata),
+                units='resolution', higher_is_better=True)
+
+        self.output_perf_value(description='video_out_res',
+                value=self._get_data_from_jmifile(
+                        'video_sent_frame_height', jmidata),
                 units='resolution', higher_is_better=True)
 
         self.output_perf_value(description='std_dev_video_out_res',
@@ -358,8 +380,18 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_average('framerate_decoded', jmidata),
                 units='fps', higher_is_better=True)
 
+        self.output_perf_value(description='vid_in_framerate_decoded',
+                value=self._get_data_from_jmifile(
+                        'framerate_decoded', jmidata),
+                units='fps', higher_is_better=True)
+
         self.output_perf_value(description='avg_vid_out_framerate_input',
                 value=self._get_average('framerate_outgoing', jmidata),
+                units='fps', higher_is_better=True)
+
+        self.output_perf_value(description='vid_out_framerate_input',
+                value=self._get_data_from_jmifile(
+                        'framerate_outgoing', jmidata),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='std_dev_vid_out_framerate_input',
@@ -370,12 +402,26 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_average('framerate_to_renderer', jmidata),
                 units='fps', higher_is_better=True)
 
+        self.output_perf_value(description='vid_in_framerate_to_renderer',
+                value=self._get_data_from_jmifile(
+                        'framerate_to_renderer', jmidata),
+                units='fps', higher_is_better=True)
+
         self.output_perf_value(description='avg_vid_in_framerate_received',
                 value=self._get_average('framerate_received', jmidata),
                 units='fps', higher_is_better=True)
 
+        self.output_perf_value(description='vid_in_framerate_received',
+                value=self._get_data_from_jmifile(
+                        'framerate_received', jmidata),
+                units='fps', higher_is_better=True)
+
         self.output_perf_value(description='avg_vid_out_framerate_sent',
                 value=self._get_average('framerate_sent', jmidata),
+                units='fps', higher_is_better=True)
+
+        self.output_perf_value(description='vid_out_framerate_sent',
+                value=self._get_data_from_jmifile('framerate_sent', jmidata),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='std_dev_vid_out_framerate_sent',
@@ -386,12 +432,27 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_average('video_received_frame_width', jmidata),
                 units='fps', higher_is_better=True)
 
+        self.output_perf_value(description='vid_in_frame_width',
+                value=self._get_data_from_jmifile(
+                        'video_received_frame_width', jmidata),
+                units='fps', higher_is_better=True)
+
         self.output_perf_value(description='avg_vid_out_frame_width',
                 value=self._get_average('video_sent_frame_width', jmidata),
                 units='fps', higher_is_better=True)
 
+        self.output_perf_value(description='vid_out_frame_width',
+                value=self._get_data_from_jmifile(
+                        'video_sent_frame_width', jmidata),
+                units='fps', higher_is_better=True)
+
         self.output_perf_value(description='avg_vid_out_encode_cpu_usage',
                 value=self._get_average('video_encode_cpu_usage', jmidata),
+                units='percent', higher_is_better=False)
+
+        self.output_perf_value(description='vid_out_encode_cpu_usage',
+                value=self._get_data_from_jmifile(
+                        'video_encode_cpu_usage', jmidata),
                 units='percent', higher_is_better=False)
 
         total_vid_packets_sent = self._get_sum('video_packets_sent', jmidata)
@@ -405,30 +466,62 @@ class enterprise_CFM_Perf(test.test):
                 higher_is_better=False)
 
         num_processors = self._get_data_from_jmifile('cpu_processors', jmidata)
-        total_cpu = self._get_average('cpu_percent', jmidata)
-        render_cpu = self._get_average('renderer_cpu_percent', jmidata)
+        avg_total_cpu = self._get_average('cpu_percent', jmidata)
+        avg_render_cpu = self._get_average('renderer_cpu_percent', jmidata)
+        total_cpu = self._get_data_from_jmifile('cpu_percent', jmidata)
+        render_cpu = self._get_data_from_jmifile(
+                'renderer_cpu_percent', jmidata)
 
-        cpu_percentage = total_cpu/num_processors if num_processors else 0
-        render_cpu_percent = render_cpu/num_processors if num_processors else 0
+        cpu_percentage = avg_total_cpu/num_processors if num_processors else 0
+        render_cpu_percent = (avg_render_cpu/num_processors
+                              if num_processors else 0)
+
+        cpu_usage = ([value / num_processors for value in total_cpu]
+                     if num_processors else 0)
+        render_cpu_usage = ([value / num_processors for value in render_cpu]
+                            if num_processors else 0)
 
         self.output_perf_value(description='avg_cpu_usage_jmi',
                 value=cpu_percentage,
+                units='percent', higher_is_better=False)
+
+        self.output_perf_value(description='cpu_usage_jmi',
+                value=cpu_usage,
                 units='percent', higher_is_better=False)
 
         self.output_perf_value(description='avg_renderer_cpu_usage',
                 value=render_cpu_percent,
                 units='percent', higher_is_better=False)
 
+        self.output_perf_value(description='renderer_cpu_usage',
+                value=render_cpu_usage,
+                units='percent', higher_is_better=False)
+
         self.output_perf_value(description='avg_browser_cpu_usage',
                 value=self._get_average('browser_cpu_percent', jmidata),
+                units='percent', higher_is_better=False)
+
+        self.output_perf_value(description='browser_cpu_usage',
+                value=self._get_data_from_jmifile(
+                        'browser_cpu_percent', jmidata),
                 units='percent', higher_is_better=False)
 
         self.output_perf_value(description='avg_gpu_cpu_usage',
                 value=self._get_average('gpu_cpu_percent', jmidata),
                 units='percent', higher_is_better=False)
 
+        self.output_perf_value(description='gpu_cpu_usage',
+                value=self._get_data_from_jmifile(
+                        'gpu_cpu_percent', jmidata),
+                units='percent', higher_is_better=False)
+
         self.output_perf_value(description='avg_active_streams',
                 value=self._get_average('num_active_vid_in_streams', jmidata),
+                units='count', higher_is_better=True)
+
+        self.output_perf_value(description='active_streams',
+                value=self._get_data_from_jmifile(
+                        'num_active_vid_in_streams', jmidata),
                 units='count', higher_is_better=True)
 
         self.output_perf_value(description='std_dev_active_streams',
@@ -459,6 +552,9 @@ class enterprise_CFM_Perf(test.test):
             self.cfm_facade.end_hangout_session()
             self.upload_jmidata()
         except Exception as e:
+            # Clear tpm to remove device ownership before exiting to ensure
+            # device is not left in an enrolled state.
+            tpm_utils.ClearTPMOwnerRequest(self.client)
             raise error.TestFail(str(e))
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
