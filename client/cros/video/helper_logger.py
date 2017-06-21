@@ -40,7 +40,7 @@ def video_log_wrapper(func):
     fpath = '/sys/module/s5p_mfc/parameters/debug'
     if os.path.exists(fpath):
         vlog.add_log([fpath],
-                     ['2'],
+                     ['1'],
                      ['0'],
                      's5p_mfc log')
 
