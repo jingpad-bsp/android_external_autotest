@@ -36,6 +36,10 @@ VERSION_RE = {
 UPDATE_TIMEOUT = 60
 UPDATE_OK = 1
 
+ERASED_BID_INT = 0xffffffff
+# With an erased bid, the flags and board id will both be erased
+ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT)
+
 usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
 usb_update.add_argument('-s', '--systemdev', dest='systemdev',
@@ -159,8 +163,8 @@ def UsbUpdate(client, args):
     # After a posted reboot, the usb_update exit code should equal 1.
     if result.exit_status and result.exit_status != UPDATE_OK:
         logging.debug(result)
-        raise error.TestError("Unexpected usb_update exit code after %s %d" %
-                              (' '.join(args), result.exit_status))
+        raise error.TestFail("Unexpected usb_update exit code after %s %d" %
+                             (' '.join(args), result.exit_status))
     return result
 
 
@@ -279,3 +283,124 @@ def InstallImage(client, src, dest=CR50_FILE):
     ver = GetBinVersion(client, dest)
     client.run("sync")
     return dest, ver
+
+
+def GetSymbolicBoardId(symbolic_board_id):
+    """Convert the symbolic board id str to an int
+
+    Args:
+        symbolic_board_id: a ASCII string. It can be up to 4 characters
+
+    Returns:
+        the symbolic board id string converted to an int
+    """
+    board_id = 0
+    for c in symbolic_board_id:
+        board_id = ord(c) | (board_id << 8)
+    return board_id
+
+
+def GetExpectedBoardId(board_id):
+    """"Return the usb_updater interpretation of board_id
+
+    Args:
+        board_id: a int or string value of the board id
+
+    Returns:
+        a int representation of the board id
+    """
+    if type(board_id) == int:
+        return board_id
+
+    if len(board_id) <= 4:
+        return GetSymbolicBoardId(board_id)
+
+    return int(board_id, 16)
+
+
+def GetExpectedFlags(flags):
+    """If flags are not specified, usb_updater will set them to 0xff00
+
+    Args:
+        flags: The int value or None
+
+    Returns:
+        the original flags or 0xff00 if flags is None
+    """
+    return flags if flags != None else 0xff00
+
+
+def GetBoardId(client):
+    """Return the board id and flags
+
+    Args:
+        client: the object to run commands on
+
+    Returns:
+        a tuple with the hex value board id, flags
+
+    Raises:
+        TestFail if the second board id response field is not ~board_id
+    """
+    result = UsbUpdate(client, ["-i"]).stdout.strip()
+    board_id_info = result.split("Board ID space: ")[-1].strip().split(":")
+    board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
+    logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
+
+    if board_id == board_id_inv == flags == ERASED_BID_INT:
+        logging.info('board id is erased')
+    elif board_id & board_id_inv:
+        raise error.TestFail('board_id_inv should be ~board_id got %x %x' %
+                             (board_id, board_id_inv))
+    return board_id, flags
+
+
+def CheckBoardId(client, board_id, flags):
+    """Compare the given board_id and flags to the running board_id and flags
+
+    Interpret board_id and flags how usb_updater would interpret them, then
+    compare those interpreted values to the running board_id and flags.
+
+    Args:
+        client: the object to run commands on
+        board_id: a hex, symbolic or int value for board_id
+        flags: the int value of flags or None
+
+    Raises:
+        TestFail if the new board id info does not match
+    """
+    # Read back the board id and flags
+    new_board_id, new_flags = GetBoardId(client)
+
+    expected_board_id = GetExpectedBoardId(board_id)
+    expected_flags = GetExpectedFlags(flags)
+
+    if new_board_id != expected_board_id or new_flags != expected_flags:
+        raise error.TestFail('Failed to set board id expected %x:%x, but got '
+                             '%x:%x' % (expected_board_id, expected_flags,
+                             new_board_id, new_flags))
+
+
+def SetBoardId(client, board_id, flags=None):
+    """Sets the board id and flags
+
+    Args:
+        client: the object to run commands on
+        board_id: a string of the symbolic board id or board id hex value. If
+                  the string is less than 4 characters long it will be
+                  considered a symbolic value
+        flags: the desired flag value. If board_id is a symbolic value, then
+               this will be ignored.
+
+    Raises:
+        TestFail if we were unable to set the flags to the correct value
+    """
+
+    board_id_arg = board_id
+    if flags != None:
+        board_id_arg += ':' + hex(flags)
+
+    # Set the board id using the given board id and flags
+    result = UsbUpdate(client, ["-s", "-i", board_id_arg]).stdout.strip()
+
+    CheckBoardId(client, board_id, flags)
