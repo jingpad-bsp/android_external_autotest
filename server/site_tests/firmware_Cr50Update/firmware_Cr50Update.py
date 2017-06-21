@@ -262,6 +262,10 @@ class firmware_Cr50Update(FirmwareTest):
         # Clear the update state and reboot, so cr50-update will run again.
         cr50_utils.ClearUpdateStateAndReboot(self.host)
 
+        # Verify the system boots normally after the update
+        self.check_state((self.checkers.crossystem_checker,
+                          {'mainfw_type': 'normal'}))
+
         # Verify the version has been updated and that there have been no
         # unexpected usb_updater exit codes.
         cr50_utils.VerifyUpdate(self.host, image_ver, last_message)
