@@ -24,13 +24,18 @@ def get_cfm_webview_context(browser, ext_id):
         context.WaitForDocumentReadyStateToBeInteractiveOrBetter()
         tagName = context.EvaluateJavaScript(
             "document.querySelector('webview') ? 'WEBVIEW' : 'NOWEBVIEW'")
-
-        if tagName == "WEBVIEW":
+        ext_url = context.EvaluateJavaScript('location.href;')
+        expected_window = 'hangoutswindow.html?windowid=0'
+        expected_url = 'chrome-extension://' + ext_id + '/' + expected_window
+        if tagName == "WEBVIEW" and ext_url == expected_url:
             def _webview_context():
                 try:
                     wb_contexts = context.GetWebviewContexts()
                     if len(wb_contexts) == 1:
                         return wb_contexts[0]
+                    if len(wb_contexts) == 2:
+                        return wb_contexts[1]
+
                 except (KeyError, chrome.Error):
                     pass
                 return None
