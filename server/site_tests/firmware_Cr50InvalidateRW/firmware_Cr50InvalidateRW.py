@@ -135,6 +135,11 @@ class firmware_Cr50InvalidateRW(test.test):
 
 
     def run_once(self, host):
+        # After clearing the tpm owner the header will be corrupted on the
+        # second login
+        self.clear_tpm_owner()
+        self.login_and_verify(corrupt_login=2)
+
         # The header is corrupted on the first login after cryptohome is reset
         self.restart_cryptohome()
         self.login_and_verify(corrupt_login=1)
@@ -142,11 +147,6 @@ class firmware_Cr50InvalidateRW(test.test):
         # Cryptohome is reset after reboot
         self.host.reboot()
         self.login_and_verify(corrupt_login=1)
-
-        # After clearing the tpm owner the header will be corrupted on the
-        # second login
-        self.clear_tpm_owner()
-        self.login_and_verify(corrupt_login=2)
 
         # The header is not corrupted after guest login, but will be corrupted
         # on the first login after that.
