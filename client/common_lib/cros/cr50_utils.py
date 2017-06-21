@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import argparse
 import logging
 import os
 import re
@@ -34,6 +35,18 @@ VERSION_RE = {
 }
 UPDATE_TIMEOUT = 60
 UPDATE_OK = 1
+
+usb_update = argparse.ArgumentParser()
+# use /dev/tpm0 to send the command
+usb_update.add_argument('-s', '--systemdev', dest='systemdev',
+                        action='store_true')
+# -f and -b get the fwversion
+usb_update.add_argument('-b', '--binvers', '-f', '--fwver', dest='get_ver',
+                        action='store_true')
+# upstart and post_reset will post resets instead of rebooting immediately
+usb_update.add_argument('-u', '--upstart', '-p', '--post_reset',
+                        dest='post_reset', action='store_true')
+usb_update.add_argument('extras', nargs=argparse.REMAINDER)
 
 
 def AssertVersionsAreEqual(name_a, ver_a, name_b, ver_b):
@@ -115,35 +128,6 @@ def GetSavedVersion(client):
     return FindVersion(result, "--fwver")
 
 
-def CheckArg(arg, shortopt, longopt):
-    """Return True if arg equals longopt or shortopt"""
-    return arg == shortopt or arg == longopt
-
-
-def ParseArgs(args):
-    """Parse the args and determine what the intent of the usb_update command is
-
-    Check each arg and determine if the command will cause a reboot, uses
-    /dev/tpm0, or is getting the running version or the version of a .bin.
-
-    Returns a tuple of bools expect_reboot, systemdev, get_ver
-    """
-    systemdev = False
-    post_reset = False
-    get_ver = False
-    for arg in args:
-        arg = arg.strip()
-        systemdev |= CheckArg(arg, '-s', '--systemdev')
-        get_ver |= CheckArg(arg, '-b', '--binvers')
-        get_ver |= CheckArg(arg, '-f', '--fwver')
-        post_reset |= CheckArg(arg, '-p', '--post_reset')
-        post_reset |= CheckArg(arg, '-u', '--upstart')
-
-    # immediate reboots are only honored if the command is sent using /dev/tpm0
-    expect_reboot = systemdev and not post_reset and not get_ver
-    return expect_reboot, systemdev, get_ver
-
-
 def UsbUpdate(client, args):
     """Run usb_update with the given args.
 
@@ -153,15 +137,18 @@ def UsbUpdate(client, args):
     Returns:
         the result of usb_update
     """
-    expect_reboot, systemdev, get_ver = ParseArgs(args)
+    options = usb_update.parse_args(args)
 
     result = client.run("status trunksd")
-    if systemdev and 'running' in result.stdout:
+    if options.systemdev and 'running' in result.stdout:
         client.run("stop trunksd")
 
     # If we are updating the cr50 image, usb_update will return a non-zero exit
     # status so we should ignore it.
-    ignore_status = not get_ver
+    ignore_status = not options.get_ver
+    # immediate reboots are only honored if the command is sent using /dev/tpm0
+    expect_reboot = (options.systemdev and not options.post_reset and not
+                     options.get_ver)
 
     result = client.run("usb_updater %s" % ' '.join(args),
                         ignore_status=ignore_status,
