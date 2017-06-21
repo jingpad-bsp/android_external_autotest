@@ -14,6 +14,7 @@ import traceback
 
 import common
 from autotest_lib.client.bin import result_utils
+from autotest_lib.client.bin import result_view
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
@@ -286,6 +287,8 @@ def _get_result_sizes(path):
         sizes[RESULT_THROTTLED] = (
                 root_entry[result_utils.ORIGINAL_SIZE_BYTES] !=
                 root_entry[result_utils.TRIMMED_SIZE_BYTES])
+        html_file = os.path.join(path, result_view.DEFAULT_RESULT_SUMMARY_NAME)
+        result_view.build(client_collected_bytes, summary, html_file)
     except:
         tko_utils.dprint('Failed to calculate result sizes based on directory '
                          'summaries. Fall back to record the total size.\n'

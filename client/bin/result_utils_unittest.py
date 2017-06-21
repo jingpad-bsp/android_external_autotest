@@ -15,7 +15,7 @@ import unittest
 
 import common
 from autotest_lib.client.bin import result_utils
-
+from autotest_lib.client.bin import result_view
 
 SIZE = 10
 EXPECTED_SUMMARY = {
@@ -262,6 +262,16 @@ class MergeSummaryTest(unittest.TestCase):
         os.remove(self.summary_2)
         client_collected_bytes, _ = result_utils.merge_summaries(self.test_dir)
         self.assertEqual(client_collected_bytes, 0)
+
+    def testBuildView(self):
+        """Test build method in result_view module."""
+        client_collected_bytes, summary = result_utils.merge_summaries(
+                self.test_dir)
+        html_file = os.path.join(self.test_dir,
+                                 result_view.DEFAULT_RESULT_SUMMARY_NAME)
+        result_view.build(client_collected_bytes, summary, html_file)
+        # Make sure html_file is created with content.
+        self.assertGreater(os.stat(html_file).st_size, 1000)
 
 
 # this is so the test can be run in standalone mode
