@@ -40,9 +40,10 @@ usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
 usb_update.add_argument('-s', '--systemdev', dest='systemdev',
                         action='store_true')
-# -f and -b get the fwversion
-usb_update.add_argument('-b', '--binvers', '-f', '--fwver', dest='get_ver',
-                        action='store_true')
+# fwver, binver, and board id are used to get information about cr50 or an
+# image.
+usb_update.add_argument('-b', '--binvers', '-f', '--fwver', '-i', '--board_id',
+                        dest='info_cmd', action='store_true')
 # upstart and post_reset will post resets instead of rebooting immediately
 usb_update.add_argument('-u', '--upstart', '-p', '--post_reset',
                         dest='post_reset', action='store_true')
@@ -145,10 +146,10 @@ def UsbUpdate(client, args):
 
     # If we are updating the cr50 image, usb_update will return a non-zero exit
     # status so we should ignore it.
-    ignore_status = not options.get_ver
+    ignore_status = not options.info_cmd
     # immediate reboots are only honored if the command is sent using /dev/tpm0
-    expect_reboot = (options.systemdev and not options.post_reset and not
-                     options.get_ver)
+    expect_reboot = (options.systemdev and not options.post_reset and
+                     not options.info_cmd)
 
     result = client.run("usb_updater %s" % ' '.join(args),
                         ignore_status=ignore_status,
