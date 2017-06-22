@@ -672,13 +672,16 @@ class DevServer(object):
                 healthy devserver is found.
 
         """
+        logging.debug('Pick one healthy devserver from %r', devservers)
         while devservers:
             hash_index = hash(build) % len(devservers)
             devserver = devservers.pop(hash_index)
+            logging.debug('Check health for %s', devserver)
             if ban_list and devserver in ban_list:
                 continue
 
             if cls.devserver_healthy(devserver):
+                logging.debug('Pick %s', devserver)
                 return cls(devserver)
 
 
@@ -2513,6 +2516,7 @@ def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
     @return: Name of the devserver with the least load.
 
     """
+    logging.debug('Get the least loaded %r', devserver_type)
     devservers, can_retry = devserver_type.get_available_devservers(
             hostname)
     # If no healthy devservers available and can_retry is False, return None.
