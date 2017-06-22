@@ -1992,7 +1992,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def is_chrome_switch_present(self, switch):
-        """Returns True if the specified switch was provided to Chrome."""
+        """Returns True if the specified switch was provided to Chrome.
+
+        @param switch The chrome switch to search for.
+        """
 
         command = 'pgrep -x -f -c "/opt/google/chrome/chrome.*%s.*"' % switch
         return self.run(command, ignore_status=True).exit_status == 0
