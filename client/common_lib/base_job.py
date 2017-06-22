@@ -744,6 +744,8 @@ class base_job(object):
         messages should be logged and which should be supressed. [OPTIONAL]
     @property warning_loggers: A set of readable streams that will be monitored
         for WARN messages to be logged. [OPTIONAL]
+    @property max_result_size_KB: Maximum size of test results should be
+        collected in KB. [OPTIONAL]
 
     Abstract methods:
         _find_base_directories [CLASSMETHOD]
@@ -758,7 +760,7 @@ class base_job(object):
             Returns a status_logger instance for recording job status logs.
     """
 
-   # capture the dependency on several helper classes with factories
+    # capture the dependency on several helper classes with factories
     _job_directory = job_directory
     _job_state = job_state
 
@@ -786,6 +788,8 @@ class base_job(object):
         '_state', 'run_test_cleanup', True)
     automatic_test_tag = _job_state.property_factory(
         '_state', 'automatic_test_tag', None)
+    max_result_size_KB = _job_state.property_factory(
+        '_state', 'max_result_size_KB', 0)
 
     # the use_sequence_number property
     _sequence_number = _job_state.property_factory(
