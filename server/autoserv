@@ -53,7 +53,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils import lxc_utils
+from autotest_lib.site_utils.lxc import utils as lxc_utils
 from autotest_lib.client.common_lib import pidfile, logging_manager
 
 
