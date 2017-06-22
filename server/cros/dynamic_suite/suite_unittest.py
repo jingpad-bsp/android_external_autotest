@@ -201,7 +201,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         autodir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-        fs_getter = Suite.create_fs_getter(autodir)
+        fs_getter = SuiteBase.create_fs_getter(autodir)
         predicate = lambda t: hasattr(t, 'suite')
         SuiteBase.find_and_parse_tests(fs_getter, predicate,
                                        forgiving_parser=False)
@@ -230,7 +230,7 @@ class SuiteTest(mox.MoxTestBase):
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
 
-        predicate = Suite.matches_attribute_expression_predicate('attr:attr')
+        predicate = SuiteBase.matches_attribute_expression_predicate('attr:attr')
         tests = SuiteBase.find_and_parse_tests(self.getter,
                                                predicate,
                                                self._TAG)
@@ -248,7 +248,7 @@ class SuiteTest(mox.MoxTestBase):
         a single test name."""
         self.expect_control_file_parsing(suite_name='ad_hoc_suite')
         self.mox.ReplayAll()
-        predicate = Suite.test_name_equals_predicate('name-data_five')
+        predicate = SuiteBase.test_name_equals_predicate('name-data_five')
         suite = Suite.create_from_predicates([predicate], self._BUILDS,
                                        self._BOARD, devserver=None,
                                        cf_getter=self.getter,
