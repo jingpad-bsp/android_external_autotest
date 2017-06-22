@@ -78,10 +78,6 @@ _testing_mode = False
 _drone_manager = None
 
 
-def _site_init_monitor_db_dummy():
-    return {}
-
-
 def _verify_default_drone_set_exists():
     if (models.DroneSet.drone_sets_enabled() and
             not models.DroneSet.default_drone_set_name()):
@@ -143,11 +139,6 @@ def main_without_exception_handling():
 
     global RESULTS_DIR
     RESULTS_DIR = args[0]
-
-    site_init = utils.import_site_function(__file__,
-        "autotest_lib.scheduler.site_monitor_db", "site_init_monitor_db",
-        _site_init_monitor_db_dummy)
-    site_init()
 
     # Change the cwd while running to avoid issues incase we were launched from
     # somewhere odd (such as a random NFS home directory of the person running
