@@ -367,6 +367,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=str, dest='path',
                         help='Path to build directory summary.')
+    parser.add_argument('-m', type=int, dest='max_size_KB', default=0,
+                        help='Maximum result size in KB. Set to 0 to disable '
+                        'result throttling.')
     options = parser.parse_args()
 
     summary = build_summary_json(options.path)
