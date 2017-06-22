@@ -2,13 +2,13 @@ import os, time, socket, shutil, glob, logging, traceback, tempfile, re
 import shlex
 import subprocess
 
-from multiprocessing import Lock
-from autotest_lib.client.common_lib import autotemp, error
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import remote
 from autotest_lib.server.hosts import rpc_server_tracker
-from autotest_lib.client.common_lib.global_config import global_config
+from autotest_lib.server.hosts import ssh_multiplex
 
 # pylint: disable=C0111
 
@@ -58,12 +58,7 @@ class AbstractSSHHost(remote.RemoteHost):
         control path option. If master-SSH is enabled, these fields will be
         initialized by start_master_ssh when a new SSH connection is initiated.
         """
-        self.master_ssh_job = None
-        self.master_ssh_tempdir = None
-        self.master_ssh_option = ''
-
-        # Create a Lock to protect against race conditions.
-        self._lock = Lock()
+        self._master_ssh = ssh_multiplex.MasterSsh(hostname, user, port)
 
         self._afe_host = afe_host or utils.EmptyAFEHost()
         self.host_info_store = (host_info_store or
@@ -175,7 +170,7 @@ class AbstractSSHHost(remote.RemoteHost):
         pre-encoded.
         """
         ssh_cmd = self.make_ssh_command(user=self.user, port=self.port,
-                                        opts=self.master_ssh_option,
+                                        opts=self._master_ssh.ssh_option,
                                         hosts_file=self.known_hosts_file)
         if delete_dest:
             delete_flag = "--delete"
@@ -198,7 +193,7 @@ class AbstractSSHHost(remote.RemoteHost):
         to run commands directly on the machine
         """
         base_cmd = self.make_ssh_command(user=self.user, port=self.port,
-                                         opts=self.master_ssh_option,
+                                         opts=self._master_ssh.ssh_option,
                                          hosts_file=self.known_hosts_file)
 
         return '%s %s "%s"' % (base_cmd, self.hostname, utils.sh_escape(cmd))
@@ -211,7 +206,7 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         command = ("scp -rq %s -o StrictHostKeyChecking=no "
                    "-o UserKnownHostsFile=%s -P %d %s '%s'")
-        return command % (self.master_ssh_option, self.known_hosts_file,
+        return command % (self._master_ssh.ssh_option, self.known_hosts_file,
                           self.port, sources, dest)
 
 
@@ -731,7 +726,7 @@ class AbstractSSHHost(remote.RemoteHost):
     def close(self):
         super(AbstractSSHHost, self).close()
         self.rpc_server_tracker.disconnect_all()
-        self._cleanup_master_ssh()
+        self._master_ssh.close()
         if os.path.exists(self.known_hosts_file):
             os.remove(self.known_hosts_file)
 
@@ -742,27 +737,9 @@ class AbstractSSHHost(remote.RemoteHost):
         resort when ssh commands fail and we don't understand why.
         """
         logging.debug('Restarting master ssh connection')
-        self._cleanup_master_ssh()
-        self.start_master_ssh(timeout=30)
+        self._master_ssh.close()
+        self._master_ssh.maybe_start(timeout=30)
 
-
-    def _cleanup_master_ssh(self):
-        """
-        Release all resources (process, temporary directory) used by an active
-        master SSH connection.
-        """
-        # If a master SSH connection is running, kill it.
-        if self.master_ssh_job is not None:
-            logging.debug('Nuking master_ssh_job.')
-            utils.nuke_subprocess(self.master_ssh_job.sp)
-            self.master_ssh_job = None
-
-        # Remove the temporary directory for the master SSH socket.
-        if self.master_ssh_tempdir is not None:
-            logging.debug('Cleaning master_ssh_tempdir.')
-            self.master_ssh_tempdir.clean()
-            self.master_ssh_tempdir = None
-            self.master_ssh_option = ''
 
 
     def start_master_ssh(self, timeout=5):
@@ -779,51 +756,7 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         if not enable_master_ssh:
             return
-
-        # Multiple processes might try in parallel to clean up the old master
-        # ssh connection and create a new one, therefore use a lock to protect
-        # against race conditions.
-        with self._lock:
-            # If a previously started master SSH connection is not running
-            # anymore, it needs to be cleaned up and then restarted.
-            if self.master_ssh_job is not None:
-                socket_path = os.path.join(self.master_ssh_tempdir.name,
-                                           'socket')
-                if (not os.path.exists(socket_path) or
-                        self.master_ssh_job.sp.poll() is not None):
-                    logging.info("Master ssh connection to %s is down.",
-                                 self.hostname)
-                    self._cleanup_master_ssh()
-
-            # Start a new master SSH connection.
-            if self.master_ssh_job is None:
-                # Create a shared socket in a temp location.
-                self.master_ssh_tempdir = autotemp.tempdir(
-                        unique_id='ssh-master')
-                self.master_ssh_option = ("-o ControlPath=%s/socket" %
-                                          self.master_ssh_tempdir.name)
-
-                # Start the master SSH connection in the background.
-                master_cmd = self.ssh_command(
-                        options="-N -o ControlMaster=yes")
-                logging.info("Starting master ssh connection '%s'", master_cmd)
-                self.master_ssh_job = utils.BgJob(
-                    master_cmd, nickname='master-ssh',
-                    stdout_tee=utils.DEVNULL, stderr_tee=utils.DEVNULL,
-                    unjoinable=True)
-                # To prevent a race between the the master ssh connection
-                # startup and its first attempted use, wait for socket file to
-                # exist before returning.
-                end_time = time.time() + timeout
-                socket_file_path = os.path.join(self.master_ssh_tempdir.name,
-                                                'socket')
-                while time.time() < end_time:
-                    if os.path.exists(socket_file_path):
-                        break
-                    time.sleep(.2)
-                else:
-                    logging.info('Timed out waiting for master-ssh connection '
-                                 'to be established.')
+        self._master_ssh.maybe_start(timeout=timeout)
 
 
     def clear_known_hosts(self):
