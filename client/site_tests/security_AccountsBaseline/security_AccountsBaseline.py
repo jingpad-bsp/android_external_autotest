@@ -17,14 +17,38 @@ class security_AccountsBaseline(test.test):
 
     @staticmethod
     def validate_passwd(entry):
-        # Not checking anything for now.
+        """Check users that are not in the baseline.
+           The user ID should match the group ID, and the user's home directory
+           and shell should be invalid."""
+        uid = int(entry[2])
+        gid = int(entry[3])
+
+        if uid != gid:
+            logging.error("New user '%s' has uid %d and different gid %d",
+                          entry[0], uid, gid)
+            return False
+
+        if entry[5] != '/dev/null':
+            logging.error("New user '%s' has valid home dir '%s'", entry[0],
+                          entry[5])
+            return False
+
+        if entry[6] != '/bin/false':
+            logging.error("New user '%s' has valid shell '%s'", entry[0],
+                          entry[6])
+            return False
+
         return True
 
 
     @staticmethod
     def validate_group(entry):
+        """Check groups that are not in the baseline.
+           Allow groups that have no users and groups with only the matching
+           user."""
         group_name = entry[0]
         users = entry[3]
+
         # Groups with no users and groups with only the matching user are OK.
         if len(users) == 0 or users == group_name:
             return True
