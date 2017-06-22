@@ -22,6 +22,6 @@ def run(machine):
                  testtracker_project_id=11349,
                  testtracker_owner='android-comms-tvc@google.com',
                  testtracker_extra_env="verizon",
-                 acts_timeout=36000)
+                 acts_timeout=50400)
 
 parallel_simple(run, machines)
