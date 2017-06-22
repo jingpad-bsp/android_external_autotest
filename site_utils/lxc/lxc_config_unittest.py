@@ -8,8 +8,7 @@ import os
 import unittest
 
 import common
-
-from autotest_lib.site_utils import lxc_config
+from autotest_lib.site_utils.lxc import config as lxc_config
 
 
 class DeployConfigTest(unittest.TestCase):
