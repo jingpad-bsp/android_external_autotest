@@ -28,13 +28,16 @@ except ImportError:
 AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
 
-BUILD_DIR_SUMMARY_CMD = '%s/bin/result_utils.py -p %s'
+THROTTLE_OPTION_FMT = '-m %s'
+BUILD_DIR_SUMMARY_CMD = '%s/bin/result_utils.py -p %s %s'
 BUILD_DIR_SUMMARY_TIMEOUT = 120
 
-get_value = global_config.global_config.get_config_value
-autoserv_prebuild = get_value('AUTOSERV', 'enable_server_prebuild',
-                              type=bool, default=False)
+CONFIG = global_config.global_config
+AUTOSERV_PREBUILD = CONFIG.get_config_value(
+        'AUTOSERV', 'enable_server_prebuild', type=bool, default=False)
 
+ENABLE_RESULT_THROTTLING = CONFIG.get_config_value(
+        'AUTOSERV', 'enable_result_throttling', type=bool, default=False)
 
 class AutodirNotFoundError(Exception):
     """No Autotest installation could be found."""
@@ -995,7 +998,6 @@ class log_collector(object):
         client job into the results dir. By default does nothing as no
         client job is running, but when running a client job you can override
         this with something that will actually do something. """
-
         # make an effort to wait for the machine to come up
         try:
             self.host.wait_up(timeout=30)
@@ -1013,8 +1015,14 @@ class log_collector(object):
                     # Build test result directory summary
                     logging.debug('Getting directory summary for %s.',
                                   self.client_results_dir)
+                    if ENABLE_RESULT_THROTTLING:
+                        throttle_option = (THROTTLE_OPTION_FMT %
+                                           self.host.job.max_result_size_KB)
+                    else:
+                        throttle_option = ''
                     cmd = (BUILD_DIR_SUMMARY_CMD %
-                           (self.host.autodir, self.client_results_dir + '/'))
+                           (self.host.autodir, self.client_results_dir + '/',
+                            throttle_option))
                     self.host.run(cmd, ignore_status=False,
                                   timeout=BUILD_DIR_SUMMARY_TIMEOUT)
                 except error.AutoservRunError:
@@ -1185,12 +1193,12 @@ class BaseClientLogger(object):
                 src_dir = os.path.join(self.job.clientdir, test_dir, name)
                 if os.path.exists(src_dir):
                     src_dirs += [src_dir]
-                    if autoserv_prebuild:
+                    if AUTOSERV_PREBUILD:
                         prebuild.setup(self.job.clientdir, src_dir)
                     break
         elif pkg_type == 'profiler':
             src_dirs += [os.path.join(self.job.clientdir, 'profilers', name)]
-            if autoserv_prebuild:
+            if AUTOSERV_PREBUILD:
                 prebuild.setup(self.job.clientdir, src_dir)
         elif pkg_type == 'dep':
             src_dirs += [os.path.join(self.job.clientdir, 'deps', name)]
