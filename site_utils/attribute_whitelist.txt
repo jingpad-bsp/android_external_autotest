@@ -62,6 +62,9 @@ suite:arc-weekly
 suite:au
 suite:audio
 suite:av_webcam
+suite:bluestreak
+suite:bluestreak-pre-cq
+suite:bluestreak-release
 suite:bluetooth
 suite:bluetooth_qualification
 suite:bluetooth_sanity
