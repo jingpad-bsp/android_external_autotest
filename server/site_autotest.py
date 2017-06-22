@@ -211,7 +211,7 @@ class SiteClientLogger(object):
                     # When fetching a package, the client expects to be
                     # notified when the fetching is complete. Autotest
                     # does this pushing a B to a fifo queue to the client.
-                    self.host.run("echo B > %s" % fifo_path)
+                    self.host.run_very_slowly("echo B > %s" % fifo_path)
                 except error.AutoservRunError:
                     msg = "Checksum installation failed, continuing anyway"
                     logging.exception(msg)
