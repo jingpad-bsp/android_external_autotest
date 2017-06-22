@@ -30,6 +30,7 @@ import warnings
 
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import base_job
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
@@ -352,6 +353,14 @@ class base_server_job(base_job.base_job):
         # TODO(jrbarnette) The utility of the 'harness' attribute even
         # to client jobs is suspect.  Probably, we should remove it.
         self.harness = None
+
+        if control:
+            self.max_result_size_KB = control_data.parse_control(
+                    control, raise_warnings=False).max_result_size_KB
+        else:
+            # Set the maximum result size to be the default specified in
+            # global config, if the job has no control file associated.
+            self.max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
 
 
     @classmethod
