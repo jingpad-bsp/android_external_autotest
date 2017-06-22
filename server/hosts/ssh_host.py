@@ -67,7 +67,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @param options: SSH options
         @param alive_interval: SSH Alive interval.
         """
-        options = "%s %s" % (options, self.master_ssh_option)
+        options = "%s %s" % (options, self._master_ssh.ssh_option)
         base_cmd = self.make_ssh_command(user=self.user, port=self.port,
                                          opts=options,
                                          hosts_file=self.known_hosts_file,
