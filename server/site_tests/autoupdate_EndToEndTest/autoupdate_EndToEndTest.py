@@ -1093,7 +1093,7 @@ class ChromiumOSTestPlatform(TestPlatform):
         else:
             logging.info('Attempting to login (release %s).', release_string)
             client_at = autotest.Autotest(self._host)
-            client_at.run_test('login_LoginSuccess', arc_mode='enabled')
+            client_at.run_test('login_LoginSuccess')
 
 
     def _start_perf_mon(self, bindir):
