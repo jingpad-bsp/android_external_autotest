@@ -660,10 +660,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.adb_run('reboot', timeout=10, ignore_timeout=True)
         if not self.wait_down(boot_id=boot_id):
             raise error.AutoservRebootError(
-                    'ADB Device is still up after reboot')
+                    'ADB Device %s is still up after reboot' % self.adb_serial)
         if not self.wait_up():
             raise error.AutoservRebootError(
-                    'ADB Device failed to return from reboot.')
+                    'ADB Device %s failed to return from reboot.' %
+                    self.adb_serial)
         self._reset_adbd_connection()
 
 
@@ -675,10 +676,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.fastboot_run('reboot')
         if not self.wait_down(command=FASTBOOT_CMD):
             raise error.AutoservRebootError(
-                    'Device is still in fastboot mode after reboot')
+                    'Device %s is still in fastboot mode after reboot' %
+                    self.fastboot_serial)
         if not self.wait_up():
             raise error.AutoservRebootError(
-                    'Device failed to boot to adb after fastboot reboot.')
+                    'Device %s failed to boot to adb after fastboot reboot.' %
+                    self.adb_serial)
         self._reset_adbd_connection()
 
 
@@ -1248,7 +1251,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.adb_run('reboot bootloader')
         if not self.wait_up(command=FASTBOOT_CMD):
             raise error.AutoservError(
-                    'The device failed to reboot into bootloader mode.')
+                    'Device %s failed to reboot into bootloader mode.' %
+                    self.fastboot_serial)
 
 
     def ensure_adb_mode(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS):
@@ -1267,7 +1271,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.fastboot_run('reboot', timeout=timeout, ignore_timeout=True)
         if not self.wait_up(timeout=timeout):
             raise error.AutoservError(
-                    'The device failed to reboot into adb mode.')
+                    'Device %s failed to reboot into adb mode.' %
+                    self.adb_serial)
         self._reset_adbd_connection()
 
 
