@@ -174,13 +174,6 @@ def download_file(remote_path, local_path):
             local_file.write(block)
 
 
-def get_directory_size_kibibytes_cmd_list(directory):
-    """Returns command to get a directory's total size."""
-    # Having this in its own method makes it easier to mock in
-    # unittests.
-    return ['du', '-sk', directory]
-
-
 def get_directory_size_kibibytes(directory):
     """Calculate the total size of a directory with all its contents.
 
@@ -188,7 +181,7 @@ def get_directory_size_kibibytes(directory):
 
     @return Size of the directory in kibibytes.
     """
-    cmd = get_directory_size_kibibytes_cmd_list(directory)
+    cmd = ['du', '-sk', directory]
     process = subprocess.Popen(cmd,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
