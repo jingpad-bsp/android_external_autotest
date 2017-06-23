@@ -955,7 +955,7 @@ class Offloader(object):
         We mark them as uploaded as we won't try to offload them any more.
         """
         for job in self._open_jobs.values():
-            if job.get_failure_count() >= self._offload_count_limit:
+            if job.offload_count >= self._offload_count_limit:
                 _mark_uploaded(job.dirname)
 
 
