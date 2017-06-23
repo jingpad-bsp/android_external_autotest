@@ -22,30 +22,45 @@ class cheets_StartAndroid(test.test):
     version = 1
 
     def cleanup(self):
-        if hasattr(self, '_run_time'):
-            logging.debug("Combined time to start Chrome and Android was "
-                          "%lf seconds", self._run_time)
-            self.output_perf_value(
-                description='time to start Chrome and Android',
-                value=self._run_time,
-                units='seconds',
-                higher_is_better=False
-            )
+        if hasattr(self, '_run_times'):
+            logging.debug("Times to start Chrome and Android: %s",
+                          self._run_times)
+            # Report the first, second and last start times to perf dashboard.
+            for index in [0, 1, len(self._run_times) - 1]:
+                if index >= len(self._run_times):
+                    continue
+                self.output_perf_value(
+                    description='Time_to_Start_Chrome_and_Android-%d' % (
+                        index + 1),
+                    value=self._run_times[index],
+                    units='seconds',
+                    higher_is_better=False,
+                    replace_existing_values=True
+                )
 
     def run_once(self, count=None, dont_override_profile=False):
         if count:
             # Run stress test by logging in and starting ARC several times.
             # Each iteration is about 15s on Samus.
+            self._run_times = []
             for i in range(count):
                 logging.info('cheets_StartAndroid iteration %d', i)
-                with chrome.Chrome(
-                        arc_mode=arc.arc_common.ARC_MODE_ENABLED,
-                        dont_override_profile=dont_override_profile) as _:
-                    time.sleep(2)
+
+                start = datetime.datetime.utcnow()
+                chrome_obj = chrome.Chrome(
+                    arc_mode = arc.arc_common.ARC_MODE_ENABLED,
+                    dont_override_profile=dont_override_profile)
+                elapsed_time = (datetime.datetime.utcnow() - start
+                       ).total_seconds()
+
+                # 2 seconds for chrome to settle down before logging out
+                time.sleep(2)
+                chrome_obj.close()
+
+                self._run_times.append(elapsed_time)
         else:
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
-            start = datetime.datetime.now()
             try:
                 self.chrome = chrome.Chrome(
                             dont_override_profile=dont_override_profile,
@@ -61,6 +76,3 @@ class cheets_StartAndroid(test.test):
                             dont_override_profile=dont_override_profile,
                             arc_mode=arc.arc_common.ARC_MODE_ENABLED,
                             num_tries=3)
-            finally:
-                self._run_time = (datetime.datetime.now() -
-                                  start).total_seconds()
