@@ -193,6 +193,7 @@ suite:stress4
 suite:stress5
 suite:stress_experimental
 suite:telemetry_unit
+suite:telemetry_unit_server
 suite:tendo_experimental
 suite:toolchain-tests
 suite:touch
