@@ -11,7 +11,7 @@ import math
 import os
 
 import common
-from autotest_lib.client.bin import result_utils
+from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.common_lib import global_config
 
 
