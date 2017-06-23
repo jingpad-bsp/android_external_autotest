@@ -13,8 +13,8 @@ import sys
 import traceback
 
 import common
-from autotest_lib.client.bin import result_utils
-from autotest_lib.client.bin import result_view
+from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
