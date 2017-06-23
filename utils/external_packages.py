@@ -802,25 +802,6 @@ class GwtPackage(ExternalPackage):
         return True
 
 
-class GVizAPIPackage(ExternalPackage):
-    """gviz package"""
-    module_name = 'gviz_api'
-    version = '1.8.2'
-    local_filename = 'google-visualization-python.zip'
-    urls = ('https://github.com/google/google-visualization-python/'
-            'archive/master.zip',)
-    hex_sum = 'ec70fb8b874eae21e331332065415318f6fe4882'
-    extracted_package_path = 'google-visualization-python-master'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_noegg)
-
-    def _get_installed_version_from_module(self, module):
-        # gviz doesn't contain a proper version
-        return self.version
-
-
 class StatsdPackage(ExternalPackage):
     """python-statsd package"""
     version = '1.7.2'
