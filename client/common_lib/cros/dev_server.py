@@ -150,6 +150,9 @@ class DevServerException(Exception):
     """Raised when the dev server returns a non-200 HTTP response."""
     pass
 
+class RetryableProvisionException(DevServerException):
+    """Raised when provision fails due to a retryable reason."""
+    pass
 
 class DevServerOverloadException(Exception):
     """Raised when the dev server returns a 502 HTTP response."""
@@ -2049,12 +2052,10 @@ class ImageServer(ImageServerBase):
         @param force_original: Whether to force stateful update with the
                                original payload.
 
-        @return A set (is_success, is_retryable) in which:
-            1. is_success indicates whether this auto_update succeeds.
-            2. is_retryable indicates whether we should retry auto_update if
-               if it fails.
+        @return is_success, which indicates whether this auto_update succeeds.
 
         @raise DevServerException if auto_update fails and is not retryable.
+        @raise RetryableProvisionException if it fails and is retryable.
         """
         kwargs = {'host_name': host_name,
                   'build_name': build_name,
@@ -2196,8 +2197,8 @@ class ImageServer(ImageServerBase):
              'dut_host_name': host_name}
         c.increment(fields=f)
 
-        if is_au_success or retry_with_another_devserver:
-            return (is_au_success, retry_with_another_devserver)
+        if is_au_success:
+            return is_au_success
 
         # If errors happen in the CrOS AU process, report the first error
         # since the following errors might be caused by the first error.
@@ -2205,7 +2206,12 @@ class ImageServer(ImageServerBase):
         # auto-update logs, or killing auto-update processes, just report
         # them together.
         if error_list:
-            raise DevServerException(error_msg % (host_name, error_list[0]))
+            if retry_with_another_devserver:
+                raise RetryableProvisionException(
+                        error_msg % (host_name, error_list[0]))
+            else:
+                raise DevServerException(
+                        error_msg % (host_name, error_list[0]))
         else:
             raise DevServerException(error_msg % (
                         host_name, ('RPC calls after the whole auto-update '
