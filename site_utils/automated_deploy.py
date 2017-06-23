@@ -150,9 +150,17 @@ def get_pushed_commits(repo, repo_dir, pushed_commits_range):
 
     with infra.chdir(repo_dir):
         get_commits_cmd = 'git log --oneline %s' % pushed_commits_range
+
+        pushed_commits = infra.local_runner(
+                get_commits_cmd, stream_output=True)
         if repo == 'autotest':
-            get_commits_cmd += '|grep autotest'
-        pushed_commits = infra.local_runner(get_commits_cmd, stream_output=True)
+            autotest_commits = ''
+            for cl in pushed_commits.splitlines():
+                if 'autotest' in cl:
+                    autotest_commits += '%s\n' % cl
+
+            pushed_commits = autotest_commits
+
         print 'Successfully got pushed CLs for %s repo!\n' % repo
         return '\n%s:\n%s\n%s\n' % (repo, get_commits_cmd, pushed_commits)
 
