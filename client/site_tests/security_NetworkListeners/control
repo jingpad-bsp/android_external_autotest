@@ -13,7 +13,17 @@ CRITERIA = """
 Fail if the list of processes listening on the network doesn't match the
 baseline
 """
-ATTRIBUTES = "suite:bvt-cq, suite:smoke, suite:bvt-arc, suite:arc-bvt-cq"
+# Ordinarily, a test shouldn't be in both bvt-inline and bvt-arc since
+# that will make it run twice in release builders.  However, the CQ
+# doesn't run bvt-arc on all board families, and not all Android PFQ
+# builders run bvt-inline.  We need this test in both of those contexts.
+#
+# We could solve this by running bvt-arc on all families in the CQ just
+# for the sake of this one test, but that seems harder to explain.  The
+# cost of running twice in release builders is low enough, so that's
+# what we're doing.
+
+ATTRIBUTES = "suite:bvt-inline, suite:smoke, suite:bvt-arc, suite:arc-bvt-cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
