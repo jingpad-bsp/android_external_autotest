@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""unittest for result_utils.py
+"""unittest for utils.py
 """
 
 import json
@@ -14,8 +14,8 @@ import time
 import unittest
 
 import common
-from autotest_lib.client.bin import result_utils
-from autotest_lib.client.bin import result_view
+from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import view as result_view
 
 SIZE = 10
 EXPECTED_SUMMARY = {
