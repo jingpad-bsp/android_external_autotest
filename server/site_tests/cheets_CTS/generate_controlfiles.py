@@ -69,8 +69,6 @@ _SUITE_BVT_ARC = _SUITE_SMOKE + [
     'com.android.cts.dram'
 ]
 
-_SUITE_BVT_CQ = _SUITE_BVT_ARC
-
 _SUITE_BVT_PERBUILD = [
     'android.signature',
     'android.speech',
@@ -173,8 +171,6 @@ def get_attribute_suites(package, abi):
     # Get a minmum amount of coverage on cq (one quick CTS package only).
     if package in _SUITE_SMOKE:
         attributes += ', suite:smoke'
-    if package in _SUITE_BVT_CQ:
-        attributes += ', suite:bvt-cq'
     if package in _SUITE_BVT_ARC:
         attributes += ', suite:bvt-arc, suite:arc-bvt-cq'
     if package in _SUITE_BVT_PERBUILD and abi == 'arm':
@@ -226,7 +222,7 @@ def get_controlfile_content(package, abi, revision, build, uri):
                                            name)
     # cheets_CTS internal retries limited due to time constraints on cq.
     retry = ''
-    if (package in (_SUITE_SMOKE + _SUITE_BVT_CQ + _SUITE_BVT_ARC) or
+    if (package in (_SUITE_SMOKE + _SUITE_BVT_ARC) or
         package in _SUITE_BVT_PERBUILD and abi == 'arm'):
         retry = '\n        max_retry=3,'
     return _CONTROLFILE_TEMPLATE.format(
