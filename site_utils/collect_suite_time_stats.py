@@ -40,7 +40,7 @@ job_queued_time is stored in the "queued_time" column of "tko_jobs" table.
 hqe_finished_time is stored in the "finished_on" of "afe_host_queue_entries"
 table.
 We do not use "job_finished_time" of "tko_jobs" as job_finished_time is
-recorded before gathering/parsing/archiving.
+recorded before gathering/parsing.
 We do not use hqe started time ("started_on" of "afe_host_queue_entries"),
 as it does not account for the lag from a host is assigned to the job till
 the scheduler sees the assignment.
