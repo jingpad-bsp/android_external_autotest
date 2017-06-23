@@ -868,7 +868,7 @@ class HostQueueEntry(DBObject):
         assert self.aborted and not self.complete
 
         Status = models.HostQueueEntry.Status
-        if self.status in (Status.GATHERING, Status.PARSING, Status.ARCHIVING):
+        if self.status in {Status.GATHERING, Status.PARSING}:
             # do nothing; post-job tasks will finish and then mark this entry
             # with status "Aborted" and take care of the host
             return

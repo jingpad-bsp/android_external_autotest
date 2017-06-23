@@ -346,39 +346,3 @@ class FinalReparseTask(SelfThrottledPostJobTask):
     def epilog(self):
         super(FinalReparseTask, self).epilog()
         self._set_all_statuses(self._final_status())
-
-
-class ArchiveResultsTask(SelfThrottledPostJobTask):
-    _ARCHIVING_FAILED_FILE = '.archiver_failed'
-
-    def __init__(self, queue_entries):
-        super(ArchiveResultsTask, self).__init__(queue_entries,
-                                                 log_file_name='.archiving.log')
-        # don't use _set_ids, since we don't want to set the host_ids
-        self.queue_entry_ids = [entry.id for entry in queue_entries]
-
-
-    def _pidfile_name(self):
-        return drone_manager.ARCHIVER_PID_FILE
-
-
-    def _generate_command(self, results_dir):
-        return ['true']
-
-
-    @classmethod
-    def _max_processes(cls):
-        return scheduler_config.config.max_transfer_processes
-
-
-    def prolog(self):
-        self._check_queue_entry_statuses(
-                self.queue_entries,
-                allowed_hqe_statuses=(models.HostQueueEntry.Status.ARCHIVING,))
-
-        super(ArchiveResultsTask, self).prolog()
-
-
-    def epilog(self):
-        super(ArchiveResultsTask, self).epilog()
-        self._set_all_statuses(self._final_status())

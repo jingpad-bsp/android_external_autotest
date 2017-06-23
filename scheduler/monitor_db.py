@@ -510,8 +510,7 @@ class Dispatcher(object):
         statuses = (models.HostQueueEntry.Status.STARTING,
                     models.HostQueueEntry.Status.RUNNING,
                     models.HostQueueEntry.Status.GATHERING,
-                    models.HostQueueEntry.Status.PARSING,
-                    models.HostQueueEntry.Status.ARCHIVING)
+                    models.HostQueueEntry.Status.PARSING)
         status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = scheduler_models.HostQueueEntry.fetch(
                 where='status IN (%s)' % status_list)
@@ -566,8 +565,6 @@ class Dispatcher(object):
             return postjob_task.GatherLogsTask(queue_entries=task_entries)
         if queue_entry.status == models.HostQueueEntry.Status.PARSING:
             return postjob_task.FinalReparseTask(queue_entries=task_entries)
-        if queue_entry.status == models.HostQueueEntry.Status.ARCHIVING:
-            return postjob_task.ArchiveResultsTask(queue_entries=task_entries)
 
         raise scheduler_lib.SchedulerError(
                 '_get_agent_task_for_queue_entry got entry with '
@@ -575,8 +572,7 @@ class Dispatcher(object):
 
 
     def _check_for_duplicate_host_entries(self, task_entries):
-        non_host_statuses = (models.HostQueueEntry.Status.PARSING,
-                             models.HostQueueEntry.Status.ARCHIVING)
+        non_host_statuses = {models.HostQueueEntry.Status.PARSING}
         for task_entry in task_entries:
             using_host = (task_entry.host is not None
                           and task_entry.status not in non_host_statuses)
@@ -897,7 +893,7 @@ class Dispatcher(object):
         calling the Agents tick().
 
         This method creates an agent for each HQE in one of (starting, running,
-        gathering, parsing, archiving) states, and adds it to the dispatcher so
+        gathering, parsing) states, and adds it to the dispatcher so
         it is handled by _handle_agents.
         """
         for agent_task in self._get_queue_entry_agent_tasks():

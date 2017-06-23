@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import enum
 
 Status_list = ['Queued', 'Starting', 'Resetting', 'Verifying', 'Provisioning',
                'Pending', 'Waiting', 'Running', 'Gathering', 'Parsing',
-               'Archiving', 'Aborted', 'Completed', 'Failed', 'Stopped',
+               'Aborted', 'Completed', 'Failed', 'Stopped',
                'Cleaning', 'Template']
 
 Status = enum.Enum(*Status_list, string_values=True)
