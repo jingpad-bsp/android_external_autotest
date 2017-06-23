@@ -265,7 +265,6 @@ class base_server_job(base_job.base_job):
         """
         super(base_server_job, self).__init__(resultdir=resultdir,
                                               test_retry=test_retry)
-        path = os.path.dirname(__file__)
         self.test_retry = test_retry
         self.control = control
         self._uncollected_log_file = os.path.join(self.resultdir,
