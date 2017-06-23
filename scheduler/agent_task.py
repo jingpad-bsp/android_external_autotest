@@ -103,7 +103,6 @@ AgentTask
       |--->GatherLogsTask
       |--->SelfThrottledPostJobTask
             |--->FinalReparseTask
-            |--->ArchiveResultsTask
 
 """
 
