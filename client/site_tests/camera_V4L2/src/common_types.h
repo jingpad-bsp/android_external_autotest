@@ -61,4 +61,11 @@ struct SupportedFormat {
 
 typedef std::vector<SupportedFormat> SupportedFormats;
 
+// The definition should be match camera_metadata_enum_android_lens_facing_t
+// in camera_metadata_tags.h.
+enum lens_facing {
+  FACING_FRONT,
+  FACING_BACK,
+};
+
 #endif
