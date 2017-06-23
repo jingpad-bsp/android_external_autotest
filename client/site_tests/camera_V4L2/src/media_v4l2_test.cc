@@ -437,6 +437,52 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
   return true;
 }
 
+// ChromeOS spec requires word-facing camera should be at least 1920x1080 and
+// user-facing camera should be at least 1280x720.
+bool TestMinimumResolution(const std::string& dev_name, uint32_t facing) {
+  printf("[Info] TestMinimumResolution\n");
+  uint32_t buffers = 4;
+  std::unique_ptr<V4L2Device> device(
+      new V4L2Device(dev_name.c_str(), buffers));
+
+  if (!device->OpenDevice())
+    return false;
+
+  SupportedFormats supported_formats;
+  if (!GetSupportedFormats(device.get(), &supported_formats)) {
+    printf("[Error] Get supported formats failed in %s.\n", dev_name.c_str());
+    return false;
+  }
+  device->CloseDevice();
+  SupportedFormat max_resolution = GetMaximumResolution(supported_formats);
+
+  uint32_t required_minimum_width = 0, required_minimum_height = 0;
+  std::string facing_str = "";
+  if (facing == FACING_FRONT) {
+    required_minimum_width = 1080;
+    required_minimum_height = 720;
+    facing_str = "user";
+  } else if (facing == FACING_BACK) {
+    required_minimum_width = 1920;
+    required_minimum_height = 1080;
+    facing_str = "world";
+  } else {
+    printf("[Error] Undefined facing: %d\n", facing);
+    return false;
+  }
+
+  if (max_resolution.width < required_minimum_width ||
+      max_resolution.height < required_minimum_height) {
+    printf("[Error] The maximum resolution %dx%d does not meet minimum "
+           "requirement %dx%d for %s-facing\n", max_resolution.width,
+           max_resolution.height, required_minimum_width,
+           required_minimum_height, facing_str.c_str());
+    return false;
+  }
+  printf("[Info] TestMinimumResolution pass\n");
+  return true;
+}
+
 int main(int argc, char** argv) {
   std::string dev_name = "/dev/video";
   std::string usb_info = "";
@@ -478,6 +524,7 @@ int main(int argc, char** argv) {
   bool check_1600x1200 = false;
   bool support_constant_framerate = false;
   bool check_first_jpeg_frame_valid = false;
+  bool check_minimum_resolution = false;
   uint32_t skip_frames = 0;
   if (device_infos.size() > 1) {
     printf("[Error] One device should not have multiple configs.\n");
@@ -490,6 +537,7 @@ int main(int argc, char** argv) {
         !device_infos[0].constant_framerate_unsupported;
     skip_frames = device_infos[0].frames_to_skip_after_streamon;
     check_first_jpeg_frame_valid = true;
+    check_minimum_resolution = true;
   }
   printf("[Info] check 1280x960: %d\n", check_1280x960);
   printf("[Info] check 1600x1200: %d\n", check_1600x1200);
@@ -506,6 +554,10 @@ int main(int argc, char** argv) {
     }
     if (check_first_jpeg_frame_valid &&
         !TestFirstFrameAfterStreamOn(dev_name, skip_frames)) {
+      return EXIT_FAILURE;
+    }
+    if (check_minimum_resolution &&
+        !TestMinimumResolution(dev_name, device_infos[0].lens_facing)) {
       return EXIT_FAILURE;
     }
   } else if (support_constant_framerate) {
