@@ -71,6 +71,19 @@ class RpcFlightRecorder(object):
             if wait_time > 0:
                 time.sleep(wait_time)
 
+def _failed(fields, msg_str, reason, err=None):
+    """Mark current run failed
+
+    @param fields, ts_mon fields to mark as failed
+    @param msg_str, message string to be filled
+    @param reason: why it failed
+    @param err: optional error to log more debug info
+    """
+    fields['success'] = False
+    fields['failure_reason'] = reason
+    logging.warning("%s failed - %s", msg_str, reason)
+    if err:
+        logging.debug("%s fail_err - %s", msg_str, str(err))
 
 class AfeMonitor(object):
     """Object that runs rpc calls against the given afe frontend"""
@@ -84,41 +97,47 @@ class AfeMonitor(object):
         self._metric_fields = {'target_hostname': self._hostname}
 
 
-    def run_cmd(self, cmd):
+    def run_cmd(self, cmd, expected=None):
         """Runs rpc command and log metrics
 
         @param cmd: string of rpc command to send
+        @param expected: expected result of rpc
         """
         metric_fields = self._metric_fields.copy()
         metric_fields['command'] = cmd
-        metric_fields['success'] = False
+        metric_fields['success'] = True
         metric_fields['failure_reason'] = ''
 
         with metrics.SecondsTimer(METRIC_RPC_CALL_DURATIONS,
                 fields=dict(metric_fields)) as f:
+
+            msg_str = "%s:%s" % (self._hostname, cmd)
+
+
             try:
                 result = self._afe.run(cmd)
-                f['success'] = True
-                logging.debug("%s:%s:result = %s", self._hostname,
-                              cmd, result)
-                logging.info("%s:%s:success", self._hostname, cmd)
+                logging.debug("%s result = %s", msg_str, result)
+                if expected is not None and expected != result:
+                    _failed(f, msg_str, 'IncorrectResponse')
+
             except urllib2.HTTPError as e:
-                f['failure_reason'] = 'HTTPError:%d' % e.code
-                logging.warning("%s:%s:failed - %s", self._hostname, cmd,
-                        f['failure_reason'])
+                _failed(f, msg_str, 'HTTPError:%d' % e.code)
+
             except Exception as e:
-                f['failure_reason'] = FAILURE_REASONS.get(type(e), 'Unknown')
-                logging.warning("%s:%s:failed - %s",
-                                self._hostname,
-                                cmd,
-                                f['failure_reason'])
+                _failed(f, msg_str, FAILURE_REASONS.get(type(e), 'Unknown'),
+                        err=e)
+
                 if type(e) not in FAILURE_REASONS:
                     raise
+
+            if f['success']:
+                logging.info("%s success", msg_str)
 
 
     def run(self):
         """Tests server and returns the result"""
-        self.run_cmd('get_motd')
+        self.run_cmd('get_server_time')
+        self.run_cmd('ping_db', [True])
 
 
 def get_parser():
