@@ -28,7 +28,8 @@ class AbstractSSHHost(remote.RemoteHost):
 
     def _initialize(self, hostname, user="root", port=22, password="",
                     is_client_install_supported=True, afe_host=None,
-                    host_info_store=None, *args, **dargs):
+                    host_info_store=None, connection_pool=None,
+                    *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
         """
@@ -41,6 +42,8 @@ class AbstractSSHHost(remote.RemoteHost):
         @param afe_host: The host object attained from the AFE (get_hosts).
         @param host_info_store: Optional host_info.CachingHostInfoStore object
                 to obtain / update host information.
+        @param connection_pool: ssh_multiplex.ConnectionPool instance to share
+                the master ssh connection across control scripts.
         """
         # IP address is retrieved only on demand. Otherwise the host
         # initialization will fail for host is not online.
@@ -58,7 +61,11 @@ class AbstractSSHHost(remote.RemoteHost):
         control path option. If master-SSH is enabled, these fields will be
         initialized by start_master_ssh when a new SSH connection is initiated.
         """
-        self._master_ssh = ssh_multiplex.MasterSsh(hostname, user, port)
+        self._connection_pool = connection_pool
+        if connection_pool:
+            self._master_ssh = connection_pool.get(hostname, user, port)
+        else:
+            self._master_ssh = ssh_multiplex.MasterSsh(hostname, user, port)
 
         self._afe_host = afe_host or utils.EmptyAFEHost()
         self.host_info_store = (host_info_store or
@@ -726,7 +733,8 @@ class AbstractSSHHost(remote.RemoteHost):
     def close(self):
         super(AbstractSSHHost, self).close()
         self.rpc_server_tracker.disconnect_all()
-        self._master_ssh.close()
+        if not self._connection_pool:
+            self._master_ssh.close()
         if os.path.exists(self.known_hosts_file):
             os.remove(self.known_hosts_file)
 
