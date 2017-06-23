@@ -291,10 +291,9 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservRunError: if the command failed
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
-        stack = self._get_server_stack_state()
-        warnings.warn("Caller to run_very_slowly() is %s" % stack)
         if verbose:
-            logging.debug("Running (ssh) '%s'", command)
+            stack = self._get_server_stack_state(lowest_frames=1, highest_frames=7)
+            logging.debug("Running (ssh) '%s' from '%s'", command, stack)
             command = self._verbose_logger_command(command)
 
         # Start a master SSH connection if necessary.
