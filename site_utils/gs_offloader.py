@@ -10,6 +10,7 @@ Uses gsutil to archive files to the configured Google Storage bucket.
 Upon successful copy, the local results directory is deleted.
 """
 
+import abc
 import base64
 import datetime
 import errno
@@ -20,11 +21,11 @@ import logging.handlers
 import os
 import re
 import shutil
-import signal
 import socket
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 
@@ -40,6 +41,9 @@ from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
 from autotest_lib.utils import labellib
+from autotest_lib.utils import gslib
+from chromite.lib import gs
+from chromite.lib import timeout_util
 
 # Autotest requires the psutil module from site-packages, so it must be imported
 # after "import common".
@@ -82,11 +86,6 @@ FAILED_OFFLOADS_FILE = os.path.join(RESULTS_DIR, 'FAILED_OFFLOADS')
 # Hosts sub-directory that contains cleanup, verify and repair jobs.
 HOSTS_SUB_DIR = 'hosts'
 
-LOG_LOCATION = '/usr/local/autotest/logs/'
-LOG_FILENAME_FORMAT = 'gs_offloader_%s_log_%s.txt'
-LOG_TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
-LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-
 FAILED_OFFLOADS_FILE_HEADER = '''
 This is the list of gs_offloader failed jobs.
 Last offloader attempt at %s failed to offload %d files.
@@ -104,13 +103,6 @@ FAILED_OFFLOADS_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 USE_RSYNC_ENABLED = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_use_rsync', type=bool, default=False)
 
-# According to https://cloud.google.com/storage/docs/bucket-naming#objectnames
-INVALID_GS_CHARS = ['[', ']', '*', '?', '#']
-INVALID_GS_CHAR_RANGE = [(0x00, 0x1F), (0x7F, 0x84), (0x86, 0xFF)]
-
-# Maximum number of files in the folder.
-MAX_FILE_COUNT = 500
-FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs', 'autoupdate_logs']
 LIMIT_FILE_COUNT = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_limit_file_count', type=bool, default=False)
 
@@ -134,37 +126,12 @@ _PUBSUB_TOPIC = global_config.global_config.get_config_value(
         'CROS', 'cloud_notification_topic', default=None)
 
 
-# Test upload pubsub notification attributes
-NOTIFICATION_ATTR_VERSION = 'version'
-NOTIFICATION_ATTR_GCS_URI = 'gcs_uri'
-NOTIFICATION_ATTR_MOBLAB_MAC = 'moblab_mac_address'
-NOTIFICATION_ATTR_MOBLAB_ID = 'moblab_id'
-NOTIFICATION_VERSION = '1'
-
 # the message data for new test result notification.
 NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'
 
 # metadata type
 GS_OFFLOADER_SUCCESS_TYPE = 'gs_offloader_success'
 GS_OFFLOADER_FAILURE_TYPE = 'gs_offloader_failure'
-
-class TimeoutException(Exception):
-    """Exception raised by the timeout_handler."""
-    pass
-
-
-def timeout_handler(_signum, _frame):
-    """Handler for SIGALRM when the offloading process times out.
-
-    @param _signum: Signal number of the signal that was just caught.
-                    14 for SIGALRM.
-    @param _frame: Current stack frame.
-
-    @raise TimeoutException: Automatically raises so that the time out
-                             is caught by the try/except surrounding the
-                             Popen call.
-    """
-    raise TimeoutException('Process Timed Out')
 
 
 def _get_metrics_fields(dir_entry):
@@ -215,7 +182,7 @@ def _get_es_metadata(dir_entry):
     return fields
 
 
-def get_cmd_list(multiprocessing, dir_entry, gs_path):
+def _get_cmd_list(multiprocessing, dir_entry, gs_path):
     """Return the command to offload a specified directory.
 
     @param multiprocessing: True to turn on -m option for gsutil.
@@ -239,68 +206,100 @@ def get_cmd_list(multiprocessing, dir_entry, gs_path):
     return cmd
 
 
-def get_sanitized_name(name):
-    """Get a string with all invalid characters in the name being replaced.
+def sanitize_dir(dirpath):
+    """Sanitize directory for gs upload.
 
-    @param name: Name to be processed.
+    Symlinks and FIFOS are converted to regular files to fix bugs.
 
-    @return A string with all invalid characters in the name being
-             replaced.
+    @param dirpath: Directory entry to be sanitized.
     """
-    match_pattern = ''.join([re.escape(c) for c in INVALID_GS_CHARS])
-    match_pattern += ''.join([r'\x%02x-\x%02x' % (r[0], r[1])
-                              for r in INVALID_GS_CHAR_RANGE])
-    invalid = re.compile('[%s]' % match_pattern)
-    return invalid.sub(lambda x: '%%%02x' % ord(x.group(0)), name)
-
-
-def sanitize_dir(dir_entry):
-    """Replace all invalid characters in folder and file names with valid ones.
-
-    FIFOs are converted to regular files to prevent gsutil hangs (see crbug/684122).
-    Symlinks are converted to regular files that store the link destination
-    (crbug/692788).
-
-    @param dir_entry: Directory entry to be sanitized.
-    """
-    if not os.path.exists(dir_entry):
+    if not os.path.exists(dirpath):
         return
-    renames = []
-    fifos = []
-    symlinks = []
-    for root, dirs, files in os.walk(dir_entry):
-        sanitized_root = get_sanitized_name(root)
-        for name in dirs + files:
-            sanitized_name = get_sanitized_name(name)
-            sanitized_path = os.path.join(sanitized_root, sanitized_name)
-            if name != sanitized_name:
-                orig_path = os.path.join(sanitized_root, name)
-                renames.append((orig_path, sanitized_path))
-            current_path = os.path.join(root, name)
-            file_stat = os.lstat(current_path)
+    _escape_rename(dirpath)
+    _escape_rename_dir_contents(dirpath)
+    _sanitize_fifos(dirpath)
+    _sanitize_symlinks(dirpath)
+
+
+def _escape_rename_dir_contents(dirpath):
+    """Recursively rename directory to escape filenames for gs upload.
+
+    @param dirpath: Directory path string.
+    """
+    for filename in os.listdir(dirpath):
+        path = os.path.join(dirpath, filename)
+        _escape_rename(path)
+    for filename in os.listdir(dirpath):
+        path = os.path.join(dirpath, filename)
+        if os.path.isdir(path):
+            _escape_rename_dir_contents(path)
+
+
+def _escape_rename(path):
+    """Rename file to escape filenames for gs upload.
+
+    @param path: File path string.
+    """
+    dirpath, filename = os.path.split(path)
+    sanitized_filename = gslib.escape(filename)
+    sanitized_path = os.path.join(dirpath, sanitized_filename)
+    os.rename(path, sanitized_path)
+
+
+def _sanitize_fifos(dirpath):
+    """Convert fifos to regular files (fixes crbug.com/684122).
+
+    @param dirpath: Directory path string.
+    """
+    for root, _, files in os.walk(dirpath):
+        for filename in files:
+            path = os.path.join(root, filename)
+            file_stat = os.lstat(path)
             if stat.S_ISFIFO(file_stat.st_mode):
-                # Replace fifos with markers
-                fifos.append(sanitized_path)
-            elif stat.S_ISLNK(file_stat.st_mode):
-                # Replace symlinks with markers
-                destination = os.readlink(current_path)
-                symlinks.append((sanitized_path, destination))
-    for src, dest in renames:
-        logging.warning('Invalid character found. Renaming %s to %s.', src,
-                        dest)
-        shutil.move(src, dest)
-    for fifo in fifos:
-        logging.debug('Removing fifo %s', fifo)
-        os.remove(fifo)
-        logging.debug('Creating marker %s', fifo)
-        with open(fifo, 'a') as marker:
-            marker.write('<FIFO>')
-    for link, destination in symlinks:
-        logging.debug('Removing symlink %s', link)
-        os.remove(link)
-        logging.debug('Creating marker %s', link)
-        with open(link, 'w') as marker:
-            marker.write('<symlink to %s>' % destination)
+                _replace_fifo_with_file(path)
+
+
+def _replace_fifo_with_file(path):
+    """Replace a fifo with a normal file.
+
+    @param path: Fifo path string.
+    """
+    logging.debug('Removing fifo %s', path)
+    os.remove(path)
+    logging.debug('Creating marker %s', path)
+    with open(path, 'w') as f:
+        f.write('<FIFO>')
+
+
+def _sanitize_symlinks(dirpath):
+    """Convert Symlinks to regular files (fixes crbug.com/692788).
+
+    @param dirpath: Directory path string.
+    """
+    for root, _, files in os.walk(dirpath):
+        for filename in files:
+            path = os.path.join(root, filename)
+            file_stat = os.lstat(path)
+            if stat.S_ISLNK(file_stat.st_mode):
+                _replace_symlink_with_file(path)
+
+
+def _replace_symlink_with_file(path):
+    """Replace a symlink with a normal file.
+
+    @param path: Symlink path string.
+    """
+    target = os.readlink(path)
+    logging.debug('Removing symlink %s', path)
+    os.remove(path)
+    logging.debug('Creating marker %s', path)
+    with open(path, 'w') as f:
+        f.write('<symlink to %s>' % target)
+
+
+# Maximum number of files in the folder.
+_MAX_FILE_COUNT = 500
+_FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs', 'autoupdate_logs']
 
 
 def _get_zippable_folders(dir_entry):
@@ -308,7 +307,7 @@ def _get_zippable_folders(dir_entry):
     for folder in os.listdir(dir_entry):
         folder_path = os.path.join(dir_entry, folder)
         if (not os.path.isfile(folder_path) and
-                not folder in FOLDERS_NEVER_ZIP):
+                not folder in _FOLDERS_NEVER_ZIP):
             folders_list.append(folder_path)
     return folders_list
 
@@ -317,20 +316,18 @@ def limit_file_count(dir_entry):
     """Limit the number of files in given directory.
 
     The method checks the total number of files in the given directory.
-    If the number is greater than MAX_FILE_COUNT, the method will
+    If the number is greater than _MAX_FILE_COUNT, the method will
     compress each folder in the given directory, except folders in
-    FOLDERS_NEVER_ZIP.
+    _FOLDERS_NEVER_ZIP.
 
     @param dir_entry: Directory entry to be checked.
     """
-    count = utils.run('find "%s" | wc -l' % dir_entry,
-                      ignore_status=True).stdout.strip()
     try:
-        count = int(count)
-    except (ValueError, TypeError):
+        count = _count_files(dir_entry)
+    except ValueError:
         logging.warning('Fail to get the file count in folder %s.', dir_entry)
         return
-    if count < MAX_FILE_COUNT:
+    if count < _MAX_FILE_COUNT:
         return
 
     # For test job, zip folders in a second level, e.g. 123-debug/host1.
@@ -347,16 +344,26 @@ def limit_file_count(dir_entry):
         folders = subfolders
 
     for folder in folders:
-        try:
-            zip_name = '%s.tgz' % folder
-            utils.run('tar -cz -C "%s" -f "%s" "%s"' %
-                      (os.path.dirname(folder), zip_name,
-                       os.path.basename(folder)))
-        except error.CmdError as e:
-            logging.error('Fail to compress folder %s. Error: %s',
-                          folder, e)
-            continue
-        shutil.rmtree(folder)
+        _make_into_tarball(folder)
+
+
+def _count_files(dirpath):
+    """Count the number of files in a directory recursively.
+
+    @param dirpath: Directory path string.
+    """
+    return sum(len(files) for _path, _dirs, files in os.walk(dirpath))
+
+
+def _make_into_tarball(dirpath):
+    """Make directory into tarball.
+
+    @param dirpath: Directory path string.
+    """
+    tarpath = '%s.tgz' % dirpath
+    with tarfile.open(tarpath, 'w:gz') as tar:
+        tar.add(dirpath, arcname=os.path.basename(dirpath))
+    shutil.rmtree(dirpath)
 
 
 def correct_results_folder_permission(dir_entry):
@@ -382,7 +389,7 @@ def correct_results_folder_permission(dir_entry):
                       dir_entry, e)
 
 
-def upload_testresult_files(dir_entry, multiprocessing):
+def _upload_cts_testresult(dir_entry, multiprocessing):
     """Upload test results to separate gs buckets.
 
     Upload testResult.xml.gz/test_result.xml.gz file to cts_results_bucket.
@@ -465,7 +472,7 @@ def _upload_files(host, path, result_pattern, multiprocessing):
             job_id + '_' + timestamp) + '/'
 
     for zip_file in glob.glob(os.path.join('%s.zip' % path)):
-        utils.run(' '.join(get_cmd_list(
+        utils.run(' '.join(_get_cmd_list(
                 multiprocessing, zip_file, cts_apfe_gs_path)))
         logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
 
@@ -476,12 +483,20 @@ def _upload_files(host, path, result_pattern, multiprocessing):
         with open(test_result_file, 'r') as f_in, (
                 gzip.open(test_result_file_gz, 'w')) as f_out:
             shutil.copyfileobj(f_in, f_out)
-        utils.run(' '.join(get_cmd_list(
+        utils.run(' '.join(_get_cmd_list(
                 multiprocessing, test_result_file_gz, test_result_gs_path)))
         logging.debug('Zip and upload %s to %s',
                       test_result_file_gz, test_result_gs_path)
         # Remove test_result_file_gz(testResult.xml.gz/test_result.xml.gz)
         os.remove(test_result_file_gz)
+
+
+# Test upload pubsub notification attributes
+_NOTIFICATION_ATTR_VERSION = 'version'
+_NOTIFICATION_ATTR_GCS_URI = 'gcs_uri'
+_NOTIFICATION_ATTR_MOBLAB_MAC = 'moblab_mac_address'
+_NOTIFICATION_ATTR_MOBLAB_ID = 'moblab_id'
+_NOTIFICATION_VERSION = '1'
 
 
 def _create_test_result_notification(gs_path, dir_entry):
@@ -497,11 +512,11 @@ def _create_test_result_notification(gs_path, dir_entry):
     data = base64.b64encode(NEW_TEST_RESULT_MESSAGE)
     msg_payload = {'data': data}
     msg_attributes = {}
-    msg_attributes[NOTIFICATION_ATTR_GCS_URI] = gcs_uri
-    msg_attributes[NOTIFICATION_ATTR_VERSION] = NOTIFICATION_VERSION
-    msg_attributes[NOTIFICATION_ATTR_MOBLAB_MAC] = \
+    msg_attributes[_NOTIFICATION_ATTR_GCS_URI] = gcs_uri
+    msg_attributes[_NOTIFICATION_ATTR_VERSION] = _NOTIFICATION_VERSION
+    msg_attributes[_NOTIFICATION_ATTR_MOBLAB_MAC] = \
         utils.get_default_interface_mac_address()
-    msg_attributes[NOTIFICATION_ATTR_MOBLAB_ID] = utils.get_moblab_id()
+    msg_attributes[_NOTIFICATION_ATTR_MOBLAB_ID] = utils.get_moblab_id()
     msg_payload['attributes'] = msg_attributes
 
     return msg_payload
@@ -516,20 +531,43 @@ def _emit_gs_returncode_metric(returncode):
     metrics.Counter(m_gs_returncode).increment(fields={'return_code': rcode})
 
 
-def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None):
-    """Returns the offload directory function for the given gs_uri
+class BaseGSOffloader(object):
 
-    @param gs_uri: Google storage bucket uri to offload to.
-    @param multiprocessing: True to turn on -m option for gsutil.
-    @param pubsub_topic: The pubsub topic to publish notificaitons. If None,
-          pubsub is not enabled.
+    """Google Storage offloader interface."""
 
-    @return offload_dir function to perform the offload.
-    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def offload(self, dir_entry, dest_path, job_complete_time):
+        """Offload a directory entry to Google Storage.
+
+        @param dir_entry: Directory entry to offload.
+        @param dest_path: Location in google storage where we will
+                          offload the directory.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
+        """
+
+
+class GSOffloader(BaseGSOffloader):
+    """Google Storage Offloader."""
+
+    def __init__(self, gs_uri, multiprocessing, delete_age, pubsub_topic=None):
+        """Returns the offload directory function for the given gs_uri
+
+        @param gs_uri: Google storage bucket uri to offload to.
+        @param multiprocessing: True to turn on -m option for gsutil.
+        @param pubsub_topic: The pubsub topic to publish notificaitons. If None,
+              pubsub is not enabled.
+        """
+        self._gs_uri = gs_uri
+        self._multiprocessing = multiprocessing
+        self._delete_age = delete_age
+        self._pubsub_topic = pubsub_topic
 
     @metrics.SecondsTimerDecorator(
             'chromeos/autotest/gs_offloader/job_offload_duration')
-    def offload_dir(dir_entry, dest_path, job_complete_time):
+    def offload(self, dir_entry, dest_path, job_complete_time):
         """Offload the specified directory entry to Google storage.
 
         @param dir_entry: Directory entry to offload.
@@ -537,104 +575,20 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                           offload the directory.
         @param job_complete_time: The complete time of the job from the AFE
                                   database.
-
         """
-        start_time = time.time()
-        error = True
-        stdout_file = None
-        stderr_file = None
-        metrics_fields = _get_metrics_fields(dir_entry)
-        es_metadata = _get_es_metadata(dir_entry)
-        try:
-            if not _is_uploaded(dir_entry):
-                sanitize_dir(dir_entry)
-                if DEFAULT_CTS_RESULTS_GSURI:
-                    upload_testresult_files(dir_entry, multiprocessing)
-
-                if LIMIT_FILE_COUNT:
-                    limit_file_count(dir_entry)
-                dir_size = file_utils.get_directory_size_kibibytes(dir_entry)
-                es_metadata['size_kb'] = dir_size
-
-                stdout_file = tempfile.TemporaryFile('w+')
-                stderr_file = tempfile.TemporaryFile('w+')
-                process = None
-                signal.alarm(OFFLOAD_TIMEOUT_SECS)
-                gs_path = '%s%s' % (gs_uri, dest_path)
-                process = subprocess.Popen(
-                        get_cmd_list(multiprocessing, dir_entry, gs_path),
-                        stdout=stdout_file, stderr=stderr_file)
-                process.wait()
-                signal.alarm(0)
-
-                _emit_gs_returncode_metric(process.returncode)
-                if process.returncode == 0:
-                    m_offload_count = (
-                            'chromeos/autotest/gs_offloader/jobs_offloaded')
-                    metrics.Counter(m_offload_count).increment(
-                            fields=metrics_fields)
-                    m_offload_size = ('chromeos/autotest/gs_offloader/'
-                                      'kilobytes_transferred')
-                    metrics.Counter(m_offload_size).increment_by(
-                            dir_size, fields=metrics_fields)
-                    es_metadata['time_used_sec'] = time.time() - start_time
-                    autotest_es.post(use_http=True,
-                                     type_str=GS_OFFLOADER_SUCCESS_TYPE,
-                                     metadata=es_metadata)
-                    error = False
-
-                    if pubsub_topic:
-                        message = _create_test_result_notification(
-                                gs_path, dir_entry)
-                        pubsub_client = pubsub_utils.PubSubClient()
-                        msg_ids = pubsub_client.publish_notifications(
-                                pubsub_topic, [message])
-                        if not msg_ids:
-                            error = True
-
-                    if not error:
-                        _mark_uploaded(dir_entry)
-
-            if _is_uploaded(dir_entry):
-                if job_directories.is_job_expired(delete_age, job_complete_time):
-                    shutil.rmtree(dir_entry)
-
-        except TimeoutException:
-            m_timeout = 'chromeos/autotest/errors/gs_offloader/timed_out_count'
-            metrics.Counter(m_timeout).increment(fields=metrics_fields)
-            # If we finished the call to Popen(), we may need to
-            # terminate the child process.  We don't bother calling
-            # process.poll(); that inherently races because the child
-            # can die any time it wants.
-            if process:
-                try:
-                    process.terminate()
-                except OSError:
-                    # We don't expect any error other than "No such
-                    # process".
-                    pass
-            logging.error('Offloading %s timed out after waiting %d '
-                          'seconds.', dir_entry, OFFLOAD_TIMEOUT_SECS)
-        except OSError as e:
-            # The wrong file permission can lead call
-            # `shutil.rmtree(dir_entry)` to raise OSError with message
-            # 'Permission denied'. Details can be found in
-            # crbug.com/536151
-            if e.errno == errno.EACCES:
-                correct_results_folder_permission(dir_entry)
-            m_permission_error = ('chromeos/autotest/errors/gs_offloader/'
-                                  'wrong_permissions_count')
-            metrics.Counter(m_permission_error).increment(fields=metrics_fields)
-        finally:
-            signal.alarm(0)
-            if error:
+        with tempfile.TemporaryFile('w+') as stdout_file, \
+             tempfile.TemporaryFile('w+') as stderr_file:
+            try:
+                self._offload(dir_entry, dest_path, stdout_file, stderr_file)
+            except _OffloadError as e:
+                metrics_fields = _get_metrics_fields(dir_entry)
                 m_any_error = 'chromeos/autotest/errors/gs_offloader/any_error'
                 metrics.Counter(m_any_error).increment(fields=metrics_fields)
 
-                es_metadata['time_used_sec'] = time.time() - start_time
+                e.es_metadata['time_used_sec'] = time.time() - e.start_time
                 autotest_es.post(use_http=True,
                                  type_str=GS_OFFLOADER_FAILURE_TYPE,
-                                 metadata=es_metadata)
+                                 metadata=e.es_metadata)
 
                 # Rewind the log files for stdout and stderr and log
                 # their contents.
@@ -654,26 +608,160 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                 # correct_results_folder_permission can be deleted.
                 if 'CommandException: Error opening file' in stderr_content:
                     correct_results_folder_permission(dir_entry)
+            else:
+                self._prune(dir_entry, job_complete_time)
 
-            if stdout_file:
-                stdout_file.close()
-            if stderr_file:
-                stderr_file.close()
-    return offload_dir
+    def _offload(self, dir_entry, dest_path,
+                 stdout_file, stderr_file):
+        """Offload the specified directory entry to Google storage.
+
+        @param dir_entry: Directory entry to offload.
+        @param dest_path: Location in google storage where we will
+                          offload the directory.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
+        @param stdout_file: Log file.
+        @param stderr_file: Log file.
+        """
+        if _is_uploaded(dir_entry):
+            return
+        start_time = time.time()
+        metrics_fields = _get_metrics_fields(dir_entry)
+        es_metadata = _get_es_metadata(dir_entry)
+        error_obj = _OffloadError(start_time, es_metadata)
+        try:
+            sanitize_dir(dir_entry)
+            if DEFAULT_CTS_RESULTS_GSURI:
+                _upload_cts_testresult(dir_entry, self._multiprocessing)
+
+            if LIMIT_FILE_COUNT:
+                limit_file_count(dir_entry)
+            es_metadata['size_kb'] = file_utils.get_directory_size_kibibytes(dir_entry)
+
+            process = None
+            with timeout_util.Timeout(OFFLOAD_TIMEOUT_SECS):
+                gs_path = '%s%s' % (self._gs_uri, dest_path)
+                process = subprocess.Popen(
+                        _get_cmd_list(self._multiprocessing, dir_entry, gs_path),
+                        stdout=stdout_file, stderr=stderr_file)
+                process.wait()
+
+            _emit_gs_returncode_metric(process.returncode)
+            if process.returncode != 0:
+                raise error_obj
+            _emit_offload_metrics(dir_entry)
+            es_metadata['time_used_sec'] = time.time() - start_time
+            autotest_es.post(use_http=True,
+                             type_str=GS_OFFLOADER_SUCCESS_TYPE,
+                             metadata=es_metadata)
+
+            if self._pubsub_topic:
+                message = _create_test_result_notification(
+                        gs_path, dir_entry)
+                pubsub_client = pubsub_utils.PubSubClient()
+                msg_ids = pubsub_client.publish_notifications(
+                        self._pubsub_topic, [message])
+                if not msg_ids:
+                    raise error_obj
+            _mark_uploaded(dir_entry)
+        except timeout_util.TimeoutError:
+            m_timeout = 'chromeos/autotest/errors/gs_offloader/timed_out_count'
+            metrics.Counter(m_timeout).increment(fields=metrics_fields)
+            # If we finished the call to Popen(), we may need to
+            # terminate the child process.  We don't bother calling
+            # process.poll(); that inherently races because the child
+            # can die any time it wants.
+            if process:
+                try:
+                    process.terminate()
+                except OSError:
+                    # We don't expect any error other than "No such
+                    # process".
+                    pass
+            logging.error('Offloading %s timed out after waiting %d '
+                          'seconds.', dir_entry, OFFLOAD_TIMEOUT_SECS)
+            raise error_obj
+
+    def _prune(self, dir_entry, job_complete_time):
+        """Prune directory if it is uploaded and expired.
+
+        @param dir_entry: Directory entry to offload.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
+        """
+        if not (_is_uploaded(dir_entry)
+                and job_directories.is_job_expired(self._delete_age,
+                                                   job_complete_time)):
+            return
+        try:
+            shutil.rmtree(dir_entry)
+        except OSError as e:
+            # The wrong file permission can lead call
+            # `shutil.rmtree(dir_entry)` to raise OSError with message
+            # 'Permission denied'. Details can be found in
+            # crbug.com/536151
+            if e.errno == errno.EACCES:
+                correct_results_folder_permission(dir_entry)
+            m_permission_error = ('chromeos/autotest/errors/gs_offloader/'
+                                  'wrong_permissions_count')
+            metrics_fields = _get_metrics_fields(dir_entry)
+            metrics.Counter(m_permission_error).increment(fields=metrics_fields)
 
 
-def delete_files(dir_entry, dest_path, job_complete_time):
-    """Simply deletes the dir_entry from the filesystem.
+class _OffloadError(Exception):
+    """Google Storage offload failed."""
 
-    Uses same arguments as offload_dir so that it can be used in replace
-    of it on systems that only want to delete files instead of
-    offloading them.
+    def __init__(self, start_time, es_metadata):
+        super(_OffloadError, self).__init__(start_time, es_metadata)
+        self.start_time = start_time
+        self.es_metadata = es_metadata
 
-    @param dir_entry: Directory entry to offload.
-    @param dest_path: NOT USED.
-    @param job_complete_time: NOT USED.
+
+
+class FakeGSOffloader(BaseGSOffloader):
+
+    """Fake Google Storage Offloader that only deletes directories."""
+
+    def offload(self, dir_entry, dest_path, job_complete_time):
+        """Pretend to offload a directory and delete it.
+
+        @param dir_entry: Directory entry to offload.
+        @param dest_path: Location in google storage where we will
+                          offload the directory.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
+        """
+        shutil.rmtree(dir_entry)
+
+
+def _is_expired(job, age_limit):
+    """Return whether job directory is expired for uploading
+
+    @param job: _JobDirectory instance.
+    @param age_limit:  Minimum age in days at which a job may be offloaded.
     """
-    shutil.rmtree(dir_entry)
+    job_timestamp = job.get_timestamp_if_finished()
+    if not job_timestamp:
+        return False
+    return job_directories.is_job_expired(age_limit, job_timestamp)
+
+
+def _emit_offload_metrics(dirpath):
+    """Emit gs offload metrics.
+
+    @param dirpath: Offloaded directory path.
+    """
+    dir_size = file_utils.get_directory_size_kibibytes(dirpath)
+    metrics_fields = _get_metrics_fields(dirpath)
+
+    m_offload_count = (
+            'chromeos/autotest/gs_offloader/jobs_offloaded')
+    metrics.Counter(m_offload_count).increment(
+            fields=metrics_fields)
+    m_offload_size = ('chromeos/autotest/gs_offloader/'
+                      'kilobytes_transferred')
+    metrics.Counter(m_offload_size).increment_by(
+            dir_size, fields=metrics_fields)
 
 
 def _is_uploaded(dirpath):
@@ -706,10 +794,10 @@ def _format_job_for_failure_reporting(job):
 
     @param job: The _JobDirectory to format.
     """
-    d = datetime.datetime.fromtimestamp(job.get_failure_time())
+    d = datetime.datetime.fromtimestamp(job.first_offload_start)
     data = (d.strftime(FAILED_OFFLOADS_TIME_FORMAT),
-            job.get_failure_count(),
-            job.get_job_directory())
+            job.offload_count,
+            job.dirname)
     return FAILED_OFFLOADS_LINE_FORMAT % data
 
 
@@ -721,7 +809,7 @@ def wait_for_gs_write_access(gs_uri):
     # TODO (sbasi) Try to use the gsutil command to check write access.
     # Ensure we have write access to gs_uri.
     dummy_file = tempfile.NamedTemporaryFile()
-    test_cmd = get_cmd_list(False, dummy_file.name, gs_uri)
+    test_cmd = _get_cmd_list(False, dummy_file.name, gs_uri)
     while True:
         try:
             subprocess.check_call(test_cmd)
@@ -739,8 +827,7 @@ class Offloader(object):
     """State of the offload process.
 
     Contains the following member fields:
-      * _offload_func:  Function to call for each attempt to offload
-        a job directory.
+      * _gs_offloader:  _BaseGSOffloader to use to offload a job directory.
       * _jobdir_classes:  List of classes of job directory to be
         offloaded.
       * _processes:  Maximum number of outstanding offload processes
@@ -756,7 +843,7 @@ class Offloader(object):
         self._upload_age_limit = options.age_to_upload
         self._delete_age_limit = options.age_to_delete
         if options.delete_only:
-            self._offload_func = delete_files
+            self._gs_offloader = FakeGSOffloader()
         else:
             self.gs_uri = utils.get_offload_gsuri()
             logging.debug('Offloading to: %s', self.gs_uri)
@@ -768,10 +855,10 @@ class Offloader(object):
             logging.info(
                     'Offloader multiprocessing is set to:%r', multiprocessing)
             if options.pubsub_topic_for_job_upload:
-              self._pubsub_topic = options.pubsub_topic_for_job_upload
+                self._pubsub_topic = options.pubsub_topic_for_job_upload
             elif _PUBSUB_ENABLED:
-              self._pubsub_topic = _PUBSUB_TOPIC
-            self._offload_func = get_offload_dir_func(
+                self._pubsub_topic = _PUBSUB_TOPIC
+            self._gs_offloader = GSOffloader(
                     self.gs_uri, multiprocessing, self._delete_age_limit,
                     self._pubsub_topic)
         classlist = []
@@ -797,7 +884,9 @@ class Offloader(object):
         new_job_count = 0
         for cls in self._jobdir_classes:
             for resultsdir in cls.get_job_directories():
-                if resultsdir in self._open_jobs:
+                if (
+                        resultsdir in self._open_jobs
+                        or _is_uploaded(resultsdir)):
                     continue
                 self._open_jobs[resultsdir] = cls(resultsdir)
                 new_job_count += 1
@@ -809,7 +898,9 @@ class Offloader(object):
         """Removed offloaded jobs from `self._open_jobs`."""
         removed_job_count = 0
         for jobkey, job in self._open_jobs.items():
-            if job.is_offloaded():
+            if (
+                    not os.path.exists(job.dirname)
+                    or _is_uploaded(job.dirname)):
                 del self._open_jobs[jobkey]
                 removed_job_count += 1
         logging.debug('End of offload cycle - cleared %d new jobs, '
@@ -817,22 +908,19 @@ class Offloader(object):
                       removed_job_count, len(self._open_jobs))
 
 
-    def _update_offload_results(self):
-        """Check and report status after attempting offload.
+    def _report_failed_jobs(self):
+        """Report status after attempting offload.
 
         This function processes all jobs in `self._open_jobs`, assuming
         an attempt has just been made to offload all of them.
-
-        Any jobs that have been successfully offloaded are removed.
 
         If any jobs have reportable errors, and we haven't generated
         an e-mail report in the last `REPORT_INTERVAL_SECS` seconds,
         send new e-mail describing the failures.
 
         """
-        self._remove_offloaded_jobs()
         failed_jobs = [j for j in self._open_jobs.values() if
-                       j.get_failure_time()]
+                       j.first_offload_start]
         self._report_failed_jobs_count(failed_jobs)
         self._log_failed_jobs_locally(failed_jobs)
 
@@ -853,11 +941,12 @@ class Offloader(object):
         self._add_new_jobs()
         self._report_current_jobs_count()
         with parallel.BackgroundTaskRunner(
-                self._offload_func, processes=self._processes) as queue:
+                self._gs_offloader.offload, processes=self._processes) as queue:
             for job in self._open_jobs.values():
-                job.enqueue_offload(queue, self._upload_age_limit)
+                _enqueue_offload(job, queue, self._upload_age_limit)
         self._give_up_on_jobs_over_limit()
-        self._update_offload_results()
+        self._remove_offloaded_jobs()
+        self._report_failed_jobs()
 
 
     def _give_up_on_jobs_over_limit(self):
@@ -905,6 +994,35 @@ class Offloader(object):
         """
         metrics.Gauge('chromeos/autotest/gs_offloader/failed_jobs_count').set(
                 len(failed_jobs))
+
+
+def _enqueue_offload(job, queue, age_limit):
+    """Enqueue the job for offload, if it's eligible.
+
+    The job is eligible for offloading if the database has marked
+    it finished, and the job is older than the `age_limit`
+    parameter.
+
+    If the job is eligible, offload processing is requested by
+    passing the `queue` parameter's `put()` method a sequence with
+    the job's `dirname` attribute and its directory name.
+
+    @param job       _JobDirectory instance to offload.
+    @param queue     If the job should be offloaded, put the offload
+                     parameters into this queue for processing.
+    @param age_limit Minimum age for a job to be offloaded.  A value
+                     of 0 means that the job will be offloaded as
+                     soon as it is finished.
+
+    """
+    if not job.offload_count:
+        if not _is_expired(job, age_limit):
+            return
+        job.first_offload_start = time.time()
+    job.offload_count += 1
+    if job.process_gs_instructions():
+        timestamp = job.get_timestamp_if_finished()
+        queue.put([job.dirname, os.path.dirname(job.dirname), timestamp])
 
 
 def parse_options():
@@ -992,21 +1110,7 @@ def main():
     else:
         offloader_type = 'jobs'
 
-    log_timestamp = time.strftime(LOG_TIMESTAMP_FORMAT)
-    if options.log_size > 0:
-        log_timestamp = ''
-    log_basename = LOG_FILENAME_FORMAT % (offloader_type, log_timestamp)
-    log_filename = os.path.join(LOG_LOCATION, log_basename)
-    log_formatter = logging.Formatter(LOGGING_FORMAT)
-    # Replace the default logging handler with a RotatingFileHandler. If
-    # options.log_size is 0, the file size will not be limited. Keeps
-    # one backup just in case.
-    handler = logging.handlers.RotatingFileHandler(
-            log_filename, maxBytes=1024 * options.log_size, backupCount=1)
-    handler.setFormatter(log_formatter)
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
+    _setup_logging(options, offloader_type)
 
     # Nice our process (carried to subprocesses) so we don't overload
     # the system.
@@ -1023,8 +1127,6 @@ def main():
     logging.debug('Offloading Autotest results in %s', RESULTS_DIR)
     os.chdir(RESULTS_DIR)
 
-    signal.signal(signal.SIGALRM, timeout_handler)
-
     service_name = 'gs_offloader(%s)' % offloader_type
     with ts_mon_config.SetupTsMonGlobalState(service_name, indirect=True,
                                              short_lived=False):
@@ -1036,6 +1138,45 @@ def main():
             if options.offload_once:
                 break
             time.sleep(SLEEP_TIME_SECS)
+
+
+_LOG_LOCATION = '/usr/local/autotest/logs/'
+_LOG_FILENAME_FORMAT = 'gs_offloader_%s_log_%s.txt'
+_LOG_TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
+_LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+
+
+def _setup_logging(options, offloader_type):
+    """Set up logging.
+
+    @param options: Parsed options.
+    @param offloader_type: Type of offloader action as string.
+    """
+    log_filename = _get_log_filename(options, offloader_type)
+    log_formatter = logging.Formatter(_LOGGING_FORMAT)
+    # Replace the default logging handler with a RotatingFileHandler. If
+    # options.log_size is 0, the file size will not be limited. Keeps
+    # one backup just in case.
+    handler = logging.handlers.RotatingFileHandler(
+            log_filename, maxBytes=1024 * options.log_size, backupCount=1)
+    handler.setFormatter(log_formatter)
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+
+
+def _get_log_filename(options, offloader_type):
+    """Get log filename.
+
+    @param options: Parsed options.
+    @param offloader_type: Type of offloader action as string.
+    """
+    if options.log_size > 0:
+        log_timestamp = ''
+    else:
+        log_timestamp = time.strftime(_LOG_TIMESTAMP_FORMAT)
+    log_basename = _LOG_FILENAME_FORMAT % (offloader_type, log_timestamp)
+    return os.path.join(_LOG_LOCATION, log_basename)
 
 
 if __name__ == '__main__':
