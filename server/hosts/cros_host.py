@@ -1994,8 +1994,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def is_chrome_switch_present(self, switch):
         """Returns True if the specified switch was provided to Chrome."""
 
-        command = 'pgrep -f -c "chrome.*%s"' % switch
-        return self.run(command).exit_status == 0
+        command = 'pgrep -x -f -c "/opt/google/chrome/chrome.*%s.*"' % switch
+        return self.run(command, ignore_status=True).exit_status == 0
 
 
     def oobe_triggers_update(self):
