@@ -104,25 +104,27 @@ To https:TEST_URL
 
         @param run_cmd: Mock of infra.local_runner call used.
         """
-        fake_commits_logs = '123 Test_change_1\n456 Test_change_2'
+        autotest_commits_logs = '123: autotest: cl_1\n456: autotest: cl_2\n'
+        chromite_commits_logs = '789: test_cl_1\n'
+        fake_commits_logs = autotest_commits_logs + chromite_commits_logs
         run_cmd.return_value = fake_commits_logs
 
         #Test to get pushed commits for autotest repo.
         repo = 'autotest'
-        expect_git_log_cmd = 'git log --oneline 123..456|grep autotest'
+        expect_git_log_cmd = 'git log --oneline 123..789'
         expect_return = ('\n%s:\n%s\n%s\n' %
-                         (repo, expect_git_log_cmd, fake_commits_logs))
-        actual_return = ad.get_pushed_commits(repo, 'test', '123..456')
+                         (repo, expect_git_log_cmd, autotest_commits_logs))
+        actual_return = ad.get_pushed_commits(repo, 'test', '123..789')
 
         run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
 
         #Test to get pushed commits for chromite repo.
         repo = 'chromite'
-        expect_git_log_cmd = 'git log --oneline 123..456'
+        expect_git_log_cmd = 'git log --oneline 123..789'
         expect_return = ('\n%s:\n%s\n%s\n' %
                          (repo, expect_git_log_cmd, fake_commits_logs))
-        actual_return = ad.get_pushed_commits(repo, 'test', '123..456')
+        actual_return = ad.get_pushed_commits(repo, 'test', '123..789')
 
         run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
