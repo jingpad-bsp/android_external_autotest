@@ -689,7 +689,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         monarch_fields['host'] = self.hostname
         c.increment(fields=monarch_fields)
 
-        return devserver.auto_update(
+        # Won't retry auto_update in a retry of auto-update.
+        # In other words, we only retry auto-update once with a different
+        # devservers.
+        devserver.auto_update(
                 self.hostname, build,
                 original_board=self.get_board().replace(
                         ds_constants.BOARD_PREFIX, ''),
@@ -789,32 +792,33 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         force_original = self.get_chromeos_release_milestone() is None
 
-        success, retryable = devserver.auto_update(
-                self.hostname, build,
-                original_board=self.get_board().replace(
-                        ds_constants.BOARD_PREFIX, ''),
-                original_release_version=self.get_release_version(),
-                log_dir=self.job.resultdir,
-                force_update=force_update,
-                full_update=force_full_update,
-                force_original=force_original)
-        if not success and retryable:
-          # It indicates that last provision failed due to devserver load
-          # issue, so another devserver is resolved to kick off provision
-          # job once again and only once.
-          logging.debug('Provision failed due to devserver issue,'
-                        'retry it with another devserver.')
+        try:
+            devserver.auto_update(
+                    self.hostname, build,
+                    original_board=self.get_board().replace(
+                            ds_constants.BOARD_PREFIX, ''),
+                    original_release_version=self.get_release_version(),
+                    log_dir=self.job.resultdir,
+                    force_update=force_update,
+                    full_update=force_full_update,
+                    force_original=force_original)
+        except dev_server.RetryableProvisionException:
+            # It indicates that last provision failed due to devserver load
+            # issue, so another devserver is resolved to kick off provision
+            # job once again and only once.
+            logging.debug('Provision failed due to devserver issue,'
+                          'retry it with another devserver.')
 
-          # Check first whether this DUT is completely offline. If so, skip
-          # the following provision tries.
-          logging.debug('Checking whether host %s is online.', self.hostname)
-          if utils.ping(self.hostname, tries=1, deadline=1) == 0:
-              self._retry_auto_update_with_new_devserver(
-                      build, devserver, force_update, force_full_update,
-                      force_original)
-          else:
-              raise error.AutoservError(
-                      'No answer to ping from %s' % self.hostname)
+            # Check first whether this DUT is completely offline. If so, skip
+            # the following provision tries.
+            logging.debug('Checking whether host %s is online.', self.hostname)
+            if utils.ping(self.hostname, tries=1, deadline=1) == 0:
+                self._retry_auto_update_with_new_devserver(
+                        build, devserver, force_update, force_full_update,
+                        force_original)
+            else:
+                raise error.AutoservError(
+                        'No answer to ping from %s' % self.hostname)
 
         # The reason to resolve a new devserver in function machine_install
         # is mostly because that the update_url there may has a strange format,
