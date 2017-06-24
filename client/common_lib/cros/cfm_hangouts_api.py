@@ -6,67 +6,9 @@ import logging
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
 
 DEFAULT_TIMEOUT = 30
 DIAGNOSTIC_RUN_TIMEOUT = 180
-
-def get_cfm_webview_context(browser, ext_id):
-    """Get context for CFM webview.
-
-    @param broswer: Telemetry broswer object.
-    @param ext_id: Extension id of the hangouts app.
-    @return webview context.
-    """
-    ext_contexts = wait_for_kiosk_ext(browser, ext_id)
-
-    for context in ext_contexts:
-        context.WaitForDocumentReadyStateToBeInteractiveOrBetter()
-        tagName = context.EvaluateJavaScript(
-            "document.querySelector('webview') ? 'WEBVIEW' : 'NOWEBVIEW'")
-        ext_url = context.EvaluateJavaScript('location.href;')
-        expected_window = 'hangoutswindow.html?windowid=0'
-        expected_url = 'chrome-extension://' + ext_id + '/' + expected_window
-        if tagName == "WEBVIEW" and ext_url == expected_url:
-            def _webview_context():
-                try:
-                    wb_contexts = context.GetWebviewContexts()
-                    if len(wb_contexts) == 1:
-                        return wb_contexts[0]
-                    if len(wb_contexts) == 2:
-                        return wb_contexts[1]
-
-                except (KeyError, chrome.Error):
-                    pass
-                return None
-            return utils.poll_for_condition(
-                    _webview_context,
-                    exception=error.TestFail('Hangouts webview not available.'),
-                    timeout=DEFAULT_TIMEOUT,
-                    sleep_interval=1)
-
-
-def wait_for_kiosk_ext(browser, ext_id):
-    """Wait for kiosk extension launch.
-
-    @param browser: Telemetry browser object.
-    @param ext_id: Extension id of the hangouts app.
-    @return extension contexts.
-    """
-    def _kiosk_ext_contexts():
-        try:
-            ext_contexts = browser.extensions.GetByExtensionId(ext_id)
-            if len(ext_contexts) > 1:
-                return ext_contexts
-        except (KeyError, chrome.Error):
-            pass
-        return []
-    return utils.poll_for_condition(
-            _kiosk_ext_contexts,
-            exception=error.TestFail('Kiosk app failed to launch'),
-            timeout=DEFAULT_TIMEOUT,
-            sleep_interval=1)
-
 
 def wait_for_telemetry_commands(webview_context):
     """Wait for hotrod app to load and telemetry commands to be available.
@@ -403,7 +345,8 @@ def is_camera_muted(webview_context):
 
     @param webview_context: Context for hangouts webview.
     """
-    if webview_context.EvaluateJavaScript("window.hrGetVideoCaptureMutedForTest()"):
+    if webview_context.EvaluateJavaScript(
+            "window.hrGetVideoCaptureMutedForTest()"):
         logging.info('Camera is muted.')
         return True
     logging.info('Camera is not muted.')
