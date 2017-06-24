@@ -2052,7 +2052,9 @@ class ImageServer(ImageServerBase):
         @param force_original: Whether to force stateful update with the
                                original payload.
 
-        @return is_success, which indicates whether this auto_update succeeds.
+        @return A set (is_success, pid) in which:
+            1. is_success indicates whether this auto_update succeeds.
+            2. pid is the process id of the successful autoupdate run.
 
         @raise DevServerException if auto_update fails and is not retryable.
         @raise RetryableProvisionException if it fails and is retryable.
@@ -2198,7 +2200,7 @@ class ImageServer(ImageServerBase):
         c.increment(fields=f)
 
         if is_au_success:
-            return is_au_success
+            return (is_au_success, pid)
 
         # If errors happen in the CrOS AU process, report the first error
         # since the following errors might be caused by the first error.
