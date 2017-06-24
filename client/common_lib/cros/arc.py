@@ -27,6 +27,7 @@ _ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
 _PROCESS_CHECK_INTERVAL_SECONDS = 1
 _WAIT_FOR_ADB_READY = 60
 _WAIT_FOR_ANDROID_PROCESS_SECONDS = 60
+_WAIT_FOR_DATA_MOUNTED_SECONDS = 60
 _VAR_LOGCAT_PATH = '/var/log/logcat'
 
 
@@ -67,11 +68,39 @@ def is_adb_connected():
     return output.strip() == 'device'
 
 
+def is_partial_boot_enabled():
+    """Return true if partial boot is enabled.
+
+    When partial boot is enabled, Android is started at login screen without
+    any persistent state (e.g. /data is not mounted).
+    """
+    return _android_shell('getprop ro.boot.partial_boot') == '1'
+
+
+def _is_android_data_mounted():
+    """Return true if Android's /data is mounted with partial boot enabled."""
+    return _android_shell('getprop ro.data_mounted') == '1'
+
+
+def _wait_for_data_mounted(timeout=_WAIT_FOR_DATA_MOUNTED_SECONDS):
+    utils.poll_for_condition(
+            condition=_is_android_data_mounted,
+            desc='Wait for /data mounted',
+            timeout=timeout,
+            sleep_interval=_PROCESS_CHECK_INTERVAL_SECONDS)
+
+
 def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     """Wait for the ADB client to connect to the ARC container.
 
     @param timeout: Timeout in seconds.
     """
+    # When partial boot is enabled, although adbd is started at login screen,
+    # we still need /data to be mounted to set up key-based authentication.
+    # /data should be mounted once the user has logged in.
+    if is_partial_boot_enabled():
+        _wait_for_data_mounted()
+
     setup_adb_host()
     if is_adb_connected():
       return
