@@ -36,7 +36,7 @@ _DL_CTS = 'https://dl.google.com/dl/android/cts/'
 _CTS_URI = {
     'arm' : _DL_CTS + 'android-cts-6.0_r16-linux_x86-arm.zip',
     'x86' : _DL_CTS + 'android-cts-6.0_r16-linux_x86-x86.zip',
-    'media' : _DL_CTS + 'android-cts-media-1.2.zip'
+    'media' : _DL_CTS + 'android-cts-media-1.3.zip'
 }
 
 
