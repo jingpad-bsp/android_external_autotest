@@ -121,7 +121,8 @@ class AbstractSSHHost(remote.RemoteHost):
         Check if rsync is available on the remote host.
         """
         try:
-            self.run("rsync --version", stdout_tee=None, stderr_tee=None)
+            self.run_very_slowly("rsync --version",
+                                 stdout_tee=None, stderr_tee=None)
         except error.AutoservRunError:
             return False
         return True
@@ -522,13 +523,14 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         ctimeout = min(timeout, connect_timeout or timeout)
         try:
-            self.run(base_cmd, timeout=timeout, connect_timeout=ctimeout,
-                     ssh_failure_retry_ok=True)
+            self.run_very_slowly(base_cmd, timeout=timeout,
+                                 connect_timeout=ctimeout,
+                                 ssh_failure_retry_ok=True)
         except error.AutoservSSHTimeout:
             msg = "Host (ssh) verify timed out (timeout = %d)" % timeout
             raise error.AutoservSSHTimeout(msg)
         except error.AutoservSshPermissionDeniedError:
-            #let AutoservSshPermissionDeniedError be visible to the callers
+            # let AutoservSshPermissionDeniedError be visible to the callers
             raise
         except error.AutoservRunError, e:
             # convert the generic AutoservRunError into something more

@@ -187,13 +187,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         """
         try:
-            result = host.run(
+            result = host.run_very_slowly(
                     'grep -q CHROMEOS /etc/lsb-release && '
                     '! test -f /mnt/stateful_partition/.android_tester && '
                     '! grep -q moblab /etc/lsb-release',
                     ignore_status=True, timeout=timeout)
             if result.exit_status == 0:
-                lsb_release_content = host.run(
+                lsb_release_content = host.run_very_slowly(
                     'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release',
                     timeout=timeout).stdout
                 return not lsbrelease_utils.is_jetstream(
