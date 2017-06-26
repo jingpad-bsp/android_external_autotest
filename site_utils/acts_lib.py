@@ -8,7 +8,6 @@ import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import adb_utils
 from autotest_lib.server import constants
 from autotest_lib.server.cros import dnsname_mangler
@@ -55,7 +54,7 @@ def create_acts_package_from_current_artifact(test_station, job_repo_url,
 
 
 def create_acts_package_from_artifact(test_station, branch, target, build_id,
-                                      job_repo_url, target_zip_file):
+                                      devserver, target_zip_file):
     """Creates an acts package from a specified branch.
 
     Grabs the packaged acts artifact from the branch and places it on the
@@ -65,14 +64,12 @@ def create_acts_package_from_artifact(test_station, branch, target, build_id,
     @param branch: The name of the branch where the artifact is to be pulled.
     @param target: The name of the target where the artifact is to be pulled.
     @param build_id: The build id to pull the artifact from.
-    @param job_repo_url: The job repo url for where to pull build from.
+    @param devserver: The devserver to use.
     @param target_zip_file: The zip file to create on the teststation.
 
     @returns An ActsPackage containing all the information about the zipped
              artifact.
     """
-    devserver_url = dev_server.AndroidBuildServer.get_server_url(job_repo_url)
-    devserver = dev_server.AndroidBuildServer(devserver_url)
     devserver.trigger_download(
         target, build_id, branch, files='acts.zip', synchronous=True)
 
