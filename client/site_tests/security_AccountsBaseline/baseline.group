@@ -82,7 +82,7 @@ lpadmin:!:269:cups,lpadmin
 cups:!:277:
 biod:!:282:
 devicejail:!:283:
-arc-camera:!:603:
+arc-camera:!:603:chronos
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
