@@ -164,9 +164,9 @@ class enterprise_LongevityTrackerServer(test.test):
         mem_metric = perf_results['mem']
         ec_metric = perf_results['temp']
         self.output_perf_value(description='cpu_usage', value=cpu_metric,
-                               units='%', higher_is_better=False)
+                               units='percent', higher_is_better=False)
         self.output_perf_value(description='mem_usage', value=mem_metric,
-                               units='%', higher_is_better=False)
+                               units='percent', higher_is_better=False)
         self.output_perf_value(description='max_temp', value=ec_metric,
                                units='Celsius', higher_is_better=False)
 
