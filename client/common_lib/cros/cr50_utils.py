@@ -172,14 +172,14 @@ def GetVersionFromUpdater(client, args):
 
 def GetFwVersion(client):
     """Get the running version using 'usb_updater --fwver'"""
-    return GetVersionFromUpdater(client, ["--fwver"])
+    return GetVersionFromUpdater(client, ['--fwver', '-s'])
 
 
 def GetBinVersion(client, image=CR50_FILE):
     """Get the image version using 'usb_updater --binvers image'"""
     # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
     # is fixed
-    return GetVersionFromUpdater(client, ["--binvers", image, image])
+    return GetVersionFromUpdater(client, ['--binvers', image, image, '-s'])
 
 
 def GetVersionString(ver):
