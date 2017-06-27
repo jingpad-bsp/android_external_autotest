@@ -76,24 +76,17 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
                                          alive_interval=alive_interval)
         return "%s %s" % (base_cmd, self.hostname)
 
-    def _get_server_stack_state(self, lowest_frames=0, highest_frames=None,
-                                verbose=False):
+    def _get_server_stack_state(self, lowest_frames=0, highest_frames=None):
         """ Get the server stack frame status.
         @param lowest_frames: the lowest frames to start printing.
         @param highest_frames: the highest frames to print.
-                               (None means no restriction)
+                        (None means no restriction)
         """
         stack_frames = inspect.stack()
         stack = ''
         for frame in stack_frames[lowest_frames:highest_frames]:
-            info = inspect.getframeinfo(frame[0])
-            if verbose:
-                stack = '%s:%s <%s> | %s' % (info.filename,
-                                             info.lineno,
-                                             info.function,
-                                             stack)
-            else:
-                stack = '%s | %s' % (info.function, stack)
+            function_name = inspect.getframeinfo(frame[0]).function
+            stack = '%s|%s' % (function_name, stack)
         del stack_frames
         return stack[:-1] # Delete the last '|' character
 
@@ -299,9 +292,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
         if verbose:
-            stack = self._get_server_stack_state(lowest_frames=1,
-                                                 highest_frames=7,
-                                                 verbose=True)
+            stack = self._get_server_stack_state(lowest_frames=1, highest_frames=7)
             logging.debug("Running (ssh) '%s' from '%s'", command, stack)
             command = self._verbose_logger_command(command)
 
@@ -321,8 +312,6 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservRunError(timeout_message, cmderr.args[1])
 
 
-    # TODO(pwang): Delete this once all reference to the original run function
-    # is changed to run_very_slowly. (crbug.com/735653)
     def run(self, *args, **kwargs):
         return self.run_very_slowly(*args, **kwargs)
 

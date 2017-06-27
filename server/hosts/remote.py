@@ -49,7 +49,7 @@ class RemoteHost(base_classes.Host):
         if hasattr(self, 'tmp_dirs'):
             for dir in self.tmp_dirs:
                 try:
-                    self.run_very_slowly('rm -rf "%s"' % (utils.sh_escape(dir)))
+                    self.run('rm -rf "%s"' % (utils.sh_escape(dir)))
                 except error.AutoservRunError:
                     pass
 
@@ -67,7 +67,7 @@ class RemoteHost(base_classes.Host):
         try:
             cmd = ('test ! -e /var/log/messages || cp -f /var/log/messages '
                    '%s') % self.VAR_LOG_MESSAGES_COPY_PATH
-            self.run_very_slowly(cmd)
+            self.run(cmd)
         except Exception, e:
             # Non-fatal error
             logging.info('Failed to copy /var/log/messages at startup: %s', e)
@@ -243,10 +243,9 @@ class RemoteHost(base_classes.Host):
         on the destruction of the Host object that was used to obtain
         it.
         """
-        self.run_very_slowly("mkdir -p %s" % parent)
+        self.run("mkdir -p %s" % parent)
         template = os.path.join(parent, 'autoserv-XXXXXX')
-        dir_name = self.run_very_slowly("mktemp -d %s"
-                                        % template).stdout.rstrip()
+        dir_name = self.run("mktemp -d %s" % template).stdout.rstrip()
         self.tmp_dirs.append(dir_name)
         return dir_name
 
