@@ -35,7 +35,8 @@ class cheets_StartAndroid(test.test):
                     value=self._run_times[index],
                     units='seconds',
                     higher_is_better=False,
-                    replace_existing_values=True
+                    replace_existing_values=True,
+                    graph="Time_to_start_Chrome_and_Android"
                 )
 
     def run_once(self, count=None, dont_override_profile=False):
