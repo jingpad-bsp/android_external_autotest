@@ -113,18 +113,11 @@ def _parse_dbus_send_output(dbus_send_stdout):
                      r'destination=(%s) serial=\d+ reply_serial=\d+' %
                      (dbus_address_pattern, dbus_address_pattern), header)
 
-    # For backward compatibility, match old dbus-send output too.
-    # TODO: drop this when dbus is upgraded to 1.10.12+.
-    if match is None:
-        match = re.match(r'method return sender=(%s) -> dest=(%s) '
-                         r'reply_serial=\d+' %
-                         (dbus_address_pattern, dbus_address_pattern), header)
-
     if match is None:
         raise error.TestError('Could not parse dbus-send header: %s' % header)
 
-    sender = match.group(1)
-    responder = match.group(2)
+    sender = match.group(2)
+    responder = match.group(3)
     token_stream = _build_token_stream(lines)
     ret_val = _parse_value(token_stream)
     # Note that DBus permits multiple response values, and this is not handled.
