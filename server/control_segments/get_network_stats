@@ -21,7 +21,7 @@ def get_network_stats(machine):
 
         # In a single ssh call, get list of network interfaces
         # and their byte counts.
-        result = dut.run_very_slowly('route; echo SEPARATOR; cat /proc/net/dev')
+        result = dut.run('route; echo SEPARATOR; cat /proc/net/dev')
 
         # Split output
         lines = result.stdout.splitlines()
