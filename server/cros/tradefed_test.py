@@ -323,8 +323,13 @@ class TradefedTest(test.test):
         else:
             cache_root = _TRADEFED_CACHE_LOCAL
 
+        # TODO(ihf): reevaluate this again when we run out of memory. We could
+        # for example use 32 bit java on the first run but not during retries.
+        # b/62895114. If select_32bit_java gets deleted for good also remove it
+        # from the base image.
         # Try to save server memory (crbug.com/717413).
-        select_32bit_java()
+        # select_32bit_java()
+
         # Quick sanity check and spew of java version installed on the server.
         utils.run('java', args=('-version',), ignore_status=False, verbose=True,
                   stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
