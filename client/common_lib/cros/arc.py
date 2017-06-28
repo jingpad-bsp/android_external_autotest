@@ -26,6 +26,7 @@ _SDCARD_PID_PATH = '/var/run/arc/sdcard.pid'
 _ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
 _PROCESS_CHECK_INTERVAL_SECONDS = 1
 _WAIT_FOR_ADB_READY = 60
+_WAIT_FOR_ADB_CMD = 300
 _WAIT_FOR_ANDROID_PROCESS_SECONDS = 60
 _WAIT_FOR_DATA_MOUNTED_SECONDS = 60
 _VAR_LOGCAT_PATH = '/var/log/logcat'
@@ -135,13 +136,14 @@ def grant_permissions(package, permissions):
                   pipes.quote(package), pipes.quote(permission)))
 
 
-def adb_cmd(cmd, **kwargs):
+def adb_cmd(cmd, timeout=_WAIT_FOR_ADB_CMD, **kwargs):
     """Executed cmd using adb. Must wait for adb ready.
 
     @param cmd: Command to run.
+    @param timeout: Timeout in seconds.
     """
     wait_for_adb_ready()
-    return utils.system_output('adb %s' % cmd, **kwargs)
+    return utils.system_output('adb %s' % cmd, timeout=timeout, **kwargs)
 
 
 def adb_shell(cmd, **kwargs):
