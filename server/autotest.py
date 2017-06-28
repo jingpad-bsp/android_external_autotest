@@ -126,9 +126,8 @@ class BaseAutotest(installable_object.InstallableObject):
         for path in Autotest.get_client_autodir_paths(host):
             try:
                 autotest_binary = os.path.join(path, 'bin', 'autotest')
-                host.run_very_slowly('test -x %s'
-                                     % utils.sh_escape(autotest_binary))
-                host.run_very_slowly('test -w %s' % utils.sh_escape(path))
+                host.run('test -x %s' % utils.sh_escape(autotest_binary))
+                host.run('test -w %s' % utils.sh_escape(path))
                 logging.debug('Found existing autodir at %s', path)
                 return path
             except error.GenericHostRunError:
@@ -161,8 +160,8 @@ class BaseAutotest(installable_object.InstallableObject):
         client_autodir_paths = cls.get_client_autodir_paths(host)
         for path in client_autodir_paths:
             try:
-                host.run_very_slowly('mkdir -p %s' % utils.sh_escape(path))
-                host.run_very_slowly('test -w %s' % utils.sh_escape(path))
+                host.run('mkdir -p %s' % utils.sh_escape(path))
+                host.run('test -w %s' % utils.sh_escape(path))
                 return path
             except error.AutoservRunError:
                 logging.debug('Failed to create %s', path)
@@ -210,8 +209,8 @@ class BaseAutotest(installable_object.InstallableObject):
         # too apart from the client)
         pkg_dir = os.path.join(autodir, 'packages')
         # clean up the autodir except for the packages directory
-        host.run_very_slowly('cd %s && ls | grep -v "^packages$"'
-                             ' | xargs rm -rf && rm -rf .[!.]*' % autodir)
+        host.run('cd %s && ls | grep -v "^packages$"'
+                 ' | xargs rm -rf && rm -rf .[!.]*' % autodir)
         pkgmgr.install_pkg('autotest', 'client', pkg_dir, autodir,
                            preserve_install_dir=True)
         self.installed = True
@@ -232,7 +231,7 @@ class BaseAutotest(installable_object.InstallableObject):
             abs_path = utils.sh_escape(abs_path)
             commands.append("mkdir -p '%s'" % abs_path)
             commands.append("touch '%s'/__init__.py" % abs_path)
-        host.run_very_slowly(';'.join(commands))
+        host.run(';'.join(commands))
 
 
     def _install(self, host=None, autodir=None, use_autoserv=True,
@@ -264,12 +263,12 @@ class BaseAutotest(installable_object.InstallableObject):
             autodir = self.get_install_dir(host)
         logging.info('Using installation dir %s', autodir)
         host.set_autodir(autodir)
-        host.run_very_slowly('mkdir -p %s' % utils.sh_escape(autodir))
+        host.run('mkdir -p %s' % utils.sh_escape(autodir))
 
         # make sure there are no files in $AUTODIR/results
         results_path = os.path.join(autodir, 'results')
-        host.run_very_slowly('rm -rf %s/*' % utils.sh_escape(results_path),
-                             ignore_status=True)
+        host.run('rm -rf %s/*' % utils.sh_escape(results_path),
+                 ignore_status=True)
 
         # Fetch the autotest client from the nearest repository
         if use_packaging:
@@ -287,7 +286,7 @@ class BaseAutotest(installable_object.InstallableObject):
             # packages.
             command = ('rm -f "%s"' %
                        (os.path.join(autodir, packages.CHECKSUM_FILE)))
-            host.run_very_slowly(command)
+            host.run(command)
 
         # try to install from file or directory
         if self.source_material:
@@ -309,10 +308,9 @@ class BaseAutotest(installable_object.InstallableObject):
             raise error.AutoservError('svn not found on target machine: %s' %
                                       host.hostname)
         try:
-            host.run_very_slowly('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
+            host.run('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
         except error.AutoservRunError, e:
-            host.run_very_slowly('svn checkout %s %s'
-                                 % (AUTOTEST_HTTP, autodir))
+            host.run('svn checkout %s %s' % (AUTOTEST_HTTP, autodir))
         logging.info("Installation of autotest completed using SVN.")
         self.installed = True
 
@@ -333,8 +331,7 @@ class BaseAutotest(installable_object.InstallableObject):
             return
 
         # perform the actual uninstall
-        host.run_very_slowly("rm -rf %s" % utils.sh_escape(autodir),
-                             ignore_status=True)
+        host.run("rm -rf %s" % utils.sh_escape(autodir), ignore_status=True)
         host.set_autodir(None)
         self.installed = False
 
@@ -426,7 +423,7 @@ class BaseAutotest(installable_object.InstallableObject):
                             atrun.manual_control_file,
                             atrun.manual_control_file + '.state']
         cmd = ';'.join('rm -f ' + control for control in delete_file_list)
-        host.run_very_slowly(cmd, ignore_status=True)
+        host.run(cmd, ignore_status=True)
 
         tmppath = utils.get(control_file, local_copy=True)
 
@@ -490,7 +487,7 @@ class BaseAutotest(installable_object.InstallableObject):
         """
         client_result_dir = '%s/results/default' % host.autodir
         command = 'tail -2 %s/status | head -1' % client_result_dir
-        status = host.run_very_slowly(command).stdout.strip()
+        status = host.run(command).stdout.strip()
         logging.info(status)
         if status[:8] != 'END GOOD':
             raise error.TestFail('%s client test did not pass.' % test_name)
@@ -554,7 +551,7 @@ class _BaseRun(object):
     def verify_machine(self):
         binary = os.path.join(self.autodir, 'bin/autotest')
         try:
-            self.host.run_very_slowly('ls %s > /dev/null 2>&1' % binary)
+            self.host.run('ls %s > /dev/null 2>&1' % binary)
         except:
             raise error.AutoservInstallError(
                 "Autotest does not appear to be installed")
@@ -562,9 +559,8 @@ class _BaseRun(object):
         if not self.parallel_flag:
             tmpdir = os.path.join(self.autodir, 'tmp')
             download = os.path.join(self.autodir, 'tests/download')
-            self.host.run_very_slowly('umount %s' % tmpdir, ignore_status=True)
-            self.host.run_very_slowly('umount %s' % download,
-                                      ignore_status=True)
+            self.host.run('umount %s' % tmpdir, ignore_status=True)
+            self.host.run('umount %s' % download, ignore_status=True)
 
 
     def get_base_cmd_args(self, section):
@@ -750,10 +746,10 @@ class _BaseRun(object):
 
         self.host.job.push_execution_context(self.results_dir)
         try:
-            result = self.host.run_very_slowly(full_cmd, ignore_status=True,
-                                               timeout=timeout,
-                                               stdout_tee=devnull,
-                                               stderr_tee=devnull)
+            result = self.host.run(full_cmd, ignore_status=True,
+                                   timeout=timeout,
+                                   stdout_tee=devnull,
+                                   stderr_tee=devnull)
         finally:
             self.host.job.pop_execution_context()
 
@@ -788,18 +784,16 @@ class _BaseRun(object):
         stdout_read = stderr_read = 0
         self.host.job.push_execution_context(self.results_dir)
         try:
-            self.host.run_very_slowly(daemon_cmd, ignore_status=True, timeout=timeout)
+            self.host.run(daemon_cmd, ignore_status=True, timeout=timeout)
             disconnect_warnings = []
             while True:
                 monitor_cmd = self.get_monitor_cmd(monitor_dir, stdout_read,
                                                    stderr_read)
                 try:
-                    result = self.host.run_very_slowly(
-                        monitor_cmd,
-                        ignore_status=True,
-                        timeout=timeout,
-                        stdout_tee=client_log,
-                        stderr_tee=stderr_redirector)
+                    result = self.host.run(monitor_cmd, ignore_status=True,
+                                           timeout=timeout,
+                                           stdout_tee=client_log,
+                                           stderr_tee=stderr_redirector)
                 except error.AutoservRunError, e:
                     result = e.result_obj
                     result.exit_status = None
@@ -1150,7 +1144,7 @@ class BaseClientLogger(object):
             fifo_path, = test_complete_match.groups()
             try:
                 self.log_collector.collect_client_job_results()
-                self.host.run_very_slowly("echo A > %s" % fifo_path)
+                self.host.run("echo A > %s" % fifo_path)
             except Exception:
                 msg = "Post-test log collection failed, continuing anyway"
                 logging.exception(msg)
@@ -1165,7 +1159,7 @@ class BaseClientLogger(object):
                     msg = "Package tarball creation failed, continuing anyway"
                     logging.exception(msg)
             try:
-                self.host.run_very_slowly("echo B > %s" % fifo_path)
+                self.host.run("echo B > %s" % fifo_path)
             except Exception:
                 msg = "Package tarball installation failed, continuing anyway"
                 logging.exception(msg)

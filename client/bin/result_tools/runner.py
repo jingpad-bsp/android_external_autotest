@@ -42,7 +42,7 @@ def run_on_client(host, client_results_dir, enable_result_throttling=False):
                                    host.job.max_result_size_KB)
             cmd = (BUILD_DIR_SUMMARY_CMD %
                    (host.autodir, client_results_dir + '/', throttle_option))
-            host.run_very_slowly(cmd, ignore_status=False,
+            host.run(cmd, ignore_status=False,
                      timeout=BUILD_DIR_SUMMARY_TIMEOUT)
         except error.AutoservRunError:
             logging.exception(

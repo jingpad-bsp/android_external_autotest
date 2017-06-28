@@ -49,7 +49,7 @@ def must_be_installed(cmd, host=None):
     """
     run = utils.run
     if host is not None:
-        run = host.run_very_slowly
+        run = host.run
     if run('ls %s >/dev/null 2>&1' % cmd,
            ignore_status=True).exit_status == 0:
         return cmd
