@@ -11,7 +11,6 @@ Upon successful copy, the local results directory is deleted.
 """
 
 import abc
-import base64
 import datetime
 import errno
 import glob
@@ -32,17 +31,15 @@ import time
 from optparse import OptionParser
 
 import common
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.site_utils import job_directories
-from autotest_lib.site_utils import pubsub_utils
+from autotest_lib.site_utils import cloud_console_client
 from autotest_lib.tko import models
 from autotest_lib.utils import labellib
 from autotest_lib.utils import gslib
-from chromite.lib import gs
 from chromite.lib import timeout_util
 
 # Autotest requires the psutil module from site-packages, so it must be imported
@@ -119,15 +116,6 @@ DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
 DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_apfe_server', default='')
-
-_PUBSUB_ENABLED = global_config.global_config.get_config_value(
-        'CROS', 'cloud_notification_enabled', type=bool, default=False)
-_PUBSUB_TOPIC = global_config.global_config.get_config_value(
-        'CROS', 'cloud_notification_topic', default=None)
-
-
-# the message data for new test result notification.
-NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'
 
 # metadata type
 GS_OFFLOADER_SUCCESS_TYPE = 'gs_offloader_success'
@@ -491,37 +479,6 @@ def _upload_files(host, path, result_pattern, multiprocessing):
         os.remove(test_result_file_gz)
 
 
-# Test upload pubsub notification attributes
-_NOTIFICATION_ATTR_VERSION = 'version'
-_NOTIFICATION_ATTR_GCS_URI = 'gcs_uri'
-_NOTIFICATION_ATTR_MOBLAB_MAC = 'moblab_mac_address'
-_NOTIFICATION_ATTR_MOBLAB_ID = 'moblab_id'
-_NOTIFICATION_VERSION = '1'
-
-
-def _create_test_result_notification(gs_path, dir_entry):
-    """Construct a test result notification.
-
-    @param gs_path: The test result Google Cloud Storage URI.
-    @param dir_entry: The local offload directory name.
-
-    @returns The notification message.
-    """
-    gcs_uri = os.path.join(gs_path, os.path.basename(dir_entry))
-    logging.info('Notification on gcs_uri %s', gcs_uri)
-    data = base64.b64encode(NEW_TEST_RESULT_MESSAGE)
-    msg_payload = {'data': data}
-    msg_attributes = {}
-    msg_attributes[_NOTIFICATION_ATTR_GCS_URI] = gcs_uri
-    msg_attributes[_NOTIFICATION_ATTR_VERSION] = _NOTIFICATION_VERSION
-    msg_attributes[_NOTIFICATION_ATTR_MOBLAB_MAC] = \
-        utils.get_default_interface_mac_address()
-    msg_attributes[_NOTIFICATION_ATTR_MOBLAB_ID] = utils.get_moblab_id()
-    msg_payload['attributes'] = msg_attributes
-
-    return msg_payload
-
-
 def _emit_gs_returncode_metric(returncode):
     """Increment the gs_returncode counter based on |returncode|."""
     m_gs_returncode = 'chromeos/autotest/gs_offloader/gs_returncode'
@@ -552,18 +509,19 @@ class BaseGSOffloader(object):
 class GSOffloader(BaseGSOffloader):
     """Google Storage Offloader."""
 
-    def __init__(self, gs_uri, multiprocessing, delete_age, pubsub_topic=None):
+    def __init__(self, gs_uri, multiprocessing, delete_age,
+            console_client=None):
         """Returns the offload directory function for the given gs_uri
 
         @param gs_uri: Google storage bucket uri to offload to.
         @param multiprocessing: True to turn on -m option for gsutil.
-        @param pubsub_topic: The pubsub topic to publish notificaitons. If None,
-              pubsub is not enabled.
+        @param console_client: The cloud console client. If None,
+          cloud console APIs are  not called.
         """
         self._gs_uri = gs_uri
         self._multiprocessing = multiprocessing
         self._delete_age = delete_age
-        self._pubsub_topic = pubsub_topic
+        self._console_client = console_client
 
     @metrics.SecondsTimerDecorator(
             'chromeos/autotest/gs_offloader/job_offload_duration')
@@ -655,14 +613,13 @@ class GSOffloader(BaseGSOffloader):
                              type_str=GS_OFFLOADER_SUCCESS_TYPE,
                              metadata=es_metadata)
 
-            if self._pubsub_topic:
-                message = _create_test_result_notification(
-                        gs_path, dir_entry)
-                pubsub_client = pubsub_utils.PubSubClient()
-                msg_ids = pubsub_client.publish_notifications(
-                        self._pubsub_topic, [message])
-                if not msg_ids:
+            if self._console_client:
+                gcs_uri = os.path.join(gs_path,
+                        os.path.basename(dir_entry))
+                if not self._console_client.send_test_job_offloaded_message(
+                        gcs_uri):
                     raise error_obj
+
             _mark_uploaded(dir_entry)
         except timeout_util.TimeoutError:
             m_timeout = 'chromeos/autotest/errors/gs_offloader/timed_out_count'
@@ -839,7 +796,6 @@ class Offloader(object):
     """
 
     def __init__(self, options):
-        self._pubsub_topic = None
         self._upload_age_limit = options.age_to_upload
         self._delete_age_limit = options.age_to_delete
         if options.delete_only:
@@ -854,13 +810,12 @@ class Offloader(object):
                 multiprocessing = GS_OFFLOADER_MULTIPROCESSING
             logging.info(
                     'Offloader multiprocessing is set to:%r', multiprocessing)
-            if options.pubsub_topic_for_job_upload:
-                self._pubsub_topic = options.pubsub_topic_for_job_upload
-            elif _PUBSUB_ENABLED:
-                self._pubsub_topic = _PUBSUB_TOPIC
+            console_client = None
+            if cloud_console_client.is_cloud_notification_enabled():
+                console_client = cloud_console_client.PubSubBasedClient()
             self._gs_offloader = GSOffloader(
                     self.gs_uri, multiprocessing, self._delete_age_limit,
-                    self._pubsub_topic)
+                    console_client)
         classlist = []
         if options.process_hosts_only or options.process_all:
             classlist.append(job_directories.SpecialJobDirectory)
@@ -1052,11 +1007,6 @@ def parse_options():
     parser.add_option('-d', '--days_old', dest='days_old',
                       help='Minimum job age in days before a result can be '
                       'offloaded.', type='int', default=0)
-    parser.add_option('-t', '--pubsub_topic_for_job_upload',
-                      dest='pubsub_topic_for_job_upload',
-                      help='The pubsub topic to send notifciations for '
-                      'new job upload',
-                      action='store', type='string', default=None)
     parser.add_option('-l', '--log_size', dest='log_size',
                       help='Limit the offloader logs to a specified '
                       'number of Mega Bytes.', type='int', default=0)
