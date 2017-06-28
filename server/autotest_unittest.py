@@ -33,10 +33,6 @@ class TestBaseAutotest(unittest.TestCase):
         self.host.job.args = []
         self.host.job.record = lambda *args: None
 
-        # TODO(pwang): Delete this once crbug.com/735653, crbug.com/734887 is
-        # fixed and ssh time is reasonable.
-        self.host.run = self.host.run_very_slowly
-
         # stubs
         self.god.stub_function(utils, "get_server_dir")
         self.god.stub_function(utils, "run")
