@@ -118,11 +118,6 @@ class Host(object):
         """
         raise NotImplementedError('Run not implemented!')
 
-    # TODO(pwang): Delete this once crbug.com/735653, crbug.com/734887 is fixed
-    # and ssh time is reasonable.
-    def run_very_slowly(self, *args, **kwargs):
-        return self.run(*args, **kwargs)
-
 
     def run_output(self, command, *args, **dargs):
         """Run and retrieve the value of stdout stripped of whitespace.
@@ -133,7 +128,7 @@ class Host(object):
 
         @return: String value of stdout.
         """
-        return self.run_very_slowly(command, *args, **dargs).stdout.rstrip()
+        return self.run(command, *args, **dargs).stdout.rstrip()
 
 
     def reboot(self):
@@ -240,7 +235,7 @@ class Host(object):
         NO_ID_MSG = 'no boot_id available'
         cmd = 'if [ -f %r ]; then cat %r; else echo %r; fi' % (
                 BOOT_ID_FILE, BOOT_ID_FILE, NO_ID_MSG)
-        boot_id = self.run_very_slowly(cmd, timeout=timeout).stdout.strip()
+        boot_id = self.run(cmd, timeout=timeout).stdout.strip()
         if boot_id == NO_ID_MSG:
             return None
         return boot_id
@@ -355,8 +350,7 @@ class Host(object):
         mb_per_gb = 1000.0
         logging.info('Checking for >= %s GB of space under %s on machine %s',
                      gb, path, self.hostname)
-        df = self.run_very_slowly('df -PB %d %s | tail -1'
-                                  % (one_mb, path)).stdout.split()
+        df = self.run('df -PB %d %s | tail -1' % (one_mb, path)).stdout.split()
         free_space_gb = int(df[3]) / mb_per_gb
         if free_space_gb < gb:
             raise error.AutoservDiskFullHostError(path, gb, free_space_gb)
@@ -378,7 +372,7 @@ class Host(object):
         min_inodes = 1000 * min_kilo_inodes
         logging.info('Checking for >= %d i-nodes under %s '
                      'on machine %s', min_inodes, path, self.hostname)
-        df = self.run_very_slowly('df -Pi %s | tail -1' % path).stdout.split()
+        df = self.run('df -Pi %s | tail -1' % path).stdout.split()
         free_inodes = int(df[3])
         if free_inodes < min_inodes:
             raise error.AutoservNoFreeInodesError(path, min_inodes,
@@ -397,9 +391,7 @@ class Host(object):
         @param timeout: Max seconds to allow command to complete.
         """
         rm_cmd = 'find "%s" -mindepth 1 -maxdepth 1 -print0 | xargs -0 rm -rf'
-        self.run_very_slowly(rm_cmd % path,
-                             ignore_status=ignore_status,
-                             timeout=timeout)
+        self.run(rm_cmd % path, ignore_status=ignore_status, timeout=timeout)
 
 
     def repair(self):
@@ -409,16 +401,16 @@ class Host(object):
 
     def disable_ipfilters(self):
         """Allow all network packets in and out of the host."""
-        self.run_very_slowly('iptables-save > /tmp/iptable-rules')
-        self.run_very_slowly('iptables -P INPUT ACCEPT')
-        self.run_very_slowly('iptables -P FORWARD ACCEPT')
-        self.run_very_slowly('iptables -P OUTPUT ACCEPT')
+        self.run('iptables-save > /tmp/iptable-rules')
+        self.run('iptables -P INPUT ACCEPT')
+        self.run('iptables -P FORWARD ACCEPT')
+        self.run('iptables -P OUTPUT ACCEPT')
 
 
     def enable_ipfilters(self):
         """Re-enable the IP filters disabled from disable_ipfilters()"""
         if self.path_exists('/tmp/iptable-rules'):
-            self.run_very_slowly('iptables-restore < /tmp/iptable-rules')
+            self.run('iptables-restore < /tmp/iptable-rules')
 
 
     def cleanup(self):
@@ -467,9 +459,8 @@ class Host(object):
 
     def get_num_cpu(self):
         """ Get the number of CPUs in the host according to /proc/cpuinfo. """
-        proc_cpuinfo = self.run_very_slowly(
-            'cat /proc/cpuinfo',
-            stdout_tee=open(os.devnull, 'w')).stdout
+        proc_cpuinfo = self.run('cat /proc/cpuinfo',
+                                stdout_tee=open(os.devnull, 'w')).stdout
         cpus = 0
         for line in proc_cpuinfo.splitlines():
             if line.startswith('processor'):
@@ -480,7 +471,7 @@ class Host(object):
     def get_arch(self):
         """ Get the hardware architecture of the remote machine. """
         cmd_uname = path_utils.must_be_installed('/bin/uname', host=self)
-        arch = self.run_very_slowly('%s -m' % cmd_uname).stdout.rstrip()
+        arch = self.run('%s -m' % cmd_uname).stdout.rstrip()
         if re.match(r'i\d86$', arch):
             arch = 'i386'
         return arch
@@ -489,19 +480,19 @@ class Host(object):
     def get_kernel_ver(self):
         """ Get the kernel version of the remote machine. """
         cmd_uname = path_utils.must_be_installed('/bin/uname', host=self)
-        return self.run_very_slowly('%s -r' % cmd_uname).stdout.rstrip()
+        return self.run('%s -r' % cmd_uname).stdout.rstrip()
 
 
     def get_cmdline(self):
         """ Get the kernel command line of the remote machine. """
-        return self.run_very_slowly('cat /proc/cmdline').stdout.rstrip()
+        return self.run('cat /proc/cmdline').stdout.rstrip()
 
 
     def get_meminfo(self):
         """ Get the kernel memory info (/proc/meminfo) of the remote machine
         and return a dictionary mapping the various statistics. """
         meminfo_dict = {}
-        meminfo = self.run_very_slowly('cat /proc/meminfo').stdout.splitlines()
+        meminfo = self.run('cat /proc/meminfo').stdout.splitlines()
         for key, val in (line.split(':', 1) for line in meminfo):
             meminfo_dict[key.strip()] = val.strip()
         return meminfo_dict
@@ -513,7 +504,7 @@ class Host(object):
         @param path: path to check
 
         @return: bool(path exists)"""
-        result = self.run_very_slowly('test -e "%s"' % utils.sh_escape(path),
+        result = self.run('test -e "%s"' % utils.sh_escape(path),
                           ignore_status=True)
         return result.exit_status == 0
 
@@ -566,8 +557,8 @@ class Host(object):
         """
         SCRIPT = ("python -c 'import cPickle, glob, sys;"
                   "cPickle.dump(glob.glob(sys.argv[1]), sys.stdout, 0)'")
-        output = self.run_very_slowly(SCRIPT, args=(glob,), stdout_tee=None,
-                                      timeout=60).stdout
+        output = self.run(SCRIPT, args=(glob,), stdout_tee=None,
+                          timeout=60).stdout
         return cPickle.loads(output)
 
 
@@ -596,8 +587,8 @@ class Host(object):
                   "            paths[link_to] = None\n"
                   "cPickle.dump(closure.keys(), sys.stdout, 0)'")
         input_data = cPickle.dumps(dict((path, None) for path in paths), 0)
-        output = self.run_very_slowly(SCRIPT, stdout_tee=None, stdin=input_data,
-                                      timeout=60).stdout
+        output = self.run(SCRIPT, stdout_tee=None, stdin=input_data,
+                          timeout=60).stdout
         return cPickle.loads(output)
 
 
@@ -647,28 +638,28 @@ class Host(object):
         # TODO: if needed this should become package manager agnostic
         for vmlinuz in unused_vmlinuz:
             # try and get an rpm package name
-            rpm = self.run_very_slowly('rpm -qf', args=(vmlinuz,),
-                                       ignore_status=True, timeout=120)
+            rpm = self.run('rpm -qf', args=(vmlinuz,),
+                           ignore_status=True, timeout=120)
             if rpm.exit_status == 0:
                 packages = set(line.strip() for line in
                                rpm.stdout.splitlines())
                 # if we found some package names, try to remove them
                 for package in packages:
-                    self.run_very_slowly('rpm -e', args=(package,),
-                                         ignore_status=True, timeout=120)
+                    self.run('rpm -e', args=(package,),
+                             ignore_status=True, timeout=120)
             # remove the image files anyway, even if rpm didn't
-            self.run_very_slowly('rm -f', args=(vmlinuz,),
-                                 ignore_status=True, timeout=120)
+            self.run('rm -f', args=(vmlinuz,),
+                     ignore_status=True, timeout=120)
 
         # remove all the vmlinux and System.map files left over
         for f in (unused_vmlinux | unused_system_map):
-            self.run_very_slowly('rm -f', args=(f,),
-                                 ignore_status=True, timeout=120)
+            self.run('rm -f', args=(f,),
+                     ignore_status=True, timeout=120)
 
         # remove all unused module directories
         # the regex match should keep us safe from removing the wrong files
         for moddir in unused_moddirs:
-            self.run_very_slowly('rm -fr', args=(moddir,), ignore_status=True)
+            self.run('rm -fr', args=(moddir,), ignore_status=True)
 
 
     def get_attributes_to_clear_before_provision(self):
