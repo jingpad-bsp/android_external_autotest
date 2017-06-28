@@ -11,7 +11,7 @@ import math
 import os
 
 import common
-from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import utils_lib
 from autotest_lib.client.common_lib import global_config
 
 
@@ -341,13 +341,13 @@ def _get_dirs_html(dirs, parent_path, total_bytes, indentation):
         return ''
     summary_html = ''
     top_size_limit = max([
-            dirs[entry][result_utils.ORIGINAL_SIZE_BYTES] for entry in dirs])
+            dirs[entry][utils_lib.ORIGINAL_SIZE_BYTES] for entry in dirs])
     for entry in sorted(dirs.keys()):
-        subdirs = dirs[entry].get(result_utils.DIRS, {})
+        subdirs = dirs[entry].get(utils_lib.DIRS, {})
 
-        size_original = dirs[entry][result_utils.ORIGINAL_SIZE_BYTES]
+        size_original = dirs[entry][utils_lib.ORIGINAL_SIZE_BYTES]
         size_trimmed = dirs[entry].get(
-                result_utils.TRIMMED_SIZE_BYTES, size_original)
+                utils_lib.TRIMMED_SIZE_BYTES, size_original)
         size_data = {SIZE_PERCENT: _get_size_percent(size_original,
                                                      total_bytes),
                      SIZE_ORIGINAL: _get_size_string(size_original),
@@ -369,7 +369,7 @@ def _get_dirs_html(dirs, parent_path, total_bytes, indentation):
                     INDENTATION_KEY: indentation}
             summary_html += FILE_ENTRY_TEMPLATE % data
         else:
-            subdir_total_size = dirs[entry][result_utils.ORIGINAL_SIZE_BYTES]
+            subdir_total_size = dirs[entry][utils_lib.ORIGINAL_SIZE_BYTES]
             sub_indentation = indentation + INDENTATION
             subdirs_html = (
                     SUBDIRS_WRAPPER_TEMPLATE %
@@ -394,11 +394,11 @@ def build(client_collected_bytes, summary, html_file):
     @param summary: A dictionary of result summary.
     @param html_file: Path to save the html file to.
     """
-    dirs = summary[result_utils.ROOT_DIR].get(result_utils.DIRS, {})
-    size_original = summary[result_utils.ROOT_DIR][
-            result_utils.ORIGINAL_SIZE_BYTES]
-    size_trimmed = summary[result_utils.ROOT_DIR].get(
-                result_utils.TRIMMED_SIZE_BYTES, size_original)
+    dirs = summary[utils_lib.ROOT_DIR].get(utils_lib.DIRS, {})
+    size_original = summary[utils_lib.ROOT_DIR][
+            utils_lib.ORIGINAL_SIZE_BYTES]
+    size_trimmed = summary[utils_lib.ROOT_DIR].get(
+            utils_lib.TRIMMED_SIZE_BYTES, size_original)
     size_summary_data = {SIZE_CLIENT_COLLECTED:
                              _get_size_string(client_collected_bytes),
                          SIZE_ORIGINAL:
