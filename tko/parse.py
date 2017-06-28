@@ -14,6 +14,7 @@ import traceback
 
 import common
 from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import utils_lib as result_utils_lib
 from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
@@ -275,18 +276,18 @@ def _get_result_sizes(path):
     sizes = {}
     try:
         client_collected_bytes, summary = result_utils.merge_summaries(path)
-        root_entry = summary[result_utils.ROOT_DIR]
+        root_entry = summary[result_utils_lib.ROOT_DIR]
         sizes[CLIENT_RESULT_COLLECTED_KB] = client_collected_bytes / 1024
         sizes[ORIGINAL_RESULT_TOTAL_KB] = (
-                root_entry[result_utils.ORIGINAL_SIZE_BYTES]) / 1024
+                root_entry[result_utils_lib.ORIGINAL_SIZE_BYTES]) / 1024
         sizes[RESULT_UPLOADED_KB] = (
-                root_entry[result_utils.TRIMMED_SIZE_BYTES])/ 1024
+                root_entry[result_utils_lib.TRIMMED_SIZE_BYTES])/ 1024
         # Test results are considered to be throttled if the total size of
         # results collected is different from the total size of trimmed results
         # from the client side.
         sizes[RESULT_THROTTLED] = (
-                root_entry[result_utils.ORIGINAL_SIZE_BYTES] !=
-                root_entry[result_utils.TRIMMED_SIZE_BYTES])
+                root_entry[result_utils_lib.ORIGINAL_SIZE_BYTES] !=
+                root_entry[result_utils_lib.TRIMMED_SIZE_BYTES])
         html_file = os.path.join(path, result_view.DEFAULT_RESULT_SUMMARY_NAME)
         result_view.build(client_collected_bytes, summary, html_file)
     except:
