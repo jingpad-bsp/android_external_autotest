@@ -31,6 +31,9 @@ import logging
 import os
 import time
 
+import utils_lib
+
+
 # Do NOT import autotest_lib modules here. This module can be executed without
 # dependency on other autotest modules. This is to keep the logic of result
 # trimming on the server side, instead of depending on the autotest client
@@ -39,22 +42,6 @@ import time
 DEFAULT_SUMMARY_FILENAME_FMT = 'dir_summary_%d.json'
 # Minimum disk space should be available after saving the summary file.
 MIN_FREE_DISK_BYTES = 10 * 1024 * 1024
-
-# Following are key names for directory summaries. The keys are started with /
-# so it can be differentiated with a valid file name. The short keys are
-# designed for smaller file size of the directory summary.
-
-# Original size of the directory or file
-ORIGINAL_SIZE_BYTES = '/S'
-# Size of the directory or file after trimming
-TRIMMED_SIZE_BYTES = '/T'
-# Size of the directory or file being collected from client side
-COLLECTED_SIZE_BYTES = '/C'
-# A dictionary of sub-directories' summary: name: {directory_summary}
-DIRS = '/D'
-# Default root directory name. To allow summaries to be merged effectively, all
-# summaries are collected with root directory of ''
-ROOT_DIR = ''
 
 # Autotest uses some state files to track process running state. The files are
 # deleted from test results. Therefore, these files can be ignored.
@@ -91,13 +78,13 @@ def get_dir_summary(path, top_dir, all_dirs=set()):
     @return: A dictionary of the directory summary.
     """
     dir_info = {}
-    dir_info[ORIGINAL_SIZE_BYTES] = 0
+    dir_info[utils_lib.ORIGINAL_SIZE_BYTES] = 0
     summary = {os.path.basename(path): dir_info}
 
     if os.path.isfile(path):
-        dir_info[ORIGINAL_SIZE_BYTES] = os.stat(path).st_size
+        dir_info[utils_lib.ORIGINAL_SIZE_BYTES] = os.stat(path).st_size
     else:
-        dir_info[DIRS] = {}
+        dir_info[utils_lib.DIRS] = {}
         real_path = os.path.realpath(path)
         # The assumption here is that results are copied back to drone by
         # copying the symlink, not the content, which is true with currently
@@ -113,8 +100,9 @@ def get_dir_summary(path, top_dir, all_dirs=set()):
         for f in sorted(os.listdir(path)):
             f_summary = get_dir_summary(os.path.join(path, f), top_dir,
                                         all_dirs)
-            dir_info[DIRS][f] = f_summary[f]
-            dir_info[ORIGINAL_SIZE_BYTES] += f_summary[f][ORIGINAL_SIZE_BYTES]
+            dir_info[utils_lib.DIRS][f] = f_summary[f]
+            dir_info[utils_lib.ORIGINAL_SIZE_BYTES] += (
+                    f_summary[f][utils_lib.ORIGINAL_SIZE_BYTES])
 
     return summary
 
@@ -129,6 +117,15 @@ def build_summary_json(path):
     if not os.path.exists(path):
         raise IOError('Path %s does not exist.' % path)
 
+    if not os.path.isdir(path):
+        raise ValueError('The given path %s is a file. It must be a '
+                         'directory.' % path)
+
+    # Make sure the path ends with `/` so the root key of summary json is always
+    # utils_lib.ROOT_DIR ('')
+    if not path.endswith(os.sep):
+        path = path + os.sep
+
     return get_dir_summary(path, top_dir=path)
 
 
@@ -141,23 +138,26 @@ def _update_sizes(entry):
 
     @param entry: A dict of directory entry in a summary.
     """
-    if DIRS not in entry:
+    if utils_lib.DIRS not in entry:
         return
 
-    entry[ORIGINAL_SIZE_BYTES] = sum([entry[DIRS][s][ORIGINAL_SIZE_BYTES]
-                                     for s in entry[DIRS]])
+    entry[utils_lib.ORIGINAL_SIZE_BYTES] = sum([
+            entry[utils_lib.DIRS][s][utils_lib.ORIGINAL_SIZE_BYTES]
+            for s in entry[utils_lib.DIRS]])
     # Before trimming is implemented, COLLECTED_SIZE_BYTES and
     # TRIMMED_SIZE_BYTES have the same value of ORIGINAL_SIZE_BYTES.
-    entry[COLLECTED_SIZE_BYTES] = sum([
-            entry[DIRS][s].get(
-                    COLLECTED_SIZE_BYTES,
-                    entry[DIRS][s].get(TRIMMED_SIZE_BYTES,
-                                       entry[DIRS][s][ORIGINAL_SIZE_BYTES]))
-            for s in entry[DIRS]])
-    entry[TRIMMED_SIZE_BYTES] = sum([
-            entry[DIRS][s].get(TRIMMED_SIZE_BYTES,
-                               entry[DIRS][s][ORIGINAL_SIZE_BYTES])
-            for s in entry[DIRS]])
+    entry[utils_lib.COLLECTED_SIZE_BYTES] = sum([
+            entry[utils_lib.DIRS][s].get(
+                utils_lib.COLLECTED_SIZE_BYTES,
+                entry[utils_lib.DIRS][s].get(
+                    utils_lib.TRIMMED_SIZE_BYTES,
+                    entry[utils_lib.DIRS][s][utils_lib.ORIGINAL_SIZE_BYTES]))
+            for s in entry[utils_lib.DIRS]])
+    entry[utils_lib.TRIMMED_SIZE_BYTES] = sum([
+            entry[utils_lib.DIRS][s].get(
+                    utils_lib.TRIMMED_SIZE_BYTES,
+                    entry[utils_lib.DIRS][s][utils_lib.ORIGINAL_SIZE_BYTES])
+            for s in entry[utils_lib.DIRS]])
 
 
 def _delete_missing_entries(summary_old, summary_new):
@@ -172,9 +172,9 @@ def _delete_missing_entries(summary_old, summary_new):
     """
     for name in summary_old.keys():
         if name not in summary_new:
-            if DIRS in summary_old[name]:
+            if utils_lib.DIRS in summary_old[name]:
                 # Trim sub-directories.
-                _delete_missing_entries(summary_old[name][DIRS], {})
+                _delete_missing_entries(summary_old[name][utils_lib.DIRS], {})
                 _update_sizes(summary_old[name])
             elif name in FILES_TO_IGNORE:
                 # Remove the file from the summary as it can be ignored.
@@ -182,15 +182,16 @@ def _delete_missing_entries(summary_old, summary_new):
             else:
                 # Before setting the trimmed size to 0, update the collected
                 # size if it's not set yet.
-                if COLLECTED_SIZE_BYTES not in summary_old[name]:
+                if utils_lib.COLLECTED_SIZE_BYTES not in summary_old[name]:
                     trimmed_size = summary_old[name].get(
-                            TRIMMED_SIZE_BYTES,
-                            summary_old[name][ORIGINAL_SIZE_BYTES])
-                    summary_old[name][COLLECTED_SIZE_BYTES] = trimmed_size
-                summary_old[name][TRIMMED_SIZE_BYTES] = 0
-        elif DIRS in summary_old[name]:
-            _delete_missing_entries(summary_old[name][DIRS],
-                                    summary_new[name][DIRS])
+                            utils_lib.TRIMMED_SIZE_BYTES,
+                            summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES])
+                    summary_old[name][utils_lib.COLLECTED_SIZE_BYTES] = (
+                            trimmed_size)
+                summary_old[name][utils_lib.TRIMMED_SIZE_BYTES] = 0
+        elif utils_lib.DIRS in summary_old[name]:
+            _delete_missing_entries(summary_old[name][utils_lib.DIRS],
+                                    summary_new[name][utils_lib.DIRS])
             _update_sizes(summary_old[name])
     _update_sizes(summary_old)
 
@@ -245,39 +246,42 @@ def _merge(summary_old, summary_new, is_final=False):
             # A file/dir exists in new client dir, but not in the old one, which
             # means that the file or a directory is newly collected.
             summary_old[name] = copy.deepcopy(summary_new[name])
-        elif DIRS in summary_new[name]:
+        elif utils_lib.DIRS in summary_new[name]:
             # `name` is a directory in new summary, merge the directories of the
             # old and new summaries under `name`.
 
-            if DIRS not in summary_old[name]:
+            if utils_lib.DIRS not in summary_old[name]:
                 # If `name` is a file in old summary but a directory in new
                 # summary, the file in the old summary will be overwritten by
                 # the new directory by rsync. Therefore, force it to be an empty
                 # directory in old summary, so that the new directory can be
                 # merged.
-                summary_old[name][ORIGINAL_SIZE_BYTES] = 0
-                summary_old[name][TRIMMED_SIZE_BYTES] = 0
-                summary_old[name][COLLECTED_SIZE_BYTES] = 0
-                summary_old[name][DIRS] = {}
+                summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES] = 0
+                summary_old[name][utils_lib.TRIMMED_SIZE_BYTES] = 0
+                summary_old[name][utils_lib.COLLECTED_SIZE_BYTES] = 0
+                summary_old[name][utils_lib.DIRS] = {}
 
-            _merge(summary_old[name][DIRS], summary_new[name][DIRS], is_final)
+            _merge(summary_old[name][utils_lib.DIRS],
+                   summary_new[name][utils_lib.DIRS], is_final)
         else:
             # `name` is a file. Compare the original size, if they are
             # different, the file was overwritten, so increment the
             # COLLECTED_SIZE_BYTES.
 
-            if DIRS in summary_old[name]:
+            if utils_lib.DIRS in summary_old[name]:
                 # If `name` is a directory in old summary, but a file in the new
                 # summary, rsync will fail to copy the file as it can't
                 # overwrite an directory. Therefore, skip the merge.
                 continue
 
-            new_size = summary_new[name][ORIGINAL_SIZE_BYTES]
-            old_size = summary_old[name][ORIGINAL_SIZE_BYTES]
+            new_size = summary_new[name][utils_lib.ORIGINAL_SIZE_BYTES]
+            old_size = summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES]
             new_trimmed_size = summary_new[name].get(
-                    TRIMMED_SIZE_BYTES, summary_new[name][ORIGINAL_SIZE_BYTES])
+                    utils_lib.TRIMMED_SIZE_BYTES,
+                    summary_new[name][utils_lib.ORIGINAL_SIZE_BYTES])
             old_trimmed_size = summary_old[name].get(
-                    TRIMMED_SIZE_BYTES, summary_old[name][ORIGINAL_SIZE_BYTES])
+                    utils_lib.TRIMMED_SIZE_BYTES,
+                    summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES])
             if new_size != old_size:
                 if is_final and new_trimmed_size == old_trimmed_size:
                     # If the file is merged from the final result folder to an
@@ -289,22 +293,23 @@ def _merge(summary_old, summary_new, is_final=False):
                 # Before trimming is implemented, COLLECTED_SIZE_BYTES is the
                 # value of ORIGINAL_SIZE_BYTES.
                 new_collected_size = summary_new[name].get(
-                        COLLECTED_SIZE_BYTES,
+                        utils_lib.COLLECTED_SIZE_BYTES,
                         summary_new[name].get(
-                                TRIMMED_SIZE_BYTES,
-                                summary_new[name][ORIGINAL_SIZE_BYTES]))
+                            utils_lib.TRIMMED_SIZE_BYTES,
+                            summary_new[name][utils_lib.ORIGINAL_SIZE_BYTES]))
                 old_collected_size = summary_old[name].get(
-                        COLLECTED_SIZE_BYTES,
+                        utils_lib.COLLECTED_SIZE_BYTES,
                         summary_old[name].get(
-                                TRIMMED_SIZE_BYTES,
-                                summary_old[name][ORIGINAL_SIZE_BYTES]))
+                            utils_lib.TRIMMED_SIZE_BYTES,
+                            summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES]))
 
-                summary_old[name][COLLECTED_SIZE_BYTES] = (
+                summary_old[name][utils_lib.COLLECTED_SIZE_BYTES] = (
                         new_collected_size + old_collected_size)
-                summary_old[name][TRIMMED_SIZE_BYTES] = summary_new[name].get(
-                        TRIMMED_SIZE_BYTES,
-                        summary_new[name][ORIGINAL_SIZE_BYTES])
-                summary_old[name][ORIGINAL_SIZE_BYTES] = new_size
+                summary_old[name][utils_lib.TRIMMED_SIZE_BYTES] = (
+                        summary_new[name].get(
+                            utils_lib.TRIMMED_SIZE_BYTES,
+                            summary_new[name][utils_lib.ORIGINAL_SIZE_BYTES]))
+                summary_old[name][utils_lib.ORIGINAL_SIZE_BYTES] = new_size
 
         # Update COLLECTED_SIZE_BYTES and ORIGINAL_SIZE_BYTES based on the
         # merged directory summary.
@@ -346,7 +351,8 @@ def merge_summaries(path):
     # to 0.
     client_collected_bytes = 0
     if merged_summary:
-        client_collected_bytes = merged_summary[ROOT_DIR][COLLECTED_SIZE_BYTES]
+        client_collected_bytes = (
+            merged_summary[utils_lib.ROOT_DIR][utils_lib.COLLECTED_SIZE_BYTES])
 
     # Get the summary of current directory
 
