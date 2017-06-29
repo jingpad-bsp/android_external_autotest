@@ -17,7 +17,7 @@ roaming in US.
 def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
-                 config_file='android1758-telephony-test-station.config',
+                 config_file='android1758-telephony-australia-telstra-mtv.config',
                  test_file='telephony_international_roaming',
                  additional_configs=['simcard_list.json'],
                  testtracker_project_id=11349,
