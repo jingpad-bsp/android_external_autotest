@@ -38,6 +38,10 @@ CONTAINER_BASE_URL = CONTAINER_BASE_URL_FMT % BASE
 # Default directory used to store LXC containers.
 DEFAULT_CONTAINER_PATH = global_config.get_config_value('AUTOSERV',
                                                         'container_path')
+# Default directory for host mounts
+DEFAULT_SHARED_HOST_PATH = global_config.get_config_value(
+        'AUTOSERV',
+        'container_shared_host_path')
 
 # Path to drone_temp folder in the container, which stores the control file for
 # test job to run.
