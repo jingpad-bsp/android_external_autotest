@@ -25,6 +25,7 @@ _PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-4.1_r2-3911033.zip'
 class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
+    _target_package = None
 
 
     def setup(self, uri=None):
@@ -41,14 +42,12 @@ class cheets_GTS(tradefed_test.TradefedTest):
         self.waivers = self._get_expected_failures('expectations')
 
 
-    def _get_gts_test_args(self, target_package):
-        """ This is the command to run GTS tests.
-
-        @param target_package: the name of test package to be run. If None is
-                set, full GTS set will run.
-        """
-        self._target_package = target_package
-        return ['run', 'commandAndExit', 'gts', '--module', target_package]
+    def _get_gts_test_args(self):
+        """ This is the command to run GTS tests."""
+        args = ['run', 'commandAndExit', 'gts']
+        if self._target_package is not None:
+            args += ['--module', self._target_package]
+        return args
 
 
     def _run_gts_tradefed(self, gts_tradefed_args):
@@ -100,9 +99,13 @@ class cheets_GTS(tradefed_test.TradefedTest):
         logging.info('The test has passed successfully.')
 
     def run_once(self, target_package=None, gts_tradefed_args=None):
-        """Runs GTS target package exactly once."""
+        """Runs GTS target package exactly once.
+        @param target_package: the name of test package to be run. If None is
+                               set, full GTS set will run.
+        """
+        self._target_package = target_package
         with self._login_chrome():
             self._ready_arc()
             if not gts_tradefed_args:
-                gts_tradefed_args = self._get_gts_test_args(target_package)
+                gts_tradefed_args = self._get_gts_test_args()
             self._run_gts_tradefed(gts_tradefed_args)
