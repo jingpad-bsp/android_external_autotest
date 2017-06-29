@@ -563,6 +563,8 @@ class ServoHost(ssh_host.SSHHost):
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
                          'engine client status=%s', self.hostname, status)
+        elif status == autoupdater.UPDATER_NEED_REBOOT:
+            return
         elif current_build_number != target_build_number:
             logging.info('Using devserver url: %s to trigger update on '
                          'servo host %s, from %s to %s', url, self.hostname,
