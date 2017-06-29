@@ -6,8 +6,9 @@ AUTHOR = "jamescook@chromium.org, mustash-team@google.com"
 NAME = "desktopui_MashLogin"
 PURPOSE = "Verify chrome --mash (for mustash) starts and logs in."
 CRITERIA = "Fails if chrome --mash does not start."
-ATTRIBUTES = "suite:bvt-perbuild"
-JOB_RETRIES = 2
+ATTRIBUTES = "suite:chrome-informational, suite:bvt-perbuild"
+# TODO(jamescook): Add retries if this goes into bvt-cq.
+JOB_RETRIES = 0
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
