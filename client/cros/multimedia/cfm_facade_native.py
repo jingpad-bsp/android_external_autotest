@@ -84,27 +84,29 @@ class CFMFacadeNative(object):
                     'Unexpected extension context urls, expected %s, got %s'
                     % (expected_urls, ext_urls))
 
+
     @property
-    def _webview_context(self):
-        """Get webview context object."""
-        return kiosk_utils.get_webview_context(self._resource._browser,
-                self._EXT_ID)
+    def cfmApi(self):
+        """Instantiate CfmHangoutsAPI"""
+        webview_context = kiosk_utils.get_webview_context(
+                self._resource._browser, self._EXT_ID)
+        return cfm_hangouts_api.CfmHangoutsAPI(webview_context)
 
 
     def wait_for_telemetry_commands(self):
         """Wait for telemetry commands."""
-        cfm_hangouts_api.wait_for_telemetry_commands(self._webview_context)
+        self.cfmApi.wait_for_telemetry_commands()
 
 
     # UI commands/functions
     def wait_for_oobe_start_page(self):
         """Wait for oobe start screen to launch."""
-        cfm_hangouts_api.wait_for_oobe_start_page(self._webview_context)
+        self.cfmApi.wait_for_oobe_start_page()
 
 
     def skip_oobe_screen(self):
         """Skip Chromebox for Meetings oobe screen."""
-        cfm_hangouts_api.skip_oobe_screen(self._webview_context)
+        self.cfmApi.skip_oobe_screen()
 
 
     def is_oobe_start_page(self):
@@ -112,7 +114,7 @@ class CFMFacadeNative(object):
 
         @return a boolean, based on oobe start page status.
         """
-        return cfm_hangouts_api.is_oobe_start_page(self._webview_context)
+        return self.cfmApi.is_oobe_start_page()
 
 
     # Hangouts commands/functions
@@ -121,13 +123,12 @@ class CFMFacadeNative(object):
 
         @param session_name: Name of the hangout session.
         """
-        cfm_hangouts_api.start_new_hangout_session(self._webview_context,
-                                                   session_name)
+        self.cfmApi.start_new_hangout_session(session_name)
 
 
     def end_hangout_session(self):
         """End current hangout session."""
-        cfm_hangouts_api.end_hangout_session(self._webview_context)
+        self.cfmApi.end_hangout_session()
 
 
     def is_in_hangout_session(self):
@@ -135,7 +136,7 @@ class CFMFacadeNative(object):
 
         @return a boolean, for hangout session state.
         """
-        return cfm_hangouts_api.is_in_hangout_session(self._webview_context)
+        return self.cfmApi.is_in_hangout_session()
 
 
     def is_ready_to_start_hangout_session(self):
@@ -143,8 +144,7 @@ class CFMFacadeNative(object):
 
         @return a boolean for hangout session ready state.
         """
-        return cfm_hangouts_api.is_ready_to_start_hangout_session(
-                self._webview_context)
+        return self.cfmApi.is_ready_to_start_hangout_session()
 
 
     # Diagnostics commands/functions
@@ -153,19 +153,17 @@ class CFMFacadeNative(object):
 
         @return a boolean for diagnostic run state.
         """
-        return cfm_hangouts_api.is_diagnostic_run_in_progress(
-                self._webview_context)
+        return self.cfmApi.is_diagnostic_run_in_progress()
 
 
     def wait_for_diagnostic_run_to_complete(self):
         """Wait for hotrod diagnostics to complete."""
-        cfm_hangouts_api.wait_for_diagnostic_run_to_complete(
-                self._webview_context)
+        self.cfmApi.wait_for_diagnostic_run_to_complete()
 
 
     def run_diagnostics(self):
         """Run hotrod diagnostics."""
-        cfm_hangouts_api.run_diagnostics(self._webview_context)
+        self.cfmApi.run_diagnostics()
 
 
     def get_last_diagnostics_results(self):
@@ -173,8 +171,7 @@ class CFMFacadeNative(object):
 
         @return a dict with diagnostic test results.
         """
-        return cfm_hangouts_api.get_last_diagnostics_results(
-                self._webview_context)
+        return self.cfmApi.get_last_diagnostics_results()
 
 
     # Mic audio commands/functions
@@ -183,27 +180,27 @@ class CFMFacadeNative(object):
 
         @return a boolean for mic mute state.
         """
-        return cfm_hangouts_api.is_mic_muted(self._webview_context)
+        return self.cfmApi.is_mic_muted()
 
 
     def mute_mic(self):
         """Local mic mute from toolbar."""
-        cfm_hangouts_api.mute_mic(self._webview_context)
+        self.cfmApi.mute_mic()
 
 
     def unmute_mic(self):
         """Local mic unmute from toolbar."""
-        cfm_hangouts_api.unmute_mic(self._webview_context)
+        self.cfmApi.unmute_mic()
 
 
     def remote_mute_mic(self):
         """Remote mic mute request from cPanel."""
-        cfm_hangouts_api.remote_mute_mic(self._webview_context)
+        self.cfmApi.remote_mute_mic()
 
 
     def remote_unmute_mic(self):
         """Remote mic unmute request from cPanel."""
-        cfm_hangouts_api.remote_unmute_mic(self._webview_context)
+        self.cfmApi.remote_unmute_mic()
 
 
     def get_mic_devices(self):
@@ -211,7 +208,7 @@ class CFMFacadeNative(object):
 
         @return a list of mic devices.
         """
-        return cfm_hangouts_api.get_mic_devices(self._webview_context)
+        return self.cfmApi.get_mic_devices()
 
 
     def get_preferred_mic(self):
@@ -219,7 +216,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred mic name.
         """
-        return cfm_hangouts_api.get_preferred_mic(self._webview_context)
+        return self.cfmApi.get_preferred_mic()
 
 
     def set_preferred_mic(self, mic):
@@ -227,7 +224,7 @@ class CFMFacadeNative(object):
 
         @param mic: String with mic name.
         """
-        cfm_hangouts_api.set_preferred_mic(self._webview_context, mic)
+        self.cfmApi.set_preferred_mic(mic)
 
 
     # Speaker commands/functions
@@ -236,7 +233,7 @@ class CFMFacadeNative(object):
 
         @return a list of speaker devices.
         """
-        return cfm_hangouts_api.get_speaker_devices(self._webview_context)
+        return self.cfmApi.get_speaker_devices()
 
 
     def get_preferred_speaker(self):
@@ -244,7 +241,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred speaker name.
         """
-        return cfm_hangouts_api.get_preferred_speaker(self._webview_context)
+        return self.cfmApi.get_preferred_speaker()
 
 
     def set_preferred_speaker(self, speaker):
@@ -252,7 +249,7 @@ class CFMFacadeNative(object):
 
         @param speaker: String with speaker name.
         """
-        cfm_hangouts_api.set_preferred_speaker(self._webview_context, speaker)
+        self.cfmApi.set_preferred_speaker(speaker)
 
 
     def set_speaker_volume(self, volume_level):
@@ -260,7 +257,7 @@ class CFMFacadeNative(object):
 
         @param volume_level: String value ranging from 0-100 to set volume to.
         """
-        cfm_hangouts_api.set_speaker_volume(self._webview_context, volume_level)
+        self.cfmApi.set_speaker_volume(volume_level)
 
 
     def get_speaker_volume(self):
@@ -268,12 +265,12 @@ class CFMFacadeNative(object):
 
         @return a str value with speaker volume level 0-100.
         """
-        return cfm_hangouts_api.get_speaker_volume(self._webview_context)
+        return self.cfmApi.get_speaker_volume()
 
 
     def play_test_sound(self):
         """Play test sound."""
-        cfm_hangouts_api.play_test_sound(self._webview_context)
+        self.cfmApi.play_test_sound()
 
 
     # Camera commands/functions
@@ -282,7 +279,7 @@ class CFMFacadeNative(object):
 
         @return a list of camera devices.
         """
-        return cfm_hangouts_api.get_camera_devices(self._webview_context)
+        return self.cfmApi.get_camera_devices()
 
 
     def get_preferred_camera(self):
@@ -290,7 +287,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred camera name.
         """
-        return cfm_hangouts_api.get_preferred_camera(self._webview_context)
+        return self.cfmApi.get_preferred_camera()
 
 
     def set_preferred_camera(self, camera):
@@ -298,7 +295,7 @@ class CFMFacadeNative(object):
 
         @param camera: String with camera name.
         """
-        cfm_hangouts_api.set_preferred_camera(self._webview_context, camera)
+        self.cfmApi.set_preferred_camera(camera)
 
 
     def is_camera_muted(self):
@@ -306,14 +303,14 @@ class CFMFacadeNative(object):
 
         @return a boolean for camera muted state.
         """
-        return cfm_hangouts_api.is_camera_muted(self._webview_context)
+        return self.cfmApi.is_camera_muted()
 
 
     def mute_camera(self):
         """Turned camera off."""
-        cfm_hangouts_api.mute_camera(self._webview_context)
+        self.cfmApi.mute_camera()
 
 
     def unmute_camera(self):
         """Turned camera on."""
-        cfm_hangouts_api.unmute_camera(self._webview_context)
+        self.cfmApi.unmute_camera()
