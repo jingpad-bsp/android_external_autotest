@@ -153,8 +153,8 @@ class HostInfo(object):
 
 
     def __str__(self):
-        return ('HostInfo [Labels: %s, Attributes: %s]'
-                % (self.labels, self.attributes))
+        return ('%s[Labels: %s, Attributes: %s]'
+                % (type(self).__name__, self.labels, self.attributes))
 
 
     def __eq__(self, other):
@@ -296,6 +296,9 @@ class InMemoryHostInfoStore(CachingHostInfoStore):
         super(InMemoryHostInfoStore, self).__init__()
         self.info = info if info is not None else HostInfo()
 
+
+    def __str__(self):
+        return '%s[%s]' % (type(self).__name__, self.info)
 
     def _refresh_impl(self):
         """Return a copy of the private HostInfo."""
