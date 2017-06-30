@@ -59,6 +59,7 @@ suite:arc-cts-stable
 suite:arc-cts-terra
 suite:arc-gts
 suite:arc-gts-perbuild
+suite:arc-gts-qual
 suite:arc-gts-tot
 suite:arc-nightly
 suite:arc-weekly
