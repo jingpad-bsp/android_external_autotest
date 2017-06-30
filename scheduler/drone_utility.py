@@ -525,8 +525,8 @@ class ProcessRefresher(object):
         autoserv_processes, extra_warnings = self._filter_proc_infos(
                 proc_infos, 'autoserv')
         warnings += extra_warnings
-        parse_processes, extra_warnings = self._filter_proc_infos(
-                proc_infos, 'parse')
+        parse_processes, extra_warnings = self._filter_proc_infos(proc_infos,
+                                                                  'parse')
         warnings += extra_warnings
         site_parse_processes, extra_warnings = self._filter_proc_infos(
                 proc_infos, 'site_parse')
@@ -576,15 +576,24 @@ class ProcessRefresher(object):
         if not self._check_mark:
             return proc_infos, []
 
+        if self._use_pool:
+            dark_marks = self._pool.map(
+                    _process_has_dark_mark,
+                    [info['pid'] for info in proc_infos]
+            )
+        else:
+            dark_marks = [_process_has_dark_mark(info['pid'])
+                          for info in proc_infos]
+
         marked_proc_infos = []
-        unmarked_proc_infos = []
-        for info in proc_infos:
-            if _process_has_dark_mark(info['pid']):
+        warnings = []
+        for marked, info in itertools.izip(dark_marks, proc_infos):
+            if marked:
                 marked_proc_infos.append(info)
             else:
-                unmarked_proc_infos.append(info)
-        warnings = ['%(comm)s process pid %(pid)s has no dark mark; ignoring.' %
-                    info for info in unmarked_proc_infos]
+                warnings.append(
+                        '%(comm)s process pid %(pid)s has no dark mark; '
+                        'ignoring.' % info)
         return marked_proc_infos, warnings
 
 
@@ -624,7 +633,6 @@ def _parse_args(args):
 
 def return_data(data):
     print pickle.dumps(data)
-
 
 def _process_has_dark_mark(pid):
     """Checks if a process was launched earlier by drone_utility.
