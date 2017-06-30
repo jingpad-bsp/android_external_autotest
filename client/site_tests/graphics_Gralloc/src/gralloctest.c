@@ -18,8 +18,7 @@
 #include <cutils/native_handle.h>
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
-
-#include "sw_sync.h"
+#include <sync/sync.h>
 
 #define ALIGN(A, B) (((A) + (B)-1) / (B) * (B))
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
