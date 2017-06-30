@@ -119,6 +119,11 @@ class AfeStoreTest(unittest.TestCase):
                 'attrib1', None, hostname=self.hostname)
 
 
+    def test_str(self):
+        """Sanity tests the __str__ implementaiton"""
+        self.assertEqual(str(self.store), 'AfeStore[some-host]')
+
+
 class DictDiffTest(unittest.TestCase):
     """Tests the afe_store._dict_diff private method."""
 

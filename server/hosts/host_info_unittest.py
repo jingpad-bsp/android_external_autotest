@@ -148,7 +148,7 @@ class HostInfoTest(unittest.TestCase):
         """Sanity checks the __str__ implementation."""
         info = host_info.HostInfo(labels=['a'], attributes={'b': 2})
         self.assertEqual(str(info),
-                         "HostInfo [Labels: ['a'], Attributes: {'b': 2}]")
+                         "HostInfo[Labels: ['a'], Attributes: {'b': 2}]")
 
 
     def test_clear_version_labels_no_labels(self):
@@ -288,6 +288,14 @@ class InMemoryHostInfoStoreTest(unittest.TestCase):
         got = self.store.get()
         self._verify_host_info_data(got,
                                     ['label1'], {'attrib1': {'key1': 'data1'}})
+
+
+    def test_str(self):
+        """Sanity tests __str__ implementation."""
+        self.store.info = host_info.HostInfo(['label1'],
+                                             {'attrib1': {'key1': 'data1'}})
+        self.assertEqual(str(self.store),
+                         'InMemoryHostInfoStore[%s]' % self.store.info)
 
 
 class ExceptionRaisingStore(host_info.CachingHostInfoStore):
