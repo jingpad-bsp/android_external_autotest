@@ -32,6 +32,7 @@ _WHITELISTED_SUITES = (
     'arc-cts-qual',
     'arc-gts',
     'arc-gts-perbuild',
+    'arc-gts-qual',
     'arc-gts-tot',
     'arc-nightly',
     'arc-weekly',
