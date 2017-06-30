@@ -45,6 +45,10 @@ class FileStore(host_info.CachingHostInfoStore):
                 blocking=False)
 
 
+    def __str__(self):
+        return '%s[%s]' % (type(self).__name__, self._store_file)
+
+
     def _refresh_impl(self):
         """See parent class docstring."""
         with self._lock_backing_file():
