@@ -2028,7 +2028,8 @@ class ImageServer(ImageServerBase):
     def auto_update(self, host_name, build_name, original_board=None,
                     original_release_version=None, log_dir=None,
                     force_update=False, full_update=False,
-                    payload_filename=None, force_original=False):
+                    payload_filename=None, force_original=False,
+                    clobber_stateful=True):
         """Auto-update a CrOS host.
 
         @param host_name: The hostname of the DUT to auto-update.
@@ -2051,6 +2052,7 @@ class ImageServer(ImageServerBase):
                                  passing it in here.
         @param force_original: Whether to force stateful update with the
                                original payload.
+        @param clobber_stateful: If True do a clean install of stateful.
 
         @return A set (is_success, pid) in which:
             1. is_success indicates whether this auto_update succeeds.
@@ -2062,7 +2064,8 @@ class ImageServer(ImageServerBase):
         kwargs = {'host_name': host_name,
                   'build_name': build_name,
                   'force_update': force_update,
-                  'full_update': full_update}
+                  'full_update': full_update,
+                  'clobber_stateful': clobber_stateful}
 
         if payload_filename is not None:
             kwargs['payload_filename'] = payload_filename
