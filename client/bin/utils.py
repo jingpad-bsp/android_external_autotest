@@ -2079,8 +2079,7 @@ def get_gpu_family():
 # src/third_party/chromiumos-overlay/eclass/appid.eclass
 _BOARDS_WITHOUT_MONITOR = [
     'anglar', 'mccloud', 'monroe', 'ninja', 'rikku', 'guado', 'jecht', 'tidus',
-    'veyron_brian', 'beltino', 'panther', 'stumpy', 'panther', 'tricky', 'zako',
-    'veyron_rialto'
+    'beltino', 'panther', 'stumpy', 'panther', 'tricky', 'zako', 'veyron_rialto'
 ]
 
 
