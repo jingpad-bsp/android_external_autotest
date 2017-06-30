@@ -99,6 +99,18 @@ def is_server_in_prod(server_name, afe):
         return is_prod_proxy_server
 
 
+@metrics.SecondsTimerDecorator(
+        'chromeos/autotest/swarming/bot_manager/tick')
+def tick(afe, bot_manager):
+    """One tick for swarming bot manager.
+
+    @param afe: the afe to check server role.
+    @param bot_manager: a swarming_bots.BotManager instance.
+    """
+    if is_server_in_prod(socket.getfqdn(), afe):
+        bot_manager.check()
+
+
 def main(args):
     """Main func.
 
@@ -131,9 +143,7 @@ def main(args):
     is_prod = False
     retryable = True
     while not _shut_down:
-        if is_server_in_prod(socket.getfqdn(), args.afe):
-            bot_manager.check()
-
+        tick(args.afe, bot_manager)
         time.sleep(CHECK_INTERVAL)
 
 
