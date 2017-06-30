@@ -13,6 +13,7 @@ logger
 login
 nacl_helper
 nacl_helper_boo
+nacl_helper_non
 ping
 ps
 ply-image
