@@ -409,8 +409,7 @@ static int test_gralloc_order(struct gralloctest_context *ctx)
 	CHECK(unregister_buffer(ctx->module, &duplicate) == 0);
 	CHECK(register_buffer(ctx->module, &duplicate));
 
-	/* This should be a no-op when the buffer wasn't previously locked. */
-	CHECK(unlock(ctx->module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate) == 0);
 
 	CHECK(lock(ctx->module, &duplicate));
 	CHECK(duplicate.vaddr);
@@ -426,7 +425,10 @@ static int test_gralloc_order(struct gralloctest_context *ctx)
 	CHECK(deallocate(ctx->device, &info));
 
 	CHECK(lock(ctx->module, &duplicate));
+	CHECK(lock(ctx->module, &duplicate));
 	CHECK(unlock(ctx->module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate));
+	CHECK(unlock(ctx->module, &duplicate) == 0);
 	CHECK(unregister_buffer(ctx->module, &duplicate));
 
 	CHECK(native_handle_close(duplicate.handle) == 0);
@@ -609,36 +611,18 @@ static int test_async(struct gralloctest_context *ctx)
 
 {
 	struct grallocinfo rgba_info, ycbcr_info;
-	int fd;
-
 	grallocinfo_init(&rgba_info, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
-
 	grallocinfo_init(&ycbcr_info, 512, 512, HAL_PIXEL_FORMAT_YCbCr_420_888,
 			 GRALLOC_USAGE_SW_READ_OFTEN);
-
-	fd = sw_sync_timeline_create();
-	rgba_info.fence_fd = sw_sync_fence_create(fd, "fence", 1);
-	ycbcr_info.fence_fd = sw_sync_fence_create(fd, "ycbcr_fence", 2);
 
 	CHECK(allocate(ctx->device, &rgba_info));
 	CHECK(allocate(ctx->device, &ycbcr_info));
 
-	/*
-	 * Buffer data should only be available after the fence has been
-	 * signaled.
-	 */
 	CHECK(lock_async(ctx->module, &rgba_info));
 	CHECK(lock_async_ycbcr(ctx->module, &ycbcr_info));
 
-	CHECK(rgba_info.vaddr == NULL);
-	CHECK(sw_sync_timeline_inc(fd, 1));
 	CHECK(rgba_info.vaddr);
-	CHECK(ycbcr_info.ycbcr.y == NULL);
-	CHECK(ycbcr_info.ycbcr.cb == NULL);
-	CHECK(ycbcr_info.ycbcr.cr == NULL);
-
-	CHECK(sw_sync_timeline_inc(fd, 1));
 	CHECK(ycbcr_info.ycbcr.y);
 	CHECK(ycbcr_info.ycbcr.cb);
 	CHECK(ycbcr_info.ycbcr.cr);
@@ -650,18 +634,18 @@ static int test_async(struct gralloctest_context *ctx)
 	CHECK(unlock_async(ctx->module, &rgba_info));
 	CHECK(unlock_async(ctx->module, &ycbcr_info));
 
-	CHECK(rgba_info.fence_fd > 0);
-	CHECK(ycbcr_info.fence_fd > 0);
-	CHECK(sync_wait(rgba_info.fence_fd, 10000) >= 0);
-	CHECK(sync_wait(ycbcr_info.fence_fd, 10000) >= 0);
+	if (rgba_info.fence_fd >= 0) {
+		CHECK(sync_wait(rgba_info.fence_fd, 10000) >= 0);
+		CHECK(close(rgba_info.fence_fd) == 0);
+	}
 
-	CHECK(close(rgba_info.fence_fd) == 0);
-	CHECK(close(ycbcr_info.fence_fd) == 0);
+	if (ycbcr_info.fence_fd >= 0) {
+		CHECK(sync_wait(ycbcr_info.fence_fd, 10000) >= 0);
+		CHECK(close(ycbcr_info.fence_fd) == 0);
+	}
 
 	CHECK(deallocate(ctx->device, &rgba_info));
 	CHECK(deallocate(ctx->device, &ycbcr_info));
-
-	close(fd);
 
 	return 1;
 }
