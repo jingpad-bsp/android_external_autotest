@@ -3,23 +3,46 @@
 # found in the LICENSE file.
 
 import os
+import logging
+import re
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import test
+from autotest_lib.server.hosts import adb_host
 from autotest_lib.site_utils import acts_lib
+
+
+CONFIG = global_config.global_config
 
 CONFIG_FOLDER_LOCATION = global_config.global_config.get_config_value(
     'ACTS', 'acts_config_folder', default='')
 
 TEST_CONFIG_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
                                        'autotest_config')
+
 TEST_CAMPAIGN_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
                                          'autotest_campaign')
-
 DEFAULT_TEST_RELATIVE_LOG_PATH = 'results/logs'
+
+def get_global_config_value_regex(section, regex):
+    """Get config values from global config based on regex of the key.
+
+    @param section: Section of the config, e.g., CLIENT.
+    @param regex: Regular expression of the key pattern.
+
+    @return: A dictionary of all config values matching the regex. Value is
+             assumed to be comma separated, and is converted to a list.
+    """
+    configs = CONFIG.get_config_value_regex(section, regex)
+    result = {}
+    for key, value in configs.items():
+        match = re.match(regex, key)
+        result[match.group(1)] = [v.strip() for v in value.split(',')
+                                  if v.strip()]
+    return result
 
 
 class android_ACTS(test.test):
@@ -31,6 +54,9 @@ class android_ACTS(test.test):
     """
     version = 1
 
+    BRANCH_ALIAS_PATTERN = 'acts_branch_alias_(.*)'
+    aliases_map = get_global_config_value_regex('ACTS', BRANCH_ALIAS_PATTERN)
+
     def run_once(self,
                  testbed=None,
                  config_file=None,
@@ -40,12 +66,14 @@ class android_ACTS(test.test):
                  additional_configs=[],
                  additional_apks=[],
                  override_build_url=None,
+                 override_build=None,
                  override_acts_zip=None,
                  override_internal_acts_dir=None,
                  override_python_bin='python',
                  acts_timeout=7200,
                  perma_path=None,
                  additional_cmd_line_params=None,
+                 branch_mappings = {},
                  testtracker_project_id=None,
                  testtracker_extra_env=None,
                  testtracker_owner=None):
@@ -68,9 +96,10 @@ class android_ACTS(test.test):
                                 package = Name of the package (eg. test.tools)
                                 artifact = Name of the artifact, if not given
                                            package is used.
-        @param override_build_url: The build url to fetch acts from. If None
-                                   then the build url of the first adb device
-                                   is used.
+        @param override_build_url: Deprecated, use override_build instead.
+        @param override_build: The android build to fetch test artifacts from.
+                               If not provided a default is selected from one
+                               of the devices.
         @param override_acts_zip: If given a zip file on the drone is used
                                   rather than pulling a build.
         @param override_internal_acts_dir: The directory within the artifact
@@ -81,10 +110,17 @@ class android_ACTS(test.test):
         @param acts_timeout: How long to wait for acts to finish.
         @param perma_path: If given a permantent path will be used rather than
                            a temp path.
+        @para branch_mappings: A dictionary of branch names to branch names.
+                               When pulling test resources, if the current
+                               branch is found in the mapping it will use
+                               the mapped branch instead.
         @param testtracker_project_id: ID to use for test tracker project.
         @param testtracker_extra_env: Extra environment info to publish
                                       with the results.
         """
+        if not override_build:
+            override_build = override_build_url
+
         host = next(v for v in testbed.get_adb_devices().values())
 
         if not host:
@@ -102,31 +138,50 @@ class android_ACTS(test.test):
             ts_tempfolder = perma_path
         target_zip = os.path.join(ts_tempfolder, 'acts.zip')
 
-        if override_acts_zip and override_build_url:
-            raise error.TestError('Cannot give both a url and zip override.')
-        elif override_acts_zip:
+        if override_build:
+            build_pieces = override_build.split('/')
+            job_build_branch = build_pieces[0]
+            job_build_target = build_pieces[1]
+            job_build_id = build_pieces[2]
+        else:
+            job_build_info = adb_host.ADBHost.get_build_info_from_build_url(
+                job_repo_url)
+            job_build_branch = job_build_info['branch']
+            job_build_target = job_build_info['target']
+            job_build_id = job_build_info['build_id']
+
+
+        if job_build_branch in branch_mappings:
+            logging.info('Replacing branch %s -> %s',
+                         job_build_branch,
+                         branch_mappings[job_build_branch].strip())
+            job_build_branch = branch_mappings[job_build_branch].strip()
+            job_build_id = "LATEST"
+        elif job_build_branch in self.aliases_map:
+            logging.info('Replacing branch %s -> %s',
+                         job_build_branch,
+                         self.aliases_map[job_build_branch][0].strip())
+            job_build_branch = self.aliases_map[job_build_branch][0].strip()
+            job_build_id = "LATEST"
+
+        build_name = '%s/%s/%s' % (job_build_branch,
+                                   job_build_target,
+                                   job_build_id)
+        devserver = dev_server.AndroidBuildServer.resolve(build_name,
+                                                          host.hostname)
+        build_name = devserver.translate(build_name)
+        build_branch, build_target, build_id = build_name.split('/')
+
+        logging.info('Using build info BRANCH:%s, TARGET:%s, BUILD_ID:%s',
+                     build_branch, build_target, build_id)
+
+        if override_acts_zip:
             package = acts_lib.create_acts_package_from_zip(
                 test_station, override_acts_zip, target_zip)
-        elif override_build_url:
-            devserver = dev_server.AndroidBuildServer.resolve(
-                    override_build_url,
-                    dev_server.AndroidBuildServer.get_server_url(job_repo_url))
-            override_build_url = devserver.translate(override_build_url)
-            build_url_pieces = override_build_url.split('/')
-            if len(build_url_pieces) != 3:
-                raise error.TestError(
-                    'Override build url must be formatted as '
-                    '<branch>/<target>/<build_id>')
-
-            branch = build_url_pieces[0]
-            target = build_url_pieces[1]
-            build_id = build_url_pieces[2]
-            package = acts_lib.create_acts_package_from_artifact(
-                test_station, branch, target, build_id, job_repo_url,
-                target_zip)
         else:
-            package = acts_lib.create_acts_package_from_current_artifact(
-                test_station, job_repo_url, target_zip)
+            package = acts_lib.create_acts_package_from_artifact(
+                test_station, build_branch, build_target, build_id, devserver,
+                target_zip)
 
         test_env = package.create_enviroment(
             testbed=testbed,
