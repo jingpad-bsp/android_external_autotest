@@ -151,18 +151,19 @@ class android_ACTS(test.test):
             job_build_id = job_build_info['build_id']
 
 
-        if job_build_branch in branch_mappings:
-            logging.info('Replacing branch %s -> %s',
-                         job_build_branch,
-                         branch_mappings[job_build_branch].strip())
-            job_build_branch = branch_mappings[job_build_branch].strip()
-            job_build_id = "LATEST"
-        elif job_build_branch in self.aliases_map:
-            logging.info('Replacing branch %s -> %s',
-                         job_build_branch,
-                         self.aliases_map[job_build_branch][0].strip())
-            job_build_branch = self.aliases_map[job_build_branch][0].strip()
-            job_build_id = "LATEST"
+        if not override_build_url:
+            if job_build_branch in branch_mappings:
+                logging.info('Replacing branch %s -> %s',
+                             job_build_branch,
+                             branch_mappings[job_build_branch].strip())
+                job_build_branch = branch_mappings[job_build_branch].strip()
+                job_build_id = "LATEST"
+            elif job_build_branch in self.aliases_map:
+                logging.info('Replacing branch %s -> %s',
+                             job_build_branch,
+                             self.aliases_map[job_build_branch][0].strip())
+                job_build_branch = self.aliases_map[job_build_branch][0].strip()
+                job_build_id = "LATEST"
 
         build_name = '%s/%s/%s' % (job_build_branch,
                                    job_build_target,
