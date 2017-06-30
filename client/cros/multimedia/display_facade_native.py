@@ -308,24 +308,6 @@ class DisplayFacadeNative(object):
         return graphics_utils.get_internal_crtc()
 
 
-    def get_output_rect(self, output):
-        """Gets the size and position of the given output on the screen buffer.
-
-        @param output: The output name as a string.
-
-        @return A tuple of the rectangle (width, height, fb_offset_x,
-                fb_offset_y) of ints.
-        """
-        regexp = re.compile(
-                r'^([-A-Za-z0-9]+)\s+connected\s+(\d+)x(\d+)\+(\d+)\+(\d+)',
-                re.M)
-        match = regexp.findall(graphics_utils.call_xrandr())
-        for m in match:
-            if m[0] == output:
-                return (int(m[1]), int(m[2]), int(m[3]), int(m[4]))
-        return (0, 0, 0, 0)
-
-
     def take_internal_screenshot(self, path):
         """Takes internal screenshot.
 
