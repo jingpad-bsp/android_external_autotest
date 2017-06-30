@@ -616,21 +616,6 @@ def main():
         parser.parser.print_help()
         sys.exit(1)
 
-    # If the job requires to run with server-side package, try to stage server-
-    # side package first. If that fails with error that autotest server package
-    # does not exist, fall back to run the job without using server-side
-    # packaging. If option warn_no_ssp is specified, that means autoserv is
-    # running in a drone does not support SSP, thus no need to stage server-side
-    # package.
-    ssp_url = None
-    ssp_url_warning = False
-    if (not parser.options.warn_no_ssp and parser.options.require_ssp):
-        ssp_url, ssp_error_msg = _stage_ssp(parser)
-        # The build does not have autotest server package. Fall back to not
-        # to use server-side package. Logging is postponed until logging being
-        # set up.
-        ssp_url_warning = not ssp_url
-
     if parser.options.no_logging:
         results = None
     else:
@@ -652,6 +637,21 @@ def main():
         # needs to create the log file in there.
         if not os.path.isdir(results):
             os.makedirs(results)
+
+    # If the job requires to run with server-side package, try to stage server-
+    # side package first. If that fails with error that autotest server package
+    # does not exist, fall back to run the job without using server-side
+    # packaging. If option warn_no_ssp is specified, that means autoserv is
+    # running in a drone does not support SSP, thus no need to stage server-side
+    # package.
+    ssp_url = None
+    ssp_url_warning = False
+    if (not parser.options.warn_no_ssp and parser.options.require_ssp):
+        ssp_url, ssp_error_msg = _stage_ssp(parser)
+        # The build does not have autotest server package. Fall back to not
+        # to use server-side package. Logging is postponed until logging being
+        # set up.
+        ssp_url_warning = not ssp_url
 
     # Server-side packaging will only be used if it's required and the package
     # is available. If warn_no_ssp is specified, it means that autoserv is
