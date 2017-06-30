@@ -23,14 +23,6 @@ class CfmMeetingsAPI(object):
             'window.%s.%s' % (TELEMETRY_API, command))
 
     # UI commands/functions
-    def wait_for_oobe_start_page(self):
-        """Wait for oobe start screen to launch."""
-        self._webview_context.WaitForJavaScriptCondition(
-                'window.hasOwnProperty("hrOobIsStartPageForTest") '
-                '&& window.hrOobIsStartPageForTest() === true',
-                timeout=DEFAULT_TIMEOUT)
-        logging.info('Reached oobe start page')
-
     def wait_for_meetings_landing_page(self):
         """Waits for the landing page screen."""
         self._webview_context.WaitForJavaScriptCondition(
@@ -47,22 +39,33 @@ class CfmMeetingsAPI(object):
             timeout=DEFAULT_TIMEOUT)
         logging.info('Reached meetings in-call page.')
 
+    def wait_for_telemetry_commands(self):
+        """Wait for hotrod app to load and telemetry commands to be available.
+        """
+        raise NotImplementedError
+
+    def wait_for_oobe_start_page(self):
+        """Wait for oobe start screen to launch."""
+        raise NotImplementedError
+
     def skip_oobe_screen(self):
         """Skip Chromebox for Meetings oobe screen."""
-        self._webview_context.ExecuteJavaScript('window.hrOobSkipForTest()')
-        self.wait_for_meetings_landing_page()
-        logging.info('Skipped oobe screen.')
+        raise NotImplementedError
 
     def is_oobe_start_page(self):
         """Check if device is on CFM oobe start screen."""
-        if self._webview_context.EvaluateJavaScript(
-                'window.hrOobIsStartPageForTest()'):
-            logging.info('Is on oobe start page.')
-            return True
-        logging.info('Is not on oobe start page.')
-        return False
+        raise NotImplementedError
 
     # Hangouts commands/functions
+    def start_meeting_session(self):
+        """Start a meeting."""
+        if self.is_in_meeting_session():
+            self.end_meeting_session()
+
+        self._execute_telemetry_command('startMeeting()')
+        self.wait_for_meetings_in_call_page()
+        logging.info('Started meeting session.')
+
     def join_meeting_session(self, meeting_name):
         """Joins a meeting.
 
@@ -88,6 +91,42 @@ class CfmMeetingsAPI(object):
             return True
         logging.info('Is not in meeting session.')
         return False
+
+    def start_new_hangout_session(self, hangout_name):
+        """Start a new hangout session.
+
+        @param hangout_name: Name of the hangout session.
+        """
+        raise NotImplementedError
+
+    def end_hangout_session(self):
+        """End current hangout session."""
+        raise NotImplementedError
+
+    def is_in_hangout_session(self):
+        """Check if device is in hangout session."""
+        raise NotImplementedError
+
+    def is_ready_to_start_hangout_session(self):
+        """Check if device is ready to start a new hangout session."""
+        raise NotImplementedError
+
+    # Diagnostics commands/functions
+    def is_diagnostic_run_in_progress(self):
+        """Check if hotrod diagnostics is running."""
+        raise NotImplementedError
+
+    def wait_for_diagnostic_run_to_complete(self):
+        """Wait for hotrod diagnostics to complete."""
+        raise NotImplementedError
+
+    def run_diagnostics(self):
+        """Run hotrod diagnostics."""
+        raise NotImplementedError
+
+    def get_last_diagnostics_results(self):
+        """Get latest hotrod diagnostics results."""
+        raise NotImplementedError
 
     # Mic audio commands/functions
     def is_mic_muted(self):
@@ -125,6 +164,14 @@ class CfmMeetingsAPI(object):
                                         % mic_name)
         logging.info('Setting preferred mic to %s.', mic_name)
 
+    def remote_mute_mic(self):
+        """Remote mic mute request from cPanel."""
+        raise NotImplementedError
+
+    def remote_unmute_mic(self):
+        """Remote mic unmute request from cPanel."""
+        raise NotImplementedError
+
     # Speaker commands/functions
     def get_speaker_devices(self):
         """Get all speaker devices detected by hotrod."""
@@ -154,6 +201,10 @@ class CfmMeetingsAPI(object):
     def get_speaker_volume(self):
         """Get current speaker volume."""
         return self._evaluate_telemetry_command('getAudioOutVolume()')
+
+    def play_test_sound(self):
+        """Play test sound."""
+        raise NotImplementedError
 
     # Camera commands/functions
     def get_camera_devices(self):
