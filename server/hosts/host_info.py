@@ -39,7 +39,7 @@ class HostInfo(object):
 
     _VERSION_LABELS = (
             provision.CROS_VERSION_PREFIX,
-            provision.CROS_TH_VERSION_PREFIX,
+            provision.CROS_ANDROID_VERSION_PREFIX,
             provision.ANDROID_BUILD_VERSION_PREFIX,
             provision.TESTBED_BUILD_VERSION_PREFIX,
     )
