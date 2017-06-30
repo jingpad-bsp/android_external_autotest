@@ -17,6 +17,8 @@ import time
 import unittest
 import urllib2
 
+import mock
+
 import common
 from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import android_utils
@@ -255,6 +257,10 @@ class DevServerTest(mox.MoxTestBase):
         dev_server.RESTRICTED_SUBNETS = []
         self.mox.StubOutWithMock(dev_server.ImageServer,
                                  '_read_json_response_from_devserver')
+
+        sleep = mock.patch('time.sleep', autospec=True)
+        sleep.start()
+        self.addCleanup(sleep.stop)
 
 
     def testSimpleResolve(self):
