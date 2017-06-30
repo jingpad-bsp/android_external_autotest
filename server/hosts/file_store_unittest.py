@@ -183,5 +183,11 @@ class FileStoreTestCase(unittest.TestCase):
         self.assertEqual(1, mock_file_lock.write_lock.call_count)
 
 
+    def test_str(self):
+        """Sanity tests the __str__ implementaiton"""
+        store = file_store.FileStore('/foo/path')
+        self.assertEqual(str(store), 'FileStore[/foo/path]')
+
+
 if __name__ == '__main__':
     unittest.main()
