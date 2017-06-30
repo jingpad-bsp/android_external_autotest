@@ -26,7 +26,6 @@ def video_log_wrapper(func):
     @param func: function, the test function, e.g., run_once
     @returns decorator function
     """
-    #TODO(hiroh): test kernel log on elm/oak (see crbug.com/697733)
     vlog = VideoLog()
 
     #videobuf2 log
@@ -43,6 +42,34 @@ def video_log_wrapper(func):
                      ['1'],
                      ['0'],
                      's5p_mfc log')
+
+    #rk3399 log
+    #rk3399 debug level is controlled by bits.
+    #Here, 3 means to enable log level 0 and 1.
+    fpath = '/sys/module/rockchip_vpu/parameters/debug'
+    if os.path.exists(fpath):
+        vlog.add_log([fpath],
+                     ['3'],
+                     ['0'],
+                     'rk3399 log')
+
+    #rk3288 log
+    #rk3288 debug level is controlled by bits.
+    #Here, 3 means to enable log level 0 and 1.
+    fpath = '/sys/module/rk3288_vpu/parameters/debug'
+    if os.path.exists(fpath):
+        vlog.add_log([fpath],
+                     ['3'],
+                     ['0'],
+                     'rk3288 log')
+
+    #go2001 log
+    fpath = '/sys/module/go2001/parameters/go2001_debug_level'
+    if os.path.exists(fpath):
+        vlog.add_log([fpath],
+                     ['1'],
+                     ['0'],
+                     'go2001 log')
 
     def call(*args, **kwargs):
         """
