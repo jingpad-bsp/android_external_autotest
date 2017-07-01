@@ -1745,78 +1745,34 @@ class DiskStateLogger(threading.Thread):
 
 def parse_pmc_s0ix_residency_info():
     """
-    Parses s0ix residency for PMC based intel systems (skylake/kabylake).
+    Parses S0ix residency for PMC based Intel systems
+    (skylake/kabylake/apollolake), the debugfs paths might be
+    different from platform to platform, yet the format is
+    unified in microseconds.
 
     @returns residency in seconds.
     @raises error.TestNAError if the debugfs file not found.
     """
-    info_path = '/sys/kernel/debug/pmc_core/slp_s0_residency_usec'
-    if not os.path.exists(info_path):
-        raise error.TestNAError('File: ' + info_path + ' used to'
-                                ' measure s0ix residency does not exist')
+    info_path = None
+    for node in ['/sys/kernel/debug/pmc_core/slp_s0_residency_usec',
+                 '/sys/kernel/debug/telemetry/s0ix_residency_usec']:
+        if os.path.exists(node):
+            info_path = node
+            break
+    if not info_path:
+        raise error.TestNAError('S0ix residency file not found')
     return float(utils.read_one_line(info_path)) * 1e-6
-
-def parse_telemetry_s0ix_residency_info():
-    """
-    Parses the ioss_info file which contains the S0ix residency counter
-    on reef variants.
-    Example file :
-    --------------------------------------
-    I0SS TELEMETRY EVENTLOG
-    --------------------------------------
-    SOC_S0IX_TOTAL_RES               0xd241b68
-
-    @returns residency in seconds.
-    @raises error.TestNAError if the debugfs file not found.
-    """
-
-    ioss_info_path = '/sys/kernel/debug/telemetry/ioss_info'
-    S0IX_CLOCK_HZ = 19.2e6
-    if not os.path.exists(ioss_info_path):
-        raise error.TestNAError('File: ' + ioss_info_path + ' used to'
-                                ' measure s0ix residency does not exist')
-
-    with open(ioss_info_path) as fd:
-        residency = -1
-        for line in fd:
-            if line.startswith('SOC_S0IX_TOTAL_RES'):
-                #residency here is a clock pulse with XTAL of 19.2mhz.
-                residency = int(line.rsplit(None, 1)[-1], 0)
-                logging.debug("S0ix Residency: %d", residency)
-            # Helps in debugging scenarios where the residency count has not increased.
-            elif 'BLOCK' in line:
-                logging.debug(line)
-        if residency is not -1:
-            return residency / S0IX_CLOCK_HZ
-    raise error.TestNAError('Could not find s0ix residency in ' +
-                            ioss_info_path)
 
 
 class S0ixResidencyStats(object):
     """
-    Measures the S0ix residency of a given board over time. Since
-    the debugfs path and the format of the file with the information
-    about S0ix residency might differ for every platform, we have a platform
-    specific parser.
+    Measures the S0ix residency of a given board over time.
     """
     def __init__(self):
-        parsers = [parse_pmc_s0ix_residency_info,
-                   parse_telemetry_s0ix_residency_info]
-
-        self._parse_function = None
-
-        for fx in parsers:
-            try:
-                self._initial_residency = fx()
-                self._parse_function = fx
-                break
-            except error.TestNAError:
-                pass
-        if not self._parse_function:
-            raise error.TestNAError("No S0ix residency data found")
+        self._initial_residency = parse_pmc_s0ix_residency_info()
 
     def get_accumulated_residency_secs(self):
         """
         @returns S0ix Residency since the class has been initialized.
         """
-        return self._parse_function() - self._initial_residency
+        return parse_pmc_s0ix_residency_info() - self._initial_residency
