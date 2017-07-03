@@ -661,3 +661,4 @@ class ArcTest(test.test):
         logging.info('Unblocking outbound connection')
         _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
         _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 -j ACCEPT')
+        _android_shell('iptables -D OUTPUT -j REJECT')
