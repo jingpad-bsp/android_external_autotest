@@ -12,6 +12,7 @@ import mox, unittest
 import driver  # pylint: disable-msg=W0611
 import error
 import deduping_scheduler, forgiving_config_parser, task, build_event
+from autotest_lib.client.common_lib import priorities
 
 
 class TaskTestBase(mox.MoxTestBase):
@@ -38,8 +39,8 @@ class TaskTestBase(mox.MoxTestBase):
     _POOL = 'fake_pool'
     _SUITE = 'suite'
     _TASK_NAME = 'fake_task_name'
-    _PRIORITY = build_event.BuildEvent.PRIORITY
-    _TIMEOUT = build_event.BuildEvent.TIMEOUT
+    _PRIORITY = build_event.NewBuild.PRIORITY
+    _TIMEOUT = build_event.NewBuild.TIMEOUT
     _FILE_BUGS=False
 
 
@@ -91,6 +92,41 @@ class TaskCreateTest(TaskTestBase):
         self.assertEquals(keyword, self._EVENT_KEY)
         self.assertEquals(new_task.boards,
                           set([x.strip() for x in board_whitelist.split(',')]))
+
+
+    def testCreateFromConfigCheckDefaultPriority(self):
+        """Ensure a CrOS Task can be load prioty/timeout from event's config."""
+        keyword, new_task = task.Task.CreateFromConfigSection(
+                self.config, self._TASK_NAME)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEquals(new_task.priority, self._PRIORITY)
+        self.assertEquals(new_task.timeout, self._TIMEOUT)
+
+
+    def testCreateFromConfigCheckExplicitPriority(self):
+        """Ensure a CrOS Task can be load prioty/timeout defined by user."""
+        PRIORITY = priorities.Priority.DEFAULT
+        TIMEOUT = 1000
+        self.config.set(self._TASK_NAME, 'priority', 'Default')
+        self.config.set(self._TASK_NAME, 'timeout', str(TIMEOUT))
+        keyword, new_task = task.Task.CreateFromConfigSection(
+                self.config, self._TASK_NAME)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEqual(PRIORITY, new_task.priority)
+        self.assertEqual(TIMEOUT, new_task.timeout)
+
+
+    def testCreateFromConfigCheckExplicitPriorityWithNumber(self):
+        """Ensure a CrOS Task can be load prioty/timeout defined by user."""
+        PRIORITY = 100
+        TIMEOUT = 1000
+        self.config.set(self._TASK_NAME, 'priority', "100")
+        self.config.set(self._TASK_NAME, 'timeout', str(TIMEOUT))
+        keyword, new_task = task.Task.CreateFromConfigSection(
+                self.config, self._TASK_NAME)
+        self.assertEquals(keyword, self._EVENT_KEY)
+        self.assertEqual(PRIORITY, new_task.priority)
+        self.assertEqual(TIMEOUT, new_task.timeout)
 
 
     def testCreateFromConfigCheckNonExistBoards(self):
