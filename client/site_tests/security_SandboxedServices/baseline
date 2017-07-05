@@ -13,10 +13,10 @@ rsyslogd,syslog,syslog,No,Yes,No,No
 dbus-daemon,messagebus,messagebus,No,Yes,No,No
 wpa_supplicant,wpa,wpa,No,Yes,No,No
 shill,root,root,No,No,No,No
-chapsd,chaps,chronos-access,No,Yes,No,No
+chapsd,chaps,chronos-access,No,Yes,Yes,No
 cryptohomed,root,root,No,No,No,No
 powerd,power,power,No,Yes,No,No
-ModemManager,modem,modem,No,Yes,No,No
+ModemManager,modem,modem,No,Yes,Yes,No
 dhcpcd,dhcp,dhcp,No,Yes,No,No
 metrics_daemon,root,root,No,No,No,No
 disks,root,root,No,No,No,No
@@ -32,7 +32,7 @@ tlsdated,tlsdate,tlsdate,No,Yes,No,No
 tlsdated-setter,root,root,No,No,Yes,Yes
 lid_touchpad_he,root,root,No,No,No,No
 thermal.sh,root,root,No,No,No,No
-daisydog,watchdog,watchdog,No,No,No,No
+daisydog,watchdog,watchdog,Yes,Yes,Yes,No
 permission_brok,devbroker,root,No,Yes,Yes,No
 netfilter-queue,nfqueue,nfqueue,No,Yes,No,Yes
 warn_collector,root,root,No,No,No,No
@@ -48,6 +48,7 @@ upstart-socket-,root,root,No,No,No,No
 timberslide,root,root,No,No,No,No
 firewalld,firewall,firewall,Yes,Yes,Yes,No
 conntrackd,nfqueue,nfqueue,No,Yes,Yes,Yes
+avahi-daemon,avahi,avahi,No,Yes,No,No
 
 # Broadcomm bluetooth firmware patch downloader runs on some veyron boards.
 brcm_patchram_p,root,root,No,No,No,No
