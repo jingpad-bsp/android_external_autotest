@@ -982,53 +982,6 @@ class Job(DBObject):
         return "%s-%s" % (self.id, self.owner)
 
 
-    def is_image_update_job(self):
-        """
-        Discover if the current job requires an OS update.
-
-        @return: True/False if OS should be updated before job is run.
-        """
-        # All image update jobs have the parameterized_job_id set.
-        if not self.parameterized_job_id:
-            return False
-
-        # Retrieve the ID of the ParameterizedJob this job is an instance of.
-        rows = _db.execute("""
-                SELECT test_id
-                FROM afe_parameterized_jobs
-                WHERE id = %s
-                """, (self.parameterized_job_id,))
-        if not rows:
-            return False
-        test_id = rows[0][0]
-
-        # Retrieve the ID of the known autoupdate_ParameterizedJob.
-        rows = _db.execute("""
-                SELECT id
-                FROM afe_autotests
-                WHERE name = 'autoupdate_ParameterizedJob'
-                """)
-        if not rows:
-            return False
-        update_id = rows[0][0]
-
-        # If the IDs are the same we've found an image update job.
-        if test_id == update_id:
-            # Finally, get the path to the OS image to install.
-            rows = _db.execute("""
-                    SELECT parameter_value
-                    FROM afe_parameterized_job_parameters
-                    WHERE parameterized_job_id = %s
-                    """, (self.parameterized_job_id,))
-            if rows:
-                # Save the path in update_image_path to use later as a command
-                # line parameter to autoserv.
-                self.update_image_path = rows[0][0]
-                return True
-
-        return False
-
-
     def get_execution_details(self):
         """
         Get test execution details for this job.
