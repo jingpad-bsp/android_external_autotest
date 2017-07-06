@@ -44,8 +44,7 @@ PERF_DAILY_RUN_TESTS = (
     'smoothness.tough_scrolling_cases',
     'smoothness.tough_webgl_cases',
     'sunspider',
-    'webrtc.peerconnection',
-    'webrtc.stress',
+    'webrtc',
 )
 
 PERF_NO_SUITE = (
