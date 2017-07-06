@@ -38,7 +38,6 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.scheduler import drone_logging_config
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config
-from autotest_lib.server import hosts
 from autotest_lib.server import subcommand
 
 
@@ -598,6 +597,9 @@ class ProcessRefresher(object):
 
 
 def create_host(hostname):
+    # TODO(crbug.com/739466) Delay import to avoid a ~0.7 second penalty
+    # drone_utility calls that don't actually interact with DUTs.
+    from autotest_lib.server import hosts
     username = global_config.global_config.get_config_value(
         'SCHEDULER', hostname + '_username', default=getpass.getuser())
     return hosts.SSHHost(hostname, user=username)
