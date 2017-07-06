@@ -50,10 +50,14 @@ def add_args(parser):
                              'Unwanted channels can be specified by 0. '
                              'E.g.: --freqs 1000 0 2000 0 3000. '
                              'It means only channe 0,2,4 are to be examined.')
-    parser.add_argument('--freq_threshold', metavar='FREQ_THRESHOLD', type=float,
+    parser.add_argument('--freq-threshold', metavar='FREQ_THRESHOLD', type=float,
                         default=5,
                         help='Frequency difference threshold in Hz. '
                              'Default is 5Hz')
+    parser.add_argument('--ignore-high-freq', metavar='HIGH_FREQ_THRESHOLD',
+                        type=float, default=5000,
+                        help='Frequency threshold in Hz to be ignored for '
+                             'high frequency. Default is 5KHz')
     parser.add_argument('-b', '--bit-width', metavar='BIT_WIDTH', type=int,
                         default=32,
                         help='For raw file. Bit width of a sample. '
@@ -225,9 +229,10 @@ class QualityChecker(object):
         self._spectrals = []
 
 
-    def do_spectral_analysis(self, check_quality=False):
+    def do_spectral_analysis(self, ignore_high_freq, check_quality=False):
         """Gets the spectral_analysis result.
 
+        @param ignore_high_freq: Ignore high frequencies above this threshold.
         @param check_quality: Check quality of each channel.
 
         """
@@ -249,8 +254,16 @@ class QualityChecker(object):
             logging.debug('max signal after normalized: %f', max(normalized_signal))
             spectral = audio_analysis.spectral_analysis(
                     normalized_signal, self._rate)
-            logging.info('Channel %d spectral:\n%s', channel_idx,
-                         pprint.pformat(spectral))
+
+            logging.debug('Channel %d spectral:\n%s', channel_idx,
+                          pprint.pformat(spectral))
+
+            # Ignore high frequencies above the threshold.
+            spectral = [(f, c) for (f, c) in spectral if f < ignore_high_freq]
+
+            logging.info('Channel %d spectral after ignoring high frequencies '
+                          'above %f:\n%s', channel_idx, ignore_high_freq,
+                          pprint.pformat(spectral))
 
             if check_quality:
                 quality = audio_quality_measurement.quality_measurement(
@@ -286,6 +299,9 @@ class QualityChecker(object):
         for idx, expected_freq in enumerate(expected_freqs):
             if expected_freq == 0:
                 continue
+            if not self._spectrals[idx]:
+                raise CompareFailure(
+                        'Failed at channel %d: no dominant frequency' % idx)
             dominant_freq = self._spectrals[idx][0][0]
             if abs(dominant_freq - expected_freq) > freq_threshold:
                 raise CompareFailure(
@@ -342,7 +358,9 @@ if __name__ == "__main__":
 
     checker = QualityChecker(raw_data, rate)
 
-    checker.do_spectral_analysis(check_quality=(not args.spectral_only))
+    checker.do_spectral_analysis(ignore_high_freq=args.ignore_high_freq,
+                                 check_quality=(not args.spectral_only))
+
 
     if args.freqs:
         checker.check_freqs(args.freqs, args.freq_threshold)
