@@ -214,7 +214,12 @@ class QualityCheckerError(Exception):
 
 
 class CompareFailure(QualityCheckerError):
-    """Exception when frequency comparison failes."""
+    """Exception when frequency comparison fails."""
+    pass
+
+
+class QualityFailure(QualityCheckerError):
+    """Exception when quality check fails."""
     pass
 
 
@@ -314,6 +319,36 @@ class QualityChecker(object):
                                 idx, dominant_freq, expected_freq))
 
 
+    def check_quality(self):
+        """Checks the quality measurement results on each channel.
+
+        @raises: QualityFailure when there is artifact.
+
+        """
+        error_msgs = []
+
+        for idx, quality_res in enumerate(self._quality_result):
+            artifacts = quality_res['artifacts']
+            if artifacts['noise_before_playback']:
+                error_msgs.append(
+                        'Found noise before playback: %s' % (
+                                artifacts['noise_before_playback']))
+            if artifacts['noise_after_playback']:
+                error_msgs.append(
+                        'Found noise after playback: %s' % (
+                                artifacts['noise_after_playback']))
+            if artifacts['delay_during_playback']:
+                error_msgs.append(
+                        'Found delay during playback: %s' % (
+                                artifacts['delay_during_playback']))
+            if artifacts['burst_during_playback']:
+                error_msgs.append(
+                        'Found burst during playback: %s' % (
+                                artifacts['burst_during_playback']))
+        if error_msgs:
+            raise QualityFailure('Found bad quality: %s', '\n'.join(error_msgs))
+
+
     def dump(self, output_file):
         """Dumps the result into a file in json format.
 
@@ -387,3 +422,6 @@ if __name__ == "__main__":
 
     if args.freqs:
         checker.check_freqs(args.freqs, args.freq_threshold)
+
+    if not args.spectral_only:
+        checker.check_quality()
