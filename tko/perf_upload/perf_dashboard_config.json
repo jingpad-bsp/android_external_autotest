@@ -8,6 +8,10 @@
     "master_name": "ChromeOS_Audio"
   },
   {
+    "autotest_name": "autoupdate_EndToEndTest",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "bluetooth_Sanity_Discoverable",
     "master_name": "ChromeOSPerf"
   },
