@@ -36,7 +36,6 @@ from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.scheduler import drone_logging_config
-from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import subcommand
 
@@ -243,8 +242,7 @@ class DroneUtility(object):
                 out_file.write("%s> %s\n" % (time.strftime("%X %x"), command))
                 out_file.write(separator)
             except (OSError, IOError):
-                email_manager.manager.log_stacktrace(
-                    'Error opening log file %s' % log_file)
+                pass
 
         if not out_file:
             out_file = open('/dev/null', 'w')
