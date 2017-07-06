@@ -1169,8 +1169,6 @@ class AbstractQueueTask(agent_task.AgentTask, agent_task.TaskWithJobKeyvals):
             ['-P', execution_tag, '-n',
              _drone_manager.absolute_path(control_path)],
             job=self.job, verbose=False)
-        if self.job.is_image_update_job():
-            params += ['--image', self.job.update_image_path]
 
         return params
 
