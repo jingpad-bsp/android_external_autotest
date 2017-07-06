@@ -4,9 +4,6 @@
 
 import logging
 
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-
 DEFAULT_TIMEOUT = 30
 TELEMETRY_API = 'hrTelemetryApi'
 
@@ -37,25 +34,17 @@ class CfmMeetingsAPI(object):
     def wait_for_meetings_landing_page(self):
         """Waits for the landing page screen."""
         self._webview_context.WaitForJavaScriptCondition(
-            'window.hasOwnProperty("%s")' % TELEMETRY_API,
+            'window.hasOwnProperty("%s") '
+            '&& !window.%s.isInMeeting()' % (TELEMETRY_API, TELEMETRY_API),
             timeout=DEFAULT_TIMEOUT)
-        utils.poll_for_condition(
-            lambda: not self._evaluate_telemetry_command('isInMeeting()'),
-            exception=error.TestFail('Timed out waiting for landing page.'),
-            timeout=DEFAULT_TIMEOUT,
-            sleep_interval=1)
         logging.info('Reached meetings landing page.')
 
     def wait_for_meetings_in_call_page(self):
         """Waits for the in-call page to launch."""
         self._webview_context.WaitForJavaScriptCondition(
-            'window.hasOwnProperty("%s")' % TELEMETRY_API,
+            'window.hasOwnProperty("%s") '
+            '&& window.%s.isInMeeting()' % (TELEMETRY_API, TELEMETRY_API),
             timeout=DEFAULT_TIMEOUT)
-        utils.poll_for_condition(
-            lambda: self.is_in_meeting_session(),
-            exception=error.TestFail('Not able to start meeting session.'),
-            timeout=DEFAULT_TIMEOUT,
-            sleep_interval=1)
         logging.info('Reached meetings in-call page.')
 
     def skip_oobe_screen(self):
