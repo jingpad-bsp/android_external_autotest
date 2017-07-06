@@ -7,6 +7,7 @@
 """Command line tool to analyze wave file and detect artifacts."""
 
 import argparse
+import collections
 import json
 import logging
 import math
@@ -28,6 +29,15 @@ except ImportError:
     import audio_analysis
     import audio_data
     import audio_quality_measurement
+
+
+# Holder for quality parameters used in audio_quality_measurement module.
+QualityParams = collections.namedtuple('QualityParams',
+      ['block_size_secs',
+       'frequency_error_threshold',
+       'delay_amplitude_threshold',
+       'noise_amplitude_threshold',
+       'burst_amplitude_threshold'])
 
 
 def add_args(parser):
@@ -74,7 +84,41 @@ def add_args(parser):
                         help='For raw file. Number of channels. '
                              'Default is 8.')
 
-
+    # Arguments for quality measurement customization.
+    parser.add_argument(
+             '--quality-block-size-secs',
+             metavar='BLOCK_SIZE_SECS', type=float,
+             default=audio_quality_measurement.DEFAULT_BLOCK_SIZE_SECS,
+             help='Block size for quality measurement. '
+                  'Refer to audio_quality_measurement module for detail.')
+    parser.add_argument(
+             '--quality-frequency-error-threshold',
+             metavar='FREQ_ERR_THRESHOLD', type=float,
+             default=audio_quality_measurement.DEFAULT_FREQUENCY_ERROR,
+             help='Frequency error threshold for identifying sine wave'
+                  'in quality measurement. '
+                  'Refer to audio_quality_measurement module for detail.')
+    parser.add_argument(
+             '--quality-delay-amplitude-threshold',
+             metavar='DELAY_AMPLITUDE_THRESHOLD', type=float,
+             default=audio_quality_measurement.DEFAULT_DELAY_AMPLITUDE_THRESHOLD,
+             help='Amplitude ratio threshold for identifying delay in sine wave'
+                  'in quality measurement. '
+                  'Refer to audio_quality_measurement module for detail.')
+    parser.add_argument(
+             '--quality-noise-amplitude-threshold',
+             metavar='NOISE_AMPLITUDE_THRESHOLD', type=float,
+             default=audio_quality_measurement.DEFAULT_NOISE_AMPLITUDE_THRESHOLD,
+             help='Amplitude ratio threshold for identifying noise in sine wave'
+                  'in quality measurement. '
+                  'Refer to audio_quality_measurement module for detail.')
+    parser.add_argument(
+             '--quality-burst-amplitude-threshold',
+             metavar='BURST_AMPLITUDE_THRESHOLD', type=float,
+             default=audio_quality_measurement.DEFAULT_BURST_AMPLITUDE_THRESHOLD,
+             help='Amplitude ratio threshold for identifying burst in sine wave'
+                  'in quality measurement. '
+                  'Refer to audio_quality_measurement module for detail.')
 
 
 def parse_args(parser):
@@ -238,11 +282,13 @@ class QualityChecker(object):
         self._quality_result = []
 
 
-    def do_spectral_analysis(self, ignore_high_freq, check_quality=False):
+    def do_spectral_analysis(self, ignore_high_freq, check_quality,
+                             quality_params):
         """Gets the spectral_analysis result.
 
         @param ignore_high_freq: Ignore high frequencies above this threshold.
         @param check_quality: Check quality of each channel.
+        @param quality_params: A QualityParams object for quality measurement.
 
         """
         self.has_data()
@@ -278,7 +324,13 @@ class QualityChecker(object):
                 quality = audio_quality_measurement.quality_measurement(
                         signal=normalized_signal,
                         rate=self._rate,
-                        dominant_frequency=spectral[0][0])
+                        dominant_frequency=spectral[0][0],
+                        block_size_secs=quality_params.block_size_secs,
+                        frequency_error_threshold=quality_params.frequency_error_threshold,
+                        delay_amplitude_threshold=quality_params.delay_amplitude_threshold,
+                        noise_amplitude_threshold=quality_params.noise_amplitude_threshold,
+                        burst_amplitude_threshold=quality_params.burst_amplitude_threshold)
+
                 logging.debug('Channel %d quality:\n%s', channel_idx,
                               pprint.pformat(quality))
                 self._quality_result.append(quality)
@@ -399,6 +451,24 @@ def read_audio_file(args):
     return raw_data, rate
 
 
+def get_quality_params(args):
+    """Gets quality parameters in arguments.
+
+    @param args: The namespace parsed from command line arguments.
+
+    @returns: A QualityParams object.
+
+    """
+    quality_params = QualityParams(
+            block_size_secs=args.quality_block_size_secs,
+            frequency_error_threshold=args.quality_frequency_error_threshold,
+            delay_amplitude_threshold=args.quality_delay_amplitude_threshold,
+            noise_amplitude_threshold=args.quality_noise_amplitude_threshold,
+            burst_amplitude_threshold=args.quality_burst_amplitude_threshold)
+
+    return quality_params
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Check signal quality of a wave file. Each channel should'
@@ -414,8 +484,11 @@ if __name__ == "__main__":
 
     checker = QualityChecker(raw_data, rate)
 
+    quality_params = get_quality_params(args)
+
     checker.do_spectral_analysis(ignore_high_freq=args.ignore_high_freq,
-                                 check_quality=(not args.spectral_only))
+                                 check_quality=(not args.spectral_only),
+                                 quality_params=quality_params)
 
     if args.output_file:
         checker.dump(args.output_file)
