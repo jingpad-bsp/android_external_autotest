@@ -24,16 +24,6 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 
-try:
-    from chromite.lib import cros_build_lib
-    from chromite.lib import ts_mon_config
-except ImportError:
-    logging.warn('Unable to import chromite. Monarch is disabled.')
-    # Init the module variable to None. Access to this module can check if it
-    # is not None before making calls.
-    cros_build_lib = None
-    ts_mon_config = None
-
 
 CONFIG = global_config.global_config
 
@@ -606,7 +596,17 @@ def is_inside_chroot():
              cannot be imported.
 
     """
-    return not cros_build_lib or cros_build_lib.IsInsideChroot()
+    try:
+        # TODO(crbug.com/739466) This module import is delayed because it adds
+        # 1-2 seconds to the module import time and most users of site_utils
+        # don't need it. The correct fix is to break apart site_utils into more
+        # meaningful chunks.
+        from chromite.lib import cros_build_lib
+    except ImportError:
+        logging.warn('Unable to import chromite. Can not detect chroot. '
+                     'Defaulting to False')
+        return False
+    return cros_build_lib.IsInsideChroot()
 
 
 def parse_job_name(name):
@@ -765,17 +765,24 @@ def SetupTsMonGlobalState(*args, **kwargs):
     @param *args: Args to pass through.
     @param **kwargs: Kwargs to pass through.
     """
-    if ts_mon_config:
-        try:
-            context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
-            if hasattr(context, '__exit__'):
-                return context
-        except Exception as e:
-            logging.warning('Caught an exception trying to setup ts_mon, '
-                            'monitoring is disabled: %s', e, exc_info=True)
+    try:
+        # TODO(crbug.com/739466) This module import is delayed because it adds
+        # 1-2 seconds to the module import time and most users of site_utils
+        # don't need it. The correct fix is to break apart site_utils into more
+        # meaningful chunks.
+        from chromite.lib import ts_mon_config
+    except ImportError:
+        logging.warn('Unable to import chromite. Monarch is disabled.')
         return TrivialContextManager()
-    else:
-        return TrivialContextManager()
+
+    try:
+        context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
+        if hasattr(context, '__exit__'):
+            return context
+    except Exception as e:
+        logging.warning('Caught an exception trying to setup ts_mon, '
+                        'monitoring is disabled: %s', e, exc_info=True)
+    return TrivialContextManager()
 
 
 @contextlib.contextmanager
