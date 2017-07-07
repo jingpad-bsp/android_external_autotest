@@ -1,10 +1,14 @@
 # Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import logging
 
 import common
 from autotest_lib.server import test
 from autotest_lib.site_utils import acts_lib
+from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import dnsname_mangler
+from autotest_lib.server import afe_utils
 
 
 class android_EasySetup(test.test):
@@ -29,7 +33,28 @@ class android_EasySetup(test.test):
                                 artifact = Name of the artifact, if not given
                                            package is used.
         """
-        testbed_env = acts_lib.AndroidTestingEnviroment(testbed)
+        hostname = testbed.hostname
+        if dnsname_mangler.is_ip_address(hostname):
+            testbed_name = hostname
+        else:
+            testbed_name = hostname.split('.')[0]
+
+        valid_hosts = []
+        for v in testbed.get_adb_devices().values():
+            try:
+                afe_utils.get_host_attribute(v, v.job_repo_url_attribute)
+            except error.AutoservError:
+                pass
+            else:
+                valid_hosts.append(v)
+
+        if not valid_hosts:
+            logging.error('No valid devices.')
+            return
+
+        testbed_env = acts_lib.AndroidTestingEnvironment(
+                devices=valid_hosts,
+                testbed_name=testbed_name)
 
         if install_sl4a:
             testbed_env.install_sl4a_apk()
