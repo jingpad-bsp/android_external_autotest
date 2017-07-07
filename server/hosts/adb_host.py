@@ -1684,8 +1684,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if include_build_info:
             teststation_temp_dir = self.teststation.get_tmp_dir()
 
-            job_repo_url = afe_utils.get_host_attribute(
-                    self, self.job_repo_url_attribute)
+            try:
+                job_repo_url = afe_utils.get_host_attribute(
+                        self, self.job_repo_url_attribute)
+            except error.AutoservError:
+                logging.warning(
+                    'Device %s could not get repo url for build info.',
+                    self.adb_serial)
+                return
+
+            if not job_repo_url:
+                logging.warning(
+                    'Device %s could not get repo url for build info.',
+                    self.adb_serial)
+                return
+
             build_info = ADBHost.get_build_info_from_build_url(
                     job_repo_url)
 
