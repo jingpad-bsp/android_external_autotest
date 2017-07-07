@@ -12,16 +12,10 @@ from autotest_lib.client.cros.graphics import graphics_utils
 
 class graphics_GLAPICheck(graphics_utils.GraphicsTest):
     """
-    Verify correctness of OpenGL/GLES and X11 versions/extensions.
+    Verify correctness of OpenGL/GLES.
     """
     version = 1
-    preserve_srcdir = True
     error_message = ''
-
-    def setup(self):
-        os.chdir(self.srcdir)
-        utils.make('clean')
-        utils.make('all')
 
     def __check_extensions(self, info, ext_entries):
         info_split = info.split()
