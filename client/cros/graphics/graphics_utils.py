@@ -555,20 +555,6 @@ def get_num_outputs_on():
     return _get_num_outputs_connected()
 
 
-def call_xrandr(args_string=''):
-    """
-    Calls xrandr with the args given by args_string.
-
-    e.g. call_xrandr('--output LVDS1 --off') will invoke:
-        'xrandr --output LVDS1 --off'
-
-    @param args_string: A single string containing all arguments.
-
-    Return value: Output of xrandr
-    """
-    return utils.system_output(xcommand('xrandr %s' % args_string))
-
-
 def get_modetest_connectors():
     """
     Retrieves a list of Connectors using modetest.
