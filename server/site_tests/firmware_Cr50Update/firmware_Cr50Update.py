@@ -165,7 +165,7 @@ class firmware_Cr50Update(FirmwareTest):
         # Enable CCD, so we can detect the Cr50 reboot.
         self.cr50.ccd_enable()
 
-        cr50_utils.UsbUpdate(self.host, ['-s', dest])
+        cr50_utils.UsbUpdater(self.host, ['-s', dest])
 
         # After usb_updater finishes running, Cr50 will reboot. Wait until Cr50
         # reboots before continuing. Cr50 reboot can be detected by detecting
