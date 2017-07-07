@@ -40,6 +40,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     FWMP_LOCKED_PROD = ["Managed device console can't be unlocked"]
     FWMP_LOCKED_DBG = ['Ignoring FWMP unlock setting']
     MAX_RETRY_COUNT = 5
+    START_STR = ['(.*Console is enabled;)']
 
 
     def __init__(self, servo):
@@ -105,12 +106,26 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def reboot(self):
         """Reboot Cr50 and wait for CCD to be enabled"""
+        self.send_command('reboot')
+        self.wait_for_reboot()
+
+
+    def wait_for_reboot(self, timeout=60):
+        """Wait for cr50 to reboot"""
         if self.using_ccd():
-            self.send_command('reboot')
-            self.wait_for_ccd_disable()
+            # Cr50 USB is reset when it reboots. Wait for the CCD connection to
+            # go down to detect the reboot.
+            self.wait_for_ccd_disable(timeout, raise_error=False)
             self.ccd_enable()
         else:
-            self.send_command_get_output('reboot', ['Console is enabled;'])
+            # Look for the boot string declaring the console is ready. If we
+            # don't find it, its ok. The command will timeout after 3 seconds
+            # which is longer than the time it takes for cr50 to reboot.
+            try:
+                rv = self.send_command_get_output('\n\n', self.START_STR)
+                logging.debug(rv[0][0])
+            except:
+                pass
 
 
     def rollback(self, eraseflashinfo=True):
