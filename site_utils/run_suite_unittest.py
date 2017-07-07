@@ -279,7 +279,7 @@ class ResultCollectorUnittest(unittest.TestCase):
 
     def _end_to_end_test_helper(
             self, include_bad_test=False, include_warn_test=False,
-            include_experimental_bad_test=False, include_timeout_test=False,
+            include_timeout_test=False,
             include_self_aborted_test=False,
             include_aborted_by_suite_test=False,
             include_good_retry=False, include_bad_retry=False,
@@ -293,9 +293,6 @@ class ResultCollectorUnittest(unittest.TestCase):
                 If True, include a view of a test which has status 'FAIL'.
         @param include_warn_test:
                 If True, include a view of a test which has status 'WARN'
-        @param include_experimental_bad_test:
-                If True, include a view of an experimental test
-                which has status 'FAIL'.
         @param include_timeout_test:
                 If True, include a view of a test which was aborted before
                 started.
@@ -317,7 +314,6 @@ class ResultCollectorUnittest(unittest.TestCase):
         good_job_id = 101
         bad_job_id = 102
         warn_job_id = 102
-        experimental_bad_job_id = 102
         timeout_job_id = 100
         self_aborted_job_id = 104
         aborted_by_suite_job_id = 105
@@ -360,13 +356,6 @@ class ResultCollectorUnittest(unittest.TestCase):
                 warn_job_id, 'lumpy-release/R27-3888.0.0/dummy/dummy_Fail.Warn',
                 'always warn', {}, '2014-04-29 13:16:00',
                 '2014-04-29 13:16:02')
-        experimental_bad_test = self._build_view(
-                14, 'experimental_dummy_Fail.Fail',
-                '102-user/host/dummy_Fail.Fail', 'FAIL',
-                experimental_bad_job_id,
-                'lumpy-release/R27-3888.0.0/dummy/experimental_dummy_Fail.Fail',
-                'always fail', {'experimental': 'True'}, '2014-04-29 13:16:06',
-                '2014-04-29 13:16:07')
         timeout_test = self._build_view(
                 15, 'dummy_Timeout', '', 'ABORT',
                 timeout_job_id,
@@ -424,9 +413,6 @@ class ResultCollectorUnittest(unittest.TestCase):
         if include_warn_test:
             test_views.append(warn_test)
             child_jobs.add(warn_job_id)
-        if include_experimental_bad_test:
-            test_views.append(experimental_bad_test)
-            child_jobs.add(experimental_bad_job_id)
         if include_timeout_test:
             test_views.append(timeout_test)
         if include_self_aborted_test:
@@ -456,13 +442,6 @@ class ResultCollectorUnittest(unittest.TestCase):
         self.assertEqual(collector.return_code, run_suite.RETURN_CODES.OK)
 
 
-    def testEndToEndExperimentalTestFails(self):
-        """Test that it returns code OK when only experimental test fails."""
-        collector = self._end_to_end_test_helper(
-                include_experimental_bad_test=True)
-        self.assertEqual(collector.return_code, run_suite.RETURN_CODES.OK)
-
-
     def testEndToEndSuiteWarn(self):
         """Test it returns code WARNING when there is a test that warns."""
         collector = self._end_to_end_test_helper(include_warn_test=True)
@@ -471,18 +450,7 @@ class ResultCollectorUnittest(unittest.TestCase):
 
     def testEndToEndSuiteFail(self):
         """Test it returns code ERROR when there is a test that fails."""
-        # Test that it returns ERROR when there is test that fails.
         collector = self._end_to_end_test_helper(include_bad_test=True)
-        self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
-
-        # Test that it returns ERROR when both experimental and non-experimental
-        # test fail.
-        collector = self._end_to_end_test_helper(
-                include_bad_test=True, include_warn_test=True,
-                include_experimental_bad_test=True)
-        self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
-
-        collector = self._end_to_end_test_helper(include_self_aborted_test=True)
         self.assertEqual(collector.return_code, run_suite.RETURN_CODES.ERROR)
 
 
