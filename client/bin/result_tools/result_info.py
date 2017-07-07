@@ -35,6 +35,14 @@ class ResultInfo(dict):
     Later in the test, the file was collected again when it's size becomes 200
     bytes, the new ResultInfo will be:
         {'messages': {'/S': 200}}
+
+    Not that the result infos collected from the dut don't have collected_size
+    (/C) set. That's because the collected size in such case is equal to the
+    trimmed_size (/T). If the reuslt is not trimmed and /T is not set, the
+    value of collected_size can fall back to original_size. The design is to not
+    to inject duplicated information in the summary json file, thus reduce the
+    size of data needs to be transfered from the dut.
+
     At the end of the test, the file is considered too big, and trimmed down to
     150 bytes, thus the final ResultInfo of the file becomes:
         {'messages': {# The original size is 200 bytes
@@ -217,9 +225,20 @@ class ResultInfo(dict):
         top_dir = top_dir or parent_dir
         all_dirs = all_dirs or set()
 
+        # If the given parent_dir is a file and name is ROOT_DIR, that means
+        # the ResultInfo is for a single file with root directory of the default
+        # ROOT_DIR.
+        if not os.path.isdir(parent_dir) and name == utils_lib.ROOT_DIR:
+            root_dir = os.path.dirname(parent_dir)
+            dir_info = ResultInfo(parent_dir=root_dir,
+                                  name=utils_lib.ROOT_DIR)
+            dir_info.add_file(os.path.basename(parent_dir))
+            return dir_info
+
         dir_info = ResultInfo(parent_dir=parent_dir,
                               name=name,
                               parent_result_info=parent_result_info)
+
         path = os.path.join(parent_dir, name)
         if os.path.isdir(path):
             real_path = os.path.realpath(path)
