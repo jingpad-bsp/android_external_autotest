@@ -22,6 +22,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils.chromeos_proxy import swarming_bots
 
 from chromite.lib import metrics
+from chromite.lib import ts_mon_config
 
 
 # The seconds between consequent bot check.
@@ -29,7 +30,7 @@ CHECK_INTERVAL = 180
 
 _shut_down = False
 
-metrics_prefix = 'chromeos/autotest/swarming/bot_manager/%s'
+metrics_template = 'chromeos/autotest/swarming/bot_manager/%s'
 
 def _parse_args(args):
     """Parse system arguments."""
@@ -94,13 +95,12 @@ def is_server_in_prod(server_name, afe):
     except urllib2.URLError as e:
         logging.warning('RPC get_servers failed on afe %s: %s', afe, str(e))
     finally:
-        metrics.Counter(metrics_prefix % 'server_in_prod_check').increment(
+        metrics.Counter(metrics_template % 'server_in_prod_check').increment(
                 fields={'success': is_prod_proxy_server})
         return is_prod_proxy_server
 
 
-@metrics.SecondsTimerDecorator(
-        'chromeos/autotest/swarming/bot_manager/tick')
+@metrics.SecondsTimerDecorator(metrics_template % 'tick')
 def tick(afe, bot_manager):
     """One tick for swarming bot manager.
 
@@ -142,9 +142,10 @@ def main(args):
             args.swarming_proxy)
     is_prod = False
     retryable = True
-    while not _shut_down:
-        tick(args.afe, bot_manager)
-        time.sleep(CHECK_INTERVAL)
+    with ts_mon_config.SetupTsMonGlobalState('swarming_bots', indirect=True):
+        while not _shut_down:
+            tick(args.afe, bot_manager)
+            time.sleep(CHECK_INTERVAL)
 
 
 if __name__ == '__main__':
