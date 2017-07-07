@@ -166,7 +166,7 @@ def UsbUpdate(client, args):
 
 def GetVersionFromUpdater(client, args):
     """Return the version from usb_updater"""
-    result = client.run("usb_updater %s" % ' '.join(args)).stdout.strip()
+    result = UsbUpdate(client, args).stdout.strip()
     return FindVersion(result, args[0])
 
 
