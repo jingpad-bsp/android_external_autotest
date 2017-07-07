@@ -53,3 +53,42 @@ def get_host_ip():
                                    interface_names)
     netif = interface.Interface(lxc_network)
     return netif.ipv4_address
+
+def clone(lxc_path, src_name, new_path, dst_name, snapshot):
+    """Clones a container.
+
+    @param lxc_path: The LXC path of the source container.
+    @param src_name: The name of the source container.
+    @param new_path: The LXC path of the destination container.
+    @param dst_name: The name of the destination container.
+    @param snapshot: Whether or not to create a snapshot clone.
+    """
+    snapshot_arg = '-s' if snapshot else ''
+    # overlayfs is the default clone backend storage. However it is not
+    # supported in Ganeti yet. Use aufs as the alternative.
+    aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
+    cmd = (('sudo lxc-clone --lxcpath {lxcpath} --newpath {newpath} '
+            '--orig {orig} --new {new} {snapshot} {backing}')
+           .format(
+               lxcpath = lxc_path,
+               newpath = new_path,
+               orig = src_name,
+               new = dst_name,
+               snapshot = snapshot_arg,
+               backing = aufs_arg
+           ))
+    utils.run(cmd)
+
+
+def cleanup_host_mount(host_dir):
+    """Unmounts and removes the given host dir.
+
+    @param host_dir: The host dir to unmount and remove.
+    """
+    try:
+        utils.run('sudo umount "%s"' % host_dir)
+    except error.CmdError:
+        # Ignore errors.  Most likely this occurred because the host dir
+        # was already unmounted.
+        pass
+    utils.run('sudo rm -r "%s"' % host_dir)
