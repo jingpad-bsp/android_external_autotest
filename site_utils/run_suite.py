@@ -751,8 +751,7 @@ class TestView(object):
 
         Formalize the test_name we got from the test view.
 
-        Remove 'build/suite' prefix if any. And append 'experimental' prefix
-        for experimental tests if their names do not start with 'experimental'.
+        Remove 'build/suite' prefix if any.
 
         If one runs a test in control file via the following code,
            job.runtest('my_Test', tag='tag')
@@ -770,29 +769,27 @@ class TestView(object):
            prefix from the job name, and append the rest to 'SERVER_JOB'
            or 'CLIENT_JOB' as a prefix. So the names returned by this
            method will look like:
-             'experimental_Telemetry Smoothness Measurement_SERVER_JOB'
-             'experimental_dummy_Pass_SERVER_JOB'
+             'Telemetry Smoothness Measurement_SERVER_JOB'
+             'dummy_Pass_SERVER_JOB'
              'dummy_Fail_SERVER_JOB'
 
         3) A test view is of a suite job and its status is ABORT.
            In this case, the view['test_name'] is the child job's name.
-           If it is an experimental test, 'experimental' will be part
-           of the name. For instance,
+           For instance,
              'lumpy-release/R35-5712.0.0/perf_v2/
-                   experimental_Telemetry Smoothness Measurement'
-             'lumpy-release/R35-5712.0.0/dummy/experimental_dummy_Pass'
+                   Telemetry Smoothness Measurement'
+             'lumpy-release/R35-5712.0.0/dummy/dummy_Pass'
              'lumpy-release/R35-5712.0.0/dummy/dummy_Fail'
            The above names will be converted to the following:
-             'experimental_Telemetry Smoothness Measurement'
-             'experimental_dummy_Pass'
+             'Telemetry Smoothness Measurement'
+             'dummy_Pass'
              'dummy_Fail'
 
         4) A test view's status is of a suite job and its status is TEST_NA.
            In this case, the view['test_name'] is the NAME field of the control
-           file. If it is an experimental test, 'experimental' will part of
-           the name. For instance,
-             'experimental_Telemetry Smoothness Measurement'
-             'experimental_dummy_Pass'
+           file. For instance,
+             'Telemetry Smoothness Measurement'
+             'dummy_Pass'
              'dummy_Fail'
            This method will not modify these names.
 
@@ -814,16 +811,9 @@ class TestView(object):
             testname= '%s_%s' % (self.view['job_name'], self.view['test_name'])
         else:
             testname = self.view['test_name']
-        experimental =  self.is_experimental()
         # Remove the build and suite name from testname if any.
-        testname = tools.get_test_name(
+        self.testname = tools.get_test_name(
                 self.build, self.suite_name, testname)
-        # If an experimental test was aborted, testname
-        # would include the 'experimental' prefix already.
-        prefix = constants.EXPERIMENTAL_PREFIX if (
-                experimental and not
-                testname.startswith(constants.EXPERIMENTAL_PREFIX)) else ''
-        self.testname = prefix + testname
         return self.testname
 
 
@@ -856,17 +846,6 @@ class TestView(object):
 
         """
         return self.view['job_keyvals'].get('retry_original_job_id') is not None
-
-
-    def is_experimental(self):
-        """Check whether a test view is for an experimental test.
-
-        @returns: True if it is for an experimental test, False otherwise.
-
-        """
-        return (self.view['job_keyvals'].get('experimental') == 'True' or
-                tools.get_test_name(self.build, self.suite_name,
-                        self.view['test_name']).startswith('experimental'))
 
 
     def hit_timeout(self):
@@ -1322,8 +1301,6 @@ class ResultCollector(object):
 
         for v in self._test_views:
             # The order of checking each case is important.
-            if v.is_experimental():
-                continue
             if v.get_testname() == TestView.SUITE_JOB:
                 if v.is_aborted() and v.hit_timeout():
                     current_code = RETURN_CODES.SUITE_TIMEOUT
