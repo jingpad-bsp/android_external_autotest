@@ -10,10 +10,11 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.site_utils import acts_lib
-
+from server.cros import dnsname_mangler
 
 CONFIG = global_config.global_config
 
@@ -26,6 +27,7 @@ TEST_CONFIG_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
 TEST_CAMPAIGN_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
                                          'autotest_campaign')
 DEFAULT_TEST_RELATIVE_LOG_PATH = 'results/logs'
+
 
 def get_global_config_value_regex(section, regex):
     """Get config values from global config based on regex of the key.
@@ -73,7 +75,8 @@ class android_ACTS(test.test):
                  acts_timeout=7200,
                  perma_path=None,
                  additional_cmd_line_params=None,
-                 branch_mappings = {},
+                 branch_mappings={},
+                 valid_job_urls_only=False,
                  testtracker_project_id=None,
                  testtracker_extra_env=None,
                  testtracker_owner=None):
@@ -108,6 +111,9 @@ class android_ACTS(test.test):
         @param override_python_bin: Overrides the default python binary that
                                     is used.
         @param acts_timeout: How long to wait for acts to finish.
+        @param valid_job_urls_only: Apps and resources will be downloaded and
+                                    installed only on devices that have valid
+                                    job urls.
         @param perma_path: If given a permantent path will be used rather than
                            a temp path.
         @para branch_mappings: A dictionary of branch names to branch names.
@@ -118,17 +124,39 @@ class android_ACTS(test.test):
         @param testtracker_extra_env: Extra environment info to publish
                                       with the results.
         """
+        hostname = testbed.hostname
+        if not testbed_name:
+            if dnsname_mangler.is_ip_address(hostname):
+                testbed_name = hostname
+            else:
+                testbed_name = hostname.split('.')[0]
+
+        logging.info('Using testbed name %s', testbed_name)
+
         if not override_build:
             override_build = override_build_url
 
-        host = next(v for v in testbed.get_adb_devices().values())
+        valid_hosts = []
+        if valid_job_urls_only:
+            for v in testbed.get_adb_devices().values():
+                try:
+                    afe_utils.get_host_attribute(v, v.job_repo_url_attribute)
+                except error.AutoservError:
+                    pass
+                else:
+                    valid_hosts.append(v)
+        else:
+            valid_hosts = list(testbed.get_adb_devices().values())
 
-        if not host:
-            raise error.TestError('No hosts defined for this test, cannot'
+        if not valid_hosts:
+            raise error.TestError('No valid hosts defined for this test, cannot'
                                   ' determine build to grab artifact from.')
 
-        info = host.host_info_store.get()
-        job_repo_url = info.attributes.get(host.job_repo_url_attribute, '')
+        primary_host = valid_hosts[0]
+
+        info = primary_host.host_info_store.get()
+        job_repo_url = info.attributes.get(primary_host.job_repo_url_attribute,
+                                           '')
         test_station = testbed.teststation
         if not perma_path:
             ts_tempfolder = test_station.get_tmp_dir()
@@ -145,11 +173,10 @@ class android_ACTS(test.test):
             job_build_id = build_pieces[2]
         else:
             job_build_info = adb_host.ADBHost.get_build_info_from_build_url(
-                job_repo_url)
+                    job_repo_url)
             job_build_branch = job_build_info['branch']
             job_build_target = job_build_info['target']
             job_build_id = job_build_info['build_id']
-
 
         if not override_build_url:
             if job_build_branch in branch_mappings:
@@ -169,7 +196,7 @@ class android_ACTS(test.test):
                                    job_build_target,
                                    job_build_id)
         devserver = dev_server.AndroidBuildServer.resolve(build_name,
-                                                          host.hostname)
+                                                          primary_host.hostname)
         build_name = devserver.translate(build_name)
         build_branch, build_target, build_id = build_name.split('/')
 
@@ -177,18 +204,22 @@ class android_ACTS(test.test):
                      build_branch, build_target, build_id)
 
         if override_acts_zip:
-            package = acts_lib.create_acts_package_from_zip(
-                test_station, override_acts_zip, target_zip)
+            package = acts_lib.create_acts_package_from_zip(test_station,
+                                                            override_acts_zip,
+                                                            target_zip)
         else:
-            package = acts_lib.create_acts_package_from_artifact(
-                test_station, build_branch, build_target, build_id, devserver,
-                target_zip)
+            package = acts_lib.create_acts_package_from_artifact(test_station,
+                                                                 build_branch,
+                                                                 build_target,
+                                                                 build_id,
+                                                                 devserver,
+                                                                 target_zip)
 
-        test_env = package.create_enviroment(
-            testbed=testbed,
-            container_directory=ts_tempfolder,
-            testbed_name=testbed_name,
-            internal_acts_directory=override_internal_acts_dir)
+        test_env = package.create_environment(
+                container_directory=ts_tempfolder,
+                testbed_name=testbed_name,
+                devices=valid_hosts,
+                internal_acts_directory=override_internal_acts_dir)
 
         test_env.install_sl4a_apk()
 
@@ -207,12 +238,12 @@ class android_ACTS(test.test):
             test_env.upload_campaign(test_file)
 
         results = test_env.run_test(
-            config_file,
-            campaign=test_file,
-            test_case=test_case,
-            python_bin=override_python_bin,
-            timeout=acts_timeout,
-            additional_cmd_line_params=additional_cmd_line_params)
+                config_file,
+                campaign=test_file,
+                test_case=test_case,
+                python_bin=override_python_bin,
+                timeout=acts_timeout,
+                additional_cmd_line_params=additional_cmd_line_params)
 
         results.log_output()
         results.report_to_autotest(self)
