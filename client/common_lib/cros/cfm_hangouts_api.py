@@ -27,11 +27,22 @@ class CfmHangoutsAPI(object):
         logging.info('Hotrod telemetry commands available for testing.')
 
 
+    def wait_for_meetings_in_call_page(self):
+        """Waits for the in-call page to launch."""
+        raise NotImplementedError
+
+
+    def wait_for_meetings_landing_page(self):
+        """Waits for the landing page screen."""
+        raise NotImplementedError
+
+
     # UI commands/functions
     def wait_for_oobe_start_page(self):
         """Wait for oobe start screen to launch."""
         self._webview_context.WaitForJavaScriptCondition(
-                "window.hrOobIsStartPageForTest() === true;",
+                "window.hasOwnProperty('hrOobIsStartPageForTest') "
+                "&& window.hrOobIsStartPageForTest() === true;",
                 timeout=DEFAULT_TIMEOUT)
         logging.info('Reached oobe start page')
 
@@ -117,6 +128,24 @@ class CfmHangoutsAPI(object):
             return True
         logging.info('Is not ready to start hangout session.')
         return False
+
+
+    def join_meeting_session(self, meeting_name):
+        """Joins a meeting.
+
+        @param meeting_name: Name of the meeting session.
+        """
+        raise NotImplementedError
+
+
+    def end_meeting_session(self):
+        """End current meeting session."""
+        raise NotImplementedError
+
+
+    def is_in_meeting_session(self):
+        """Check if device is in meeting session."""
+        raise NotImplementedError
 
 
     # Diagnostics commands/functions

@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cfm_hangouts_api
+from autotest_lib.client.common_lib.cros import cfm_meetings_api
 from autotest_lib.client.common_lib.cros import enrollment
 from autotest_lib.client.common_lib.cros import kiosk_utils
 
@@ -26,6 +27,7 @@ class CFMFacadeNative(object):
     _PWD = 'test0000'
     _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
     _ENROLLMENT_DELAY = 15
+    _DEFAULT_TIMEOUT = 30
 
 
     def __init__(self, resource):
@@ -85,17 +87,61 @@ class CFMFacadeNative(object):
                     % (expected_urls, ext_urls))
 
 
+    def skip_oobe_after_enrollment(self):
+        """Skips oobe and goes to the app landing page after enrollment."""
+        self.restart_chrome_for_cfm()
+        self.wait_for_hangouts_telemetry_commands()
+        self.wait_for_oobe_start_page()
+        self.skip_oobe_screen()
+
+
+    @property
+    def _webview_context(self):
+        """Get webview context object."""
+        return kiosk_utils.get_webview_context(
+                self._resource._browser, self._EXT_ID)
+
+
     @property
     def cfmApi(self):
-        """Instantiate CfmHangoutsAPI"""
-        webview_context = kiosk_utils.get_webview_context(
-                self._resource._browser, self._EXT_ID)
-        return cfm_hangouts_api.CfmHangoutsAPI(webview_context)
+        """Instantiate appropriate cfm api wrapper"""
+        if self._webview_context.EvaluateJavaScript(
+                "typeof window.hrRunDiagnosticsForTest == 'function'"):
+            return cfm_hangouts_api.CfmHangoutsAPI(self._webview_context)
+        return cfm_meetings_api.CfmMeetingsAPI(self._webview_context)
 
 
+    #TODO: This is a legacy api. Deprecate this api and update existing hotrod
+    #      tests to use the new wait_for_hangouts_telemetry_commands api.
     def wait_for_telemetry_commands(self):
         """Wait for telemetry commands."""
-        self.cfmApi.wait_for_telemetry_commands()
+        self.wait_for_hangouts_telemetry_commands()
+
+
+    def wait_for_hangouts_telemetry_commands(self):
+        """Wait for Hangouts App telemetry commands."""
+        self._webview_context.WaitForJavaScriptCondition(
+                "typeof window.hrOobIsStartPageForTest == 'function'",
+                timeout=self._DEFAULT_TIMEOUT)
+
+
+    def wait_for_meetings_telemetry_commands(self):
+        """Wait for Meet App telemetry commands """
+        self._webview_context.WaitForJavaScriptCondition(
+                'window.hasOwnProperty("hrTelemetryApi")',
+                timeout=self._DEFAULT_TIMEOUT)
+
+
+    def wait_for_meetings_in_call_page(self):
+        """Waits for the in-call page to launch."""
+        self.wait_for_meetings_telemetry_commands()
+        self.cfmApi.wait_for_meetings_in_call_page()
+
+
+    def wait_for_meetings_landing_page(self):
+        """Waits for the landing page screen."""
+        self.wait_for_meetings_telemetry_commands()
+        self.cfmApi.wait_for_meetings_landing_page()
 
 
     # UI commands/functions
@@ -145,6 +191,24 @@ class CFMFacadeNative(object):
         @return a boolean for hangout session ready state.
         """
         return self.cfmApi.is_ready_to_start_hangout_session()
+
+
+    def join_meeting_session(self, session_name):
+        """Joins a meeting.
+
+        @param session_name: Name of the meeting session.
+        """
+        self.cfmApi.join_meeting_session(session_name)
+
+
+    def start_meeting_session(self):
+        """Start a meeting."""
+        self.cfmApi.start_meeting_session()
+
+
+    def end_meeting_session(self):
+        """End current meeting session."""
+        self.cfmApi.end_meeting_session()
 
 
     # Diagnostics commands/functions
