@@ -606,27 +606,30 @@ class ChromiumOSTestPlatform(TestPlatform):
         return build_name, payload_file
 
 
-    def _install_source_version(self, payload_uri):
-        """Prepare the specified host with the image given by the url.
+    def _install_version(self, payload_uri, clobber_stateful=False):
+        """Install the specified host with the image given by the url.
 
         @param payload_uri: GS URI used to compute values for devserver cros_au
+        @param clobber_stateful: force a reinstall of the stateful image.
         """
 
         build_name, payload_file = self._get_update_parameters_from_uri(
             payload_uri)
-        logging.info('Installing source image %s on the DUT', payload_uri)
+        logging.info('Installing image %s on the DUT', payload_uri)
 
         try:
-            self._autotest_devserver.auto_update(host_name=self._host.hostname,
-                                                 build_name=build_name,
-                                                 force_update=True,
-                                                 full_update=True,
-                                                 log_dir=self._results_dir,
-                                                 payload_filename=payload_file,
-                                                 clobber_stateful=True)
+            ds = self._autotest_devserver
+            _, pid =  ds.auto_update(host_name=self._host.hostname,
+                                     build_name=build_name,
+                                     force_update=True,
+                                     full_update=True,
+                                     log_dir=self._results_dir,
+                                     payload_filename=payload_file,
+                                     clobber_stateful=clobber_stateful)
         except:
-            logging.fatal('ERROR: Failed to install source image on the DUT.')
+            logging.fatal('ERROR: Failed to install image on the DUT.')
             raise
+        return pid
 
 
     def _stage_artifacts_onto_devserver(self, test_conf):
@@ -770,7 +773,7 @@ class ChromiumOSTestPlatform(TestPlatform):
     def prep_device_for_update(self, source_payload_uri):
         # Install the source version onto the DUT.
         if self._staged_urls.source_url:
-            self._install_source_version(source_payload_uri)
+            self._install_version(source_payload_uri, clobber_stateful=True)
 
         # Make sure we can login before the target update.
         self._run_login_test('source_update')
@@ -796,19 +799,7 @@ class ChromiumOSTestPlatform(TestPlatform):
 
     def trigger_update(self, target_payload_uri):
         logging.info('Updating device to target image.')
-        build_name, payload_file = self._get_update_parameters_from_uri(
-            target_payload_uri)
-
-        ds = self._autotest_devserver
-        success, pid = ds.auto_update(host_name=self._host.hostname,
-                                      build_name=build_name,
-                                      force_update=True,
-                                      full_update=True,
-                                      log_dir=self._results_dir,
-                                      payload_filename=payload_file,
-                                      clobber_stateful=False)
-        return pid
-
+        return self._install_version(target_payload_uri)
 
     def finalize_update(self):
         # Stateful update is controlled by cros_au
