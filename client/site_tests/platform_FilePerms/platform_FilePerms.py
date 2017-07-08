@@ -24,6 +24,8 @@ class platform_FilePerms(test.test):
     standard_options = ['nosuid', 'nodev', 'noexec']
     standard_rw_options = ['rw'] + standard_options
     standard_ro_options = ['ro'] + standard_options
+    loop_device = r'/dev/loop[0-9]+$'
+    root_device = r'/dev/root$'
     # When adding an expectation that isn't simply "standard_*_options",
     # please leave either an explanation for why that mount is special,
     # or a bug number tracking work to harden that mount point, in a comment.
@@ -51,26 +53,105 @@ class platform_FilePerms(test.test):
         # Note that after the user logs in we remount it as "exec",
         # therefore we do not enforce 'noexec'.
         '/opt/google/containers/android/rootfs/root': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro']},
         '/opt/google/containers/android/rootfs/root/vendor': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro', 'nosuid', 'nodev']},
         '/opt/google/containers/arc-sdcard/mountpoints/container-root': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-downloads-filesystem/mountpoints/container-root': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-obb-mounter/mountpoints/container-root': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-removable-media/mountpoints/container-root': {
+            'device': loop_device,
             'type': 'squashfs',
             'options': ['ro', 'noexec']},
+        '/run/arc/debugfs/tracing': {  # for devices in dev mode.
+            'type': 'debugfs',
+            'options': standard_rw_options + ['gid=605', 'mode=750']},
+        '/run/arc/media': {
+            'type': 'tmpfs',
+            'options': standard_ro_options + ['mode=755']},
         '/run/arc/obb': {
             'type': 'tmpfs',
             'options': standard_ro_options + ['mode=755']},
+        '/run/arc/oem': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/arc/sdcard': {
+            'type': 'tmpfs',
+            'options': standard_ro_options + ['mode=755']},
+        '/run/arc/shared_mounts': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root': {
+            'device': loop_device,
+            'type': 'squashfs',
+            'options': ['ro']},
+        # The empty cache and data directories are ext2 and read-only because
+        # they are on the root device.
+        '/run/containers/android/root/cache': {
+            'device': root_device,
+            'type': 'ext2',
+            'options': ['ro']},
+        '/run/containers/android/root/data': {
+            'device': root_device,
+            'type': 'ext2',
+            'options': ['ro', 'nosuid', 'nodev']},
+        '/run/containers/android/root/dev': {
+            'type': 'tmpfs',
+            'options': ['rw', 'nosuid', 'mode=755']},
+        '/run/containers/android/root/dev/dri': {
+            'type': 'tmpfs',
+            'options': ['rw', 'noexec', 'nosuid']},
+        '/run/containers/android/root/dev/input': {
+            'type': 'tmpfs',
+            'options': ['rw', 'noexec', 'nosuid']},
+        '/run/containers/android/root/dev/ptmx': {
+            'type': 'devpts',
+            'options': ['rw', 'mode=600', 'ptmxmode=666']},
+        '/run/containers/android/root/dev/pts': {
+            'type': 'devpts',
+            'options': ['rw', 'mode=600', 'ptmxmode=666']},
+        '/run/containers/android/root/dev/kmsg': {
+            'type': 'ext4',
+            'options': standard_rw_options},
+        '/run/containers/android/root/oem': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/var/run/anr': {
+            'type': 'tmpfs',
+            'options': standard_rw_options},
+        '/run/containers/android/root/var/run/arc': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + [
+                'uid=655360', 'gid=656360', 'mode=775']},
+        '/run/containers/android/root/var/run/arc/bugreport': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/var/run/chrome': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/var/run/camera': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/var/run/cras': {
+            'type': 'tmpfs',
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/vendor': {
+            'device': loop_device,
+            'type': 'squashfs',
+            'options': ['ro']},
         '/proc': { 'type': 'proc', 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
             'type': 'tmpfs',
@@ -143,6 +224,7 @@ class platform_FilePerms(test.test):
     shared_fonts_pattern = (r'/opt/google/containers/android/rootfs/root/'
                             r'system/fonts/.*\.tt[cf]')
     shared_fonts_expected_mount_options = {
+        'device': root_device,
         # The fonts are bind-mounted versions of fonts in /usr/share/fonts. Use
         # the same type and options for '/'.
         'type': 'ext2',
@@ -231,6 +313,10 @@ class platform_FilePerms(test.test):
             # its options at the moment).
             if fields[0] == 'rootfs':
                 continue
+            # For ARC, normalize some container paths.
+            fields[1] = re.sub(r'^/run/containers/android_[^/]{6}/',
+                               r'/run/containers/android/',
+                               fields[1])
             mounts[fields[1]] = {'device': fields[0],
                                  'type': fields[2],
                                  'options': fields[3].split(',')}
@@ -328,9 +414,9 @@ class platform_FilePerms(test.test):
                                  fs, fs_type)
                     continue
                 if re.match(self.shared_fonts_pattern, fs):
-                  mount_options = self.shared_fonts_expected_mount_options
+                    mount_options = self.shared_fonts_expected_mount_options
                 elif fs in self.expected_mount_options:
-                  mount_options = self.expected_mount_options[fs]
+                    mount_options = self.expected_mount_options[fs]
                 else:
                     logging.error(
                             'No expectations entry for "%s" with info "%s"',
@@ -342,6 +428,14 @@ class platform_FilePerms(test.test):
                     logging.error(
                             '[%s] "%s" has type "%s", expected type "%s"',
                             mtab_path, fs, fs_type, mount_options['type'])
+                    errors += 1
+
+                device_type = mtab[fs]['device']
+                if ('device' in mount_options) and (
+                    re.match(mount_options['device'], device_type) is None):
+                    logging.error(
+                            '[%s] "%s" is device "%s", expected device "%s"',
+                            mtab_path, fs, device_type, mount_options['device'])
                     errors += 1
 
                 # For options, require the specified options to be present.
