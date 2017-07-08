@@ -256,6 +256,13 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         return ((tests == passed + failed) or
                 (tests == passed + failed + notexecuted))
 
+    def _run_precondition_scripts(self, host, commands):
+        for command in commands:
+            logging.info('RUN: %s\n', command)
+            output = host.run(command, ignore_status=True)
+            logging.info('END: %s\n', output)
+
+
     def run_once(self,
                  target_module=None,
                  target_plan=None,
@@ -264,6 +271,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  needs_push_media=False,
                  max_retry=None,
                  cts_tradefed_args=None,
+                 pre_condition_commands=[],
                  timeout=_CTS_TIMEOUT_SECONDS):
         """Runs the specified CTS once, but with several retries.
 
@@ -284,6 +292,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @param timeout: time after which tradefed can be interrupted.
         @param cts_tradefed_args: a list of args to pass to tradefed.
         """
+
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
         if self._get_release_channel == 'stable':
@@ -329,6 +338,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
+                self._run_precondition_scripts(
+                    self._host,
+                    pre_condition_commands)
 
                 # Only push media for tests that need it. b/29371037
                 if needs_push_media and not pushed_media:
@@ -385,6 +397,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
+                self._run_precondition_scripts(
+                    self._host,
+                    pre_condition_commands)
                 logging.info('Retrying failures of %s with session_id %d:',
                              test_name, session_id)
                 expected_tests = failed + notexecuted
