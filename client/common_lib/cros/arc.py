@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib.cros import chrome, arc_common
 
 _ADB_KEYS_PATH = '/tmp/adb_keys'
 _ADB_VENDOR_KEYS = 'ADB_VENDOR_KEYS'
-_ANDROID_CONTAINER_PATH = '/var/run/containers/android_*'
+_ANDROID_CONTAINER_PID_PATH = '/var/run/containers/android_*/container.pid'
 _SCREENSHOT_DIR_PATH = '/var/log/arc-screenshots'
 _SCREENSHOT_BASENAME = 'arc-screenshot'
 _MAX_SCREENSHOT_NUM = 10
@@ -190,11 +190,21 @@ def get_container_root():
       TestError if no container root directory is found, or
       more than one container root directories are found.
     """
-    arc_container_roots = glob.glob(_ANDROID_CONTAINER_PATH)
-    if len(arc_container_roots) != 1:
-        raise error.TestError(
-            'Android container not available: %r' % arc_container_roots)
-    return arc_container_roots[0]
+    # Find the PID file rather than the android_XXXXXX/ directory to ignore
+    # stale and empty android_XXXXXX/ directories when they exist.
+    # TODO(yusukes): Investigate why libcontainer sometimes fails to remove
+    # the directory. See b/63376749 for more details.
+    arc_container_pid_files = glob.glob(_ANDROID_CONTAINER_PID_PATH)
+
+    if len(arc_container_pid_files) == 0:
+        raise error.TestError('Android container not available')
+
+    if len(arc_container_pid_files) > 1:
+        raise error.TestError('Multiple Android containers found: %r. '
+                              'Reboot your DUT to recover.' % (
+                                  arc_container_pid_files))
+
+    return os.path.dirname(arc_container_pid_files[0])
 
 
 def get_job_pid(job_name):
@@ -342,7 +352,8 @@ def is_android_container_alive():
     """Check if android container is alive."""
     try:
         container_pid = get_container_pid()
-    except Exception:
+    except Exception, e:
+        logging.error('is_android_container_alive failed: %r', e)
         return False
     return utils.pid_is_alive(int(container_pid))
 
