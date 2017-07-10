@@ -826,6 +826,11 @@ class _BaseRun(object):
 
     def execute_section(self, section, timeout, stderr_redirector,
                         client_disconnect_timeout):
+        # TODO(crbug.com/684311) The claim is that section is never more than 0
+        # in pratice. After validating for a week or so, delete all support of
+        # multiple sections.
+        metrics.Counter('chromeos/autotest/autotest/sections').increment(
+                fields={'is_first_section': (section == 0)})
         logging.info("Executing %s/bin/autotest %s/control phase %d",
                      self.autodir, self.autodir, section)
 
