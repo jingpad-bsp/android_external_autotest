@@ -21,6 +21,9 @@ from autotest_lib.server.hosts import cros_repair
 # Presence of any of these processes indicates that the host is up:
 BOOT_DETECTION_PROCESSES = ('ap-controller',)
 
+# Maximum time for host to report is_up after rebooting
+BOOT_TIMEOUT_SECONDS = 180
+
 # Maximum time for host to recover after resetting
 RESET_TIMEOUT_SECONDS = 60
 
@@ -57,6 +60,13 @@ class JetstreamHost(cros_host.CrosHost):
 
     def get_wait_up_processes(self):
         return BOOT_DETECTION_PROCESSES
+
+    def verify(self):
+        # Whirlwind takes longer to start all system services, so check
+        # that ap-controller is running before verifying, crbug/739583.
+        self.wait_up(timeout=BOOT_TIMEOUT_SECONDS)
+        logging.debug('Jetstream host is up, starting verification')
+        super(JetstreamHost, self).verify()
 
     def cleanup_services(self):
         """Restores the host to default settings.
