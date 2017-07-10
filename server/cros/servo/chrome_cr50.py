@@ -105,9 +105,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def reboot(self):
         """Reboot Cr50 and wait for CCD to be enabled"""
-        self.send_command('reboot')
-        self.wait_for_ccd_disable()
-        self.ccd_enable()
+        if self.using_ccd():
+            self.send_command('reboot')
+            self.wait_for_ccd_disable()
+            self.ccd_enable()
+        else:
+            self.send_command_get_output('reboot', ['Console is enabled;'])
 
 
     def rollback(self, eraseflashinfo=True):
