@@ -77,10 +77,6 @@ VERIFY_JOB_REPO_URL_CONTROL_FILE = _control_segment_path('verify_job_repo_url')
 RESET_CONTROL_FILE = _control_segment_path('reset')
 GET_NETWORK_STATS_CONTROL_FILE = _control_segment_path('get_network_stats')
 
-# by default provide a stub that generates no site data
-def _get_site_job_data_dummy(job):
-    return {}
-
 
 def get_machine_dicts(machine_names, in_lab, host_attributes=None):
     """Converts a list of machine names to list of dicts.
@@ -317,7 +313,7 @@ class base_server_job(base_job.base_job):
 
         # only write these keyvals out on the first job in a resultdir
         if 'job_started' not in utils.read_keyval(self.resultdir):
-            job_data.update(get_site_job_data(self))
+            job_data.update(self._get_job_data())
             utils.write_keyval(self.resultdir, job_data)
 
         self._parse_job = parse_job
@@ -1409,6 +1405,33 @@ class base_server_job(base_job.base_job):
                 host.clear_known_hosts()
 
 
+    def _get_job_data(self):
+        """Add custom data to the job keyval info.
+
+        When multiple machines are used in a job, change the hostname to
+        the platform of the first machine instead of machine1,machine2,...  This
+        makes the job reports easier to read and keeps the tko_machines table from
+        growing too large.
+
+        Returns:
+            keyval dictionary with new hostname value, or empty dictionary.
+        """
+        job_data = {}
+        # Only modify hostname on multimachine jobs. Assume all host have the same
+        # platform.
+        if len(self.machines) > 1:
+            # Search through machines for first machine with a platform.
+            for host in self.machines:
+                keyval_path = os.path.join(self.resultdir, 'host_keyvals', host)
+                keyvals = utils.read_keyval(keyval_path)
+                host_plat = keyvals.get('platform', None)
+                if not host_plat:
+                    continue
+                job_data['hostname'] = host_plat
+                break
+        return job_data
+
+
 class warning_manager(object):
     """Class for controlling warning logs. Manages the enabling and disabling
     of warnings."""
@@ -1477,12 +1500,6 @@ def _create_host_info_store(hostname):
         raise error.AutoservError('Could not obtain HostInfo for hostname %s' %
                                   hostname)
     return host_info_store
-
-
-# load up site-specific code for generating site-specific job data
-get_site_job_data = utils.import_site_function(__file__,
-    "autotest_lib.server.site_server_job", "get_site_job_data",
-    _get_site_job_data_dummy)
 
 
 site_server_job = utils.import_site_class(
