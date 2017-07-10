@@ -10,10 +10,10 @@ from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
 from autotest_lib.server import autotest, test
 from autotest_lib.server.cros import debugd_dev_tools, gsutil_wrapper
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50Update(FirmwareTest):
+class firmware_Cr50Update(Cr50Test):
     """
     Verify a dut can update to the given image.
 
@@ -36,10 +36,6 @@ class firmware_Cr50Update(FirmwareTest):
     RESTORE_ORIGINAL_TRIES = 3
     SUCCESS = 0
     UPDATE_OK = 1
-    TMP = '/tmp/'
-    GS_URL = 'gs://chromeos-localmirror-private/distfiles/chromeos-cr50-*/'
-    PROD_FILE = 'cr50.%s.bin.prod'
-    DBG_FILE = 'cr50_dbg_%s.bin'
 
 
     def initialize(self, host, cmdline_args, release_path="", release_ver="",
@@ -55,6 +51,8 @@ class firmware_Cr50Update(FirmwareTest):
 
         if not release_ver and not os.path.isfile(release_path):
             raise error.TestError('Need to specify a release version or path')
+
+        self.devid = self.servo.get('cr50_devid')
 
         # Make sure ccd is disabled so it won't interfere with the update
         self.cr50.ccd_disable()
@@ -117,11 +115,11 @@ class firmware_Cr50Update(FirmwareTest):
             # rollback to the original image.
             if new_rw != original_rw and not is_dev:
                 logging.info("Updating to dev image to enable rollback")
-                self.run_update(self.DEV_NAME, use_usb_update=True)
+                self.cr50_update(self.images[self.DEV_NAME][2])
 
             logging.info("Updating to the original image %s",
                          original_rw)
-            self.run_update(self.ORIGINAL_NAME, use_usb_update=True)
+            self.cr50_update(original_path, rollback=True)
         except Exception, e:
             logging.info("cleanup update from %s to %s failed", running_rw,
                           original_rw)
@@ -149,70 +147,6 @@ class firmware_Cr50Update(FirmwareTest):
                 raise error.TestError("Could not restore the original image")
 
         super(firmware_Cr50Update, self).cleanup()
-
-
-    def run_usb_update(self, dest):
-        """Run usb_update with the given image.
-
-        If the new image version is older than the one Cr50 is running, then the
-        best usb_updater can do is flash the image into the inactive partition.
-        To finish the update, the 'rw' command will need to be used to force a
-        rollback.
-
-        @param dest: the image location.
-        """
-
-        # Enable CCD, so we can detect the Cr50 reboot.
-        self.cr50.ccd_enable()
-
-        cr50_utils.UsbUpdater(self.host, ['-s', dest])
-
-        # After usb_updater finishes running, Cr50 will reboot. Wait until Cr50
-        # reboots before continuing. Cr50 reboot can be detected by detecting
-        # when CCD stops working.
-        self.cr50.wait_for_ccd_disable()
-
-
-    def finish_rollback(self, image_rw):
-        """Rollback to the image in the inactive partition.
-
-        Use the cr50 'rw' command to set the reset counter high enough to
-        trigger a rollback, erase nvmem if requested, and then reboot cr50 to
-        finish the rollback.
-
-        @param image_rw: the rw version of the update image.
-        """
-        self.cr50.ccd_enable()
-        start_partition, _, _ = self.cr50.get_active_version_info()
-        logging.info("Attempting Rollback")
-
-        # Enable CCD keepalive before turning off the DUT. It will be removed
-        # after the Cr50 reboot
-        self.cr50.send_command("ccd keepalive enable")
-
-        # Shutdown the device so it won't react to any of the following commands
-        self.ec.reboot("ap-off")
-
-        # CCD may disapppear after resetting the EC. If it does, re-enable it.
-        # TODO: remove this when CCD is no longer disabled after ec reset.
-        self.cr50.wait_for_ccd_disable(timeout=15, raise_error=False)
-        self.cr50.ccd_enable()
-
-        if self.erase_nvmem:
-            logging.info("Erasing nvmem")
-            self.cr50.erase_nvmem()
-
-        self.cr50.rollback()
-
-        # Verify the active partition changed and cr50 is running the right
-        # version.
-        active_info = self.cr50.get_active_version_info()
-        if start_partition == active_info[0] or image_rw != active_info[1]:
-            raise error.TestError("Rollback failed")
-
-        # Verify the system boots normally after erasing nvmem
-        self.check_state((self.checkers.crossystem_checker,
-                          {'mainfw_type': 'normal'}))
 
 
     def run_update(self, image_name, use_usb_update=False):
@@ -249,10 +183,11 @@ class firmware_Cr50Update(FirmwareTest):
         # If a rollback is needed, flash the image into the inactive partition,
         # on or use usb_update to update to the new image if it is requested.
         if use_usb_update or rollback:
-            self.run_usb_update(dest)
-        # Use cr50 console commands to rollback to the old image.
-        if rollback:
-            self.finish_rollback(image_rw)
+            self.cr50_update(dest, rollback=rollback,
+                             erase_nvmem=self.erase_nvmem)
+            self.check_state((self.checkers.crossystem_checker,
+                              {'mainfw_type': 'normal'}))
+
         # Running the usb update or rollback will enable ccd. Disable it again.
         self.cr50.ccd_disable()
 
@@ -282,29 +217,9 @@ class firmware_Cr50Update(FirmwareTest):
                     it will be gotten from chromeos-localmirror-private using
                     the devids
         """
-        self.cr50.ccd_enable()
-        devid = self.servo.get('cr50_devid').replace(' ', '_')
-
-        # Prod images are gotten with the ver. Debug images use the devid
-        filename = self.PROD_FILE % ver if ver else self.DBG_FILE % devid
-
-        # Make sure the file exists and get the right location
-        bucket, gs_file = utils.gs_ls(self.GS_URL + filename)[0].rsplit('/', 1)
-        tmp_file = self.TMP + gs_file
-        logging.info('Fetching %s%s' , bucket, gs_file)
-
-        # Copy the image to the dut
-        gsutil_wrapper.copy_private_bucket(host=self.host,
-                                           bucket=bucket,
-                                           filename=gs_file,
-                                           destination=self.TMP)
-
-        # Get the bin version from the image on the DUT
-        image_ver = cr50_utils.GetBinVersion(self.host, tmp_file)
-
-        # Copy the image to the host
-        self.host.get_file(tmp_file, tmp_file)
-        return tmp_file, image_ver
+        if ver:
+            return self.download_cr50_release_image(ver)
+        return self.download_cr50_debug_image(self.devid)
 
 
     def add_image_to_update_order(self, image_name, image_path, ver=None):
@@ -324,9 +239,9 @@ class firmware_Cr50Update(FirmwareTest):
         tmp_file = '/tmp/%s.bin' % image_name
 
         if not os.path.isfile(image_path):
-            image_path, ver = self.fetch_image(ver)
-        else:
-            _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
+            image_path = self.fetch_image(ver)
+
+        _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
 
         ver_str = cr50_utils.GetVersionString(ver)
 
@@ -362,9 +277,9 @@ class firmware_Cr50Update(FirmwareTest):
     def save_original_image(self, dut_path):
         """Save the image currently running on the DUT.
 
-        Copy the image from the DUT to the local tmp directory and get version
-        information. Store the information in the images dict. Make sure the
-        saved version matches the running version.
+        Copy the image from the DUT to the local autotest directory and get
+        version information. Store the information in the images dict. Make sure
+        the saved version matches the running version.
 
         Args:
             dut_path: the location of the cr50 prod image on the DUT.
@@ -374,7 +289,7 @@ class firmware_Cr50Update(FirmwareTest):
             version cr50 is running.
         """
         name = self.ORIGINAL_NAME
-        local_dest = '/tmp/%s.bin' % name
+        local_dest = os.path.join(self.resultsdir, name + '.bin')
 
         running_ver = cr50_utils.GetRunningVersion(self.host)
         running_ver_str = cr50_utils.GetVersionString(running_ver)
