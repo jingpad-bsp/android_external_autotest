@@ -297,7 +297,7 @@ def make_parser():
     return parser
 
 
-def verify_options(options):
+def verify_and_clean_options(options):
     """Verify the validity of options.
 
     @param options: The parsed options to verify.
@@ -1593,7 +1593,13 @@ def create_suite(afe, options):
     )
 
 
-SuiteResult = namedtuple('SuiteResult', ['return_code', 'output_dict'])
+class SuiteResult(namedtuple('SuiteResult', ['return_code', 'output_dict'])):
+    """Result of running a suite to return."""
+
+    def __new__(cls, return_code, output_dict):
+        output_dict = output_dict.copy()
+        output_dict['return_cde'] = return_code
+        return super(SuiteResult, cls).__new__(cls, return_code, output_dict)
 
 
 def _run_suite(options):
@@ -1884,42 +1890,50 @@ def _should_run(options):
             min_rpc_timeout=_MIN_RPC_TIMEOUT)
 
 
-def _run_task(parser, options):
+def _run_task(options):
     """Perform this script's function minus setup.
 
     Boilerplate like argument parsing, logging, output formatting happen
     elsewhere.
+
+    Returns a SuiteResult instance.
+
+    TODO(ayatane): The try/except should be moved into _run_suite().
+    Good luck trying to figure out which function calls are supposed to
+    raise which of the exceptions.
     """
     try:
-        if not verify_options(options):
-            parser.print_help()
-            code = RETURN_CODES.INVALID_OPTIONS
-            output_dict = {'return_code': RETURN_CODES.INVALID_OPTIONS}
-        else:
-            if options.pre_check and not _should_run(options):
-                logging.info('Lab is closed, OR build %s is blocked, OR suite '
-                             '%s for this build has already been kicked off '
-                             'once in past %d days.',
-                             options.test_source_build, options.name,
-                             _SEARCH_JOB_MAX_DAYS)
-                return
-
-            code, output_dict = _run_suite(options)
+        return _run_suite(options)
     except diagnosis_utils.BoardNotAvailableError as e:
-        output_dict = {'return_message': 'Skipping testing: %s' % e.message}
-        code = RETURN_CODES.BOARD_NOT_AVAILABLE
-        logging.info(output_dict['return_message'])
+        result = SuiteResult(
+            RETURN_CODES.BOARD_NOT_AVAILABLE,
+            {'return_message': 'Skipping testing: %s' % e.message})
+        logging.info(result.output_dict['return_message'])
+        return result
     except utils.TestLabException as e:
-        output_dict = {'return_message': 'TestLabException: %s' % e}
-        code = RETURN_CODES.INFRA_FAILURE
-        logging.exception(output_dict['return_message'])
-    except Exception as e:
-        output_dict = {
-            'return_message': 'Unhandled run_suite exception: %s' % e
-        }
-        code = RETURN_CODES.INFRA_FAILURE
-        logging.exception(output_dict['return_message'])
-    return code, output_dict
+        result = SuiteResult(
+            RETURN_CODES.INFRA_FAILURE,
+            {'return_message': 'TestLabException: %s' % e})
+        logging.exception(result.output_dict['return_message'])
+        return result
+
+
+class _ExceptionHandler(object):
+    """Global exception handler replacement."""
+
+    def __init__(self, dump_json):
+        """Initialize instance.
+
+        @param dump_json: Whether to print a JSON dump of the result dict to
+                          stdout.
+        """
+        self._should_dump_json = dump_json
+
+    def __call__(self, exc_type, value, traceback):
+        if self._should_dump_json:
+            _dump_json({'return_message': ('Unhandled run_suite exception: %s'
+                                           % value)})
+        sys.exit(RETURN_CODES.INFRA_FAILURE)
 
 
 def main():
@@ -1929,23 +1943,43 @@ def main():
     parser = make_parser()
     options = parser.parse_args()
     if options.do_nothing:
-        return
-    # Silence the log when dumping outputs into json
+        return 0
+
+    sys.exceptionhandler = _ExceptionHandler(dump_json=options.json_dump)
     if options.json_dump:
         logging.disable(logging.CRITICAL)
 
-    code, output_dict = _run_task(parser, options)
+    options_okay = verify_and_clean_options(options)
+    if not options_okay:
+        parser.print_help()
+        result = SuiteResult(
+            RETURN_CODES.INVALID_OPTIONS,
+            {'return_code': RETURN_CODES.INVALID_OPTIONS})
+    elif options.pre_check and not _should_run(options):
+        logging.info('Lab is closed, OR build %s is blocked, OR suite '
+                     '%s for this build has already been kicked off '
+                     'once in past %d days.',
+                     options.test_source_build, options.name,
+                     _SEARCH_JOB_MAX_DAYS)
+        result = SuiteResult(
+            RETURN_CODES.ERROR,
+            {'return_message': ("Lab is closed OR other reason"
+                                " (see code, it's complicated)")})
+    else:
+        result = _run_task(options)
 
-    # Dump test outputs into json.
-    output_dict['return_code'] = code
     if options.json_dump:
-        output_json = json.dumps(output_dict, sort_keys=True)
-        output_json_marked = '#JSON_START#%s#JSON_END#' % output_json.strip()
-        sys.stdout.write(output_json_marked)
+        _dump_json(result.output_dict)
 
     logging.info('Will return from run_suite with status: %s',
-                  RETURN_CODES.get_string(code))
-    return code
+                  RETURN_CODES.get_string(result.return_code))
+    return result.return_code
+
+
+def _dump_json(obj):
+    """Write obj JSON to stdout."""
+    output_json = json.dumps(obj, sort_keys=True)
+    sys.stdout.write('#JSON_START#%s#JSON_END#' % output_json.strip())
 
 
 if __name__ == "__main__":
