@@ -94,6 +94,7 @@ def GetVersion(versions, name):
         version: dictionary with the partition names as keys and the
                  partition version strings as values.
         name: the string used to find the relevant items in versions.
+
     Returns:
         the version from versions or "-1.-1.-1" if an invalid RO was detected.
     """
@@ -115,10 +116,13 @@ def GetVersion(versions, name):
 def FindVersion(output, arg):
     """Find the ro and rw versions.
 
-    @param output: The string to search
-    @param arg: string representing the usb_updater option, either
-                '--binvers' or '--fwver'
-    @param compare: raise an error if the ro or rw versions don't match
+    Args:
+        output: The string to search
+        arg: string representing the usb_updater option, either '--binvers' or
+             '--fwver'
+
+    Returns:
+        a tuple of the ro and rw versions
     """
     versions = re.search(VERSION_RE[arg], output)
     versions = versions.groupdict()
@@ -137,7 +141,8 @@ def UsbUpdate(client, args):
     """Run usb_update with the given args.
 
     Args:
-        a list of strings that contiain the usb_update args
+        client: the object to run commands on
+        args: a list of strings that contiain the usb_updater args
 
     Returns:
         the result of usb_update
@@ -196,8 +201,12 @@ def GetRunningVersion(client):
     The version from usb_updater and /var/cache/cr50-version should be the
     same. Get both versions and make sure they match.
 
+    Args:
+        client: the object to run commands on
+
     Returns:
         running_ver: a tuple with the ro and rw version strings
+
     Raises:
         TestFail
         - If the version in /var/cache/cr50-version is not the same as the
@@ -218,6 +227,7 @@ def CheckForFailures(client, last_message):
     last_message. If a unexpected exit code is detected it will raise an error>
 
     Args:
+        client: the object to run commands on
         last_message: the last cr50 message from the last update run
 
     Returns:
@@ -246,6 +256,11 @@ def VerifyUpdate(client, ver='', last_message=''):
     """Verify that the saved update state is correct and there were no
     unexpected cr50-update exit codes since the last update.
 
+    Args:
+        client: the object to run commands on
+        ver: the expected version tuple (ro ver, rw ver)
+        last_message: the last cr50 message from the last update run
+
     Returns:
         new_ver: a tuple containing the running ro and rw versions
         last_message: The last cr50 update message in /var/log/messages
@@ -270,9 +285,12 @@ def ClearUpdateStateAndReboot(client):
 
 def InstallImage(client, src, dest=CR50_FILE):
     """Copy the image at src to dest on the dut
+
     Args:
+        client: the object to run commands on
         src: the image location of the server
         dest: the desired location on the dut
+
     Returns:
         The filename where the image was copied to on the dut, a tuple
         containing the RO and RW version of the file
