@@ -1736,15 +1736,10 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     rpc_helper = diagnosis_utils.RPCHelper(afe)
     instance_server = afe.server
     while not afe.get_jobs(id=job_id, finished=True):
-        # Note that this call logs output, preventing buildbot's
-        # 9000 second silent timeout from kicking in. Let there be no
-        # doubt, this is a hack. The timeout is from upstream buildbot and
-        # this is the easiest work around.
-        if job_timer.first_past_halftime():
-            rpc_helper.diagnose_job(job_id, instance_server)
+        _poke_buildbot_with_output(afe, job_id, job_timer)
         if job_timer.debug_output_timer.poll():
             logging.info('The suite job has another %s till timeout.',
-                            job_timer.timeout_hours - job_timer.elapsed_time())
+                         job_timer.timeout_hours - job_timer.elapsed_time())
         time.sleep(10)
     logging.info('%s Suite job is finished.',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
@@ -1765,7 +1760,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
 
     # Extract the original suite name to record timing.
     original_suite_name = get_original_suite_name(options.name,
-                                                    options.suite_args)
+                                                  options.suite_args)
     # Start collecting test results.
     logging.info('%s Start collecting test results and dump them to json.',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
@@ -1887,6 +1882,23 @@ def _should_run(options):
             name__iendswith='control.'+options.name,
             created_on__gte=start_time,
             min_rpc_timeout=_MIN_RPC_TIMEOUT)
+
+
+def _poke_buildbot_with_output(afe, job_id, job_timer):
+    """Poke buildbot so it doesn't timeout from silence.
+
+    @param afe              AFE instance.
+    @param job_id           Suite job id.
+    @param job_timer        JobTimer for suite job.
+    """
+    rpc_helper = diagnosis_utils.RPCHelper(afe)
+    # Note that this call logs output, preventing buildbot's
+    # 9000 second silent timeout from kicking in. Let there be no
+    # doubt, this is a hack. The timeout is from upstream buildbot and
+    # this is the easiest work around.
+    if job_timer.first_past_halftime():
+        rpc_helper.diagnose_job(job_id, afe.server)
+
 
 
 def _run_task(options):
