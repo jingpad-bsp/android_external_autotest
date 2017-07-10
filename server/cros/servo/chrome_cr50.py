@@ -153,6 +153,11 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_version_info(self.ACTIVE)
 
 
+    def get_version(self):
+        """Get the RW version"""
+        return self.get_active_version_info()[1].strip()
+
+
     def using_servo_v4(self):
         """Returns true if the console is being served using servo v4"""
         return 'servo_v4' in self._servo.get_servo_version()
