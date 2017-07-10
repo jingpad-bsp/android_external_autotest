@@ -137,7 +137,7 @@ def GetSavedVersion(client):
     return FindVersion(result, "--fwver")
 
 
-def UsbUpdate(client, args):
+def UsbUpdater(client, args):
     """Run usb_update with the given args.
 
     Args:
@@ -175,7 +175,7 @@ def UsbUpdate(client, args):
 
 def GetVersionFromUpdater(client, args):
     """Return the version from usb_updater"""
-    result = UsbUpdate(client, args).stdout.strip()
+    result = UsbUpdater(client, args).stdout.strip()
     return FindVersion(result, args[0])
 
 
@@ -360,7 +360,7 @@ def GetBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdate(client, ["-i"]).stdout.strip()
+    result = UsbUpdater(client, ["-i"]).stdout.strip()
     board_id_info = result.split("Board ID space: ")[-1].strip().split(":")
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
@@ -419,6 +419,6 @@ def SetBoardId(client, board_id, flags=None):
         board_id_arg += ':' + hex(flags)
 
     # Set the board id using the given board id and flags
-    result = UsbUpdate(client, ["-s", "-i", board_id_arg]).stdout.strip()
+    result = UsbUpdater(client, ["-s", "-i", board_id_arg]).stdout.strip()
 
     CheckBoardId(client, board_id, flags)
