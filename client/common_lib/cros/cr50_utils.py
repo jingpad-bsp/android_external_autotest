@@ -226,11 +226,16 @@ def CheckForFailures(client, last_message):
     """
     messages = client.run(GET_CR50_MESSAGES).stdout.strip()
     if last_message:
-        messages = messages.rsplit(last_message, 1)[-1]
-        if UPDATE_FAILURE in messages:
-            logging.debug(messages)
-            raise error.TestFail("Detected unexpected exit code during update")
-    return messages.rsplit('\n', 1)[-1]
+        messages = messages.rsplit(last_message, 1)[-1].split('\n')
+        failures = []
+        for message in messages:
+            if UPDATE_FAILURE in message:
+                failures.append(message)
+        if len(failures):
+            logging.info(messages)
+            raise error.TestFail("Detected unexpected exit code during update: "
+                                 "%s" % failures)
+    return messages[-1]
 
 
 def VerifyUpdate(client, ver='', last_message=''):
