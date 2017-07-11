@@ -158,6 +158,12 @@ class graphics_Idle(graphics_utils.GraphicsTest):
         """ On i915 systems, check that we get into the lowest clock frequency;
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_i915_min_clock')
+
+        # TODO(benzh): enable once crbug.com/719040 is fixed.
+        if self._gpu_type == 'baytrail' and utils.count_cpus() == 4:
+            logging.info('Waived min clock check due to crbug.com/719040')
+            return ''
+
         if (utils.get_cpu_soc_family() == 'x86_64' and
                 self._gpu_type != 'pinetrail'):
             tries = 0
