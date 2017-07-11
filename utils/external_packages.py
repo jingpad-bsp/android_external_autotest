@@ -738,25 +738,6 @@ class JsonRPCLib(ExternalPackage):
                         ExternalPackage._build_and_install_current_dir_noegg)
 
 
-class Httplib2Package(ExternalPackage):
-    """httplib2 package"""
-    version = '0.6.0'
-    local_filename = 'httplib2-%s.tar.gz' % version
-    # Cannot use the newest httplib2 package 0.9.2 since it cannot be installed
-    # directly in a temp folder. So keep it as 0.6.0.
-    urls = ('https://launchpad.net/ubuntu/+archive/primary/+files/'
-            'python-httplib2_' + version + '.orig.tar.gz',)
-    hex_sum = '995344b2704826cc0d61a266e995b328d92445a5'
-
-    def _get_installed_version_from_module(self, module):
-        # httplib2 doesn't contain a proper version
-        return self.version
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_noegg)
-
-
 class GwtPackage(ExternalPackage):
     """Fetch and extract a local copy of GWT used to build the frontend."""
 
