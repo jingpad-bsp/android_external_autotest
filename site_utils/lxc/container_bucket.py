@@ -238,11 +238,14 @@ class ContainerBucket(object):
 
         # Update container config with container_path from global config.
         config_path = os.path.join(base_path, 'config')
-        utils.run('sudo sed -i "s|container_dir|%s|g" "%s"' %
-                  (self.container_path, config_path))
+        rootfs_path = os.path.join(base_path, 'rootfs')
+        utils.run(('sudo sed '
+                   '-i "s|\(lxc\.rootfs[[:space:]]*=\).*$|\\1 {rootfs}|" '
+                   '"{config}"').format(rootfs=rootfs_path,
+                                        config=config_path))
 
         self.base_container = Container.createFromExistingDir(
-                self.container_path, constants.BASE)
+                self.container_path, name)
 
         self._setup_shared_host_path()
 
