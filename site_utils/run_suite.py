@@ -278,6 +278,10 @@ def make_parser():
         action='store', default=None,
         help=('A dict of args passed all the way to each individual test that '
               'will be actually ran.'))
+    parser.add_argument(
+        '--require_log', action='store_true',
+        help=('Stream logs of run_suite.py to a local file named '
+              'run_suite-<build name>.log.'))
 
     # Used for monitoring purposes, to measure no-op swarming proxy latency.
     parser.add_argument('--do_nothing', action='store_true',
@@ -1578,7 +1582,8 @@ def main_without_exception_handling(options):
         if os.path.exists(log_dir):
             log_name = os.path.join(log_dir, log_name)
 
-    utils.setup_logging(logfile=log_name)
+    if options.require_log:
+        utils.setup_logging(logfile=log_name)
 
     if not options.bypass_labstatus and not options.web:
         utils.check_lab_status(options.build)
