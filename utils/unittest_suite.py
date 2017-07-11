@@ -106,10 +106,8 @@ SKIP = set((
     # crbug.com/432621 These files are not tests, and will disappear soon.
     'des_01_test.py',
     'des_02_test.py',
-    # Require lxc to be installed
-    'container_bucket_unittest.py',
+    # Rquire lxc to be installed
     'lxc_functional_test.py',
-    'zygote_unittest.py',
     # Require sponge utils installed in site-packages
     'sponge_utils_functional_test.py',
     ))
