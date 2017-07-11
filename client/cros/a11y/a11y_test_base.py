@@ -44,6 +44,15 @@ class a11y_test_base(test.test):
         self._player.blocking_playback_of_default_file(
                 input_type='keyboard', filename='keyboard_ctrl+alt+z')
 
+    def _chromevox_move(self, direction):
+        """Use ChromeVox move commands (search + arrow key).
+
+        @param direction:  The direction in which to move, e.g. 'down'.
+
+        """
+        self._player.blocking_playback_of_default_file(
+                input_type='keyboard',
+                filename='keyboard_search+%s' % direction)
 
     def _set_feature(self, feature, value):
         """Set given feature to given value using a11y API call.
