@@ -33,6 +33,14 @@
     "master_name": "ChromeOS_Enterprise"
   },
   {
+    "autotest_name": "enterprise_CFM_USBPeripheralHotplugDetect.c920",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
+    "autotest_name": "enterprise_CFM_USBPeripheralHotplugDetect.c930",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
     "autotest_name": "firmware_StandbyPowerConsumption.30min",
     "master_name": "ChromeOSPower"
   },

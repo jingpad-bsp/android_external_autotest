@@ -16,7 +16,8 @@ _USB_DIR = '/sys/bus/usb/devices'
 _CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
                 CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
                 CrashTest._USER_CRASH_DIRS.replace("/crash","")]
-FILES_LIST = []
+CRASH_FILES = []
+CRASH_SIGNS = ['.meta' , '.kcrash']
 
 
 class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
@@ -181,9 +182,10 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         return cfm_peripheral_dict
 
 
-    def _check_for_crash(self):
+    def _check_for_crash(self, CRASH_SIGNS):
         """Check for kernel, browser, process crashes
 
+        @param CRASH_SIGNS: crash files to consider with these names
         @returns True if there are no crashes; False otherwise
         """
         result = True
@@ -195,25 +197,14 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
                 crash_files = crash_out.strip().split('\n')
                 for crash_file in crash_files:
                     if ((crash_file is not '')
-                        and (crash_file not in FILES_LIST)):
-                        self._number_of_crashes(crash_file)
-                    if crash_file.find('.meta') != -1 and \
-                            crash_file.find('kernel_warning') == -1:
-                        logging.info('CRASH DETECTED in %s/crash: %s',
-                                     crash_path, crash_file)
-                        result = False
+                        and (crash_file not in CRASH_FILES)):
+                        for crash_sign in CRASH_SIGNS:
+                            if crash_sign in crash_file:
+                                CRASH_FILES.append(crash_file)
+                                logging.info('CRASH DETECTED in %s/crash: %s',
+                                             crash_path, crash_file)
+                                result = False
         return result
-
-
-    def _number_of_crashes(self, crash_file):
-        """Appends new crash file name to FILES_LIST
-
-        @param crash_file: Crash files name from DUT
-
-        @returns crash file name list
-        """
-        FILES_LIST.append(crash_file)
-        return FILES_LIST
 
 
     def run_once(self, host, peripheral_whitelist_dict):
@@ -233,8 +224,8 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         self.crashes_list =[]
         self.no_of_crashes = 0
 
-        if not self._check_for_crash():
-            self.no_of_crashes = len(FILES_LIST)
+        if not self._check_for_crash(CRASH_SIGNS):
+            self.no_of_crashes = len(CRASH_FILES)
             self.crashes_list.append('New Warning or Crash Detected before ' +
                                      'plugging in usb peripherals.')
 
@@ -244,9 +235,9 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
             time.sleep(_WAIT_DELAY)
             self._set_hub_power(True)
 
-        self._check_for_crash()
-        if (self.no_of_crashes < len(FILES_LIST)):
-            self.no_of_crashes = len(FILES_LIST)
+        self._check_for_crash(CRASH_SIGNS)
+        if (self.no_of_crashes < len(CRASH_FILES)):
+            self.no_of_crashes = len(CRASH_FILES)
             self.crashes_list.append('New Warning or Crash Detected after ' +
                                      'plugging in usb peripherals.')
 
@@ -269,9 +260,9 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
                 exception_msg += '. ' + crash_identified_at
             raise error.TestFail(str(exception_msg))
 
-        self._check_for_crash()
-        if (self.no_of_crashes < len(FILES_LIST)):
-            self.no_of_crashes = len(FILES_LIST)
+        self._check_for_crash(CRASH_SIGNS)
+        if (self.no_of_crashes < len(CRASH_FILES)):
+            self.no_of_crashes = len(CRASH_FILES)
             self.crashes_list.append('New Warning or Crash detected after ' +
                                      'device enrolled into CFM.')
 
@@ -296,5 +287,8 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
                                  "No of Crashes: {1}. Crashes: {2}".format
                                  (peripherals_diff, int(self.no_of_crashes),
                                  crash_identified_at))
-        if self.crashes_list:
-            logging.info(crash_identified_at)
+
+        if CRASH_FILES:
+            self.output_perf_value(description='number_of_crashes',
+                                   value=int(len(CRASH_FILES)), units='count',
+                                   higher_is_better=False)
