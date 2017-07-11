@@ -119,10 +119,10 @@ class platform_FilePerms(test.test):
             'options': ['rw', 'noexec', 'nosuid']},
         '/run/containers/android/root/dev/ptmx': {
             'type': 'devpts',
-            'options': ['rw', 'mode=600', 'ptmxmode=666']},
+            'options': ['rw', 'noexec', 'nosuid', 'mode=600', 'ptmxmode=666']},
         '/run/containers/android/root/dev/pts': {
             'type': 'devpts',
-            'options': ['rw', 'mode=600', 'ptmxmode=666']},
+            'options': ['rw', 'noexec', 'nosuid', 'mode=600', 'ptmxmode=666']},
         '/run/containers/android/root/dev/kmsg': {
             'type': 'ext4',
             'options': standard_rw_options},
