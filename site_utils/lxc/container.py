@@ -13,7 +13,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import lxc
-from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 try:
     from chromite.lib import metrics
@@ -45,72 +44,19 @@ class Container(object):
     The attributes available are defined in ATTRIBUTES constant.
     """
 
-    def __init__(self, container_path, name, attribute_values, src=None,
-                 snapshot=False):
+    def __init__(self, container_path, attribute_values):
         """Initialize an object of LXC container with given attribute values.
 
         @param container_path: Directory that stores the container.
-        @param name: Name of the container.
         @param attribute_values: A dictionary of attribute values for the
                                  container.
-        @param src: An optional source container.  If provided, the source
-                    continer is cloned, and the new container will point to the
-                    clone.
-        @param snapshot: If a source container was specified, this argument
-                         specifies whether or not to create a snapshot clone.
-                         The default is to attempt to create a snapshot.
-                         If a snapshot is requested and creating the snapshot
-                         fails, a full clone will be attempted.
         """
         self.container_path = os.path.realpath(container_path)
         # Path to the rootfs of the container. This will be initialized when
         # property rootfs is retrieved.
         self._rootfs = None
-        self.name = name
         for attribute, value in attribute_values.iteritems():
             setattr(self, attribute, value)
-
-        # Clone the container
-        if src is not None:
-            # Clone the source container to initialize this one.
-            lxc_utils.clone(src.container_path, src.name, self.container_path,
-                            self.name, snapshot)
-
-
-    @classmethod
-    def createFromExistingDir(cls, lxc_path, name, **kwargs):
-        """Creates a new container instance for an lxc container that already
-        exists on disk.
-
-        @param lxc_path: The LXC path for the container.
-        @param name: The container name.
-
-        @raise error.ContainerError: If the container doesn't already exist.
-
-        @return: The new container.
-        """
-        container = cls(lxc_path, name, kwargs)
-        container.refresh_status()
-        return container
-
-
-    @classmethod
-    def clone(cls, src, new_name, new_path=None, snapshot=False):
-        """Creates a clone of this container.
-
-        @param src: The original container.
-        @param new_name: Name for the cloned container.
-        @param new_path: LXC path for the cloned container (optional; if not
-                specified, the new container is created in the same directory as
-                this container).
-        @param snapshot: Whether to snapshot, or create a full clone.
-        @param cleanup: If a container with the given name and path already
-                exist, clean it up first.
-        """
-        if new_path is None:
-            new_path = src.container_path
-
-        return cls(new_path, new_name, {}, src, snapshot)
 
 
     def refresh_status(self):
@@ -120,7 +66,7 @@ class Container(object):
         if not containers:
             raise error.ContainerError(
                     'No container found in directory %s with name of %s.' %
-                    (self.container_path, self.name))
+                    self.container_path, self.name)
         attribute_values = containers[0]
         for attribute, value in attribute_values.iteritems():
             setattr(self, attribute, value)
@@ -161,8 +107,8 @@ class Container(object):
                         'in the container config file is %s' %
                         (self.name, lxc_rootfs_config))
             lxc_rootfs = match.group(1)
-            cloned_from_snapshot = ':' in lxc_rootfs
-            if cloned_from_snapshot:
+            self.clone_from_snapshot = ':' in lxc_rootfs
+            if self.clone_from_snapshot:
                 self._rootfs = lxc_rootfs.split(':')[-1]
             else:
                 self._rootfs = lxc_rootfs
@@ -214,7 +160,8 @@ class Container(object):
         """
         cmd = 'sudo lxc-start -P %s -n %s -d' % (self.container_path, self.name)
         output = utils.run(cmd).stdout
-        if not self.is_running():
+        self.refresh_status()
+        if self.state != 'RUNNING':
             raise error.ContainerError(
                     'Container %s failed to start. lxc command output:\n%s' %
                     (os.path.join(self.container_path, self.name),
@@ -348,9 +295,3 @@ class Container(object):
                         "\"local\/lib\",\\n/g' %s" % site_module)
         self.attach_run('sed -i "s/lib_placeholder/lib/g" %s' %
                         site_module)
-
-
-    def is_running(self):
-        """Returns whether or not this container is currently running."""
-        self.refresh_status()
-        return self.state == 'RUNNING'
