@@ -34,7 +34,8 @@ _VAR_LOGCAT_PATH = '/var/log/logcat'
 def setup_adb_host():
     """Setup ADB host keys.
 
-    This sets up the files and environment variables that wait_for_adb_ready() needs"""
+    This sets up the files and environment variables that wait_for_adb_ready()
+    needs"""
     if _ADB_VENDOR_KEYS in os.environ:
         return
     if not os.path.exists(_ADB_KEYS_PATH):
@@ -277,7 +278,8 @@ def read_android_file(filename):
     @param filename: File to read.
     """
     with tempfile.NamedTemporaryFile() as tmpfile:
-        adb_cmd('pull %s %s' % (pipes.quote(filename), pipes.quote(tmpfile.name)))
+        adb_cmd('pull %s %s' % (pipes.quote(filename),
+                                pipes.quote(tmpfile.name)))
         with open(tmpfile.name) as f:
             return f.read()
 
@@ -294,7 +296,8 @@ def write_android_file(filename, data):
         tmpfile.write(data)
         tmpfile.flush()
 
-        adb_cmd('push %s %s' % (pipes.quote(tmpfile.name), pipes.quote(filename)))
+        adb_cmd('push %s %s' % (pipes.quote(tmpfile.name),
+                                pipes.quote(filename)))
 
 
 def _write_android_file(filename, data):
@@ -398,10 +401,14 @@ def _after_iteration_hook(obj):
             logging.warning('Iteration %d failed, taking a screenshot.',
                             obj.iteration)
             from cros.graphics.drm import crtcScreenshot
-            image = crtcScreenshot()
-            image.save('{}/{}_iter{}.png'.format(_SCREENSHOT_DIR_PATH,
-                                                 _SCREENSHOT_BASENAME,
-                                                 obj.iteration))
+            try:
+                image = crtcScreenshot()
+                image.save('{}/{}_iter{}.png'.format(_SCREENSHOT_DIR_PATH,
+                                                     _SCREENSHOT_BASENAME,
+                                                     obj.iteration))
+            except Exception:
+                e = sys.exc_info()[0]
+                logging.warning('Unable to capture screenshot. %s' % e)
         else:
             logging.warning('Too many failures, no screenshot taken')
 
@@ -523,7 +530,7 @@ class ArcTest(test.test):
                 if self._chrome is not None:
                     self._chrome.close()
 
-    def arc_setup(self, dep_package=None, apks=None, full_pkg_names=[],
+    def arc_setup(self, dep_package=None, apks=None, full_pkg_names=None,
                   uiautomator=False, email_id=None, password=None,
                   block_outbound=False):
         """ARC test setup: Setup dependencies and install apks.
@@ -657,7 +664,8 @@ class ArcTest(test.test):
         """
         logging.info('Blocking outbound connection')
         _android_shell('iptables -I OUTPUT -j REJECT')
-        _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 --sport 5555 -j ACCEPT')
+        _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
+                       '-j ACCEPT')
         _android_shell('iptables -I OUTPUT -p tcp -d localhost -j ACCEPT')
 
     def unblock_outbound(self):
@@ -669,5 +677,6 @@ class ArcTest(test.test):
         """
         logging.info('Unblocking outbound connection')
         _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
-        _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 -j ACCEPT')
+        _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
+                       '-j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
