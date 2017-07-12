@@ -172,7 +172,7 @@ def get_attribute_suites(package, abi):
     if package in _SUITE_SMOKE:
         attributes += ', suite:smoke'
     if package in _SUITE_BVT_ARC:
-        attributes += ', suite:bvt-arc, suite:arc-bvt-cq'
+        attributes += ', suite:bvt-arc'
     if package in _SUITE_BVT_PERBUILD and abi == 'arm':
         attributes += ', suite:bvt-perbuild'
     # Adding arc-cts-stable runs all packages twice on stable.
