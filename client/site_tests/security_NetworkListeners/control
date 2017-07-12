@@ -23,7 +23,7 @@ baseline
 # cost of running twice in release builders is low enough, so that's
 # what we're doing.
 
-ATTRIBUTES = "suite:bvt-inline, suite:smoke, suite:bvt-arc, suite:arc-bvt-cq"
+ATTRIBUTES = "suite:bvt-inline, suite:smoke, suite:bvt-arc"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
