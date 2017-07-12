@@ -1,8 +1,0 @@
-Tests are temporarily limited to a small subset of boards. We're still
-fixing Ozone GPU initialization on mustash. In the mean time it's
-important that we don't regress other parts of mustash login. By
-limiting to a few boards we can get mustash tests on the Chrome PFQ ToT
-informational waterfall, which will catch regressions due to GPU code
-changes in Chrome ToT.
-
-http://crbug.com/708002
