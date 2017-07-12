@@ -21,6 +21,7 @@ FBC_PATHS = [
     '/sys/kernel/debug/dri/0/i915_fbc',
     '/sys/kernel/debug/dri/0/i915_fbc_status'
 ]
+GEM_OBJECTS_PATHS = ['/sys/kernel/debug/dri/0/i915_gem_objects']
 GEM_PATHS = ['/sys/kernel/debug/dri/0/i915_gem_active']
 PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_status']
 RC6_PATHS = ['/sys/kernel/debug/dri/0/i915_drpc_info']
@@ -53,9 +54,7 @@ class graphics_Idle(graphics_utils.GraphicsTest):
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
             errors += self.verify_graphics_psr()
-            # TODO(ihf): enable once crbug.com/727983 is fixed.
-            if not utils.system_output('uname -r').startswith('4.4.'):
-                errors += self.verify_graphics_gem_idle()
+            errors += self.verify_graphics_gem_idle()
             errors += self.verify_graphics_i915_min_clock()
             errors += self.verify_graphics_rc6()
             errors += self.verify_lvds_downclock()
@@ -353,25 +352,53 @@ class graphics_Idle(graphics_utils.GraphicsTest):
 
     def verify_graphics_gem_idle(self):
         """ On systems which have i915, check that we can get all gem objects
-        to become idle (i.e. the i915_gem_active list need to go to 0);
+        to become idle (i.e. the i915_gem_active list or i915_gem_objects
+        client/process gem object counts need to go to 0);
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_gem_idle')
-        if (utils.get_cpu_soc_family() == 'x86_64' and
-                self._gpu_type != 'pinetrail'):
+        if utils.get_cpu_soc_family() == 'x86_64':
             tries = 0
             found = False
+            per_process_check = False
+
             gem_path = self.get_valid_path(GEM_PATHS)
             if not gem_path:
-                return 'GEM_PATHS not found.'
-            while not found and tries < 240:
-                time.sleep(0.25)
-                with open(gem_path, 'r') as gem_file:
-                    for line in gem_file:
-                        if re.search('Total 0 objects', line):
-                            found = True
-                            break
+                gem_path = self.get_valid_path(GEM_OBJECTS_PATHS)
+                if gem_path:
+                    per_process_check = True
+                else:
+                    return 'GEM_PATHS not found.'
 
-                tries += 1
+            # Checks 4.4 and later kernels
+            if per_process_check:
+                while not found and tries < 240:
+                    time.sleep(0.25)
+                    gem_objects_idle = False
+                    gem_active_search = False
+                    with open(gem_path, 'r') as gem_file:
+                        for line in gem_file:
+                            if gem_active_search:
+                                if re.search('\(0 active,', line):
+                                    gem_objects_idle = True
+                                else:
+                                    gem_objects_idle = False
+                                    break
+                            elif line == '\n':
+                                gem_active_search = True
+                        if gem_objects_idle:
+                            found = True
+                    tries += 1
+
+            # Checks pre 4.4 kernels
+            else:
+                while not found and tries < 240:
+                    time.sleep(0.25)
+                    with open(gem_path, 'r') as gem_file:
+                        for line in gem_file:
+                            if re.search('Total 0 objects', line):
+                                found = True
+                                break
+                    tries += 1
             if not found:
                 return self.handle_error('Did not reach 0 gem actives. ',
                                          gem_path)
