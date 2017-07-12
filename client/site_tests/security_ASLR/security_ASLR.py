@@ -22,8 +22,10 @@ import re
 
 def _pidof(exe_name):
     """Returns the PID of the first process with the given name."""
-    return utils.system_output('pidof -s %s' % exe_name,
-                               ignore_status=True).strip()
+    output = utils.system_output('pidof %s' % exe_name,
+                                 ignore_status=True).strip()
+    pids = [int(pid) for pid in output.split()]
+    return sorted(pids)[0]
 
 
 class Process(object):
