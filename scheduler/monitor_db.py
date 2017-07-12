@@ -869,15 +869,6 @@ class Dispatcher(object):
         metrics.Counter(
             'chromeos/autotest/scheduler/scheduled_jobs_with_hosts'
         ).increment_by(new_jobs_with_hosts)
-        # TODO(pprabhu): Decide what to do about this metric. Million dollar
-        # question: What happens to jobs that were not matched. Do they stay in
-        # the queue, and get processed right here in the next tick (then we want
-        # a guage corresponding to the number of outstanding unmatched host
-        # jobs), or are they handled somewhere else (then we need a counter
-        # corresponding to failed_to_match_with_hosts jobs).
-        #autotest_stats.Gauge(key).send('new_jobs_without_hosts',
-        #                               new_jobs_need_hosts -
-        #                               new_jobs_with_hosts)
 
 
     @_calls_log_tick_msg
