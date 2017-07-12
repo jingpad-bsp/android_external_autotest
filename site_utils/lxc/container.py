@@ -10,7 +10,6 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import lxc
 from autotest_lib.site_utils.lxc import utils as lxc_utils
@@ -93,7 +92,7 @@ class Container(object):
 
 
     @classmethod
-    def clone(cls, src, new_name, new_path=None, snapshot=False):
+    def clone(cls, src, new_name, new_path=None, snapshot=False, cleanup=False):
         """Creates a clone of this container.
 
         @param src: The original container.
@@ -108,6 +107,23 @@ class Container(object):
         if new_path is None:
             new_path = src.container_path
 
+        # If a container exists at this location, clean it up first
+        container_folder = os.path.join(new_path, new_name)
+        if lxc_utils.path_exists(container_folder):
+            if not cleanup:
+                raise error.ContainerError('Container %s already exists.' %
+                                           new_name)
+            container = Container.createFromExistingDir(new_path, new_name)
+            try:
+                container.destroy()
+            except error.CmdError as e:
+                # The container could be created in a incompleted state. Delete
+                # the container folder instead.
+                logging.warn('Failed to destroy container %s, error: %s',
+                             new_name, e)
+                utils.run('sudo rm -rf "%s"' % container_folder)
+
+        # Create and return the new container.
         return cls(new_path, new_name, {}, src, snapshot)
 
 
@@ -293,15 +309,10 @@ class Container(object):
         """
         # Test autotest code is setup by verifying a list of
         # (directory, minimum file count)
-        if constants.IS_MOBLAB:
-            site_packages_path = constants.MOBLAB_SITE_PACKAGES_CONTAINER
-        else:
-            site_packages_path = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR,
-                                              'site-packages')
         directories_to_check = [
-                (lxc_config.CONTAINER_AUTOTEST_DIR, 3),
+                (constants.CONTAINER_AUTOTEST_DIR, 3),
                 (constants.RESULT_DIR_FMT % job_folder, 0),
-                (site_packages_path, 3)]
+                (constants.CONTAINER_SITE_PACKAGES_PATH, 3)]
         for directory, count in directories_to_check:
             result = self.attach_run(command=(constants.COUNT_FILE_CMD %
                                               {'dir': directory})).stdout
@@ -352,3 +363,42 @@ class Container(object):
         """Returns whether or not this container is currently running."""
         self.refresh_status()
         return self.state == 'RUNNING'
+
+
+    def set_hostname(self, hostname):
+        """Sets the hostname within the container.  This needs to be called
+        prior to starting the container.
+        """
+        config_file = os.path.join(self.container_path, self.name, 'config')
+        lxc_utsname_setting = (
+                'lxc.utsname = ' +
+                constants.CONTAINER_UTSNAME_FORMAT % hostname)
+        utils.run(
+            constants.APPEND_CMD_FMT % {'content': lxc_utsname_setting,
+                                        'file': config_file})
+
+
+    def install_ssp(self, ssp_url):
+        """Downloads and installs the given server package.
+
+        @param ssp_url: The URL of the ssp to download and install.
+        """
+        usr_local_path = os.path.join(self.rootfs, 'usr', 'local')
+        autotest_pkg_path = os.path.join(usr_local_path,
+                                         'autotest_server_package.tar.bz2')
+        # sudo is required so os.makedirs may not work.
+        utils.run('sudo mkdir -p %s'% usr_local_path)
+
+        lxc.download_extract(ssp_url, autotest_pkg_path, usr_local_path)
+
+
+    def install_control_file(self, control_file):
+        """Installs the given control file.
+        The given file will be moved into the container.
+
+        @param control_file: Path to the control file to install.
+        """
+        dst_path = os.path.join(self.rootfs,
+                                constants.CONTROL_TEMP_PATH.lstrip(os.path.sep))
+        utils.run('sudo mkdir -p %s' % dst_path)
+        utils.run('sudo mv %s %s' % (control_file, dst_path))

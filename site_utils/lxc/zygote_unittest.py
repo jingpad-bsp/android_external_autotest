@@ -15,13 +15,13 @@ from contextlib import contextmanager
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
 options = None
 
+@unittest.skipIf(lxc.IS_MOBLAB, 'Zygotes are not supported on moblab.')
 class ZygoteTests(unittest.TestCase):
     """Unit tests for the Zygote class."""
 
@@ -97,28 +97,6 @@ class ZygoteTests(unittest.TestCase):
         # missing.
 
 
-    def testHostname(self):
-        """Verifies that the zygote starts up with a default hostname that is
-        the lxc container name."""
-        test_name = 'testHostname'
-        with self.createZygote(name=test_name) as zygote:
-            zygote.start(wait_for_network=True)
-            hostname = zygote.attach_run('hostname -f').stdout.strip()
-            self.assertEqual(test_name, hostname)
-
-
-    @unittest.skip('Setting the container hostname using lxc.utsname does not'
-                   'work on goobuntu.')
-    def testSetHostnameNotRunning(self):
-        """Verifies that the hostname can be set on a stopped container."""
-        with self.createZygote() as zygote:
-            expected_hostname = 'my-new-hostname'
-            zygote.set_hostname(expected_hostname)
-            zygote.start(wait_for_network=True)
-            hostname = zygote.attach_run('hostname -f').stdout.strip()
-            self.assertEqual(expected_hostname, hostname)
-
-
     def testSetHostnameRunning(self):
         """Verifies that the hostname can be set on a running container."""
         with self.createZygote() as zygote:
@@ -140,7 +118,7 @@ class ZygoteTests(unittest.TestCase):
 
             self.verifyBindMount(
                 zygote,
-                container_path=lxc_config.CONTAINER_AUTOTEST_DIR,
+                container_path=lxc.CONTAINER_AUTOTEST_DIR,
                 host_path=zygote.host_path)
 
 
@@ -164,11 +142,11 @@ class ZygoteTests(unittest.TestCase):
 
             self.verifyBindMount(
                 zygote,
-                container_path=lxc_config.CONTAINER_AUTOTEST_DIR,
+                container_path=lxc.CONTAINER_AUTOTEST_DIR,
                 host_path=zygote.host_path)
 
             # Verify that the old directory contents was preserved.
-            cmd = 'cat %s' % os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR,
+            cmd = 'cat %s' % os.path.join(lxc.CONTAINER_AUTOTEST_DIR,
                                           test_filename)
             test_output = zygote.attach_run(cmd).stdout.strip()
             self.assertEqual(test_string, test_output)
@@ -242,7 +220,6 @@ def parse_options():
 
 if __name__ == '__main__':
     options, unittest_argv = parse_options()
-
 
     log_level=(logging.DEBUG if options.verbose else logging.INFO)
     unittest_logging.setup(log_level)
