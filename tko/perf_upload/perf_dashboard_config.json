@@ -157,14 +157,16 @@
     "master_name": "ChromeOSPerf"
   },
   {
-    "autotest_name": "enterprise_LongevityTrackerServer.chromesign",
-    "master_name": "ChromeOS_Enterprise",
-    "dashboard_test_name": "enterprise_LongevityTrackerServer"
+    "autotest_name": "enterprise_LongevityTrackerServer.chromesign_20min",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
+    "autotest_name": "enterprise_LongevityTrackerServer.chromesign_3hr",
+    "master_name": "ChromeOS_Enterprise"
   },
   {
     "autotest_name": "enterprise_LongevityTrackerServer.riseplayer",
-    "master_name": "ChromeOS_Enterprise",
-    "dashboard_test_name": "enterprise_LongevityTrackerServer"
+    "master_name": "ChromeOS_Enterprise"
   },
   {
     "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch001",

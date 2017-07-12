@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 AUTHOR = "krishnargv"
-NAME = "enterprise_LongevityTrackerServer.chromesign"
-PURPOSE = "Tracks Chrome OS performance over long periods."
+NAME = "enterprise_LongevityTrackerServer.chromesign_20min"
+PURPOSE = "Tracks Chrome OS performance over a 20min period."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:longevity, suite:longevity_two"
+ATTRIBUTES = "suite:longevity"
 DEPENDENCIES = "chromesign"
 JOB_RETRIES = 3
 
