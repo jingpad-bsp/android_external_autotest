@@ -31,181 +31,184 @@ class platform_FilePerms(test.test):
     # or a bug number tracking work to harden that mount point, in a comment.
     expected_mount_options = {
         '/dev': {
-            'type': 'devtmpfs',
+            'type': ['devtmpfs'],
             'options': ['rw', 'nosuid', 'noexec', 'mode=755']},
         '/dev/pstore': {
-            'type': 'pstore',
+            'type': ['pstore'],
             'options': standard_rw_options},
         '/dev/pts': { # Special case, we want to track gid/mode too.
-            'type': 'devpts',
+            'type': ['devpts'],
             'options': ['rw', 'nosuid', 'noexec', 'gid=5', 'mode=620']},
-        '/dev/shm': {'type': 'tmpfs', 'options': standard_rw_options},
-        '/home': {'type': 'ext4', 'options': standard_rw_options},
-        '/home/chronos': {'type': 'ext4', 'options': standard_rw_options},
-        '/media': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/dev/shm': {'type': ['tmpfs'], 'options': standard_rw_options},
+        '/home': {'type': ['ext4'], 'options': standard_rw_options},
+        '/home/chronos': {'type': ['ext4'], 'options': standard_rw_options},
+        '/media': {'type': ['tmpfs'], 'options': standard_rw_options},
         '/mnt/stateful_partition': {
-            'type': 'ext4',
+            'type': ['ext4'],
             'options': standard_rw_options},
         '/mnt/stateful_partition/encrypted': {
-            'type': 'ext4',
+            'type': ['ext4'],
             'options': standard_rw_options},
         # Special case - Android container has devices and suid programs.
         # Note that after the user logs in we remount it as "exec",
         # therefore we do not enforce 'noexec'.
         '/opt/google/containers/android/rootfs/root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro']},
         '/opt/google/containers/android/rootfs/root/vendor': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'nosuid', 'nodev']},
         '/opt/google/containers/arc-sdcard/mountpoints/container-root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-downloads-filesystem/mountpoints/container-root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-obb-mounter/mountpoints/container-root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'noexec']},
         '/opt/google/containers/arc-removable-media/mountpoints/container-root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'noexec']},
+        '/run/arc/debugfs/sync': {
+            'type': ['debugfs'],
+            'options': standard_rw_options },
         '/run/arc/debugfs/tracing': {  # for devices in dev mode.
-            'type': 'debugfs',
-            'options': standard_rw_options + ['gid=605', 'mode=750']},
+            'type': ['debugfs', 'tracefs'],
+            'options': standard_rw_options },
         '/run/arc/media': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'] ,
             'options': standard_ro_options + ['mode=755']},
         '/run/arc/obb': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_ro_options + ['mode=755']},
         '/run/arc/oem': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/arc/sdcard': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_ro_options + ['mode=755']},
         '/run/arc/shared_mounts': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro']},
         # The empty cache and data directories are ext2 and read-only because
         # they are on the root device.
         '/run/containers/android/root/cache': {
             'device': root_device,
-            'type': 'ext2',
+            'type': ['ext2', 'ext4'],
             'options': ['ro']},
         '/run/containers/android/root/data': {
             'device': root_device,
-            'type': 'ext2',
+            'type': ['ext2', 'ext4'],
             'options': ['ro', 'nosuid', 'nodev']},
         '/run/containers/android/root/dev': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': ['rw', 'nosuid', 'mode=755']},
         '/run/containers/android/root/dev/dri': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': ['rw', 'noexec', 'nosuid']},
         '/run/containers/android/root/dev/input': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': ['rw', 'noexec', 'nosuid']},
         '/run/containers/android/root/dev/ptmx': {
-            'type': 'devpts',
+            'type': ['devpts'],
             'options': ['rw', 'noexec', 'nosuid', 'mode=600', 'ptmxmode=666']},
         '/run/containers/android/root/dev/pts': {
-            'type': 'devpts',
+            'type': ['devpts'],
             'options': ['rw', 'noexec', 'nosuid', 'mode=600', 'ptmxmode=666']},
         '/run/containers/android/root/dev/kmsg': {
-            'type': 'ext4',
+            'type': ['ext4'],
             'options': standard_rw_options},
         '/run/containers/android/root/oem': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root/var/run/anr': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options},
         '/run/containers/android/root/var/run/arc': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + [
                 'uid=655360', 'gid=656360', 'mode=775']},
         '/run/containers/android/root/var/run/arc/bugreport': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root/var/run/chrome': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root/var/run/camera': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root/var/run/cras': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/run/containers/android/root/vendor': {
             'device': loop_device,
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro']},
-        '/proc': { 'type': 'proc', 'options': standard_rw_options},
+        '/proc': { 'type': ['proc'], 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         # Special case, we want to track group/mode too.
         # gid 605 == debugfs-access
         '/run/debugfs_gpu': {
-            'type': 'debugfs',
+            'type': ['debugfs'],
             'options': standard_rw_options + ['gid=605', 'mode=750']},
-        '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/run/lock': {'type': ['tmpfs'], 'options': standard_rw_options},
         '/run/imageloader/PepperFlashPlayer': {
-            'type': 'squashfs',
+            'type': ['squashfs'],
             'options': ['ro', 'nodev', 'nosuid']},
-        '/sys': {'type': 'sysfs', 'options': standard_rw_options},
+        '/sys': {'type': ['sysfs'], 'options': standard_rw_options},
         '/sys/fs/cgroup': {
-            'type': 'tmpfs',
+            'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
         '/sys/fs/cgroup/cpu': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/cgroup/cpuacct': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/cgroup/cpuset': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/cgroup/devices': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/cgroup/freezer': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/cgroup/schedtune': {
-            'type': 'cgroup',
+            'type': ['cgroup'],
             'options': standard_rw_options},
         '/sys/fs/fuse/connections': {
-            'type': 'fusectl',
+            'type': ['fusectl'],
             'options': standard_rw_options},
         '/sys/fs/selinux': {
-            'type': 'selinuxfs',
+            'type': ['selinuxfs'],
             'options': ['rw', 'nosuid', 'noexec']},
         '/sys/kernel/debug': {
-            'type': 'debugfs',
+            'type': ['debugfs'],
             'options': standard_rw_options},
         '/sys/kernel/debug/tracing': {
-            'type': 'tracefs',
+            'type': ['tracefs'],
             'options': standard_rw_options},
         '/sys/kernel/security': {
-            'type': 'securityfs',
+            'type': ['securityfs'],
             'options': standard_rw_options},
-        '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
-        '/var': {'type': 'ext4', 'options': standard_rw_options},
+        '/tmp': {'type': ['tmpfs'], 'options': standard_rw_options},
+        '/var': {'type': ['ext4'], 'options': standard_rw_options},
         '/usr/share/oem': {
-            'type': 'ext4',
+            'type': ['ext4'],
             'options': standard_ro_options},
     }
 
@@ -227,7 +230,7 @@ class platform_FilePerms(test.test):
         'device': root_device,
         # The fonts are bind-mounted versions of fonts in /usr/share/fonts. Use
         # the same type and options for '/'.
-        'type': 'ext2',
+        'type': ['ext2'],
         'options': ['ro'],
     }
 
@@ -424,7 +427,7 @@ class platform_FilePerms(test.test):
                     errors += 1
                     continue
 
-                if fs_type != mount_options['type']:
+                if fs_type not in mount_options['type']:
                     logging.error(
                             '[%s] "%s" has type "%s", expected type "%s"',
                             mtab_path, fs, fs_type, mount_options['type'])
