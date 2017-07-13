@@ -16,3 +16,4 @@ from container_bucket import ContainerBucket
 from lxc import install_package
 from lxc import install_packages
 from lxc import install_python_package
+from zygote import Zygote

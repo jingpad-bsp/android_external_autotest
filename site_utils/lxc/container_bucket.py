@@ -1,4 +1,4 @@
-# Copyright 2015 The Chromium Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -28,7 +28,9 @@ class ContainerBucket(object):
     """A wrapper class to interact with containers in a specific container path.
     """
 
-    def __init__(self, container_path=constants.DEFAULT_CONTAINER_PATH):
+    def __init__(self,
+                 container_path=constants.DEFAULT_CONTAINER_PATH,
+                 shared_host_path = constants.DEFAULT_SHARED_HOST_PATH):
         """Initialize a ContainerBucket.
 
         @param container_path: Path to the directory used to store containers.
@@ -36,6 +38,15 @@ class ContainerBucket(object):
                                global config.
         """
         self.container_path = os.path.realpath(container_path)
+        self.shared_host_path = os.path.realpath(shared_host_path)
+        # Try to create the base container.
+        try:
+            base_container = Container.createFromExistingDir(
+                    container_path, constants.BASE);
+            base_container.refresh_status()
+            self.base_container = base_container
+        except error.ContainerError:
+            self.base_container = None
 
 
     def get_all(self):
@@ -47,7 +58,8 @@ class ContainerBucket(object):
         info_collection = lxc.get_container_info(self.container_path)
         containers = {}
         for info in info_collection:
-            container = Container(self.container_path, info)
+            container = Container.createFromExistingDir(self.container_path,
+                                                        **info)
             containers[container.name] = container
         return containers
 
@@ -82,6 +94,7 @@ class ContainerBucket(object):
             containers, key=lambda n: 1 if n.name == constants.BASE else 0):
             logging.info('Destroy container %s.', container.name)
             container.destroy()
+        self._cleanup_shared_host_path()
 
 
     @metrics.SecondsTimerDecorator(
@@ -158,7 +171,7 @@ class ContainerBucket(object):
             if not cleanup:
                 raise error.ContainerError('Container %s already exists.' %
                                            new_name)
-            container = Container(new_path, {'name': name})
+            container = Container.createFromExistingDir(new_path, new_name)
             try:
                 container.destroy()
             except error.CmdError as e:
@@ -168,15 +181,7 @@ class ContainerBucket(object):
                              name, e)
                 utils.run('sudo rm -rf "%s"' % container_folder)
 
-        snapshot_arg = '-s' if snapshot else ''
-        # overlayfs is the default clone backend storage. However it is not
-        # supported in Ganeti yet. Use aufs as the alternative.
-        aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
-        cmd = (('sudo lxc-clone --lxcpath %s --newpath %s '
-                '--orig %s --new %s %s %s') %
-               (path, new_path, name, new_name, snapshot_arg, aufs_arg))
-
-        utils.run(cmd)
+        lxc_utils.clone(path, name, new_path, new_name, snapshot)
         return self.get(new_name)
 
 
@@ -235,8 +240,46 @@ class ContainerBucket(object):
 
         # Update container config with container_path from global config.
         config_path = os.path.join(base_path, 'config')
-        utils.run('sudo sed -i "s|container_dir|%s|g" "%s"' %
-                  (self.container_path, config_path))
+        rootfs_path = os.path.join(base_path, 'rootfs')
+        utils.run(('sudo sed '
+                   '-i "s|\(lxc\.rootfs[[:space:]]*=\).*$|\\1 {rootfs}|" '
+                   '"{config}"').format(rootfs=rootfs_path,
+                                        config=config_path))
+
+        self.base_container = Container.createFromExistingDir(
+                self.container_path, name)
+
+        self._setup_shared_host_path()
+
+
+    def _setup_shared_host_path(self):
+        """Sets up the shared host directory."""
+        # First, clear out the old shared host dir if it exists.
+        if lxc_utils.path_exists(self.shared_host_path):
+            self._cleanup_shared_host_path()
+        # Create the dir and set it up as a shared mount point.
+        utils.run(('sudo mkdir "{path}" && '
+                   'sudo mount --bind "{path}" "{path}" && '
+                   'sudo mount --make-unbindable "{path}" && '
+                   'sudo mount --make-shared "{path}"')
+                  .format(path=self.shared_host_path))
+
+
+    def _cleanup_shared_host_path(self):
+        """Removes the shared host directory.
+
+        This should only be called after all containers have been destroyed
+        (i.e. all host mounts have been disconnected and removed, so the shared
+        host directory should be empty).
+        """
+        if not os.path.exists(self.shared_host_path):
+            return
+
+        if len(os.listdir(self.shared_host_path)) > 0:
+            raise RuntimeError('Attempting to clean up host dir before all '
+                               'hosts have been disconnected')
+        utils.run('sudo umount "{path}" && sudo rmdir "{path}"'
+                  .format(path=self.shared_host_path))
 
 
     @metrics.SecondsTimerDecorator(
