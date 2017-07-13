@@ -15,13 +15,13 @@ Note that the test does not require Autotest database and frontend.
 import argparse
 import logging
 import os
-import sys
 import tempfile
 import time
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.site_utils import lxc
+from autotest_lib.site_utils.lxc import unittest_logging
 
 
 TEST_JOB_ID = 123
@@ -173,21 +173,6 @@ def run(machine):
 
 parallel_simple(run, machines)
 """
-
-
-def setup_logging(log_level=logging.INFO):
-    """Direct logging to stdout.
-
-    @param log_level: Level of logging to redirect to stdout, default to INFO.
-    """
-    logger = logging.getLogger()
-    logger.setLevel(log_level)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(log_level)
-    formatter = logging.Formatter('%(asctime)s %(message)s')
-    handler.setFormatter(formatter)
-    logger.handlers = []
-    logger.addHandler(handler)
 
 
 def setup_base(bucket):
@@ -352,8 +337,8 @@ def main(options):
                      'grant root access to this process.')
         utils.run('sudo true')
 
-    setup_logging(log_level=(logging.DEBUG if options.verbose
-                             else logging.INFO))
+    log_level=(logging.DEBUG if options.verbose else logging.INFO)
+    unittest_logging.setup(log_level)
 
     bucket = lxc.ContainerBucket(TEMP_DIR)
 
