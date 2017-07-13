@@ -33,6 +33,10 @@
     "master_name": "ChromeOS_Enterprise"
   },
   {
+    "autotest_name": "enterprise_CFM_Perf.meet_app",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
     "autotest_name": "enterprise_CFM_USBPeripheralHotplugDetect.c920",
     "master_name": "ChromeOS_Enterprise"
   },
