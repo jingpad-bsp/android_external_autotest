@@ -679,19 +679,8 @@ class ChromiumOSTestPlatform(TestPlatform):
         if target_archive_uri:
             target_stateful_uri = self._get_stateful_uri(target_archive_uri)
         else:
-            # Attempt to get the job_repo_url to find the stateful payload for
-            # the target image.
-            info = self._host.host_info_store.get()
-            job_repo_url = info.attributes.get(
-                    self._host.job_repo_url_attribute, '')
-            if not job_repo_url:
-                target_stateful_uri = self._payload_to_stateful_uri(
+            target_stateful_uri = self._payload_to_stateful_uri(
                     target_payload_uri)
-            else:
-                _, devserver_label = tools.get_devserver_build_from_package_url(
-                        job_repo_url)
-                staged_target_stateful_url = self._stage_payload(
-                        devserver_label, self._STATEFUL_UPDATE_FILENAME)
 
         if not staged_target_stateful_url and target_stateful_uri:
             staged_target_stateful_url = self._stage_payload_by_uri(
@@ -702,8 +691,7 @@ class ChromiumOSTestPlatform(TestPlatform):
                      test_conf['update_type'], target_payload_uri,
                      staged_target_url)
         logging.info('Target stateful update from %s staged at %s',
-                     target_stateful_uri or 'standard location',
-                     staged_target_stateful_url)
+                     target_stateful_uri, staged_target_stateful_url)
 
         return self.StagedURLs(staged_source_url, staged_source_stateful_url,
                                staged_target_url, staged_target_stateful_url)
