@@ -1560,7 +1560,7 @@ def create_suite(afe, options):
 SuiteResult = namedtuple('SuiteResult', ['return_code', 'output_dict'])
 
 
-def main_without_exception_handling(options):
+def _run_suite(options):
     """
     run_suite script without exception handling.
 
@@ -1826,20 +1826,14 @@ def _should_run(options):
             created_on__gte=start_time,
             min_rpc_timeout=_MIN_RPC_TIMEOUT)
 
-def main():
-    """Entry point."""
-    utils.verify_not_root_user()
 
-    parser = make_parser()
-    options = parser.parse_args()
-    if options.do_nothing:
-        return
+def _run_task(parser, options):
+    """Perform this script's function minus setup.
 
+    Boilerplate like argument parsing, logging, output formatting happen
+    elsewhere.
+    """
     try:
-        # Silence the log when dumping outputs into json
-        if options.json_dump:
-            logging.disable(logging.CRITICAL)
-
         if not verify_options(options):
             parser.print_help()
             code = RETURN_CODES.INVALID_OPTIONS
@@ -1853,7 +1847,7 @@ def main():
                              _SEARCH_JOB_MAX_DAYS)
                 return
 
-            code, output_dict = main_without_exception_handling(options)
+            code, output_dict = _run_suite(options)
     except diagnosis_utils.BoardNotAvailableError as e:
         output_dict = {'return_message': 'Skipping testing: %s' % e.message}
         code = RETURN_CODES.BOARD_NOT_AVAILABLE
@@ -1868,6 +1862,22 @@ def main():
         }
         code = RETURN_CODES.INFRA_FAILURE
         logging.exception(output_dict['return_message'])
+    return code, output_dict
+
+
+def main():
+    """Entry point."""
+    utils.verify_not_root_user()
+
+    parser = make_parser()
+    options = parser.parse_args()
+    if options.do_nothing:
+        return
+    # Silence the log when dumping outputs into json
+    if options.json_dump:
+        logging.disable(logging.CRITICAL)
+
+    code, output_dict = _run_task(parser, options)
 
     # Dump test outputs into json.
     output_dict['return_code'] = code
