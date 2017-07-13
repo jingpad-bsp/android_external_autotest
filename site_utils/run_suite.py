@@ -279,7 +279,7 @@ def make_parser():
         help=('A dict of args passed all the way to each individual test that '
               'will be actually ran.'))
     parser.add_argument(
-        '--require_log', action='store_true',
+        '--require_logfile', action='store_true',
         help=('Stream logs of run_suite.py to a local file named '
               'run_suite-<build name>.log.'))
 
@@ -1574,16 +1574,8 @@ def _run_suite(options):
     if options.use_suite_attr:
         options = change_options_for_suite_attr(options)
 
-    log_name = 'run_suite-default.log'
-    if options.build:
-        # convert build name from containing / to containing only _
-        log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
-        log_dir = os.path.join(common.autotest_dir, 'logs')
-        if os.path.exists(log_dir):
-            log_name = os.path.join(log_dir, log_name)
-
-    if options.require_log:
-        utils.setup_logging(logfile=log_name)
+    log_name = _get_log_name(options)
+    utils.setup_logging(logfile=log_name)
 
     if not options.bypass_labstatus and not options.web:
         utils.check_lab_status(options.build)
@@ -1650,6 +1642,26 @@ def _run_suite(options):
         return _handle_job_nowait(job_id, options, instance_server)
     else:
         return _handle_job_wait(afe, job_id, options, job_timer, is_real_time)
+
+
+def _get_log_name(options):
+    """Return local log file's name.
+
+    @param options:         Parsed options.
+
+    @return log_name, a string file name.
+    """
+    if options.require_logfile:
+        # options.build is verified to exist in verify_options.
+        # convert build name from containing / to containing only _.
+        log_name = 'run_suite-%s.log' % options.build.replace('/', '_')
+        log_dir = os.path.join(common.autotest_dir, 'logs')
+        if os.path.exists(log_dir):
+            log_name = os.path.join(log_dir, log_name)
+
+        return log_name
+    else:
+        return None
 
 
 def _create_afe(options):
