@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "kerl@google.com, hangouts-engprod-sto@google.com"
-NAME = "video_WebRtcPausePlayPeerConnections"
+NAME = "webrtc_PausePlayPeerConnections.video"
 PURPOSE = "Ensures frequent pause and plays of peer connection streams work"
 CRITERIA = "Fails if the tab freezes during the test"
 ATTRIBUTES = "suite:hotrod"
@@ -17,11 +17,11 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This test starts 10 peer connections with low resolution
+This test starts 10 peer connections with low resolution video
 streams. The tests randomly pauses and plays the streams.
 
 This is a regression test for bug 718369.
 """
 
-job.run_test("video_WebRtcPausePlayPeerConnections")
+job.run_test("webrtc_PausePlayPeerConnections")
 

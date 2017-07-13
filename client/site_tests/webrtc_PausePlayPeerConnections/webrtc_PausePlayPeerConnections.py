@@ -27,7 +27,7 @@ NUM_PEER_CONNECTIONS = 10
 PAUSE_PLAY_ITERATION_DELAY_MILLIS = 20;
 
 
-class video_WebRtcPausePlayPeerConnections(test.test):
+class webrtc_PausePlayPeerConnections(test.test):
     """Tests many peerconnections randomly paused and played."""
     version = 1
 
@@ -90,4 +90,3 @@ class video_WebRtcPausePlayPeerConnections(test.test):
                 description='run_time',
                 value=results['runTimeSeconds'],
                 units='seconds');
-
