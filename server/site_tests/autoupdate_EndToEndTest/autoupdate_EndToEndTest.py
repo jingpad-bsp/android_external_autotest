@@ -336,7 +336,7 @@ class UpdateEventLogVerifier(object):
                   self._event_log = json.loads(out_log.read())
             except Exception as e:
                 raise error.TestFail('Error while reading the hostlogs '
-                                     'from devserver: %s', e)
+                                     'from devserver: %s' % e)
 
         # Return next new event, if one is found.
         if len(self._event_log) > self._num_consumed_events:
@@ -884,6 +884,24 @@ class autoupdate_EndToEndTest(test.test):
         self._omaha_devserver = None
 
 
+    def _get_hostlog_file(self, filename, pid):
+        """Return the hostlog file location.
+
+        @param filename: The partial filename to look for.
+        @param pid: The pid of the update.
+
+        """
+        hosts = [self._host.hostname, self._host.ip]
+        for host in hosts:
+            hostlog = '%s_%s_%s' % (filename, host, pid)
+            file_url = os.path.join(self.job.resultdir,
+                                    dev_server.AUTO_UPDATE_LOG_DIR,
+                                    hostlog)
+            if os.path.exists(file_url):
+                return file_url
+        raise error.TestFail('Could not find %s for pid %s' % (filename, pid))
+
+
     def _dump_update_engine_log(self, test_platform):
         """Dumps relevant AU error log."""
         try:
@@ -1049,11 +1067,7 @@ class autoupdate_EndToEndTest(test.test):
             pid = test_platform.trigger_update(test_conf['target_payload_uri'])
 
             # Verify the host log that was returned from the update.
-            rootfs_hostlog = '%s_%s_%s' % ('devserver_hostlog_rootfs',
-                                           self._host.hostname, pid)
-            file_url = os.path.join(self.job.resultdir,
-                                    dev_server.AUTO_UPDATE_LOG_DIR,
-                                    rootfs_hostlog)
+            file_url = self._get_hostlog_file('devserver_hostlog_rootfs', pid)
 
             logging.info('Checking update steps with devserver hostlog file: '
                          '%s' % file_url)
@@ -1120,11 +1134,7 @@ class autoupdate_EndToEndTest(test.test):
             # Observe post-reboot update check, which should indicate that the
             # image version has been updated.
             # Verify the host log that was returned from the update.
-            reboot_hostlog = '%s_%s_%s' % ('devserver_hostlog_reboot',
-                                           self._host.hostname, pid)
-            file_url = os.path.join(self.job.resultdir,
-                                    dev_server.AUTO_UPDATE_LOG_DIR,
-                                    reboot_hostlog)
+            file_url = self._get_hostlog_file('devserver_hostlog_reboot', pid)
 
             logging.info('Checking post-reboot devserver hostlogs: %s' %
                          file_url)
