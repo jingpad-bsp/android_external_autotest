@@ -725,6 +725,13 @@ def get_afe_host_from_machine(machine):
     return afe_host
 
 
+def get_connection_pool_from_machine(machine):
+    """Returns the ssh_multiplex.ConnectionPool from machine if possible."""
+    if not isinstance(machine, dict):
+        return None
+    return machine.get('connection_pool')
+
+
 def get_creds_abspath(creds_file):
     """Returns the abspath of the credentials file.
 
@@ -839,6 +846,8 @@ def lock_duts_and_wait(duts, afe, lock_msg='default lock message',
 
     @param duts: List of duts to lock.
     @param afe: afe instance.
+    @param lock_msg: message for afe on locking this host.
+    @param max_wait: Max wait time in seconds.
 
     @returns Boolean lock_success where True if all duts locked successfully or
              False if we timed out waiting too long for hosts to go idle.
