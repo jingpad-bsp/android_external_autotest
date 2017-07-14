@@ -663,7 +663,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry)
+        suite.wait(recorder.record_entry, dict())
 
 
     def testRunAndWaitFailure(self):
@@ -685,7 +685,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry)
+        suite.wait(recorder.record_entry, dict())
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -708,7 +708,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry)
+        suite.wait(recorder.record_entry, dict())
 
 
     def testGetTestsSortedByTime(self):
@@ -803,7 +803,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.suite.schedule(self.recorder.record_entry)
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
-        self.suite.wait(self.recorder.record_entry)
+        self.suite.wait(self.recorder.record_entry, dict())
 
 
     def testFailedBugFiling(self):
@@ -826,7 +826,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.suite.schedule(self.recorder.record_entry)
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
-        self.suite.wait(self.recorder.record_entry)
+        self.suite.wait(self.recorder.record_entry, dict())
 
 
     def testJobRetryTestFail(self):
@@ -852,7 +852,7 @@ class SuiteTest(mox.MoxTestBase):
                                     'retry_max': 1}
                 }
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
-        self.suite.wait(self.recorder.record_entry)
+        self.suite.wait(self.recorder.record_entry, dict())
         expected_retry_map = {
                 self._FAKE_JOB_ID: {'state': RetryHandler.States.RETRIED,
                                     'retry_max': 1},
@@ -888,7 +888,7 @@ class SuiteTest(mox.MoxTestBase):
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
         expected_jobs_to_tests = self.suite._jobs_to_tests.copy()
         expected_retry_map = self.suite._retry_handler._retry_map.copy()
-        self.suite.wait(self.recorder.record_entry)
+        self.suite.wait(self.recorder.record_entry, dict())
         # Check retry map and _jobs_to_tests, ensure no retry was scheduled.
         self.assertEquals(self.suite._retry_handler._retry_map,
                           expected_retry_map)
@@ -921,7 +921,7 @@ class SuiteTest(mox.MoxTestBase):
                         'state': RetryHandler.States.NOT_ATTEMPTED,
                         'retry_max': 1}}
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
-        self.suite.wait(self.recorder.record_entry)
+        self.suite.wait(self.recorder.record_entry, dict())
         expected_retry_map = {
                 self._FAKE_JOB_ID: {
                         'state': RetryHandler.States.ATTEMPTED,
