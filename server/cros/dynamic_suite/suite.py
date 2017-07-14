@@ -1751,8 +1751,6 @@ def _load_dummy_test(
     @param test_args: A dict of args passed all the way to each individual
                       test that will be actually ran.
     @param test_source_build: Build that contains the server-side test code.
-    @param suite_args: Various keyword arguments passed to
-                       _BaseSuite constructor.
     """
     if cf_getter is None:
         if run_prod_code:
