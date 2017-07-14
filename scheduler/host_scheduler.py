@@ -496,7 +496,7 @@ def main():
                 time.sleep(minimum_tick_sec - curr_tick_sec)
             else:
                 time.sleep(0.0001)
-    except server_manager_utils.ServerActionError as e:
+    except server_manager_utils.ServerActionError:
         # This error is expected when the server is not in primary status
         # for host-scheduler role. Thus do not send email for it.
         raise
