@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
+# This name is hard-coded in run_suite.py
 NAME = "provision"
 PURPOSE = "Provisioning suite job."
 
