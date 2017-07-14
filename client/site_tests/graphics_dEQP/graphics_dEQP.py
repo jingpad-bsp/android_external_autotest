@@ -51,7 +51,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
         'dEQP-GLES31': 'gles31',
         'dEQP-VK': 'vk',
     }
-
+    # We do not consider these results as failures.
     TEST_RESULT_FILTER = [
         'pass', 'notsupported', 'internalerror', 'qualitywarning',
         'compatibilitywarning', 'skipped'
@@ -154,7 +154,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
         for subset_file in subset_paths:
             # Filter against extra hasty failures only in hasty mode.
             if (not '.Pass.bz2' in subset_file and
-                (self._hasty or '.hasty.' not in subset_file)):
+               (self._hasty or '.hasty.' not in subset_file)):
                 not_passing_cases.extend(
                     bz2.BZ2File(subset_file).read().splitlines())
         not_passing_cases.sort()
@@ -295,7 +295,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
                 'Failed: No test cases found in subset file %s!' % subset_path)
         return test_cases
 
-    def run_tests_individually(self, test_cases, failing_test=None):
+    def _run_tests_individually(self, test_cases, failing_test=None):
         """Runs tests as isolated from each other, but slowly.
 
         This function runs each test case separately as a command.
@@ -402,7 +402,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
 
         return test_results
 
-    def run_tests_hasty(self, test_cases, failing_test=None):
+    def _run_tests_hasty(self, test_cases, failing_test=None):
         """Runs tests as quickly as possible.
 
         This function runs all the test cases, but does not isolate tests and
@@ -492,6 +492,20 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
                 logging.info(results)
         return results
 
+    def _run_once(self, test_cases):
+        """Run dEQP test_cases in individual/hasty mode.
+        @param test_cases: test cases to run.
+        """
+        failing_test = []
+        if self._hasty:
+            logging.info('Running in hasty mode.')
+            test_results = self._run_tests_hasty(test_cases, failing_test)
+        else:
+            logging.info('Running each test individually.')
+            test_results = self._run_tests_individually(test_cases,
+                                                        failing_test)
+        return test_results, failing_test
+
     def run_once(self, opts=None):
         options = dict(filter='',
                        test_names='',  # e.g., dEQP-GLES3.info.version,
@@ -561,37 +575,23 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
         for test_case in test_cases:
             self.add_failures(test_case)
 
-        failing_test = []
-        test_results = {}
-        if self._hasty:
-            logging.info('Running in hasty mode.')
-            test_results = self.run_tests_hasty(test_cases, failing_test)
-
-            logging.info("Failing Tests: %s", str(failing_test))
-            if len(failing_test) > 0:
-                if (len(failing_test) <
-                   sum(test_results.values()) * RERUN_RATIO):
-                    logging.info("Because we are in hasty mode, we will rerun"
-                                 "the failing tests one at a time")
-                    test_cases = failing_test
-                    failing_test = []
-                    rerun_results = self.run_tests_individually(
-                        test_cases,
-                        failing_test)
-                    # Update failing test result from the test_results
-                    for result in test_results:
-                        if result.lower() not in self.TEST_RESULT_FILTER:
-                            test_results[result] = 0
-                    for result in rerun_results:
-                        test_results[result] = (test_results.get(result, 0) +
-                                                rerun_results[result])
-                else:
-                    logging.info("There are too many failing tests. It would "
-                                 "take too long to rerun them. Giving up.")
-        else:
-            logging.info('Running each test individually.')
-            test_results = self.run_tests_individually(test_cases,
-                                                       failing_test)
+        test_results, failing_test = self._run_once(test_cases)
+        # Rerun the test if we are in hasty mode.
+        if self._hasty and len(failing_test) > 0:
+            if len(failing_test) < sum(test_results.values()) * RERUN_RATIO:
+                logging.info("Because we are in hasty mode, we will rerun the "
+                             "failing tests one at a time")
+                rerun_results, failing_test = self._run_once(failing_test)
+                # Update failing test result from the test_results
+                for result in test_results:
+                    if result.lower() not in self.TEST_RESULT_FILTER:
+                        test_results[result] = 0
+                for result in rerun_results:
+                    test_results[result] = (test_results.get(result, 0) +
+                                            rerun_results[result])
+            else:
+                logging.info("There are too many failing tests. It would "
+                             "take too long to rerun them. Giving up.")
 
         # Update failing tests to the chrome perf dashboard records.
         for test_case in test_cases:
@@ -600,6 +600,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
 
         logging.info('Test results:')
         logging.info(test_results)
+        logging.debug('Test Failed: %s', failing_test)
         self.write_perf_keyval(test_results)
 
         test_count = 0
