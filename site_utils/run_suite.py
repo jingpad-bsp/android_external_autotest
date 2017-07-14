@@ -556,7 +556,6 @@ class LogLink(object):
         """
         return '%s %s' % (self.anchor, self.url)
 
-
     def GenerateWmatrixRetryLink(self):
         """Generate a link to the wmatrix retry dashboard.
 
@@ -567,6 +566,17 @@ class LogLink(object):
         return annotations.StepLink(
             text='[Flake-Dashboard]: %s' % self.testname,
             url=reporting_utils.link_retry_url(self.testname))
+
+    def GenerateWmatrixHistoryLink(self):
+        """Generate a link to the wmatrix test history dashboard.
+
+        @return A link formatted for the buildbot log annotator.
+        """
+        if not self.testname or self.testname in self._SKIP_RETRY_DASHBOARD:
+            return None
+        return annotations.StepLink(
+            text='[Test-History]: %s' % self.testname,
+            url=reporting_utils.link_test_history(self.testname))
 
 
 class Timings(object):
@@ -1030,9 +1040,12 @@ def log_buildbot_links(log_func, links):
     for link in links:
         for generated_link in link.GenerateBuildbotLinks():
             log_func(generated_link)
-        wmatrix_link = link.GenerateWmatrixRetryLink()
-        if wmatrix_link:
-            log_func(wmatrix_link)
+        wmatrix_retry_link = link.GenerateWmatrixRetryLink()
+        if wmatrix_retry_link:
+            log_func(wmatrix_retry_link)
+        wmatrix_history_link = link.GenerateWmatrixHistoryLink()
+        if wmatrix_history_link:
+            log_func(wmatrix_history_link)
 
 
 class ResultCollector(object):
