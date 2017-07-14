@@ -39,8 +39,8 @@ class test_init(base_job_unittest.test_init.generic_tests, unittest.TestCase):
 
     def setUp(self):
         self.god = mock.mock_god()
-        self.job = server_job.base_server_job.__new__(
-            server_job.base_server_job)
+        self.job = server_job.server_job.__new__(
+            server_job.server_job)
         self.job._job_directory = base_job_unittest.stub_job_directory
         _, self.control_file = tempfile.mkstemp()
 
