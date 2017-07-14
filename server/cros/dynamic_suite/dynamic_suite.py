@@ -5,6 +5,7 @@
 import datetime
 import logging
 import time
+import warnings
 
 import common
 
@@ -344,6 +345,10 @@ class SuiteSpec(object):
         self._init_test_source_build(test_source_build)
         self._translate_builds()
         self._add_builds_to_suite_deps()
+
+        for key, value in dargs.iteritems():
+            warnings.warn('Ignored key %r was passed to suite with value %r'
+                          % (key, value))
 
     def _check_init_params(self, **kwargs):
         for key, expected_type in self._REQUIRED_KEYWORDS.iteritems():
