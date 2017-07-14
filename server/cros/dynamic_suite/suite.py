@@ -1244,7 +1244,7 @@ class _BaseSuite(object):
                 and self._retry_handler.has_following_retry(result))
 
 
-    def wait(self, record, bug_template=None):
+    def wait(self, record, bug_template):
         """
         Polls for the job statuses, using |record| to print status when each
         completes.
@@ -1262,9 +1262,6 @@ class _BaseSuite(object):
         # requirement of building site packages to use other functions in this
         # module.
         from autotest_lib.server.cros.dynamic_suite import reporting
-
-        if bug_template is None:
-            bug_template = {}
 
         if self._file_bugs:
             bug_reporter = reporting.Reporter()
