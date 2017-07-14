@@ -1707,7 +1707,7 @@ class ProvisionSuite(_BaseSuite):
             run_prod_code=False,
             test_args=None,
             test_source_build=None,
-            **suite_args):
+            **kwargs):
         """
         Constructor
 
@@ -1720,8 +1720,8 @@ class ProvisionSuite(_BaseSuite):
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
         @param test_source_build: Build that contains the server-side test code.
-        @param suite_args: Various keyword arguments passed to
-                           _BaseSuite constructor.
+        @param kwargs: Various keyword arguments passed to
+                       _BaseSuite constructor.
         """
         dummy_test = _load_dummy_test(
                 builds, devserver, cf_getter,
@@ -1732,7 +1732,7 @@ class ProvisionSuite(_BaseSuite):
                 tag=tag,
                 builds=builds,
                 board=board,
-                **suite_args)
+                **kwargs)
 
 
 def _load_dummy_test(
