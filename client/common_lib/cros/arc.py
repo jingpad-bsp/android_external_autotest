@@ -400,7 +400,7 @@ def _after_iteration_hook(obj):
         if obj.num_screenshots <= _MAX_SCREENSHOT_NUM:
             logging.warning('Iteration %d failed, taking a screenshot.',
                             obj.iteration)
-            from cros.graphics.drm import crtcScreenshot
+            from cros.graphics.gbm import crtcScreenshot
             try:
                 image = crtcScreenshot()
                 image.save('{}/{}_iter{}.png'.format(_SCREENSHOT_DIR_PATH,
