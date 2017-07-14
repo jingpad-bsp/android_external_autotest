@@ -1660,9 +1660,10 @@ def _run_suite(options):
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.exception('Error Message: %s', e)
-            return (RETURN_CODES.INFRA_FAILURE, {'return_message': str(e)})
+            return SuiteResult(RETURN_CODES.INFRA_FAILURE,
+                               {'return_message': str(e)})
         except AttributeError:
-            return (RETURN_CODES.INVALID_OPTIONS, {})
+            return SuiteResult(RETURN_CODES.INVALID_OPTIONS, {})
 
     job_timer = diagnosis_utils.JobTimer(
             job_created_on, float(options.timeout_mins))
@@ -1678,7 +1679,7 @@ def _run_suite(options):
     if options.create_and_return:
         msg = '--create_and_return was specified, terminating now.'
         logging.info(msg)
-        return (RETURN_CODES.OK, {'return_message':msg})
+        return SuiteResult(RETURN_CODES.OK, {'return_message':msg})
 
     if options.no_wait:
         return _handle_job_nowait(job_id, options, instance_server)
