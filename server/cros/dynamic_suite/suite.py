@@ -962,7 +962,6 @@ class _BaseSuite(object):
             max_runtime_mins=24*60,
             timeout_mins=24*60,
             file_bugs=False,
-            file_experimental_bugs=False,
             suite_job_id=None,
             ignore_deps=False,
             extra_deps=None,
@@ -1030,7 +1029,6 @@ class _BaseSuite(object):
         self._jobs_to_tests = {}
 
         self._file_bugs = file_bugs
-        self._file_experimental_bugs = file_experimental_bugs
         self._suite_job_id = suite_job_id
         self._job_retry=job_retry
         self._max_retries = max_retries
@@ -1223,12 +1221,7 @@ class _BaseSuite(object):
         if self._has_retry(result):
             return False
 
-        is_not_experimental = (
-            constants.EXPERIMENTAL_PREFIX not in result._test_name and
-            constants.EXPERIMENTAL_PREFIX not in result._job_name)
-
         return (self._file_bugs and result.test_executed and
-                (is_not_experimental or self._file_experimental_bugs) and
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
@@ -1586,7 +1579,6 @@ class Suite(_BaseSuite):
             max_runtime_mins=24*60,
             timeout_mins=24*60,
             file_bugs=False,
-            file_experimental_bugs=False,
             suite_job_id=None,
             ignore_deps=False,
             extra_deps=None,
@@ -1672,7 +1664,6 @@ class Suite(_BaseSuite):
                 max_runtime_mins=max_runtime_mins,
                 timeout_mins=timeout_mins,
                 file_bugs=file_bugs,
-                file_experimental_bugs=file_experimental_bugs,
                 suite_job_id=suite_job_id,
                 ignore_deps=ignore_deps,
                 extra_deps=extra_deps,
