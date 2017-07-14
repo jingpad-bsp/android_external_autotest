@@ -48,6 +48,7 @@ from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import factory as host_factory
 from autotest_lib.server.hosts import host_info
+from autotest_lib.server.hosts import ssh_multiplex
 from autotest_lib.tko import db as tko_db
 from autotest_lib.tko import models as tko_models
 from autotest_lib.tko import status_lib
@@ -81,19 +82,24 @@ RESET_CONTROL_FILE = _control_segment_path('reset')
 GET_NETWORK_STATS_CONTROL_FILE = _control_segment_path('get_network_stats')
 
 
-def get_machine_dicts(machine_names, in_lab, host_attributes=None):
+def get_machine_dicts(machine_names, in_lab, host_attributes=None,
+                      connection_pool=None):
     """Converts a list of machine names to list of dicts.
 
     @param machine_names: A list of machine names.
     @param in_lab: A boolean indicating whether we're running in lab.
     @param host_attributes: Optional list of host attributes to add for each
             host.
+    @param connection_pool: ssh_multiplex.ConnectionPool instance to share
+            master connections across control scripts.
     @returns: A list of dicts. Each dict has the following keys:
             'hostname': Name of the machine originally in machine_names (str).
             'afe_host': A frontend.Host object for the machine, or a stub if
                     in_lab is false.
             'host_info_store': A host_info.CachingHostInfoStore object to obtain
                     host information. A stub if in_lab is False.
+            'connection_pool': ssh_multiplex.ConnectionPool instance to share
+                    master ssh connection across control scripts.
     """
     machine_dict_list = []
     for machine in machine_names:
@@ -119,6 +125,7 @@ def get_machine_dicts(machine_names, in_lab, host_attributes=None):
                 'hostname' : machine,
                 'afe_host' : afe_host,
                 'host_info_store': host_info_store,
+                'connection_pool': connection_pool,
         })
 
     return machine_dict_list
@@ -339,10 +346,13 @@ class server_job(base_job.base_job):
         # unexpected reboot.
         self.failed_with_device_error = False
 
+        self._connection_pool = ssh_multiplex.ConnectionPool()
+
         self.parent_job_id = parent_job_id
         self.in_lab = in_lab
         self.machine_dict_list = get_machine_dicts(
-                self.machines, self.in_lab, host_attributes)
+                self.machines, self.in_lab, host_attributes,
+                self._connection_pool)
 
         # TODO(jrbarnette) The harness attribute is only relevant to
         # client jobs, but it's required to be present, or we will fail
@@ -1497,6 +1507,16 @@ class server_job(base_job.base_job):
         for host in self.hosts:
             if isinstance(host, abstract_ssh.AbstractSSHHost):
                 host.clear_known_hosts()
+
+
+    def close(self):
+        """Closes this job's operation."""
+
+        # Use shallow copy, because host.close() internally discards itself.
+        for host in list(self.hosts):
+            host.close()
+        assert not self.hosts
+        self._connection_pool.shutdown()
 
 
     def _get_job_data(self):

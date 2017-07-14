@@ -63,8 +63,8 @@ def _get_host_arguments(machine):
               afe_host, user, password, port, ssh_verbosity_flag and
               ssh_options.
     """
-    hostname, afe_host = server_utils.get_host_info_from_machine(
-            machine)
+    hostname, afe_host = server_utils.get_host_info_from_machine(machine)
+    connection_pool = server_utils.get_connection_pool_from_machine(machine)
     host_info_store = host_info.get_store_from_machine(machine)
     info = host_info_store.get()
 
@@ -92,6 +92,7 @@ def _get_host_arguments(machine):
             'port': int(port),
             'ssh_verbosity_flag': ssh_verbosity_flag,
             'ssh_options': ssh_options,
+            'connection_pool': connection_pool,
     }
     return host_args
 

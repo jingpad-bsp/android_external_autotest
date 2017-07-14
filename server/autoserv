@@ -557,9 +557,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                         c['success'] = True
 
         finally:
-            while job.hosts:
-                host = job.hosts.pop()
-                host.close()
+            job.close()
     except:
         exit_code = 1
         traceback.print_exc()
