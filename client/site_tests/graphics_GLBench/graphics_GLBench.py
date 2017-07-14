@@ -12,7 +12,7 @@ from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_GLBench(test.test):
+class graphics_GLBench(graphics_utils.GraphicsTest):
   """Run glbench, a benchmark that times graphics intensive activities."""
   version = 1
   preserve_srcdir = True
@@ -49,13 +49,11 @@ class graphics_GLBench(test.test):
       '1280x768_fps': True
   }
 
-  GSC = None
-
   def setup(self):
     self.job.setup_dep(['glbench'])
 
   def initialize(self):
-    self.GSC = graphics_utils.GraphicsStateChecker()
+    super(graphics_GLBench, self).initialize()
     # If UI is running, we must stop it and restore later.
     self._services = service_stopper.ServiceStopper(['ui'])
     self._services.stop_services()
@@ -63,8 +61,7 @@ class graphics_GLBench(test.test):
   def cleanup(self):
     if self._services:
       self._services.restore_services()
-    if self.GSC:
-      self.GSC.finalize()
+    super(graphics_GLBench, self).cleanup()
 
   def report_temperature(self, keyname):
     """Report current max observed temperature with given keyname.
@@ -112,6 +109,7 @@ class graphics_GLBench(test.test):
       imagenames = f.read()
       return imagenames
 
+  @graphics_utils.GraphicsTest.failure_report_decorator('graphics_GLBench')
   def run_once(self, options='', hasty=False):
     dep = 'glbench'
     dep_dir = os.path.join(self.autodir, 'deps', dep)
