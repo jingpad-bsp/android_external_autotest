@@ -275,15 +275,13 @@ class BaseHostScheduler(object):
 
         @param host_jobs: A list of queue entries that either require hosts,
             or require host assignment validation through the rdb.
-        @return: A list of tuples of the form (host, queue_entry) for each
+        @return: A generator of tuples of the form (host, queue_entry) for each
             valid host-queue_entry assignment.
         """
-        jobs_with_hosts = []
         hosts = self.acquire_hosts(host_jobs)
         for host, job in zip(hosts, host_jobs):
             if host:
-                jobs_with_hosts.append(self.host_assignment(host, job))
-        return jobs_with_hosts
+                yield self.host_assignment(host, job)
 
 
     def tick(self):
