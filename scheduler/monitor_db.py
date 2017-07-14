@@ -351,6 +351,8 @@ class Dispatcher(object):
                 self._schedule_special_tasks()
             with breakdown_timer.Step('schedule_new_jobs'):
                 self._schedule_new_jobs()
+            with breakdown_timer.Step('gather_tick_metrics'):
+                self._gather_tick_metrics()
             with breakdown_timer.Step('sync_refresh'):
                 self._log_tick_msg('Starting _drone_manager.sync_refresh')
                 _drone_manager.sync_refresh()
@@ -406,6 +408,13 @@ class Dispatcher(object):
         logging.info('Logging garbage collector stats on tick %d.',
                      self._tick_count)
         gc_stats._log_garbage_collector_stats()
+
+
+    def _gather_tick_metrics(self):
+        """Gather metrics during tick, after all tasks have been scheduled."""
+        metrics.Gauge(
+            'chromeos/autotest/scheduler/agent_count'
+        ).set(len(self._agents))
 
 
     def _register_agent_for_ids(self, agent_dict, object_ids, agent):
