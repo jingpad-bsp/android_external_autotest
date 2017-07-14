@@ -1060,7 +1060,7 @@ class _BaseSuite(object):
         )
 
 
-    def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
+    def _schedule_test(self, record, test, retry_for=None):
         """Schedule a single test and return the job.
 
         Schedule a single test by creating a job, and then update relevant
@@ -1071,8 +1071,7 @@ class _BaseSuite(object):
 
         Returns a frontend.Job object if the test is successfully scheduled.
         If scheduling failed due to NoEligibleHostException or a non-existent
-        board label, returns None.  If ignore_errors is True, all unknown
-        errors return None, otherwise the errors are raised as-is.
+        board label, returns None.
 
         @param record: A callable to use for logging.
                        prototype: record(base_job.status_log_entry)
@@ -1080,9 +1079,6 @@ class _BaseSuite(object):
         @param retry_for: If we are scheduling a test to retry an
                           old job, the afe_job_id of the old job
                           will be passed in as |retry_for|.
-        @param ignore_errors: If True, when an rpc error occur, ignore
-                             the error and will return None.
-                             If False, rpc errors will be raised.
 
         @returns: A frontend.Job object or None
         """
@@ -1108,17 +1104,11 @@ class _BaseSuite(object):
                 return None
             else:
                 raise e
-        except (error.RPCException, proxy.JSONRPCException) as e:
+        except (error.RPCException, proxy.JSONRPCException):
             if retry_for:
                 # Mark that we've attempted to retry the old job.
                 self._retry_handler.set_attempted(job_id=retry_for)
-
-            if ignore_errors:
-                logging.error('Failed to schedule test: %s, Reason: %s',
-                              test.name, e)
-                return None
-            else:
-                raise e
+            raise
         else:
             self._jobs.append(job)
             self._jobs_to_tests[job.id] = test
@@ -1310,10 +1300,14 @@ class _BaseSuite(object):
         self._remember_job_keyval(result)
 
         if self._job_retry and self._retry_handler._should_retry(result):
-            new_job = self._schedule_test(
-                    record=record, test=self._jobs_to_tests[result.id],
-                    retry_for=result.id, ignore_errors=True)
-            if new_job:
+            test = self._jobs_to_tests[result.id]
+            try:
+                new_job = self._schedule_test(
+                        record=record, test=test, retry_for=result.id)
+            except (error.RPCException, proxy.JSONRPCException) as e:
+                logging.error('Failed to schedule test: %s, Reason: %s',
+                              test.name, e)
+            else:
                 results_generator.send([new_job])
 
         # TODO (fdeng): If the suite times out before a retry could
