@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from datetime import datetime, timedelta
 import collections
 import json
 import logging
@@ -203,12 +204,12 @@ class ExpectedUpdateEvent(object):
         """Returns a dictionary of expected attributes."""
         return dict(self._expected_attrs)
 
-# TODO(dhaddock): Update timeout here to compare timeout against event
-# timestamp instead of how long it took to read from the file hostlog file.
+
 class ExpectedUpdateEventChain(object):
     """Defines a chain of expected update events."""
     def __init__(self):
         self._expected_events_chain = []
+        self._current_timestamp = None
 
 
     def add_event(self, expected_events, timeout, on_timeout=None):
@@ -265,8 +266,7 @@ class ExpectedUpdateEventChain(object):
                 raise ExpectedUpdateEventChainFailed(err_msg)
 
 
-    @staticmethod
-    def _verify_event_with_timeout(expected_events, timeout, on_timeout,
+    def _verify_event_with_timeout(self, expected_events, timeout, on_timeout,
                                    get_next_event):
         """Verify an expected event occurs within a given timeout.
 
@@ -278,20 +278,29 @@ class ExpectedUpdateEventChain(object):
         @return None if event complies, an error string otherwise.
 
         """
-        base_timestamp = curr_timestamp = time.time()
-        expired_timestamp = base_timestamp + timeout
-        while curr_timestamp <= expired_timestamp:
-            new_event = get_next_event()
-            if new_event:
-                logging.info('Event received after %s seconds',
-                             round(curr_timestamp - base_timestamp, 1))
-                results = [event.verify(new_event) for event in expected_events]
-                return None if None in results else ' AND '.join(results)
+        new_event = get_next_event()
+        if new_event:
+            # If this is the first event, set it as the current time
+            if self._current_timestamp is None:
+                self._current_timestamp = datetime.strptime(new_event[
+                                                                'timestamp'],
+                                                            '%Y-%m-%d %H:%M:%S')
 
-            # No new events, sleep for one second only (so we don't miss
-            # events at the end of the allotted timeout).
-            time.sleep(1)
-            curr_timestamp = time.time()
+            # Get the time stamp for the current event and convert to datetime
+            timestamp = new_event['timestamp']
+            event_timestamp = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+
+            # Add the timeout onto the timestamp to get its expiry
+            event_timeout = self._current_timestamp + timedelta(seconds=timeout)
+
+            # If the event happened before the timeout
+            if event_timestamp < event_timeout:
+                difference = event_timestamp - self._current_timestamp
+                logging.info('Event took %s seconds to fire during the '
+                             'update', difference.seconds)
+                results = [event.verify(new_event) for event in expected_events]
+                self._current_timestamp = event_timestamp
+                return None if None in results else ' AND '.join(results)
 
         logging.error('Timeout expired')
         if on_timeout is None:
@@ -850,10 +859,6 @@ class autoupdate_EndToEndTest(test.test):
     version = 1
 
     # Timeout periods, given in seconds.
-    _WAIT_AFTER_SHUTDOWN_SECONDS = 10
-    _WAIT_AFTER_UPDATE_SECONDS = 20
-    _WAIT_FOR_USB_INSTALL_SECONDS = 4 * 60
-    _WAIT_FOR_MP_RECOVERY_SECONDS = 8 * 60
     _WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS = 12 * 60
     # TODO(sosa): Investigate why this needs to be so long (this used to be
     # 120 and regressed).
