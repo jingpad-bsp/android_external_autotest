@@ -123,3 +123,34 @@ class MasterSsh(object):
             logging.debug('Cleaning ssh master_tempdir')
             self._master_tempdir.clean()
             self._master_tempdir = None
+
+
+class ConnectionPool(object):
+    """Holds SSH multiplex connection instance."""
+
+    def __init__(self):
+        self._pool = {}
+
+    def get(self, hostname, user, port):
+        """Returns MasterSsh instance for the given endpoint.
+
+        If the pool holds the instance already, returns it. If not, create the
+        instance, and returns it.
+
+        Caller has the responsibility to call maybe_start() before using it.
+
+        @param hostname: Host name of the endpoint.
+        @param user: User name to log in.
+        @param port: Port number sshd is listening.
+        """
+        key = (hostname, user, port)
+        master_ssh = self._pool.get(key)
+        if not master_ssh:
+            master_ssh = MasterSsh(hostname, user, port)
+            self._pool[key] = master_ssh
+        return master_ssh
+
+    def shutdown(self):
+        """Closes all ssh multiplex connections."""
+        for ssh in self._pool.itervalues():
+            ssh.close()
