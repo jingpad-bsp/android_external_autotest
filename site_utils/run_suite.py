@@ -1733,7 +1733,6 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
 
     @return SuiteResult of suite job.
     """
-    output_dict = {}
     rpc_helper = diagnosis_utils.RPCHelper(afe)
     instance_server = afe.server
     while not afe.get_jobs(id=job_id, finished=True):
