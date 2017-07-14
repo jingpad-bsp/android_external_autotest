@@ -321,7 +321,6 @@ class SuiteSpec(object):
         self.pool = ('pool:%s' % pool) if pool else pool
         self.num = num
         self.check_hosts = check_hosts
-        self.skip_reimage = skip_reimage
         self.add_experimental = add_experimental
         self.file_bugs = file_bugs
         self.file_experimental_bugs = file_experimental_bugs
@@ -420,15 +419,6 @@ class SuiteSpec(object):
                 provision.join(version_prefix, build)
                 for version_prefix, build in self.builds.iteritems()
         )
-
-
-def skip_reimage(g):
-    """
-    Pulls the SKIP_IMAGE value out of a global variables dictionary.
-    @param g: The global variables dictionary.
-    @return:  Value associated with SKIP-IMAGE
-    """
-    return False
 
 
 def run_provision_suite(**dargs):
