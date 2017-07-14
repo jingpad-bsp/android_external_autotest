@@ -1,4 +1,4 @@
-#pylint: disable-msg=C0111
+# pylint: disable=missing-docstring
 
 """ This is the module for everything related to the AgentTask.
 
@@ -120,7 +120,6 @@ from autotest_lib.scheduler import drone_manager
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import rdb_lib
-from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
@@ -179,10 +178,10 @@ class AgentTask(object):
                     logging.debug(
                             'No host is found for host_queue_entry_id: %r',
                             entry.id)
-                    raise scheduler_lib.NonHostExistError(
+                    raise scheduler_lib.NoHostIdError(
                             'Failed to schedule a job whose '
-                            'host_queue_entry_id=%r due to no host_id '
-                            'exists.' % entry.id)
+                            'host_queue_entry_id=%r due to no host_id.'
+                            % entry.id)
         else:
             assert host
             self.host_ids = [host.id]
