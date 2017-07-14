@@ -225,7 +225,6 @@ class _SuiteSpec(object):
             check_hosts=True,
             add_experimental=True,
             file_bugs=False,
-            file_experimental_bugs=False,
             max_runtime_mins=24*60,
             timeout_mins=24*60,
             suite_dependencies=None,
@@ -262,8 +261,6 @@ class _SuiteSpec(object):
         @param check_hosts: require appropriate hosts to be available now.
         @param add_experimental: schedule experimental tests as well, or not.
         @param file_bugs: File bugs when tests in this suite fail.
-        @param file_experimental_bugs: File bugs when experimental tests in
-                                       this suite fail.
         @param max_runtime_mins: Max runtime in mins for each of the sub-jobs
                                  this suite will run.
         @param timeout_mins: Max lifetime in minutes for each of the sub-jobs
@@ -323,7 +320,6 @@ class _SuiteSpec(object):
         self.check_hosts = check_hosts
         self.add_experimental = add_experimental
         self.file_bugs = file_bugs
-        self.file_experimental_bugs = file_experimental_bugs
         self.dependencies = {'': []}
         self.max_runtime_mins = max_runtime_mins
         self.timeout_mins = timeout_mins
@@ -463,7 +459,6 @@ def run_provision_suite(**dargs):
             max_runtime_mins=spec.max_runtime_mins,
             timeout_mins=spec.timeout_mins,
             file_bugs=spec.file_bugs,
-            file_experimental_bugs=spec.file_experimental_bugs,
             suite_job_id=my_job_id,
             extra_deps=spec.suite_dependencies,
             priority=spec.priority,
@@ -537,7 +532,6 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             max_runtime_mins=spec.max_runtime_mins,
             timeout_mins=spec.timeout_mins,
             file_bugs=spec.file_bugs,
-            file_experimental_bugs=spec.file_experimental_bugs,
             suite_job_id=suite_job_id,
             extra_deps=spec.suite_dependencies,
             priority=spec.priority,
