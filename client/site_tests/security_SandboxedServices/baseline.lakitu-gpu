@@ -16,11 +16,9 @@ get_metadata_va,root,root,No,No,No,No
 install_custom_,root,root,No,No,No,No
 konlet-startup,root,root,No,No,No,No
 
-# These processes won't run without network (which is the case for VMTests), but
-# they also run as root and are not sandboxed. You will hit these if you try to
-# run VMTests on your own KVM instance.
-docker,root,root,No,No,No,No
-containerd,root,root,No,No,No,No
+# Docker daemon processes.
+dockerd,root,root,No,No,No,No
+docker-containe,root,root,No,No,No,No
 
 # Processes that used by GCP compute image packages.
 google_ip_forwa,root,root,No,No,No,No
