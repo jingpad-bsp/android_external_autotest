@@ -18,6 +18,7 @@ from constants import Builds
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 
@@ -181,7 +182,8 @@ class Task(object):
                        'boards', 'file_bugs', 'cros_build_spec',
                        'firmware_rw_build_spec', 'firmware_ro_build_spec',
                        'test_source', 'job_retry', 'hour', 'day', 'branches',
-                       'targets', 'os_type', 'no_delay', 'owner'])
+                       'targets', 'os_type', 'no_delay', 'owner', 'priority',
+                       'timeout'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -207,14 +209,41 @@ class Task(object):
         test_source = config.getstring(section, 'test_source')
         job_retry = config.getboolean(section, 'job_retry')
         no_delay = config.getboolean(section, 'no_delay')
+        # In case strings empty use sane low priority defaults.
+        priority = 0
+        timeout = 24
+        # Set priority/timeout based on the event type.
         for klass in driver.Driver.EVENT_CLASSES:
             if klass.KEYWORD == keyword:
                 priority = klass.PRIORITY
                 timeout = klass.TIMEOUT
                 break
-        else:
-            priority = None
-            timeout = None
+        # Set priority/timeout from config file explicitly if set.
+        priority_string = config.getstring(section, 'priority')
+        if priority_string:
+            # Try to parse priority as int first. If failed, then use the
+            # global string->priority mapping to lookup its value.
+            try:
+                try:
+                    priority = int(priority_string)
+                except ValueError:
+                    priority = priorities.Priority.get_value(priority_string)
+            except ValueError:
+                raise error.MalformedConfigEntry("Priority string not "
+                                                 "recognized as value (%s).",
+                                                 priority_string)
+        timeout_value = config.getint(section, 'timeout')
+        if timeout_value:
+            timeout = timeout_value
+
+        # Sanity Check for priority and timeout.
+        if priority < 0 or priority > 100:
+            raise error.MalformedConfigEntry('Priority(%d) should be inside '
+                                             'the range 0-100.' % priority)
+        if timeout <= 0:
+            raise error.MalformedConfigEntry('Timeout(%d) needs to be positive '
+                                             'integer (hours).' % timeout)
+
         try:
             num = config.getint(section, 'num')
         except ValueError as e:
@@ -310,7 +339,6 @@ class Task(object):
                     # of migrating boards.
                 else:
                     boards = board_lists[boards]
-
 
         return keyword, Task(section, suite, specs, pool, num, boards,
                              priority, timeout,
