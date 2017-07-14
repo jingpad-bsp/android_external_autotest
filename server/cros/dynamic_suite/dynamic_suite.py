@@ -197,7 +197,7 @@ Step by step:
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
-class SuiteSpec(object):
+class _SuiteSpec(object):
     """This class contains the info that defines a suite run."""
 
     _REQUIRED_KEYWORDS = {
@@ -407,7 +407,7 @@ class SuiteSpec(object):
         """Add builds to suite_dependencies.
 
         To support provision both CrOS and firmware, option builds are added to
-        SuiteSpec, e.g.,
+        _SuiteSpec, e.g.,
 
         builds = {'cros-version:': 'x86-alex-release/R18-1655.0.0',
                   'fwrw-version:': 'x86-alex-firmware/R36-5771.50.0'}
@@ -436,7 +436,7 @@ def run_provision_suite(**dargs):
     @raises MalformedDependenciesException: if the dependency_info file for
                                             the required build fails to parse.
     """
-    spec = SuiteSpec(**dargs)
+    spec = _SuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=spec.job.user, debug=False)
@@ -489,13 +489,13 @@ def reimage_and_run(**dargs):
     provided builds, and then run the indicated test suite on them.
     Guaranteed to be compatible with any build from stable to dev.
 
-    @param dargs: Dictionary containing the arguments passed to SuiteSpec().
+    @param dargs: Dictionary containing the arguments passed to _SuiteSpec().
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
                                             the required build fails to parse.
     """
-    suite_spec = SuiteSpec(**dargs)
+    suite_spec = _SuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
@@ -518,7 +518,7 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     """
     Do the work of reimaging hosts and running tests.
 
-    @param spec: a populated SuiteSpec object.
+    @param spec: a populated _SuiteSpec object.
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
     @param suite_job_id: Job id that will act as parent id to all sub jobs.
@@ -557,7 +557,7 @@ def _run_suite_with_spec(suite, spec):
     Do the work of reimaging hosts and running tests.
 
     @param suite: _BaseSuite instance to run.
-    @param spec: a populated SuiteSpec object.
+    @param spec: a populated _SuiteSpec object.
     """
     _run_suite(
         suite=suite,
