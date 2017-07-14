@@ -519,17 +519,27 @@ class Dispatcher(object):
         used_queue_entries = set()
         hqe_count_by_status = {}
         for entry in queue_entries:
-            hqe_count_by_status[entry.status] = (
-                hqe_count_by_status.get(entry.status, 0) + 1)
-            if self.get_agents_for_entry(entry):
-                # already being handled
-                continue
-            if entry in used_queue_entries:
-                # already picked up by a synchronous job
-                continue
-            agent_task = self._get_agent_task_for_queue_entry(entry)
-            agent_tasks.append(agent_task)
-            used_queue_entries.update(agent_task.queue_entries)
+            try:
+                hqe_count_by_status[entry.status] = (
+                    hqe_count_by_status.get(entry.status, 0) + 1)
+                if self.get_agents_for_entry(entry):
+                    # already being handled
+                    continue
+                if entry in used_queue_entries:
+                    # already picked up by a synchronous job
+                    continue
+                agent_task = self._get_agent_task_for_queue_entry(entry)
+                agent_tasks.append(agent_task)
+                used_queue_entries.update(agent_task.queue_entries)
+            except scheduler_lib.MalformedRecordError as e:
+                logging.exception('Skipping agent task for a malformed hqe.')
+                # TODO(akeshet): figure out a way to safely permanently discard
+                # this errant HQE. It appears that calling entry.abort() is not
+                # sufficient, as that already makes some assumptions about
+                # record sanity that may be violated. See crbug.com/739530 for
+                # context.
+                m = 'chromeos/autotest/scheduler/skipped_malformed_hqe'
+                metrics.Counter(m).increment()
 
         for status, count in hqe_count_by_status.iteritems():
             metrics.Gauge(
