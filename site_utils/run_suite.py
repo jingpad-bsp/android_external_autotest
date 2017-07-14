@@ -1496,7 +1496,7 @@ class ResultCollector(object):
 
         """
         if self._solo_test_run:
-            self._test_views, self.retry_count, self._missing_results = (
+            self._test_views, self._retry_counts, self._missing_results = (
                   self._fetch_test_views_of_child_jobs(
                           jobs=self._afe.get_jobs(id=self._suite_job_id)))
         else:
