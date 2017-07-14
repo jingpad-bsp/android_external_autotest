@@ -26,10 +26,9 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 
 
-class graphics_WebGLClear(test.test):
+class graphics_WebGLClear(graphics_utils.GraphicsTest):
     """WebGL clear graphics test."""
     version = 1
-    GSC = None
     perf_keyval = {}
     test_duration_secs = 30
 
@@ -37,12 +36,11 @@ class graphics_WebGLClear(test.test):
         self.job.setup_dep(['webgl_clear'])
 
     def initialize(self):
-        self.GSC = graphics_utils.GraphicsStateChecker()
+        super(graphics_WebGLClear, self).initialize()
         self.perf_keyval = {}
 
     def cleanup(self):
-        if self.GSC:
-            self.GSC.finalize()
+        super(graphics_WebGLClear, self).cleanup()
 
     def run_clear_test(self, browser, test_url):
         """Runs the clear test from the given url.
@@ -66,6 +64,7 @@ class graphics_WebGLClear(test.test):
 
         tab.Close()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_WebGLClear')
     def run_once(self, test_duration_secs=30):
         """Finds a brower with telemetry, and run the test.
 
