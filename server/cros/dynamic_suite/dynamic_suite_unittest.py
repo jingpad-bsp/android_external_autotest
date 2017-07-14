@@ -15,7 +15,6 @@ import mock
 
 import common
 from autotest_lib.client.common_lib import base_job, error
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
@@ -49,7 +48,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
     def testVetRequiredReimageAndRunArgs(self):
         """Should verify only that required args are present and correct."""
-        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        spec = dynamic_suite._SuiteSpec(**self._DARGS)
         self.assertEquals(spec.builds, self._DARGS['builds'])
         self.assertEquals(spec.board, 'board:' + self._DARGS['board'])
         self.assertEquals(spec.name, self._DARGS['name'])
@@ -61,7 +60,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """
         self._DARGS['builds'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite.SuiteSpec,
+                          dynamic_suite._SuiteSpec,
                           **self._DARGS)
 
 
@@ -69,7 +68,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |board| arg is bad."""
         self._DARGS['board'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite.SuiteSpec,
+                          dynamic_suite._SuiteSpec,
                           **self._DARGS)
 
 
@@ -77,7 +76,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |name| arg is bad."""
         self._DARGS['name'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite.SuiteSpec,
+                          dynamic_suite._SuiteSpec,
                           **self._DARGS)
 
 
@@ -85,13 +84,13 @@ class DynamicSuiteTest(mox.MoxTestBase):
         """Should fail verification because |job| arg is bad."""
         self._DARGS['job'] = None
         self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite.SuiteSpec,
+                          dynamic_suite._SuiteSpec,
                           **self._DARGS)
 
 
     def testOverrideOptionalReimageAndRunArgs(self):
         """Should verify that optional args can be overridden."""
-        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        spec = dynamic_suite._SuiteSpec(**self._DARGS)
         self.assertEquals(spec.pool, 'pool:' + self._DARGS['pool'])
         self.assertEquals(spec.num, self._DARGS['num'])
         self.assertEquals(spec.check_hosts, self._DARGS['check_hosts'])
@@ -109,7 +108,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         del(self._DARGS['num'])
         del(self._DARGS['suite_dependencies'])
 
-        spec = dynamic_suite.SuiteSpec(**self._DARGS)
+        spec = dynamic_suite._SuiteSpec(**self._DARGS)
         self.assertEquals(spec.pool, None)
         self.assertEquals(spec.num, None)
         self.assertEquals(spec.check_hosts, True)
