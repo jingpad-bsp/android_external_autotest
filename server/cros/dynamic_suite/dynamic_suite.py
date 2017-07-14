@@ -440,7 +440,6 @@ def run_provision_suite(**dargs):
 
     @param job: an instance of client.common_lib.base_job representing the
                 currently running suite job.
-    @param suite_args: keyword arguments passed to suite.
 
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
