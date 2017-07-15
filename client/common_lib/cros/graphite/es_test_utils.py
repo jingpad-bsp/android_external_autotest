@@ -1,29 +1,16 @@
+# pylint: disable=missing-docstring
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Helper functions for testing stats module and elasticsearch
-"""
+"""Helper functions for testing elasticsearch."""
 
-import logging
 import time
 
 import common
 
 import elasticsearch
 
-from autotest_lib.client.common_lib.cros.graphite import es_utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-
-
-# Defines methods in the stats class that can take in metadata.
-TARGET_TO_STATS_CLASS = {
-    'timer': autotest_stats.Timer,
-    'gauge': autotest_stats.Gauge,
-    'raw': autotest_stats.Raw,
-    'average': autotest_stats.Average,
-    'counter': autotest_stats.Counter,
-}
 
 # Maps target type to method to trigger sending of metadata.
 # This differs based on what each object does.
@@ -76,17 +63,6 @@ def sequential_random_insert_ints(keys, num_entries, target_type, index,
         # Subname and value are not important from metadata pov.
         subname = 'metadata.test'
         value = 10
-        stats_target = TARGET_TO_STATS_CLASS[target_type](subname,
-                metadata=metadata,
-                es=es_utils.ESMetadata(use_http=use_http, host=host,
-                                       port=port, index=index,
-                                       udp_port=udp_port))
-
-        if target_type == 'timer':
-            stats_target.start()
-            stats_target.stop()
-        else:
-            getattr(stats_target, TARGET_TO_METHOD[target_type])(subname, value)
         time.sleep(between_insert_secs)
 
 
