@@ -23,7 +23,7 @@ def get_summary(start_time, end_time, top=None, report_stat=False):
     @param start_time: Start time of the test results to search for.
     @param end_time: End time of the test results to search for.
     @param top: Number of top hits with the largest size of test results.
-    @param report_stat: True to report the total test results size to statsd.
+    @param report_stat: (deprecated, ignored)
     """
     fields_returned = ['size_KB', 'time_recorded']
     if top > 0:
@@ -66,7 +66,7 @@ def main():
                         default=0)
     parser.add_argument('-r', action='store_true', dest='report_stat',
                         default=False,
-                        help='True to report total size to statsd.')
+                        help='Deprecated, ignored.')
     options = parser.parse_args()
 
     if options.last:

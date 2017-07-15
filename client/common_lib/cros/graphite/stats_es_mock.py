@@ -1,5 +1,4 @@
-#pylint: disable-msg=C0111
-
+# pylint: disable=missing-docstring
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -38,7 +37,7 @@ class mock_class_type(type):
 
 
 class mock_class_base(object):
-    """Base class for a mock statsd/es class."""
+    """Base class for a mock es class."""
 
     __metaclass__ = mock_class_type
 
