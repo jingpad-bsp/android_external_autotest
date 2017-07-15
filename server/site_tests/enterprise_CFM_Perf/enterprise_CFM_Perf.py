@@ -74,14 +74,19 @@ class enterprise_CFM_Perf(test.test):
         hangout_name = current_date + '-cfm-perf'
 
         self.cfm_facade.enroll_device()
-        self.cfm_facade.restart_chrome_for_cfm()
-        self.cfm_facade.wait_for_telemetry_commands()
-
-        if not self.cfm_facade.is_oobe_start_page():
-            self.cfm_facade.wait_for_oobe_start_page()
-
-        self.cfm_facade.skip_oobe_screen()
+        self.cfm_facade.skip_oobe_after_enrollment()
         self.cfm_facade.start_new_hangout_session(hangout_name)
+
+
+    def enroll_device_and_join_meeting(self):
+        """Enroll device into CFM and join a meeting session."""
+        self.cfm_facade.enroll_device()
+        self.cfm_facade.skip_oobe_after_enrollment()
+
+        self.cfm_facade.wait_for_meetings_landing_page()
+        # Daily meeting for perf testing with 9 remote participants.
+        meeting_code = 'nis-rhmz-dyh'
+        self.cfm_facade.join_meeting_session(meeting_code)
 
 
     def collect_perf_data(self):
@@ -529,7 +534,7 @@ class enterprise_CFM_Perf(test.test):
                 units='count', higher_is_better=True)
 
 
-    def run_once(self, host=None):
+    def run_once(self, host=None, is_meeting=False):
         self.client = host
 
         factory = remote_facade_factory.RemoteFacadeFactory(
@@ -547,9 +552,18 @@ class enterprise_CFM_Perf(test.test):
             time.sleep(_SHORT_TIMEOUT)
 
         try:
-            self.enroll_device_and_start_hangout()
+            if is_meeting:
+                self.enroll_device_and_join_meeting()
+            else:
+                self.enroll_device_and_start_hangout()
+
             self.collect_perf_data()
-            self.cfm_facade.end_hangout_session()
+
+            if is_meeting:
+                self.cfm_facade.end_meeting_session()
+            else:
+                self.cfm_facade.end_hangout_session()
+
             self.upload_jmidata()
         except Exception as e:
             # Clear tpm to remove device ownership before exiting to ensure
@@ -558,3 +572,4 @@ class enterprise_CFM_Perf(test.test):
             raise error.TestFail(str(e))
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
+
