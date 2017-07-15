@@ -434,7 +434,10 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     def _reset(self, set_power=False):
-        """Reset the Bluetooth adapter and settings.
+        """Remove remote devices and set adapter to set_power state.
+
+        Do not restart bluetoothd as this may incur a side effect.
+        The unhappy chrome may disable the adapter randomly.
 
         @param set_power: adapter power state to set (True or False).
 
@@ -443,33 +446,31 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         logging.debug('_reset')
 
-        # Power off the adapter before stopping the bluetoothd.
-        if self._adapter and not set_power:
-            self._set_powered(False)
-
-        # Stop bluetoothd.
-        if not self.stop_bluetoothd():
+        if not self._adapter:
+            logging.warning('Adapter not found!')
             return False
 
-        # Remove the settings and cached devices.
-        try:
-            for subdir in os.listdir(self.BLUETOOTH_LIBDIR):
-                shutil.rmtree(os.path.join(self.BLUETOOTH_LIBDIR, subdir))
-            remove_settings = True
-        except Exception as e:
-            logging.error('Error in removing subdirs in %s: %s.',
-                          self.BLUETOOTH_LIBDIR, e)
-            remove_settings = False
+        objects = self._bluez.GetManagedObjects(
+                dbus_interface=self.BLUEZ_MANAGER_IFACE, byte_arrays=True)
 
-        # Start bluetoothd.
-        if not self.start_bluetoothd():
-            return False
+        devices = []
+        for path, ifaces in objects.iteritems():
+            if self.BLUEZ_DEVICE_IFACE in ifaces:
+                devices.append(objects[path][self.BLUEZ_DEVICE_IFACE])
 
-        # Power on the adapter after restarting the bluetoothd.
-        if self._adapter and set_power:
+        # Turn on the adapter in order to remove all remote devices.
+        if not self._is_powered_on():
             self._set_powered(True)
 
-        return remove_settings
+        for device in devices:
+            logging.debug('removing %s', device.get('Address'))
+            self.remove_device_object(device.get('Address'))
+
+        if not set_power:
+            self._set_powered(False)
+
+        return True
+
 
     @xmlrpc_server.dbus_safe(False)
     def set_powered(self, powered):
@@ -539,7 +540,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     @xmlrpc_server.dbus_safe(False)
-    def get_adapter_properties(self):
+    def _get_adapter_properties(self):
         """Read the adapter properties from the Bluetooth Daemon.
 
         @return the properties as a JSON-encoded dictionary on success,
@@ -553,7 +554,15 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         else:
             props = {}
         logging.debug('get_adapter_properties: %s', props)
-        return json.dumps(props)
+        return props
+
+
+    def get_adapter_properties(self):
+        return json.dumps(self._get_adapter_properties())
+
+
+    def _is_powered_on(self):
+        return bool(self._get_adapter_properties().get(u'Powered'))
 
 
     def read_version(self):
