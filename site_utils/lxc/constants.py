@@ -7,18 +7,21 @@ import os
 import common
 from autotest_lib.client.bin import utils as common_utils
 from autotest_lib.client.common_lib.global_config import global_config
-from autotest_lib.site_utils.lxc import config as lxc_config
 
 
 # Name of the base container.
 BASE = global_config.get_config_value('AUTOSERV', 'container_base_name')
+
+# Path to folder that contains autotest code inside container.
+CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
+
 # Naming convention of test container, e.g., test_300_1422862512_2424, where:
 # 300:        The test job ID.
 # 1422862512: The tick when container is created.
 # 2424:       The PID of autoserv that starts the container.
 TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
 # Naming convention of the result directory in test container.
-RESULT_DIR_FMT = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR, 'results',
+RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results',
                               '%s')
 # Attributes to retrieve about containers.
 ATTRIBUTES = ['name', 'state']
@@ -45,7 +48,7 @@ DEFAULT_SHARED_HOST_PATH = global_config.get_config_value(
 
 # Path to drone_temp folder in the container, which stores the control file for
 # test job to run.
-CONTROL_TEMP_PATH = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR, 'drone_tmp')
+CONTROL_TEMP_PATH = os.path.join(CONTAINER_AUTOTEST_DIR, 'drone_tmp')
 
 # Bash command to return the file count in a directory. Test the existence first
 # so the command can return an error code if the directory doesn't exist.
@@ -55,13 +58,17 @@ COUNT_FILE_CMD = '[ -d %(dir)s ] && ls %(dir)s | wc -l'
 APPEND_CMD_FMT = ('echo \'%(content)s\' | sudo tee --append %(file)s'
                   '> /dev/null')
 
-# Path to site-packates in Moblab
-MOBLAB_SITE_PACKAGES = '/usr/lib64/python2.7/site-packages'
-MOBLAB_SITE_PACKAGES_CONTAINER = '/usr/local/lib/python2.7/dist-packages/'
-
 # Flag to indicate it's running in a Moblab. Due to crbug.com/457496, lxc-ls has
 # different behavior in Moblab.
 IS_MOBLAB = common_utils.is_moblab()
+
+if IS_MOBLAB:
+    SITE_PACKAGES_PATH = '/usr/lib64/python2.7/site-packages'
+    CONTAINER_SITE_PACKAGES_PATH = '/usr/local/lib/python2.7/dist-packages/'
+else:
+    SITE_PACKAGES_PATH = os.path.join(common.autotest_dir, 'site-packages')
+    CONTAINER_SITE_PACKAGES_PATH = os.path.join(CONTAINER_AUTOTEST_DIR,
+                                                'site-packages')
 
 # TODO(dshi): If we are adding more logic in how lxc should interact with
 # different systems, we should consider code refactoring to use a setting-style
