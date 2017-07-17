@@ -7,7 +7,6 @@ import os
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.site_utils.lxc import Container
-from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
@@ -50,7 +49,7 @@ class Zygote(Container):
             # If creating a new zygote, initialize the host dir.
             if not lxc_utils.path_exists(self.host_path):
                 utils.run('sudo mkdir %s' % self.host_path)
-            self.mount_dir(self.host_path, lxc_config.CONTAINER_AUTOTEST_DIR)
+            self.mount_dir(self.host_path, constants.CONTAINER_AUTOTEST_DIR)
 
 
     def destroy(self, force=True):
@@ -70,13 +69,7 @@ class Zygote(Container):
                 'content': '127.0.0.1 %s' % (hostname),
                 'file': '/etc/hosts'})
         else:
-            config_file = os.path.join(self.container_path, self.name, 'config')
-            lxc_utsname_setting = (
-                'lxc.utsname = ' +
-                constants.CONTAINER_UTSNAME_FORMAT % hostname)
-            utils.run(
-                constants.APPEND_CMD_FMT % {'content': lxc_utsname_setting,
-                                            'file': config_file})
+            super(Zygote, self).set_hostname(hostname)
 
 
     def _cleanup_host_mount(self):

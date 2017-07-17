@@ -120,23 +120,23 @@ class ContainerBucket(object):
                         disable_snapshot_clone)
 
         try:
-            return self.clone_container(path=self.container_path,
-                                        name=constants.BASE,
-                                        new_path=self.container_path,
-                                        new_name=name,
-                                        snapshot=use_snapshot,
-                                        cleanup=force_cleanup)
+            return Container.clone(src=self.base_container,
+                                   new_name=name,
+                                   new_path=self.container_path,
+                                   snapshot=use_snapshot,
+                                   cleanup=force_cleanup)
         except error.CmdError:
+            logging.debug('Creating snapshot clone failed. Attempting without '
+                           'snapshot...')
             if not use_snapshot:
                 raise
             else:
                 # Snapshot clone failed, retry clone without snapshot.
-                container = self.clone_container(path=self.container_path,
-                                                 name=constants.BASE,
-                                                 new_path=self.container_path,
-                                                 new_name=name,
-                                                 snapshot=False,
-                                                 cleanup=force_cleanup)
+                container = Container.clone(src=self.base_container,
+                                            new_name=name,
+                                            new_path=self.container_path,
+                                            snapshot=False,
+                                            cleanup=force_cleanup)
                 # Report metadata about retry success.
                 autotest_es.post(
                     use_http=True,
@@ -145,44 +145,6 @@ class ContainerBucket(object):
                               'name': name,
                               'success': True})
                 return container
-
-
-    def clone_container(self, path, name, new_path, new_name, snapshot=False,
-                        cleanup=False):
-        """Clone one container from another.
-
-        @param path: LXC path for the source container.
-        @param name: Name of the source container.
-        @param new_path: LXC path for the cloned container.
-        @param new_name: Name for the cloned container.
-        @param snapshot: Whether to snapshot, or create a full clone.
-        @param cleanup: If a container with the given name and path already
-                exist, clean it up first.
-
-        @return: A Container object for the created container.
-
-        @raise ContainerError: If the container already exists.
-        @raise error.CmdError: If lxc-clone call failed for any reason.
-        """
-        # Cleanup existing container with the given name.
-        container_folder = os.path.join(new_path, new_name)
-
-        if lxc_utils.path_exists(container_folder):
-            if not cleanup:
-                raise error.ContainerError('Container %s already exists.' %
-                                           new_name)
-            container = Container.createFromExistingDir(new_path, new_name)
-            try:
-                container.destroy()
-            except error.CmdError as e:
-                # The container could be created in a incompleted state. Delete
-                # the container folder instead.
-                logging.warn('Failed to destroy container %s, error: %s',
-                             name, e)
-                utils.run('sudo rm -rf "%s"' % container_folder)
-
-        lxc_utils.clone(path, name, new_path, new_name, snapshot)
-        return self.get(new_name)
 
 
     @cleanup_if_fail()
@@ -344,56 +306,30 @@ class ContainerBucket(object):
         # id and timestamp. For better result view, the container's hostname is
         # set to be a string containing the dut hostname.
         if dut_name:
-            config_file = os.path.join(container.container_path, name, 'config')
-            lxc_utsname_setting = (
-                'lxc.utsname = ' +
-                (constants.CONTAINER_UTSNAME_FORMAT %
-                 dut_name.replace('.', '-')))
-            utils.run(
-                constants.APPEND_CMD_FMT % {'content': lxc_utsname_setting,
-                                            'file': config_file})
+            container.set_hostname(dut_name.replace('.', '-'))
 
         # Deploy server side package
-        usr_local_path = os.path.join(container.rootfs, 'usr', 'local')
-        autotest_pkg_path = os.path.join(usr_local_path,
-                                         'autotest_server_package.tar.bz2')
-        autotest_path = os.path.join(usr_local_path, 'autotest')
-        # sudo is required so os.makedirs may not work.
-        utils.run('sudo mkdir -p %s'% usr_local_path)
+        container.install_ssp(server_package_url)
 
-        lxc.download_extract(
-            server_package_url, autotest_pkg_path, usr_local_path)
         deploy_config_manager = lxc_config.DeployConfigManager(container)
         deploy_config_manager.deploy_pre_start()
 
         # Copy over control file to run the test job.
         if control:
-            container_drone_temp = os.path.join(autotest_path, 'drone_tmp')
-            utils.run('sudo mkdir -p %s'% container_drone_temp)
-            container_control_file = os.path.join(
-                    container_drone_temp, control_file_name)
-            # Move the control file stored in the result folder to container.
-            utils.run('sudo mv %s %s' % (safe_control, container_control_file))
+            container.install_control_file(safe_control)
 
-        if constants.IS_MOBLAB:
-            site_packages_path = constants.MOBLAB_SITE_PACKAGES
-            site_packages_container_path = (
-                constants.MOBLAB_SITE_PACKAGES_CONTAINER[1:])
-        else:
-            site_packages_path = os.path.join(common.autotest_dir,
-                                              'site-packages')
-            site_packages_container_path = os.path.join(
-                    lxc_config.CONTAINER_AUTOTEST_DIR, 'site-packages')
-        mount_entries = [(site_packages_path, site_packages_container_path,
+        mount_entries = [(constants.SITE_PACKAGES_PATH,
+                          constants.CONTAINER_SITE_PACKAGES_PATH,
                           True),
                          (os.path.join(common.autotest_dir, 'puppylab'),
-                          os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR,
+                          os.path.join(constants.CONTAINER_AUTOTEST_DIR,
                                        'puppylab'),
                           True),
                          (result_path,
                           os.path.join(constants.RESULT_DIR_FMT % job_folder),
                           False),
                         ]
+
         for mount_config in deploy_config_manager.mount_configs:
             mount_entries.append((mount_config.source, mount_config.target,
                                   mount_config.readonly))
@@ -404,6 +340,9 @@ class ContainerBucket(object):
         # Update file permissions.
         # TODO(dshi): crbug.com/459344 Skip following action when test container
         # can be unprivileged container.
+        autotest_path = os.path.join(
+                container.rootfs,
+                constants.CONTAINER_AUTOTEST_DIR.lstrip(os.path.sep))
         utils.run('sudo chown -R root "%s"' % autotest_path)
         utils.run('sudo chgrp -R root "%s"' % autotest_path)
 

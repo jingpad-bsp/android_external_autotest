@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import sys
 import unittest
+from contextlib import contextmanager
 
 import common
 from autotest_lib.client.common_lib import error
@@ -77,6 +78,99 @@ class ContainerTests(unittest.TestCase):
                 container.refresh_status()
 
 
+    def testDefaultHostname(self):
+        """Verifies that the zygote starts up with a default hostname that is
+        the lxc container name."""
+        test_name = 'testHostname'
+        with self.createContainer(name=test_name) as container:
+            container.start(wait_for_network=True)
+            hostname = container.attach_run('hostname').stdout.strip()
+            self.assertEqual(test_name, hostname)
+
+
+    @unittest.skip('Setting the container hostname using lxc.utsname does not'
+                   'work on goobuntu.')
+    def testSetHostnameNotRunning(self):
+        """Verifies that the hostname can be set on a stopped container."""
+        with self.createContainer() as container:
+            expected_hostname = 'my-new-hostname'
+            container.set_hostname(expected_hostname)
+            container.start(wait_for_network=True)
+            hostname = container.attach_run('hostname').stdout.strip()
+            self.assertEqual(expected_hostname, hostname)
+
+
+    def testClone(self):
+        """Verifies that cloning a container works as expected."""
+        clone = lxc.Container.clone(src=self.base_container,
+                                    new_name="testClone",
+                                    snapshot=True)
+        try:
+            # Throws an exception if the container is not valid.
+            clone.refresh_status()
+        finally:
+            clone.destroy()
+
+
+    def testCloneWithoutCleanup(self):
+        """Verifies that cloning a container to an existing name will fail as
+        expected.
+        """
+        lxc.Container.clone(src=self.base_container,
+                            new_name="testCloneWithoutCleanup",
+                            snapshot=True)
+        with self.assertRaises(error.ContainerError):
+            lxc.Container.clone(src=self.base_container,
+                                new_name="testCloneWithoutCleanup",
+                                snapshot=True)
+
+
+    def testCloneWithCleanup(self):
+        """Verifies that cloning a container with cleanup works properly."""
+        clone0 = lxc.Container.clone(src=self.base_container,
+                                     new_name="testClone",
+                                     snapshot=True)
+        clone0.start(wait_for_network=False)
+        tmpfile = clone0.attach_run('mktemp').stdout
+        # Verify that our tmpfile exists
+        clone0.attach_run('test -f %s' % tmpfile)
+
+        # Clone another container in place of the existing container.
+        clone1 = lxc.Container.clone(src=self.base_container,
+                                     new_name="testClone",
+                                     snapshot=True,
+                                     cleanup=True)
+        with self.assertRaises(error.CmdError):
+            clone1.attach_run('test -f %s' % tmpfile)
+
+
+    def testInstallControlFile(self):
+        """Verifies that installing a control file in the container works."""
+        _unused, tmpfile = tempfile.mkstemp()
+        with self.createContainer() as container:
+            container.install_control_file(tmpfile)
+            container.start(wait_for_network=False)
+            # Verify that the file is found in the container.
+            container.attach_run(
+                'test -f %s' % os.path.join(lxc.CONTROL_TEMP_PATH,
+                                            os.path.basename(tmpfile)))
+
+
+    @contextmanager
+    def createContainer(self, name=None):
+        """Creates a container from the base container, for testing.
+        Use this to ensure that containers get properly cleaned up after each
+        test.
+
+        @param name: An optional name for the new container.
+        """
+        if name is None:
+            name = self.id().split('.')[-1]
+        container = self.bucket.create_from_base(name)
+        yield container
+        container.destroy()
+
+
 def parse_options():
     """Parse command line inputs.
     """
@@ -90,7 +184,7 @@ def parse_options():
     # Hack: python unittest also processes args.  Construct an argv to pass to
     # it, that filters out the options it won't recognize.
     if args.verbose:
-        argv.append('-v')
+        argv.insert(0, '-v')
     argv.insert(0, sys.argv[0])
 
     return args, argv
