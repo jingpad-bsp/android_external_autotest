@@ -95,6 +95,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
+from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
@@ -108,8 +109,6 @@ SSP_DEPLOY_SHADOW_CONFIG_FILE = os.path.join(common.autotest_dir,
 # A temp folder used to store files to be appended to the files inside
 # container.
 APPEND_FOLDER = 'usr/local/ssp_append'
-# Path to folder that contains autotest code inside container.
-CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 
 DeployConfig = collections.namedtuple(
         'DeployConfig', ['source', 'target', 'append', 'permission'])
@@ -303,7 +302,7 @@ class DeployConfigManager(object):
            made in the host.
 
         """
-        shadow_config = os.path.join(CONTAINER_AUTOTEST_DIR,
+        shadow_config = os.path.join(constants.CONTAINER_AUTOTEST_DIR,
                                      'shadow_config.ini')
 
         # Inject "AUTOSERV/enable_master_ssh: False" in shadow config as
