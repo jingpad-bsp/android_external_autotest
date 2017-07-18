@@ -270,16 +270,16 @@ class ResultCollectorUnittest(unittest.TestCase):
                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views if v['status'] != 'GOOD']
         # Verify buildbot links are generated correctly.
-        for i in range(len(collector._buildbot_links)):
+        for i in range(len(collector.buildbot_links)):
             expect = expected_buildbot_links[i]
-            self.assertEqual(collector._buildbot_links[i].anchor, expect[0])
-            self.assertEqual(collector._buildbot_links[i].url, expect[1])
-            self.assertEqual(collector._buildbot_links[i].retry_count, 0)
+            self.assertEqual(collector.buildbot_links[i].anchor, expect[0])
+            self.assertEqual(collector.buildbot_links[i].url, expect[1])
+            self.assertEqual(collector.buildbot_links[i].retry_count, 0)
             # Assert that a wmatrix retry dashboard link is created.
             self.assertNotEqual(
-                    collector._buildbot_links[i].GenerateWmatrixRetryLink(), '')
+                    collector.buildbot_links[i].GenerateWmatrixRetryLink(), '')
             self.assertNotEqual(
-                    collector._buildbot_links[i].GenerateWmatrixHistoryLink(),
+                    collector.buildbot_links[i].GenerateWmatrixHistoryLink(),
                     '')
 
 

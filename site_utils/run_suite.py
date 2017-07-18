@@ -1184,7 +1184,7 @@ class ResultCollector(object):
     @var _test_views: A list of TestView objects, representing all test views
                       from _suite_views and _child_views.
     @var _web_links: A list of web links pointing to the results of jobs.
-    @var _buildbot_links: A list of buildbot links for non-passing tests.
+    @var buildbot_links: A list of buildbot links for non-passing tests.
     @var _solo_test_run: True if this is a single test run.
     @var return_code: The exit code that should be returned by run_suite.
     @var return_message: Any message that should be displayed to explain
@@ -1216,7 +1216,7 @@ class ResultCollector(object):
         self._retry_counts = {}
         self._missing_results = {}
         self._web_links = []
-        self._buildbot_links = []
+        self.buildbot_links = []
         self._num_child_jobs = 0
         self.return_code = None
         self.return_message = ''
@@ -1224,12 +1224,6 @@ class ResultCollector(object):
         self.timings = None
         self._user = user or getpass.getuser()
         self._solo_test_run = solo_test_run
-
-
-    @property
-    def buildbot_links(self):
-        """Provide public access to buildbot links."""
-        return self._buildbot_links
 
 
     def _fetch_relevant_test_views_of_suite(self):
@@ -1347,7 +1341,7 @@ class ResultCollector(object):
         # and thus this method generates a link pointing to the
         # suite job's page for the aborted job. Need a fix.
         self._web_links = []
-        self._buildbot_links = []
+        self.buildbot_links = []
         # Bug info are stored in the suite job's keyvals.
         if self._solo_test_run:
             suite_job_keyvals = {}
@@ -1367,7 +1361,7 @@ class ResultCollector(object):
 
             if v.should_display_buildbot_link():
                 link.reason = v.get_buildbot_link_reason()
-                self._buildbot_links.append(link)
+                self.buildbot_links.append(link)
 
 
     def _record_timings(self):
@@ -1458,7 +1452,7 @@ class ResultCollector(object):
             if test_info:
                 test_info['link_to_logs'] = link.url
                 # Write the wmatrix link into the dict.
-                if link in self._buildbot_links and link.testname:
+                if link in self.buildbot_links and link.testname:
                     test_info['wmatrix_link'] \
                         = reporting_utils.link_retry_url(link.testname)
                 # Write the bug url into the dict.
@@ -1838,7 +1832,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
 
     logging.info('\n %s Output below this line is for buildbot consumption:',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
-    log_buildbot_links(logging.info, collector._buildbot_links)
+    log_buildbot_links(logging.info, collector.buildbot_links)
     return SuiteResult(code, output_dict)
 
 
