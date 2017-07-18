@@ -31,10 +31,11 @@ class webrtc_PausePlayPeerConnections(test.test):
     """Tests many peerconnections randomly paused and played."""
     version = 1
 
-    def start_test(self, cr):
+    def start_test(self, cr, element_type):
         """Opens the WebRTC pause-play page.
 
         @param cr: Autotest Chrome instance.
+        @param element_type: 'video' or 'audio'. String.
         """
         cr.browser.platform.SetHTTPServerDirectories(self.bindir)
 
@@ -43,10 +44,11 @@ class webrtc_PausePlayPeerConnections(test.test):
                 os.path.join(self.bindir, 'pause-play.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
         self.tab.EvaluateJavaScript(
-                "startTest(%d, %d, %d)" % (
+                "startTest(%d, %d, %d, %s)" % (
                         TEST_RUNTIME_SECONDS,
                         NUM_PEER_CONNECTIONS,
-                        PAUSE_PLAY_ITERATION_DELAY_MILLIS))
+                        PAUSE_PLAY_ITERATION_DELAY_MILLIS,
+                        element_type))
 
     def wait_test_completed(self, timeout_secs):
         """Waits until the test is done.
@@ -65,12 +67,12 @@ class webrtc_PausePlayPeerConnections(test.test):
                 desc='pause-play.html reports itself as finished')
 
     @helper_logger.video_log_wrapper
-    def run_once(self):
+    def run_once(self, element_type='video'):
         """Runs the test."""
         with chrome.Chrome(extra_browser_args = EXTRA_BROWSER_ARGS + \
                            [helper_logger.chrome_vmodule_flag()],
                            init_network_controller = True) as cr:
-            self.start_test(cr)
+            self.start_test(cr, element_type)
             self.wait_test_completed(TIMEOUT)
             self.print_result()
 

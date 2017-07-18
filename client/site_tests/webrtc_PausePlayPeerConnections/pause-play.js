@@ -14,7 +14,7 @@ function logError(err) {
 }
 
 /**
- * FeedTable stores all video elements.
+ * FeedTable stores all elements.
  */
 class FeedTable {
   constructor() {
@@ -24,49 +24,45 @@ class FeedTable {
     this.row = this.testTable.insertRow(-1);
   }
 
-  addNewCell() {
+  addNewCell(elementType) {
     if (this.col == this.numCols) {
       this.row = this.testTable.insertRow(-1);
       this.col = 0;
     }
     var newCell = this.row.insertCell(-1);
-    var video = document.createElement('video');
-    video.autoplay = false;
-    newCell.appendChild(video);
+    var element = document.createElement(elementType);
+    element.autoplay = false;
+    newCell.appendChild(element);
     this.col++;
-    return video;
+    return element;
   }
 }
 
 /**
  * A simple loopback connection;
- * - localConnection is fed video from local camera
+ * - localConnection is fed video/audio from source
  * - localConnection is linked to remoteConnection
  * - remoteConnection is displayed in the given videoElement
  */
 class PeerConnection {
 
   /**
-   * @param {number} id
-   * @param {Object} videoElement
+   * @param {!HTMLMediaElement} element - And 'audio' or 'video' element.
+   * @param {!Object} constraints - The constraints for the peer connection.
    */
-  constructor(videoElement) {
+  constructor(element, constraints) {
     this.localConnection = null;
     this.remoteConnection = null;
-    this.remoteView = videoElement;
+    this.remoteElement = element;
+    this.constraints = constraints;
   }
 
   start() {
     return navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: {
-            mandatory: {
-              maxWidth: 300,
-              minWidth: 300,
-            }
-          }
-        }).then((stream) => {this.onGetUserMediaSuccess(stream)});
+        .getUserMedia(this.constraints)
+        .then((stream) => {
+            this.onGetUserMediaSuccess(stream)
+        });
   };
 
   onGetUserMediaSuccess(stream) {
@@ -81,7 +77,7 @@ class PeerConnection {
       this.onIceCandidate(this.localConnection, event);
     };
     this.remoteConnection.onaddstream = (e) => {
-      this.remoteView.srcObject = e.stream;
+      this.remoteElement.srcObject = e.stream;
     };
 
     this.localConnection
@@ -114,7 +110,7 @@ class TestRunner {
   constructor(runtimeSeconds, pausePlayIterationDelayMillis) {
     this.runtimeSeconds = runtimeSeconds;
     this.pausePlayIterationDelayMillis = pausePlayIterationDelayMillis;
-    this.videoElements = [];
+    this.elements = [];
     this.peerConnections = [];
     this.feedTable = new FeedTable();
     this.iteration = 0;
@@ -122,10 +118,20 @@ class TestRunner {
     this.lastIterationTime;
   }
 
-  addPeerConnection() {
-    const videoElement = this.feedTable.addNewCell();
-    this.videoElements.push(videoElement);
-    this.peerConnections.push(new PeerConnection(videoElement));
+  addPeerConnection(elementType) {
+    const element = this.feedTable.addNewCell(elementType);
+    const constraints = {audio: true};
+    if (elementType === 'video') {
+      constraints.video = {
+        width: {exact: 300}
+      };
+    } else if (elementType === 'audio') {
+      constraints.video = false;
+    } else {
+      throw new Error('elementType must be one of "audio" or "video"');
+    }
+    this.elements.push(element);
+    this.peerConnections.push(new PeerConnection(element, constraints));
   }
 
   startTest() {
@@ -141,7 +147,7 @@ class TestRunner {
 
   pauseAndPlayLoop() {
     this.iteration++;
-    this.videoElements.forEach((feed) => {
+    this.elements.forEach((feed) => {
       if (Math.random() >= 0.5) {
         feed.play();
       } else {
@@ -155,7 +161,7 @@ class TestRunner {
       setTimeout(
           () => {this.pauseAndPlayLoop()}, this.pausePlayIterationDelayMillis);
     } else {  // We're done. Pause all feeds.
-      this.videoElements.forEach((feed) => {
+      this.elements.forEach((feed) => {
         feed.pause();
       });
     }
@@ -182,11 +188,12 @@ class TestRunner {
 let testRunner;
 
 function startTest(
-    runtimeSeconds, numPeerConnections, pausePlayIterationDelayMillis) {
+    runtimeSeconds, numPeerConnections, pausePlayIterationDelayMillis,
+    elementType) {
   testRunner = new TestRunner(
       runtimeSeconds, pausePlayIterationDelayMillis);
   for (let i = 0; i < numPeerConnections; i++) {
-    testRunner.addPeerConnection();
+    testRunner.addPeerConnection(elementType);
   }
   testRunner.startTest();
 }
