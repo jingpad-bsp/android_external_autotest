@@ -16,7 +16,6 @@ import threading
 
 import common
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 
 try:
     from chromite.lib import metrics
@@ -63,7 +62,6 @@ def queue(data):
     @param data: A metadata entry, which should be a dictionary.
     """
     if not is_running():
-        autotest_es.post(type_str=data['_type'], metadata=data)
         return
 
     try:
@@ -101,22 +99,6 @@ def _run():
                 data_list.append(metadata_queue.get_nowait())
             if data_list:
                 success = False
-                if autotest_es.bulk_post(data_list=data_list):
-                    time_used = time.time() - start_time
-                    logging.info('%d entries of metadata uploaded in %s '
-                                 'seconds.', len(data_list), time_used)
-                    first_failed_upload = None
-                    success = True
-                    metrics.SecondsDistribution(
-                            _METADATA_METRICS_PREFIX + 'upload/seconds').add(
-                                    time_used, fields=_get_metrics_fields())
-                else:
-                    logging.warn('Failed to upload %d entries of metadata, '
-                                 'they will be retried later.', len(data_list))
-                    for data in data_list:
-                        queue(data)
-                    if not first_failed_upload:
-                        first_failed_upload = time.time()
                 fields = _get_metrics_fields().copy()
                 fields['success'] = success
                 metrics.Gauge(
@@ -157,10 +139,8 @@ def start():
         logging.error('There is already a metadata reporter thread.')
         return
 
-    if not autotest_es.METADATA_ES_SERVER:
-        logging.warn('ES_HOST is not set in global config, no metadata will be '
-                     'reported.')
-        return
+    logging.warn('Elasticsearch db deprecated, no metadata will be '
+                 'reported.')
 
     _report_lock.acquire()
     reporting_thread = threading.Thread(target=_run)
