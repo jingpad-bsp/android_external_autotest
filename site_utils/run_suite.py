@@ -527,16 +527,13 @@ class LogLink(object):
         """Format anchor text given a prefix and info strings.
 
         @param prefix        The prefix of the anchor text.
-        @param info_strings  The infos presented in the anchor text.
+        @param info_strings  Iterable of strings.
         @return A anchor_text with the right prefix and info strings.
         """
-        anchor_text = '[{prefix}]: {anchor}'.format(
+        return '[{prefix}]: {anchor}: {info}'.format(
             prefix=prefix,
-            anchor=self.anchor.strip())
-        if info_strings:
-            info_text = ', '.join(info_strings)
-            anchor_text += ': ' + info_text
-        return anchor_text
+            anchor=self.anchor.strip(),
+            info=', '.join(info_strings))
 
     @property
     def text_link(self):
