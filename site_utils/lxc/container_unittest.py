@@ -19,7 +19,8 @@ from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
-
+from autotest_lib.site_utils.lxc.unittest_container_bucket \
+        import FastContainerBucket
 
 options = None
 
@@ -33,7 +34,7 @@ class ContainerTests(unittest.TestCase):
         cls.shared_host_path = os.path.join(cls.test_dir, 'host')
 
         # Use a container bucket just to download and set up the base image.
-        cls.bucket = lxc.ContainerBucket(cls.test_dir, cls.shared_host_path)
+        cls.bucket = FastContainerBucket(cls.test_dir, cls.shared_host_path)
 
         if cls.bucket.base_container is None:
             logging.debug('Base container not found - reinitializing')
