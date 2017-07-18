@@ -2,26 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "kerl@google.com, hangouts-engprod-sto@google.com"
-NAME = "webrtc_PausePlayPeerConnections.video"
+AUTHOR = "malmnas@google.com, hangouts-engprod-sto@google.com"
+NAME = "webrtc_PausePlayPeerConnections.audio"
 PURPOSE = "Ensures frequent pause and plays of peer connection streams work"
 CRITERIA = "Fails if the tab freezes during the test"
 ATTRIBUTES = "suite:hotrod, suite:bluestreak"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Stress"
-TEST_CLASS = "video"
+TEST_CLASS = "audio"
 TEST_TYPE = "client"
 BUG_TEMPLATE = {
     "labels": ["OS-Chrome"],
-    "components": ["OS>Kernel>Video"],
+    "components": ["OS>Kernel>Audio"],
 }
 
 DOC = """
-This test starts 10 peer connections with low resolution video
-streams. The tests randomly pauses and plays the streams.
-
-This is a regression test for bug 718369.
+This test starts 10 peer connections with audio streams.
+The tests randomly pauses and plays the streams.
 """
 
-job.run_test("webrtc_PausePlayPeerConnections", element_type='video')
+job.run_test("webrtc_PausePlayPeerConnections", element_type='audio')
 
