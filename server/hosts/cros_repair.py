@@ -384,6 +384,21 @@ class ServoResetRepair(hosts.RepairAction):
         return 'Reset the DUT via servo'
 
 
+class CrosRebootRepair(repair.RebootRepair):
+    """Repair a CrOS target by clearing dev mode and rebooting it."""
+
+    def repair(self, host):
+        # N.B. We need to reboot regardless of whether set_gbb_flags
+        # succeeds or fails.
+        host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
+                 ignore_status=True)
+        super(CrosRebootRepair, self).repair(host)
+
+    @property
+    def description(self):
+        return 'Reset GBB flags and Reboot the host'
+
+
 class AutoUpdateRepair(hosts.RepairAction):
     """
     Repair by re-installing a test image using autoupdate.
@@ -487,7 +502,7 @@ def _cros_basic_repair_actions():
         # firmware.
         (FirmwareRepair, 'firmware', (), ('ssh', 'fwstatus', 'good_au',)),
 
-        (repair.RebootRepair, 'reboot', ('ssh',), ('devmode', 'writable',)),
+        (CrosRebootRepair, 'reboot', ('ssh',), ('devmode', 'writable',)),
     )
     return repair_actions
 
