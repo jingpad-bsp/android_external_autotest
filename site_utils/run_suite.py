@@ -444,16 +444,6 @@ class LogLink(object):
     _LOG_LINK_PREFIX = 'Test-Logs'
 
 
-    @classmethod
-    def get_bug_link(cls, bug_id):
-        """Generate a bug link for the given bug_id.
-
-        @param bug_id: The id of the bug.
-        @return: A link, eg: https://crbug.com/<bug_id>.
-        """
-        return reporting_utils.link_crbug(bug_id)
-
-
     def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
                  retry_count=0, testname=None):
         """Initialize the LogLink by generating the log URL.
