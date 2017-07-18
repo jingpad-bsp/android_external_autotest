@@ -29,6 +29,9 @@ def snippet(text):
     return ('%s%s\n%s\n%s%s' %
             (start, snip[len(start):], text, end, snip[len(end):]))
 
+UPDATE_ENGINE_PERF_PATH = '/mnt/stateful_partition/unencrypted/preserve'
+UPDATE_ENGINE_PERF_SCRIPT = 'update_engine_performance_monitor.py'
+UPDATE_ENGINE_PERF_RESULTS_FILE = 'perf_data_results.json'
 
 # Update event types.
 EVENT_TYPE_DOWNLOAD_COMPLETE = '1'
@@ -449,9 +452,10 @@ class TestPlatform(object):
         raise NotImplementedError
 
 
-    def stop_update_perf(self):
+    def stop_update_perf(self, resultdir):
         """Stops performance monitoring and returns data (if available).
 
+        @param resultdir: Directory containing test result files.
         @return Dictionary containing performance attributes.
         """
         raise NotImplementedError
@@ -712,45 +716,6 @@ class ChromiumOSTestPlatform(TestPlatform):
         client_at.run_test('login_LoginSuccess', tag=tag)
 
 
-    def _start_perf_mon(self, bindir):
-        """Starts monitoring performance and resource usage on a DUT.
-
-        Call _stop_perf_mon() with the returned PID to stop monitoring
-        and collect the results.
-
-        @param bindir: Directoy containing monitoring script.
-
-        @return The PID of the newly created DUT monitoring process.
-        """
-        # We can't assume much about the source image so we copy the
-        # performance monitoring script to the DUT directly.
-        path = os.path.join(bindir, 'update_engine_performance_monitor.py')
-        self._host.send_file(path, '/tmp')
-        cmd = 'python /tmp/update_engine_performance_monitor.py --start-bg'
-        return int(self._host.run(cmd).stdout)
-
-
-    def _stop_perf_mon(self, perf_mon_pid):
-        """Stops monitoring performance and resource usage on a DUT.
-
-        @param perf_mon_pid: the PID returned from _start_perf_mon().
-
-        @return Dictionary containing performance attributes, or None if
-                unavailable.
-        """
-        # Gracefully handle problems with performance monitoring by
-        # just returning None.
-        try:
-            cmd = ('python /tmp/update_engine_performance_monitor.py '
-                   '--stop-bg=%d') % perf_mon_pid
-            perf_json_txt = self._host.run(cmd).stdout
-            return json.loads(perf_json_txt)
-        except Exception as e:
-            logging.warning('Failed to parse output from '
-                            'update_engine_performance_monitor.py: %s', e)
-        return None
-
-
     # Interface overrides.
     #
     def initialize(self, autotest_devserver, results_dir):
@@ -781,17 +746,27 @@ class ChromiumOSTestPlatform(TestPlatform):
 
 
     def start_update_perf(self, bindir):
-        if self._perf_mon_pid is None:
-            self._perf_mon_pid = self._start_perf_mon(bindir)
+        """Copy performance monitoring script to DUT.
+
+        The updater will kick off the script during the update.
+        """
+        path = os.path.join(bindir, UPDATE_ENGINE_PERF_SCRIPT)
+        self._host.send_file(path, UPDATE_ENGINE_PERF_PATH)
 
 
-    def stop_update_perf(self):
-        perf_data = None
-        if self._perf_mon_pid is not None:
-            perf_data = self._stop_perf_mon(self._perf_mon_pid)
-            self._perf_mon_pid = None
-
-        return perf_data
+    def stop_update_perf(self, resultdir):
+        """ Copy the performance metrics back from the DUT."""
+        try:
+            path = os.path.join('/var/log', UPDATE_ENGINE_PERF_RESULTS_FILE)
+            self._host.get_file(path, resultdir)
+            self._host.run('rm %s' % path)
+            script = os.path.join(UPDATE_ENGINE_PERF_PATH,
+                                  UPDATE_ENGINE_PERF_SCRIPT)
+            self._host.run('rm %s' % script)
+            return os.path.join(resultdir, UPDATE_ENGINE_PERF_RESULTS_FILE)
+        except:
+            logging.debug('Failed to copy performance metrics from DUT.')
+            return None
 
 
     def trigger_update(self, target_payload_uri):
@@ -849,12 +824,6 @@ class autoupdate_EndToEndTest(test.test):
                      e.g. 'localhost:8080/static/my_file.gz'. These are usually
                      given after staging an artifact using a autotest_devserver
                      though they can be re-created given enough assumptions.
-      *update_url's: Urls refering to the update RPC on a given omaha devserver.
-                     Since we always use an instantiated omaha devserver to run
-                     updates, these will always reference an existing instance
-                     of an omaha devserver that we just created for the purposes
-                     of updating.
-
     """
     version = 1
 
@@ -918,14 +887,22 @@ class autoupdate_EndToEndTest(test.test):
             pass
 
 
-    def _report_perf_data(self, perf_data):
+    def _report_perf_data(self, perf_file):
         """Reports performance and resource data.
 
         Currently, performance attributes are expected to include 'rss_peak'
         (peak memory usage in bytes).
 
-        @param perf_data: A dictionary containing performance attributes.
+        @param perf_file: A file with performance metrics.
         """
+        logging.debug('Reading perf results from %s.' % perf_file)
+        try:
+            with open(perf_file, 'r') as perf_file_handle:
+                perf_data = json.loads(perf_file_handle.read())
+        except Exception as e:
+            logging.warning('Error while reading the perf data file: %s' % e)
+            return
+
         rss_peak = perf_data.get('rss_peak')
         if rss_peak:
             rss_peak_kib = rss_peak / 1024
@@ -935,8 +912,8 @@ class autoupdate_EndToEndTest(test.test):
                                    units='KiB',
                                    higher_is_better=False)
         else:
-            logging.warning('No rss_peak key in JSON returned by '
-                            'update_engine_performance_monitor.py')
+            logging.warning('No rss_peak key in JSON returned by %s',
+                            UPDATE_ENGINE_PERF_SCRIPT)
 
 
     def _error_initial_check(self, expected, actual, mismatched_attrs):
@@ -1063,10 +1040,7 @@ class autoupdate_EndToEndTest(test.test):
         source_release = test_conf['source_release']
         target_release = test_conf['target_release']
 
-        # TODO(dhaddock): Reuse update_engine_performance_monitor
-        # script with chromite autoupdater. Can't use it here anymore because
-        # the DUT is restarted a bunch of times during the update and the
-        # process is killed before we can get the results back.
+        test_platform.start_update_perf(self.bindir)
         try:
             # Update the DUT to the target image.
             pid = test_platform.trigger_update(test_conf['target_payload_uri'])
@@ -1127,6 +1101,10 @@ class autoupdate_EndToEndTest(test.test):
         except:
             logging.fatal('ERROR: Failure occurred during the target update.')
             raise
+
+        perf_file = test_platform.stop_update_perf(self.job.resultdir)
+        if perf_file is not None:
+            self._report_perf_data(perf_file)
 
         if test_platform.oobe_triggers_update():
             # If DUT automatically checks for update during OOBE,
