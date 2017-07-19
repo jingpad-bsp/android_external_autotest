@@ -4,6 +4,7 @@
 
 import contextlib
 import fcntl
+import glob
 import logging
 import os
 import re
@@ -85,6 +86,7 @@ class CrashTest(test.test):
     _SYSTEM_CRASH_DIR = '/var/spool/crash'
     _FALLBACK_USER_CRASH_DIR = '/home/chronos/crash'
     _USER_CRASH_DIRS = '/home/chronos/u-*/crash'
+    _USER_CRASH_DIR_REGEX = re.compile('/home/chronos/u-([a-f0-9]+)/crash')
 
     # Use the same file format as crash does normally:
     # <basename>.#.#.#.meta
@@ -302,21 +304,29 @@ class CrashTest(test.test):
             utils.system('rm -f "%s"' % constants.OWNER_KEY_FILE)
 
 
-    def _get_crash_dir(self, username):
-        """Returns full path to the crash directory for a given username
+    def _get_crash_dir(self, username, force_user_crash_dir=False):
+        """Returns crash directory for process running as the given user.
 
-        This only really works (currently) when no one is logged in.  That
-        is OK (currently) as the only test that uses this runs when no one
-        is actually logged in.
-
-        @param username: username to use:
-                'chronos': Returns user crash directory.
-                'root': Returns system crash directory.
+        @param username: Unix user of the crashing process.
+        @param force_user_crash_dir: Regardless of |username|, return the crash
+                                     directory of the current user session, or
+                                     the fallback directory if no sessions.
         """
-        if username == 'chronos':
-            return self._FALLBACK_USER_CRASH_DIR
-        else:
+        if username == 'root' and not force_user_crash_dir:
             return self._SYSTEM_CRASH_DIR
+        else:
+            dirs = glob.glob(self._USER_CRASH_DIRS)
+            return dirs[0] if dirs else self._FALLBACK_USER_CRASH_DIR
+
+
+    def _canonicalize_crash_dir(self, crash_dir):
+        """Converts /home/chronos crash directory to /home/user counterpart.
+
+        @param crash_dir: A path of the form /home/chronos/u-<hash>/crash.
+        @returns /home/user/<hash>/crash, or |crash_dir| on form mismatch.
+        """
+        match = re.match(self._USER_CRASH_DIR_REGEX, crash_dir)
+        return ('/home/user/%s/crash' % match.group(1)) if match else crash_dir
 
 
     def _initialize_crash_reporter(self):
