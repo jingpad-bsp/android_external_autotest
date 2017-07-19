@@ -2,12 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
+import tempfile
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import Container
 from autotest_lib.site_utils.lxc import constants
+from autotest_lib.site_utils.lxc import lxc
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
@@ -70,6 +74,55 @@ class Zygote(Container):
                 'file': '/etc/hosts'})
         else:
             super(Zygote, self).set_hostname(hostname)
+
+
+    def install_ssp(self, ssp_url):
+        """Downloads and installs the given server package.
+
+        @param ssp_url: The URL of the ssp to download and install.
+        """
+        # The host dir is mounted directly on /usr/local/autotest within the
+        # container.  The SSP structure assumes it gets untarred into the
+        # /usr/local directory of the container's rootfs.  In order to unpack
+        # with the correct directory structure, create a tmpdir, mount the
+        # container's host dir as ./autotest, and unpack the SSP.
+        tmpdir = None
+        autotest_tmp = None
+        try:
+            tmpdir = tempfile.mkdtemp(dir=self.container_path,
+                                      prefix='%s.' % self.name,
+                                      suffix='.tmp')
+            autotest_tmp = os.path.join(tmpdir, 'autotest')
+            os.mkdir(autotest_tmp)
+            utils.run(
+                    'sudo mount --bind %s %s' % (self.host_path, autotest_tmp))
+            download_tmp = os.path.join(tmpdir,
+                                        'autotest_server_package.tar.bz2')
+            lxc.download_extract(ssp_url, download_tmp, tmpdir)
+        finally:
+            if autotest_tmp is not None:
+                try:
+                    utils.run('sudo umount %s' % autotest_tmp)
+                except error.CmdError:
+                    logging.exception('Failure while cleaning up SSP tmpdir.')
+            if tmpdir is not None:
+                utils.run('sudo rm -rf %s' % tmpdir)
+
+
+    def install_control_file(self, control_file):
+        """Installs the given control file.
+
+        The given file will be moved into the container.
+
+        @param control_file: Path to the control file to install.
+        """
+        # Compute the control temp path relative to the host mount.
+        dst_path = os.path.join(
+                self.host_path,
+                os.path.relpath(constants.CONTROL_TEMP_PATH,
+                                constants.CONTAINER_AUTOTEST_DIR))
+        utils.run('sudo mkdir -p %s' % dst_path)
+        utils.run('sudo mv %s %s' % (control_file, dst_path))
 
 
     def _cleanup_host_mount(self):
