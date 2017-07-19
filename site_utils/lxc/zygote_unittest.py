@@ -179,9 +179,11 @@ class ZygoteTests(unittest.TestCase):
                             self.base_container,
                             snapshot,
                             host_path)
-        yield zygote
-        if not options.skip_cleanup:
-            zygote.destroy()
+        try:
+            yield zygote
+        finally:
+            if not options.skip_cleanup:
+                zygote.destroy()
 
 
     def verifyBindMount(self, container, container_path, host_path):
