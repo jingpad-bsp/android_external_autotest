@@ -25,8 +25,6 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.server import site_utils
 
 try:
     from chromite.lib import metrics
@@ -226,13 +224,6 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
         metrics.Counter(
             'chromeos/autotest/experimental/execute_job_in_ssp').increment(
                 fields={'success': success})
-        # metadata is uploaded separately so it can use http to upload.
-        metadata = {'drone': socket.gethostname(),
-                    'job_id': job_id,
-                    'success': success}
-        autotest_es.post(use_http=True,
-                         type_str=lxc.CONTAINER_RUN_TEST_METADB_TYPE,
-                         metadata=metadata)
         test_container.destroy()
 
 
@@ -251,16 +242,8 @@ def correct_results_folder_permission(results):
     if not results:
         return
 
-    try:
-        utils.run('sudo -n chown -R %s "%s"' % (os.getuid(), results))
-        utils.run('sudo -n chgrp -R %s "%s"' % (os.getgid(), results))
-    except error.CmdError as e:
-        metadata = {'error': str(e),
-                    'result_folder': results,
-                    'drone': socket.gethostname()}
-        autotest_es.post(use_http=True, type_str='correct_results_folder_failure',
-                         metadata=metadata)
-        raise
+    utils.run('sudo -n chown -R %s "%s"' % (os.getuid(), results))
+    utils.run('sudo -n chgrp -R %s "%s"' % (os.getgid(), results))
 
 
 def _start_servod(machine):
@@ -365,29 +348,17 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         if use_ssp:
             logging.debug('Destroy container %s before aborting the autoserv '
                           'process.', container_name)
-            metadata = {'drone': socket.gethostname(),
-                        'job_id': job_or_task_id,
-                        'container_name': container_name,
-                        'action': 'abort',
-                        'success': True}
             try:
                 bucket = lxc.ContainerBucket()
                 container = bucket.get(container_name)
                 if container:
                     container.destroy()
                 else:
-                    metadata['success'] = False
-                    metadata['error'] = 'container not found'
                     logging.debug('Container %s is not found.', container_name)
             except:
-                metadata['success'] = False
-                metadata['error'] = 'Exception: %s' % str(sys.exc_info())
                 # Handle any exception so the autoserv process can be aborted.
                 logging.exception('Failed to destroy container %s.',
                                   container_name)
-            autotest_es.post(use_http=True,
-                             type_str=lxc.CONTAINER_RUN_TEST_METADB_TYPE,
-                             metadata=metadata)
             # Try to correct the result file permission again after the
             # container is destroyed, as the container might have created some
             # new files in the result folder.
