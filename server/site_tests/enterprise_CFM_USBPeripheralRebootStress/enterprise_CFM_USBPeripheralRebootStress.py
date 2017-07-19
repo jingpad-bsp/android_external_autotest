@@ -96,16 +96,16 @@ class enterprise_CFM_USBPeripheralRebootStress(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-            time.sleep(_SHORT_TIMEOUT)
+            time.sleep(SHORT_TIMEOUT)
             self.client.servo.set('dut_hub1_rst1', 'off')
-            time.sleep(_SHORT_TIMEOUT)
+            time.sleep(SHORT_TIMEOUT)
 
         try:
             self.cfm_facade.enroll_device()
             self.cfm_facade.restart_chrome_for_cfm()
             self.cfm_facade.wait_for_telemetry_commands()
             if not self.cfm_facade.is_oobe_start_page():
-                 self.cfm_facade.wait_for_oobe_start_page()
+                self.cfm_facade.wait_for_oobe_start_page()
             self.cfm_facade.skip_oobe_screen()
         except Exception as e:
             raise error.TestFail(str(e))
