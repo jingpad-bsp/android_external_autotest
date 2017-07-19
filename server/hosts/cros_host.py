@@ -17,7 +17,6 @@ from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
@@ -1318,9 +1317,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         except rpm_client.RemotePowerException:
             logging.error('Failed to turn Power On for this host after '
                           'cleanup through the RPM Infrastructure.')
-            autotest_es.post(
-                    type_str='RPM_poweron_failure',
-                    metadata={'hostname': self.hostname})
 
             battery_percentage = self.get_battery_percentage()
             if battery_percentage and battery_percentage < 50:
@@ -1427,9 +1423,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     label.remove_hosts(hosts=host_list)
                     mismatch_found = True
         if mismatch_found:
-            autotest_es.post(use_http=True,
-                             type_str='cros_version_label_mismatch',
-                             metadata={'hostname': self.hostname})
             raise error.AutoservError('The host has wrong cros-version label.')
 
 
