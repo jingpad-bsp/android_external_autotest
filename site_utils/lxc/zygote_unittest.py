@@ -15,6 +15,8 @@ from contextlib import contextmanager
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.site_utils import lxc
+from autotest_lib.site_utils.lxc import constants
+from autotest_lib.site_utils.lxc import unittest_http
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
@@ -152,6 +154,49 @@ class ZygoteTests(unittest.TestCase):
             self.assertEqual(test_string, test_output)
 
 
+    def testInstallSsp(self):
+        """Verifies that installing the ssp in the container works."""
+        # Hard-coded path to some golden data for this test.
+        test_ssp = os.path.join(
+                common.autotest_dir,
+                'site_utils', 'lxc', 'test', 'test_ssp.tar.bz2')
+        # Create a container, install the self-served ssp, then check that it is
+        # installed into the container correctly.
+        with self.createZygote() as zygote:
+            # Note: start the zygote first, then install the SSP.  This mimics
+            # the way things would work in the production environment.
+            zygote.start(wait_for_network=False)
+            with unittest_http.serve_locally(test_ssp) as url:
+                zygote.install_ssp(url)
+
+            # The test ssp just contains a couple of text files, in known
+            # locations.  Verify the location and content of those files in the
+            # container.
+            cat = lambda path: zygote.attach_run('cat %s' % path).stdout
+            test0 = cat(os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                     'test.0'))
+            test1 = cat(os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                     'dir0', 'test.1'))
+            self.assertEquals('the five boxing wizards jumped quickly',
+                              test0)
+            self.assertEquals('the quick brown fox jumps over the lazy dog',
+                              test1)
+
+
+    def testInstallControlFile(self):
+        """Verifies that installing a control file in the container works."""
+        _unused, tmpfile = tempfile.mkstemp()
+        with self.createZygote() as zygote:
+            # Note: start the zygote first.  This mimics the way things would
+            # work in the production environment.
+            zygote.start(wait_for_network=False)
+            zygote.install_control_file(tmpfile)
+            # Verify that the file is found in the zygote.
+            zygote.attach_run(
+                'test -f %s' % os.path.join(lxc.CONTROL_TEMP_PATH,
+                                            os.path.basename(tmpfile)))
+
+
     @contextmanager
     def createZygote(self,
                      name = None,
@@ -214,7 +259,7 @@ def parse_options():
     # Hack: python unittest also processes args.  Construct an argv to pass to
     # it, that filters out the options it won't recognize.
     if args.verbose:
-        argv.append('-v')
+        argv.insert(0, '-v')
     argv.insert(0, sys.argv[0])
 
     return args, argv
