@@ -143,6 +143,14 @@ class CmdError(TestError):
         msg += '\n' + repr(self.result_obj)
         return msg
 
+    def __eq__(self, other):
+        if type(self) == type(other):
+            return (self.command == other.command
+                    and self.result_obj == other.result_obj
+                    and self.additional_text == other.additional_text)
+        else:
+            return NotImplemented
+
 
 class CmdTimeoutError(CmdError):
     """Indicates that a command timed out."""
