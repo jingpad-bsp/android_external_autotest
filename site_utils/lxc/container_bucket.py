@@ -330,9 +330,6 @@ class ContainerBucket(object):
                           False),
                         ]
 
-        for mount_config in deploy_config_manager.mount_configs:
-            mount_entries.append((mount_config.source, mount_config.target,
-                                  mount_config.readonly))
         # Update container config to mount directories.
         for source, destination, readonly in mount_entries:
             container.mount_dir(source, destination, readonly)
