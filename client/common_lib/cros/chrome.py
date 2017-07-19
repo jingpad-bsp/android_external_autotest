@@ -165,7 +165,7 @@ class Chrome(object):
                 if utils.is_arc_available():
                     if disable_arc_opt_in:
                         if arc_util.should_start_arc(arc_mode):
-                            arc_util.enable_play_store(self.autotest_ext)
+                            arc_util.enable_play_store(self.autotest_ext, True)
                     else:
                         arc_util.opt_in(self.browser, self.autotest_ext)
                     arc_util.post_processing_after_browser(self)
