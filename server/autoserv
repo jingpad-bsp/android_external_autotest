@@ -26,6 +26,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
+from autotest_lib.server import site_utils
 
 try:
     from chromite.lib import metrics
@@ -558,6 +559,10 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
 
         finally:
             job.close()
+            # Special task doesn't run parse, so result summary needs to be
+            # built here.
+            if results and (repair or verify or reset or cleanup or provision):
+                site_utils.collect_result_sizes(results)
     except:
         exit_code = 1
         traceback.print_exc()
