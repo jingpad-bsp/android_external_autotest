@@ -28,6 +28,7 @@ FWRO_BUILD = 'fwro_build'
 JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
 BOARD_PREFIX = 'board:'
+MODEL_LABEL = 'model'
 OS_PREFIX = 'os'
 
 # Bug filing
