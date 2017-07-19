@@ -28,6 +28,7 @@ def run_CTS(machine):
         tag='CtsCameraTestCases',
         target_module='CtsCameraTestCases',
         bundle='x86',
+        warn_on_test_retry=False,
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
