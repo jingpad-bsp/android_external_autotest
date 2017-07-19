@@ -34,6 +34,7 @@ def run_CTS(machine):
         tag='CtsUsageStatsTestCases',
         target_module='CtsUsageStatsTestCases',
         bundle='arm',
+        warn_on_test_retry=False,
         timeout=3600,
         pre_condition_commands=[
            '/usr/local/autotest/cros/scripts/wifi connect %s %s' % (ssid, wifipass),

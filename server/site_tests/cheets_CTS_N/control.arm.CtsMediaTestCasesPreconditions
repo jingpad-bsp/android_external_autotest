@@ -28,6 +28,7 @@ def run_CTS(machine):
         tag='CtsMediaTestCases',
         target_module='CtsMediaTestCases',
         bundle='arm',
+        warn_on_test_retry=False,
         timeout=21600)
 
 parallel_simple(run_CTS, machines)

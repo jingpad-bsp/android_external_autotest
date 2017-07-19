@@ -28,6 +28,7 @@ def run_CTS(machine):
         tag='CtsSecurityHostTestCases',
         target_module='CtsSecurityHostTestCases',
         bundle='arm',
+        warn_on_test_retry=False,
         timeout=5400,
         pre_condition_commands=[
            'echo 3 > /proc/sys/kernel/perf_event_paranoid'
