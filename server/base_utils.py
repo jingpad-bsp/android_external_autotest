@@ -188,20 +188,6 @@ def find_pid(command):
     return None
 
 
-def nohup(command, stdout='/dev/null', stderr='/dev/null', background=True,
-                                                                env = {}):
-    cmd = ' '.join(key+'='+val for key, val in env.iteritems())
-    cmd += ' nohup ' + command
-    cmd += ' > %s' % stdout
-    if stdout == stderr:
-        cmd += ' 2>&1'
-    else:
-        cmd += ' 2> %s' % stderr
-    if background:
-        cmd += ' &'
-    utils.system(cmd)
-
-
 def default_mappings(machines):
     """
     Returns a simple mapping in which all machines are assigned to the
