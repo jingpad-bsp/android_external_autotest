@@ -144,7 +144,7 @@ def set_browser_options_for_opt_in(b_options):
     b_options.gaia_login = True
 
 
-def enable_play_store(autotest_ext):
+def enable_play_store(autotest_ext, enabled):
     """
     Enable ARC++ Play Store
 
@@ -152,13 +152,16 @@ def enable_play_store(autotest_ext):
 
     @param autotest_ext: autotest extension object.
 
+    @param enabled: if True then perform opt-in, otherwise opt-out.
+
     @returns: True if the opt-in should continue; else False.
 
     """
 
     if autotest_ext is None:
          raise error.TestFail(
-                 'Could not enable ARC because autotest API does not exist')
+                 'Could not change the Play Store enabled state because '
+                 'autotest API does not exist')
 
     # Skip enabling for managed users, since value is policy enforced.
     # Return early if a managed user has ArcEnabled set to false.
@@ -175,18 +178,18 @@ def enable_play_store(autotest_ext):
             logging.info('Determined that ARC is managed by user policy.')
             policy_enabled = autotest_ext.EvaluateJavaScript(
                 'window.__play_store_state.enabled')
-            if not policy_enabled:
+            if enabled != policy_enabled:
                 logging.info(
-                    'Returning early since ARC is policy-enforced off.')
+                    'Returning early since ARC is policy-enforced.')
                 return False
         else:
             autotest_ext.ExecuteJavaScript('''
-                chrome.autotestPrivate.setPlayStoreEnabled(
-                    true, function(enabled) {});
-            ''')
+                    chrome.autotestPrivate.setPlayStoreEnabled(
+                        %s, function(enabled) {});
+                ''' % ('true' if enabled else 'false'))
     except exceptions.EvaluateException as e:
-        raise error.TestFail(' Could not enable ARC via autotest API. "%s".'
-            % e)
+        raise error.TestFail('Could not change the Play Store enabled state '
+                             ' via autotest API. "%s".' % e)
 
     return True
 
@@ -242,12 +245,7 @@ def opt_in_and_wait_for_completion(extension_main_page):
     @raises error.TestFail if opt-in doesn't complete after timeout.
 
     """
-    js_code_click_agree = """
-        doc = appWindow.contentWindow.document;
-        agree_button_element = doc.getElementById('button-agree');
-        agree_button_element.click();
-    """
-    extension_main_page.ExecuteJavaScript(js_code_click_agree)
+    extension_main_page.ExecuteJavaScript('termsPage.onAgree()')
 
     SIGN_IN_TIMEOUT = 120
     try:
@@ -269,6 +267,9 @@ def opt_in_and_wait_for_completion(extension_main_page):
         else:
             raise error.TestFail('Opt-in app did not finish running after %s '
                                  'seconds!' % SIGN_IN_TIMEOUT)
+    # Reset termsPage to be able to reuse OptIn page and wait condition for ToS
+    # are loaded.
+    extension_main_page.ExecuteJavaScript('termsPage = null')
 
 
 def opt_in(browser, autotest_ext):
@@ -277,15 +278,17 @@ def opt_in(browser, autotest_ext):
 
     Return early if the arc_setting cannot be set True.
 
-    @param browser: chrome.Chrome broswer object.
+    @param browser: chrome.Chrome browser object.
     @param autotest_ext: autotest extension object.
 
     @raises: error.TestFail if opt in fails.
 
     """
+
     logging.info(_OPT_IN_BEGIN)
-    if not enable_play_store(autotest_ext):
+    if not enable_play_store(autotest_ext, True):
         return
+
     extension_main_page = find_opt_in_extension_page(browser)
     opt_in_and_wait_for_completion(extension_main_page)
     logging.info(_OPT_IN_FINISH)
