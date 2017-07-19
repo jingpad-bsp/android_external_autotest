@@ -147,7 +147,7 @@ class ContainerTests(unittest.TestCase):
 
     def testInstallSsp(self):
         """Verifies that installing the ssp in the container works."""
-        # Hard-codedpath to some golden data for this test.
+        # Hard-coded path to some golden data for this test.
         test_ssp = os.path.join(
                 common.autotest_dir,
                 'site_utils', 'lxc', 'test', 'test_ssp.tar.bz2')
