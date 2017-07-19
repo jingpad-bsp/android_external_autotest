@@ -1217,6 +1217,17 @@ class CmdResult(object):
         self.duration = duration
 
 
+    def __eq__(self, other):
+        if type(self) == type(other):
+            return (self.command == other.command
+                    and self.exit_status == other.exit_status
+                    and self.stdout == other.stdout
+                    and self.stderr == other.stderr
+                    and self.duration == other.duration)
+        else:
+            return NotImplemented
+
+
     def __repr__(self):
         wrapper = textwrap.TextWrapper(width = 78,
                                        initial_indent="\n    ",
