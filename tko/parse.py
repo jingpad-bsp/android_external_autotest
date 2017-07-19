@@ -16,7 +16,6 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.server import site_utils
@@ -405,12 +404,8 @@ def parse_one(db, jobname, path, parse_options):
                         afe_job_id=orig_afe_job_id).job_idx
                 _invalidate_original_tests(orig_job_idx, job.index)
     except Exception as e:
-        metadata = {'path': path, 'error': str(e),
-                    'details': traceback.format_exc()}
         tko_utils.dprint("Hit exception while uploading to tko db:\n%s" %
                          traceback.format_exc())
-        autotest_es.post(use_http=True, type_str='parse_failure',
-                         metadata=metadata)
         raise e
 
     # Serializing job into a binary file
@@ -652,13 +647,6 @@ def main():
 
     except Exception as e:
         pid_file_manager.close_file(1)
-
-        metadata = {'results_dir': results_dir,
-                    'error': str(e),
-                    'details': traceback.format_exc()}
-        autotest_es.post(use_http=True, type_str='parse_failure_final',
-                         metadata=metadata)
-
         raise
     else:
         pid_file_manager.close_file(0)

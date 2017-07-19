@@ -34,7 +34,6 @@ import common
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import cloud_console_client
 from autotest_lib.tko import models
@@ -543,11 +542,6 @@ class GSOffloader(BaseGSOffloader):
                 m_any_error = 'chromeos/autotest/errors/gs_offloader/any_error'
                 metrics.Counter(m_any_error).increment(fields=metrics_fields)
 
-                e.es_metadata['time_used_sec'] = time.time() - e.start_time
-                autotest_es.post(use_http=True,
-                                 type_str=GS_OFFLOADER_FAILURE_TYPE,
-                                 metadata=e.es_metadata)
-
                 # Rewind the log files for stdout and stderr and log
                 # their contents.
                 stdout_file.seek(0)
@@ -608,10 +602,6 @@ class GSOffloader(BaseGSOffloader):
             if process.returncode != 0:
                 raise error_obj
             _emit_offload_metrics(dir_entry)
-            es_metadata['time_used_sec'] = time.time() - start_time
-            autotest_es.post(use_http=True,
-                             type_str=GS_OFFLOADER_SUCCESS_TYPE,
-                             metadata=es_metadata)
 
             if self._console_client:
                 gcs_uri = os.path.join(gs_path,

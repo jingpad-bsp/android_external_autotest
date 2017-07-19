@@ -4,13 +4,11 @@
 
 import logging
 import os
-import socket
 import time
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.site_utils.lxc import Container
 from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
@@ -137,13 +135,6 @@ class ContainerBucket(object):
                                             new_path=self.container_path,
                                             snapshot=False,
                                             cleanup=force_cleanup)
-                # Report metadata about retry success.
-                autotest_es.post(
-                    use_http=True,
-                    type_str=constants.CONTAINER_CREATE_RETRY_METADB_TYPE,
-                    metadata={'drone': socket.gethostname(),
-                              'name': name,
-                              'success': True})
                 return container
 
 
@@ -349,13 +340,6 @@ class ContainerBucket(object):
         container.modify_import_order()
 
         container.verify_autotest_setup(job_folder)
-
-        autotest_es.post(use_http=True,
-                         type_str=constants.CONTAINER_CREATE_METADB_TYPE,
-                         metadata={'drone': socket.gethostname(),
-                                   'job_id': job_id,
-                                   'time_used': time.time() - start_time,
-                                   'success': True})
 
         logging.debug('Test container %s is set up.', name)
         return container
