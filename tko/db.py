@@ -481,6 +481,7 @@ class db_sql(object):
         for test in job.tests:
             self.insert_test(job, test, commit=commit)
 
+        data['job_idx'] = job.index
         return data
 
 
