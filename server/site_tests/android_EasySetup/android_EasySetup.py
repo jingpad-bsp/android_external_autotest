@@ -6,9 +6,8 @@ import logging
 import common
 from autotest_lib.server import test
 from autotest_lib.site_utils import acts_lib
-from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import dnsname_mangler
-from autotest_lib.server import afe_utils
+from autotest_lib.server.hosts import host_info
 
 
 class android_EasySetup(test.test):
@@ -42,11 +41,12 @@ class android_EasySetup(test.test):
         valid_hosts = []
         for v in testbed.get_adb_devices().values():
             try:
-                afe_utils.get_host_attribute(v, v.job_repo_url_attribute)
-            except error.AutoservError:
+                info = v.host_info_store.get()
+            except host_info.StoreError:
                 pass
             else:
-                valid_hosts.append(v)
+                if v.job_repo_url_attribute in info.attributes:
+                    valid_hosts.append(v)
 
         if not valid_hosts:
             logging.error('No valid devices.')
