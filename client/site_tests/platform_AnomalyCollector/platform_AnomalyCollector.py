@@ -5,18 +5,18 @@
 import os
 from autotest_lib.client.bin import test, utils
 
-class platform_WarningCollector(test.test):
-    "Tests the warning collector daemon"
+class platform_AnomalyCollector(test.test):
+    "Tests the anomaly collector daemon"
     version = 1
 
     def run_once(self):
         "Runs the test once"
 
-        # Restart the warning collector daemon, trigger a test warning, and
-        # verify that a kwarn file is created.
-        utils.system("stop warn-collector")
-        utils.system("rm -rf /var/run/kwarn")
-        utils.system("start warn-collector")
+        # Restart the anomaly collector daemon, trigger a test kernel warning,
+        # and verify that a warning file is created.
+        utils.system("stop anomaly-collector")
+        utils.system("rm -rf /var/run/anomaly-collector")
+        utils.system("start anomaly-collector")
         utils.system("sleep 0.1")
         lkdtm = "/sys/kernel/debug/provoke-crash/DIRECT"
         if os.path.exists(lkdtm):
@@ -24,4 +24,4 @@ class platform_WarningCollector(test.test):
         else:
             utils.system("echo warning > /proc/breakme")
         utils.system("sleep 0.1")
-        utils.system("test -f /var/run/kwarn/warning")
+        utils.system("test -f /var/run/anomaly-collector/warning")
