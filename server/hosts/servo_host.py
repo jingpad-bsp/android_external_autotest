@@ -12,7 +12,6 @@
 import httplib
 import logging
 import socket
-import traceback
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
@@ -25,7 +24,6 @@ from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
@@ -429,15 +427,6 @@ class ServoHost(ssh_host.SSHHost):
             # Sometimes creating the job will raise an exception. We'll log it
             # but we don't want to fail because of it.
             logging.exception('Scheduling reboot job failed due to Exception.')
-            metadata = {'dut': dut,
-                        'servo_host': self.hostname,
-                        'error': str(e),
-                        'details': traceback.format_exc()}
-            # We want to track how often we fail here so we can justify
-            # investing some effort into hardening up afe.create_job().
-            autotest_es.post(use_http=True,
-                             type_str='servohost_Reboot_schedule_fail',
-                             metadata=metadata)
 
 
     def reboot(self, *args, **dargs):
