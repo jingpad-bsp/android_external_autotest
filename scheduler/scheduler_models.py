@@ -28,7 +28,6 @@ import weakref
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
@@ -631,27 +630,6 @@ class HostQueueEntry(DBObject):
                  flags_str))
 
 
-    def record_state(self, type_str, state, value):
-        """Record metadata in elasticsearch.
-
-        If ES configured to use http, then we will time that http request.
-        Otherwise, it uses UDP, so we will not need to time it.
-
-        @param type_str: sets the _type field in elasticsearch db.
-        @param state: string representing what state we are recording,
-                      e.g. 'status'
-        @param value: value of the state, e.g. 'verifying'
-        """
-        metadata = {
-            'time_changed': time.time(),
-             state: value,
-            'job_id': self.job_id,
-        }
-        if self.host:
-            metadata['hostname'] = self.host.hostname
-        autotest_es.post(type_str=type_str, metadata=metadata)
-
-
     def set_status(self, status):
         logging.info("%s -> %s", self, status)
 
@@ -684,7 +662,6 @@ class HostQueueEntry(DBObject):
         if should_email_status:
             self._email_on_status(status)
         logging.debug('HQE Set Status Complete')
-        self.record_state('hqe_status', 'status', status)
 
 
     def _on_complete(self, status):
