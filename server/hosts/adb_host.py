@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
@@ -31,6 +30,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import adb_label
 from autotest_lib.server.hosts import base_label
+from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import teststation_host
 
 
@@ -1685,22 +1685,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             teststation_temp_dir = self.teststation.get_tmp_dir()
 
             try:
-                job_repo_url = afe_utils.get_host_attribute(
-                        self, self.job_repo_url_attribute)
-            except error.AutoservError:
+                info = self.host_info_store.get()
+            except host_info.StoreError:
                 logging.warning(
                     'Device %s could not get repo url for build info.',
                     self.adb_serial)
                 return
 
+            job_repo_url = info.attributes.get(self.job_repo_url_attribute, '')
             if not job_repo_url:
                 logging.warning(
                     'Device %s could not get repo url for build info.',
                     self.adb_serial)
                 return
 
-            build_info = ADBHost.get_build_info_from_build_url(
-                    job_repo_url)
+            build_info = ADBHost.get_build_info_from_build_url(job_repo_url)
 
             target = build_info['target']
             branch = build_info['branch']

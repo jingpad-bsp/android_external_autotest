@@ -10,9 +10,9 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.server.hosts import adb_host
+from autotest_lib.server.hosts import host_info
 from autotest_lib.site_utils import acts_lib
 from server.cros import dnsname_mangler
 
@@ -140,11 +140,12 @@ class android_ACTS(test.test):
         if valid_job_urls_only:
             for v in testbed.get_adb_devices().values():
                 try:
-                    afe_utils.get_host_attribute(v, v.job_repo_url_attribute)
-                except error.AutoservError:
+                    info = v.host_info_store.get()
+                except host_info.StoreError:
                     pass
                 else:
-                    valid_hosts.append(v)
+                    if v.job_repo_url_attribute in info.attributes:
+                        valid_hosts.append(v)
         else:
             valid_hosts = list(testbed.get_adb_devices().values())
 
