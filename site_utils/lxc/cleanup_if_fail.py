@@ -3,14 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-import socket
 import sys
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.site_utils.lxc import constants
 
 
 def cleanup_if_fail():
@@ -48,24 +45,6 @@ def cleanup_if_fail():
                         container.destroy()
                 except error.CmdError as e:
                     logging.error(e)
-
-                try:
-                    job_id = utils.get_function_arg_value(
-                            func, 'job_id', args, kwargs)
-                except (KeyError, ValueError):
-                    job_id = ''
-                metadata={'drone': socket.gethostname(),
-                          'job_id': job_id,
-                          'success': False}
-                # Record all args if job_id is not available.
-                if not job_id:
-                    metadata['args'] = str(args)
-                    if kwargs:
-                        metadata.update(kwargs)
-                autotest_es.post(
-                        use_http=True,
-                        type_str=constants.CONTAINER_CREATE_METADB_TYPE,
-                        metadata=metadata)
 
                 # Raise the cached exception with original backtrace.
                 raise exc_info[0], exc_info[1], exc_info[2]
