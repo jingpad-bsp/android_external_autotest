@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.server import utils as server_utils
 
 # job options and user preferences
@@ -597,24 +596,6 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         self.labels.clear()
 
 
-    def record_state(self, type_str, state, value, other_metadata=None):
-        """Record metadata in elasticsearch.
-
-        @param type_str: sets the _type field in elasticsearch db.
-        @param state: string representing what state we are recording,
-                      e.g. 'locked'
-        @param value: value of the state, e.g. True
-        @param other_metadata: Other metadata to store in metaDB.
-        """
-        metadata = {
-            state: value,
-            'hostname': self.hostname,
-        }
-        if other_metadata:
-            metadata = dict(metadata.items() + other_metadata.items())
-        autotest_es.post(use_http=True, type_str=type_str, metadata=metadata)
-
-
     def save(self, *args, **kwargs):
         # extra spaces in the hostname can be a sneaky source of errors
         self.hostname = self.hostname.strip()
@@ -629,13 +610,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             self.locked_by = User.current_user()
             if not self.lock_time:
                 self.lock_time = datetime.now()
-            self.record_state('lock_history', 'locked', self.locked,
-                              {'changed_by': self.locked_by.login,
-                               'lock_reason': self.lock_reason})
             self.dirty = True
         elif not self.locked and self.locked_by:
-            self.record_state('lock_history', 'locked', self.locked,
-                              {'changed_by': self.locked_by.login})
             self.locked_by = None
             self.lock_time = None
         super(Host, self).save(*args, **kwargs)
