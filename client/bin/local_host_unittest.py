@@ -71,24 +71,41 @@ class test_local_host_class(unittest.TestCase):
 
 
     @mock.patch('autotest_lib.client.bin.local_host.utils.run')
-    def test_run_failure_raised(self, mock_run):
-        result = local_host.utils.CmdResult(
-                command='yes',
-                stdout='',
-                stderr='err',
-                exit_status=1,
-                duration=1,
-        )
-        mock_run.return_value = result
+    def test_run_cmd_failure_raised(self, mock_run):
+        mock_result = mock.MagicMock()
+        mock_run.side_effect = error.CmdError('yes', mock_result)
 
         host = local_host.LocalHost()
-        with self.assertRaises(error.AutotestHostRunError):
+        with self.assertRaises(error.AutotestHostRunCmdError) as exc_cm:
             host.run('yes', timeout=123)
 
+        self.assertEqual(exc_cm.exception.result_obj, mock_result)
         mock_run.assert_called_once_with(
-                result.command,
+                'yes',
                 timeout=123,
-                ignore_status=True,
+                ignore_status=False,
+                stdout_tee=local_host.utils.TEE_TO_LOGS,
+                stderr_tee=local_host.utils.TEE_TO_LOGS,
+                stdin=None,
+                ignore_timeout=False,
+                args=(),
+        )
+
+
+    @mock.patch('autotest_lib.client.bin.local_host.utils.run')
+    def test_run_cmd_timeout_raised(self, mock_run):
+        mock_result = mock.MagicMock()
+        mock_run.side_effect = error.CmdTimeoutError('yes', mock_result)
+
+        host = local_host.LocalHost()
+        with self.assertRaises(error.AutotestHostRunTimeoutError) as exc_cm:
+            host.run('yes', timeout=123)
+
+        self.assertEqual(exc_cm.exception.result_obj, mock_result)
+        mock_run.assert_called_once_with(
+                'yes',
+                timeout=123,
+                ignore_status=False,
                 stdout_tee=local_host.utils.TEE_TO_LOGS,
                 stderr_tee=local_host.utils.TEE_TO_LOGS,
                 stdin=None,
