@@ -27,6 +27,12 @@ from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, parser_lib
 from autotest_lib.tko.perf_upload import perf_uploader
 
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
+
 _ParseOptions = collections.namedtuple(
     'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
                      'datastore_creds', 'export_to_gcloud_path'])
@@ -365,6 +371,21 @@ def parse_one(db, jobname, path, parse_options):
             job_data = db.insert_job(
                 jobname, job,
                 parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+
+            # Verify the job data is written to the database.
+            if job.tests:
+                tests_in_db = db.find_tests(job_data['job_idx'])
+                tests_in_db_count = len(tests_in_db) if tests_in_db else 0
+                if tests_in_db_count != len(job.tests):
+                    tko_utils.dprint(
+                            'Failed to find enough tests for job_idx: %d. The '
+                            'job should have %d tests, only found %d tests.' %
+                            (job_data['job_idx'], len(job.tests),
+                             tests_in_db_count))
+                    metrics.Counter(
+                            'chromeos/autotest/result/db_save_failure',
+                            description='The number of times parse failed to '
+                            'save job to TKO database.').increment()
 
             # Upload perf values to the perf dashboard, if applicable.
             for test in job.tests:
