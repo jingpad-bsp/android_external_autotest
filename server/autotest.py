@@ -19,7 +19,6 @@ from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.server import installable_object
-from autotest_lib.server import prebuild
 from autotest_lib.server import utils
 
 try:
@@ -32,9 +31,6 @@ AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
 
 CONFIG = global_config.global_config
-AUTOSERV_PREBUILD = CONFIG.get_config_value(
-        'AUTOSERV', 'enable_server_prebuild', type=bool, default=False)
-
 ENABLE_RESULT_THROTTLING = CONFIG.get_config_value(
         'AUTOSERV', 'enable_result_throttling', type=bool, default=False)
 
@@ -1101,13 +1097,9 @@ class BaseClientLogger(object):
                 src_dir = os.path.join(self.job.clientdir, test_dir, name)
                 if os.path.exists(src_dir):
                     src_dirs += [src_dir]
-                    if AUTOSERV_PREBUILD:
-                        prebuild.setup(self.job.clientdir, src_dir)
                     break
         elif pkg_type == 'profiler':
             src_dirs += [os.path.join(self.job.clientdir, 'profilers', name)]
-            if AUTOSERV_PREBUILD:
-                prebuild.setup(self.job.clientdir, src_dir)
         elif pkg_type == 'dep':
             src_dirs += [os.path.join(self.job.clientdir, 'deps', name)]
         elif pkg_type == 'client':
