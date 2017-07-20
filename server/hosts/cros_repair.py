@@ -296,6 +296,33 @@ class DevModeVerifier(hosts.Verifier):
         return 'The host should not be in dev mode'
 
 
+class HWIDVerifier(hosts.Verifier):
+    """Verify that the host has HWID & serial number."""
+
+    def verify(self, host):
+        try:
+            info = host.host_info_store.get()
+
+            hwid = host.run('crossystem hwid', ignore_status=True).stdout
+            if hwid:
+                info.attributes['HWID'] = hwid
+
+            serial_number = host.run('vpd -g serial_number',
+                                     ignore_status=True).stdout
+            if serial_number:
+                info.attributes['serial_number'] = serial_number
+
+            if info != host.host_info_store.get():
+                host.host_info_store.commit(info)
+        except Exception as e:
+            logging.exception('Failed to get HWID & Serial Number for host ',
+                              '%s: %s', host.hostname, str(e))
+
+    @property
+    def description(self):
+        return 'The host should have valid HWID and Serial Number'
+
+
 class JetstreamServicesVerifier(hosts.Verifier):
     """Verify that Jetstream services are running."""
 
@@ -473,6 +500,7 @@ def _cros_verify_dag():
     verify_dag = (
         (repair.SshVerifier,         'ssh',      ()),
         (DevModeVerifier,            'devmode',  ('ssh',)),
+        (HWIDVerifier,               'hwid',     ('ssh',)),
         (ACPowerVerifier,            'power',    ('ssh',)),
         (EXT4fsErrorVerifier,        'ext4',     ('ssh',)),
         (WritableVerifier,           'writable', ('ssh',)),
