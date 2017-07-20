@@ -262,6 +262,16 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             output = host.run(command, ignore_status=True)
             logging.info('END: %s\n', output)
 
+    def _should_skip_test(self):
+        """Some tests are expected to fail and are skipped."""
+        # newbie and novato are x86 VMs without binary translation. Skip the ARM
+        # tests.
+        no_ARM_ABI_test_boards = ('newbie', 'novato')
+        board = self._host.get_board().split(':')[1] # Remove 'board:' prefix.
+        if board in no_ARM_ABI_test_boards:
+            if self._abi == 'arm':
+                return True
+        return False
 
     def run_once(self,
                  target_module=None,
@@ -378,7 +388,12 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                     raise error.TestFail('Failed: Remove module %s from '
                                          'notest_modules directory!' %
                                          target_module)
-                if tests == 0 and target_module not in self.notest_modules:
+                if self._should_skip_test():
+                    tests += 1
+                    notexecuted += 1
+                    waived += 1
+                    logging.warning('Skipped test %s', ' '.join(test_command))
+                elif tests == 0 and target_module not in self.notest_modules:
                     logging.error('Did not find any tests in module. Hoping '
                                   'this is transient. Retry after reboot.')
                 if not self._consistent(tests, passed, failed, notexecuted):
