@@ -388,9 +388,11 @@ class CrosRebootRepair(repair.RebootRepair):
     """Repair a CrOS target by clearing dev mode and rebooting it."""
 
     def repair(self, host):
-        # N.B. We need to reboot regardless of whether set_gbb_flags
-        # succeeds or fails.
+        # N.B. We need to reboot regardless of whether clearing
+        # dev_mode succeeds or fails.
         host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
+                 ignore_status=True)
+        host.run('crossystem disable_dev_request=1',
                  ignore_status=True)
         super(CrosRebootRepair, self).repair(host)
 
