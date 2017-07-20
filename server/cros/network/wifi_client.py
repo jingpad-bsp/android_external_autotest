@@ -824,6 +824,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return bool True if operation initiated successfully, False otherwise.
 
         """
+        logging.info('TDLS discovery with peer %s', mac_address)
         return self._shill_proxy.discover_tdls_link(self.wifi_if, mac_address)
 
 
@@ -835,6 +836,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return bool True if operation initiated successfully, False otherwise.
 
         """
+        logging.info('Establishing TDLS link with peer %s', mac_address)
         return self._shill_proxy.establish_tdls_link(self.wifi_if, mac_address)
 
 
@@ -846,6 +848,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return string indicating current TDLS connectivity.
 
         """
+        logging.info('Querying TDLS link with peer %s', mac_address)
         return self._shill_proxy.query_tdls_link(self.wifi_if, mac_address)
 
 
