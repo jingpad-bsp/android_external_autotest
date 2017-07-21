@@ -61,7 +61,7 @@ class DrmTest(object):
         try:
             # TODO(pwang): consider TEE to another file if drmtests keep
             # spewing so much output.
-            utils.run(
+            cmd_result = utils.run(
                 self._command,
                 timeout=self._opts['timeout'],
                 stderr_is_expected=True,
@@ -69,6 +69,10 @@ class DrmTest(object):
                 stdout_tee=utils.TEE_TO_LOGS,
                 stderr_tee=utils.TEE_TO_LOGS
             )
+            logging.info('Passed: %s', self._command)
+            logging.debug('Duration: %s: (%0.2fs)'
+                          % (self._command, cmd_result.duration))
+            return True
         except error.CmdTimeoutError as e:
             logging.error('Failed: Timeout while running %s (timeout=%0.2fs)'
                           % (self._command, self._opts['timeout']))
@@ -84,9 +88,6 @@ class DrmTest(object):
                           % self._command)
             logging.debug(e)
             return False
-        logging.info('Passed: %s', self._command)
-        return True
-
 
 drm_tests = {
     'atomictest': DrmTest('atomictest -t primary_pageflip',
