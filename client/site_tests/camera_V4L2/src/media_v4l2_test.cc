@@ -545,26 +545,27 @@ int main(int argc, char** argv) {
       only_test_constant_framerate & support_constant_framerate);
   printf("[Info] num of skip frames after stream on: %d\n", skip_frames);
 
+  bool pass = true;
   if (!only_test_constant_framerate) {
     if (!TestIO(dev_name)) {
-      return EXIT_FAILURE;
+      pass = false;
     }
     if (!TestResolutions(dev_name, check_1280x960, check_1600x1200, false)) {
-      return EXIT_FAILURE;
+      pass = false;
     }
     if (check_first_jpeg_frame_valid &&
         !TestFirstFrameAfterStreamOn(dev_name, skip_frames)) {
-      return EXIT_FAILURE;
+      pass = false;
     }
     if (check_minimum_resolution &&
         !TestMinimumResolution(dev_name, device_infos[0].lens_facing)) {
-      return EXIT_FAILURE;
+      pass = false;
     }
   } else if (support_constant_framerate) {
     if (!TestResolutions(dev_name, check_1280x960, check_1600x1200, true)) {
-      return EXIT_FAILURE;
+      pass = false;
     }
   }
 
-  return EXIT_SUCCESS;
+  return pass == true ? EXIT_SUCCESS : EXIT_FAILURE;
 }
