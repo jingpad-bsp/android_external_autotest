@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Authors'
-NAME = 'camera_V4L2.constant_framerate'
+NAME = 'camera_V4L2.external_camera'
 PURPOSE = 'Exercises v4l2 camera devices to verify required operations.'
 CRITERIA = """
 This is a complex test and tests many different functions. This test will fail
@@ -12,13 +12,13 @@ if any of the following conditions occur:
   - If a mandatory control is not supported
   - If streaming is not supported
   - If a required resolution is not supported when capturing a stream
-  - If frame rate is not constant when device supports constant framerate
+  - If frame rate is not constant
 """
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = ""
 TIME='MEDIUM'
 TEST_CATEGORY = 'V4L2'
 TEST_TYPE = 'client'
-DEPENDENCIES = 'webcam, arc'
+DEPENDENCIES = ''
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
@@ -28,7 +28,9 @@ DOC = """
 This test executes media_v4l2_test and media_v4l2_unittest binaries.
 For more information on V4L2 see:
 http://www.linuxfordevices.com/c/a/Linux-For-Devices-Articles/Intro-to-V4L2/
+
+This is used for third-party lab to verify camera module. The camera module is
+an external camera device to run all test cases without reading config file.
 """
 
-job.run_test('camera_V4L2', test_list='constant-framerate',
-    tag='constant_framerate')
+job.run_test('camera_V4L2', test_list='external-camera', tag='external_camera')
