@@ -180,11 +180,11 @@ const SupportedFormat* FindFormatByFourcc(const SupportedFormats& formats,
 bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
                             uint32_t capture_time_in_sec,
                             float require_fps) {
-  // Timestamps are from driver. We only allow 1ms buffer for the frame
-  // duration.
-  float slop_margin_ms = 1;
-  float slop_max_frame_duration_ms = 1000.f / require_fps + slop_margin_ms;
-  float slop_min_frame_duration_ms = 1000.f / require_fps - slop_margin_ms;
+  // Timestamps are from driver. We only allow 1.5% error buffer for the frame
+  // duration. The margin is aligned to CTS tests.
+  float slop_margin = 0.015;
+  float slop_max_frame_duration_ms = (1000.f / require_fps) * (1 + slop_margin);
+  float slop_min_frame_duration_ms = (1000.f / require_fps) * (1 - slop_margin);
 
   for (size_t i = 1; i < timestamps.size(); i++) {
     float frame_duration_ms =
