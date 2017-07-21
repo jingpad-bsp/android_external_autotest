@@ -794,7 +794,7 @@ class _BaseRun(object):
 
     def _really_execute_control(self, timeout, stderr_redirector,
                                 client_disconnect_timeout):
-        logging.info("Executing %s/bin/autotest %s/controt",
+        logging.info("Executing %s/bin/autotest %s/control",
                      self.autodir, self.autodir)
 
         result = self._execute_daemon(timeout, stderr_redirector,
