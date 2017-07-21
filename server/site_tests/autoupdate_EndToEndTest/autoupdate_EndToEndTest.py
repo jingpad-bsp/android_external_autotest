@@ -765,7 +765,7 @@ class ChromiumOSTestPlatform(TestPlatform):
             self._host.run('rm %s' % script)
             return os.path.join(resultdir, UPDATE_ENGINE_PERF_RESULTS_FILE)
         except:
-            logging.debug('Failed to copy performance metrics from DUT.')
+            logging.warning('Failed to copy performance metrics from DUT.')
             return None
 
 
