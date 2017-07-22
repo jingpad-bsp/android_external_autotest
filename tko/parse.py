@@ -604,6 +604,9 @@ def main():
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 
+    site_utils.SetupTsMonGlobalState('tko_parse', indirect=False,
+                                     short_lived=True)
+
     pid_file_manager = pidfile.PidFileManager("parser", results_dir)
 
     if options.write_pidfile:
@@ -650,6 +653,8 @@ def main():
         raise
     else:
         pid_file_manager.close_file(0)
+    finally:
+        metrics.Flush()
     duration_secs = (datetime.datetime.now() - start_time).total_seconds()
     if options.record_duration:
         record_parsing(processed_jobs, duration_secs)
