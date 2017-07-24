@@ -70,7 +70,8 @@ class DrmTest(object):
                 stderr_tee=utils.TEE_TO_LOGS
             )
         except error.CmdTimeoutError as e:
-            logging.error('Failed: Timeout while running %s' % self._command)
+            logging.error('Failed: Timeout while running %s (timeout=%0.2fs)'
+                          % (self._command, self._opts['timeout']))
             logging.debug(e)
             return False
         except error.CmdError as e:
