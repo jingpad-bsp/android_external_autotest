@@ -14,6 +14,7 @@ import time
 import unittest
 
 import common
+from autotest_lib.client.bin.result_tools import result_info
 from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.bin.result_tools import utils_lib
 from autotest_lib.client.bin.result_tools import view as result_view
@@ -22,147 +23,168 @@ from autotest_lib.client.bin.result_tools import unittest_lib
 SIZE = unittest_lib.SIZE
 EXPECTED_SUMMARY = {
         '': {utils_lib.ORIGINAL_SIZE_BYTES: 4 * SIZE,
-             utils_lib.DIRS: {
-                     'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-                     'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
-                                 utils_lib.DIRS: {
-                                  'file2': {
-                                      utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-                                  'file3': {
-                                      utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-                                  'symlink': {
+             utils_lib.DIRS: [
+                     {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+                     {'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
+                                 utils_lib.DIRS: [
+                                  {'file2': {
+                                      utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+                                  {'file3': {
+                                      utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+                                  {'symlink': {
                                       utils_lib.ORIGINAL_SIZE_BYTES: 0,
-                                      utils_lib.DIRS: {}}}},
-                     'folder2': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
+                                      utils_lib.DIRS: []}}]}},
+                     {'folder2': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
                                  utils_lib.DIRS:
-                                     {'file2':
+                                     [{'file2':
                                         {utils_lib.ORIGINAL_SIZE_BYTES:
-                                         SIZE}},
-                                }}}}
+                                         SIZE}}],
+                                }}]}}
 
 SUMMARY_1 = {
-  '': {utils_lib.ORIGINAL_SIZE_BYTES: 4 * SIZE,
-       utils_lib.DIRS: {
-         'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-         'file2': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-         'folder_not_overwritten':
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: 6 * SIZE,
+       utils_lib.TRIMMED_SIZE_BYTES: 5 * SIZE,
+       utils_lib.DIRS: [
+         {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         {'file2': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         {'file4': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
+                   utils_lib.TRIMMED_SIZE_BYTES: SIZE}},
+         {'folder_not_overwritten':
             {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
-             utils_lib.DIRS: {
-               'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
-            },
-          'file_to_be_overwritten': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-        }
+             utils_lib.DIRS: [
+               {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
+              ]}},
+          {'file_to_be_overwritten': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+        ]
       }
   }
 
 SUMMARY_2 = {
-  '': {utils_lib.ORIGINAL_SIZE_BYTES: 26 * SIZE,
-       utils_lib.DIRS: {
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: 27 * SIZE,
+       utils_lib.DIRS: [
          # `file1` exists and has the same size.
-         'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
+         {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
          # Change the size of `file2` to make sure summary merge works.
-         'file2': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE},
+         {'file2': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE}},
          # `file3` is new.
-         'file3': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
+         {'file3': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         # `file4` is old but throttled earlier.
+         {'file4': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
          # Add a new sub-directory.
-         'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
+         {'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
                      utils_lib.TRIMMED_SIZE_BYTES: SIZE,
-                     utils_lib.DIRS: {
+                     utils_lib.DIRS: [
                          # Add a file being trimmed.
-                         'file4': {
+                         {'file4': {
                            utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
                            utils_lib.TRIMMED_SIZE_BYTES: SIZE}
-                         }
-                     },
+                         }]
+                     }},
           # Add a file whose name collides with the previous summary.
-          'folder_not_overwritten': {
-            utils_lib.ORIGINAL_SIZE_BYTES: 100 * SIZE},
+          {'folder_not_overwritten': {
+            utils_lib.ORIGINAL_SIZE_BYTES: 100 * SIZE}},
           # Add a directory whose name collides with the previous summary.
-          'file_to_be_overwritten':
+          {'file_to_be_overwritten':
             {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
-             utils_lib.DIRS: {
-               'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
-            },
+             utils_lib.DIRS: [
+               {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}]
+            }},
           # Folder was collected, not missing from the final result folder.
-          'folder_tobe_deleted':
+          {'folder_tobe_deleted':
             {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
-             utils_lib.DIRS: {
-               'file_tobe_deleted': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
-            },
-        }
+             utils_lib.DIRS: [
+               {'file_tobe_deleted': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}]
+            }},
+        ]
       }
   }
 
-SUMMARY_1_SIZE = 171
-SUMMARY_2_SIZE = 345
+SUMMARY_3 = {
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
+       utils_lib.DIRS: [
+         {'file10': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         ]
+       }
+  }
+
+SUMMARY_1_SIZE = 224
+SUMMARY_2_SIZE = 388
+SUMMARY_3_SIZE = 48
 
 # The final result dir has an extra folder and file, also with `file3` removed
 # to test the case that client files are removed on the server side.
 EXPECTED_MERGED_SUMMARY = {
   '': {utils_lib.ORIGINAL_SIZE_BYTES:
-           37 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE,
+           40 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE + SUMMARY_3_SIZE,
        utils_lib.TRIMMED_SIZE_BYTES:
-           17 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE,
+           19 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE + SUMMARY_3_SIZE,
        # Size collected is SIZE bytes more than total size as an old `file2` of
        # SIZE bytes is overwritten by a newer file.
        utils_lib.COLLECTED_SIZE_BYTES:
-           19 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE,
-       utils_lib.DIRS: {
-         'dir_summary_1.json': {
-           utils_lib.ORIGINAL_SIZE_BYTES: SUMMARY_1_SIZE},
-         'dir_summary_2.json': {
-           utils_lib.ORIGINAL_SIZE_BYTES: SUMMARY_2_SIZE},
-         'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-         'file2': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
-                   utils_lib.COLLECTED_SIZE_BYTES: 3 * SIZE,
-                   utils_lib.TRIMMED_SIZE_BYTES: 2 * SIZE},
-         'file3': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE},
-         'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
-                     utils_lib.TRIMMED_SIZE_BYTES: SIZE,
-                     utils_lib.COLLECTED_SIZE_BYTES: SIZE,
-                     utils_lib.DIRS: {
-                         'file4': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
-                                   utils_lib.TRIMMED_SIZE_BYTES: SIZE}
-                         }
-                     },
-         'folder2': {utils_lib.ORIGINAL_SIZE_BYTES: 10 * SIZE,
-                     utils_lib.COLLECTED_SIZE_BYTES: 10 * SIZE,
-                     utils_lib.TRIMMED_SIZE_BYTES: 10 * SIZE,
-                     utils_lib.DIRS: {
-                         'server_file': {
-                           utils_lib.ORIGINAL_SIZE_BYTES: 10 * SIZE}
-                         }
-                     },
-         'folder_not_overwritten':
+           22 * SIZE + SUMMARY_1_SIZE + SUMMARY_2_SIZE + SUMMARY_3_SIZE,
+       utils_lib.DIRS: [
+         {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         {'file2': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
+                    utils_lib.COLLECTED_SIZE_BYTES: 3 * SIZE}},
+         {'file4': {utils_lib.ORIGINAL_SIZE_BYTES: 2 * SIZE,
+                    utils_lib.TRIMMED_SIZE_BYTES: SIZE}},
+         {'folder_not_overwritten':
             {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
-             utils_lib.COLLECTED_SIZE_BYTES: SIZE,
-             utils_lib.TRIMMED_SIZE_BYTES: SIZE,
-             utils_lib.DIRS: {
-               'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
-            },
-         'file_to_be_overwritten':
+             utils_lib.DIRS: [
+               {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}]
+            }},
+         {'file_to_be_overwritten':
            {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
-            utils_lib.COLLECTED_SIZE_BYTES: SIZE,
+            utils_lib.COLLECTED_SIZE_BYTES: 2 * SIZE,
             utils_lib.TRIMMED_SIZE_BYTES: SIZE,
-            utils_lib.DIRS: {
-              'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}
-           },
-         'folder_tobe_deleted':
+            utils_lib.DIRS: [
+              {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}}]
+           }},
+         {'file3': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+         {'folder1': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
+                     utils_lib.TRIMMED_SIZE_BYTES: SIZE,
+                     utils_lib.DIRS: [
+                         {'file4': {utils_lib.ORIGINAL_SIZE_BYTES: 20 * SIZE,
+                                   utils_lib.TRIMMED_SIZE_BYTES: SIZE}
+                         }]
+                     }},
+         {'folder_tobe_deleted':
            {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
             utils_lib.COLLECTED_SIZE_BYTES: SIZE,
             utils_lib.TRIMMED_SIZE_BYTES: 0,
-            utils_lib.DIRS: {
-              'file_tobe_deleted': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
+            utils_lib.DIRS: [
+              {'file_tobe_deleted': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE,
                                     utils_lib.COLLECTED_SIZE_BYTES: SIZE,
-                                    utils_lib.TRIMMED_SIZE_BYTES: 0}}
-           },
-        }
+                                    utils_lib.TRIMMED_SIZE_BYTES: 0}}]
+           }},
+         {'folder3': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE + SUMMARY_3_SIZE,
+                     utils_lib.DIRS: [
+                       {'folder31': {
+                         utils_lib.ORIGINAL_SIZE_BYTES: SIZE + SUMMARY_3_SIZE,
+                         utils_lib.DIRS: [
+                             {'file10': {utils_lib.ORIGINAL_SIZE_BYTES: SIZE}},
+                             {'dir_summary_3.json': {
+                               utils_lib.ORIGINAL_SIZE_BYTES: SUMMARY_3_SIZE}},
+                            ]}},
+                       ]
+                     }},
+         {'dir_summary_1.json': {
+           utils_lib.ORIGINAL_SIZE_BYTES: SUMMARY_1_SIZE}},
+         {'dir_summary_2.json': {
+           utils_lib.ORIGINAL_SIZE_BYTES: SUMMARY_2_SIZE}},
+         {'folder2': {utils_lib.ORIGINAL_SIZE_BYTES: 10 * SIZE,
+                     utils_lib.DIRS: [
+                         {'server_file': {
+                           utils_lib.ORIGINAL_SIZE_BYTES: 10 * SIZE}
+                         }]
+                     }},
+        ]
       }
   }
 
 
 class GetDirSummaryTest(unittest.TestCase):
-    """Test class for get_dir_summary method"""
+    """Test class for ResultInfo.build_from_path method"""
 
     def setUp(self):
         """Setup directory for test."""
@@ -188,11 +210,10 @@ class GetDirSummaryTest(unittest.TestCase):
         """Cleanup the test directory."""
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def test_get_dir_summary(self):
-        """Test method get_dir_summary."""
-        summary_json = result_utils.get_dir_summary(
-                self.test_dir + '/', self.test_dir + '/')
-        self.assertEqual(EXPECTED_SUMMARY, summary_json)
+    def test_BuildFromPath(self):
+        """Test method ResultInfo.build_from_path."""
+        summary = result_info.ResultInfo.build_from_path(self.test_dir)
+        self.assertEqual(EXPECTED_SUMMARY, summary)
 
 
 class MergeSummaryTest(unittest.TestCase):
@@ -207,10 +228,21 @@ class MergeSummaryTest(unittest.TestCase):
         unittest_lib.create_file(file2, 2*SIZE)
         file3 = os.path.join(self.test_dir, 'file3')
         unittest_lib.create_file(file3, SIZE)
+        file4 = os.path.join(self.test_dir, 'file4')
+        unittest_lib.create_file(file4, SIZE)
         folder1 = os.path.join(self.test_dir, 'folder1')
         os.mkdir(folder1)
         file4 = os.path.join(folder1, 'file4')
         unittest_lib.create_file(file4, SIZE)
+
+        # Used to test summary in subdirectory.
+        folder3 = os.path.join(self.test_dir, 'folder3')
+        os.mkdir(folder3)
+        folder31 = os.path.join(folder3, 'folder31')
+        os.mkdir(folder31)
+        file10 = os.path.join(folder31, 'file10')
+        unittest_lib.create_file(file10, SIZE)
+
         folder2 = os.path.join(self.test_dir, 'folder2')
         os.mkdir(folder2)
         server_file = os.path.join(folder2, 'server_file')
@@ -235,6 +267,11 @@ class MergeSummaryTest(unittest.TestCase):
         self.summary_2 = os.path.join(self.test_dir, 'dir_summary_2.json')
         with open(self.summary_2, 'w') as f:
             json.dump(SUMMARY_2, f)
+        time.sleep(0.01)
+        self.summary_3 = os.path.join(self.test_dir, 'folder3', 'folder31',
+                                      'dir_summary_3.json')
+        with open(self.summary_3, 'w') as f:
+            json.dump(SUMMARY_3, f)
 
     def tearDown(self):
         """Cleanup the test directory."""
@@ -244,8 +281,9 @@ class MergeSummaryTest(unittest.TestCase):
         """Test method merge_summaries."""
         client_collected_bytes, merged_summary = result_utils.merge_summaries(
                 self.test_dir)
+
         self.assertEqual(EXPECTED_MERGED_SUMMARY, merged_summary)
-        self.assertEqual(client_collected_bytes, 9 * SIZE)
+        self.assertEqual(client_collected_bytes, 12 * SIZE)
 
     def testMergeSummariesFromNoHistory(self):
         """Test method merge_summaries can handle results with no existing
@@ -253,6 +291,7 @@ class MergeSummaryTest(unittest.TestCase):
         """
         os.remove(self.summary_1)
         os.remove(self.summary_2)
+        os.remove(self.summary_3)
         client_collected_bytes, _ = result_utils.merge_summaries(self.test_dir)
         self.assertEqual(client_collected_bytes, 0)
 
