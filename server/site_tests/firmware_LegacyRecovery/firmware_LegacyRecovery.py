@@ -36,7 +36,7 @@ class firmware_LegacyRecovery(FirmwareTest):
                            'mainfw_type': 'normal',
                            }))
         self.faft_client.system.request_recovery_boot()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
+        self.switcher.simple_reboot()
         self.switcher.bypass_rec_mode()
         try:
             self.switcher.wait_for_client()
