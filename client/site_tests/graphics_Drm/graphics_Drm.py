@@ -12,8 +12,6 @@ from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class DrmTest(object):
-    # Default argument dictionary
-    _command = None
 
     def __init__(self, command, **kargs):
         self._opts = {
