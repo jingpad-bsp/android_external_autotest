@@ -4,6 +4,7 @@
 
 __author__ = 'dshi@google.com (Dan Shi)'
 
+import cPickle as pickle
 import os
 import random
 import shutil
@@ -188,6 +189,82 @@ class LogdirTestCase(unittest.TestCase):
                                                   from_dir=exclude_pattern_dir)
         self.assertTrue(os.path.exists(destination_path),
                         msg='Failed to copy to %s' % destination_path)
+
+    def test_pickle_unpickle_equal(self):
+        """Sanity check pickle-unpickle round-trip."""
+        logdir = site_sysinfo.logdir(
+                self.from_dir,
+                excludes=(site_sysinfo.logdir.DEFAULT_EXCLUDES + ('a',)))
+        # base_job uses protocol 2 to pickle. We follow suit.
+        logdir_pickle = pickle.dumps(logdir, protocol=2)
+        unpickled_logdir = pickle.loads(logdir_pickle)
+
+        self.assertEqual(unpickled_logdir, logdir)
+
+    def test_pickle_enforce_required_attributes(self):
+        """Some attributes from this object should never be dropped.
+
+        When running a client test against an older build, we pickle the objects
+        of this class from newer version of the class and unpicle to older
+        versions of the class. The older versions require some attributes to be
+        present.
+        """
+        logdir = site_sysinfo.logdir(
+                self.from_dir,
+                excludes=(site_sysinfo.logdir.DEFAULT_EXCLUDES + ('a',)))
+        # base_job uses protocol 2 to pickle. We follow suit.
+        logdir_pickle = pickle.dumps(logdir, protocol=2)
+        logdir = pickle.loads(logdir_pickle)
+
+        self.assertEqual(logdir.additional_exclude, ['a'])
+
+    def test_pickle_enforce_required_attributes_default(self):
+        """Some attributes from this object should never be dropped.
+
+        When running a client test against an older build, we pickle the objects
+        of this class from newer version of the class and unpicle to older
+        versions of the class. The older versions require some attributes to be
+        present.
+        """
+        logdir = site_sysinfo.logdir(self.from_dir)
+        # base_job uses protocol 2 to pickle. We follow suit.
+        logdir_pickle = pickle.dumps(logdir, protocol=2)
+        logdir = pickle.loads(logdir_pickle)
+
+        self.assertEqual(logdir.additional_exclude, None)
+
+    def test_unpickle_handle_missing__excludes(self):
+        """Sanely handle missing _excludes attribute from pickles
+
+        This can happen when running brand new version of this class that
+        introduced this attribute from older server side code in prod.
+        """
+        logdir = site_sysinfo.logdir(self.from_dir)
+        delattr(logdir, '_excludes')
+        # base_job uses protocol 2 to pickle. We follow suit.
+        logdir_pickle = pickle.dumps(logdir, protocol=2)
+        logdir = pickle.loads(logdir_pickle)
+
+        self.assertEqual(logdir._excludes,
+                         site_sysinfo.logdir.DEFAULT_EXCLUDES)
+
+    def test_unpickle_handle_missing__excludes_default(self):
+        """Sanely handle missing _excludes attribute from pickles
+
+        This can happen when running brand new version of this class that
+        introduced this attribute from older server side code in prod.
+        """
+        logdir = site_sysinfo.logdir(
+                self.from_dir,
+                excludes=(site_sysinfo.logdir.DEFAULT_EXCLUDES + ('a',)))
+        delattr(logdir, '_excludes')
+        # base_job uses protocol 2 to pickle. We follow suit.
+        logdir_pickle = pickle.dumps(logdir, protocol=2)
+        logdir = pickle.loads(logdir_pickle)
+
+        self.assertEqual(
+                logdir._excludes,
+                (site_sysinfo.logdir.DEFAULT_EXCLUDES + ('a',)))
 
 
 if __name__ == '__main__':
