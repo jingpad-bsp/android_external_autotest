@@ -1238,23 +1238,21 @@ class _BaseSuite(object):
                    record(base_job.status_log_entry)
         @param reporter: _ResultReporter instance.
         """
+        waiter = job_status.JobResultWaiter(self._afe, self._tko)
         try:
             if self._suite_job_id:
-                results_generator = job_status.wait_for_child_results(
-                        self._afe, self._tko, self._suite_job_id)
+                jobs = self._afe.get_jobs(parent_job_id=self._suite_job_id)
             else:
                 logging.warning('Unknown suite_job_id, falling back to less '
                                 'efficient results_generator.')
-                results_generator = job_status.wait_for_results(self._afe,
-                                                                self._tko,
-                                                                self._jobs)
-            for result in results_generator:
+                jobs = self._jobs
+            waiter.add_jobs(jobs)
+            for result in waiter.wait_for_results():
                 self._record_result(
                     result=result,
                     record=record,
-                    results_generator=results_generator,
+                    waiter=waiter,
                     reporter=reporter)
-
         except Exception:  # pylint: disable=W0703
             logging.exception('Exception waiting for results')
             Status('FAIL', self._tag,
@@ -1285,7 +1283,7 @@ class _BaseSuite(object):
             return _EmailResultReporter(self, bug_template)
 
 
-    def _record_result(self, result, record, results_generator, reporter):
+    def _record_result(self, result, record, waiter, reporter):
         """
         Record a single test job result.
 
@@ -1293,7 +1291,7 @@ class _BaseSuite(object):
         @param record: callable that records job status.
                  prototype:
                    record(base_job.status_log_entry)
-        @param results_generator: Results generator for sending job retries.
+        @param waiter: JobResultsWaiter instance.
         @param reporter: _ResultReporter instance.
         """
         result.record_all(record)
@@ -1308,7 +1306,7 @@ class _BaseSuite(object):
                 logging.error('Failed to schedule test: %s, Reason: %s',
                               test.name, e)
             else:
-                results_generator.send([new_job])
+                waiter.add_job(new_job)
 
         # TODO (fdeng): If the suite times out before a retry could
         # finish, we would lose the chance to file a bug for the

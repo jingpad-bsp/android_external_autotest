@@ -637,10 +637,11 @@ class SuiteTest(mox.MoxTestBase):
         suite.schedule(recorder.record_entry)
         suite._retry_handler = RetryHandler({})
 
-        self.mox.StubOutWithMock(job_status, 'wait_for_results')
-        job_status.wait_for_results(
-                self.afe, self.tko, suite._jobs).AndReturn(
-                result_generator(results))
+        waiter_patch = mock.patch.object(
+                job_status.JobResultWaiter, 'wait_for_results', autospec=True)
+        waiter_mock = waiter_patch.start()
+        waiter_mock.return_value = result_generator(results)
+        self.addCleanup(waiter_patch.stop)
 
 
     def testRunAndWaitSuccess(self):
@@ -669,15 +670,14 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutWithMock(suite, 'schedule')
         suite.schedule(recorder.record_entry)
-        self.mox.StubOutWithMock(job_status, 'wait_for_results')
-        job_status.wait_for_results(mox.IgnoreArg(),
-                                    mox.IgnoreArg(),
-                                    mox.IgnoreArg()).AndRaise(
-                                            Exception('Expected during test.'))
         self.mox.ReplayAll()
 
-        suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry, dict())
+        with mock.patch.object(
+                job_status.JobResultWaiter, 'wait_for_results',
+                autospec=True) as wait_mock:
+            wait_mock.side_effect = Exception
+            suite.schedule(recorder.record_entry)
+            suite.wait(recorder.record_entry, dict())
 
 
     def testRunAndWaitScheduleFailure(self):
