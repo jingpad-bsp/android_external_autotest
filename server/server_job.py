@@ -652,9 +652,10 @@ class server_job(base_job.base_job):
         @raises error.AutotestError: If any of the functions failed.
         """
         wrapper = self._make_parallel_wrapper(function, machines, log)
-        return subcommand.parallel_simple(wrapper, machines,
-                                          log=log, timeout=timeout,
-                                          return_results=return_results)
+        return subcommand.parallel_simple(
+                wrapper, machines,
+                subdir_name_constructor=server_utils.get_hostname_from_machine,
+                log=log, timeout=timeout, return_results=return_results)
 
 
     def parallel_on_machines(self, function, machines, timeout=None):
