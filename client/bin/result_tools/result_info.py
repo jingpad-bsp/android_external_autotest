@@ -367,7 +367,13 @@ class ResultInfo(dict):
         """
         return utils_lib.COLLECTED_SIZE_BYTES in self.details
 
-    def add_file(self, name, original_info):
+    @property
+    def parent_result_info(self):
+        """The result info of the parent directory.
+        """
+        return self._parent_result_info
+
+    def add_file(self, name, original_info=None):
         """Add a file to the result.
 
         @param name: Name of the file.
@@ -390,6 +396,10 @@ class ResultInfo(dict):
         @param name: Name of the file to be removed.
         """
         self.files.remove(self.get_file(name))
+        # After a new ResultInfo is removed, update the sizes if the object is
+        # already initialized.
+        if self._initialized:
+            self.update_sizes()
 
     def get_file_names(self):
         """Get a set of all the files under the result.
