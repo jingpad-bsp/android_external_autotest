@@ -513,9 +513,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # the stateful update.
         folders_to_check = ['/var', '/home', '/mnt/stateful_partition']
         test_file = '.test_file_to_be_deleted'
-        for folder in folders_to_check:
-            touch_path = os.path.join(folder, test_file)
-            self.run('touch %s' % touch_path)
+        paths = [os.path.join(folder, test_file) for folder in folders_to_check]
+        self.run('touch %s' % ' '.join(paths))
 
         updater.run_update(update_root=False)
 
