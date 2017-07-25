@@ -44,7 +44,6 @@ EVENT_TYPE_REBOOTED_AFTER_UPDATE = '54'
 # Update event results.
 EVENT_RESULT_ERROR = '0'
 EVENT_RESULT_SUCCESS = '1'
-EVENT_RESULT_SUCCESS_REBOOT = '2'
 EVENT_RESULT_UPDATE_DEFERRED = '9'
 
 # Omaha event types/results, from update_engine/omaha_request_action.h
@@ -61,7 +60,6 @@ EVENT_TYPE_DICT = {
 EVENT_RESULT_DICT = {
         EVENT_RESULT_ERROR: 'error',
         EVENT_RESULT_SUCCESS: 'success',
-        EVENT_RESULT_SUCCESS_REBOOT: 'success_reboot',
         EVENT_RESULT_UPDATE_DEFERRED: 'update_deferred'
 }
 
@@ -211,43 +209,38 @@ class ExpectedUpdateEvent(object):
 class ExpectedUpdateEventChain(object):
     """Defines a chain of expected update events."""
     def __init__(self):
-        self._expected_events_chain = []
+        self._expected_event_chain = []
         self._current_timestamp = None
 
 
-    def add_event(self, expected_events, timeout, on_timeout=None):
+    def add_event(self, expected_event, timeout, on_timeout=None):
         """Adds an expected event to the chain.
 
-        @param expected_events: The ExpectedEvent, or a list thereof, to wait
-                                for. If a list is passed, it will wait for *any*
-                                of the provided events, but only one of those.
+        @param expected_event: The event to add.
         @param timeout: A timeout (in seconds) to wait for the event.
         @param on_timeout: An error string to use if the event times out. If
                            None, a generic message is used.
         """
-        if isinstance(expected_events, ExpectedUpdateEvent):
-            expected_events = [expected_events]
-        self._expected_events_chain.append(
-                (expected_events, timeout, on_timeout))
+        self._expected_event_chain.append((expected_event, timeout, on_timeout))
 
 
     @staticmethod
-    def _format_event_with_timeout(expected_events, timeout):
+    def _format_event_with_timeout(expected_event, timeout):
         """Returns a string representation of the event, with timeout."""
         until = 'within %s seconds' % timeout if timeout else 'indefinitely'
-        return '%s, %s' % (' OR '.join(map(str, expected_events)), until)
+        return '%s %s' % (expected_event, until)
 
 
     def __str__(self):
         return ('[%s]' %
                 ', '.join(
-                    [self._format_event_with_timeout(expected_events, timeout)
-                     for expected_events, timeout, _
-                     in self._expected_events_chain]))
+                    [self._format_event_with_timeout(expected_event, timeout)
+                     for expected_event, timeout, _
+                     in self._expected_event_chain]))
 
 
     def __repr__(self):
-        return str(self._expected_events_chain)
+        return str(self._expected_event_chain)
 
 
     def verify(self, get_next_event):
@@ -258,22 +251,22 @@ class ExpectedUpdateEventChain(object):
         @raises ExpectedUpdateEventChainFailed if we failed to verify an event.
 
         """
-        for expected_events, timeout, on_timeout in self._expected_events_chain:
+        for expected_event, timeout, on_timeout in self._expected_event_chain:
             logging.info('Expecting %s',
-                         self._format_event_with_timeout(expected_events,
+                         self._format_event_with_timeout(expected_event,
                                                          timeout))
             err_msg = self._verify_event_with_timeout(
-                    expected_events, timeout, on_timeout, get_next_event)
+                    expected_event, timeout, on_timeout, get_next_event)
             if err_msg is not None:
                 logging.error('Failed expected event: %s', err_msg)
                 raise ExpectedUpdateEventChainFailed(err_msg)
 
 
-    def _verify_event_with_timeout(self, expected_events, timeout, on_timeout,
+    def _verify_event_with_timeout(self, expected_event, timeout, on_timeout,
                                    get_next_event):
         """Verify an expected event occurs within a given timeout.
 
-        @param expected_events: the list of possible events expected next
+        @param expected_event: an expected event
         @param timeout: specified in seconds
         @param on_timeout: A string to return if timeout occurs, or None.
         @param get_next_event: function returning the next event in a stream
@@ -301,14 +294,14 @@ class ExpectedUpdateEventChain(object):
                 difference = event_timestamp - self._current_timestamp
                 logging.info('Event took %s seconds to fire during the '
                              'update', difference.seconds)
-                results = [event.verify(new_event) for event in expected_events]
+                results = expected_event.verify(new_event)
                 self._current_timestamp = event_timestamp
-                return None if None in results else ' AND '.join(results)
+                return results
 
         logging.error('Timeout expired')
         if on_timeout is None:
             return ('Waiting for event %s timed out after %d seconds' %
-                    (' OR '.join(map(str, expected_events)), timeout))
+                    (expected_event, timeout))
         return on_timeout
 
 
@@ -320,7 +313,7 @@ class UpdateEventLogVerifier(object):
         self._num_consumed_events = 0
 
 
-    def verify_expected_events_chain(self, expected_event_chain):
+    def verify_expected_event_chain(self, expected_event_chain):
         """Verify a given event chain.
 
         @param expected_event_chain: instance of expected event chain.
@@ -1096,7 +1089,7 @@ class autoupdate_EndToEndTest(test.test):
                             self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
                             event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
-            log_verifier.verify_expected_events_chain(chain)
+            log_verifier.verify_expected_event_chain(chain)
 
         except:
             logging.fatal('ERROR: Failure occurred during the target update.')
@@ -1124,32 +1117,20 @@ class autoupdate_EndToEndTest(test.test):
             log_verifier = UpdateEventLogVerifier(file_url)
 
             chain = ExpectedUpdateEventChain()
-            expected_events = [
-                ExpectedUpdateEvent(
-                    event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                    event_result=EVENT_RESULT_SUCCESS_REBOOT,
-                    version=target_release,
-                    previous_version=source_release,
-                    on_error=self._error_reboot_after_update),
-                # Newer versions send a "rebooted_after_update" message
-                # after reboot with the previous version instead of another
-                # "update_complete".
+            chain.add_event(
                 ExpectedUpdateEvent(
                     event_type=EVENT_TYPE_REBOOTED_AFTER_UPDATE,
                     event_result=EVENT_RESULT_SUCCESS,
                     version=target_release,
                     previous_version=source_release,
                     on_error=self._error_reboot_after_update),
-            ]
-            chain.add_event(
-                    expected_events,
-                    self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
-                    on_timeout=self._timeout_err(
-                            'a successful reboot notification',
-                            self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
-                            event_type=EVENT_TYPE_UPDATE_COMPLETE))
+                self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                on_timeout=self._timeout_err(
+                        'a successful reboot notification',
+                        self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                        event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
-            log_verifier.verify_expected_events_chain(chain)
+            log_verifier.verify_expected_event_chain(chain)
 
         # Make sure we're using a different slot after the update.
         target_active_slot = test_platform.get_active_slot()
