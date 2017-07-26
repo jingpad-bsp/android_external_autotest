@@ -13,8 +13,10 @@ import tempfile
 import unittest
 
 import common
-from autotest_lib.client.bin.result_tools import utils_lib
 from autotest_lib.client.bin.result_tools import result_info
+from autotest_lib.client.bin.result_tools import unittest_lib
+from autotest_lib.client.bin.result_tools import utils_lib
+
 
 _SIZE = 100
 _EXPECTED_SUMMARY = {
@@ -39,6 +41,14 @@ _EXPECTED_SUMMARY = {
                   }
             ]
         }
+    }
+
+_EXPECTED_SINGLE_FILE_SUMMARY = {
+    '': {utils_lib.ORIGINAL_SIZE_BYTES: unittest_lib.SIZE,
+         utils_lib.DIRS: [
+                 {'file1': {utils_lib.ORIGINAL_SIZE_BYTES: unittest_lib.SIZE}},
+                 ]
+         }
     }
 
 class ResultInfoUnittest(unittest.TestCase):
@@ -122,6 +132,13 @@ class ResultInfoUnittest(unittest.TestCase):
         file2.collected_size = 20 * _SIZE
         self.assertEqual(summary.get_file('folder1').collected_size, 21 * _SIZE)
         self.assertEqual(summary.collected_size, 23 * _SIZE)
+
+    def TestBuildFromPath_SingleFile(self):
+        """Test method build_from_path for a single file."""
+        file1 = os.path.join(self.test_dir, 'file1')
+        unittest_lib.create_file(file1)
+        summary = result_info.ResultInfo.build_from_path(file1)
+        self.assertEqual(_EXPECTED_SINGLE_FILE_SUMMARY, summary)
 
 
 # this is so the test can be run in standalone mode
