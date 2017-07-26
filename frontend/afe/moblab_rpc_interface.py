@@ -349,12 +349,14 @@ def _get_bucket_name_from_url(bucket_url):
             return match.group('bucket')
     return None
 
+
 def _is_valid_boto_key(key_id, key_secret, directory):
   try:
       _run_bucket_performance_test(key_id, key_secret, directory)
   except BucketPerformanceTestException as e:
        return(False, str(e))
   return(True, None)
+
 
 def _validate_cloud_storage_info(cloud_storage_info):
     """Checks if the cloud storage information is valid.
@@ -471,6 +473,9 @@ def get_connected_dut_info():
     for host in hosts:
         labels = [label.name for label in host.label_list]
         labels.sort()
+        for host_attribute in host.hostattribute_set.all():
+              labels.append("ATTR:(%s=%s)" % (host_attribute.attribute,
+                                              host_attribute.value))
         configured_duts[host.hostname] = ', '.join(labels)
 
     return rpc_utils.prepare_for_serialization(
@@ -558,6 +563,37 @@ def remove_moblab_label(ipaddress, label_name):
     host_obj = models.Host.smart_get(ipaddress)
     models.Label.smart_get(label_name).host_set.remove(host_obj)
     return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
+
+
+@rpc_utils.moblab_only
+def set_host_attrib(ipaddress, attribute, value):
+    """ RPC handler to set an attribute of a host.
+
+    @param ipaddress: IP address of the DUT.
+    @param attribute: string name of attribute
+    @param value: string, or None to delete an attribute
+
+    @return: True if the command succeeds without an exception
+    """
+    host_obj = models.Host.smart_get(ipaddress)
+    host_obj.set_or_delete_attribute(attribute, value)
+    return (True, 'Updated attribute %s to %s on DUT %s' % (
+        attribute, value, ipaddress))
+
+
+@rpc_utils.moblab_only
+def delete_host_attrib(ipaddress, attribute):
+    """ RPC handler to delete an attribute of a host.
+
+    @param ipaddress: IP address of the DUT.
+    @param attribute: string name of attribute
+
+    @return: True if the command succeeds without an exception
+    """
+    host_obj = models.Host.smart_get(ipaddress)
+    host_obj.set_or_delete_attribute(attribute, None)
+    return (True, 'Deleted attribute %s from DUT %s' % (
+        attribute, ipaddress))
 
 
 def _get_connected_dut_labels(requested_label, only_first_label=True):
