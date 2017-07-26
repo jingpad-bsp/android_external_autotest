@@ -182,13 +182,16 @@ class Host(object):
         raise NotImplementedError('Get file not implemented!')
 
 
-    def send_file(self, source, dest, delete_dest=False):
+    def send_file(self, source, dest, delete_dest=False, excludes=None):
         """Send a file to the host.
 
         @param source: Local file path (directory, file or list).
         @param dest: Remote file path (directory, file or list).
         @param delete_dest: Delete files in remote path that are not in local
-            path.
+                path.
+        @param excludes: A list of file pattern that matches files not to be
+                         sent. `send_file` will fail if exclude is not
+                         supported.
         """
         raise NotImplementedError('Send file not implemented!')
 

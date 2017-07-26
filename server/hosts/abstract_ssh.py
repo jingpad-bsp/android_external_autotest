@@ -171,7 +171,7 @@ class AbstractSSHHost(remote.RemoteHost):
         return " ".join('"%s"' % p for p in paths)
 
     def _make_rsync_cmd(self, sources, dest, delete_dest,
-                        preserve_symlinks, safe_symlinks):
+                        preserve_symlinks, safe_symlinks, excludes=None):
         """
         Given a string of source paths and a destination path, produces the
         appropriate rsync command for copying them. Remote paths must be
@@ -190,9 +190,14 @@ class AbstractSSHHost(remote.RemoteHost):
             symlink_flag = "-l"
         else:
             symlink_flag = "-L"
+        exclude_args = ''
+        if excludes:
+            exclude_args = ' '.join(
+                    ["--exclude '%s'" % exclude for exclude in excludes])
         command = ("rsync %s %s --timeout=1800 --rsh='%s' -az --no-o --no-g "
-                   "%s \"%s\"")
-        return command % (symlink_flag, delete_flag, ssh_cmd, sources, dest)
+                   "%s %s \"%s\"")
+        return command % (symlink_flag, delete_flag, ssh_cmd, exclude_args,
+                          sources, dest)
 
 
     def _make_ssh_cmd(self, cmd):
@@ -419,7 +424,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
 
     def send_file(self, source, dest, delete_dest=False,
-                  preserve_symlinks=False):
+                  preserve_symlinks=False, excludes=None):
         """
         Copy files from a local path to the remote host.
 
@@ -443,6 +448,10 @@ class AbstractSSHHost(remote.RemoteHost):
                 preserve_symlinks: controls if symlinks on the source will be
                     copied as such on the destination or transformed into the
                     referenced file/directory
+                excludes: A list of file pattern that matches files not to be
+                          sent. `send_file` will fail if exclude is set, since
+                          local copy does not support --exclude, e.g., when
+                          using scp to copy file.
 
         Raises:
                 AutoservRunError: the scp command failed
@@ -471,7 +480,7 @@ class AbstractSSHHost(remote.RemoteHost):
             try:
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
                                              delete_dest, preserve_symlinks,
-                                             False)
+                                             False, excludes=excludes)
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
@@ -479,6 +488,10 @@ class AbstractSSHHost(remote.RemoteHost):
 
         if try_scp:
             logging.debug('Trying scp.')
+            if excludes:
+                raise error.AutotestHostRunError(
+                        '--exclude is not supported in scp, try to use rsync. '
+                        'excludes: %s' % excludes)
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest:
                 is_dir = self.run("ls -d %s/" % dest,
