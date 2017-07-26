@@ -71,6 +71,15 @@ def has_rapl_support():
     return False
 
 
+def has_powercap_support():
+    """Identify if OS supports powercap sysfs.
+
+    Returns:
+        Boolean, True if powercap supported, False otherwise.
+    """
+    return os.path.isdir('/sys/devices/virtual/powercap/intel-rapl/')
+
+
 def _call_dbus_method(destination, path, interface, method_name, args):
     """Performs a generic dbus method call."""
     command = ('dbus-send --type=method_call --system '
