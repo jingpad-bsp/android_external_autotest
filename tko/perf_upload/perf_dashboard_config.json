@@ -8,8 +8,36 @@
     "master_name": "ChromeOS_Audio"
   },
   {
-    "autotest_name": "autoupdate_EndToEndTest",
+    "autotest_name": "autoupdate_EndToEndTest.paygen_au_beta_delta",
     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_beta_full",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_canary_delta",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_canary_full",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_dev_delta",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_dev_full",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_stable_delta",
+     "master_name": "ChromeOSPerf"
+  },
+  {
+     "autotest_name": "autoupdate_EndToEndTest.paygen_au_stable_full",
+     "master_name": "ChromeOSPerf"
   },
   {
     "autotest_name": "bluetooth_Sanity_Discoverable",
