@@ -498,6 +498,30 @@ def set_host_attribute(attribute, value, **host_filter_data):
                 attribute=attribute, value=value, **host_filter_data)
 
 
+def set_host_attribute_impl(attribute, value, **host_filter_data):
+    """Set an attribute on hosts.
+
+    *** DO NOT CALL THIS RPC from client code ***
+    This RPC exists for master-shard communication only.
+    Call set_host_attribute instead.
+
+    @param attribute: string name of attribute
+    @param value: string, or None to delete an attribute
+    @param host_filter_data: filter data to apply to Hosts to choose hosts to
+                             act upon
+    """
+    assert host_filter_data # disallow accidental actions on all hosts
+    hosts = models.Host.query_objects(host_filter_data)
+    models.AclGroup.check_for_acl_violation_hosts(hosts)
+    for host in hosts:
+        host.set_or_delete_attribute(attribute, value)
+
+    # Master forwards this RPC to shards.
+    if not utils.is_shard():
+        rpc_utils.fanout_rpc(hosts, 'set_host_attribute_impl', False,
+                attribute=attribute, value=value, **host_filter_data)
+
+
 @rpc_utils.forward_single_host_rpc_to_shard
 def delete_host(id):
     models.Host.smart_get(id).delete()
