@@ -23,22 +23,28 @@ try:
 except ImportError:
     metrics = client_utils.metrics_mock
 
+
 CONFIG = global_config.global_config
 ENABLE_RESULT_THROTTLING = CONFIG.get_config_value(
         'AUTOSERV', 'enable_result_throttling', type=bool, default=False)
 
-THROTTLE_OPTION_FMT = '-m %s'
-BUILD_DIR_SUMMARY_CMD = '%s/result_tools/utils.py -p %s %s'
-BUILD_DIR_SUMMARY_TIMEOUT = 120
+_THROTTLE_OPTION_FMT = '-m %s'
+_BUILD_DIR_SUMMARY_CMD = '%s/result_tools/utils.py -p %s %s'
+_BUILD_DIR_SUMMARY_TIMEOUT = 120
+_FIND_DIR_SUMMARY_TIMEOUT = 10
+_CLEANUP_DIR_SUMMARY_CMD = '%s/result_tools/utils.py -p %s -d'
+_CLEANUP_DIR_SUMMARY_TIMEOUT = 10
 
 # Default autotest directory on host
 DEFAULT_AUTOTEST_DIR = '/usr/local/autotest'
 
-def run_on_client(host, client_results_dir):
+def run_on_client(host, client_results_dir, cleanup_only=False):
     """Run result utils on the given host.
 
     @param host: Host to run the result utils.
     @param client_results_dir: Path to the results directory on the client.
+    @param cleanup_only: True to delete all existing directory summary files in
+            the given directory.
     @return: True: If the command runs on client without error.
              False: If the command failed with error in result throttling.
     """
@@ -50,20 +56,99 @@ def run_on_client(host, client_results_dir):
             autodir = host.autodir or DEFAULT_AUTOTEST_DIR
             logging.debug('Deploy result utilities to %s', host.hostname)
             host.send_file(os.path.dirname(__file__), autodir)
-            logging.debug('Getting directory summary for %s.',
-                          client_results_dir)
-            throttle_option = ''
-            if ENABLE_RESULT_THROTTLING:
-                throttle_option = (THROTTLE_OPTION_FMT %
-                                   host.job.max_result_size_KB)
-            cmd = (BUILD_DIR_SUMMARY_CMD %
-                   (autodir, client_results_dir + '/', throttle_option))
-            host.run(cmd, ignore_status=False,
-                     timeout=BUILD_DIR_SUMMARY_TIMEOUT)
-            success = True
+            if cleanup_only:
+                logging.debug('Cleaning up directory summary in %s',
+                              client_results_dir)
+                cmd = _CLEANUP_DIR_SUMMARY_CMD % (autodir, client_results_dir)
+                host.run(cmd, ignore_status=False,
+                         timeout=_CLEANUP_DIR_SUMMARY_TIMEOUT)
+            else:
+                logging.debug('Getting directory summary for %s',
+                              client_results_dir)
+                throttle_option = ''
+                if ENABLE_RESULT_THROTTLING:
+                    try:
+                        throttle_option = (_THROTTLE_OPTION_FMT %
+                                           host.job.max_result_size_KB)
+                    except AttributeError:
+                        # In case host job is not set, skip throttling.
+                        logging.warn('host object does not have job attribute, '
+                                     'skipping result throttling.')
+                cmd = (_BUILD_DIR_SUMMARY_CMD %
+                       (autodir, client_results_dir, throttle_option))
+                host.run(cmd, ignore_status=False,
+                         timeout=_BUILD_DIR_SUMMARY_TIMEOUT)
+                success = True
         except error.AutoservRunError:
+            action = 'cleanup' if cleanup_only else 'create'
             logging.exception(
-                    'Failed to create directory summary for %s.',
-                    client_results_dir)
+                    'Non-critical failure: Failed to %s directory summary for '
+                    '%s.', action, client_results_dir)
 
     return success
+
+
+def collect_last_summary(host, source_path, dest_path,
+                         skip_summary_collection=False):
+    """Collect the last directory summary next to the given file path.
+
+    If the given source_path is a directory, return without collecting any
+    result summary file, as the summary file should have been collected with the
+    directory.
+
+    @param host: The RemoteHost to collect logs from.
+    @param source_path: The remote path to collect the directory summary file
+            from. If the source_path is a file
+    @param dest_path: A path to write the source_path into. The summary file
+            will be saved to the same folder.
+    @param skip_summary_collection: True to skip summary file collection, only
+            to delete the last summary. This is used in case when result
+            collection in the dut failed. Default is set to False.
+    """
+    if not os.path.exists(dest_path):
+        logging.debug('Source path %s does not exist, no directory summary '
+                      'will be collected', dest_path)
+        return
+
+    # Test if source_path is a file.
+    try:
+        host.run('test -f %s' % source_path, timeout=_FIND_DIR_SUMMARY_TIMEOUT)
+        is_source_file = True
+    except error.AutoservRunError:
+        is_source_file = False
+        # No need to collect summary files if the source path is a directory,
+        # as the summary files should have been copied over with the directory.
+        # However, the last summary should be cleaned up so it won't affect
+        # later tests.
+        skip_summary_collection = True
+
+    source_dir = os.path.dirname(source_path) if is_source_file else source_path
+    dest_dir = dest_path if os.path.isdir(dest_path) else dest_path
+
+    # Get the latest directory summary file.
+    try:
+        summary_pattern = os.path.join(source_dir, 'dir_summary_*.json')
+        summary_file = host.run(
+                'ls -t %s | head -1' % summary_pattern,
+                timeout=_FIND_DIR_SUMMARY_TIMEOUT).stdout.strip()
+    except error.AutoservRunError:
+        logging.exception(
+                'Non-critical failure: Failed to locate the latest directory '
+                'summary for %s', source_dir)
+        return
+
+    try:
+        if not skip_summary_collection:
+            host.get_file(
+                    summary_file,
+                    os.path.join(dest_dir, os.path.basename(summary_file)),
+                    preserve_perm=False)
+    finally:
+        # Remove the collected summary file so it won't affect later tests.
+        try:
+            host.run('rm %s' % summary_file,
+                     timeout=_FIND_DIR_SUMMARY_TIMEOUT).stdout.strip()
+        except error.AutoservRunError:
+            logging.exception(
+                    'Non-critical failure: Failed to delete the latest '
+                    'directory summary: %s', summary_file)

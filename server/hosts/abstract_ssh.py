@@ -2,6 +2,7 @@ import os, time, socket, shutil, glob, logging, traceback, tempfile, re
 import shlex
 import subprocess
 
+from autotest_lib.client.bin.result_tools import runner as result_tools_runner
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.server import utils, autotest
@@ -346,6 +347,7 @@ class AbstractSSHHost(remote.RemoteHost):
         logging.debug('get_file. source: %s, dest: %s, delete_dest: %s,'
                       'preserve_perm: %s, preserve_symlinks:%s', source, dest,
                       delete_dest, preserve_perm, preserve_symlinks)
+
         # Start a master SSH connection if necessary.
         self.start_master_ssh()
 
@@ -806,6 +808,17 @@ class AbstractSSHHost(remote.RemoteHost):
                 if not ignore_errors:
                     raise
                 return
+
+        # Build test result directory summary
+        try:
+            result_tools_runner.run_on_client(self, remote_src_dir)
+        except (error.AutotestRunError, error.AutoservRunError,
+                error.AutoservSSHTimeout) as e:
+            logging.exception(
+                    'Non-critical failure: Failed to collect and throttle '
+                    'results at %s from host %s: %s', remote_src_dir,
+                    self.hostname)
+
         try:
             self.get_file(remote_src_dir, local_dest_dir, safe_symlinks=True)
         except (error.AutotestRunError, error.AutoservRunError,
@@ -817,6 +830,16 @@ class AbstractSSHHost(remote.RemoteHost):
                 shutil.rmtree(local_dest_dir, ignore_errors=ignore_errors)
             if not ignore_errors:
                 raise
+
+        # Clean up directory summary file on the client side.
+        try:
+            result_tools_runner.run_on_client(self, remote_src_dir,
+                                              cleanup_only=True)
+        except (error.AutotestRunError, error.AutoservRunError,
+                error.AutoservSSHTimeout) as e:
+            logging.exception(
+                    'Non-critical failure: Failed to cleanup result summary '
+                    'files at %s in host %s: %s', remote_src_dir, self.hostname)
 
 
     def create_ssh_tunnel(self, port, local_port):
