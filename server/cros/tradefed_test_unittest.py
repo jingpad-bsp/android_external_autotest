@@ -87,5 +87,21 @@ class TradefedTestTest(unittest.TestCase):
                 _load_data('CtsPrintTestCases.txt'),
                 waivers=waivers))
 
+        gts_waivers = set([
+            ('com.google.android.placement.gts.CoreGmsAppsTest#' +
+                'testCoreGmsAppsPreloaded'),
+            ('com.google.android.placement.gts.CoreGmsAppsTest#' +
+                'testGoogleDuoPreloaded'),
+            'com.google.android.placement.gts.UiPlacementTest#testPlayStore'
+        ])
+
+        # crbug.com/748116
+        # http://pantheon/storage/browser/chromeos-autotest-results/130080763-chromeos-test/
+        # 3 ABIS: x86, x86_64, and armeabi-v7a
+        self.assertEquals((15, 6, 9, 0, 9),
+            tradefed_test.parse_tradefed_v2_result(
+                _load_data('GtsPlacementTestCases.txt'),
+                waivers=gts_waivers))
+
 if __name__ == '__main__':
     unittest.main()
