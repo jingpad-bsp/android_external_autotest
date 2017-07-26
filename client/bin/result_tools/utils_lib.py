@@ -56,6 +56,12 @@ ResultSizeInfo = collections.namedtuple(
          'result_throttled'])
 
 
+class NotEnoughDiskError(Exception):
+    """Exception to raise when the target directory doesn't have enough free
+    disk space.
+    """
+
+
 def get_result_size_info(client_collected_bytes, summary):
     """Get the result size information.
 

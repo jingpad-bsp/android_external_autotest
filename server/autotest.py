@@ -31,8 +31,8 @@ AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
 
 CONFIG = global_config.global_config
-ENABLE_RESULT_THROTTLING = CONFIG.get_config_value(
-        'AUTOSERV', 'enable_result_throttling', type=bool, default=False)
+AUTOSERV_PREBUILD = CONFIG.get_config_value(
+        'AUTOSERV', 'enable_server_prebuild', type=bool, default=False)
 
 class AutodirNotFoundError(Exception):
     """No Autotest installation could be found."""
@@ -931,8 +931,7 @@ class log_collector(object):
         try:
             # Build test result directory summary
             result_tools_runner.run_on_client(
-                    self.host, self.client_results_dir,
-                    ENABLE_RESULT_THROTTLING)
+                    self.host, self.client_results_dir)
 
             with metrics.SecondsTimer(
                     'chromeos/autotest/job/log_collection_duration',
