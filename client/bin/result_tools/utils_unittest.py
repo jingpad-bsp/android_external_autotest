@@ -15,12 +15,18 @@ import unittest
 
 import common
 from autotest_lib.client.bin.result_tools import result_info
+from autotest_lib.client.bin.result_tools import shrink_file_throttler
 from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.bin.result_tools import utils_lib
 from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.bin.result_tools import unittest_lib
 
 SIZE = unittest_lib.SIZE
+
+# Sizes used for testing throttling
+LARGE_SIZE = 1 * 1024 * 1024
+SMALL_SIZE = 1 * 1024
+
 EXPECTED_SUMMARY = {
         '': {utils_lib.ORIGINAL_SIZE_BYTES: 4 * SIZE,
              utils_lib.DIRS: [
@@ -304,6 +310,220 @@ class MergeSummaryTest(unittest.TestCase):
         result_view.build(client_collected_bytes, summary, html_file)
         # Make sure html_file is created with content.
         self.assertGreater(os.stat(html_file).st_size, 1000)
+
+
+# Not throttled.
+EXPECTED_THROTTLED_SUMMARY_NO_THROTTLE = {
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: 3 * LARGE_SIZE + 5 * SMALL_SIZE,
+       utils_lib.DIRS: [
+           {'files_to_dedupe': {
+               utils_lib.ORIGINAL_SIZE_BYTES: 5 * SMALL_SIZE,
+               utils_lib.DIRS: [
+                   {'file_0.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_1.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_2.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_3.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_4.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                ]
+            }},
+           {'files_to_delete': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.png': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+           {'files_to_shink': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.txt': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+           {'files_to_zip': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.xml': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+        ]
+       }
+    }
+
+SHRINK_SIZE = shrink_file_throttler.DEFAULT_FILE_SIZE_LIMIT_BYTE
+EXPECTED_THROTTLED_SUMMARY_WITH_SHRINK = {
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: 3 * LARGE_SIZE + 5 * SMALL_SIZE,
+       utils_lib.TRIMMED_SIZE_BYTES:
+            2 * LARGE_SIZE + 5 * SMALL_SIZE + SHRINK_SIZE,
+       utils_lib.DIRS: [
+           {'files_to_dedupe': {
+               utils_lib.ORIGINAL_SIZE_BYTES: 5 * SMALL_SIZE,
+               utils_lib.DIRS: [
+                   {'file_0.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_1.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_2.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_3.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_4.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                ]
+            }},
+           {'files_to_delete': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.png': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+           {'files_to_shink': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.TRIMMED_SIZE_BYTES: SHRINK_SIZE,
+               utils_lib.DIRS: [
+                   {'file.txt': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+                                 utils_lib.TRIMMED_SIZE_BYTES: SHRINK_SIZE}},
+                ]
+            }},
+           {'files_to_zip': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.xml': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+        ]
+       }
+    }
+
+EXPECTED_THROTTLED_SUMMARY_WITH_DEDUPE = {
+  '': {utils_lib.ORIGINAL_SIZE_BYTES: 3 * LARGE_SIZE + 5 * SMALL_SIZE,
+       utils_lib.TRIMMED_SIZE_BYTES:
+            2 * LARGE_SIZE + 3 * SMALL_SIZE + SHRINK_SIZE,
+       utils_lib.DIRS: [
+           {'files_to_dedupe': {
+               utils_lib.ORIGINAL_SIZE_BYTES: 5 * SMALL_SIZE,
+               utils_lib.TRIMMED_SIZE_BYTES: 3 * SMALL_SIZE,
+               utils_lib.DIRS: [
+                   {'file_0.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_1.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                   {'file_2.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE,
+                                   utils_lib.TRIMMED_SIZE_BYTES: 0}},
+                   {'file_3.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE,
+                                   utils_lib.TRIMMED_SIZE_BYTES: 0}},
+                   {'file_4.dmp': {utils_lib.ORIGINAL_SIZE_BYTES: SMALL_SIZE}},
+                ]
+            }},
+           {'files_to_delete': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.png': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+           {'files_to_shink': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.TRIMMED_SIZE_BYTES: SHRINK_SIZE,
+               utils_lib.DIRS: [
+                   {'file.txt': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+                                 utils_lib.TRIMMED_SIZE_BYTES: SHRINK_SIZE}},
+                ]
+            }},
+           {'files_to_zip': {
+               utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE,
+               utils_lib.DIRS: [
+                   {'file.xml': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE}},
+                ]
+            }},
+        ]
+       }
+    }
+
+
+class ThrottleTest(unittest.TestCase):
+    """Test class for _throttle_results method"""
+
+    def setUp(self):
+        """Setup directory to match the file structure in MERGED_SUMMARY."""
+        self.test_dir = tempfile.mkdtemp()
+
+        folder = os.path.join(self.test_dir, 'files_to_shink')
+        os.mkdir(folder)
+        file1 = os.path.join(folder, 'file.txt')
+        unittest_lib.create_file(file1, LARGE_SIZE)
+
+        folder = os.path.join(self.test_dir, 'files_to_zip')
+        os.mkdir(folder)
+        file1 = os.path.join(folder, 'file.xml')
+        unittest_lib.create_file(file1, LARGE_SIZE)
+
+        folder = os.path.join(self.test_dir, 'files_to_delete')
+        os.mkdir(folder)
+        file1 = os.path.join(folder, 'file.png')
+        unittest_lib.create_file(file1, LARGE_SIZE)
+
+        folder = os.path.join(self.test_dir, 'files_to_dedupe')
+        os.mkdir(folder)
+        for i in range(5):
+            time.sleep(0.01)
+            file1 = os.path.join(folder, 'file_%d.dmp' % i)
+            unittest_lib.create_file(file1, SMALL_SIZE)
+
+    def tearDown(self):
+        """Cleanup the test directory."""
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def testThrottleResults(self):
+        """Test _throttle_results method."""
+        summary = result_info.ResultInfo.build_from_path(self.test_dir)
+        result_utils._throttle_results(summary, LARGE_SIZE * 10 / 1024)
+        self.assertEqual(EXPECTED_THROTTLED_SUMMARY_NO_THROTTLE, summary)
+
+        result_utils._throttle_results(summary, LARGE_SIZE * 3 / 1024)
+        self.assertEqual(EXPECTED_THROTTLED_SUMMARY_WITH_SHRINK, summary)
+
+    def testThrottleResults_Dedupe(self):
+        """Test _throttle_results method with dedupe triggered."""
+        summary = result_info.ResultInfo.build_from_path(self.test_dir)
+        result_utils._throttle_results(
+                summary, (2*LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE) / 1024)
+        self.assertEqual(EXPECTED_THROTTLED_SUMMARY_WITH_DEDUPE, summary)
+
+    def testThrottleResults_Zip(self):
+        """Test _throttle_results method with dedupe triggered."""
+        summary = result_info.ResultInfo.build_from_path(self.test_dir)
+        result_utils._throttle_results(
+                summary, (LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE) / 1024 + 2)
+        self.assertEqual(
+                3 * LARGE_SIZE + 5 * SMALL_SIZE, summary.original_size)
+
+        entry = summary.get_file('files_to_zip').get_file('file.xml.tgz')
+        self.assertEqual(LARGE_SIZE, entry.original_size)
+        self.assertTrue(LARGE_SIZE > entry.trimmed_size)
+
+        # The compressed file size should be less than 2 KB.
+        self.assertTrue(
+                summary.trimmed_size <
+                (LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE + 2 * 1024))
+        self.assertTrue(
+                summary.trimmed_size >
+                (LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE))
+
+    def testThrottleResults_Delete(self):
+        """Test _throttle_results method with delete triggered."""
+        summary = result_info.ResultInfo.build_from_path(self.test_dir)
+        result_utils._throttle_results(
+                summary, (3*SMALL_SIZE + SHRINK_SIZE) / 1024 + 2)
+
+        # Confirm the original size is preserved.
+        self.assertEqual(3 * LARGE_SIZE + 5 * SMALL_SIZE, summary.original_size)
+
+        # Confirm the deduped, zipped and shrunk files are not deleted.
+        # The compressed file is at least 512 bytes.
+        self.assertTrue(
+                3 * SMALL_SIZE + SHRINK_SIZE + 512 < summary.original_size)
+
+        # Confirm the file to be zipped is compressed and not deleted.
+        entry = summary.get_file('files_to_zip').get_file('file.xml.tgz')
+        self.assertEqual(LARGE_SIZE, entry.original_size)
+        self.assertTrue(LARGE_SIZE > entry.trimmed_size)
+        self.assertTrue(entry.trimmed_size > 0)
+
+        # Confirm the file to be deleted is removed.
+        entry = summary.get_file('files_to_delete').get_file('file.png')
+        self.assertEqual(0, entry.trimmed_size)
+        self.assertEqual(LARGE_SIZE, entry.original_size)
 
 
 # this is so the test can be run in standalone mode
