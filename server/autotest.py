@@ -554,8 +554,10 @@ class _BaseRun(object):
             self.host.run('umount %s' % download, ignore_status=True)
 
 
-    def get_base_cmd_args(self):
+    def get_base_cmd_args(self, section):
         args = ['--verbose']
+        if section > 0:
+            args.append('-c')
         if self.tag:
             args.append('-t %s' % self.tag)
         if self.host.job.use_external_logging():
@@ -568,10 +570,10 @@ class _BaseRun(object):
         return args
 
 
-    def get_daemon_cmd(self, monitor_dir):
+    def get_daemon_cmd(self, section, monitor_dir):
         cmd = ['nohup', os.path.join(self.autodir, 'bin/autotestd'),
                monitor_dir, '-H autoserv']
-        cmd += self.get_base_cmd_args()
+        cmd += self.get_base_cmd_args(section)
         cmd += ['>/dev/null', '2>/dev/null', '&']
         return ' '.join(cmd)
 
@@ -733,10 +735,10 @@ class _BaseRun(object):
         return "\n".join(stderr_lines)
 
 
-    def _execute_daemon(self, timeout, stderr_redirector,
+    def _execute_daemon(self, section, timeout, stderr_redirector,
                         client_disconnect_timeout):
         monitor_dir = self.host.get_tmp_dir()
-        daemon_cmd = self.get_daemon_cmd(monitor_dir)
+        daemon_cmd = self.get_daemon_cmd(section, monitor_dir)
 
         # grab the location for the server-side client log file
         client_log_prefix = self.get_client_log()
@@ -788,12 +790,17 @@ class _BaseRun(object):
             self.host.job.pop_execution_context()
 
 
-    def _really_execute_control(self, timeout, stderr_redirector,
-                                client_disconnect_timeout):
-        logging.info("Executing %s/bin/autotest %s/control",
-                     self.autodir, self.autodir)
+    def execute_section(self, section, timeout, stderr_redirector,
+                        client_disconnect_timeout):
+        # TODO(crbug.com/684311) The claim is that section is never more than 0
+        # in pratice. After validating for a week or so, delete all support of
+        # multiple sections.
+        metrics.Counter('chromeos/autotest/autotest/sections').increment(
+                fields={'is_first_section': (section == 0)})
+        logging.info("Executing %s/bin/autotest %s/control phase %d",
+                     self.autodir, self.autodir, section)
 
-        result = self._execute_daemon(timeout, stderr_redirector,
+        result = self._execute_daemon(section, timeout, stderr_redirector,
                                         client_disconnect_timeout)
 
         last_line = stderr_redirector.last_line
@@ -803,8 +810,8 @@ class _BaseRun(object):
             err = error.AutotestRunError("client job was aborted")
         elif not result.stderr:
             err = error.AutotestRunError(
-                "_really_execute_control failed to return anything\n"
-                "stdout:%s\n" % result.stdout)
+                "execute_section %s failed to return anything\n"
+                "stdout:%s\n" % (section, result.stdout))
         else:
             err = None
 
@@ -818,6 +825,34 @@ class _BaseRun(object):
             return stderr_redirector.last_line
 
 
+    def _wait_for_reboot(self, old_boot_id):
+        logging.info("Client is rebooting")
+        logging.info("Waiting for client to halt")
+        if not self.host.wait_down(self.host.WAIT_DOWN_REBOOT_TIMEOUT,
+                                   old_boot_id=old_boot_id):
+            err = "%s failed to shutdown after %d"
+            err %= (self.host.hostname, self.host.WAIT_DOWN_REBOOT_TIMEOUT)
+            raise error.AutotestRunError(err)
+        logging.info("Client down, waiting for restart")
+        if not self.host.wait_up(self.host.DEFAULT_REBOOT_TIMEOUT):
+            # since reboot failed
+            # hardreset the machine once if possible
+            # before failing this control file
+            warning = "%s did not come back up, hard resetting"
+            warning %= self.host.hostname
+            logging.warning(warning)
+            try:
+                self.host.hardreset(wait=False)
+            except (AttributeError, error.AutoservUnsupportedError):
+                warning = "Hard reset unsupported on %s"
+                warning %= self.host.hostname
+                logging.warning(warning)
+            raise error.AutotestRunError("%s failed to boot after %ds" %
+                                         (self.host.hostname,
+                                          self.host.DEFAULT_REBOOT_TIMEOUT))
+        self.host.reboot_followup()
+
+
     def execute_control(self, timeout=None, client_disconnect_timeout=None):
         collector = log_collector(self.host, self.tag, self.results_dir)
         hostname = self.host.hostname
@@ -826,63 +861,70 @@ class _BaseRun(object):
         self.host.job.add_client_log(hostname, remote_results,
                                         local_results)
         job_record_context = self.host.job.get_record_context()
+
+        section = 0
+        start_time = time.time()
+
         logger = client_logger(self.host, self.tag, self.results_dir)
-
         try:
-            boot_id = self.host.get_boot_id()
-            last = self._really_execute_control(timeout, logger,
-                                                client_disconnect_timeout)
-            if self.is_client_job_finished(last):
-                logging.info("Client complete")
-                return
-            elif self.is_client_job_rebooting(last):
-                # TODO(crbug.com/684311) This feature is never used. Validate
-                # and drop this case.
-                m = 'chromeos/autotest/errors/client_test_triggered_reboot'
-                metrics.Counter(m).increment()
-                self.host.job.record("ABORT", None, "reboot",
-                                     'client triggered reboot is unsupported')
-                self.host.job.record("END ABORT", None, None,
-                                     'client triggered reboot is unsupported')
-                return
+            while not timeout or time.time() < start_time + timeout:
+                if timeout:
+                    section_timeout = start_time + timeout - time.time()
+                else:
+                    section_timeout = None
+                boot_id = self.host.get_boot_id()
+                last = self.execute_section(section, section_timeout,
+                                            logger, client_disconnect_timeout)
+                section += 1
+                if self.is_client_job_finished(last):
+                    logging.info("Client complete")
+                    return
+                elif self.is_client_job_rebooting(last):
+                    try:
+                        self._wait_for_reboot(boot_id)
+                    except error.AutotestRunError, e:
+                        self.host.job.record("ABORT", None, "reboot", str(e))
+                        self.host.job.record("END ABORT", None, None, str(e))
+                        raise
+                    continue
 
-            # If a test fails without probable cause we try to bucket it's
-            # failure into one of 2 categories. If we can determine the
-            # current state of the device and it is suspicious, we close the
-            # status lines indicating a failure. If we either cannot
-            # determine the state of the device, or it appears totally
-            # healthy, we give up and abort.
-            try:
-                self._diagnose_dut(boot_id)
-            except AutotestDeviceError as e:
-                # The status lines of the test are pretty much tailed to
-                # our log, with indentation, from the client job on the DUT.
-                # So if the DUT goes down unexpectedly we'll end up with a
-                # malformed status log unless we manually unwind the status
-                # stack. Ideally we would want to write a nice wrapper like
-                # server_job methods run_reboot, run_group but they expect
-                # reboots and we don't.
-                self.host.job.record('FAIL', None, None, str(e))
-                self.host.job.record('END FAIL', None, None)
-                self.host.job.record('END GOOD', None, None)
-                self.host.job.failed_with_device_error = True
-                return
-            except AutotestAbort as e:
-                self.host.job.record('ABORT', None, None, str(e))
-                self.host.job.record('END ABORT', None, None)
+                # If a test fails without probable cause we try to bucket it's
+                # failure into one of 2 categories. If we can determine the
+                # current state of the device and it is suspicious, we close the
+                # status lines indicating a failure. If we either cannot
+                # determine the state of the device, or it appears totally
+                # healthy, we give up and abort.
+                try:
+                    self._diagnose_dut(boot_id)
+                except AutotestDeviceError as e:
+                    # The status lines of the test are pretty much tailed to
+                    # our log, with indentation, from the client job on the DUT.
+                    # So if the DUT goes down unexpectedly we'll end up with a
+                    # malformed status log unless we manually unwind the status
+                    # stack. Ideally we would want to write a nice wrapper like
+                    # server_job methods run_reboot, run_group but they expect
+                    # reboots and we don't.
+                    self.host.job.record('FAIL', None, None, str(e))
+                    self.host.job.record('END FAIL', None, None)
+                    self.host.job.record('END GOOD', None, None)
+                    self.host.job.failed_with_device_error = True
+                    return
+                except AutotestAbort as e:
+                    self.host.job.record('ABORT', None, None, str(e))
+                    self.host.job.record('END ABORT', None, None)
 
-                # give the client machine a chance to recover from a crash
-                self.host.wait_up(
-                    self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
-                logging.debug('Unexpected final status message from '
-                                'client %s: %s', self.host.hostname, last)
-                # The line 'last' may have sensitive phrases, like
-                # 'END GOOD', which breaks the tko parser. So the error
-                # message will exclude it, since it will be recorded to
-                # status.log.
-                msg = ("Aborting - unexpected final status message from "
-                        "client on %s\n") % self.host.hostname
-                raise error.AutotestRunError(msg)
+                    # give the client machine a chance to recover from a crash
+                    self.host.wait_up(
+                        self.host.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
+                    logging.debug('Unexpected final status message from '
+                                  'client %s: %s', self.host.hostname, last)
+                    # The line 'last' may have sensitive phrases, like
+                    # 'END GOOD', which breaks the tko parser. So the error
+                    # message will exclude it, since it will be recorded to
+                    # status.log.
+                    msg = ("Aborting - unexpected final status message from "
+                           "client on %s\n") % self.host.hostname
+                    raise error.AutotestRunError(msg)
         finally:
             logging.debug('Autotest job finishes running. Below is the '
                           'post-processing operations.')
