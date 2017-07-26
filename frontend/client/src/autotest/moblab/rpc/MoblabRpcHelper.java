@@ -258,6 +258,53 @@ public class MoblabRpcHelper {
     });
   }
 
+  /**
+   * add an attribute to a specific dut.
+   * @param dutIpAddress  ipaddress of the device to have the new attribute applied.
+   * @param attributeName the attribute name
+   * @param attributeValue the attribute value to be associated with the name
+   * @param callback callback to execute when the rpc is complete.
+   */
+  public static void setMoblabAttribute(String dutIpAddress, String attributeName,
+      String attributeValue, final MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    params.put("attribute", new JSONString(attributeName));
+    params.put("value", new JSONString(attributeValue));
+    rpcProxy.rpcCall("set_host_attrib", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+  /**
+   * remove an attribute from a specific dut.
+   * @param dutIpAddress  ipaddress of the device to have the new attribute applied.
+   * @param attributeName the attribute name
+   * @param callback callback to execute when the rpc is complete.
+   */
+  public static void removeMoblabAttribute(String dutIpAddress, String attributeName,
+      final  MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    params.put("attribute", new JSONString(attributeName));
+    rpcProxy.rpcCall("delete_host_attrib", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+
   public static void fetchConnectedBoards(
       final MoblabRpcCallbacks.FetchConnectedBoardsCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
