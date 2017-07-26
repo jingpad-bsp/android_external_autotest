@@ -21,6 +21,8 @@ import urllib2
 
 
 import common
+from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -533,6 +535,15 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             # Special task doesn't run parse, so result summary needs to be
             # built here.
             if results and (repair or verify or reset or cleanup or provision):
+                # Throttle the result on the server side.
+                try:
+                    result_utils.execute(
+                            results, control_data.DEFAULT_MAX_RESULT_SIZE_KB)
+                except:
+                    logging.exception(
+                            'Non-critical failure: Failed to throttle results '
+                            'in directory %s.', results)
+                # Build result view and report metrics for result sizes.
                 site_utils.collect_result_sizes(results)
     except:
         exit_code = 1

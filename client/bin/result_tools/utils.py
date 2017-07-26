@@ -30,6 +30,7 @@ The content of the json file looks like:
 import argparse
 import copy
 import fnmatch
+import glob
 import json
 import logging
 import os
@@ -53,6 +54,9 @@ import zip_file_throttler
 # module.
 
 DEFAULT_SUMMARY_FILENAME_FMT = 'dir_summary_%d.json'
+SUMMARY_FILE_PATTERN = 'dir_summary_*.json'
+MERGED_SUMMARY_FILENAME = 'dir_summary_final.json'
+
 # Minimum disk space should be available after saving the summary file.
 MIN_FREE_DISK_BYTES = 10 * 1024 * 1024
 
@@ -200,7 +204,6 @@ def merge_summaries(path):
     for root, _, filenames in os.walk(path):
         for filename in fnmatch.filter(filenames, 'dir_summary_*.json'):
             summary_files.append(os.path.join(root, filename))
-
     summary_files = sorted(summary_files, key=os.path.getmtime)
 
     all_summaries = []
@@ -233,6 +236,10 @@ def merge_summaries(path):
         _delete_missing_entries(merged_summary, last_summary)
     else:
         merged_summary = last_summary
+
+    # Save the merged summary.
+    final_summary = os.path.join(path, MERGED_SUMMARY_FILENAME)
+    result_info.save_summary(merged_summary, final_summary);
 
     return client_collected_bytes, merged_summary
 
@@ -299,9 +306,12 @@ def _throttle_results(summary, max_result_size_KB):
                           (throttler, traceback.format_exc()))
         finally:
             new_size = summary.trimmed_size
-            utils_lib.LOG('Result size was reduced from %s to %s.' %
-                          (utils_lib.get_size_string(old_size),
-                           utils_lib.get_size_string(new_size)))
+            if new_size == old_size:
+                utils_lib.LOG('Result size was not changed: %s.' % old_size)
+            else:
+                utils_lib.LOG('Result size was reduced from %s to %s.' %
+                              (utils_lib.get_size_string(old_size),
+                               utils_lib.get_size_string(new_size)))
 
 
 def _setup_logging():
@@ -328,6 +338,10 @@ def _parse_options():
     parser.add_argument('-m', type=int, dest='max_size_KB', default=0,
                         help='Maximum result size in KB. Set to 0 to disable '
                         'result throttling.')
+    parser.add_argument('-d', action='store_true', dest='delete_summaries',
+                        default=False,
+                        help='-d to delete all result summary files in the '
+                        'given path.')
     return parser.parse_args()
 
 
@@ -378,11 +392,32 @@ def execute(path, max_size_KB):
                 result_info.save_summary(summary, summary_file)
 
 
+def _delete_summaries(path):
+    """Delete all directory summary files in the given directory.
+
+    This is to cleanup the directory so no summary files are left behind to
+    affect later tests.
+
+    @param path: Path to cleanup directory summary.
+    """
+    # Only summary files directly under the `path` needs to be cleaned.
+    summary_files = glob.glob(os.path.join(path, SUMMARY_FILE_PATTERN))
+    for summary in summary_files:
+        try:
+            os.remove(summary)
+        except IOError as e:
+            utils_lib.LOG('Failed to delete summary: %s. Error: %s' %
+                          (summary, e))
+
+
 def main():
     """main script. """
     _setup_logging()
     options = _parse_options()
-    execute(options.path, options.max_size_KB)
+    if options.delete_summaries:
+        _delete_summaries(options.path)
+    else:
+        execute(options.path, options.max_size_KB)
 
 
 if __name__ == '__main__':
