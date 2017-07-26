@@ -7,30 +7,44 @@
 This is a utility to build a summary of the given directory. and save to a json
 file.
 
-Example usage:
-    result_utils.py -p path
+usage: utils.py [-h] [-p PATH] [-m MAX_SIZE_KB]
+
+optional arguments:
+  -p PATH         Path to build directory summary.
+  -m MAX_SIZE_KB  Maximum result size in KB. Set to 0 to disable result
+                  throttling.
 
 The content of the json file looks like:
-{'default': {'/D': {'control': {'/S': 734},
-                      'debug': {'/D': [{'client.0.DEBUG': {'/S': 5698}},
+{'default': {'/D': [{'control': {'/S': 734}},
+                    {'debug': {'/D': [{'client.0.DEBUG': {'/S': 5698}},
                                        {'client.0.ERROR': {'/S': 254}},
                                        {'client.0.INFO': {'/S': 1020}},
                                        {'client.0.WARNING': {'/S': 242}}],
-                                '/S': 7214}
-                      },
+                               '/S': 7214}}
+                      ],
               '/S': 7948
             }
 }
 """
 
 import argparse
+import copy
 import fnmatch
 import json
+import logging
 import os
+import random
+import sys
 import time
+import traceback
 
+import dedupe_file_throttler
+import delete_file_throttler
 import result_info
+import shrink_file_throttler
+import throttler_lib
 import utils_lib
+import zip_file_throttler
 
 
 # Do NOT import autotest_lib modules here. This module can be executed without
@@ -47,6 +61,9 @@ MIN_FREE_DISK_BYTES = 10 * 1024 * 1024
 FILES_TO_IGNORE = set([
     'control.autoserv.state'
 ])
+
+# Smallest file size to shrink to.
+MIN_FILE_SIZE_LIMIT_BYTE = 10 * 1024
 
 def get_unique_dir_summary_file(path):
     """Get a unique file path to save the directory summary json string.
@@ -220,34 +237,152 @@ def merge_summaries(path):
     return client_collected_bytes, merged_summary
 
 
-def main():
-    """main script. """
+def _throttle_results(summary, max_result_size_KB):
+    """Throttle the test results by limiting to the given maximum size.
+
+    @param summary: A ResultInfo object containing result summary.
+    @param max_result_size_KB: Maximum test result size in KB.
+    """
+    if throttler_lib.check_throttle_limit(summary, max_result_size_KB):
+        utils_lib.LOG(
+                'Result size is %s, which is less than %d KB. No need to '
+                'throttle.' %
+                (utils_lib.get_size_string(summary.trimmed_size),
+                 max_result_size_KB))
+        return
+
+    args = {'summary': summary,
+            'max_result_size_KB': max_result_size_KB}
+    # Apply the throttlers in following order.
+    throttlers = [
+            (shrink_file_throttler, copy.copy(args)),
+            (dedupe_file_throttler, copy.copy(args)),
+            (zip_file_throttler, copy.copy(args)),
+            ]
+
+    # Add another zip_file_throttler to compress the files being shrunk.
+    # The threshold is set to half of the DEFAULT_FILE_SIZE_LIMIT_BYTE of
+    # shrink_file_throttler.
+    new_args = copy.copy(args)
+    new_args['file_size_threshold_byte'] = 50 * 1024
+    throttlers.append((zip_file_throttler, new_args))
+
+    # If the above throttlers still can't reduce the result size to be under
+    # max_result_size_KB, try to delete files with various threshold, starting
+    # at 5MB then lowering to 100KB.
+    delete_file_thresholds = [5*1024*1024, 1*1024*1024, 100*1024]
+    # Try to keep tgz files first.
+    exclude_file_patterns = ['.*\.tgz']
+    for threshold in delete_file_thresholds:
+        new_args = copy.copy(args)
+        new_args.update({'file_size_threshold_byte': threshold,
+                         'exclude_file_patterns': exclude_file_patterns})
+        throttlers.append((delete_file_throttler, new_args))
+    # Add one more delete_file_throttler to not skipping tgz files.
+    new_args = copy.copy(args)
+    new_args.update({'file_size_threshold_byte': delete_file_thresholds[-1]})
+    throttlers.append((delete_file_throttler, new_args))
+
+    # Run the throttlers in order until result size is under max_result_size_KB.
+    old_size = summary.trimmed_size
+    for throttler, args in throttlers:
+        try:
+            args_without_summary = copy.copy(args)
+            del args_without_summary['summary']
+            utils_lib.LOG('Applying throttler %s, args: %s' %
+                          (throttler.__name__, args_without_summary))
+            throttler.throttle(**args)
+            if throttler_lib.check_throttle_limit(summary, max_result_size_KB):
+                return
+        except:
+            utils_lib.LOG('Failed to apply throttler %s. Exception: %s' %
+                          (throttler, traceback.format_exc()))
+        finally:
+            new_size = summary.trimmed_size
+            utils_lib.LOG('Result size was reduced from %s to %s.' %
+                          (utils_lib.get_size_string(old_size),
+                           utils_lib.get_size_string(new_size)))
+
+
+def _setup_logging():
+    """Set up logging to direct logs to stdout."""
+    # Direct logging to stdout
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(message)s')
+    handler.setFormatter(formatter)
+    logger.handlers = []
+    logger.addHandler(handler)
+
+
+def _parse_options():
+    """Options for the main script.
+
+    @return: An option object container arg values.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=str, dest='path',
                         help='Path to build directory summary.')
     parser.add_argument('-m', type=int, dest='max_size_KB', default=0,
                         help='Maximum result size in KB. Set to 0 to disable '
                         'result throttling.')
-    options = parser.parse_args()
+    return parser.parse_args()
 
-    path = _preprocess_result_dir_path(options.path)
+
+def execute(path, max_size_KB):
+    """Execute the script with given arguments.
+
+    @param path: Path to build directory summary.
+    @param max_size_KB: Maximum result size in KB.
+    """
+    utils_lib.LOG('Running result_tools/utils on path: %s' % path)
+    if max_size_KB > 0:
+        utils_lib.LOG('Throttle result size to : %s' %
+                      utils_lib.get_size_string(max_size_KB * 1024))
+
+    result_dir = path
+    if not os.path.isdir(result_dir):
+        result_dir = os.path.dirname(result_dir)
     summary = result_info.ResultInfo.build_from_path(path)
-
     summary_json = json.dumps(summary)
-    summary_file = get_unique_dir_summary_file(options.path)
+    summary_file = get_unique_dir_summary_file(result_dir)
 
     # Make sure there is enough free disk to write the file
-    stat = os.statvfs(options.path)
+    stat = os.statvfs(path)
     free_space = stat.f_frsize * stat.f_bavail
     if free_space - len(summary_json) < MIN_FREE_DISK_BYTES:
-        raise IOError('Not enough disk space after saving the summary file. '
-                      'Available free disk: %s bytes. Summary file size: %s '
-                      'bytes.' % (free_space, len(summary_json)))
+        raise utils_lib.NotEnoughDiskError(
+                'Not enough disk space after saving the summary file. '
+                'Available free disk: %s bytes. Summary file size: %s bytes.' %
+                (free_space, len(summary_json)))
 
     with open(summary_file, 'w') as f:
         f.write(summary_json)
     utils_lib.LOG('Directory summary of %s is saved to file %s.' %
-                  (options.path, summary_file))
+                  (path, summary_file))
+
+    if max_size_KB > 0:
+        old_size = summary.trimmed_size
+        throttle_probability = float(max_size_KB * 1024) / old_size
+        if random.random() < throttle_probability:
+            utils_lib.LOG(
+                    'Skip throttling %s: size=%s, throttle_probability=%s' %
+                    (path, old_size, throttle_probability))
+        else:
+            _throttle_results(summary, max_size_KB)
+            if summary.trimmed_size < old_size:
+                # Files are throttled, save the updated summary file.
+                utils_lib.LOG('Overwrite the summary file: %s' % summary_file)
+                result_info.save_summary(summary, summary_file)
+
+
+def main():
+    """main script. """
+    _setup_logging()
+    options = _parse_options()
+    execute(options.path, options.max_size_KB)
 
 
 if __name__ == '__main__':
