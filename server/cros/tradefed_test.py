@@ -202,7 +202,7 @@ def parse_tradefed_v2_result(result, waivers=None):
     @return 5-tuple (tests, passed, failed, notexecuted, waived)
     """
     # Regular expressions for start/end messages of each test-run chunk.
-    abi_re = r'armeabi-v7a|x86'
+    abi_re = r'arm\S*|x86\S*'
     # TODO(kinaba): use the current running module name.
     module_re = r'\S+'
     start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
