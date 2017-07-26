@@ -6,6 +6,8 @@ import random
 import shutil
 import time
 
+import common
+from autotest_lib.client.bin.result_tools import runner as result_tools_runner
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.cros import constants
@@ -22,7 +24,6 @@ except ImportError:
 # 40 a quarter of the time, so that in the long run we are collecting files
 # with this max size.
 _MAX_FILESIZE = 64 * (2 ** 20)  # 64 MiB
-
 
 class _RemoteTempDir(object):
 
@@ -44,6 +45,34 @@ class _RemoteTempDir(object):
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.host.run('rm -rf %s' % (pipes.quote(self.tmpdir),))
+
+
+def _collect_log_file_with_summary(host, source_path, dest_path):
+    """Collects a log file from the remote machine with directory summary.
+
+    @param host: The RemoteHost to collect logs from.
+    @param source_path: The remote path to collect the log file from.
+    @param dest_path: A path (file or directory) to write the copies logs into.
+    """
+    # Build test result directory summary
+    summary_created = result_tools_runner.run_on_client(host, source_path)
+
+    skip_summary_collection = True
+    try:
+        host.get_file(source_path, dest_path, preserve_perm=False)
+        skip_summary_collection = False
+    finally:
+        if summary_created:
+            # If dest_path is a file, use its parent folder to store the
+            # directory summary file.
+            if os.path.isfile(dest_path):
+                dest_path = os.path.dirname(dest_path)
+            # If dest_path doesn't exist, that means get_file failed, there is
+            # no need to collect directory summary file.
+            skip_summary_collection |= not os.path.exists(dest_path)
+            result_tools_runner.collect_last_summary(
+                    host, source_path, dest_path,
+                    skip_summary_collection=skip_summary_collection)
 
 
 def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
@@ -71,7 +100,8 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
     logging.info('Collecting %s...', log_path)
     try:
         file_stats = _get_file_stats(host, log_path)
-        if random.random() > file_stats.collection_probability:
+        if (not result_tools_runner.ENABLE_RESULT_THROTTLING and
+            random.random() > file_stats.collection_probability):
             logging.warning('Collection of %s skipped:'
                             'size=%s, collection_probability=%s',
                             log_path, file_stats.size,
@@ -79,10 +109,10 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
         elif use_tmp:
             _collect_log_file_with_tmpdir(host, log_path, dest_path)
         else:
-            source_path = log_path
-            host.get_file(source_path, dest_path, preserve_perm=False)
-    except Exception, e:
-        logging.warning('Collection of %s failed: %s', log_path, e)
+            _collect_log_file_with_summary(host, log_path, dest_path)
+    except Exception as e:
+        logging.exception('Non-critical failure: collection of %s failed: %s',
+                          log_path, e)
     finally:
         if clean:
             host.run('rm -rf %s' % (pipes.quote(log_path),))
@@ -103,7 +133,8 @@ def _collect_log_file_with_tmpdir(host, log_path, dest_path):
     with _RemoteTempDir(host) as tmpdir:
         host.run('cp -rp %s %s' % (pipes.quote(log_path), pipes.quote(tmpdir)))
         source_path = os.path.join(tmpdir, os.path.basename(log_path))
-        host.get_file(source_path, dest_path, preserve_perm=False)
+
+        _collect_log_file_with_summary(host, source_path, dest_path)
 
 
 def _get_file_stats(host, path):
