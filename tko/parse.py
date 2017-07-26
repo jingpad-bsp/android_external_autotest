@@ -13,6 +13,10 @@ import sys
 import traceback
 
 import common
+from autotest_lib.client.bin.result_tools import utils as result_utils
+from autotest_lib.client.bin.result_tools import utils_lib as result_utils_lib
+from autotest_lib.client.bin.result_tools import runner as result_runner
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
@@ -237,6 +241,46 @@ def _invalidate_original_tests(orig_job_idx, retry_job_idx):
     tko_utils.dprint('DEBUG: Invalidated tests associated to job: ' + msg)
 
 
+def _throttle_result_size(path):
+    """Limit the total size of test results for the given path.
+
+    @param path: Path of the result directory.
+    """
+    if not result_runner.ENABLE_RESULT_THROTTLING:
+        tko_utils.dprint(
+                'Result throttling is not enabled. Skipping throttling %s' %
+                path)
+        return
+
+    max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
+    # Client side test saves the test control to file `control`, while server
+    # side test saves the test control to file `control.srv`
+    for control_file in ['control', 'control.srv']:
+        control = os.path.join(path, control_file)
+        try:
+            max_result_size_KB = control_data.parse_control(
+                    control, raise_warnings=False).max_result_size_KB
+            # Any value different from the default is considered to be the one
+            # set in the test control file.
+            if max_result_size_KB != control_data.DEFAULT_MAX_RESULT_SIZE_KB:
+                break
+        except IOError as e:
+            tko_utils.dprint(
+                    'Failed to access %s. Error: %s\nDetails %s' %
+                    (control, e, traceback.format_exc()))
+        except control_data.ControlVariableException as e:
+            tko_utils.dprint(
+                    'Failed to parse %s. Error: %s\nDetails %s' %
+                    (control, e, traceback.format_exc()))
+
+    try:
+        result_utils.execute(path, max_result_size_KB)
+    except:
+        tko_utils.dprint(
+                'Failed to throttle result size of %s.\nDetails %s' %
+                (path, traceback.format_exc()))
+
+
 def parse_one(db, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
@@ -329,6 +373,9 @@ def parse_one(db, jobname, path, parse_options):
             job.build_version = label_info.get('build_version', None)
             job.board = label_info.get('board', None)
             job.suite = label_info.get('suite', None)
+
+    result_utils_lib.LOG =  tko_utils.dprint
+    _throttle_result_size(path)
 
     # Record test result size to job_keyvals
     result_size_info = site_utils.collect_result_sizes(
