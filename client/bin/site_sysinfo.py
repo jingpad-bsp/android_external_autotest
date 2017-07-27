@@ -57,8 +57,9 @@ class logdir(base_sysinfo.loggable):
 
         @param log_dir: The destination log directory.
         """
-        if os.path.exists(self.dir):
-            parent_dir = os.path.dirname(self.dir)
+        from_dir = os.path.realpath(self.dir)
+        if os.path.exists(from_dir):
+            parent_dir = os.path.dirname(from_dir)
             utils.system("mkdir -p %s%s" % (log_dir, parent_dir))
             # Take source permissions and add ugo+r so files are accessible via
             # archive server.
@@ -66,10 +67,15 @@ class logdir(base_sysinfo.loggable):
             if self.additional_exclude:
                 additional_exclude_str = "--exclude=" + self.additional_exclude
 
-            utils.system("rsync --no-perms --chmod=ugo+r -a --exclude=autoserv*"
-                         " --safe-links"
-                         " %s %s %s%s" % (additional_exclude_str, self.dir,
-                                          log_dir, parent_dir))
+            utils.system(
+                    "rsync --no-perms --chmod=ugo+r -a --safe-links "
+                    "--exclude=%s %s %s %s%s" %
+                    (self._anchored_exclude_pattern(from_dir, '**autoserv*'),
+                     additional_exclude_str, from_dir, log_dir, parent_dir))
+
+
+    def _anchored_exclude_pattern(self, from_dir, pattern):
+        return '/%s/%s' % (os.path.basename(from_dir), pattern)
 
 
 class file_stat(object):
