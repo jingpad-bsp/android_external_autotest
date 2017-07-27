@@ -27,6 +27,7 @@ import sys
 import tempfile
 import time
 import traceback
+import uuid
 import warnings
 
 from autotest_lib.client.bin import sysinfo
@@ -46,6 +47,8 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import afe_store
+from autotest_lib.server.hosts import file_store
+from autotest_lib.server.hosts import shadowing_store
 from autotest_lib.server.hosts import factory as host_factory
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import ssh_multiplex
@@ -82,11 +85,17 @@ RESET_CONTROL_FILE = _control_segment_path('reset')
 GET_NETWORK_STATS_CONTROL_FILE = _control_segment_path('get_network_stats')
 
 
-def get_machine_dicts(machine_names, in_lab, host_attributes=None,
+def get_machine_dicts(machine_names, workdir, in_lab, host_attributes=None,
                       connection_pool=None):
     """Converts a list of machine names to list of dicts.
 
+    TODO(crbug.com/678430): This function temporarily has a side effect of
+    creating files under workdir for backing a FileStore. This side-effect will
+    go away once callers of autoserv start passing in the FileStore.
+
     @param machine_names: A list of machine names.
+    @param workdir: A directory where any on-disk files related to the machines
+            may be created.
     @param in_lab: A boolean indicating whether we're running in lab.
     @param host_attributes: Optional list of host attributes to add for each
             host.
@@ -119,7 +128,7 @@ def get_machine_dicts(machine_names, in_lab, host_attributes=None,
                     % (in_lab, host_attributes))
         else:
             afe_host = _create_afe_host(machine)
-            host_info_store = _create_host_info_store(machine)
+            host_info_store = _create_host_info_store(machine, workdir)
 
         machine_dict_list.append({
                 'hostname' : machine,
@@ -351,7 +360,7 @@ class server_job(base_job.base_job):
         self.parent_job_id = parent_job_id
         self.in_lab = in_lab
         self.machine_dict_list = get_machine_dicts(
-                self.machines, self.in_lab, host_attributes,
+                self.machines, self.resultdir, self.in_lab, host_attributes,
                 self._connection_pool)
 
         # TODO(jrbarnette) The harness attribute is only relevant to
@@ -1602,16 +1611,44 @@ def _create_afe_host(hostname):
     return hosts[0]
 
 
-def _create_host_info_store(hostname):
-    """Create a real or stub afe_store.AfeStore object.
+def _create_host_info_store(hostname, workdir):
+    """Create a CachingHostInfo store backed by the AFE.
 
     @param hostname: Name of the host for which we want the store.
-    @returns: An object of type afe_store.AfeStore
+    @param workdir: A directory where any on-disk files related to the machines
+            may be created.
+    @returns: An object of type shadowing_store.ShadowingStore
     """
-    host_info_store = afe_store.AfeStore(hostname)
+    primary_store = afe_store.AfeStore(hostname)
     try:
-        host_info_store.get(force_refresh=True)
+        primary_store.get(force_refresh=True)
     except host_info.StoreError:
         raise error.AutoservError('Could not obtain HostInfo for hostname %s' %
                                   hostname)
-    return host_info_store
+    backing_file_path = _file_store_unique_file_path(workdir)
+    logging.info('Shadowing AFE store with a FileStore at %s',
+                 backing_file_path)
+    shadow_store = file_store.FileStore(backing_file_path)
+    return shadowing_store.ShadowingStore(primary_store, shadow_store)
+
+
+def _file_store_unique_file_path(workdir):
+    """Returns a unique filepath for the on-disk FileStore.
+
+    Also makes sure that the workdir exists.
+
+    @param: Top level working directory.
+    """
+    store_dir = os.path.join(workdir, 'host_info_store')
+    _make_dirs_if_needed(store_dir)
+    file_path = os.path.join(store_dir, 'store_%s' % uuid.uuid4())
+    return file_path
+
+
+def _make_dirs_if_needed(path):
+    """os.makedirs, but ignores failure because the leaf directory exists"""
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
