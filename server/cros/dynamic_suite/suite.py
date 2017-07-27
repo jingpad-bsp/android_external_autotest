@@ -1248,7 +1248,7 @@ class _BaseSuite(object):
                 jobs = self._jobs
             waiter.add_jobs(jobs)
             for result in waiter.wait_for_results():
-                self._record_result(
+                self._handle_result(
                     result=result,
                     record=record,
                     waiter=waiter,
@@ -1283,9 +1283,9 @@ class _BaseSuite(object):
             return _EmailResultReporter(self)
 
 
-    def _record_result(self, result, record, waiter, reporter):
+    def _handle_result(self, result, record, waiter, reporter):
         """
-        Record a single test job result.
+        Handle a test job result.
 
         @param result: Status instance for job.
         @param record: callable that records job status.
@@ -1294,25 +1294,48 @@ class _BaseSuite(object):
         @param waiter: JobResultsWaiter instance.
         @param reporter: _ResultReporter instance.
         """
-        result.record_all(record)
-        self._remember_job_keyval(result)
-
+        self._record_result(result, record)
         if self._job_retry and self._retry_handler._should_retry(result):
-            test = self._jobs_to_tests[result.id]
-            try:
-                new_job = self._schedule_test(
-                        record=record, test=test, retry_for=result.id)
-            except (error.RPCException, proxy.JSONRPCException) as e:
-                logging.error('Failed to schedule test: %s, Reason: %s',
-                              test.name, e)
-            else:
-                waiter.add_job(new_job)
-
+            self._retry_result(result, record, waiter)
         # TODO (fdeng): If the suite times out before a retry could
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
             reporter.report(result)
+
+
+    def _record_result(self, result, record):
+        """
+        Record a test job result.
+
+        @param result: Status instance for job.
+        @param record: callable that records job status.
+                 prototype:
+                   record(base_job.status_log_entry)
+        """
+        result.record_all(record)
+        self._remember_job_keyval(result)
+
+
+    def _retry_result(self, result, record, waiter):
+        """
+        Retry a test job result.
+
+        @param result: Status instance for job.
+        @param record: callable that records job status.
+                 prototype:
+                   record(base_job.status_log_entry)
+        @param waiter: JobResultsWaiter instance.
+        """
+        test = self._jobs_to_tests[result.id]
+        try:
+            new_job = self._schedule_test(
+                    record=record, test=test, retry_for=result.id)
+        except (error.RPCException, proxy.JSONRPCException) as e:
+            logging.error('Failed to schedule test: %s, Reason: %s',
+                          test.name, e)
+        else:
+            waiter.add_job(new_job)
 
 
     @property
