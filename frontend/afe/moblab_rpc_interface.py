@@ -43,6 +43,8 @@ _GS_SECRET_ACCESS_KEY = 'gs_secret_access_key'
 _RESULT_STORAGE_SERVER = 'results_storage_server'
 _USE_EXISTING_BOTO_FILE = 'use_existing_boto_file'
 _CLOUD_NOTIFICATION_ENABLED = 'cloud_notification_enabled'
+_WIFI_AP_NAME = 'wifi_dut_ap_name'
+_WIFI_AP_PASS = 'wifi_dut_ap_pass'
 
 # Location where dhcp leases are stored.
 _DHCPD_LEASES = '/var/lib/dhcp/dhcpd.leases'
@@ -400,15 +402,20 @@ def validate_cloud_storage_info(cloud_storage_info):
 
 
 @rpc_utils.moblab_only
-def submit_wizard_config_info(cloud_storage_info):
+def submit_wizard_config_info(cloud_storage_info, wifi_info):
     """RPC handler to submit the cloud storage info.
 
     @param cloud_storage_info: The JSON RPC object for cloud storage info.
+    @param wifi_info: The JSON RPC object for DUT wifi info.
     """
     config_update = {}
     config_update['CROS'] = [
         (_IMAGE_STORAGE_SERVER, cloud_storage_info[_IMAGE_STORAGE_SERVER]),
         (_RESULT_STORAGE_SERVER, cloud_storage_info[_RESULT_STORAGE_SERVER])
+    ]
+    config_update['MOBLAB'] = [
+        (_WIFI_AP_NAME, wifi_info.get(_WIFI_AP_NAME)),
+        (_WIFI_AP_PASS, wifi_info.get(_WIFI_AP_PASS)),
     ]
     _update_partial_config(config_update)
 
@@ -819,3 +826,19 @@ def _enable_notification_using_credentials_in_bucket():
         config_update = {}
         config_update['CROS'] = [(_CLOUD_NOTIFICATION_ENABLED, True)]
         _update_partial_config(config_update)
+
+
+@rpc_utils.moblab_only
+def get_dut_wifi_info():
+    """RPC handler to get the dut wifi AP information.
+    """
+    dut_wifi_info = {}
+    value =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME,
+        default=None)
+    if value is not None:
+        dut_wifi_info[_WIFI_AP_NAME] = value
+    value = _CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS,
+        default=None)
+    if value is not None:
+        dut_wifi_info[_WIFI_AP_PASS] = value
+    return rpc_utils.prepare_for_serialization(dut_wifi_info)
