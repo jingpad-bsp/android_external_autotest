@@ -417,6 +417,14 @@ class _SuiteSpec(object):
         )
 
 
+class _ProvisionSuiteSpec(_SuiteSpec):
+
+    def __init__(self, num_required, **kwargs):
+        self.num_required = num_required
+        super(_ProvisionSuiteSpec, self).__init__(**kwargs)
+
+
+
 def run_provision_suite(**dargs):
     """
     Run a provision suite.
@@ -432,7 +440,7 @@ def run_provision_suite(**dargs):
     @raises MalformedDependenciesException: if the dependency_info file for
                                             the required build fails to parse.
     """
-    spec = _SuiteSpec(**dargs)
+    spec = _ProvisionSuiteSpec(**dargs)
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=spec.job.user, debug=False)
@@ -451,6 +459,8 @@ def run_provision_suite(**dargs):
             builds=spec.builds,
             board=spec.board,
             devserver=spec.devserver,
+            num=spec.num,
+            num_required=spec.num_required,
             count=1,
             afe=afe,
             tko=tko,
