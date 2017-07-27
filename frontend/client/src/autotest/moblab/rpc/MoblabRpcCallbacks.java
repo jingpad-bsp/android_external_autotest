@@ -76,4 +76,8 @@ public class MoblabRpcCallbacks {
   public interface RunSuiteCallback {
     public void onRunSuiteComplete();
   }
+
+  public interface FetchWifiInfoCallback {
+    public void onWifiInfoFetched(WifiInfo info);
+  }
 }

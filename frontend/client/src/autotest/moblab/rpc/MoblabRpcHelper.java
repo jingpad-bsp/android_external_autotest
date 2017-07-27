@@ -20,6 +20,7 @@ import java.util.Map;
  */
 public class MoblabRpcHelper {
   public static final String RPC_PARAM_CLOUD_STORAGE_INFO = "cloud_storage_info";
+  public static final String RPC_PARAM_WIFI_INFO = "wifi_info";
 
   private MoblabRpcHelper() {}
 
@@ -130,6 +131,11 @@ public class MoblabRpcHelper {
       params.put(RPC_PARAM_CLOUD_STORAGE_INFO, configDataMap.get(RPC_PARAM_CLOUD_STORAGE_INFO));
     } else {
       params.put(RPC_PARAM_CLOUD_STORAGE_INFO, new JSONObject());
+    }
+    if (configDataMap.containsKey(RPC_PARAM_WIFI_INFO)) {
+      params.put(RPC_PARAM_WIFI_INFO, configDataMap.get(RPC_PARAM_WIFI_INFO));
+    } else {
+      params.put(RPC_PARAM_WIFI_INFO, new JSONObject());
     }
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
     rpcProxy.rpcCall("submit_wizard_config_info", params, new JsonRpcCallback() {
@@ -389,4 +395,22 @@ public class MoblabRpcHelper {
       }
     });
   }
+
+  /**
+   * Fetches the DUT wifi configuration information to use in tests.
+   */
+  public static void fetchWifiInfo(
+      final MoblabRpcCallbacks.FetchWifiInfoCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("get_dut_wifi_info", null, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        WifiInfo info = new WifiInfo();
+        info.fromJson(result.isObject());
+        callback.onWifiInfoFetched(info);
+      }
+    });
+  }
+
+
 }
