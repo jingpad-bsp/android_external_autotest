@@ -26,7 +26,6 @@ from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import utils
 
 try:
     from chromite.lib import metrics
