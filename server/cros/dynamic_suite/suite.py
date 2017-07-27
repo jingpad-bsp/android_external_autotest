@@ -1280,7 +1280,7 @@ class _BaseSuite(object):
                 bug_reporter = reporting.NullReporter()
             return _BugResultReporter(self, bug_reporter, bug_template)
         else:
-            return _EmailResultReporter(self, bug_template)
+            return _EmailResultReporter(self)
 
 
     def _record_result(self, result, record, waiter, reporter):
@@ -1314,59 +1314,6 @@ class _BaseSuite(object):
         if self._should_report(result):
             reporter.report(result)
 
-    def _get_bug_template(self, result, bug_template):
-        """Get BugTemplate for test job.
-
-        @param result: Status instance for job.
-        @param bug_template: A template dictionary specifying the default bug
-                             filing options for failures in this suite.
-        @returns: BugTemplate instance
-        """
-        # reporting modules have dependency on external packages, e.g., httplib2
-        # Such dependency can cause issue to any module tries to import suite.py
-        # without building site-packages first. Since the reporting modules are
-        # only used in this function, move the imports here avoid the
-        # requirement of building site packages to use other functions in this
-        # module.
-        from autotest_lib.server.cros.dynamic_suite import reporting_utils
-
-        # Try to merge with bug template in test control file.
-        template = reporting_utils.BugTemplate(bug_template)
-        try:
-            test_data = self._jobs_to_tests[result.id]
-            return template.finalize_bug_template(
-                    test_data.bug_template)
-        except AttributeError:
-            # Test control file does not have bug template defined.
-            return template.bug_template
-        except reporting_utils.InvalidBugTemplateException as e:
-            logging.error('Merging bug templates failed with '
-                          'error: %s An empty bug template will '
-                          'be used.', e)
-            return {}
-
-
-    def _get_test_bug(self, result):
-        """Get TestBug for the given result.
-
-        @param result: Status instance for a test job.
-        @returns: TestBug instance.
-        """
-        # reporting modules have dependency on external packages, e.g., httplib2
-        # Such dependency can cause issue to any module tries to import suite.py
-        # without building site-packages first. Since the reporting modules are
-        # only used in this function, move the imports here avoid the
-        # requirement of building site packages to use other functions in this
-        # module.
-        from autotest_lib.server.cros.dynamic_suite import reporting
-
-        job_views = self._tko.run('get_detailed_test_views',
-                                  afe_job_id=result.id)
-        return reporting.TestBug(self._job_creator.cros_build,
-                utils.get_chrome_version(job_views),
-                self._tag,
-                result)
-
 
     @property
     def _should_file_bugs(self):
@@ -1377,31 +1324,6 @@ class _BaseSuite(object):
         # File bug when failure is one of the _FILE_BUG_SUITES,
         # otherwise send an email to the owner anc cc.
         return self._tag in _FILE_BUG_SUITES
-
-
-    def _file_bug(self, result, bug_reporter, bug_template):
-        """File a bug for a test job result.
-
-        @param result: Status instance for job.
-        @param bug_reporter: Reporter instance for reporting bugs.
-        @param bug_template: A template dictionary specifying the default bug
-                             filing options for failures in this suite.
-        """
-        bug_id, bug_count = bug_reporter.report(
-                self._get_test_bug(result),
-                self._get_bug_template(result, bug_template))
-
-        # We use keyvals to communicate bugs filed with run_suite.
-        if bug_id is not None:
-            bug_keyvals = tools.create_bug_keyvals(
-                    result.id, result.test_name,
-                    (bug_id, bug_count))
-            try:
-                utils.write_keyval(self._results_dir,
-                                   bug_keyvals)
-            except ValueError:
-                logging.error('Unable to log bug keyval for:%s',
-                              result.test_name)
 
 
     def abort(self):
@@ -1816,7 +1738,68 @@ class MemoryResultReporter(_ResultReporter):
         self.results.append(result)
 
 
-class _BugResultReporter(_ResultReporter):
+class _TestBugReporter(_ResultReporter):
+    """Base class that implements making test bugs."""
+    # pylint: disable=abstract-method
+
+    def __init__(self, suite, bug_template):
+        self._suite = suite
+        self._bug_template = bug_template
+
+    def _get_test_bug(self, result):
+        """Get TestBug for the given result.
+
+        @param result: Status instance for a test job.
+        @returns: TestBug instance.
+        """
+        # reporting modules have dependency on external packages, e.g., httplib2
+        # Such dependency can cause issue to any module tries to import suite.py
+        # without building site-packages first. Since the reporting modules are
+        # only used in this function, move the imports here avoid the
+        # requirement of building site packages to use other functions in this
+        # module.
+        from autotest_lib.server.cros.dynamic_suite import reporting
+
+        job_views = self._suite._tko.run('get_detailed_test_views',
+                                         afe_job_id=result.id)
+        return reporting.TestBug(self._suite._job_creator.cros_build,
+                utils.get_chrome_version(job_views),
+                self._suite._tag,
+                result)
+
+    def _get_bug_template(self, result):
+        """Get BugTemplate for test job.
+
+        @param result: Status instance for job.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
+        @returns: BugTemplate instance
+        """
+        # reporting modules have dependency on external packages, e.g., httplib2
+        # Such dependency can cause issue to any module tries to import suite.py
+        # without building site-packages first. Since the reporting modules are
+        # only used in this function, move the imports here avoid the
+        # requirement of building site packages to use other functions in this
+        # module.
+        from autotest_lib.server.cros.dynamic_suite import reporting_utils
+
+        # Try to merge with bug template in test control file.
+        template = reporting_utils.BugTemplate(self._bug_template)
+        try:
+            test_data = self._suite._jobs_to_tests[result.id]
+            return template.finalize_bug_template(
+                    test_data.bug_template)
+        except AttributeError:
+            # Test control file does not have bug template defined.
+            return template.bug_template
+        except reporting_utils.InvalidBugTemplateException as e:
+            logging.error('Merging bug templates failed with '
+                          'error: %s An empty bug template will '
+                          'be used.', e)
+            return {}
+
+
+class _BugResultReporter(_TestBugReporter):
     """
     Report test results as bugs.
     """
@@ -1830,12 +1813,25 @@ class _BugResultReporter(_ResultReporter):
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
         """
-        self._suite = suite
+        super(_BugResultReporter, self).__init__(suite, bug_template)
         self._bug_reporter = bug_reporter
-        self._bug_template = bug_template
 
     def report(self, result):
-        self._suite._file_bug(result, self._bug_reporter, self._bug_template)
+        bug_id, bug_count = self._bug_reporter.report(
+                self._get_test_bug(result),
+                self._get_bug_template(result))
+
+        # We use keyvals to communicate bugs filed with run_suite.
+        if bug_id is not None:
+            bug_keyvals = tools.create_bug_keyvals(
+                    result.id, result.test_name,
+                    (bug_id, bug_count))
+            try:
+                utils.write_keyval(self._suite._results_dir,
+                                   bug_keyvals)
+            except ValueError:
+                logging.error('Unable to log bug keyval for:%s',
+                              result.test_name)
 
 
 class _EmailResultReporter(_ResultReporter):
@@ -1843,13 +1839,10 @@ class _EmailResultReporter(_ResultReporter):
     Report test results as email.
 
     @param suite: _BaseSuite instance
-    @param bug_template: A template dictionary specifying the default bug
-                         filing options for failures in this suite.
     """
 
-    def __init__(self, suite, bug_template):
+    def __init__(self, suite):
         self._suite = suite
-        self._bug_template = bug_template
 
     def report(self, result):
         # reporting modules have dependency on external
@@ -1863,4 +1856,4 @@ class _EmailResultReporter(_ResultReporter):
 
         reporting.send_email(
                 self._suite._get_test_bug(result),
-                self._suite._get_bug_template(result, self._bug_template))
+                self._suite._get_bug_template(result))
