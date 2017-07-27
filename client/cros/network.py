@@ -207,7 +207,11 @@ def CheckInterfaceForDestination(host, expected_interface):
 
     routes = routing.NetworkRoutes()
     for address in server_addresses:
-        interface = routes.getRouteFor(address).interface
+        route = routes.getRouteFor(address)
+        if not route:
+            raise error.TestFail('No route found for %s.' % address)
+
+        interface = route.interface
         logging.info('interface for %s: %s', address, interface)
         if interface != expected_interface:
             raise error.TestFail('Target server %s uses interface %s'
