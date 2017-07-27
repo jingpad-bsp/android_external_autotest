@@ -71,6 +71,7 @@ REQUIRES_HTTPLIB2 = set((
         ))
 
 REQUIRES_PROTOBUFS = set((
+        'cloud_console_client_unittest.py',
         'job_serializer_unittest.py',
         ))
 
