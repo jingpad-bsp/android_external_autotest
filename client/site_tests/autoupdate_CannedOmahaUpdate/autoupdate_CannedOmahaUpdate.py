@@ -6,8 +6,9 @@ import BaseHTTPServer
 import thread
 import urlparse
 
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 def _split_url(url):
     """Splits a URL into the URL base and path."""
