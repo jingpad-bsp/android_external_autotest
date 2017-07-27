@@ -1,4 +1,3 @@
-#pylint: disable-msg=W0611
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -156,7 +155,6 @@ class TestBug(Bug):
                     'build artifacts: %(build_artifacts)s.\n'
                     'results log: %(results_log)s.\n'
                     'status log: %(status_log)s.\n'
-                    'buildbot stages: %(buildbot_stages)s.\n'
                     'job link: %(job)s.\n\n'
                     'You may want to check the test history on wmatrix: '
                     '%(test_history_url)s\n'
@@ -209,7 +207,6 @@ class TestBug(Bug):
         links = collections.namedtuple('links', ('results,'
                                                  'status_log,'
                                                  'artifacts,'
-                                                 'buildbot,'
                                                  'job,'
                                                  'test_history_url,'
                                                  'retry_url'))
@@ -218,7 +215,6 @@ class TestBug(Bug):
                      reporting_utils.link_status_log(
                          self.job_id, self.result_owner, self.hostname),
                      reporting_utils.link_build_artifacts(self.build),
-                     reporting_utils.link_buildbot_stages(self.build),
                      reporting_utils.link_job(self.job_id),
                      reporting_utils.link_test_history(self.name),
                      reporting_utils.link_retry_url(self.name))
