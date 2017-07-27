@@ -35,7 +35,11 @@ from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import job_directories
-from autotest_lib.site_utils import cloud_console_client
+# For unittest, the cloud_console.proto is not compiled yet.
+try:
+    from autotest_lib.site_utils import cloud_console_client
+except ImportError:
+    cloud_console_client = None
 from autotest_lib.tko import models
 from autotest_lib.utils import labellib
 from autotest_lib.utils import gslib
@@ -801,7 +805,8 @@ class Offloader(object):
             logging.info(
                     'Offloader multiprocessing is set to:%r', multiprocessing)
             console_client = None
-            if cloud_console_client.is_cloud_notification_enabled():
+            if (cloud_console_client and
+                    cloud_console_client.is_cloud_notification_enabled()):
                 console_client = cloud_console_client.PubSubBasedClient()
             self._gs_offloader = GSOffloader(
                     self.gs_uri, multiprocessing, self._delete_age_limit,
