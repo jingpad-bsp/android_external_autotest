@@ -38,6 +38,33 @@ _CLEANUP_DIR_SUMMARY_TIMEOUT = 10
 # Default autotest directory on host
 DEFAULT_AUTOTEST_DIR = '/usr/local/autotest'
 
+# File patterns to be excluded from deploying to the dut.
+_EXCLUDES = ['*.pyc', '*unittest.py', 'common.py', '__init__.py', 'runner.py',
+             'view.py']
+
+# A set of hostnames that have result tools already deployed.
+_deployed_duts = set()
+
+def _deploy_result_tools(host):
+    """Send result tools to the dut.
+
+    @param host: Host to run the result tools.
+    """
+    logging.debug('Deploy result utilities to %s', host.hostname)
+    with metrics.SecondsTimer(
+            'chromeos/autotest/job/send_result_tools_duration',
+            fields={'dut_host_name': host.hostname}):
+        try:
+            result_tools_dir = os.path.dirname(__file__)
+            host.send_file(result_tools_dir, DEFAULT_AUTOTEST_DIR,
+                           excludes = _EXCLUDES)
+        except error.AutotestHostRunError:
+            logging.debug('Failed to deploy result tools using `excludes`. Try '
+                          'again without `excludes`.')
+            host.send_file(result_tools_dir, DEFAULT_AUTOTEST_DIR)
+        _deployed_duts.add(host.hostname)
+
+
 def run_on_client(host, client_results_dir, cleanup_only=False):
     """Run result utils on the given host.
 
@@ -53,13 +80,17 @@ def run_on_client(host, client_results_dir, cleanup_only=False):
             'chromeos/autotest/job/dir_summary_collection_duration',
             fields={'dut_host_name': host.hostname}):
         try:
-            autodir = host.autodir or DEFAULT_AUTOTEST_DIR
-            logging.debug('Deploy result utilities to %s', host.hostname)
-            host.send_file(os.path.dirname(__file__), autodir)
+            if host.hostname not in _deployed_duts:
+                _deploy_result_tools(host)
+            else:
+                logging.debug('result tools are already deployed to %s.',
+                              host.hostname)
+
             if cleanup_only:
                 logging.debug('Cleaning up directory summary in %s',
                               client_results_dir)
-                cmd = _CLEANUP_DIR_SUMMARY_CMD % (autodir, client_results_dir)
+                cmd = (_CLEANUP_DIR_SUMMARY_CMD %
+                       (DEFAULT_AUTOTEST_DIR, client_results_dir))
                 host.run(cmd, ignore_status=False,
                          timeout=_CLEANUP_DIR_SUMMARY_TIMEOUT)
             else:
@@ -75,7 +106,8 @@ def run_on_client(host, client_results_dir, cleanup_only=False):
                         logging.warn('host object does not have job attribute, '
                                      'skipping result throttling.')
                 cmd = (_BUILD_DIR_SUMMARY_CMD %
-                       (autodir, client_results_dir, throttle_option))
+                       (DEFAULT_AUTOTEST_DIR, client_results_dir,
+                        throttle_option))
                 host.run(cmd, ignore_status=False,
                          timeout=_BUILD_DIR_SUMMARY_TIMEOUT)
                 success = True

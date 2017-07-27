@@ -142,8 +142,10 @@ class ResultInfo(dict):
         self._name = name
 
         # Dictionary to store details of the given path is set to a keyval of
-        # the wrapper class.
-        self[self.name] = {}
+        # the wrapper class. Save the dictionary to an attribute for faster
+        # access.
+        self._details = {}
+        self[self.name] = self._details
 
         # rstrip is to remove / when name is ROOT_DIR ('').
         self._path = os.path.join(parent_dir, self.name).rstrip(os.sep)
@@ -181,8 +183,10 @@ class ResultInfo(dict):
         self._name = original_info.keys()[0]
 
         # Dictionary to store details of the given path is set to a keyval of
-        # the wrapper class.
-        self[self.name] = {}
+        # the wrapper class. Save the dictionary to an attribute for faster
+        # access.
+        self._details = {}
+        self[self.name] = self._details
 
         # rstrip is to remove / when name is ROOT_DIR ('').
         self._path = os.path.join(parent_dir, self.name).rstrip(os.sep)
@@ -203,6 +207,13 @@ class ResultInfo(dict):
             for sub_file in original_info[self.name][utils_lib.DIRS]:
                 self.add_file(None, sub_file)
 
+    def update_dir_original_size(self):
+        """Update all directories' original size information.
+        """
+        for f in [f for f in self.files if f.is_dir]:
+            f.update_dir_original_size()
+        self.update_original_size(skip_parent_update=True)
+
     @staticmethod
     def build_from_path(parent_dir,
                         name=utils_lib.ROOT_DIR,
@@ -222,6 +233,7 @@ class ResultInfo(dict):
 
         @return: A ResultInfo instance containing the directory summary.
         """
+        is_top_level = top_dir is None
         top_dir = top_dir or parent_dir
         all_dirs = all_dirs or set()
 
@@ -260,7 +272,10 @@ class ResultInfo(dict):
                         parent_result_info=dir_info,
                         top_dir=top_dir,
                         all_dirs=all_dirs))
-                dir_info.update_sizes()
+
+        # Update all directory's original size at the end of the tree building.
+        if is_top_level:
+            dir_info.update_dir_original_size()
 
         return dir_info
 
@@ -270,7 +285,7 @@ class ResultInfo(dict):
 
         @return: A dictionary of size and sub-directory information.
         """
-        return self[self._name]
+        return self._details
 
     @property
     def is_dir(self):
@@ -463,9 +478,12 @@ class ResultInfo(dict):
         self._previous_collected_size = collected_size
         self.collected_size = collected_size
 
-    def update_original_size(self):
+    def update_original_size(self, skip_parent_update=False):
         """Update the original size of the result and trigger its parent to
         update.
+
+        @param skip_parent_update: True to skip updating parent directory's
+                original size. Default is set to False.
         """
         if self.is_dir:
             self.original_size = sum([
@@ -475,7 +493,7 @@ class ResultInfo(dict):
             self.orginal_size = self.size
 
         # Update the size of parent result infos.
-        if self._parent_result_info is not None:
+        if not skip_parent_update and self._parent_result_info is not None:
             self._parent_result_info.update_original_size()
 
     def update_trimmed_size(self):
