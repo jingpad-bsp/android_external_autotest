@@ -28,7 +28,7 @@ import logging
 import os
 import time
 
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import profilers
 from autotest_lib.server import test
