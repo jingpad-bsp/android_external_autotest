@@ -39,7 +39,7 @@ public class SuiteRunnerView extends TabView {
   private HorizontalPanel thirdOptionalLine;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq", "bvt-inline",
-      "cts", "cts_N", "gts", "hardware_storagequal", "hardware_memoryqual",
+      "cts", "cts_N", "cts_N_preconditions", "gts", "hardware_storagequal", "hardware_memoryqual",
       "faft_setup", "faft_ec", "faft_bios");
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
@@ -216,6 +216,7 @@ public class SuiteRunnerView extends TabView {
 
     if (listIndex  == suiteNames.indexOf("gts") ||
       listIndex == suiteNames.indexOf("cts") ||
+      listIndex == suiteNames.indexOf("cts_N_preconditions") ||
       listIndex == suiteNames.indexOf("cts_N")) {
       thirdOptionalLine.setVisible(true);
     } else {
