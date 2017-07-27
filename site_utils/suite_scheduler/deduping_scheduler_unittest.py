@@ -17,7 +17,6 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import frontend, site_utils
-from autotest_lib.server.cros.dynamic_suite import reporting
 
 
 class DedupingSchedulerTest(mox.MoxTestBase):
@@ -274,10 +273,6 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                             None if _create_bug_report is supposed to
                             fail.
         """
-        self.mox.StubOutWithMock(reporting.Reporter, '__init__')
-        self.mox.StubOutWithMock(reporting.Reporter, '_create_bug_report')
-        self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
-        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
         self.scheduler._file_bug = True
         # Lab is UP!
@@ -307,35 +302,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      job_retry=False,
                      delay_minutes=0,
                      run_prod_code=False,
-                     min_rpc_timeout=mox.IgnoreArg()).AndRaise(exception)
-        reporting.Reporter.__init__()
-        reporting.Reporter._check_tracker().AndReturn(True)
-        (reporting.Reporter._find_issue_by_marker(mox.IgnoreArg())
-         .AndReturn(None))
-        reporting.Reporter._create_bug_report(
-                mox.IgnoreArg(), {}, []).AndReturn(mock_bug_id)
-
-
-    def testScheduleReportsBugSuccess(self):
-        """Test that the scheduler file a bug."""
-        self._SetupScheduleSuiteMocks(1158)
-        self.mox.ReplayAll()
-        self.assertFalse(self.scheduler.ScheduleSuite(
-                    self._SUITE, self._BOARD, self._BUILD, self._POOL,
-                    self._NUM, self._PRIORITY, self._TIMEOUT))
-        self.mox.VerifyAll()
-
-
-    def testScheduleReportsBugFalse(self):
-        """Test that the scheduler failed to file a bug."""
-        self._SetupScheduleSuiteMocks(None)
-        self.mox.ReplayAll()
-        self.assertRaises(
-                deduping_scheduler.ScheduleException,
-                self.scheduler.ScheduleSuite,
-                self._SUITE, self._BOARD, self._BUILD, self._POOL,
-                self._NUM, self._PRIORITY, self._TIMEOUT)
-        self.mox.VerifyAll()
+                     min_rpc_timeout=mox.IgnoreArg()
+                     ).AndRaise(exception).AndReturn(None)
 
 
 if __name__ == '__main__':
