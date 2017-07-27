@@ -1108,22 +1108,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.run('cat %s' % client_constants.UPDATE_ENGINE_LOG)
 
 
-    def _get_board_from_afe(self):
-        """Retrieve this host's board from its labels stored locally.
-
-        Looks for a host label of the form "board:<board>", and
-        returns the "<board>" part of the label.  `None` is returned
-        if there is not a single, unique label matching the pattern.
-
-        @returns board from label, or `None`.
-        """
-        board = afe_utils.get_board(self)
-        if board is None:
-            raise error.AutoservError('DUT cannot be repaired, '
-                                      'there is no board attribute.')
-        return board
-
-
     def servo_install(self, image_url=None, usb_boot_timeout=USB_BOOT_TIMEOUT,
                       install_timeout=INSTALL_TIMEOUT):
         """
