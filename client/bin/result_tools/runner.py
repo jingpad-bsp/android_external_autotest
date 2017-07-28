@@ -53,15 +53,17 @@ def _deploy_result_tools(host):
     logging.debug('Deploy result utilities to %s', host.hostname)
     with metrics.SecondsTimer(
             'chromeos/autotest/job/send_result_tools_duration',
-            fields={'dut_host_name': host.hostname}):
+            fields={'dut_host_name': host.hostname}) as fields:
         try:
             result_tools_dir = os.path.dirname(__file__)
             host.send_file(result_tools_dir, DEFAULT_AUTOTEST_DIR,
                            excludes = _EXCLUDES)
+            fields['success'] = True
         except error.AutotestHostRunError:
             logging.debug('Failed to deploy result tools using `excludes`. Try '
                           'again without `excludes`.')
             host.send_file(result_tools_dir, DEFAULT_AUTOTEST_DIR)
+            fields['success'] = False
         _deployed_duts.add(host.hostname)
 
 
@@ -78,7 +80,7 @@ def run_on_client(host, client_results_dir, cleanup_only=False):
     success = False
     with metrics.SecondsTimer(
             'chromeos/autotest/job/dir_summary_collection_duration',
-            fields={'dut_host_name': host.hostname}):
+            fields={'dut_host_name': host.hostname}) as fields:
         try:
             if host.hostname not in _deployed_duts:
                 _deploy_result_tools(host)
@@ -111,11 +113,13 @@ def run_on_client(host, client_results_dir, cleanup_only=False):
                 host.run(cmd, ignore_status=False,
                          timeout=_BUILD_DIR_SUMMARY_TIMEOUT)
                 success = True
+            fields['success'] = True
         except error.AutoservRunError:
             action = 'cleanup' if cleanup_only else 'create'
             logging.exception(
                     'Non-critical failure: Failed to %s directory summary for '
                     '%s.', action, client_results_dir)
+            fields['success'] = False
 
     return success
 
