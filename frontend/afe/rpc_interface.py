@@ -1883,6 +1883,7 @@ def create_suite_job(
         'timeout_mins': timeout_mins,
         'devserver_url': ds.url(),
         'priority': priority,
+        'suite_args' : suite_args,
         'wait_for_results': wait_for_results,
         'job_retry': job_retry,
         'max_retries': max_retries,
