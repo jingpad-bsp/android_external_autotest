@@ -27,7 +27,6 @@ from autotest_lib.client.common_lib import error
 
 class base_test(object):
     preserve_srcdir = False
-    network_destabilizing = False
 
     def __init__(self, job, bindir, outputdir):
         self.job = job
@@ -550,9 +549,6 @@ class base_test(object):
         self.job.logging.tee_redirect_debug_dir(self.debugdir,
                                                 log_name=self.tagged_testname)
         try:
-            if self.network_destabilizing:
-                self.job.disable_warnings("NETWORK")
-
             # write out the test attributes into a keyval
             dargs   = dargs.copy()
             run_cleanup = dargs.pop('run_cleanup', self.job.run_test_cleanup)
@@ -646,19 +642,11 @@ class base_test(object):
                 finally:
                     self.job.logging.restore()
         except error.AutotestError:
-            if self.network_destabilizing:
-                self.job.enable_warnings("NETWORK")
             # Pass already-categorized errors on up.
             raise
         except Exception, e:
-            if self.network_destabilizing:
-                self.job.enable_warnings("NETWORK")
             # Anything else is an ERROR in our own code, not execute().
             raise error.UnhandledTestError(e)
-        else:
-            if self.network_destabilizing:
-                self.job.enable_warnings("NETWORK")
-
 
     def runsubtest(self, url, *args, **dargs):
         """
