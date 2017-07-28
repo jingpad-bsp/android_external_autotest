@@ -348,6 +348,18 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
     def log_test_keyvals(self, test_sysinfodir):
         keyval = super(site_sysinfo, self).log_test_keyvals(test_sysinfodir)
 
+        lsb_lines = utils.system_output(
+            "cat /etc/lsb-release",
+            ignore_status=True).splitlines()
+        lsb_dict = dict(item.split("=") for item in lsb_lines)
+
+        for lsb_key in lsb_dict.keys():
+            # Special handling for build number
+            if lsb_key == "CHROMEOS_RELEASE_DESCRIPTION":
+                keyval["CHROMEOS_BUILD"] = (
+                    lsb_dict[lsb_key].rstrip(")").split(" ")[3])
+            keyval[lsb_key] = lsb_dict[lsb_key]
+
         # Get the hwid (hardware ID), if applicable.
         try:
             keyval["hwid"] = utils.system_output('crossystem hwid')
