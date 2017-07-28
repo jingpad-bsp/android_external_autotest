@@ -829,8 +829,7 @@ class AbstractSSHHost(remote.RemoteHost):
                 error.AutoservSSHTimeout) as e:
             logging.exception(
                     'Non-critical failure: Failed to collect and throttle '
-                    'results at %s from host %s: %s', remote_src_dir,
-                    self.hostname)
+                    'results at %s from host %s', remote_src_dir, self.hostname)
 
         try:
             self.get_file(remote_src_dir, local_dest_dir, safe_symlinks=True)
