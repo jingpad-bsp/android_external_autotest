@@ -1,26 +1,9 @@
 import copy
-import json
-import logging
 import re
 
 import common
 
-from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import global_config
-
-
-# Try importing the essential bug reporting libraries. Chromite and gdata_lib
-# are useless unless they can import gdata too.
-try:
-    __import__('chromite')
-    __import__('gdata')
-except ImportError, e:
-    fundamental_libs = False
-    logging.debug('Will not be able to generate link '
-                  'to the buildbot page when filing bugs. %s', e)
-else:
-    from chromite.lib import cros_build_lib, gs
-    fundamental_libs = True
 
 
 # Number of times to retry if a gs command fails. Defaults to 10,
@@ -277,57 +260,6 @@ def link_status_log(job_id, result_owner, hostname):
     base_results = _base_results_log(job_id, result_owner, hostname)
     if base_results:
         return '%s/%s' % (base_results, 'status.log')
-    return 'NA'
-
-
-def _get_metadata_dict(build):
-    """
-    Get a dictionary of metadata related to this failure.
-
-    Metadata.json is created in the HWTest Archiving stage, if this file
-    isn't found the call to Cat will timeout after the number of retries
-    specified in the GSContext object. If metadata.json exists we parse
-    a json string of it's contents into a dictionary, which we return.
-
-    @param build: A string, e.g. stout32-release/R30-4433.0.0
-
-    @returns: A dictionary with the contents of metadata.json.
-
-    """
-    if not fundamental_libs:
-        return
-    try:
-        tempdir = autotemp.tempdir()
-        gs_context = gs.GSContext(retries=_GS_RETRIES,
-                                  cache_dir=tempdir.name)
-        gs_cmd = '%s%s%s/metadata.json' % (_gs_file_prefix,
-                                           _chromeos_image_archive,
-                                           build)
-        return json.loads(gs_context.Cat(gs_cmd))
-    except (cros_build_lib.RunCommandError, gs.GSContextException) as e:
-        logging.debug(e)
-    finally:
-        tempdir.clean()
-
-
-def link_buildbot_stages(build):
-    """
-    Link to the buildbot page associated with this run of HWTests.
-
-    @param build: A string, e.g. stout32-release/R30-4433.0.0
-
-    @return: A link to the buildbot stages page, or 'NA' if we cannot glean
-             enough information from metadata.json (or it doesn't exist).
-    """
-    metadata = _get_metadata_dict(build)
-    if (metadata and
-        metadata.get('builder-name') and
-        metadata.get('build-number')):
-
-        return ('%s%s/builds/%s' %
-                    (_buildbot_builders,
-                     metadata.get('builder-name'),
-                     metadata.get('build-number'))).replace(' ', '%20')
     return 'NA'
 
 
