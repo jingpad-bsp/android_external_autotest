@@ -36,7 +36,6 @@ import datetime
 import logging
 import os
 import sys
-import warnings
 
 from django.db import connection as db_connection
 from django.db import transaction
@@ -1859,16 +1858,6 @@ def create_suite_job(
     if is_cloning:
         control_file = tools.remove_injection(control_file)
 
-    if isinstance(suite_args, str):
-        # TODO(ayatane): suite_args used to be passed as a string and
-        # evaluated later.
-        suite_args = ast.literal_eval(suite_args)
-    if not isinstance(suite_args, dict):
-        if suite_args is not None:
-            warnings.warn('suite_args should be None or dict, passed as %r'
-                          % (suite_args,))
-        suite_args = dict()
-
     inject_dict = {
         'board': board,
         # `build` is needed for suites like AU to stage image inside suite
@@ -1895,7 +1884,6 @@ def create_suite_job(
         'job_keyvals': job_keyvals,
         'test_args': test_args,
     }
-    inject_dict.update(suite_args)
     control_file = tools.inject_vars(inject_dict, control_file)
 
     return rpc_utils.create_job_common(name,
