@@ -318,8 +318,9 @@ def make_parser():
                         'that has a higher priority but already got minimum '
                         'machines it needs. Default to 0.')
     parser.add_argument("--suite_args", dest="suite_args",
+                        type=ast.literal_eval,
                         default=None, action="store",
-                        help="Argument string for suite control file.")
+                        help="A dict of args passed to the suite control file.")
     parser.add_argument('--offload_failures_only',
                         dest='offload_failures_only', type=bool_str,
                         action='store', default=False,
@@ -439,7 +440,7 @@ def change_options_for_suite_attr(options):
     # if suite_args is not None, store the values in 'other_args' of the dict
     args_dict = {}
     args_dict['attr_filter'] = attr_filter_val
-    options.suite_args = str(args_dict)
+    options.suite_args = args_dict
     options.name = 'suite_attr_wrapper'
 
     return options
@@ -490,13 +491,13 @@ def get_original_suite_name(suite_name, suite_args):
     @param suite_name: the name of the suite launched in afe. When it is
                        suite_attr_wrapper, the suite that actually running is
                        specified in the suite_args.
-    @param suite_args: the parsed option which contains the original suite name.
+    @param suite_args: dict of suite args from argument parsing.
 
     @returns: the original suite name.
 
     """
     if suite_name == 'suite_attr_wrapper':
-        attrs = ast.literal_eval(suite_args).get('attr_filter', '')
+        attrs = suite_args.get('attr_filter', '')
         suite_list = ([x[6:] for x in re.split('[() ]', attrs)
                        if x and x.startswith('suite:')])
         return suite_list[0] if suite_list else suite_name
