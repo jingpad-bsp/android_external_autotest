@@ -36,6 +36,9 @@ class CFMFacadeRemoteAdapter(object):
         """Restart chrome for CFM."""
         self._cfm_proxy.restart_chrome_for_cfm()
 
+    def reboot_device_with_chrome_api(self):
+        """Reboot device using Chrome runtime API."""
+        self._cfm_proxy.reboot_device_with_chrome_api()
 
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
