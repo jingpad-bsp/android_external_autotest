@@ -976,14 +976,104 @@ class ImagingLibraryPackage(ExternalPackage):
 
 class AstroidPackage(ExternalPackage):
     """astroid package."""
-    version = '1.0.0'
+    version = '1.5.3'
     url_filename = 'astroid-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=e74430dfbbe09cd18ef75bd76f95425a
-    urls = ('https://pypi.python.org/packages/15/ef/'
-            '1c01161c40ce08451254125935c5bca85b08913e610a4708760ee1432fa8/%s' %
+    #md5=6f65e4ea8290ec032320460905afb828
+    urls = ('https://pypi.python.org/packages/d7/b7/'
+            '112288f75293d6f12b1e41bac1e822fd0f29b0f88e2c4378cdd295b9d838/%s' %
             (url_filename),)
-    hex_sum = '2ebba76d115cb8a2d84d8777d8535ddac86daaa6'
+    hex_sum = 'e654225ab5bd2788e5e246b156910990bf33cde6'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class LazyObjectProxyPackage(ExternalPackage):
+    """lazy-object-proxy package (dependency for astroid)."""
+    version = '1.3.1'
+    url_filename = 'lazy-object-proxy-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=e128152b76eb5b9ba759504936139fd0
+    urls = ('https://pypi.python.org/packages/55/08/'
+            '23c0753599bdec1aec273e322f277c4e875150325f565017f6280549f554/%s' %
+            (url_filename),)
+    hex_sum = '984828d8f672986ca926373986214d7057b772fb'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class SingleDispatchPackage(ExternalPackage):
+    """singledispatch package (dependency for astroid)."""
+    version = '3.4.0.3'
+    url_filename = 'singledispatch-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=af2fc6a3d6cc5a02d0bf54d909785fcb
+    urls = ('https://pypi.python.org/packages/d9/e9/'
+            '513ad8dc17210db12cb14f2d4d190d618fb87dd38814203ea71c87ba5b68/%s' %
+            (url_filename),)
+    hex_sum = 'f93241b06754a612af8bb7aa208c4d1805637022'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class Enum34Package(ExternalPackage):
+    """enum34 package (dependency for astroid)."""
+    version = '1.1.6'
+    url_filename = 'enum34-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=5f13a0841a61f7fc295c514490d120d0
+    urls = ('https://pypi.python.org/packages/bf/3e/'
+            '31d502c25302814a7c2f1d3959d2a3b3f78e509002ba91aea64993936876/%s' %
+            (url_filename),)
+    hex_sum = '014ef5878333ff91099893d615192c8cd0b1525a'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class WraptPackage(ExternalPackage):
+    """wrapt package (dependency for astroid)."""
+    version = '1.10.10'
+    url_filename = 'wrapt-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=97365e906afa8b431f266866ec4e2e18
+    urls = ('https://pypi.python.org/packages/a3/bb/'
+            '525e9de0a220060394f4aa34fdf6200853581803d92714ae41fc3556e7d7/%s' %
+            (url_filename),)
+    hex_sum = '6be4f1bb50db879863f4247692360eb830a3eb33'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class SixPackage(ExternalPackage):
+    """six package (dependency for astroid)."""
+    version = '1.10.0'
+    url_filename = 'six-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=34eed507548117b2ab523ab14b2f8b55
+    urls = ('https://pypi.python.org/packages/b3/b2/'
+            '238e2590826bfdd113244a40d9d3eb26918bd798fc187e2360a8367068db/%s' %
+            (url_filename),)
+    hex_sum = '30d480d2e352e8e4c2aae042cf1bf33368ff0920'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class LruCachePackage(ExternalPackage):
+    """backports.functools_lru_cache package (dependency for astroid)."""
+    version = '1.4'
+    url_filename = 'backports.functools_lru_cache-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=b954e7d5e2ca0f0f66ad2ed12ba800e5
+    urls = ('https://pypi.python.org/packages/4e/91/'
+            '0e93d9455254b7b630fb3ebe30cc57cab518660c5fad6a08aac7908a4431/%s' %
+            (url_filename),)
+    hex_sum = '8a546e7887e961c2873c9b053f4e2cd2a96bd71d'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
@@ -1007,14 +1097,44 @@ class LogilabCommonPackage(ExternalPackage):
 
 class PyLintPackage(ExternalPackage):
     """pylint package."""
-    version = '1.1.0'
+    version = '1.7.2'
     url_filename = 'pylint-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=017299b5911838a9347a71de5f946afc
-    urls = ('https://pypi.python.org/packages/09/69/'
-            'cf252f211dbbf58bbbe01a3931092d8a8df8d55f5fe23ac5cef145aa6468/%s' %
+    #md5=27ee752cdcfacb05bf4940947e6b35c6
+    urls = ('https://pypi.python.org/packages/0d/6b/'
+            '31d4a60fad9f040da6e47a93458f69f41cd9c7367a68b596fa116ca6ed0f/%s' %
             (url_filename),)
-    hex_sum = 'b33594a2c627d72007bfa8c6d7619af699e26085'
+    hex_sum = '42d8b9394e5a485377ae128b01350f25d8b131e0'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class ConfigParserPackage(ExternalPackage):
+    """configparser package (dependency for pylint)."""
+    version = '3.5.0'
+    url_filename = 'configparser-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=cfdd915a5b7a6c09917a64a573140538
+    urls = ('https://pypi.python.org/packages/7c/69/'
+            'c2ce7e91c89dc073eb1aa74c0621c3eefbffe8216b3f9af9d3885265c01c/%s' %
+            (url_filename),)
+    hex_sum = '8ee6b29c6a11977c0e094da1d4f5f71e7e7ac78b'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class IsortPackage(ExternalPackage):
+    """isort package (dependency for pylint)."""
+    version = '4.2.15'
+    url_filename = 'isort-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=34915a2ce60e6fe3dbcbf5982deef9b4
+    urls = ('https://pypi.python.org/packages/4d/d5/'
+            '7c8657126a43bcd3b0173e880407f48be4ac91b4957b51303eab744824cf/%s' %
+            (url_filename),)
+    hex_sum = 'acacc36e476b70e13e6fda812c193f4c3c187781'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
