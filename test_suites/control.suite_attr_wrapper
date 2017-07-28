@@ -31,7 +31,7 @@ from autotest_lib.server.cros import provision
 
 # Get the predicate object from attr_filter argument
 try:
-    attr = args_dict['attr_filter']
+    attr = suite_args['attr_filter']
     attr_predicate = suite.Suite.matches_attribute_expression_predicate(attr)
 except KeyError:
     logging.error('Unable to find the attribute boolean expression used to '
