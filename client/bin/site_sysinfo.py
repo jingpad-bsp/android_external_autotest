@@ -384,16 +384,14 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         return keyval
 
 
-    def add_logdir(self, log_path):
+    def add_logdir(self, loggable):
         """Collect files in log_path to sysinfo folder.
 
         This method can be called from a control file for test to collect files
-        in a specified folder. autotest creates a folder
-        [test result dir]/sysinfo folder with the full path of log_path and copy
-        all files in log_path to that folder.
+        in a specified folder. autotest creates a folder [test result
+        dir]/sysinfo folder with the full path of log_path and copy all files in
+        log_path to that folder.
 
-        @param log_path: Full path of a folder that test needs to collect files
-                         from, e.g.,
-                         /mnt/stateful_partition/unencrypted/preserve/log
+        @param loggable: A logdir instance corresponding to the logs to collect.
         """
-        self.test_loggables.add(logdir(log_path))
+        self.test_loggables.add(loggable)
