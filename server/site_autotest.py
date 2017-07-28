@@ -147,7 +147,7 @@ class SiteAutotest(installable_object.InstallableObject):
         # Send over the most recent global_config.ini after installation if one
         # is available.
         # This code is a bit duplicated from
-        # _BaseRun._create_client_config_file, but oh well.
+        # _Run._create_client_config_file, but oh well.
         if self.installed and self.source_material:
             logging.info('Installing updated global_config.ini.')
             destination = os.path.join(self.host.get_autodir(),
@@ -238,7 +238,3 @@ class SiteClientLogger(object):
 
         # Fall through to send tarball the default method.
         super(SiteClientLogger, self)._send_tarball(pkg_name, remote_dest)
-
-
-class _SiteRun(object):
-    pass
