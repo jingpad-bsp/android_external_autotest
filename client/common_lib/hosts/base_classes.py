@@ -295,8 +295,6 @@ class Host(object):
 
         @raises AutoservRebootError if host does not come back up.
         """
-        key_string = 'Reboot.%s' % dargs.get('board')
-
         if not self.wait_down(timeout=down_timeout,
                               warning_timer=down_warning,
                               old_boot_id=old_boot_id):
@@ -695,3 +693,13 @@ class Host(object):
         """
         raise NotImplementedError("Get labels not implemented!")
 
+
+    def check_cached_up_status(self, expiration_seconds):
+        """Check if the DUT responded to ping in the past `expiration_seconds`.
+
+        @param expiration_seconds: The number of seconds to keep the cached
+                status of whether the DUT responded to ping.
+        @return: True if the DUT has responded to ping during the past
+                 `expiration_seconds`.
+        """
+        raise NotImplementedError("check_cached_up_status not implemented!")
