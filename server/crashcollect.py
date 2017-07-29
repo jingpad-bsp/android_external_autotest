@@ -98,6 +98,10 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
 
     """
     logging.info('Collecting %s...', log_path)
+    if not host.check_cached_up_status():
+        logging.warning('Host %s did not answer to ping, skip collecting log '
+                        'file %s.', host.hostname, log_path)
+        return
     try:
         file_stats = _get_file_stats(host, log_path)
         if (not result_tools_runner.ENABLE_RESULT_THROTTLING and
