@@ -160,7 +160,6 @@ public class DutManagementView extends TabView {
     // The text entry of the label to add or remove.
     poolLabelName = new TextBox();
     poolLabelName.setStyleName("dut_manage_action_row_item");
-    poolCheckBox.setEnabled(false);
 
     labelActionRow = new HorizontalPanel();
     labelActionRow.add(poolCheckBox);
