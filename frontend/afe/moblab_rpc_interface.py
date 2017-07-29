@@ -801,10 +801,19 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
         list_suite_args = map(lambda s: s.strip(), suite_args.split(','))
     else:
         list_suite_args = None
+
+    test_args = {'ssid': None, 'wifipass': None}
+
+    ap_name =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME)
+    if ap_name and ap_name != 'None':
+      test_args['ssid'] = ap_name
+    ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS)
+    if ap_pass and ap_pass != 'None':
+      test_args['wifipass'] = ap_pass
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
     pool=pool, run_prod_code=False, test_source_build=build,
-    wait_for_results=False, suite_args=list_suite_args)
+    wait_for_results=False, suite_args=list_suite_args, test_args=test_args)
 
 
 def _enable_notification_using_credentials_in_bucket():
