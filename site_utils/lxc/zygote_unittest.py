@@ -14,6 +14,7 @@ from contextlib import contextmanager
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
@@ -52,13 +53,6 @@ class ZygoteTests(unittest.TestCase):
         if not options.skip_cleanup:
             cls.bucket.destroy_all()
             shutil.rmtree(cls.test_dir)
-
-    def tearDown(self):
-        # Ensure host dirs from each test are completely destroyed.
-        for host_dir in os.listdir(self.shared_host_path):
-            host_dir = os.path.realpath(os.path.join(self.shared_host_path,
-                                                     host_dir))
-            lxc_utils.cleanup_host_mount(host_dir);
 
 
     def testCleanup(self):
@@ -134,7 +128,7 @@ class ZygoteTests(unittest.TestCase):
         test_filename = 'test_file'
         test_host_file = os.path.join(test_host_path, test_filename)
         test_string = 'jackdaws love my big sphinx of quartz.'
-        os.mkdir(test_host_path)
+        os.makedirs(test_host_path)
         with open(test_host_file, 'w+') as f:
             f.write(test_string)
 
@@ -234,6 +228,44 @@ class ZygoteTests(unittest.TestCase):
                 test_file = os.path.join(dst, os.path.basename(tmpfile))
                 test_string = zygote.attach_run('cat %s' % test_file).stdout
                 self.assertEquals(control_string, test_string)
+
+
+    def testMountDirectory(self):
+        """Verifies that read-write mounts work."""
+        with lxc_utils.TempDir() as tmpdir, self.createZygote() as zygote:
+            dst = '/testMountDirectory/testMount'
+            zygote.start(wait_for_network=False)
+            zygote.mount_dir(tmpdir, dst, readonly=False)
+
+            # Verify that the mount point is correctly bound, and is read-write.
+            self.verifyBindMount(zygote, dst, tmpdir)
+            zygote.attach_run('test -r {0} -a -w {0}'.format(dst))
+
+
+    def testMountDirectoryReadOnly(self):
+        """Verifies that read-only mounts are mounted, and read-only."""
+        with lxc_utils.TempDir() as tmpdir, self.createZygote() as zygote:
+            dst = '/testMountDirectoryReadOnly/testMount'
+            zygote.start(wait_for_network=False)
+            zygote.mount_dir(tmpdir, dst, readonly=True)
+
+            # Verify that the mount point is correctly bound, and is read-only.
+            self.verifyBindMount(zygote, dst, tmpdir)
+            try:
+                zygote.attach_run('test -r {0} -a ! -w {0}'.format(dst))
+            except error.CmdError:
+                self.fail('Bind mount is not read-only')
+
+
+    def testMountDirectoryRelativePath(self):
+        """Verifies that relative-path mounts work."""
+        with lxc_utils.TempDir() as tmpdir, self.createZygote() as zygote:
+            dst = 'testMountDirectoryRelativePath/testMount'
+            zygote.start(wait_for_network=False)
+            zygote.mount_dir(tmpdir, dst, readonly=True)
+
+            # Verify that the mount points is correctly bound..
+            self.verifyBindMount(zygote, dst, tmpdir)
 
 
     @contextmanager

@@ -13,6 +13,7 @@ import unittest
 from contextlib import contextmanager
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import constants
@@ -53,13 +54,6 @@ class ContainerTests(unittest.TestCase):
             cls.bucket.destroy_all()
             shutil.rmtree(cls.test_dir)
 
-    def tearDown(self):
-        # Ensure host dirs from each test are completely destroyed.
-        for host_dir in os.listdir(self.shared_host_path):
-            host_dir = os.path.realpath(os.path.join(self.shared_host_path,
-                                                     host_dir))
-            lxc_utils.cleanup_host_mount(host_dir);
-
 
     def testInit(self):
         """Verifies that containers initialize correctly."""
@@ -67,6 +61,8 @@ class ContainerTests(unittest.TestCase):
         container = lxc.Container.createFromExistingDir(
             self.base_container.container_path,
             self.base_container.name)
+        # Calling is_running triggers an lxc-ls call, which should verify that
+        # the on-disk container is valid.
         self.assertFalse(container.is_running())
 
 
@@ -223,6 +219,41 @@ class ContainerTests(unittest.TestCase):
                 self.assertEquals(control_string, test_string)
 
 
+    def testMountDirectory(self):
+        """Verifies that read-write mounts work."""
+        with lxc_utils.TempDir() as tmpdir, self.createContainer() as container:
+            dst = '/testMountDirectory/testMount'
+            container.mount_dir(tmpdir, dst, readonly=False)
+            container.start(wait_for_network=False)
+
+            # Verify that the mount point is correctly bound, and is read-write.
+            self.verifyBindMount(container, dst, tmpdir)
+            container.attach_run('test -r %s -a -w %s' % (dst, dst))
+
+
+    def testMountDirectoryReadOnly(self):
+        """Verifies that read-only mounts work."""
+        with lxc_utils.TempDir() as tmpdir, self.createContainer() as container:
+            dst = '/testMountDirectoryReadOnly/testMount'
+            container.mount_dir(tmpdir, dst, readonly=True)
+            container.start(wait_for_network=False)
+
+            # Verify that the mount point is correctly bound, and is read-only.
+            self.verifyBindMount(container, dst, tmpdir)
+            container.attach_run('test -r %s -a ! -w %s' % (dst, dst))
+
+
+    def testMountDirectoryRelativePath(self):
+        """Verifies that relative-path mounts work."""
+        with lxc_utils.TempDir() as tmpdir, self.createContainer() as container:
+            dst = 'testMountDirectoryRelativePath/testMount'
+            container.mount_dir(tmpdir, dst, readonly=True)
+            container.start(wait_for_network=False)
+
+            # Verify that the mount points is correctly bound..
+            self.verifyBindMount(container, dst, tmpdir)
+
+
     @contextmanager
     def createContainer(self, name=None):
         """Creates a container from the base container, for testing.
@@ -237,7 +268,23 @@ class ContainerTests(unittest.TestCase):
         try:
             yield container
         finally:
-            container.destroy()
+            if not options.skip_cleanup:
+                container.destroy()
+
+
+    def verifyBindMount(self, container, container_path, host_path):
+        """Verifies that a given path in a container is bind-mounted to a given
+        path in the host system.
+
+        @param container: The Container instance to be tested.
+        @param container_path: The path in the container to compare.
+        @param host_path: The path in the host system to compare.
+        """
+        container_inode = (container.attach_run('ls -id %s' % container_path)
+                           .stdout.split()[0])
+        host_inode = utils.run('ls -id %s' % host_path).stdout.split()[0]
+        # Compare the container and host inodes - they should match.
+        self.assertEqual(container_inode, host_inode)
 
 
 def parse_options():
