@@ -68,7 +68,6 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
@@ -1706,17 +1705,6 @@ def _run_suite(options):
                                               options.skip_duts_check)
             job_id = create_suite(afe, options)
             job_created_on = time.time()
-        except diagnosis_utils.NotEnoughDutsError as e:
-            e.add_suite_name(options.name)
-            e.add_build(options.test_source_build)
-            pool_health_bug = reporting.PoolHealthBug(e)
-            bug_id = reporting.Reporter().report(pool_health_bug).bug_id
-            if bug_id is not None:
-                logging.info(annotations.StepLink(
-                    text='Pool Health Bug',
-                    url=reporting_utils.link_crbug(bug_id)))
-                e.add_bug_id(bug_id)
-            raise e
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.exception('Error Message: %s', e)
