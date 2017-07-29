@@ -205,11 +205,14 @@ def CheckInterfaceForDestination(host, expected_interface):
     server_addresses = [record[4][0]
                         for record in socket.getaddrinfo(host, 80)]
 
+    route_found = False
     routes = routing.NetworkRoutes()
     for address in server_addresses:
         route = routes.getRouteFor(address)
         if not route:
-            raise error.TestFail('No route found for %s.' % address)
+            continue
+
+        route_found = True
 
         interface = route.interface
         logging.info('interface for %s: %s', address, interface)
@@ -218,6 +221,8 @@ def CheckInterfaceForDestination(host, expected_interface):
                                  '(%s expected).' %
                                  (address, interface, expected_interface))
 
+    if not route_found:
+        raise error.TestFail('No route found for "%s".' % host)
 
 FETCH_URL_PATTERN_FOR_TEST = \
     'http://testing-chargen.appspot.com/download?size=%d'
