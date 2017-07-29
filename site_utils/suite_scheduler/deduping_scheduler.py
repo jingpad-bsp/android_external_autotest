@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 try:
     from chromite.lib import metrics
@@ -254,20 +254,6 @@ class DedupingScheduler(object):
             else:
                 raise ScheduleException(
                         "Can't schedule %s for %s." % (suite, builds))
-        except (error.ControlFileNotFound, error.ControlFileEmpty,
-                error.ControlFileMalformed, error.NoControlFileList) as e:
-            if self._file_bug:
-                # File bug on test_source_build if it's specified.
-                b = reporting.SuiteSchedulerBug(
-                        suite, test_source_build or build, board, e)
-                # If a bug has filed with the same <suite, build, error type>
-                # will not file again, but simply gets the existing bug id.
-                bid, _ = reporting.Reporter().report(
-                        b, ignore_duplicate=True)
-                if bid is not None:
-                    return False
-            # Raise the exception if not filing a bug or failed to file bug.
-            raise ScheduleException(e)
         except Exception as e:
             raise ScheduleException(e)
 

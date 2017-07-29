@@ -6,7 +6,6 @@
 import unittest
 import mock
 import common
-from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.site_utils import diagnosis_utils
 
 
@@ -16,8 +15,6 @@ class DiagnosisUtilsTest(unittest.TestCase):
     def setUp(self):
         """Set up test."""
         self.afe_mock = mock.MagicMock()
-        reporting.Reporter.__init__ = mock.Mock(return_value=None)
-        reporting.Reporter.report = mock.Mock(return_value=(None, 0))
 
     def _constructRPCHelper(self):
         """Method to construct RPCHelper"""
