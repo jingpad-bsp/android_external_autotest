@@ -4,6 +4,7 @@ import subprocess
 
 from autotest_lib.client.bin.result_tools import runner as result_tools_runner
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import host_info
@@ -17,6 +18,8 @@ get_value = global_config.get_config_value
 enable_master_ssh = get_value('AUTOSERV', 'enable_master_ssh', type=bool,
                               default=False)
 
+# Number of seconds to use the cached up status.
+_DEFAULT_UP_STATUS_EXPIRATION_SECONDS = 300
 
 class AbstractSSHHost(remote.RemoteHost):
     """
@@ -71,6 +74,12 @@ class AbstractSSHHost(remote.RemoteHost):
         self._afe_host = afe_host or utils.EmptyAFEHost()
         self.host_info_store = (host_info_store or
                                 host_info.InMemoryHostInfoStore())
+
+        # The cached status of whether the DUT responded to ping.
+        self._cached_up_status = None
+        # The timestamp when the value of _cached_up_status is set.
+        self._cached_up_status_updated = None
+
 
     @property
     def ip(self):
@@ -578,6 +587,13 @@ class AbstractSSHHost(remote.RemoteHost):
             return True
 
 
+    def is_up_fast(self):
+        """Return True if the host can be pinged."""
+        ping_config = ping_runner.PingConfig(
+                self.hostname, count=3, ignore_result=True, ignore_status=True)
+        return ping_runner.PingRunner().ping(ping_config).received > 0
+
+
     def wait_up(self, timeout=None):
         """
         Wait until the remote host is up or the timeout expires.
@@ -809,6 +825,11 @@ class AbstractSSHHost(remote.RemoteHost):
         @raises AutoservRunError, AutotestRunError: If something goes wrong
             while copying the directories and ignore_errors is False.
         """
+        if not self.check_cached_up_status():
+            logging.warning('Host %s did not answer to ping, skip collecting '
+                            'logs.', self.hostname)
+            return
+
         locally_created_dest = False
         if (not os.path.exists(local_dest_dir)
                 or not os.path.isdir(local_dest_dir)):
@@ -903,3 +924,26 @@ class AbstractSSHHost(remote.RemoteHost):
         @return A string describing the OS type.
         """
         raise NotImplementedError
+
+
+    def check_cached_up_status(
+            self, expiration_seconds=_DEFAULT_UP_STATUS_EXPIRATION_SECONDS):
+        """Check if the DUT responded to ping in the past `expiration_seconds`.
+
+        @param expiration_seconds: The number of seconds to keep the cached
+                status of whether the DUT responded to ping.
+        @return: True if the DUT has responded to ping during the past
+                 `expiration_seconds`.
+        """
+        # Refresh the up status if any of following conditions is true:
+        # * cached status is never set
+        # * cached status is False, so the method can check if the host is up
+        #   again.
+        # * If the cached status is older than `expiration_seconds`
+        expire_time = time.time() - expiration_seconds
+        if (self._cached_up_status_updated is None or
+                not self._cached_up_status or
+                self._cached_up_status_updated < expire_time):
+            self._cached_up_status = self.is_up_fast()
+            self._cached_up_status_updated = time.time()
+        return self._cached_up_status
