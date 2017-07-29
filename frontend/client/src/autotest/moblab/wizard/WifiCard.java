@@ -75,7 +75,10 @@ public class WifiCard extends FlexWizardCard {
       value = value.trim();
     }
 
-    if (value == null || value.length() == 0) {
+    if (value == null) {
+      return null;
+    }
+    if (value.isEmpty()) {
       return null;
     }
     return value;
