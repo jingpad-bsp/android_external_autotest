@@ -1120,53 +1120,87 @@ def log_buildbot_links(log_func, links):
 
 
 class _ReturnCodeComputer(object):
-
-    def __init__(self, ignore_test_results=False):
-        """Initialize instance.
-
-        If ignore_test_results is True, don't check the test jobs for
-        failure.
-        """
-        self._ignore_test_results = ignore_test_results
+    """This is responsible for returning the _ReturnResult for a suite."""
 
     def __call__(self, test_views):
         """Compute the exit code based on test results."""
         result = _RETURN_RESULTS['ok']
 
         for v in test_views:
-            # The order of checking each case is important.
             if v.get_testname() == TestView.SUITE_JOB:
-                if v.is_aborted() and v.hit_timeout():
-                    result |= _RETURN_RESULTS['suite_timeout']
-                elif v.is_in_fail_status():
-                    result |= _RETURN_RESULTS['suite_failed']
-                elif v['status'] == 'WARN':
-                    result |= _RETURN_RESULTS['suite_warning']
-            elif self._ignore_test_results:
-                pass
+                result |= self._get_suite_result(v)
             else:
-                if v.is_aborted() and v.is_relevant_suite_view():
-                    # The test was aborted before started
-                    # This gurantees that the suite has timed out.
-                    result |= _RETURN_RESULTS['aborted_test']
-                elif v.is_aborted() and not v.hit_timeout():
-                    # The test was aborted, but
-                    # not due to a timeout. This is most likely
-                    # because the suite has timed out, but may
-                    # also because it was aborted by the user.
-                    # Since suite timing out is determined by checking
-                    # the suite job view, we simply ignore this view here.
-                    pass
-                elif v.is_in_fail_status():  # The test job failed
-                    if v.is_provision():
-                        result |= _RETURN_RESULTS['provision_failed']
-                    else:
-                        result |= _RETURN_RESULTS['test_failure']
-                elif v['status'] == 'WARN':
-                    result |= _RETURN_RESULTS['test_warning']
-                elif v.is_retry():
-                    # The test is a passing retry.
-                    result |= _RETURN_RESULTS['test_retry']
+                result |= self._get_test_result(v)
+        return result
+
+    def _get_suite_result(self, test_view):
+        """Return the _ReturnResult for the given suite job."""
+        # The order of checking each case is important.
+        if test_view.is_aborted() and test_view.hit_timeout():
+            return _RETURN_RESULTS['suite_timeout']
+        elif test_view.is_in_fail_status():
+            return _RETURN_RESULTS['suite_failed']
+        elif test_view['status'] == 'WARN':
+            return _RETURN_RESULTS['suite_warning']
+        else:
+            return _RETURN_RESULTS['ok']
+
+    def _get_test_result(self, test_view):
+        """Return the _ReturnResult for the given test job."""
+        # The order of checking each case is important.
+        if test_view.is_aborted() and test_view.is_relevant_suite_view():
+            # The test was aborted before started
+            # This gurantees that the suite has timed out.
+            return _RETURN_RESULTS['aborted_test']
+        elif test_view.is_aborted() and not test_view.hit_timeout():
+            # The test was aborted, but
+            # not due to a timeout. This is most likely
+            # because the suite has timed out, but may
+            # also because it was aborted by the user.
+            # Since suite timing out is determined by checking
+            # the suite job view, we simply ignore this view here.
+            return _RETURN_RESULTS['ok']
+        elif test_view.is_in_fail_status():  # The test job failed
+            if test_view.is_provision():
+                return _RETURN_RESULTS['provision_failed']
+            else:
+                return _RETURN_RESULTS['test_failure']
+        elif test_view['status'] == 'WARN':
+            return _RETURN_RESULTS['test_warning']
+        elif test_view.is_retry():
+            # The test is a passing retry.
+            return _RETURN_RESULTS['test_retry']
+        else:
+            return _RETURN_RESULTS['ok']
+
+
+class _ProvisionReturnCodeComputer(_ReturnCodeComputer):
+    """This is used for returning the _ReturnResult for provision suites."""
+
+    def __init__(self, num_required):
+        """Initialize instance.
+
+        num_required is the number of passing provision jobs needed.
+        """
+        super(_ProvisionReturnCodeComputer, self).__init__()
+        self._num_required = num_required
+        self._num_successful = 0
+
+    def __call__(self, test_views):
+        result = super(_ProvisionReturnCodeComputer, self).__call__(test_views)
+        if self._num_successful >= self._num_required:
+            logging.info('Return result upgraded from %r'
+                         ' due to enough ok provisions',
+                         result)
+            return _RETURN_RESULTS['ok']
+        else:
+            return result
+
+    def _get_test_result(self, test_view):
+        result = (super(_ProvisionReturnCodeComputer, self)
+                  ._get_test_result(test_view))
+        if result in {_RETURN_RESULTS[s] for s in ('ok', 'test_retry')}:
+            self._num_successful += 1
         return result
 
 
@@ -1794,21 +1828,22 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
+    # TODO(ayatane): It needs to be possible for provision suite to pass
+    # if only a few tests fail.  Otherwise, a single failing test will
+    # be reported as failure even if the suite reports success.
+    if options.name == 'provision':
+        # TODO(ayatane): Creating the suite job requires that suite_args
+        # contains num_required.
+        return_code_function = _ProvisionReturnCodeComputer(
+            num_required=options.suite_args['num_required'])
+    else:
+        return_code_function = _ReturnCodeComputer()
     collector = ResultCollector(instance_server=instance_server,
                                 afe=afe, tko=TKO, build=options.build,
                                 board=options.board,
                                 suite_name=options.name,
                                 suite_job_id=job_id,
-                                # TODO(ayatane): It needs to be possible
-                                # for provision suite to pass if only a
-                                # few tests fail.  Otherwise, a single
-                                # failing test will be reported as
-                                # failure even if the suite reports
-                                # success.
-                                return_code_function=_ReturnCodeComputer(
-                                    ignore_test_results=(options.name
-                                                         == 'provision'),
-                                ),
+                                return_code_function=return_code_function,
                                 original_suite_name=original_suite_name)
     collector.run()
     # Dump test outputs into json.
