@@ -1126,7 +1126,6 @@ class _BaseSuite(object):
 
 
     def schedule(self, record):
-        #pylint: disable-msg=C0111
         """
         Schedule jobs using |self._afe|.
 
@@ -1162,7 +1161,7 @@ class _BaseSuite(object):
             utils.write_keyval(
                 self._results_dir,
                 self._make_scheduled_tests_keyvals(scheduled_test_names))
-        except Exception:  # pylint: disable=W0703
+        except Exception:
             logging.exception('Exception while scheduling suite')
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
@@ -1253,7 +1252,7 @@ class _BaseSuite(object):
                     record=record,
                     waiter=waiter,
                     reporter=reporter)
-        except Exception:  # pylint: disable=W0703
+        except Exception:
             logging.exception('Exception waiting for results')
             Status('FAIL', self._tag,
                    'Exception waiting for results').record_result(record)
@@ -1274,10 +1273,7 @@ class _BaseSuite(object):
         from autotest_lib.server.cros.dynamic_suite import reporting
 
         if self._should_file_bugs:
-            if self._file_bugs:
-                bug_reporter = reporting.Reporter()
-            else:
-                bug_reporter = reporting.NullReporter()
+            bug_reporter = reporting.NullReporter()
             return _BugResultReporter(self, bug_reporter, bug_template)
         else:
             return _EmailResultReporter(self)
