@@ -783,26 +783,6 @@ class GwtPackage(ExternalPackage):
         return True
 
 
-class GdataPackage(ExternalPackage):
-    """
-    Pulls the GData library, giving us an API to query tracker.
-    """
-    version = '2.0.18'
-    local_filename = 'gdata-%s.zip' % version
-    urls = ('https://github.com/google/gdata-python-client/' +
-            'archive/master.zip',)
-    hex_sum = '893f9c9f627ef92afe8f3f066311d9b3748f1732'
-    extracted_package_path = 'gdata-python-client-master'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_noegg)
-
-    def _get_installed_version_from_module(self, module):
-        # gdata doesn't contain a proper version
-        return self.version
-
-
 class PyudevPackage(ExternalPackage):
     """
     pyudev module
