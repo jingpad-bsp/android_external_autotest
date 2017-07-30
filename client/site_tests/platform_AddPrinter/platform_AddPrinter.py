@@ -78,7 +78,7 @@ class platform_AddPrinter(test.test):
         """Add a printer"""
 
         # Navigate to cups setup UI and wait until fully load.
-        self.tab.Navigate("chrome://md-settings/cupsPrinters")
+        self.tab.Navigate("chrome://settings/cupsPrinters")
         self.tab.WaitForDocumentReadyStateToBeInteractiveOrBetter(
             timeout=_SCRIPT_TIMEOUT);
 
