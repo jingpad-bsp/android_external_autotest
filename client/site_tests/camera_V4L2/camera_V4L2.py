@@ -31,6 +31,8 @@ class camera_V4L2(test.test):
 
         for device in self.v4l2_devices:
             self.usb_info = self.get_camera_device_usb_info(device)
+            if not self.usb_info:
+                continue
             self.run_v4l2_unittests(device)
             self.run_v4l2_capture_test(device)
 
@@ -38,6 +40,10 @@ class camera_V4L2(test.test):
         device_name = ntpath.basename(device)
         vid_path = "/sys/class/video4linux/%s/device/../idVendor" % device_name
         pid_path = "/sys/class/video4linux/%s/device/../idProduct" % device_name
+        if not os.path.isfile(vid_path) or not os.path.isfile(pid_path):
+            logging.info("Device %s is not a USB camera" % device)
+            return None
+
         with open(vid_path, 'r') as f_vid, open(pid_path, 'r') as f_pid:
             vid = f_vid.read()
             pid = f_pid.read()
