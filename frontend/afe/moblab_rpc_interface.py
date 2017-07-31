@@ -660,7 +660,8 @@ def get_builds_for_board(board_name):
     @return: A list of string with the most recent builds for the latest
              three milestones.
     """
-    return _get_builds_for_in_directory(board_name + '-release')
+    return _get_builds_for_in_directory(board_name + '-release',
+                                        milestone_limit=4)
 
 
 @rpc_utils.moblab_only
