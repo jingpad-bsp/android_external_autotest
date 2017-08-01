@@ -33,9 +33,12 @@ class MoblabTest(test.test):
         super(MoblabTest, self).initialize()
         self._host = host
         self._host.install_boto_file(boto_path)
-        self.set_image_storage_server(image_storage_server)
+        self._host.verify_moblab_services()
         self._host.wait_afe_up()
+        self.set_image_storage_server(image_storage_server)
         self._host.find_and_add_duts()
+        self._host.verify_duts()
+        self._host.verify_special_tasks_complete()
 
 
     def set_image_storage_server(self, image_storage_server):
