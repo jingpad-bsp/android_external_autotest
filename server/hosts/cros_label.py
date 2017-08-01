@@ -62,7 +62,7 @@ class ModelLabel(base_label.StringPrefixLabel):
         cmd = "mosys platform model"
         result = host.run(command=cmd, ignore_status=True)
         if result.exit_status == 0:
-            return result.stddout
+            return result.stdout
         else:
             logging.info("%s exited with status %d", cmd, result.exit_status)
             return ""
