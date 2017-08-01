@@ -48,7 +48,6 @@ class CFMFacadeNative(object):
         # login screen before proceeding.
         time.sleep(self._ENROLLMENT_DELAY)
         self.restart_chrome_for_cfm()
-        self.check_hangout_extension_context()
 
 
     def restart_chrome_for_cfm(self):
@@ -59,6 +58,7 @@ class CFMFacadeNative(object):
                                "disable_default_apps": False,
                                "auto_login": False}
         self._resource.start_custom_chrome(custom_chrome_setup)
+        self.check_hangout_extension_context()
 
 
     def check_hangout_extension_context(self):
@@ -85,6 +85,19 @@ class CFMFacadeNative(object):
             raise error.TestFail(
                     'Unexpected extension context urls, expected %s, got %s'
                     % (expected_urls, ext_urls))
+
+
+    def reboot_device_with_chrome_api(self):
+        """Reboot device using chrome runtime API."""
+        ext_contexts = kiosk_utils.wait_for_kiosk_ext(
+                self._resource._browser, self._EXT_ID)
+        for context in ext_contexts:
+            context.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+            ext_url = context.EvaluateJavaScript('document.URL')
+            background_url = ('chrome-extension://' + self._EXT_ID +
+                              '/_generated_background_page.html')
+            if ext_url in background_url:
+                context.ExecuteJavaScript('chrome.runtime.restart();')
 
 
     def skip_oobe_after_enrollment(self):
