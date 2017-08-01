@@ -1,5 +1,6 @@
 package autotest.moblab.rpc;
 
+import com.google.gwt.json.client.JSONNull;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
 
@@ -33,11 +34,19 @@ public class WifiInfo extends JsonRpcEntity {
   }
 
   public void setApName(String apName) {
-    this.apName = apName.trim();
+    if (apName != null && !apName.isEmpty()) {
+      this.apName = apName.trim();
+    } else {
+      this.apName = null;
+    }
   }
 
   public void setApPass(String apPass) {
-    this.apPass = apPass.trim();
+    if (apPass != null && !apPass.isEmpty()) {
+      this.apPass = apPass.trim();
+    } else {
+      this.apPass = null;
+    }
   }
 
   private void reset() {
@@ -56,13 +65,15 @@ public class WifiInfo extends JsonRpcEntity {
   @Override
   public JSONObject toJson() {
     JSONObject object = new JSONObject();
-    object.put(JSON_FIELD_AP_NAME, new JSONString("Test"));
     if (apName != null) {
       object.put(JSON_FIELD_AP_NAME, new JSONString(apName));
+    } else {
+      object.put(JSON_FIELD_AP_NAME, JSONNull.getInstance());
     }
-    object.put(JSON_FIELD_AP_PASS, new JSONString("Pass"));
     if (apPass != null) {
       object.put(JSON_FIELD_AP_PASS, new JSONString(apPass));
+    } else {
+      object.put(JSON_FIELD_AP_PASS, JSONNull.getInstance());
     }
     return object;
   }
