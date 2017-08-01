@@ -41,6 +41,23 @@ _WHITELISTED_SUITES = (
     'crosbolt_arc_perf_perbuild',
 )
 
+
+def checkSectionNameCollision(config):
+    """
+    Make sure that section name of the ini file is case-insensitive unique.
+    This prevents key collision in database for test monitoring services such as
+    wmatrix.
+    """
+    has_collision = False
+    sections = sorted([(key.lower(), key) for key in config.sections()])
+    for index in range(len(sections) - 1):
+        if sections[index][0] == sections[index + 1][0]:
+            logging.warning("Section name [%s] is not case-insensitive unique",
+                            sections[index][1])
+            has_collision = True
+    return 1 if has_collision else 0
+
+
 def CheckControlFileExistence(tasks):
     """
     Make sure that for any task that schedules a suite, that
