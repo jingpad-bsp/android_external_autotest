@@ -232,6 +232,10 @@ def main():
     if options.sanity:
         # config_file_getter generates a high amount of noise at DEBUG level
         logging.getLogger().setLevel(logging.WARNING)
+        section_name_collision = sanity.checkSectionNameCollision(config)
+        if section_name_collision:
+            return 1
+
         d = driver.Driver(None, None, True)
         d.SetUpEventsAndTasks(config, None)
         tasks_per_event = d.TasksFromConfig(config)
