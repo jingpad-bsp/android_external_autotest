@@ -103,5 +103,14 @@ class TradefedTestTest(unittest.TestCase):
                 _load_data('GtsPlacementTestCases.txt'),
                 waivers=gts_waivers))
 
+        # b/64095702
+        # http://pantheon/storage/browser/chromeos-autotest-results/130211812-chromeos-test/
+        # The result of the last chunk not reported by tradefed.
+        # The actual dEQP log is too big, hence the test data here is trimmed.
+        self.assertEquals((157871, 116916, 0, 40955, 0),
+            tradefed_test.parse_tradefed_v2_result(
+                _load_data('CtsDeqpTestCases-trimmed.txt'),
+                waivers=waivers))
+
 if __name__ == '__main__':
     unittest.main()
