@@ -13,9 +13,10 @@ class camera_HAL3(test.test):
     """
 
     version = 1
-    binary = 'arc_camera3_test'
+    test_binary = 'arc_camera3_test'
+    service_binary = os.path.join('usr', 'bin', 'arc_camera3_service')
     dep = 'camera_hal3'
-    timeout = 60
+    timeout = 600
 
     def setup(self):
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
@@ -25,9 +26,10 @@ class camera_HAL3(test.test):
     def run_once(self):
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        if utils.system_output('ldconfig -p').find('camera_hal.so') == -1:
-            logging.debug('Skip test because camera_hal.so is not installed.')
+        if os.path.exists(self.service_binary):
+            logging.debug('Skip test because %s does not exist' %
+                          self.service_binary)
             return
 
-        binary_path = os.path.join(self.dep_dir, 'bin', self.binary)
+        binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
         utils.system(binary_path, timeout=self.timeout)
