@@ -5,7 +5,6 @@
 import logging
 import os
 import tempfile
-import urllib2
 
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
@@ -35,25 +34,35 @@ class SiteAutotest(installable_object.InstallableObject):
 
         Hosts are tagged with an attribute containing the URL
         from which to source packages when running a test on that host.
-        If self.host is set, attempt to look this attribute up by calling out
-        to the AFE.
+        If self.host is set, attempt to look this attribute in the host info.
 
         @returns value of the 'job_repo_url' host attribute, if present.
         """
+        if not self.host:
+            return None
+
         try:
-            from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-            if self.host:
-                afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-                hosts = afe.get_hosts(hostname=self.host.hostname)
-                if hosts and JOB_REPO_URL in hosts[0].attributes:
-                    logging.info('Get job repo url from host attributes: %s',
-                                 hosts[0].attributes[JOB_REPO_URL])
-                    return hosts[0].attributes[JOB_REPO_URL]
-                logging.warning("No %s for %s", JOB_REPO_URL, self.host)
-        except (ImportError, urllib2.URLError):
-            logging.warning('Not attempting to look for %s', JOB_REPO_URL)
-            pass
-        return None
+            info = self.host.host_info_store.get()
+        except Exception as e:
+            # TODO(pprabhu): We really want to catch host_info.StoreError here,
+            # but we can't import host_info from this module.
+            #   - autotest_lib.hosts.host_info pulls in (naturally)
+            #   autotest_lib.hosts.__init__
+            #   - This pulls in all the host classes ever defined
+            #   - That includes abstract_ssh, which depends on autotest
+            logging.warning('Failed to obtain host info: %r', e)
+            logging.warning('Skipping autotest fetch location based on %s',
+                            JOB_REPO_URL)
+            return None
+
+        job_repo_url = info.attributes.get(JOB_REPO_URL, '')
+        if not job_repo_url:
+            logging.warning("No %s for %s", JOB_REPO_URL, self.host)
+            return None
+
+        logging.info('Got job repo url from host attributes: %s',
+                        job_repo_url)
+        return job_repo_url
 
 
     def get_fetch_location(self):
