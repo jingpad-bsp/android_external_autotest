@@ -42,7 +42,7 @@ esif_ufd,root,root,No,No,No,No
 easy_unlock,easy-unlock,easy-unlock,No,No,No,No
 sslh-fork,sslh,sslh,Yes,Yes,No,Yes
 arc_camera_serv,arc-camera,arc-camera,No,Yes,No,No
-arc-networkd,root,root,Yes,No,No,No
+arc-networkd,root,root,No,No,No,No
 arc-obb-mounter,root,root,Yes,No,No,No
 upstart-socket-,root,root,No,No,No,No
 timberslide,root,root,No,No,No,No
