@@ -117,6 +117,11 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         if module is not None:
             # Run a particular module (used to be called package in M).
             cmd = ['run', 'commandAndExit', 'cts', '--module', module]
+            if test_class is not None:
+                if test_method is not None:
+                    cmd += ['-t', test_class + '#' + test_method]
+                else:
+                    cmd += ['-t', test_class]
         elif plan is not None and session_id is not None:
             # In 7.1 R2 we can only retry session_id with the original plan.
             cmd = ['run', 'commandAndExit', 'cts', '--plan', plan,
@@ -124,11 +129,6 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         elif plan is not None:
             # TODO(ihf): This needs testing to support media team.
             cmd = ['run', 'commandAndExit', 'cts', '--plan', plan]
-        elif test_class is not None:
-            # TODO(ihf): This needs testing to support media team.
-            cmd = ['run', 'commandAndExit', 'cts', '-c', test_class]
-            if test_method is not None:
-                cmd += ['-m', test_method]
         else:
             logging.warning('Running all tests. This can take several days.')
             cmd = ['run', 'commandAndExit', 'cts']
@@ -325,25 +325,26 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         total_passed = 0
         self.summary = ''
         if target_module is not None:
-            test_name = 'module.%s' % target_module
-            test_command = self._tradefed_run_command(
-                module=target_module, session_id=session_id)
+            if target_class is not None:
+                test_name = 'testcase.%s' % target_class
+                if target_method is not None:
+                    test_name += '.' + target_method
+                test_command = self._tradefed_run_command(
+                    module=target_module,
+                    test_class=target_class,
+                    test_method=target_method,
+                    session_id=session_id)
+            else:
+                test_name = 'module.%s' % target_module
+                test_command = self._tradefed_run_command(
+                    module=target_module, session_id=session_id)
         elif target_plan is not None:
             test_name = 'plan.%s' % target_plan
             test_command = self._tradefed_run_command(
                 plan=target_plan, session_id=session_id)
-        elif target_class is not None:
-            test_name = 'testcase.%s' % target_class
-            if target_method is not None:
-                test_name += '.' + target_method
-            test_command = self._tradefed_run_command(
-                test_class=target_class,
-                test_method=target_method,
-                session_id=session_id)
         elif cts_tradefed_args is not None:
             test_name = 'run tradefed %s' % ' '.join(cts_tradefed_args)
             test_command = cts_tradefed_args
-
         else:
             test_command = self._tradefed_run_command()
             test_name = 'all_CTS'
