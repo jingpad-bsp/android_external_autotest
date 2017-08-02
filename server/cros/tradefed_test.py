@@ -259,7 +259,15 @@ def parse_tradefed_v2_result(result, waivers=None):
            abi = None
 
     if abi:
-        raise error.TestFail('Error: No end message for the last chunk.')
+        # When tradefed crashes badly, it may exit without printing the counts
+        # from the last chunk. Regard them as not executed and retry (rather
+        # than aborting the test cycle at this point.)
+        if ntest > 0:
+            total_test[abi] = (total_test.get(abi, 0) + ntest -
+                last_notexec.get(abi, 0))
+            last_notexec[abi] = ntest
+        logging.warning('No result reported for the last chunk. ' +
+            'Assuming all not executed.')
 
     # TODO(rohitbm): make failure parsing more robust by extracting the list
     # of failing tests instead of searching in the result blob. As well as
