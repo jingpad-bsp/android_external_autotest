@@ -81,19 +81,6 @@ def call_powerd_dbus_method(method_name, args=''):
                       interface='org.chromium.PowerManager',
                       method_name=method_name, args=args)
 
-def call_chrome_dbus_method(method_name, args=''):
-    """
-    Calls a dbus method exposed by chrome.
-
-    Arguments:
-    @param method_name: name of the dbus method.
-    @param args: string containing args to dbus method call.
-    """
-    _call_dbus_method(destination='org.chromium.LibCrosService',
-                      path='/org/chromium/LibCrosService',
-                      interface='org.chomium.LibCrosServiceInterface',
-                      method_name=method_name, args=args)
-
 def get_power_supply():
     """
     Determine what type of power supply the host has.
@@ -487,7 +474,11 @@ def set_display_power(power_val):
             or power_val < DISPLAY_POWER_ALL_ON
             or power_val >= DISPLAY_POWER_MAX):
         raise DisplayException('Invalid display power setting: %d' % power_val)
-    call_chrome_dbus_method('SetDisplayPower', 'int32:%d' % power_val)
+    _call_dbus_method(destination='org.chromium.DisplayService',
+                      path='/org/chromium/DisplayService',
+                      interface='org.chomium.DisplayServiceInterface',
+                      method_name='SetPower',
+                      args='int32:%d' % power_val)
 
 
 class PowerPrefChanger(object):
