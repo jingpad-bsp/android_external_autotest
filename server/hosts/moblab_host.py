@@ -231,6 +231,24 @@ class MoblabHost(cros_host.CrosHost):
                 self.add_dut(dut_hostname)
 
 
+    def verify_software(self):
+        """Verify working software on a Chrome OS system.
+
+        Tests for the following conditions:
+         1. All conditions tested by the parent version of this
+            function.
+         2. Ensures that Moblab services are running.
+         3. Ensures that both DUTs successfully run Verify.
+
+        """
+        # In case cleanup or powerwash wiped the autodir, create an empty
+        # directory.
+        self.run('mkdir -p %s' % MOBLAB_AUTODIR)
+        super(MoblabHost, self).verify_software()
+        self._verify_moblab_services()
+        self._verify_duts()
+
+
     @retry.retry(error.AutoservError, timeout_min=2, delay_sec=10)
     def _verify_upstart_service(self, service):
         """Retry to verify the required moblab services are up and running.
@@ -246,7 +264,7 @@ class MoblabHost(cros_host.CrosHost):
         return self.upstart_status(service)
 
 
-    def verify_moblab_services(self):
+    def _verify_moblab_services(self):
         """Verify the required Moblab services are up and running.
 
         @raises AutoservError if any moblab service is not running.
@@ -281,16 +299,24 @@ class MoblabHost(cros_host.CrosHost):
         return True
 
 
-    def verify_duts(self):
+    def _verify_duts(self):
         """Verify the Moblab DUTs are up and running.
 
         @raises AutoservError if no DUTs are in the Ready State.
         """
+        # Check whether afe is well connected, if not, restart it.
+        try:
+            self._check_afe()
+        except:
+            self.wait_afe_up()
+
+        # Add the DUTs if they have not yet been added.
+        self.find_and_add_duts()
+        # Ensure a boto file is installed in case this Moblab was wiped in
+        # repair.
+        self.install_boto_file()
         hosts = self.afe.reverify_hosts()
         logging.debug('DUTs scheduled for reverification: %s', hosts)
-
-
-    def verify_special_tasks_complete(self):
         # Wait till all pending special tasks are completed.
         total_time = 0
         while (self.afe.get_special_tasks(is_complete=False) and
