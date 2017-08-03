@@ -8,9 +8,6 @@ import json
 import logging
 import os
 import pwd
-import re
-import shutil
-import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import autotemp, error
@@ -28,9 +25,7 @@ CONFIG_JSON_TEMPLATE = '''
             "uid": 0,
             "gid": 0
         },
-        "args": [
-            %s
-        ],
+        "args": [],
         "cwd": "/"
     },
     "root": {
@@ -39,6 +34,15 @@ CONFIG_JSON_TEMPLATE = '''
     },
     "hostname": "runc",
     "mounts": [
+    {
+        "destination": "/",
+        "type": "bind",
+        "source": "/",
+        "options": [
+            "bind",
+            "recursive"
+        ]
+    },
     {
         "destination": "/proc",
         "type": "proc",
@@ -119,12 +123,19 @@ CONFIG_JSON_TEMPLATE = '''
 
 @contextlib.contextmanager
 def bind_mounted_root(rootfs_path):
+    """
+    Sets up and cleans up the runtime environment for each test.
+
+    @param rootfs_path: The path of the container's rootfs
+    """
     utils.run(['mount', '--bind', '/', rootfs_path])
     yield
     utils.run(['umount', '-f', rootfs_path])
 
 
 class security_RunOci(test.test):
+    """Tests run_oci."""
+
     version = 1
 
     preserve_srcdir = True
@@ -132,9 +143,12 @@ class security_RunOci(test.test):
     def run_test_in_dir(self, test_config, oci_path):
         """
         Executes the test in the given directory that points to an OCI image.
+
+        @param test_config: The test's configuration in a dict.
+        @param oci_path: The path of the directory that contains config.json.
         """
         result = utils.run(
-                ['/usr/bin/run_oci'] + ['-U'] + test_config['run_oci_args'].split() +
+                ['/usr/bin/run_oci'] + test_config['run_oci_args'] +
                 [oci_path] + test_config.get('program_extra_argv', '').split(),
                 ignore_status=True, stderr_is_expected=True, verbose=True,
                 stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
@@ -155,12 +169,16 @@ class security_RunOci(test.test):
         """
         Runs one test from the src directory.  Return 0 if the test passes,
         return 1 on failure.
+
+        @param test_config: The test's configuration in a dict.
         """
         chronos_uid = pwd.getpwnam('chronos').pw_uid
         td = autotemp.tempdir()
         os.chown(td.name, chronos_uid, chronos_uid)
         with open(os.path.join(td.name, 'config.json'), 'w') as config_file:
-            config_file.write(CONFIG_JSON_TEMPLATE % test_config['program_argv'])
+            config = json.loads(CONFIG_JSON_TEMPLATE)
+            config['process']['args'] = test_config['program_argv']
+            json.dump(config, config_file, indent=2)
         rootfs_path = os.path.join(td.name, 'rootfs')
         os.mkdir(rootfs_path)
         os.chown(rootfs_path, chronos_uid, chronos_uid)
