@@ -824,25 +824,6 @@ class PyMoxPackage(ExternalPackage):
         return self.version
 
 
-class MockPackage(ExternalPackage):
-    """
-    mock module
-
-    Used in unittests.
-    """
-    module_name = 'mock'
-    version = '2.0.0'
-    url_filename = 'mock-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('http://pypi.python.org/packages/source/m/mock/%s' % (
-        url_filename),)
-    hex_sum = '397ed52eb2d8d4b326bc3fa6b38adda5f0b090d3'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_noegg)
-
-
 class PySeleniumPackage(ExternalPackage):
     """
     selenium module
