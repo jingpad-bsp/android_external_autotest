@@ -479,23 +479,19 @@ def get_host_attribute(attribute, **host_filter_data):
     return rpc_utils.prepare_for_serialization(host_attr_dicts)
 
 
+@rpc_utils.route_rpc_to_master
 def set_host_attribute(attribute, value, **host_filter_data):
-    """
+    """Set an attribute on hosts.
+
+    This RPC is a shim that forwards calls to master to be handled there.
+
     @param attribute: string name of attribute
     @param value: string, or None to delete an attribute
     @param host_filter_data: filter data to apply to Hosts to choose hosts to
                              act upon
     """
-    assert host_filter_data # disallow accidental actions on all hosts
-    hosts = models.Host.query_objects(host_filter_data)
-    models.AclGroup.check_for_acl_violation_hosts(hosts)
-    for host in hosts:
-        host.set_or_delete_attribute(attribute, value)
-
-    # Master forwards this RPC to shards.
-    if not utils.is_shard():
-        rpc_utils.fanout_rpc(hosts, 'set_host_attribute', False,
-                attribute=attribute, value=value, **host_filter_data)
+    assert not utils.is_shard()
+    set_host_attribute_impl(attribute, value, **host_filter_data)
 
 
 def set_host_attribute_impl(attribute, value, **host_filter_data):
