@@ -281,6 +281,23 @@ def _throttle_result_size(path):
                 (path, traceback.format_exc()))
 
 
+def export_tko_job_to_file(job, jobname, filename):
+    """Exports the tko job to disk file.
+
+    @param job: database object.
+    @param jobname: the job name as string.
+    @param filename: The path to the results to be parsed.
+    """
+    try:
+        from autotest_lib.tko import job_serializer
+
+        serializer = job_serializer.JobSerializer()
+        serializer.serialize_to_binary(job, jobname, filename)
+    except ImportError:
+        tko_utils.dprint("WARNING: tko_pb2.py doesn't exist. Create by "
+                         "compiling tko/tko.proto.")
+
+
 def parse_one(db, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
@@ -456,25 +473,19 @@ def parse_one(db, jobname, path, parse_options):
         raise e
 
     # Serializing job into a binary file
-    try:
-        from autotest_lib.tko import tko_pb2
-        from autotest_lib.tko import job_serializer
-
-        serializer = job_serializer.JobSerializer()
+    export_tko_to_file = global_config.global_config.get_config_value(
+            'AUTOSERV', 'export_tko_job_to_file', type=bool, default=False)
+    if export_tko_to_file:
         binary_file_name = os.path.join(path, "job.serialize")
-        serializer.serialize_to_binary(job, jobname, binary_file_name)
+        export_tko_job_to_file(job, jobname, binary_file_name)
 
-        if reparse:
-            site_export_file = "autotest_lib.tko.site_export"
-            site_export = utils.import_site_function(__file__,
-                                                     site_export_file,
-                                                     "site_export",
-                                                     _site_export_dummy)
-            site_export(binary_file_name)
-
-    except ImportError:
-        tko_utils.dprint("DEBUG: tko_pb2.py doesn't exist. Create by "
-                         "compiling tko/tko.proto.")
+    if reparse:
+        site_export_file = "autotest_lib.tko.site_export"
+        site_export = utils.import_site_function(__file__,
+                                                 site_export_file,
+                                                 "site_export",
+                                                 _site_export_dummy)
+        site_export(binary_file_name)
 
     if not dry_run:
         db.commit()
