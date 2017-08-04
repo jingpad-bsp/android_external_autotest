@@ -803,14 +803,13 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     else:
         list_suite_args = None
 
-    test_args = {'ssid': None, 'wifipass': None}
+    test_args = {}
 
-    ap_name =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME)
-    if ap_name and ap_name != 'None':
-      test_args['ssid'] = ap_name
-    ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS)
-    if ap_pass and ap_pass != 'None':
-      test_args['wifipass'] = ap_pass
+    ap_name =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME, default=None)
+    test_args['ssid'] = ap_name
+    ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS, default=None)
+    test_args['wifipass'] = ap_pass
+
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
     pool=pool, run_prod_code=False, test_source_build=build,
