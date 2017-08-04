@@ -833,7 +833,6 @@ class SuiteTest(mox.MoxTestBase):
         expected_retry_map = self.suite._retry_handler._retry_map.copy()
         reporter = SuiteBase.MemoryResultReporter()
         self.suite.wait(self.recorder.record_entry, reporter=reporter)
-        self.assertTrue(reporter.results)
         # Check retry map and _jobs_to_tests, ensure no retry was scheduled.
         self.assertEquals(self.suite._retry_handler._retry_map,
                           expected_retry_map)
@@ -856,7 +855,6 @@ class SuiteTest(mox.MoxTestBase):
                 error.RPCException('Expected during test'))
         # Do not file a bug.
         self.mox.StubOutWithMock(self.suite, '_should_report')
-        self.suite._should_report(mox.IgnoreArg()).AndReturn(False)
 
         self.mox.ReplayAll()
 
