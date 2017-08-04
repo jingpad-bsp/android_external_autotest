@@ -887,7 +887,7 @@ class AbstractSSHHost(remote.RemoteHost):
         @return: the tunnel process.
         """
         tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
-        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
+        ssh_cmd = self.make_ssh_command(opts=tunnel_options, port=self.port)
         tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
         logging.debug('Full tunnel command: %s', tunnel_cmd)
         # Exec the ssh process directly here rather than using a shell.
