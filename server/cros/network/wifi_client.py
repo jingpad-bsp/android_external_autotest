@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import logging
 import math
 import os
@@ -180,7 +181,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
     NET_DETECT_SCAN_PERIOD = 'NetDetectScanPeriodSeconds'
     WAKE_TO_SCAN_PERIOD = 'WakeToScanPeriodSeconds'
     FORCE_WAKE_TO_SCAN_TIMER = 'ForceWakeToScanTimer'
-    MAC_ADDRESS_RANDOMIZATION = 'MACAddressRandomization'
+    MAC_ADDRESS_RANDOMIZATION_SUPPORTED = 'MACAddressRandomizationSupported'
+    MAC_ADDRESS_RANDOMIZATION_ENABLED = 'MACAddressRandomizationEnabled'
 
     CONNECTED_STATES = ['ready', 'portal', 'online']
 
@@ -968,16 +970,29 @@ class WiFiClient(site_linux_system.LinuxSystem):
         three octets of the MAC address used in probe requests while
         disconnected to make the DUT harder to track.
 
+        If MAC address randomization is not supported on this DUT and the
+        caller tries to turn it on, this raises a TestNAError.
+
         @param enabled: boolean whether or not to enable MAC address
                 randomization
 
         @return a context manager for the MAC address randomization property
 
         """
-        return TemporaryDeviceDBusProperty(self._shill_proxy,
-                                           self.wifi_if,
-                                           self.MAC_ADDRESS_RANDOMIZATION,
-                                           enabled)
+        if not self._shill_proxy.get_dbus_property_on_device(
+                self.wifi_if, self.MAC_ADDRESS_RANDOMIZATION_SUPPORTED):
+            if enabled:
+                raise error.TestNAError(
+                    'MAC address randomization not supported')
+            else:
+                # Return a no-op context manager.
+                return contextlib.nested()
+
+        return TemporaryDeviceDBusProperty(
+                self._shill_proxy,
+                self.wifi_if,
+                self.MAC_ADDRESS_RANDOMIZATION_ENABLED,
+                enabled)
 
 
     def request_roam(self, bssid):
