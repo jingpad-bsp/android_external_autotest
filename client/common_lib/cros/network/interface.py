@@ -58,6 +58,7 @@ DEVICE_NAME_LOOKUP = {
     #              Is it just a different part source?
     DeviceInfo('0x8086', '0x08b2'): NAME_INTEL_7260,
     DeviceInfo('0x8086', '0x095a'): NAME_INTEL_7265,
+    DeviceInfo('0x8086', '0x095b'): NAME_INTEL_7265,
     DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_BCM4354_SDIO,
     DeviceInfo('0x14e4', '0x43ec'): NAME_BROADCOM_BCM4356_PCIE,
     DeviceInfo('0x14e4', '0x440d'): NAME_BROADCOM_BCM4371_PCIE,
