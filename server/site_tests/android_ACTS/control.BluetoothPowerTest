@@ -6,7 +6,7 @@ AUTHOR = 'ajanti'
 NAME = 'android_ACTS.BluetoothPowerTest'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_bluetooth'
+ATTRIBUTES = 'suite:android_bluetooth_power'
 DEPENDENCIES = 'bluetooth_power'
 
 DOC = """
