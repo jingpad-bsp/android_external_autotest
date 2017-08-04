@@ -414,7 +414,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         retry_inconsistency_error = None
         # If the results were not completed or were failing then continue or
         # retry them iteratively MAX_RETRY times.
-        while steps < self._max_retry and failed > waived:
+        while steps < self._max_retry and failed + notexecuted > waived:
             steps += 1
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
@@ -462,7 +462,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             # The DUT has rebooted at this point and is in a clean state.
 
         # Final classification of test results.
-        if total_passed + waived == 0 or failed > waived:
+        if total_passed + waived == 0 or failed + notexecuted > waived:
             raise error.TestFail(
                 'Failed: after %d retries giving up. '
                 'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
