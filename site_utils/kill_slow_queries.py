@@ -106,7 +106,7 @@ def kill_slow_queries(user, password, timeout):
 
     # Get the processlist.
     cursor.Execute('SHOW FULL PROCESSLIST')
-    processlist = cursor.fetchall()
+    processlist = cursor.Fetchall()
     # Filter out the slow queries and kill them.
     slow_queries = [p for p in processlist if p[4]=='Query' and p[5]>=timeout]
     queries_str = ''
