@@ -406,9 +406,8 @@ def _after_iteration_hook(obj):
                 image.save('{}/{}_iter{}.png'.format(_SCREENSHOT_DIR_PATH,
                                                      _SCREENSHOT_BASENAME,
                                                      obj.iteration))
-            except Exception:
-                e = sys.exc_info()[0]
-                logging.warning('Unable to capture screenshot. %s' % e)
+            except Exception as e:
+                logging.warning('Unable to capture screenshot. %s', e)
         else:
             logging.warning('Too many failures, no screenshot taken')
 
@@ -499,7 +498,6 @@ class ArcTest(test.test):
             else:
                 logging.error('Container is alive?')
         except Exception as err:
-            self.cleanup()
             raise error.TestFail(err)
 
     def after_run_once(self):
