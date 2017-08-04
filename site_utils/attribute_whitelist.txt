@@ -4,6 +4,7 @@ subsystem:wifi
 suite:AFDO_page_replay
 suite:AFDO_record
 suite:android_bluetooth
+suite:android_bluetooth_power
 suite:android_bluetooth_auto
 suite:android_bluetooth_funhaus
 suite:android_bluetooth_longev_gatt
