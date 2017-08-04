@@ -15,8 +15,8 @@ from autotest_lib.client.bin.result_tools import runner as result_tools_runner
 from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.server import installable_object
 from autotest_lib.server import utils
@@ -30,8 +30,8 @@ except ImportError:
 AUTOTEST_SVN = 'svn://test.kernel.org/autotest/trunk/client'
 AUTOTEST_HTTP = 'http://test.kernel.org/svn/autotest/trunk/client'
 
-CONFIG = global_config.global_config
-AUTOSERV_PREBUILD = CONFIG.get_config_value(
+_CONFIG = global_config.global_config
+AUTOSERV_PREBUILD = _CONFIG.get_config_value(
         'AUTOSERV', 'enable_server_prebuild', type=bool, default=False)
 
 class AutodirNotFoundError(Exception):
@@ -1040,7 +1040,7 @@ class log_collector(object):
 
 # a file-like object for catching stderr from an autotest client and
 # extracting status logs from it
-class BaseClientLogger(object):
+class client_logger(object):
     """Partial file object to write to both stdout and
     the status log file.  We only implement those methods
     utils.run() actually calls.
@@ -1128,10 +1128,40 @@ class BaseClientLogger(object):
 
 
     def _process_line(self, line):
-        """Write out a line of data to the appropriate stream. Status
-        lines sent by autotest will be prepended with
-        "AUTOTEST_STATUS", and all other lines are ssh error
-        messages."""
+        """Write out a line of data to the appropriate stream.
+
+        Returns the package checksum file if it exists.
+
+        Status lines sent by autotest will be prepended with
+        "AUTOTEST_STATUS", and all other lines are ssh error messages.
+        """
+        logging.debug(line)
+        fetch_package_match = self.fetch_package_parser.search(line)
+        if fetch_package_match:
+            pkg_name, dest_path, fifo_path = fetch_package_match.groups()
+            serve_packages = _CONFIG.get_config_value(
+                "PACKAGES", "serve_packages_from_autoserv", type=bool)
+            if serve_packages and pkg_name == 'packages.checksum':
+                try:
+                    checksum_file = os.path.join(
+                        self.job.pkgmgr.pkgmgr_dir, 'packages', pkg_name)
+                    if os.path.exists(checksum_file):
+                        self.host.send_file(checksum_file, dest_path)
+                except error.AutoservRunError:
+                    msg = "Package checksum file not found, continuing anyway"
+                    logging.exception(msg)
+
+                try:
+                    # When fetching a package, the client expects to be
+                    # notified when the fetching is complete. Autotest
+                    # does this pushing a B to a fifo queue to the client.
+                    self.host.run("echo B > %s" % fifo_path)
+                except error.AutoservRunError:
+                    msg = "Checksum installation failed, continuing anyway"
+                    logging.exception(msg)
+                finally:
+                    return
+
         status_match = self.status_parser.search(line)
         test_complete_match = self.test_complete_parser.search(line)
         fetch_package_match = self.fetch_package_parser.search(line)
@@ -1168,6 +1198,19 @@ class BaseClientLogger(object):
 
 
     def _send_tarball(self, pkg_name, remote_dest):
+        """Uses tarballs in package manager by default."""
+        try:
+            server_package = os.path.join(self.job.pkgmgr.pkgmgr_dir,
+                                          'packages', pkg_name)
+            if os.path.exists(server_package):
+              self.host.send_file(server_package, remote_dest)
+              return
+
+        except error.AutoservRunError:
+            msg = ("Package %s could not be sent from the package cache." %
+                   pkg_name)
+            logging.exception(msg)
+
         name, pkg_type = self.job.pkgmgr.parse_tarball_name(pkg_name)
         src_dirs = []
         if pkg_type == 'test':
@@ -1244,14 +1287,5 @@ SiteAutotest = client_utils.import_site_class(
     BaseAutotest)
 
 
-SiteClientLogger = client_utils.import_site_class(
-    __file__, "autotest_lib.server.site_autotest", "SiteClientLogger",
-    BaseClientLogger)
-
-
 class Autotest(SiteAutotest):
-    pass
-
-
-class client_logger(SiteClientLogger):
     pass
