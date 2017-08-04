@@ -1293,10 +1293,9 @@ class _BaseSuite(object):
         self._record_result(result, record)
         if self._job_retry and self._retry_handler._should_retry(result):
             self._retry_result(result, record, waiter)
-        # TODO (fdeng): If the suite times out before a retry could
-        # finish, we would lose the chance to file a bug for the
-        # original job.
-        if self._should_report(result):
+        # TODO(akeshet): re-enable this check. Context: crbug.com/751762
+        # if self._should_report(result):
+        if False:
             reporter.report(result)
 
 
