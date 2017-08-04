@@ -102,7 +102,6 @@ def GetStatus(connection, status):
     @param status: Name of the status variable.
     @returns The mysql query result.
     """
-    """Gets the status variable from the database."""
     result = connection.Execute('SHOW GLOBAL STATUS LIKE "%s";' % status)
     output = result.fetchone()[1]
 
