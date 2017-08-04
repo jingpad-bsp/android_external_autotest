@@ -617,6 +617,17 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def request_scan(self):
+        """Request a scan from shill.
+
+        @return True on success, False otherwise.
+
+        """
+        self._wifi_proxy.manager.RequestScan('wifi')
+        return True
+
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
