@@ -94,6 +94,10 @@ class RetryingConnection(object):
             return self.cursor.execute(*args, **kwargs)
         return self.RetryWith(_Execute)
 
+    def Fetchall(self):
+        """Runs .fetchall on the cursor."""
+        return self.cursor.fetchall()
+
 
 def GetStatus(connection, status):
     """Get the status variable from the database, retrying on failure.
