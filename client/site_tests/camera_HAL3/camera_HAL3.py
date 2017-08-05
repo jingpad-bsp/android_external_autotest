@@ -14,7 +14,8 @@ class camera_HAL3(test.test):
 
     version = 1
     test_binary = 'arc_camera3_test'
-    service_binary = os.path.join('usr', 'bin', 'arc_camera3_service')
+    service_binary = os.path.join(os.path.sep, 'usr', 'bin',
+                                  'arc_camera3_service')
     dep = 'camera_hal3'
     timeout = 600
 
@@ -26,7 +27,7 @@ class camera_HAL3(test.test):
     def run_once(self):
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        if os.path.exists(self.service_binary):
+        if not os.path.exists(self.service_binary):
             logging.debug('Skip test because %s does not exist' %
                           self.service_binary)
             return
