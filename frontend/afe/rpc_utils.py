@@ -712,22 +712,17 @@ def interleave_entries(queue_entries, special_tasks):
     return interleaved_entries
 
 
-def bucket_hosts_by_shard(host_objs, rpc_hostnames=False):
+def bucket_hosts_by_shard(host_objs):
     """Figure out which hosts are on which shards.
 
     @param host_objs: A list of host objects.
-    @param rpc_hostnames: If True, the rpc_hostnames of a shard are returned
-        instead of the 'real' shard hostnames. This only matters for testing
-        environments.
 
     @return: A map of shard hostname: list of hosts on the shard.
     """
     shard_host_map = collections.defaultdict(list)
     for host in host_objs:
         if host.shard:
-            shard_name = (host.shard.rpc_hostname() if rpc_hostnames
-                          else host.shard.hostname)
-            shard_host_map[shard_name].append(host.hostname)
+            shard_host_map[host.shard.hostname].append(host.hostname)
     return shard_host_map
 
 
@@ -1036,7 +1031,7 @@ def forward_single_host_rpc_to_shard(func):
         shard_hostname = None
         host = models.Host.smart_get(kwargs['id'])
         if host and host.shard:
-            shard_hostname = host.shard.rpc_hostname()
+            shard_hostname = host.shard.hostname
         ret = func(**kwargs)
         if shard_hostname and not server_utils.is_shard():
             run_rpc_on_multiple_hostnames(func.func_name,
@@ -1059,8 +1054,7 @@ def fanout_rpc(host_objs, rpc_name, include_hostnames=True, **kwargs):
     @param kwargs: The kwargs for the rpc.
     """
     # Figure out which hosts are on which shards.
-    shard_host_map = bucket_hosts_by_shard(
-            host_objs, rpc_hostnames=True)
+    shard_host_map = bucket_hosts_by_shard(host_objs)
 
     # Execute the rpc against the appropriate shards.
     for shard, hostnames in shard_host_map.iteritems():

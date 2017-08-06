@@ -365,7 +365,7 @@ def modify_hosts(host_filter_data, update_data):
                               'lock modification will be enforced. %s', e)
 
         if host.shard:
-            affected_shard_hostnames.add(host.shard.rpc_hostname())
+            affected_shard_hostnames.add(host.shard.hostname)
             affected_host_ids.append(host.id)
 
     # This is required to make `lock_time` for a host be exactly same
@@ -988,7 +988,7 @@ def _forward_special_tasks_on_hosts(task, rpc, **filter_data):
     @return: A list of hostnames that a special task was created for.
     """
     hosts = models.Host.query_objects(filter_data)
-    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts, rpc_hostnames=True)
+    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts)
 
     # Filter out hosts on a shard from those on the master, forward
     # rpcs to the shard with an additional hostname__in filter, and
@@ -1330,7 +1330,7 @@ def get_host_special_tasks(host_id, **filter_data):
         # objects that aren't JSON-serializable.  So, we have to
         # call AFE.run() to get the raw, serializable output from
         # the shard.
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.run('get_special_tasks',
                              host_id=host_id, **filter_data)
 
@@ -1365,7 +1365,7 @@ def get_host_num_special_tasks(host, **kwargs):
     if not host_model.shard:
         return get_num_special_tasks(host=host, **kwargs)
     else:
-        shard_afe = frontend.AFE(server=host_model.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host_model.shard.hostname)
         return shard_afe.run('get_num_special_tasks', host=host, **kwargs)
 
 
@@ -1419,7 +1419,7 @@ def get_host_status_task(host_id, end_time):
         # objects that aren't JSON-serializable.  So, we have to
         # call AFE.run() to get the raw, serializable output from
         # the shard.
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.run('get_status_task',
                              host_id=host_id, end_time=end_time)
 
@@ -1455,7 +1455,7 @@ def get_host_diagnosis_interval(host_id, end_time, success):
         return status_history.get_diagnosis_interval(
                 host_id, end_time, success)
     else:
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.get_host_diagnosis_interval(
                 host_id, end_time, success)
 
