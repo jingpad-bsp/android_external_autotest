@@ -2208,26 +2208,6 @@ def is_localhost(server):
         return False
 
 
-def is_puppylab_vm(server):
-    """Check if server is a virtual machine in puppylab.
-
-    In the virtual machine testing environment (i.e., puppylab), each
-    shard VM has a hostname like localhost:<port>.
-
-    @param server: Server name to check.
-
-    @return True if given server is a virtual machine in puppylab.
-
-    """
-    # TODO(mkryu): This is a puppylab specific hack. Please update
-    # this method if you have a better solution.
-    regex = re.compile(r'(.+):\d+')
-    m = regex.match(server)
-    if m:
-        return m.group(1) in _LOCAL_HOST_LIST
-    return False
-
-
 def get_function_arg_value(func, arg_name, args, kwargs):
     """Get the value of the given argument for the function.
 
