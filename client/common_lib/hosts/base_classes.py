@@ -346,13 +346,30 @@ class Host(object):
         1000 based SI units are used.
 
         @raises AutoservDiskFullHostError if path has less than gb GB free.
+        @raises AutoservDirectoryNotFoundError if path is not a valid directory.
+        @raises AutoservDiskSizeUnknownError the return from du is not parsed
+            correctly.
         """
         one_mb = 10 ** 6  # Bytes (SI unit).
         mb_per_gb = 1000.0
         logging.info('Checking for >= %s GB of space under %s on machine %s',
                      gb, path, self.hostname)
-        df = self.run('df -PB %d %s | tail -1' % (one_mb, path)).stdout.split()
-        free_space_gb = int(df[3]) / mb_per_gb
+
+        if not os.path.isdir(path):
+            msg = 'Path is not a valid directory %s' % path
+            logging.error(msg)
+            raise error.AutoservDirectoryNotFoundError(msg)
+
+        cmd = 'df -PB %d %s | tail -1' % (one_mb, path)
+        df = self.run(cmd).stdout.split()
+        try:
+            free_space_gb = int(df[3]) / mb_per_gb
+        except (IndexError, ValueError):
+            msg = ('Could not determine the size of %s. '
+                   'Output from df: %s') % (path, df)
+            logging.error(msg)
+            raise error.AutoservDiskSizeUnknownError(msg)
+
         if free_space_gb < gb:
             raise error.AutoservDiskFullHostError(path, gb, free_space_gb)
         else:
