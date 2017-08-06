@@ -216,7 +216,7 @@ class LogdirTestCase(unittest.TestCase):
         logdir_pickle = pickle.dumps(logdir, protocol=2)
         logdir = pickle.loads(logdir_pickle)
 
-        self.assertEqual(logdir.additional_exclude, ['a'])
+        self.assertEqual(logdir.additional_exclude, 'a')
 
     def test_pickle_enforce_required_attributes_default(self):
         """Some attributes from this object should never be dropped.
