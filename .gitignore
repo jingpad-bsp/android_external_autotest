@@ -59,11 +59,6 @@ site_utils/autotest_tools/
 site_utils/devserver/
 site_utils/buildbot_src/
 
-# Pupplylab files
-puppylab/Vagrantfile
-puppylab/chromeos_lab_core_cluster.box
-puppylab/.vagrant
-
 # Container directory
 containers/
 

@@ -158,32 +158,6 @@ class Shard(dbmodels.Model, model_logic.ModelExtensions):
         db_table = 'afe_shards'
 
 
-    def rpc_hostname(self):
-        """Get the rpc hostname of the shard.
-
-        @return: Just the shard hostname for all non-testing environments.
-                 The address of the default gateway for vm testing environments.
-        """
-        # TODO: Figure out a better solution for testing. Since no 2 shards
-        # can run on the same host, if the shard hostname is localhost we
-        # conclude that it must be a vm in a test cluster. In such situations
-        # a name of localhost:<port> is necessary to achieve the correct
-        # afe links/redirection from the frontend (this happens through the
-        # host), but for rpcs that are performed *on* the shard, they need to
-        # use the address of the gateway.
-        # In the virtual machine testing environment (i.e., puppylab), each
-        # shard VM has a hostname like localhost:<port>. In the real cluster
-        # environment, a shard node does not have 'localhost' for its hostname.
-        # The following hostname substitution is needed only for the VM
-        # in puppylab.
-        # The 'hostname' should not be replaced in the case of real cluster.
-        if utils.is_puppylab_vm(self.hostname):
-            hostname = self.hostname.split(':')[0]
-            return self.hostname.replace(
-                    hostname, utils.DEFAULT_VM_GATEWAY)
-        return self.hostname
-
-
 class Drone(dbmodels.Model, model_logic.ModelExtensions):
     """
     A scheduler drone

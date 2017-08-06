@@ -8,6 +8,7 @@ import os
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import moblab_test
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.utils import labellib
 
 
 FAILURE_FOLDERS = ['/usr/local/autotest/results', '/usr/local/autotest/logs']
@@ -22,37 +23,45 @@ class moblab_RunSuite(moblab_test.MoblabTest):
     version = 1
 
 
-    def run_once(self, host, suite_name, moblab_suite_max_retries):
+    def run_once(self, host, suite_name, moblab_suite_max_retries,
+                 target_build=''):
         """Runs a suite on a Moblab Host against its test DUTS.
 
         @param host: Moblab Host that will run the suite.
         @param suite_name: Name of the suite to run.
         @param moblab_suite_max_retries: The maximum number of test retries
                 allowed within the suite launched on moblab.
+        @param target_build: Optional build to be use in the run_suite
+                call on moblab. This argument is passed as is to run_suite. It
+                must be a sensible build target for the board of the sub-DUTs
+                attached to the moblab.
 
         @raises AutoservRunError if the suite does not complete successfully.
         """
+        # Fetch the board of the DUT's assigned to this Moblab. There should
+        # only be one type.
         try:
-            # Fetch the board of the DUT's assigned to this Moblab. There should
-            # only be one type.
-            board = host.afe.get_hosts()[0].platform
+            dut = host.afe.get_hosts()[0]
         except IndexError:
             raise error.TestFail('All hosts for this MobLab are down. Please '
                                  'request the lab admins to take a look.')
-        # TODO (crbug.com/399132) sbasi - Replace repair version with actual
-        # stable_version for the given board.
-        stable_version_map = host.afe.get_stable_version_map(
-                host.afe.CROS_IMAGE_TYPE)
-        build = stable_version_map.get_image_name(board)
 
-        logging.debug('Running suite: %s.', suite_name)
+        labels = labellib.LabelsMapping(dut.labels)
+        board = labels['board']
+
+        if not target_build:
+            stable_version_map = host.afe.get_stable_version_map(
+                    host.afe.CROS_IMAGE_TYPE)
+            target_build = stable_version_map.get_image_name(board)
+
+        logging.info('Running suite: %s.', suite_name)
+        cmd = ("%s/site_utils/run_suite.py --pool='' --board=%s --build=%s "
+               "--suite_name=%s --retry=True " "--max_retries=%d" %
+               (moblab_host.AUTOTEST_INSTALL_DIR, board, target_build,
+                suite_name, moblab_suite_max_retries))
+        logging.debug('Run suite command: %s', cmd)
         try:
-            result = host.run_as_moblab(
-                    "%s/site_utils/run_suite.py --pool='' "
-                    "--board=%s --build=%s --suite_name=%s --retry=True "
-                    "--max_retries=%d" %
-                    (moblab_host.AUTOTEST_INSTALL_DIR, board, build,
-                     suite_name, moblab_suite_max_retries), timeout=10800)
+            result = host.run_as_moblab(cmd, timeout=10800)
         except error.AutoservRunError as e:
             # Collect the results and logs from the moblab device.
             moblab_logs_dir = os.path.join(self.resultsdir, 'moblab_logs')

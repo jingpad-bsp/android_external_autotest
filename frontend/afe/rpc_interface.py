@@ -365,7 +365,7 @@ def modify_hosts(host_filter_data, update_data):
                               'lock modification will be enforced. %s', e)
 
         if host.shard:
-            affected_shard_hostnames.add(host.shard.rpc_hostname())
+            affected_shard_hostnames.add(host.shard.hostname)
             affected_host_ids.append(host.id)
 
     # This is required to make `lock_time` for a host be exactly same
@@ -479,23 +479,19 @@ def get_host_attribute(attribute, **host_filter_data):
     return rpc_utils.prepare_for_serialization(host_attr_dicts)
 
 
+@rpc_utils.route_rpc_to_master
 def set_host_attribute(attribute, value, **host_filter_data):
-    """
+    """Set an attribute on hosts.
+
+    This RPC is a shim that forwards calls to master to be handled there.
+
     @param attribute: string name of attribute
     @param value: string, or None to delete an attribute
     @param host_filter_data: filter data to apply to Hosts to choose hosts to
                              act upon
     """
-    assert host_filter_data # disallow accidental actions on all hosts
-    hosts = models.Host.query_objects(host_filter_data)
-    models.AclGroup.check_for_acl_violation_hosts(hosts)
-    for host in hosts:
-        host.set_or_delete_attribute(attribute, value)
-
-    # Master forwards this RPC to shards.
-    if not utils.is_shard():
-        rpc_utils.fanout_rpc(hosts, 'set_host_attribute', False,
-                attribute=attribute, value=value, **host_filter_data)
+    assert not utils.is_shard()
+    set_host_attribute_impl(attribute, value, **host_filter_data)
 
 
 def set_host_attribute_impl(attribute, value, **host_filter_data):
@@ -992,7 +988,7 @@ def _forward_special_tasks_on_hosts(task, rpc, **filter_data):
     @return: A list of hostnames that a special task was created for.
     """
     hosts = models.Host.query_objects(filter_data)
-    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts, rpc_hostnames=True)
+    shard_host_map = rpc_utils.bucket_hosts_by_shard(hosts)
 
     # Filter out hosts on a shard from those on the master, forward
     # rpcs to the shard with an additional hostname__in filter, and
@@ -1334,7 +1330,7 @@ def get_host_special_tasks(host_id, **filter_data):
         # objects that aren't JSON-serializable.  So, we have to
         # call AFE.run() to get the raw, serializable output from
         # the shard.
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.run('get_special_tasks',
                              host_id=host_id, **filter_data)
 
@@ -1369,7 +1365,7 @@ def get_host_num_special_tasks(host, **kwargs):
     if not host_model.shard:
         return get_num_special_tasks(host=host, **kwargs)
     else:
-        shard_afe = frontend.AFE(server=host_model.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host_model.shard.hostname)
         return shard_afe.run('get_num_special_tasks', host=host, **kwargs)
 
 
@@ -1423,7 +1419,7 @@ def get_host_status_task(host_id, end_time):
         # objects that aren't JSON-serializable.  So, we have to
         # call AFE.run() to get the raw, serializable output from
         # the shard.
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.run('get_status_task',
                              host_id=host_id, end_time=end_time)
 
@@ -1459,7 +1455,7 @@ def get_host_diagnosis_interval(host_id, end_time, success):
         return status_history.get_diagnosis_interval(
                 host_id, end_time, success)
     else:
-        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        shard_afe = frontend.AFE(server=host.shard.hostname)
         return shard_afe.get_host_diagnosis_interval(
                 host_id, end_time, success)
 
