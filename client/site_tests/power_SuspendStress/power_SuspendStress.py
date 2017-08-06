@@ -61,13 +61,17 @@ class power_SuspendStress(test.test):
                 self.resultsdir, method=self._method,
                 suspend_state=self._suspend_state)
         # Find the interface which is used for most communication.
+        # We assume the interface connects to the gateway and has the lowest
+        # metric.
         if self._check_connection:
+            interface_choices={}
             with open('/proc/net/route') as fh:
                 for line in fh:
                     fields = line.strip().split()
                     if fields[1] != '00000000' or not int(fields[3], 16) & 2:
                         continue
-                    interface = fields[0]
+                    interface_choices[fields[0]] = fields[6]
+            interface = min(interface_choices)
 
         while not self._done():
             time.sleep(self._min_resume +
