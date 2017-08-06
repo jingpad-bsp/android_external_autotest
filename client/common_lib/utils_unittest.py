@@ -973,21 +973,6 @@ class VersionMatchUnittest(unittest.TestCase):
                         (builds[i], '' if i==j else ' not', releases[j]))
 
 
-class IsPuppylabVmUnittest(unittest.TestCase):
-    """Test is_puppylab_vm function."""
-
-    def test_is_puppylab_vm(self):
-        """Test is_puppylab_vm function."""
-        self.assertTrue(utils.is_puppylab_vm('localhost:8001'))
-        self.assertTrue(utils.is_puppylab_vm('127.0.0.1:8002'))
-        self.assertFalse(utils.is_puppylab_vm('localhost'))
-        self.assertFalse(utils.is_puppylab_vm('localhost:'))
-        self.assertFalse(utils.is_puppylab_vm('127.0.0.1'))
-        self.assertFalse(utils.is_puppylab_vm('127.0.0.1:'))
-        self.assertFalse(utils.is_puppylab_vm('chromeos-server.mtv'))
-        self.assertFalse(utils.is_puppylab_vm('chromeos-server.mtv:8001'))
-
-
 class IsInSameSubnetUnittest(unittest.TestCase):
     """Test is_in_same_subnet function."""
 
