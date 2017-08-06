@@ -489,6 +489,14 @@ class IllegalUser(Exception):
     """Exception raise when a program runs as an illegal user."""
 
 
+class AutoservDirectoryNotFoundError(AutoservHostError):
+    """Exception raised when an expected directory is not found."""
+
+
+class AutoservDiskSizeUnknownError(AutoservHostError):
+    """Exception raised when the disk space could not be determined."""
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

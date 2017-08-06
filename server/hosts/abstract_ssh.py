@@ -753,12 +753,12 @@ class AbstractSSHHost(remote.RemoteHost):
         try:
             self.check_diskspace(autotest.Autotest.get_install_dir(self),
                                  self.AUTOTEST_GB_DISKSPACE_REQUIRED)
-        except error.AutoservHostError:
-            raise           # only want to raise if it's a space issue
-        except autotest.AutodirNotFoundError:
-            # autotest dir may not exist, etc. ignore
-            logging.debug('autodir space check exception, this is probably '
-                          'safe to ignore\n' + traceback.format_exc())
+        except error.AutoservDiskFullHostError:
+            # only want to raise if it's a space issue
+            raise
+        except (error.AutoservHostError, autotest.AutodirNotFoundError):
+            logging.excption('autodir space check exception, this is probably '
+                             'safe to ignore\n')
 
 
     def close(self):
