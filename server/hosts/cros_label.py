@@ -268,6 +268,7 @@ class StorageLabel(base_label.StringPrefixLabel):
              * `storage:ssd` when internal device is solid state drive
              * `storage:hdd` when internal device is hard disk drive
              * `storage:mmc` when internal device is mmc drive
+             * `storage:nvme` when internal device is NVMe drive
              * None          When internal device is something else or
                              when we are unable to determine the type
     """
@@ -334,6 +335,11 @@ class StorageLabel(base_label.StringPrefixLabel):
 
             rotate_dict = {'0':'ssd', '1':'hdd'}
             self.type_str = rotate_dict.get(rotate_str)
+            return True
+
+        nvme_pattern = '/dev/nvme[0-9]+n[0-9]+'
+        if re.match(nvme_pattern, rootdev_str):
+            self.type_str = 'nmve'
             return True
 
         # All other internal device / error case will always fall here
