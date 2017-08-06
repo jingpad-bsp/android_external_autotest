@@ -108,9 +108,13 @@ class logdir(base_sysinfo.loggable):
         Some old attributes are not sanely handled via __setstate__, so we can't
         drop them without breaking compatibility.
         """
-        self.additional_exclude = list(set(self._excludes) -
-                                       set(self.DEFAULT_EXCLUDES))
-        if not self.additional_exclude:
+        additional_excludes = list(set(self._excludes) -
+                                   set(self.DEFAULT_EXCLUDES))
+        if additional_excludes:
+            # Old API only allowed a single additional exclude.
+            # Best effort, keep the first one, throw the rest.
+            self.additional_exclude = additional_excludes[0]
+        else:
             self.additional_exclude = None
 
 
