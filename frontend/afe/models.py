@@ -158,15 +158,6 @@ class Shard(dbmodels.Model, model_logic.ModelExtensions):
         db_table = 'afe_shards'
 
 
-    def rpc_hostname(self):
-        """Get the rpc hostname of the shard.
-
-        @return: Just the shard hostname for all non-testing environments.
-                 The address of the default gateway for vm testing environments.
-        """
-        return self.hostname
-
-
 class Drone(dbmodels.Model, model_logic.ModelExtensions):
     """
     A scheduler drone
