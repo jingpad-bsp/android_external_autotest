@@ -830,10 +830,12 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_UPDATE_COMPLETED_SECONDS = 4 * 60
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
 
+    _DEVSERVER_HOSTLOG_ROOTFS = 'devserver_hostlog_rootfs'
+    _DEVSERVER_HOSTLOG_REBOOT = 'devserver_hostlog_reboot'
+
     # Logs and their whereabouts.
     _WHERE_UPDATE_LOG = ('update_engine log (in sysinfo or on the DUT, also '
                          'included in the test log)')
-    _WHERE_OMAHA_LOG = 'Omaha-devserver log (included in the test log)'
 
 
     def initialize(self):
@@ -910,18 +912,25 @@ class autoupdate_EndToEndTest(test.test):
 
 
     def _error_initial_check(self, expected, actual, mismatched_attrs):
+        err_msg = ('The update appears to have completed successfully but '
+                   'we found a problem while verifying the hostlog of events '
+                   'returned from the update. Some attributes reported for '
+                   'the initial update check event are not what we expected: '
+                   '%s. ' % mismatched_attrs)
         if 'version' in mismatched_attrs:
-            err_msg = ('Initial update check was received but the reported '
-                       'version is different from what was expected.')
+            err_msg += ('The expected version is (%s) but reported version was '
+                        '(%s). ' % (expected['version'], actual['version']))
             if self._source_image_installed:
-                err_msg += (' The source payload we installed was probably '
-                            'incorrect or corrupt.')
+                err_msg += ('The source payload we installed was probably '
+                            'incorrect or corrupt. ')
             else:
-                err_msg += (' The DUT is probably not running the correct '
-                            'source image.')
-            return err_msg
+                err_msg += ('The DUT was probably not running the correct '
+                            'source image. ')
 
-        return 'A test bug occurred; inspect the test log.'
+        err_msg += ('Check the full hostlog for this update in the %s file in '
+                    'the %s directory.' % (self._DEVSERVER_HOSTLOG_ROOTFS,
+                                           dev_server.AUTO_UPDATE_LOG_DIR))
+        return err_msg
 
 
     def _error_intermediate(self, expected, actual, mismatched_attrs, action,
@@ -932,18 +941,16 @@ class autoupdate_EndToEndTest(test.test):
                          EVENT_RESULT_DICT[event_result])
                         if event_result else 'missing')
             return ('The updater reported result code is %s. This could be an '
-                    'updater bug or a connectivity problem; check the %s. For '
-                    'a detailed log of update events, check the %s.' %
-                    (reported, self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+                    'updater bug or a connectivity problem; check the %s.' %
+                    (reported, self._WHERE_UPDATE_LOG))
         if 'event_type' in mismatched_attrs:
             event_type = actual.get('event_type')
             reported = ('different (%s)' % EVENT_TYPE_DICT[event_type]
                         if event_type else 'missing')
             return ('Expected the updater to %s (%s) but received event type '
-                    'is %s. This could be an updater %s; check the '
-                    '%s. For a detailed log of update events, check the %s.' %
+                    'is %s. This could be an updater %s; check the %s.' %
                     (action, EVENT_TYPE_DICT[expected['event_type']], reported,
-                     problem, self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+                     problem, self._WHERE_UPDATE_LOG))
         if 'version' in mismatched_attrs:
             return ('The updater reported an unexpected version despite '
                     'previously reporting the correct one. This is most likely '
@@ -970,50 +977,51 @@ class autoupdate_EndToEndTest(test.test):
 
 
     def _error_reboot_after_update(self, expected, actual, mismatched_attrs):
+        err_msg = ('The update completed successfully but there was a problem '
+                   'with the post-reboot update check. After a successful '
+                   'update, we do a final update check to parse a unique '
+                   'omaha request. The mistmatched attributes for this update '
+                   'check were %s. ' % mismatched_attrs)
         if 'event_result' in mismatched_attrs:
-            event_result = actual.get('event_result')
-            reported = ('different (%s)' % EVENT_RESULT_DICT[event_result]
-                        if event_result else 'missing')
-            return ('The updater was expected to reboot (%s) but reported '
-                    'result code is %s. This could be a failure to reboot, an '
-                    'updater bug or a connectivity problem; check the %s and '
-                    'the system log. For a detailed log of update events, '
-                    'check the %s.' %
-                    (EVENT_RESULT_DICT[expected['event_result']], reported,
-                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+            err_msg += ('The event_result was expected to be (%s:%s) but '
+                        'reported (%s:%s). ' %
+                            (expected['event_result'],
+                             EVENT_RESULT_DICT[expected['event_result']],
+                             actual.get('event_result'),
+                             EVENT_RESULT_DICT[actual.get('event_result')]))
         if 'event_type' in mismatched_attrs:
-            event_type = actual.get('event_type')
-            reported = ('different (%s)' % EVENT_TYPE_DICT[event_type]
-                        if event_type else 'missing')
-            return ('Expected to successfully reboot into the new image (%s) '
-                    'but received event type is %s. This probably means that '
-                    'the new image failed to verify after reboot, possibly '
-                    'because the payload is corrupt. This might also be an '
-                    'updater bug or crash; check the %s. For a detailed log of '
-                    'update events, check the %s.' %
-                    (EVENT_TYPE_DICT[expected['event_type']], reported,
-                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+            err_msg += ('The event_type was expeted to be (%s:%s) but '
+                        'reported (%s:%s). ' %
+                            (expected['event_type'],
+                             EVENT_TYPE_DICT[expected['event_type']],
+                             actual.get('event_type'),
+                             EVENT_TYPE_DICT[actual.get('event_type')]))
         if 'version' in mismatched_attrs:
-            return ('The DUT rebooted after the update but reports a different '
-                    'image version than the one expected. This probably means '
-                    'that the payload we applied was incorrect or corrupt.')
+          err_msg += ('The version was expected to be (%s) but '
+                      'reported (%s). This probably means that the payload '
+                      'we applied was incorrect or corrupt. ' %
+                      (expected['version'], actual['version']))
         if 'previous_version' in mismatched_attrs:
-            return ('The DUT rebooted after the update and reports the '
-                    'expected version. However, it reports a previous version '
-                    'that is different from the one previously reported. This '
-                    'is most likely a bug in update engine; check the %s.' %
-                    self._WHERE_UPDATE_LOG)
-
-        return 'A test bug occurred; inspect the test log.'
+            err_msg += ('The previous version is expected to be (%s) but '
+                        'reported (%s). This can happen if we retried the '
+                        'update after rootfs update completed on the first '
+                        'attempt. Or if stateful got wiped and '
+                        '/var/lib/update_engine/prefs/previous-version was '
+                        'deleted. ' % (expected['previous_version'],
+                                       actual['previous_version']))
+        err_msg += ('You can see the full hostlog for this update check in '
+                    'the %s file within the %s directory. ' %
+                    (self._DEVSERVER_HOSTLOG_REBOOT,
+                     dev_server.AUTO_UPDATE_LOG_DIR))
+        return err_msg
 
 
     def _timeout_err(self, desc, timeout, event_type=None):
         if event_type is not None:
             desc += ' (%s)' % EVENT_TYPE_DICT[event_type]
-        return ('Failed to receive %s within %d seconds. This could be a '
-                'problem with the updater or a connectivity issue. For more '
-                'details, check the %s.' %
-                (desc, timeout, self._WHERE_UPDATE_LOG))
+        return ('The update completed successfully but one of the steps of '
+                'the update took longer than we would like. We failed to '
+                'receive %s within %d seconds.' % (desc, timeout))
 
 
     def run_update_test(self, test_platform, test_conf):
@@ -1039,7 +1047,8 @@ class autoupdate_EndToEndTest(test.test):
             pid = test_platform.trigger_update(test_conf['target_payload_uri'])
 
             # Verify the host log that was returned from the update.
-            file_url = self._get_hostlog_file('devserver_hostlog_rootfs', pid)
+            file_url = self._get_hostlog_file(self._DEVSERVER_HOSTLOG_ROOTFS,
+                                              pid)
 
             logging.info('Checking update steps with devserver hostlog file: '
                          '%s' % file_url)
@@ -1110,7 +1119,8 @@ class autoupdate_EndToEndTest(test.test):
             # Observe post-reboot update check, which should indicate that the
             # image version has been updated.
             # Verify the host log that was returned from the update.
-            file_url = self._get_hostlog_file('devserver_hostlog_reboot', pid)
+            file_url = self._get_hostlog_file(self._DEVSERVER_HOSTLOG_REBOOT,
+                                              pid)
 
             logging.info('Checking post-reboot devserver hostlogs: %s' %
                          file_url)
