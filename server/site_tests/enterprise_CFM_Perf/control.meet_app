@@ -25,7 +25,8 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('enterprise_CFM_Perf', host=host, is_meeting=True)
+    job.run_test('enterprise_CFM_Perf', host=host, is_meeting=True,
+                 tag='meet_app')
 
 parallel_simple(run_test, machines)
 
