@@ -4,6 +4,10 @@
     "master_name": "ChromeOS_Audio"
   },
   {
+    "autotest_name": "audio_WebRtcAudioLoopback",
+    "master_name": "ChromeOSWebRtcAudio"
+  },
+  {
     "autotest_name": "audiovideo_AVSync",
     "master_name": "ChromeOS_Audio"
   },
