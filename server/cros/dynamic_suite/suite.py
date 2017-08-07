@@ -1264,19 +1264,7 @@ class _BaseSuite(object):
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
         """
-        # reporting modules have dependency on external packages, e.g., httplib2
-        # Such dependency can cause issue to any module tries to import suite.py
-        # without building site-packages first. Since the reporting modules are
-        # only used in this function, move the imports here avoid the
-        # requirement of building site packages to use other functions in this
-        # module.
-        from autotest_lib.server.cros.dynamic_suite import reporting
-
-        if self._should_file_bugs:
-            bug_reporter = reporting.NullReporter()
-            return _BugResultReporter(self, bug_reporter, bug_template)
-        else:
-            return _EmailResultReporter(self)
+        return _EmailResultReporter(self)
 
 
     def _handle_result(self, result, record, waiter, reporter):
