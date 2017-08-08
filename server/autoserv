@@ -686,7 +686,7 @@ def main():
     else:
         pid_file_manager = None
 
-    autotest.BaseAutotest.set_install_in_tmpdir(
+    autotest.Autotest.set_install_in_tmpdir(
         parser.options.install_in_tmpdir)
 
     exit_code = 0

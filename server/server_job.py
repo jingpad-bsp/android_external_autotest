@@ -1311,7 +1311,7 @@ class server_job(base_job.base_job):
         # Inject ourself as the job object into other classes within the API.
         # (Yuck, this injection is a gross thing be part of a public API. -gps)
         #
-        # XXX Base & SiteAutotest do not appear to use .job.  Who does?
+        # XXX Autotest does not appear to use .job.  Who does?
         namespace['autotest'].Autotest.job = self
         # server.hosts.base_classes.Host uses .job.
         namespace['hosts'].Host.job = self
