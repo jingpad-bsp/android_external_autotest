@@ -3,15 +3,12 @@
 # found in the LICENSE file.
 
 import logging
-import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import moblab_test
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.utils import labellib
 
-
-FAILURE_FOLDERS = ['/usr/local/autotest/results', '/usr/local/autotest/logs']
 
 
 class moblab_RunSuite(moblab_test.MoblabTest):
@@ -60,16 +57,5 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                (moblab_host.AUTOTEST_INSTALL_DIR, board, target_build,
                 suite_name, moblab_suite_max_retries))
         logging.debug('Run suite command: %s', cmd)
-        try:
-            result = host.run_as_moblab(cmd, timeout=10800)
-        except error.AutoservRunError as e:
-            # Collect the results and logs from the moblab device.
-            moblab_logs_dir = os.path.join(self.resultsdir, 'moblab_logs')
-            for folder in FAILURE_FOLDERS:
-                try:
-                    host.get_file(folder, moblab_logs_dir)
-                except error.AutoservRunError as e2:
-                    logging.error(e2)
-                    pass
-            raise e
+        result = host.run_as_moblab(cmd, timeout=10800)
         logging.debug('Suite Run Output:\n%s', result.stdout)
