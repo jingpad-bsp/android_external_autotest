@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'harpreet@chromium.org'
-NAME = 'bluestreak-release'
-PURPOSE = 'Set of CFM tests that are run against a release candidate.'
+AUTHOR = 'harpreet'
+NAME = 'hotrod-release'
+PURPOSE = 'Set of CFM tests that are run against a release candidates.'
 
-TIME = 'SHORT'
+TIME = 'MEDIUM'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'suite'
 TEST_TYPE = 'Server'
@@ -33,7 +33,7 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # filing bugs on tests that are part of this suite. If left unspecified
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
-    'labels': ['Proj-Bluestreak', 'Bluestreak-Auto-Bug'],
+    'labels': ['Proj-Hotrod', 'Hotrod-Auto-Bug'],
     'owner': 'chromeos-meetings@google.com',
     'status': None,
     'summary': None,
@@ -41,11 +41,11 @@ _BUG_TEMPLATE = {
     'cc': ['chromeos-meetings@google.com']
 }
 
-args_dict['add_experimental'] = True
-args_dict['bug_template'] = _BUG_TEMPLATE
-args_dict['max_runtime_mins'] = 60
-args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['name'] = NAME
+args_dict['bug_template'] = _BUG_TEMPLATE
+args_dict['add_experimental'] = True
+args_dict['max_runtime_mins'] = 120
+args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['job'] = job
 
 dynamic_suite.reimage_and_run(**args_dict)
