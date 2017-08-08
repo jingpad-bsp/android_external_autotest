@@ -1,0 +1,9 @@
+tty:!:5:xorg,power,brltty
+video:!:27:root,chronos,arc-camera,xorg,dlm,rtanalytics
+input:!:222:cras,xorg,power
+systemd-journal:!:270:
+systemd-timesync:!:271:
+systemd-network:!:274:
+systemd-resolve:!:275:
+docker:!:412:
+google-sudoers:x:1002:
