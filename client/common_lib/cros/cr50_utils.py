@@ -28,8 +28,8 @@ DUMMY_VER = '-1.-1.-1'
 # The value in the dictionary is the regular expression that can be used to
 # find the version strings for each region.
 VERSION_RE = {
-    "--fwver" : '\nRO (?P<ro>\S+).*\nRW (?P<rw>\S+)',
-    "--binvers" : 'RO_A:(?P<ro_a>\S+).*RW_A:(?P<rw_a>\S+).*' \
+    '--fwver' : '\nRO (?P<ro>\S+).*\nRW (?P<rw>\S+)',
+    '--binvers' : 'RO_A:(?P<ro_a>\S+).*RW_A:(?P<rw_a>\S+).*' \
            'RO_B:(?P<ro_b>\S+).*RW_B:(?P<rw_b>\S+)',
 }
 UPDATE_TIMEOUT = 60
@@ -65,7 +65,7 @@ def AssertVersionsAreEqual(name_a, ver_a, name_b, ver_b):
     Raises:
         AssertionError if ver_a is not equal to ver_b
     """
-    assert ver_a == ver_b, ("Versions do not match: %s %s %s %s" %
+    assert ver_a == ver_b, ('Versions do not match: %s %s %s %s' %
                             (name_a, ver_a, name_b, ver_b))
 
 
@@ -102,7 +102,7 @@ def GetVersion(versions, name):
     for k, v in versions.iteritems():
         if name in k:
             if v == DUMMY_VER:
-                logging.info("Detected invalid %s %s", name, v)
+                logging.info('Detected invalid %s %s', name, v)
                 return v
             elif ver:
                 AssertVersionsAreEqual(key, ver, k, v)
@@ -133,7 +133,7 @@ def FindVersion(output, arg):
 def GetSavedVersion(client):
     """Return the saved version from /var/cache/cr50-version"""
     result = client.run(GET_CR50_VERSION).stdout.strip()
-    return FindVersion(result, "--fwver")
+    return FindVersion(result, '--fwver')
 
 
 def UsbUpdater(client, args):
@@ -148,9 +148,9 @@ def UsbUpdater(client, args):
     """
     options = usb_update.parse_args(args)
 
-    result = client.run("status trunksd")
+    result = client.run('status trunksd')
     if options.systemdev and 'running' in result.stdout:
-        client.run("stop trunksd")
+        client.run('stop trunksd')
 
     # If we are updating the cr50 image, usb_update will return a non-zero exit
     # status so we should ignore it.
@@ -159,7 +159,7 @@ def UsbUpdater(client, args):
     expect_reboot = (options.systemdev and not options.post_reset and
                      not options.info_cmd)
 
-    result = client.run("usb_updater %s" % ' '.join(args),
+    result = client.run('usb_updater %s' % ' '.join(args),
                         ignore_status=ignore_status,
                         ignore_timeout=expect_reboot,
                         timeout=UPDATE_TIMEOUT)
@@ -167,7 +167,7 @@ def UsbUpdater(client, args):
     # After a posted reboot, the usb_update exit code should equal 1.
     if result.exit_status and result.exit_status != UPDATE_OK:
         logging.debug(result)
-        raise error.TestFail("Unexpected usb_update exit code after %s %d" %
+        raise error.TestFail('Unexpected usb_update exit code after %s %d' %
                              (' '.join(args), result.exit_status))
     return result
 
@@ -215,8 +215,8 @@ def GetRunningVersion(client):
     running_ver = GetFwVersion(client)
     saved_ver = GetSavedVersion(client)
 
-    AssertVersionsAreEqual("Running", GetVersionString(running_ver),
-                           "Saved", GetVersionString(saved_ver))
+    AssertVersionsAreEqual('Running', GetVersionString(running_ver),
+                           'Saved', GetVersionString(saved_ver))
     return running_ver
 
 
@@ -247,8 +247,8 @@ def CheckForFailures(client, last_message):
                 failures.append(message)
         if len(failures):
             logging.info(messages)
-            raise error.TestFail("Detected unexpected exit code during update: "
-                                 "%s" % failures)
+            raise error.TestFail('Detected unexpected exit code during update: '
+                                 '%s' % failures)
     return messages[-1]
 
 
@@ -267,19 +267,19 @@ def VerifyUpdate(client, ver='', last_message=''):
     """
     # Check that there were no unexpected reboots from cr50-result
     last_message = CheckForFailures(client, last_message)
-    logging.debug("last cr50 message %s", last_message)
+    logging.debug('last cr50 message %s', last_message)
 
     new_ver = GetRunningVersion(client)
     if ver != '':
         if DUMMY_VER != ver[0]:
-            AssertVersionsAreEqual("Old RO", ver[0], "Updated RO", new_ver[0])
-        AssertVersionsAreEqual("Old RW", ver[1], "Updated RW", new_ver[1])
+            AssertVersionsAreEqual('Old RO', ver[0], 'Updated RO', new_ver[0])
+        AssertVersionsAreEqual('Old RW', ver[1], 'Updated RW', new_ver[1])
     return new_ver, last_message
 
 
 def ClearUpdateStateAndReboot(client):
     """Removes the cr50 status files in /var/cache and reboots the AP"""
-    client.run("rm %s" % CR50_STATE)
+    client.run('rm %s' % CR50_STATE)
     client.reboot()
 
 
@@ -299,7 +299,7 @@ def InstallImage(client, src, dest=CR50_FILE):
     client.send_file(src, dest)
 
     ver = GetBinVersion(client, dest)
-    client.run("sync")
+    client.run('sync')
     return dest, ver
 
 
@@ -360,8 +360,8 @@ def GetBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ["-i"]).stdout.strip()
-    board_id_info = result.split("Board ID space: ")[-1].strip().split(":")
+    result = UsbUpdater(client, ['-i']).stdout.strip()
+    board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
 
@@ -419,6 +419,6 @@ def SetBoardId(client, board_id, flags=None):
         board_id_arg += ':' + hex(flags)
 
     # Set the board id using the given board id and flags
-    result = UsbUpdater(client, ["-s", "-i", board_id_arg]).stdout.strip()
+    result = UsbUpdater(client, ['-s', '-i', board_id_arg]).stdout.strip()
 
     CheckBoardId(client, board_id, flags)
