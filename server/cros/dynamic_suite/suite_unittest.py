@@ -656,7 +656,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry, dict())
+        suite.wait(recorder.record_entry)
 
 
     def testRunAndWaitFailure(self):
@@ -677,7 +677,7 @@ class SuiteTest(mox.MoxTestBase):
                 autospec=True) as wait_mock:
             wait_mock.side_effect = Exception
             suite.schedule(recorder.record_entry)
-            suite.wait(recorder.record_entry, dict())
+            suite.wait(recorder.record_entry)
 
 
     def testRunAndWaitScheduleFailure(self):
@@ -700,7 +700,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         suite.schedule(recorder.record_entry)
-        suite.wait(recorder.record_entry, dict())
+        suite.wait(recorder.record_entry)
 
 
     def testGetTestsSortedByTime(self):
@@ -736,42 +736,6 @@ class SuiteTest(mox.MoxTestBase):
                                    self._FAKE_JOB_ID, 'user', 'myhost'))
 
 
-    def testBugFiling(self):
-        """
-        Confirm that all the necessary predicates are passed on to the
-        bug reporter when a test fails.
-        """
-        test_results = self._createSuiteMockResults()
-        self.schedule_and_expect_these_results(
-            self.suite,
-            [test_results[0] + test_results[1]],
-            self.recorder)
-
-        self.mox.ReplayAll()
-
-        self.suite.schedule(self.recorder.record_entry)
-        self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
-        reporter = SuiteBase.MemoryResultReporter()
-        self.suite.wait(self.recorder.record_entry, reporter=reporter)
-
-
-    def testFailedBugFiling(self):
-        """
-        Make sure the suite survives even if we cannot file bugs.
-        """
-        test_results = self._createSuiteMockResults(self.tmpdir)
-        self.schedule_and_expect_these_results(
-            self.suite,
-            [test_results[0] + test_results[1]],
-            self.recorder)
-        self.mox.ReplayAll()
-
-        self.suite.schedule(self.recorder.record_entry)
-        self.suite._jobs_to_tests[self._FAKE_JOB_ID] = self.files['seven']
-        reporter = SuiteBase.MemoryResultReporter()
-        self.suite.wait(self.recorder.record_entry, reporter=reporter)
-
-
     def testJobRetryTestFail(self):
         """Test retry works."""
         test_to_retry = self.files['seven']
@@ -795,10 +759,7 @@ class SuiteTest(mox.MoxTestBase):
                                     'retry_max': 1}
                 }
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
-        reporter = mock.create_autospec(SuiteBase.MemoryResultReporter,
-                                        instance=True)
-        reporter.report.side_effect = Exception
-        self.suite.wait(self.recorder.record_entry, reporter=reporter)
+        self.suite.wait(self.recorder.record_entry)
         expected_retry_map = {
                 self._FAKE_JOB_ID: {'state': RetryHandler.States.RETRIED,
                                     'retry_max': 1},
@@ -831,8 +792,7 @@ class SuiteTest(mox.MoxTestBase):
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
         expected_jobs_to_tests = self.suite._jobs_to_tests.copy()
         expected_retry_map = self.suite._retry_handler._retry_map.copy()
-        reporter = SuiteBase.MemoryResultReporter()
-        self.suite.wait(self.recorder.record_entry, reporter=reporter)
+        self.suite.wait(self.recorder.record_entry)
         # Check retry map and _jobs_to_tests, ensure no retry was scheduled.
         self.assertEquals(self.suite._retry_handler._retry_map,
                           expected_retry_map)
@@ -864,8 +824,7 @@ class SuiteTest(mox.MoxTestBase):
                         'state': RetryHandler.States.NOT_ATTEMPTED,
                         'retry_max': 1}}
         self.suite._jobs_to_tests[self._FAKE_JOB_ID] = test_to_retry
-        reporter = SuiteBase.MemoryResultReporter()
-        self.suite.wait(self.recorder.record_entry, reporter=reporter)
+        self.suite.wait(self.recorder.record_entry)
         expected_retry_map = {
                 self._FAKE_JOB_ID: {
                         'state': RetryHandler.States.ATTEMPTED,

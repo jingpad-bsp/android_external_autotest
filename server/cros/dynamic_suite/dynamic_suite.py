@@ -608,8 +608,7 @@ def _run_suite(
 
     if suite.wait_for_results:
         logging.debug('Waiting on suite.')
-        reporter = suite.get_result_reporter(bug_template)
-        suite.wait(job.record_entry, reporter=reporter)
+        suite.wait(job.record_entry)
         logging.debug('Finished waiting on suite. '
                       'Returning from _perform_reimage_and_run.')
     else:
