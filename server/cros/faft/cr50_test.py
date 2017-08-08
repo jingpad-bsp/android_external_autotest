@@ -22,25 +22,174 @@ class Cr50Test(FirmwareTest):
     CR50_DEBUG_FILE = 'cr50_dbg_%s.bin'
     CR50_PROD_FILE = 'cr50.%s.bin.prod'
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, restore_cr50_state=False,
+                   cr50_dev_path=''):
         super(Cr50Test, self).initialize(host, cmdline_args)
 
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
 
-        self._original_cr50_ver = self.cr50.get_version()
+        self._original_cr50_rw_version = self.cr50.get_version()
         self.host = host
+        self._original_state_saved = False
+
+        if restore_cr50_state:
+            self._save_node_locked_dev_image(cr50_dev_path)
+            self._save_original_state()
+            self._original_state_saved = True
+
+
+    def _save_node_locked_dev_image(self, cr50_dev_path):
+        """Save or download the node locked dev image.
+
+        Args:
+            cr50_dev_path: The path to the node locked cr50 image.
+
+        Raise:
+            TestError if we cannot find a node locked dev image for the device.
+        """
+        if os.path.isfile(cr50_dev_path):
+            self._node_locked_cr50_image = cr50_dev_path
+        else:
+            devid = self.servo.get('cr50_devid')
+            try:
+                self._node_locked_cr50_image = self.download_cr50_debug_image(
+                    devid)
+            except Exception, e:
+                raise error.TestError('Cannot restore the device state without '
+                                      'a node-locked DBG image')
+
+
+    def _save_original_state(self):
+        """Save the cr50 related state.
+
+        Save the device's current cr50 version, cr50 board id, rlz, and image
+        at /opt/google/cr50/firmware/cr50.bin.prod. These will be used to
+        restore the state during cleanup.
+        """
+        # Save the RO and RW Versions, the device RLZ code, and the cr50 board
+        # id.
+        self._original_cr50_version = cr50_utils.GetRunningVersion(self.host)
+        self._original_rlz = cr50_utils.GetRLZ(self.host)
+        self._original_cr50_bid = cr50_utils.GetBoardId(self.host)
+
+        # Save the image currently stored on the device
+        binver = cr50_utils.GetBinVersion(self.host)
+        filename = 'device_image_' + self._original_cr50_version[1]
+        self._original_device_image = os.path.join(self.resultsdir, filename)
+        self.host.get_file(cr50_utils.CR50_FILE, self._original_device_image)
+
+        # If the running cr50 version matches the image on the DUT use that
+        # as the original image. If the versions don't match download the image
+        # from google storage
+        if self._original_cr50_version[1] == binver[1]:
+            self._original_cr50_image = self._original_device_image
+        else:
+            self._original_cr50_image = self.download_cr50_release_image(
+                self._original_cr50_version[1])
+        logging.info('cr50 version: %r', self._original_cr50_version)
+        logging.info('rlz: %r', self._original_rlz)
+        logging.info('cr50 bid: %08x:%08x:%08x', self._original_cr50_bid[0],
+            self._original_cr50_bid[1], self._original_cr50_bid[2])
+        logging.info('DUT cr50 image version: %r', binver)
+
+
+    def get_saved_cr50_original_path(self):
+        """Return the local path for the original cr50 image"""
+        if not hasattr(self, '_original_device_image'):
+            raise error.TestError('No record of original image')
+        return self._original_device_image
+
+
+    def get_saved_cr50_dev_path(self):
+        """Return the local path for the cr50 dev image"""
+        if not hasattr(self, '_node_locked_cr50_image'):
+            raise error.TestError('No record of debug image')
+        return self._node_locked_cr50_image
+
+
+    def _restore_original_image(self):
+        """Restore the cr50 image and erase the state.
+
+        Make 3 attempts to update to the original image. Use a rollback from
+        the DBG image to erase the state that can only be erased by a DBG image.
+        """
+        # Remove the image at /opt/google/cr50/firmware/cr50.bin.prod, so
+        # cr50-update wont update cr50 while we are rolling back.
+        self.host.run('rm /opt/google/cr50/firmware/cr50.bin.prod')
+        self.host.run('sync')
+
+        for i in range(3):
+            try:
+                # Update to the node-locked DBG image so we can erase all of
+                # the state we are trying to reset
+                self.cr50_update(self._node_locked_cr50_image)
+
+                # Rollback to the original cr50 image.
+                self.cr50_update(self._original_cr50_image, rollback=True)
+                break
+            except Exception, e:
+                logging.warning('Failed to restore original image attempt %d: '
+                                '%r', i, e)
+
+
+    def _restore_original_state(self):
+        """Update to the original image"""
+        # Delete the RLZ code before updating to make sure that chromeos doesn't
+        # set the board id during the update.
+        cr50_utils.SetRLZ(self.host, '')
+
+        # Update to the original image and erase the board id
+        self._restore_original_image()
+
+        # The board id can only be set once. Set it before reinitializing the
+        # RLZ code to make sure that ChromeOS won't set the board id.
+        if self._original_cr50_bid != cr50_utils.ERASED_BID:
+            # Convert the board_id to at least a 5 char string, so usb_updater
+            # wont treat it as a symbolic value.
+            cr50_utils.SetBoardId(self.host,
+                                  '0x%03x' % self._original_cr50_bid[0],
+                                  self._original_cr50_bid[2])
+        # Set the RLZ code
+        cr50_utils.SetRLZ(self.host, self._original_rlz)
+        # Copy the original /opt/google/cr50/firmware image back onto the DUT.
+        cr50_utils.InstallImage(self.host, self._original_device_image)
+        # Make sure the /var/cache/cr50* state is restored
+        cr50_utils.ClearUpdateStateAndReboot(self.host)
+
+        mismatch = []
+        erased_rlz = not self._original_rlz
+        # The vpd rlz code and mosys platform brand should be in sync, but
+        # check both just in case.
+        brand = self.host.run('mosys platform brand', ignore_status=erased_rlz)
+        if ((not brand != erased_rlz) or
+            (brand and brand.stdout.strip() != self._original_rlz)):
+            mismatch.append('mosys platform brand')
+        if cr50_utils.GetRLZ(self.host) != self._original_rlz:
+            mismatch.append('vpd rlz code')
+        if cr50_utils.GetBoardId(self.host) != self._original_cr50_bid:
+            mismatch.append('cr50 board_id')
+        if (cr50_utils.GetRunningVersion(self.host) !=
+            self._original_cr50_version):
+            mismatch.append('cr50_version')
+        if len(mismatch):
+            raise error.TestError('Failed to restore original device state: %s'
+                                  % ', '.join(mismatch))
+        logging.info('Successfully restored the original cr50 state')
 
 
     def cleanup(self):
         """Make sure cr50 is running the same image"""
+        if self._original_state_saved:
+            self._restore_original_state()
+
         running_ver = self.cr50.get_version()
-        if (hasattr(self, '_original_cr50_ver') and
-            running_ver != self._original_cr50_ver):
+        if (hasattr(self, '_original_cr50_rw_version') and
+            running_ver != self._original_cr50_rw_version):
             raise error.TestError('Running %s not the original cr50 version '
                                   '%s' % (running_ver,
-                                  self._original_cr50_ver))
+                                  self._original_cr50_rw_version))
 
         super(Cr50Test, self).cleanup()
 
