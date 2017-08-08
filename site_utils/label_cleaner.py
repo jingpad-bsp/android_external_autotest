@@ -23,12 +23,13 @@ If '-p' option is not given, we delete labels whose name is exactly
 
 import argparse
 import logging
-import MySQLdb
 import socket
 import sys
 import traceback
 
 import common
+# Installed via build_externals, must be after import common.
+import MySQLdb
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server import frontend
