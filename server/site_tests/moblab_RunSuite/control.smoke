@@ -30,11 +30,23 @@ Values pertaining to the test case include:
                                        specified, the value will be fetched
                                        from global_config.
 """
+from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import utils
+
+MOBLAB_AUTOTEST_FOLDERS = ['/usr/local/autotest/results',
+                           '/usr/local/autotest/logs']
+
 
 def run(machine):
     host = hosts.create_host(machine)
     args_dict = utils.args_to_dict(args)
+
+    logging.info('Logs from moblab\'s instance of autotest will be collected '
+                 'under the sysinfo/ folder in results.')
+    for folder in MOBLAB_AUTOTEST_FOLDERS:
+        logging.info('  Will collect %s', folder)
+        job.sysinfo.add_logdir(sysinfo.logdir(folder, excludes=()))
+
     job.run_test('moblab_RunSuite', host=host, suite_name='smoke',
                  moblab_suite_max_retries=1, **args_dict)
 

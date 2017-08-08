@@ -1227,7 +1227,7 @@ class _BaseSuite(object):
                 and self._retry_handler.has_following_retry(result))
 
 
-    def wait(self, record, reporter):
+    def wait(self, record):
         """
         Polls for the job statuses, using |record| to print status when each
         completes.
@@ -1235,8 +1235,8 @@ class _BaseSuite(object):
         @param record: callable that records job status.
                  prototype:
                    record(base_job.status_log_entry)
-        @param reporter: _ResultReporter instance.
         """
+        reporter = self._get_result_reporter()
         waiter = job_status.JobResultWaiter(self._afe, self._tko)
         try:
             if self._suite_job_id:
@@ -1258,25 +1258,9 @@ class _BaseSuite(object):
                    'Exception waiting for results').record_result(record)
 
 
-    def get_result_reporter(self, bug_template):
-        """Return the _ResultReporter instance to use for the suite.
-
-        @param bug_template: A template dictionary specifying the default bug
-                             filing options for failures in this suite.
-        """
-        # reporting modules have dependency on external packages, e.g., httplib2
-        # Such dependency can cause issue to any module tries to import suite.py
-        # without building site-packages first. Since the reporting modules are
-        # only used in this function, move the imports here avoid the
-        # requirement of building site packages to use other functions in this
-        # module.
-        from autotest_lib.server.cros.dynamic_suite import reporting
-
-        if self._should_file_bugs:
-            bug_reporter = reporting.NullReporter()
-            return _BugResultReporter(self, bug_reporter, bug_template)
-        else:
-            return _EmailResultReporter(self)
+    def _get_result_reporter(self):
+        """Return the _ResultReporter instance to use for the suite."""
+        return _EmailResultReporter(self)
 
 
     def _handle_result(self, result, record, waiter, reporter):
@@ -1744,16 +1728,6 @@ class _ResultReporter(object):
 
         @param result: Status instance for job.
         """
-
-
-class MemoryResultReporter(_ResultReporter):
-    """Reporter that stores results internally for testing."""
-
-    def __init__(self):
-        self.results = []
-
-    def report(self, result):
-        self.results.append(result)
 
 
 class _TestBugReporter(_ResultReporter):
