@@ -988,7 +988,7 @@ class bluetooth_AdapterLEAdvertising(
         self.unregister_advertisements(advertisements)
 
 
-    def run_once(self, host, advertisements, test_type):
+    def run_once(self, host, advertisements, test_type, num_iterations=1):
         """Running Bluetooth adapter LE advertising autotest.
 
         @param host: device under test host.
@@ -1042,15 +1042,19 @@ class bluetooth_AdapterLEAdvertising(
 
         elif test_type == 'suspend_resume':
            # Run all test cases for suspend resume testing.
-           self.test_case_SI200_RA3_CD_SR_CD_UA3()
-           self.test_case_RA3_CD_SI200_CD_SR_CD_UA3()
-           self.test_case_SI200_RA1_CD_SR_CD_UA1()
-           self.test_case_RA1_CD_SI200_CD_SR_CD_UA1()
+            for i in xrange(num_iterations):
+               logging.info('Starting suspend resume loop #%d', i+1)
+               self.test_case_SI200_RA3_CD_SR_CD_UA3()
+               self.test_case_RA3_CD_SI200_CD_SR_CD_UA3()
+               self.test_case_SI200_RA1_CD_SR_CD_UA1()
+               self.test_case_RA1_CD_SI200_CD_SR_CD_UA1()
 
         elif test_type == 'reboot':
-            self.test_case_SI200_RA3_CD_PC_CD_UA3()
-            self.test_case_RA3_CD_SI200_CD_PC_CD_UA3()
-            self.test_case_RA1_CD_SI200_CD_PC_CD_UA1()
+            for i in xrange(num_iterations):
+                logging.info('Starting reboot loop #%d', i+1)
+                self.test_case_SI200_RA3_CD_PC_CD_UA3()
+                self.test_case_RA3_CD_SI200_CD_PC_CD_UA3()
+                self.test_case_RA1_CD_SI200_CD_PC_CD_UA1()
 
         if self.fails:
             raise error.TestFail(self.fails)
