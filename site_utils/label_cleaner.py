@@ -25,7 +25,6 @@ import argparse
 import logging
 import socket
 import sys
-import traceback
 
 import common
 # Installed via build_externals, must be after import common.
@@ -33,7 +32,11 @@ import MySQLdb
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server import frontend
+from chromite.lib import metrics
+from chromite.lib import ts_mon_config
 
+
+_METRICS_PREFIX = 'chromeos/autotest/afe_db/admin/label_cleaner'
 
 GLOBAL_AFE = global_config.global_config.get_config_value(
         'SERVER', 'global_afe_hostname')
@@ -71,12 +74,9 @@ def get_used_labels(conn):
     """
     cursor = conn.cursor()
     sql = SELECT_USED_LABELS_FORMAT
-    try:
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-    except:
-        logging.error("Query failed: %s", sql)
-        raise
+    logging.debug('Running: %r', sql)
+    cursor.execute(sql)
+    rows = cursor.fetchall()
     return set(r[0] for r in rows)
 
 
@@ -95,44 +95,32 @@ def fetch_labels(conn, label, prefix):
         sql = SELECT_LABELS_FORMAT % ('LIKE "%s%%"' % label)
     else:
         sql = SELECT_LABELS_FORMAT % ('= "%s"' % label)
-    try:
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-    except:
-        logging.error("Query failed: %s", sql)
-        raise
+    logging.debug('Running: %r', sql)
+    cursor.execute(sql)
+    rows = cursor.fetchall()
     return set(r[0] for r in rows)
 
 
 def _delete_labels(conn, labels):
     """Helper function of `delete_labels`."""
     labels_str = ','.join([str(l) for l in labels])
-    logging.info("Deleting following labels: %s ..", labels_str)
     sql = DELETE_LABELS_FORMAT % labels_str
-    try:
-        conn.cursor().execute(sql)
-        conn.commit()
-    except:
-        logging.error("Query failed: %s", sql)
-        raise
-    logging.info("Done.")
+    logging.debug('Running: %r', sql)
+    conn.cursor().execute(sql)
+    conn.commit()
 
 
 def delete_labels(conn, labels, max_delete):
     """Delete given labels from database.
 
     @param conn: MySQLdb Connection object.
-    @param labels: Labels to delete. Set type.
+    @param labels: iterable of labels to delete.
     @param max_delete: Max number of records to delete in a query.
     """
-    if not labels:
-        logging.warn("No label to delete.")
-        return
     while labels:
-        labels_to_del = set()
-        for i in xrange(min(len(labels), max_delete)):
-            labels_to_del.add(labels.pop())
-        _delete_labels(conn, labels_to_del)
+        chunk = labels[:max_delete]
+        labels = labels[max_delete:]
+        _delete_labels(conn, chunk)
 
 
 def is_primary_server():
@@ -147,7 +135,40 @@ def is_primary_server():
     return False
 
 
+def clean_labels(options):
+    """Cleans unused labels from AFE database"""
+    msg = 'Label cleaner starts. Will delete '
+    if options.prefix:
+        msg += 'all labels whose prefix is "%s".'
+    else:
+        msg += 'a label "%s".'
+    logging.info(msg, options.label)
+    logging.info('Target database: %s.', options.db_server)
+    if options.check_status and not is_primary_server():
+        raise Exception('Cannot run in a non-primary server')
+
+    conn = MySQLdb.connect(host=options.db_server, user=USER, passwd=PASSWD,
+                           db=DATABASE)
+
+    labels = fetch_labels(conn, options.label, options.prefix)
+    logging.info('Found total %d labels', len(labels))
+    metrics.Gauge(_METRICS_PREFIX + '/total_labels_count').set(
+            len(labels), fields={'target_db': options.db_server})
+
+    used_labels = get_used_labels(conn)
+    logging.info('Found %d labels are used', len(used_labels))
+    metrics.Gauge(_METRICS_PREFIX + '/used_labels_count').set(
+            len(used_labels), fields={'target_db': options.db_server})
+
+    to_delete = list(labels - used_labels)
+    logging.info('Deleting %d unused labels', len(to_delete))
+    delete_labels(conn, to_delete, options.max_delete)
+    metrics.Counter(_METRICS_PREFIX + '/labels_deleted').increment_by(
+            len(to_delete), fields={'target_db': options.db_server})
+
+
 def main():
+    """Cleans unused labels from AFE database"""
     parser = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--db', dest='db_server',
@@ -168,29 +189,24 @@ def main():
     options = parser.parse_args()
 
     logging_config.LoggingConfig().configure_logging(
-            datefmt='%Y-%m-%d %H:%M:%S')
+            datefmt='%Y-%m-%d %H:%M:%S',
+            verbose=True)
 
-    try:
-        msg = 'Label cleaner starts. Will delete '
-        if options.prefix:
-            msg += 'all labels whose prefix is "%s".'
+    with ts_mon_config.SetupTsMonGlobalState('afe_label_cleaner',
+                                             auto_flush=False):
+        try:
+            clean_labels(options)
+        except:
+            metrics.Counter(_METRICS_PREFIX + '/tick').increment(
+                    fields={'target_db': options.db_server,
+                            'success': False})
+            raise
         else:
-            msg += 'a label "%s".'
-        logging.info(msg, options.label)
-        logging.info('Target database: %s.', options.db_server)
-        if options.check_status and not is_primary_server():
-            logging.error('Cannot run in a non-primary server.')
-            return 1
-
-        conn = MySQLdb.connect(host=options.db_server, user=USER,
-                               passwd=PASSWD, db=DATABASE)
-        used_labels = get_used_labels(conn)
-        labels = fetch_labels(conn, options.label, options.prefix)
-        delete_labels(conn, labels - used_labels, options.max_delete)
-        logging.info('Done.')
-    except:
-        logging.error(traceback.format_exc())
-        return 1
+            metrics.Counter(_METRICS_PREFIX + '/tick').increment(
+                    fields={'target_db': options.db_server,
+                            'success': True})
+        finally:
+            metrics.Flush()
 
 
 if __name__ == '__main__':
