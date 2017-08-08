@@ -4,7 +4,6 @@
 
 import argparse
 import logging
-import os
 import re
 
 from autotest_lib.client.common_lib import error
@@ -192,6 +191,7 @@ def GetBinVersion(client, image=CR50_FILE):
 
 
 def GetVersionString(ver):
+    """Combine the RO and RW tuple into a understandable string"""
     return 'RO %s RW %s' % (ver[0], ver[1])
 
 
