@@ -355,9 +355,9 @@ class Host(object):
         logging.info('Checking for >= %s GB of space under %s on machine %s',
                      gb, path, self.hostname)
 
-        if not os.path.isdir(path):
-            msg = 'Path is not a valid directory %s' % path
-            logging.error(msg)
+        if not self.path_exists(path):
+            msg = 'Path does not exist on host: %s' % path
+            logging.warning(msg)
             raise error.AutoservDirectoryNotFoundError(msg)
 
         cmd = 'df -PB %d %s | tail -1' % (one_mb, path)
