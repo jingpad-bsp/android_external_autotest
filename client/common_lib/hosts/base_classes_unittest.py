@@ -27,14 +27,17 @@ class test_host_class(unittest.TestCase):
                                     command_exit_status, directory,
                                     directory_exists):
         self.god.stub_function(os.path, 'isdir')
-        os.path.isdir.expect_call(directory).and_return(
-            directory_exists)
         self.god.stub_function(base_classes.Host, 'run')
         host = base_classes.Host()
         host.hostname = 'unittest-host'
-        fake_cmd_status = utils.CmdResult(
-            exit_status=command_exit_status, stdout=command_result)
+        host.run.expect_call(
+                'test -e "%s"' % directory,
+                ignore_status=True).and_return(
+                        utils.CmdResult(
+                                exit_status = 0 if directory_exists else 1))
         if directory_exists:
+            fake_cmd_status = utils.CmdResult(
+                exit_status=command_exit_status, stdout=command_result)
             host.run.expect_call(command).and_return(fake_cmd_status)
         return host
 
