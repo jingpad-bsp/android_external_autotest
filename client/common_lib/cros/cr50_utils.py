@@ -187,7 +187,7 @@ def GetBinVersion(client, image=CR50_FILE):
     """Get the image version using 'usb_updater --binvers image'"""
     # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
     # is fixed
-    return GetVersionFromUpdater(client, ['--binvers', image, image, '-s'])
+    return GetVersionFromUpdater(client, ['--binvers', image, image])
 
 
 def GetVersionString(ver):
@@ -360,7 +360,7 @@ def GetBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ['-i']).stdout.strip()
+    result = UsbUpdater(client, ['-s', '-i']).stdout.strip()
     board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
