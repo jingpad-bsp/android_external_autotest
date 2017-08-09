@@ -75,6 +75,19 @@ class ContainerBucketTests(unittest.TestCase):
         bucket.destroy_all()
 
 
+    def testHostDirNotMounted(self):
+        """Verifies that an unmounted host dir does not cause container bucket
+        construction to crash.
+        """
+        # Create the shared host dir, but do not mount it.
+        os.makedirs(self.shared_host_path)
+        bucket = lxc.ContainerBucket(container_path, self.shared_host_path)
+
+        # Setup then destroy the bucket.  This should not emit any exceptions.
+        bucket.setup_base()
+        bucket.destroy_all()
+
+
 class ContainerBucketSetupBaseTests(unittest.TestCase):
     """Unit tests to verify the ContainerBucket setup_base method."""
 
