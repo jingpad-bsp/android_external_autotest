@@ -144,6 +144,9 @@ class firmware_Cr50Update(Cr50Test):
             else:
                 raise error.TestError("Could not restore the original image")
 
+        # Running usb_update commands stops trunksd. Reboot the device to reset
+        # it
+        self.host.run('reboot')
         super(firmware_Cr50Update, self).cleanup()
 
 
