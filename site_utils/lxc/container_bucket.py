@@ -231,8 +231,11 @@ class ContainerBucket(object):
         if len(os.listdir(self.shared_host_path)) > 0:
             raise RuntimeError('Attempting to clean up host dir before all '
                                'hosts have been disconnected')
-        utils.run('sudo umount "{path}" && sudo rmdir "{path}"'
-                  .format(path=self.shared_host_path))
+        # It's possible that the directory is no longer mounted (e.g. if the
+        # system was rebooted), so check before unmounting.
+        utils.run('if findmnt "%s" > /dev/null; then sudo umount "%s"; fi' %
+                  (self.shared_host_path, self.shared_host_path))
+        utils.run('sudo rmdir "%s"' % self.shared_host_path)
 
 
     @metrics.SecondsTimerDecorator(
