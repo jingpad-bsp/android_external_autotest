@@ -4,12 +4,10 @@
 
 import logging
 import os
-import time
 
-from autotest_lib.client.common_lib import error, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
-from autotest_lib.server import autotest, test
-from autotest_lib.server.cros import debugd_dev_tools, gsutil_wrapper
+from autotest_lib.server.cros import debugd_dev_tools
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
@@ -318,5 +316,6 @@ class firmware_Cr50Update(Cr50Test):
 
 
     def run_once(self):
+        """Update to each image in update_order"""
         for name in self.update_order:
             self.run_update(name)
