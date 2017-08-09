@@ -44,7 +44,7 @@ class webrtc_PausePlayPeerConnections(test.test):
                 os.path.join(self.bindir, 'pause-play.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
         self.tab.EvaluateJavaScript(
-                "startTest(%d, %d, %d, %s)" % (
+                "startTest(%d, %d, %d, '%s')" % (
                         TEST_RUNTIME_SECONDS,
                         NUM_PEER_CONNECTIONS,
                         PAUSE_PLAY_ITERATION_DELAY_MILLIS,
