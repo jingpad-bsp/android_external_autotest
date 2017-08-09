@@ -187,17 +187,15 @@ class DroneUtility(object):
 
 
     def _ensure_directory_exists(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+            return
         if os.path.isdir(path):
             return
-
-        if os.path.exists(path):
-            # path exists already, but as a file, not a directory
-            if '/hosts/' in path:
-                return
-            else:
-                raise IOError('Path %s exists as a file, not a directory')
-
-        os.makedirs(path)
+        assert os.path.isfile(path)
+        if '/hosts/' in path:
+            return
+        raise IOError('Path %s exists as a file, not a directory')
 
 
     def execute_command(self, command, working_directory, log_file,
