@@ -27,10 +27,46 @@ DUMMY_VER = '-1.-1.-1'
 #
 # The value in the dictionary is the regular expression that can be used to
 # find the version strings for each region.
+#
+# --fwver
+#   example output:
+#           open_device 18d1:5014
+#           found interface 3 endpoint 4, chunk_len 64
+#           READY
+#           -------
+#           start
+#           target running protocol version 6
+#           keyids: RO 0xaa66150f, RW 0xde88588d
+#           offsets: backup RO at 0x40000, backup RW at 0x44000
+#           Current versions:
+#           RO 0.0.10
+#           RW 0.0.21
+#   match groupdict:
+#           {
+#               'ro': '0.0.10',
+#               'rw': '0.0.21'
+#           }
+#
+# --binvers
+#   example output:
+#           read 524288(0x80000) bytes from /tmp/cr50.bin
+#           RO_A:0.0.10 RW_A:0.0.21[00000000:00000000:00000000]
+#           RO_B:0.0.10 RW_B:0.0.21[00000000:00000000:00000000]
+#   match groupdict:
+#           {
+#               'rw_b': '0.0.21',
+#               'rw_a': '0.0.21',
+#               'ro_b': '0.0.10',
+#               'ro_a': '0.0.10',
+#               'bid_a': '00000000:00000000:00000000',
+#               'bid_b': '00000000:00000000:00000000'
+#           }
 VERSION_RE = {
     '--fwver' : '\nRO (?P<ro>\S+).*\nRW (?P<rw>\S+)',
-    '--binvers' : 'RO_A:(?P<ro_a>\S+).*RW_A:(?P<rw_a>\S+).*' \
-           'RO_B:(?P<ro_b>\S+).*RW_B:(?P<rw_b>\S+)',
+    '--binvers' : 'RO_A:(?P<ro_a>[\d\.]+).*' \
+           'RW_A:(?P<rw_a>[\d\.]+)(\[(?P<bid_a>[\d\:a-fA-F]+)\])?.*' \
+           'RO_B:(?P<ro_b>\S+).*' \
+           'RW_B:(?P<rw_b>[\d\.]+)(\[(?P<bid_b>[\d\:a-fA-F]+)\])?.*',
 }
 UPDATE_TIMEOUT = 60
 UPDATE_OK = 1
