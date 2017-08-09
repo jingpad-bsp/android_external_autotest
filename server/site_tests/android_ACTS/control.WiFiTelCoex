@@ -4,7 +4,7 @@
 
 AUTHOR = 'krisr, bmahadev, gmoturu'
 NAME = 'android_ACTS.WiFiTelCoex'
-TIME = 'MEDIUM'
+TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_wifi_tel_coex'
 
@@ -19,7 +19,9 @@ def run(machine):
                  config_file='android1758-test-station-48-coex.config',
                  testtracker_owner='android-comms-tvc@google.com',
                  test_file='wifi_tel_coex',
+                 additional_configs=['android1758-test-station-48-simcard-list.json'],
+                 testtracker_owner='android-comms-tvc@google.com',
                  testtracker_project_id=733,
-                 acts_timeout=18000)
+                 acts_timeout=36000)
 
 parallel_simple(run, machines)
