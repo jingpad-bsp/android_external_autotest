@@ -10,7 +10,6 @@ from autotest_lib.server.hosts import moblab_host
 from autotest_lib.utils import labellib
 
 
-
 class moblab_RunSuite(moblab_test.MoblabTest):
     """
     Moblab run suite test. Ensures that a Moblab can run a suite from start
@@ -57,5 +56,22 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                (moblab_host.AUTOTEST_INSTALL_DIR, board, target_build,
                 suite_name, moblab_suite_max_retries))
         logging.debug('Run suite command: %s', cmd)
-        result = host.run_as_moblab(cmd, timeout=10800)
+        try:
+            result = host.run_as_moblab(cmd, timeout=10800)
+        except error.AutoservRunError as e:
+            if _is_run_suite_error_critical(e.result_obj.exit_status):
+                raise
+
         logging.debug('Suite Run Output:\n%s', result.stdout)
+
+
+def _is_run_suite_error_critical(return_code):
+    # We can't actually import run_suite here because importing run_suite pulls
+    # in certain MySQLdb dependencies that fail to load in the context of a
+    # test.
+    # OTOH, these return codes are unlikely to change because external users /
+    # builders depend on them.
+    return return_code not in (
+            0,  # run_suite.RETURN_CODES.OK
+            2,  # run_suite.RETURN_CODES.WARNING
+    )
