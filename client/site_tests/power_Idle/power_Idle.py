@@ -8,10 +8,15 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.bluetooth import bluetooth_device_xmlrpc_server
 
 
 class power_Idle(test.test):
-    """class for power_Idle test."""
+    """class for power_Idle test.
+
+    Collects power stats when machine is idle, also compares power stats between
+    when bluetooth adapter is on and off.
+    """
     version = 1
 
     def initialize(self):
@@ -29,10 +34,17 @@ class power_Idle(test.test):
 
 
     def warmup(self, warmup_time=60):
+        """Warm up.
+
+        Wait between initialization and run_once for new settings to stabilize.
+        """
         time.sleep(warmup_time)
 
 
-    def run_once(self, idle_time=120, sleep=10):
+    def run_once(self, idle_time=120, sleep=10, bt_warmup_time=20):
+        """Collect power stats when bluetooth adapter is on or off.
+
+        """
         with chrome.Chrome():
             self._backlight = power_utils.Backlight()
             self._backlight.set_default()
@@ -59,11 +71,36 @@ class power_Idle(test.test):
                 time.sleep(sleep)
                 self.status.refresh()
             self.status.refresh()
-            self._plog.checkpoint('', self._start_time)
+            self._plog.checkpoint('bluetooth_adapter_off', self._start_time)
             self._tlog.checkpoint('', self._start_time)
             self._psr.refresh()
 
+            # Turn on bluetooth adapter.
+            bt_device = bluetooth_device_xmlrpc_server \
+                    .BluetoothDeviceXmlRpcDelegate()
+            # If we cannot start bluetoothd, fail gracefully and still write
+            # data with bluetooth adapter off to file, as we are interested in
+            # just that data too. start_bluetoothd() already logs the error so
+            # not logging any error here.
+            if not bt_device.start_bluetoothd():
+                return
+            if not bt_device.set_powered(True):
+                logging.warning("Cannot turn on bluetooth adapter.")
+                return
+            time.sleep(bt_warmup_time)
+            if not bt_device._is_powered_on():
+                logging.warning("Bluetooth adapter is off.")
+                return
+            t1 = time.time()
+            time.sleep(idle_time)
+            self._plog.checkpoint('bluetooth_adapter_on', t1)
+            bt_device.set_powered(False)
+            bt_device.stop_bluetoothd()
+
     def postprocess_iteration(self):
+        """Write power stats to file.
+
+        """
         keyvals = self._stats.publish()
 
         # record the current and max backlight levels
@@ -97,6 +134,9 @@ class power_Idle(test.test):
 
 
     def cleanup(self):
+        """Reverse setting change in initialization.
+
+        """
         if self._backlight:
             self._backlight.restore()
         self._services.restore_services()
