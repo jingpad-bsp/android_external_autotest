@@ -15,6 +15,7 @@ def ccd_command(func):
     """Decorator for methods only relevant to devices using CCD."""
     @functools.wraps(func)
     def wrapper(instance, *args, **kwargs):
+        """Ignore ccd functions if we aren't using ccd"""
         if instance.using_ccd():
             return func(instance, *args, **kwargs)
         logging.info("not using ccd. ignoring %s", func.func_name)
