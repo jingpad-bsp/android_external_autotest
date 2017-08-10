@@ -179,6 +179,10 @@ class telemetry_Crosperf(test.test):
             exit_code = e.result_obj.exit_status
             raise error.TestFail('An error occurred while executing '
                                  'telemetry test.')
+        except:
+            logging.debug('Telemetry aborted with unknown error.')
+            exit_code = -1
+            raise
         finally:
             stdout_str = stdout.getvalue()
             stderr_str = stderr.getvalue()
