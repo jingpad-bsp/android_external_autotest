@@ -73,7 +73,7 @@ UPDATE_OK = 1
 
 ERASED_BID_INT = 0xffffffff
 # With an erased bid, the flags and board id will both be erased
-ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT)
+ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
 
 usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
@@ -391,7 +391,7 @@ def GetBoardId(client):
         client: the object to run commands on
 
     Returns:
-        a tuple with the hex value board id, flags
+        a tuple with the int values of board id, board id inv, flags
 
     Raises:
         TestFail if the second board id response field is not ~board_id
@@ -406,7 +406,7 @@ def GetBoardId(client):
     elif board_id & board_id_inv:
         raise error.TestFail('board_id_inv should be ~board_id got %x %x' %
                              (board_id, board_id_inv))
-    return board_id, flags
+    return board_id, board_id_inv, flags
 
 
 def CheckBoardId(client, board_id, flags):
@@ -417,14 +417,14 @@ def CheckBoardId(client, board_id, flags):
 
     Args:
         client: the object to run commands on
-        board_id: a hex, symbolic or int value for board_id
+        board_id: a hex str, symbolic str, or int value for board_id
         flags: the int value of flags or None
 
     Raises:
         TestFail if the new board id info does not match
     """
     # Read back the board id and flags
-    new_board_id, new_flags = GetBoardId(client)
+    new_board_id, _, new_flags = GetBoardId(client)
 
     expected_board_id = GetExpectedBoardId(board_id)
     expected_flags = GetExpectedFlags(flags)
@@ -443,8 +443,8 @@ def SetBoardId(client, board_id, flags=None):
         board_id: a string of the symbolic board id or board id hex value. If
                   the string is less than 4 characters long it will be
                   considered a symbolic value
-        flags: the desired flag value. If board_id is a symbolic value, then
-               this will be ignored.
+        flags: a int flag value. If board_id is a symbolic value, then this will
+               be ignored.
 
     Raises:
         TestFail if we were unable to set the flags to the correct value
