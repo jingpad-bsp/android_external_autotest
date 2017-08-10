@@ -4,7 +4,6 @@
 
 import logging
 import os
-import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -183,8 +182,9 @@ class Cr50Test(FirmwareTest):
         rw_ver = self._cr50_run_update(path)
 
         # Running the update may cause cr50 to reboot. Wait for that before
-        # sending more commands
-        self.cr50.wait_for_reboot()
+        # sending more commands. The reboot should happen quickly. Wait a
+        # maximum of 10 seconds.
+        self.cr50.wait_for_reboot(10)
 
         if erase_nvmem and rollback:
             self.cr50.erase_nvmem()
