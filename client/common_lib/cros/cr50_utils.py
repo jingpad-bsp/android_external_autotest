@@ -27,17 +27,53 @@ DUMMY_VER = '-1.-1.-1'
 #
 # The value in the dictionary is the regular expression that can be used to
 # find the version strings for each region.
+#
+# --fwver
+#   example output:
+#           open_device 18d1:5014
+#           found interface 3 endpoint 4, chunk_len 64
+#           READY
+#           -------
+#           start
+#           target running protocol version 6
+#           keyids: RO 0xaa66150f, RW 0xde88588d
+#           offsets: backup RO at 0x40000, backup RW at 0x44000
+#           Current versions:
+#           RO 0.0.10
+#           RW 0.0.21
+#   match groupdict:
+#           {
+#               'ro': '0.0.10',
+#               'rw': '0.0.21'
+#           }
+#
+# --binvers
+#   example output:
+#           read 524288(0x80000) bytes from /tmp/cr50.bin
+#           RO_A:0.0.10 RW_A:0.0.21[00000000:00000000:00000000]
+#           RO_B:0.0.10 RW_B:0.0.21[00000000:00000000:00000000]
+#   match groupdict:
+#           {
+#               'rw_b': '0.0.21',
+#               'rw_a': '0.0.21',
+#               'ro_b': '0.0.10',
+#               'ro_a': '0.0.10',
+#               'bid_a': '00000000:00000000:00000000',
+#               'bid_b': '00000000:00000000:00000000'
+#           }
 VERSION_RE = {
     '--fwver' : '\nRO (?P<ro>\S+).*\nRW (?P<rw>\S+)',
-    '--binvers' : 'RO_A:(?P<ro_a>\S+).*RW_A:(?P<rw_a>\S+).*' \
-           'RO_B:(?P<ro_b>\S+).*RW_B:(?P<rw_b>\S+)',
+    '--binvers' : 'RO_A:(?P<ro_a>[\d\.]+).*' \
+           'RW_A:(?P<rw_a>[\d\.]+)(\[(?P<bid_a>[\d\:a-fA-F]+)\])?.*' \
+           'RO_B:(?P<ro_b>\S+).*' \
+           'RW_B:(?P<rw_b>[\d\.]+)(\[(?P<bid_b>[\d\:a-fA-F]+)\])?.*',
 }
 UPDATE_TIMEOUT = 60
 UPDATE_OK = 1
 
 ERASED_BID_INT = 0xffffffff
 # With an erased bid, the flags and board id will both be erased
-ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT)
+ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
 
 usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
@@ -187,7 +223,7 @@ def GetBinVersion(client, image=CR50_FILE):
     """Get the image version using 'usb_updater --binvers image'"""
     # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
     # is fixed
-    return GetVersionFromUpdater(client, ['--binvers', image, image, '-s'])
+    return GetVersionFromUpdater(client, ['--binvers', image, image])
 
 
 def GetVersionString(ver):
@@ -355,12 +391,12 @@ def GetBoardId(client):
         client: the object to run commands on
 
     Returns:
-        a tuple with the hex value board id, flags
+        a tuple with the int values of board id, board id inv, flags
 
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ['-i']).stdout.strip()
+    result = UsbUpdater(client, ['-s', '-i']).stdout.strip()
     board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
@@ -370,7 +406,7 @@ def GetBoardId(client):
     elif board_id & board_id_inv:
         raise error.TestFail('board_id_inv should be ~board_id got %x %x' %
                              (board_id, board_id_inv))
-    return board_id, flags
+    return board_id, board_id_inv, flags
 
 
 def CheckBoardId(client, board_id, flags):
@@ -381,14 +417,14 @@ def CheckBoardId(client, board_id, flags):
 
     Args:
         client: the object to run commands on
-        board_id: a hex, symbolic or int value for board_id
+        board_id: a hex str, symbolic str, or int value for board_id
         flags: the int value of flags or None
 
     Raises:
         TestFail if the new board id info does not match
     """
     # Read back the board id and flags
-    new_board_id, new_flags = GetBoardId(client)
+    new_board_id, _, new_flags = GetBoardId(client)
 
     expected_board_id = GetExpectedBoardId(board_id)
     expected_flags = GetExpectedFlags(flags)
@@ -407,8 +443,8 @@ def SetBoardId(client, board_id, flags=None):
         board_id: a string of the symbolic board id or board id hex value. If
                   the string is less than 4 characters long it will be
                   considered a symbolic value
-        flags: the desired flag value. If board_id is a symbolic value, then
-               this will be ignored.
+        flags: a int flag value. If board_id is a symbolic value, then this will
+               be ignored.
 
     Raises:
         TestFail if we were unable to set the flags to the correct value

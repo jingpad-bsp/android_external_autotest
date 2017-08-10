@@ -407,6 +407,10 @@ class SysStat(object):
                 continue
             power_type = utils.read_one_line(type_path)
             if power_type == 'Battery':
+                scope_path = os.path.join(path,'scope')
+                if (os.path.exists(scope_path) and
+                        utils.read_one_line(scope_path) == 'Device'):
+                    continue
                 self.battery_path = path
             elif power_type in self.psu_types:
                 self.linepower_path.append(path)

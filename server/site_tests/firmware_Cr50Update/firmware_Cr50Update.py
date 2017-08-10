@@ -144,6 +144,9 @@ class firmware_Cr50Update(Cr50Test):
             else:
                 raise error.TestError("Could not restore the original image")
 
+        # Running usb_update commands stops trunksd. Reboot the device to reset
+        # it
+        self.host.run('reboot')
         super(firmware_Cr50Update, self).cleanup()
 
 
@@ -194,6 +197,11 @@ class firmware_Cr50Update(Cr50Test):
 
         # Clear the update state and reboot, so cr50-update will run again.
         cr50_utils.ClearUpdateStateAndReboot(self.host)
+
+        # The cr50 updates happen over /dev/tpm0. It takes a while. After
+        # cr50-update has finished, cr50 should reboot. Wait until this happens
+        # before sending anymore commands.
+        self.cr50.wait_for_reboot()
 
         # Verify the system boots normally after the update
         self.check_state((self.checkers.crossystem_checker,

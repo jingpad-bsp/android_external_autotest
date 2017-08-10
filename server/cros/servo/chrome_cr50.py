@@ -15,6 +15,7 @@ def ccd_command(func):
     """Decorator for methods only relevant to devices using CCD."""
     @functools.wraps(func)
     def wrapper(instance, *args, **kwargs):
+        """Ignore ccd functions if we aren't using ccd"""
         if instance.using_ccd():
             return func(instance, *args, **kwargs)
         logging.info("not using ccd. ignoring %s", func.func_name)
@@ -105,9 +106,35 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
 
     def reboot(self):
-        """Reboot Cr50 and wait for CCD to be enabled"""
-        self.send_command('reboot')
-        self.wait_for_reboot()
+        """Reboot Cr50 and wait for cr50 to reset"""
+        response = [] if self.using_ccd() else self.START_STR
+        rv = self.send_command_get_output('reboot', response)
+
+        # ccd will stop working after the reboot. Wait until that happens and
+        # reenable it.
+        if self.using_ccd():
+            self.wait_for_reboot()
+
+
+    def _uart_wait_for_reboot(self, timeout=60):
+        """Wait for the cr50 to reboot and enable the console.
+
+        This will wait up to timeout seconds for cr50 to print the start string.
+
+        Args:
+            timeout: seconds to wait to detect the reboot.
+        """
+        original_timeout = float(self._servo.get('cr50_console_timeout'))
+        # Change the console timeout to timeout, so we wait at least that long
+        # for cr50 to print the start string.
+        self._servo.set_nocheck('cr50_console_timeout', timeout)
+        try:
+            self.send_command_get_output('\n', self.START_STR)
+            logging.info('Detected cr50 reboot')
+        except error.TestFail, e:
+            logging.info('Failed to detect cr50 reboot')
+        # Reset the timeout.
+        self._servo.set_nocheck('cr50_console_timeout', original_timeout)
 
 
     def wait_for_reboot(self, timeout=60):
@@ -118,14 +145,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             self.wait_for_ccd_disable(timeout, raise_error=False)
             self.ccd_enable()
         else:
-            # Look for the boot string declaring the console is ready. If we
-            # don't find it, its ok. The command will timeout after 3 seconds
-            # which is longer than the time it takes for cr50 to reboot.
-            try:
-                rv = self.send_command_get_output('\n\n', self.START_STR)
-                logging.debug(rv[0][0])
-            except:
-                pass
+            self._uart_wait_for_reboot(timeout)
 
 
     def rollback(self, eraseflashinfo=True):

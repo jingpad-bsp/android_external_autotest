@@ -26,6 +26,7 @@ def setup(topdir):
     utils.system('patch -p1 < ../files/0001-Patch-index.html.patch')
     utils.system(
         'patch -p1 < ../files/0002-Always-increment-numberOfResults.patch')
+    utils.system('patch -p1 < ../files/0003-Waive-certain-tests.patch')
     shutil.copy('../files/favicon.ico', srcdir)
 
 
