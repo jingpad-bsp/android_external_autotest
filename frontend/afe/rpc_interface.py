@@ -306,12 +306,20 @@ def modify_host(id, **kwargs):
     # between the master and a shard.
     if kwargs.get('locked', None) and 'lock_time' not in kwargs:
         kwargs['lock_time'] = datetime.datetime.now()
-    host.update_object(kwargs)
 
     # force_modifying_locking is not an internal field in database, remove.
-    kwargs.pop('force_modify_locking', None)
+    shard_kwargs = dict(kwargs)
+    shard_kwargs.pop('force_modify_locking', None)
     rpc_utils.fanout_rpc([host], 'modify_host_local',
-                         include_hostnames=False, id=id, **kwargs)
+                         include_hostnames=False, id=id, **shard_kwargs)
+
+    # Update the local DB **after** RPC fanout is complete.
+    # This guarantees that the master state is only updated if the shards were
+    # correctly updated.
+    # In case the shard update fails mid-flight and the master-shard desync, we
+    # always consider the master state to be the source-of-truth, and any
+    # (automated) corrective actions will revert the (partial) shard updates.
+    host.update_object(kwargs)
 
 
 def modify_host_local(id, **kwargs):
