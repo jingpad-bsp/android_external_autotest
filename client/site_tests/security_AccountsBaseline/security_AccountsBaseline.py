@@ -8,6 +8,8 @@ import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+
 
 class security_AccountsBaseline(test.test):
     """Enforces a whitelist of known user and group IDs."""
@@ -106,12 +108,22 @@ class security_AccountsBaseline(test.test):
         expected_entries = self.load_path(
             os.path.join(self.bindir, 'baseline.%s' % basename))
 
-        # TODO(jorgelo): Merge this into the main baseline once Freon users
-        # are included in the main overlay.
-        extra_baseline = 'baseline.%s.freon' % basename
+        board = utils.get_current_board()
 
-        expected_entries += self.load_path(
-            os.path.join(self.bindir, extra_baseline))
+        if board.startswith("lakitu"):
+            board_baseline_path = os.path.join(self.bindir,
+                                               'baseline.%s.%s' % (basename,
+                                                                   board))
+            if os.path.exists(board_baseline_path):
+                expected_entries += self.load_path(board_baseline_path)
+        else:
+            # TODO(jorgelo): Merge this into the main baseline once:
+            #     *Freon users are included in the main overlay.
+            #     *Lakitu has the same configuration of base users.
+            #      (See b/64512405).
+            extra_baseline = 'baseline.%s.freon' % basename
+            expected_entries += self.load_path(
+                os.path.join(self.bindir, extra_baseline))
 
         actual_entries = self.load_path('/etc/%s' % basename)
 
