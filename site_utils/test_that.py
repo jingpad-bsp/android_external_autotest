@@ -307,7 +307,6 @@ def _main_for_lab_run(argv, arguments):
     """
     autotest_path = os.path.realpath(os.path.join(os.path.dirname(__file__),
                                                   '..'))
-    flattened_argv = ' '.join([pipes.quote(item) for item in argv])
     command = [os.path.join(autotest_path, 'site_utils',
                             'run_suite.py'),
                '--board=%s' % (arguments.board,),
@@ -315,11 +314,25 @@ def _main_for_lab_run(argv, arguments):
                '--suite_name=%s' % 'test_that_wrapper',
                '--pool=%s' % (arguments.pool,),
                '--max_runtime_mins=%s' % str(arguments.max_runtime_mins),
-               '--suite_args=%s' % (flattened_argv,)]
+               '--suite_args=%s'
+               % (pipes.quote(repr({'tests': _suite_arg_tests(argv)})),)]
     if arguments.web:
         command.extend(['--web=%s' % (arguments.web,)])
     logging.info('About to start lab suite with command %s.', command)
     return subprocess.call(command)
+
+
+def _suite_arg_tests(argv):
+    """
+    Construct a list of tests to pass into suite_args.
+
+    This is passed in suite_args to run_suite for running a test in the
+    lab.
+
+    @param argv: Remote Script command line arguments.
+    """
+    arguments = parse_arguments(argv)
+    return arguments.tests
 
 
 def main(argv):
