@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Simple utility to trigger a Verify job on a bunch of hosts.
+# Simple utility to trigger a Repair job on a bunch of hosts.
 #
 # CAVEAT:  no error checking; if any argument isn't a valid
 # host, it will be silently ignored.  If there are no command
@@ -13,7 +13,7 @@ from autotest_lib.server import frontend
 
 # For simplicity, we want to do nothing if there are no hosts named
 # on the command line.  That makes it easy to do stuff like this:
-#     dut-status -b $BOARD -p bvt -n | xargs reverify_hosts
+#     dut-status -b $BOARD -p bvt -n | xargs repair_hosts
 #
 # By doing nothing, we get more useful behavior if all the DUTs selected
 # by `dut-status` are actually working.
@@ -25,4 +25,4 @@ from autotest_lib.server import frontend
 # wait.
 
 if len(sys.argv) >= 2:
-    frontend.AFE().reverify_hosts(hostnames=sys.argv[1:])
+    frontend.AFE().repair_hosts(hostnames=sys.argv[1:])

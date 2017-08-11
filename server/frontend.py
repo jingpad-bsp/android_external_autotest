@@ -545,6 +545,15 @@ class AFE(RpcClient):
         return self.run('reverify_hosts', **query_args)
 
 
+    def repair_hosts(self, hostnames=(), status=None, label=None):
+        query_args = dict(locked=False,
+                          aclgroup__users__login=self.user)
+        query_args.update(self._dict_for_host_query(hostnames=hostnames,
+                                                    status=status,
+                                                    label=label))
+        return self.run('repair_hosts', **query_args)
+
+
     def create_host(self, hostname, **dargs):
         id = self.run('add_host', hostname=hostname, **dargs)
         return self.get_hosts(id=id)[0]
