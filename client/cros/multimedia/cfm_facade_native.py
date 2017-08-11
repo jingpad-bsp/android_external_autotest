@@ -4,7 +4,7 @@
 
 """Facade to access the CFM functionality."""
 
-import time
+import logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cfm_hangouts_api
@@ -47,7 +47,6 @@ class CFMFacadeNative(object):
         # Timeout to allow for the device to stablize and go back to the
         # login screen before proceeding.
         time.sleep(self._ENROLLMENT_DELAY)
-        self.restart_chrome_for_cfm()
 
 
     def restart_chrome_for_cfm(self):
@@ -58,7 +57,6 @@ class CFMFacadeNative(object):
                                "disable_default_apps": False,
                                "auto_login": False}
         self._resource.start_custom_chrome(custom_chrome_setup)
-        self.check_hangout_extension_context()
 
 
     def check_hangout_extension_context(self):
@@ -68,23 +66,19 @@ class CFMFacadeNative(object):
         """
         ext_contexts = kiosk_utils.wait_for_kiosk_ext(
                 self._resource._browser, self._EXT_ID)
-        ext_urls = set([context.EvaluateJavaScript('location.href;')
-                        for context in ext_contexts])
-        if len(ext_urls) == 2:
-            expected_urls = set(
-                ['chrome-extension://' + self._EXT_ID + '/' + path
-                 for path in ['hangoutswindow.html?windowid=0',
-                              '_generated_background_page.html']])
-        if len(ext_urls) == 3:
-            expected_urls = set(
-                ['chrome-extension://' + self._EXT_ID + '/' + path
-                 for path in ['hangoutswindow.html?windowid=0',
-                              'hangoutswindow.html?windowid=1',
-                              '_generated_background_page.html']])
-        if expected_urls != ext_urls:
-            raise error.TestFail(
-                    'Unexpected extension context urls, expected %s, got %s'
-                    % (expected_urls, ext_urls))
+        ext_urls = [context.EvaluateJavaScript('location.href;')
+                        for context in ext_contexts]
+        expected_urls = ['chrome-extension://' + self._EXT_ID + '/' + path
+                         for path in ['hangoutswindow.html?windowid=0',
+                                      'hangoutswindow.html?windowid=1',
+                                      'hangoutswindow.html?windowid=2',
+                                      '_generated_background_page.html']]
+        for url in ext_urls:
+            logging.info('Extension URL %s', url)
+            if url not in expected_urls:
+                raise error.TestFail(
+                    'Unexpected extension context urls, expected one of %s, '
+                    'got %s' % (expected_urls, url))
 
 
     def reboot_device_with_chrome_api(self):
@@ -103,6 +97,7 @@ class CFMFacadeNative(object):
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
         self.restart_chrome_for_cfm()
+        self.check_hangout_extension_context()
         self.wait_for_hangouts_telemetry_commands()
         self.wait_for_oobe_start_page()
         self.skip_oobe_screen()
