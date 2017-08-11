@@ -43,16 +43,27 @@ _BUG_TEMPLATE = {
     'title': None,
 }
 
+import ast
 
 try:
-   arguments = test_that.parse_arguments(shlex.split(suite_args))
-except SystemExit:
-    logging.error('Unable to parse test_that arguments %s, suite aborting',
-                  shlex.split(suite_args))
-    raise
+    suite_args_dict = ast.literal_eval(args_dict['suite_args'])
+except SyntaxError:
+    # TODO(crbug.com/753072): This branch can be dropped after
+    # suite_args is consistently passed as a Python dict.
+    try:
+       arguments = test_that.parse_arguments(shlex.split(suite_args))
+    except SystemExit:
+        logging.error('Unable to parse test_that arguments %s, suite aborting',
+                      shlex.split(suite_args))
+        raise
+    tests = arguments.tests
+else:
+    # Update suite_args_dict into args_dict
+    args_dict.update(suite_args_dict)
+    tests = args_dict['tests']
 
 parsed_test_arguments = [test_runner_utils.get_predicate_for_test_arg(test_arg)
-                         for test_arg in arguments.tests]
+                         for test_arg in tests]
 sub_predicates, descriptions = zip(*parsed_test_arguments)
 
 logging.info('This is a test_that triggered suite, consisting of:')
