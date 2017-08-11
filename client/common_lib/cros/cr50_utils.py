@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib import error
 
 RO = 'ro'
 RW = 'rw'
+BID = 'bid'
 CR50_FILE = '/opt/google/cr50/firmware/cr50.bin.prod'
 CR50_STATE = '/var/cache/cr50*'
 GET_CR50_VERSION = 'cat /var/cache/cr50-version'
@@ -64,9 +65,9 @@ DUMMY_VER = '-1.-1.-1'
 VERSION_RE = {
     '--fwver' : '\nRO (?P<ro>\S+).*\nRW (?P<rw>\S+)',
     '--binvers' : 'RO_A:(?P<ro_a>[\d\.]+).*' \
-           'RW_A:(?P<rw_a>[\d\.]+)(\[(?P<bid_a>[\d\:a-fA-F]+)\])?.*' \
+           'RW_A:(?P<rw_a>[\d\.]+)(\[(?P<bid_a>[\d\:A-z]+)\])?.*' \
            'RO_B:(?P<ro_b>\S+).*' \
-           'RW_B:(?P<rw_b>[\d\.]+)(\[(?P<bid_b>[\d\:a-fA-F]+)\])?.*',
+           'RW_B:(?P<rw_b>[\d\.]+)(\[(?P<bid_b>[\d\:A-z]+)\])?.*',
 }
 UPDATE_TIMEOUT = 60
 UPDATE_OK = 1
@@ -163,7 +164,10 @@ def FindVersion(output, arg):
     versions = versions.groupdict()
     ro = GetVersion(versions, RO)
     rw = GetVersion(versions, RW)
-    return ro, rw
+    # --binver is the only usb_updater command that may have bid keys in its
+    # versions dictionary. If no bid keys exist, bid will be None.
+    bid = GetVersion(versions, BID)
+    return ro, rw, bid
 
 
 def GetSavedVersion(client):
@@ -265,7 +269,8 @@ def GetBinVersion(client, image=CR50_FILE):
 
 def GetVersionString(ver):
     """Combine the RO and RW tuple into a understandable string"""
-    return 'RO %s RW %s' % (ver[0], ver[1])
+    return 'RO %s RW %s%s' % (ver[0], ver[1],
+           ' BID %s' % ver[2] if ver[2] else '')
 
 
 def GetRunningVersion(client):
