@@ -1931,9 +1931,13 @@ class ImageServer(ImageServerBase):
             response = json.loads(response)
             if response[0]:
                 pid = response[1]
-                logging.debug('start process %r for auto_update in devserver',
-                              pid)
-                self._wait_for_auto_update_finished(pid, **kwargs)
+                # If provision is kicked off asynchronously, pid will be -1.
+                # If provision is not successfully kicked off , pid continues
+                # to be 0.
+                if pid > 0:
+                    logging.debug('start process %r for auto_update in '
+                                  'devserver', pid)
+                    self._wait_for_auto_update_finished(pid, **kwargs)
         except Exception as e:
             logging.debug('Failed to trigger auto-update process on devserver')
             raised_error = e
@@ -2114,27 +2118,27 @@ class ImageServer(ImageServerBase):
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
                 error_list.append(str(e))
             else:
-                raised_error, pid = self.wait_for_auto_update_finished(response,
-                                                                       **kwargs)
-                # Error happens in _collect_au_log won't be raised. Auto-update
-                # process will be retried.
+                raised_error, pid = self.wait_for_auto_update_finished(
+                        response, **kwargs)
+
+                # Error happens in _collect_au_log won't be raised.
                 if au_log_dir:
                     is_collect_success = self.collect_au_log(
                             kwargs['host_name'], pid, au_log_dir)
                 else:
                     is_collect_success = True
 
-                # Error happens in _clean_track_log won't be raised. Auto-update
-                # process will be retried.
-                # TODO(xixuan): Change kwargs['host_name'] back to host_name
-                # if crbug.com/651974 is fixed: host_name represents the host
-                # name of the host, and kwargs['host_name'] could be host_name
-                # or the IP of this host.
-                is_clean_success = self.clean_track_log(kwargs['host_name'],
-                                                        pid)
+                # Error happens in _clean_track_log won't be raised.
+                if pid >= 0:
+                    is_clean_success = self.clean_track_log(
+                            kwargs['host_name'], pid)
+                else:
+                    is_clean_success = True
+
                 # If any error is raised previously, log it and retry
                 # auto-update. Otherwise, claim a successful CrOS auto-update.
-                if not raised_error and is_clean_success and is_collect_success:
+                if (not raised_error and is_clean_success and
+                    is_collect_success):
                     logging.debug('CrOS auto-update succeed for host %s',
                                   host_name)
                     is_au_success = True
@@ -2166,11 +2170,7 @@ class ImageServer(ImageServerBase):
 
                 if not is_au_success and au_attempt < AU_RETRY_LIMIT - 1:
                     time.sleep(CROS_AU_RETRY_INTERVAL)
-                    # TODO(kevcheng): Remove this once crbug.com/651974 is
-                    # fixed.
-                    # DNS is broken in the cassandra lab, so use the IP of the
-                    # hostname instead if it fails. Not rename host_name here
-                    # for error msg reporting.
+                    # Use the IP of DUT if the hostname failed.
                     host_name_ip = socket.gethostbyname(host_name)
                     kwargs['host_name'] = host_name_ip
                     logging.debug(
