@@ -183,7 +183,7 @@ class Task(object):
                        'firmware_rw_build_spec', 'firmware_ro_build_spec',
                        'test_source', 'job_retry', 'hour', 'day', 'branches',
                        'targets', 'os_type', 'no_delay', 'owner', 'priority',
-                       'timeout'])
+                       'timeout', 'force'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -209,6 +209,9 @@ class Task(object):
         test_source = config.getstring(section, 'test_source')
         job_retry = config.getboolean(section, 'job_retry')
         no_delay = config.getboolean(section, 'no_delay')
+        force = config.getboolean(section, 'force')
+        if force is None:
+            force = False
         # In case strings empty use sane low priority defaults.
         priority = 0
         timeout = 24
@@ -351,7 +354,7 @@ class Task(object):
                              launch_control_branches=lc_branches,
                              launch_control_targets=lc_targets,
                              testbed_dut_count=testbed_dut_count,
-                             no_delay=no_delay)
+                             no_delay=no_delay, force=force)
 
 
     @staticmethod
@@ -388,7 +391,7 @@ class Task(object):
                  firmware_ro_build_spec=None, test_source=None, job_retry=False,
                  hour=None, day=None, os_type=OS_TYPE_CROS,
                  launch_control_branches=None, launch_control_targets=None,
-                 testbed_dut_count=None, no_delay=False):
+                 testbed_dut_count=None, no_delay=False, force=False):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -496,6 +499,7 @@ class Task(object):
         self._hour = hour
         self._day = day
         self._os_type = os_type
+        self._force = force
         self._launch_control_branches = (
                 [b.strip() for b in launch_control_branches.split(',')]
                 if launch_control_branches else [])
@@ -903,7 +907,8 @@ class Task(object):
         @param launch_control_build: Name of a Launch Control build, e.g.,
                                      'git_mnc_release/shamu-eng/123'
         @param board: the board against which to run self._suite.
-        @param force: Always schedule the suite.
+        @param force: Always schedule the suite. This setting will be ignored
+                      if task.force is set to True.
         @param run_prod_code: If True, the suite will run the test code that
                               lives in prod aka the test code currently on the
                               lab servers. If False, the control files and test
@@ -933,7 +938,7 @@ class Task(object):
 
         if not scheduler.ScheduleSuite(
                 self._suite, board, cros_build, self._pool, self._num,
-                self._priority, self._timeout, force,
+                self._priority, self._timeout, force or self._force,
                 file_bugs=self._file_bugs,
                 firmware_rw_build=firmware_rw_build,
                 firmware_ro_build=firmware_ro_build,
