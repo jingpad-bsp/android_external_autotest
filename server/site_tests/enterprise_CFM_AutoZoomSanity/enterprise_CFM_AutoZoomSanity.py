@@ -145,11 +145,6 @@ class enterprise_CFM_AutoZoomSanity(test.test):
         try:
             self.check_peripherals(peripheral_dict)
             self.cfm_facade.enroll_device()
-
-            # The following reboot and sleep are a hack around devtools crash
-            # issue tracked in crbug.com/739474.
-            self.client.reboot()
-            time.sleep(SHORT_TIMEOUT)
             self.cfm_facade.skip_oobe_after_enrollment()
             self.cfm_facade.wait_for_meetings_telemetry_commands()
             self.cfm_facade.start_meeting_session()
