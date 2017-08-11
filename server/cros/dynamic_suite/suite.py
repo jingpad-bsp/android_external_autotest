@@ -1252,7 +1252,9 @@ class _BaseSuite(object):
                     record=record,
                     waiter=waiter,
                     reporter=reporter)
-        except Exception:
+                if self._finished_waiting():
+                    break
+        except Exception:  # pylint: disable=W0703
             logging.exception('Exception waiting for results')
             Status('FAIL', self._tag,
                    'Exception waiting for results').record_result(record)
@@ -1261,6 +1263,11 @@ class _BaseSuite(object):
     def _get_result_reporter(self):
         """Return the _ResultReporter instance to use for the suite."""
         return _EmailResultReporter(self)
+
+
+    def _finished_waiting(self):
+        """Return whether the suite is finished waiting for child jobs."""
+        return False
 
 
     def _handle_result(self, result, record, waiter, reporter):
@@ -1598,8 +1605,9 @@ class ProvisionSuite(_BaseSuite):
             tag,
             builds,
             board,
-            count,
             devserver,
+            num,
+            num_required,
             cf_getter=None,
             run_prod_code=False,
             test_args=None,
@@ -1611,8 +1619,9 @@ class ProvisionSuite(_BaseSuite):
         @param tag: a string with which to tag jobs run in this suite.
         @param builds: the builds on which we're running this suite.
         @param board: the board on which we're running this suite.
-        @param count: number of dummy tests to make
         @param devserver: the devserver which contains the build.
+        @param num: number of dummy tests to make.
+        @param num_required: number of tests that must pass.
         @param cf_getter: a control_file_getter.ControlFileGetter.
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
@@ -1623,13 +1632,23 @@ class ProvisionSuite(_BaseSuite):
         dummy_test = _load_dummy_test(
                 builds, devserver, cf_getter,
                 run_prod_code, test_args, test_source_build)
-
         super(ProvisionSuite, self).__init__(
-                tests=[dummy_test] * count,
+                tests=[dummy_test] * num,
                 tag=tag,
                 builds=builds,
                 board=board,
                 **kwargs)
+        self._num_required = num_required
+        self._num_successful = 0
+
+    def _handle_result(self, result, record, waiter, reporter):
+        super(ProvisionSuite, self)._handle_result(
+                result, record, waiter, reporter)
+        if result.is_good():
+            self._num_successful += 1
+
+    def _finished_waiting(self):
+        return self._num_successful >= self._num_required
 
 
 def _load_dummy_test(
