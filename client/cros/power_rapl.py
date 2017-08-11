@@ -9,7 +9,7 @@ RAPL ( Running Average Power Limit ) registers can be queried and written to
 change and evaluate power consumption on the CPU.
 
 See 'Intel 64 and IA-32 Architectures Software Developer's Manual Volume 3'
-(Section 14.7) for complete details.
+(Section 14.9) for complete details.
 
 TODO(tbroch)
 1. Investigate exposing access to control Power policy.  Current implementation
@@ -24,7 +24,7 @@ from autotest_lib.client.cros import power_status
 from numpy import uint32
 
 
-# TODO(tbroch): dram domain only for server class CPU's
+# TODO(tbroch): dram domain since Ivy Bridge-E microarchitecture
 VALID_DOMAINS = ['pkg', 'pp0', 'pp1']
 
 
