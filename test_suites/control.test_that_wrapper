@@ -62,8 +62,7 @@ for desc in descriptions:
 combined_predicate = lambda test: any(f(test) for f in sub_predicates)
 
 args_dict['name'] = NAME
-if 'max_runtime_mins' not in args_dict:
-    args_dict['max_runtime_mins'] = 20
+args_dict.setdefault('max_runtime_mins', 20)
 args_dict['predicate'] = combined_predicate
 args_dict['job'] = job
 args_dict['add_experimental'] = True
