@@ -1180,12 +1180,17 @@ def get_chrome_remote_debugging_port():
     """Returns remote debugging port for Chrome.
 
     Parse chrome process's command line argument to get the remote debugging
-    port.
+    port. if it is 0, look at DevToolsActivePort for the ephemeral port.
     """
     _, command = get_oldest_by_name('chrome')
     matches = re.search('--remote-debugging-port=([0-9]+)', command)
-    if matches:
-        return int(matches.group(1))
+    if not matches:
+      return 0
+    port = int(matches.group(1))
+    if port:
+      return port
+    with open('/home/chronos/DevToolsActivePort') as f:
+      return int(f.readline().rstrip())
 
 
 def get_process_list(name, command_line=None):
