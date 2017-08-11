@@ -7,6 +7,7 @@ import logging
 import os
 import re
 
+from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import netblock
@@ -100,9 +101,11 @@ class Interface:
 
     def __init__(self, name, host=None):
         self._name = name
-        self._run = utils.run
-        if host is not None:
-            self._run = host.run
+        if host is None:
+            self.host = local_host.LocalHost()
+        else:
+            self.host = host
+        self._run = self.host.run
 
 
     @property
@@ -149,22 +152,30 @@ class Interface:
 
 
     @property
+    def device_path(self):
+        """@return the sysfs path of the interface device"""
+        # This assumes that our path separator is the same as the remote host.
+        device_path = os.path.join(DEVICE_INFO_ROOT, self._name, 'device')
+        if not self.host.path_exists(device_path):
+            logging.error('No device information found at %s', device_path)
+            return None
+
+        return device_path
+
+
+    @property
     def device_description(self):
         """@return DeviceDescription object for a WiFi interface, or None."""
-        exists = lambda path: self._run(
-                'test -e "%s"' % path,
-                ignore_status=True).exit_status == 0
         read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
-                     if exists(path) else None)
+                     if self.host.path_exists(path) else None)
         if not self.is_wifi_device():
             logging.error('Device description not supported on non-wifi '
                           'interface: %s.', self._name)
             return None
 
-        # This assumes that our path separator is the same as the remote host.
-        device_path = os.path.join(DEVICE_INFO_ROOT, self._name, 'device')
-        if not exists(device_path):
-            logging.error('No device information found at %s', device_path)
+        device_path = self.device_path
+        if not device_path:
+            logging.error('No device path found')
             return None
 
         # TODO(benchan): The 'vendor' / 'device' files do not always exist
