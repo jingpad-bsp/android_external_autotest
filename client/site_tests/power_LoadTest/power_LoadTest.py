@@ -236,7 +236,9 @@ class power_LoadTest(test.test):
 
         measurements = \
             [power_status.SystemPower(self._power_status.battery_path)]
-        if power_utils.has_rapl_support():
+        if power_utils.has_powercap_support():
+            measurements += power_rapl.create_powercap()
+        elif power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements, seconds_period=20)
         self._tlog = power_status.TempLogger([], seconds_period=20)
