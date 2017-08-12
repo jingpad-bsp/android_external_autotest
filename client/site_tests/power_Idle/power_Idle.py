@@ -59,7 +59,9 @@ class power_Idle(test.test):
             if not self.status.on_ac():
                 measurements.append(
                     power_status.SystemPower(self.status.battery_path))
-            if power_utils.has_rapl_support():
+            if power_utils.has_powercap_support():
+                measurements += power_rapl.create_powercap()
+            elif power_utils.has_rapl_support():
                 measurements += power_rapl.create_rapl()
             self._plog = power_status.PowerLogger(measurements,
                                                   seconds_period=sleep)
