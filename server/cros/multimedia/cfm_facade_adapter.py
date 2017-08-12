@@ -4,6 +4,8 @@
 
 """An adapter to remotely access the CFM facade on DUT."""
 
+import time
+
 
 class CFMFacadeRemoteAdapter(object):
     """CFMFacadeRemoteAdapter is an adapter to remotely control CFM on DUT.
@@ -11,6 +13,7 @@ class CFMFacadeRemoteAdapter(object):
     The Autotest host object representing the remote DUT, passed to this
     class on initialization, can be accessed from its _client property.
     """
+    _RESTART_UI_DELAY = 10
 
     def __init__(self, host, remote_facade_proxy):
         """Construct a CFMFacadeRemoteAdapter.
@@ -42,6 +45,8 @@ class CFMFacadeRemoteAdapter(object):
 
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
+        self._client.run('restart ui', ignore_status=True)
+        time.sleep(self._RESTART_UI_DELAY)
         self._cfm_proxy.skip_oobe_after_enrollment()
 
 
