@@ -473,7 +473,9 @@ class power_Consumption(test.test):
         if not self._power_status.on_ac():
             measure += \
                 [power_status.SystemPower(self._power_status.battery_path)]
-        if power_utils.has_rapl_support():
+        if power_utils.has_powercap_support():
+            measure += power_rapl.create_powercap()
+        elif power_utils.has_rapl_support():
             measure += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measure)
         self._plog.start()
