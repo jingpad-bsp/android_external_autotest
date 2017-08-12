@@ -7,7 +7,6 @@ import logging, time, random
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import test
-from autotest_lib.server import hosts
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 CMD = "usb-devices | grep ^P:"
@@ -102,11 +101,8 @@ class enterprise_CFM_USBPeripheralRebootStress(test.test):
 
         try:
             self.cfm_facade.enroll_device()
-            self.cfm_facade.restart_chrome_for_cfm()
-            self.cfm_facade.wait_for_telemetry_commands()
-            if not self.cfm_facade.is_oobe_start_page():
-                self.cfm_facade.wait_for_oobe_start_page()
-            self.cfm_facade.skip_oobe_screen()
+            self.cfm_facade.skip_oobe_after_enrollment()
+            self.cfm_facade.wait_for_hangouts_telemetry_commands()
         except Exception as e:
             raise error.TestFail(str(e))
 
