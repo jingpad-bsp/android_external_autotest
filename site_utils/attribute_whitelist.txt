@@ -207,6 +207,7 @@ suite:toolchain-tests
 suite:touch
 suite:video
 suite:video_image_comparison_chameleon
+suite:vmtest-informational
 suite:wifi_atten_perf
 suite:wifi_correctness_cros_core
 suite:wifi_endtoend
