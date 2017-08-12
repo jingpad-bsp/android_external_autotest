@@ -38,14 +38,6 @@ class enterprise_CFM_Sanity(test.test):
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         hangout_name = 'auto-hangout-' + current_time
 
-        self.cfm_facade.wait_for_telemetry_commands()
-        self.cfm_facade.wait_for_oobe_start_page()
-
-        if not self.cfm_facade.is_oobe_start_page():
-            raise error.TestFail('CFM did not reach oobe screen.')
-
-        self.cfm_facade.skip_oobe_screen()
-
         if self.cfm_facade.is_ready_to_start_hangout_session():
             self.cfm_facade.start_new_hangout_session(hangout_name)
 
@@ -145,15 +137,15 @@ class enterprise_CFM_Sanity(test.test):
 
         try:
             self.cfm_facade.enroll_device()
-            self.cfm_facade.restart_chrome_for_cfm()
-
+            self.cfm_facade.skip_oobe_after_enrollment()
+            self.cfm_facade.wait_for_hangouts_telemetry_commands()
             self._hangouts_sanity_test()
             self._peripherals_sanity_test()
             self._diagnostics_sanity_test()
         except Exception as e:
             raise error.TestFail(str(e))
-
-        tpm_utils.ClearTPMOwnerRequest(self.client)
+        finally:
+            tpm_utils.ClearTPMOwnerRequest(self.client)
 
         if FAILED_TEST_LIST:
             raise error.TestFail('Test failed because of following reasons: %s'

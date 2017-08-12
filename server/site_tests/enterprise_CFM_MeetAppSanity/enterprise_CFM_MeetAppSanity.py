@@ -42,15 +42,9 @@ class enterprise_CFM_MeetAppSanity(test.test):
 
         try:
             self.cfm_facade.enroll_device()
-
-            # The following reboot and sleep are a hack around devtools crash
-            # issue tracked in crbug.com/739474.
-            self.client.reboot()
-            time.sleep(SHORT_TIMEOUT)
-
             self.cfm_facade.skip_oobe_after_enrollment()
 
-            # Following trigger new Thor/Meetings APIs.
+            # Following triggers new Thor/Meetings APIs.
             self.cfm_facade.wait_for_meetings_telemetry_commands()
             self.cfm_facade.start_meeting_session()
             time.sleep(LONG_TIMEOUT)

@@ -75,6 +75,7 @@ class enterprise_CFM_Perf(test.test):
 
         self.cfm_facade.enroll_device()
         self.cfm_facade.skip_oobe_after_enrollment()
+        self.cfm_facade.wait_for_hangouts_telemetry_commands()
         self.cfm_facade.start_new_hangout_session(hangout_name)
 
 
@@ -570,6 +571,5 @@ class enterprise_CFM_Perf(test.test):
             # device is not left in an enrolled state.
             tpm_utils.ClearTPMOwnerRequest(self.client)
             raise error.TestFail(str(e))
-
-        tpm_utils.ClearTPMOwnerRequest(self.client)
-
+        finally:
+            tpm_utils.ClearTPMOwnerRequest(self.client)
