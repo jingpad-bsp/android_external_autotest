@@ -233,6 +233,21 @@ class Cr50Test(FirmwareTest):
         return dest
 
 
+    def get_board_id_file_ext(self, board_id_info):
+        """Return the board id file extension.
+
+        Args:
+            board_id_info: a list of [board id str, board id mask int, board id
+                                      flags int]
+
+        Returns:
+            A string that can be used to dowload a board id locked file from
+            google storage.
+        """
+        return '.%s_%08x_%08x' % (board_id_info[0], board_id_info[1],
+                                  board_id_info[2])
+
+
     def download_cr50_debug_image(self, devid, board_id_info=None):
         """download the cr50 debug file
 
@@ -240,14 +255,14 @@ class Cr50Test(FirmwareTest):
 
         Args:
             devid: the cr50_devid string '${DEVID0} ${DEVID1}'
-            board_id_info: a list of [board id, board id mask, board id
-                                      flags]
+            board_id_info: a list of [board id str, board id mask int, board id
+                                      flags int]
         Returns:
             the local path to the debug image
         """
         filename = self.CR50_DEBUG_FILE % (devid.replace(' ', '_'))
         if board_id_info:
-            filename += '.' + '.'.join(board_id_info)
+            filename += self.get_board_id_file_ext(board_id_info)
         return self.download_cr50_gs_image(filename, image_type='debug')
 
 
@@ -258,14 +273,14 @@ class Cr50Test(FirmwareTest):
 
         Args:
             rw_ver: the rw version string
-            board_id_info: a list of strings [board id, board id mask, board id
-                          flags]
+            board_id_info: a list of [board id str, board id mask int, board id
+                                      flags int]
         Returns:
             the local path to the release image
         """
         filename = self.CR50_PROD_FILE % rw_ver
         if board_id_info:
-            filename += '.' + '.'.join(board_id_info)
+            filename += self.get_board_id_file_ext(board_id_info)
         return self.download_cr50_gs_image(filename, image_type='release')
 
 
