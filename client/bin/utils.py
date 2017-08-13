@@ -368,18 +368,24 @@ def get_cpu_soc_family():
 
 
 INTEL_UARCH_TABLE = {
+    '06_4C': 'Airmont',
     '06_1C': 'Atom',
     '06_26': 'Atom',
+    '06_27': 'Atom',
+    '06_35': 'Atom',
     '06_36': 'Atom',
-    '06_4C': 'Braswell',
     '06_3D': 'Broadwell',
+    '06_47': 'Broadwell',
     '06_0D': 'Dothan',
-    '06_3A': 'IvyBridge',
-    '06_3E': 'IvyBridge',
+    '06_5C': 'Goldmont',
     '06_3C': 'Haswell',
-    '06_3F': 'Haswell',
     '06_45': 'Haswell',
     '06_46': 'Haswell',
+    '06_3F': 'Haswell-E',
+    '06_3A': 'Ivy Bridge',
+    '06_3E': 'Ivy Bridge-E',
+    '06_8E': 'Kaby Lake',
+    '06_9E': 'Kaby Lake',
     '06_0F': 'Merom',
     '06_16': 'Merom',
     '06_17': 'Nehalem',
@@ -388,12 +394,19 @@ INTEL_UARCH_TABLE = {
     '06_1E': 'Nehalem',
     '06_1F': 'Nehalem',
     '06_2E': 'Nehalem',
-    '06_2A': 'SandyBridge',
-    '06_2D': 'SandyBridge',
-    '06_4E': 'Skylake',
     '0F_03': 'Prescott',
     '0F_04': 'Prescott',
     '0F_06': 'Presler',
+    '06_2A': 'Sandy Bridge',
+    '06_2D': 'Sandy Bridge',
+    '06_37': 'Silvermont',
+    '06_4A': 'Silvermont',
+    '06_4D': 'Silvermont',
+    '06_5A': 'Silvermont',
+    '06_5D': 'Silvermont',
+    '06_4E': 'Skylake',
+    '06_5E': 'Skylake',
+    '06_55': 'Skylake',
     '06_25': 'Westmere',
     '06_2C': 'Westmere',
     '06_2F': 'Westmere',
@@ -1180,12 +1193,17 @@ def get_chrome_remote_debugging_port():
     """Returns remote debugging port for Chrome.
 
     Parse chrome process's command line argument to get the remote debugging
-    port.
+    port. if it is 0, look at DevToolsActivePort for the ephemeral port.
     """
     _, command = get_oldest_by_name('chrome')
     matches = re.search('--remote-debugging-port=([0-9]+)', command)
-    if matches:
-        return int(matches.group(1))
+    if not matches:
+      return 0
+    port = int(matches.group(1))
+    if port:
+      return port
+    with open('/home/chronos/DevToolsActivePort') as f:
+      return int(f.readline().rstrip())
 
 
 def get_process_list(name, command_line=None):

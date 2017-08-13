@@ -49,15 +49,35 @@ def get_x86_cpu_arch():
 
 
 def has_rapl_support():
-    """Identify if platform supports Intels RAPL subsytem.
+    """Identify if CPU microarchitecture supports RAPL energy profile.
+
+    TODO(harry.pan): Since Sandy Bridge, all microarchitectures have RAPL
+    in various power domains. With that said, the Silvermont and Airmont
+    support RAPL as well, while the ESU (Energy Status Unit of MSR 606H)
+    are in different multipiler against others, hense not list by far.
 
     Returns:
         Boolean, True if RAPL supported, False otherwise.
     """
-    cpu_arch = get_x86_cpu_arch()
-    if cpu_arch and ((cpu_arch is 'Celeron') or (cpu_arch is 'Core')):
+    rapl_set = set(["Sandy Bridge", "Ivy Bridge", "Ivy Bridge-E",
+        "Haswell", "Haswell-E", "Broadwell", "Skylake", "Goldmont",
+        "Kaby Lake"])
+    cpu_uarch = utils.get_intel_cpu_uarch()
+    if (cpu_uarch in rapl_set):
         return True
+    else:
+        # The cpu_uarch here is either unlisted uarch, or family_model.
+        logging.debug("%s is not in RAPL support collection", cpu_uarch)
     return False
+
+
+def has_powercap_support():
+    """Identify if OS supports powercap sysfs.
+
+    Returns:
+        Boolean, True if powercap supported, False otherwise.
+    """
+    return os.path.isdir('/sys/devices/virtual/powercap/intel-rapl/')
 
 
 def _call_dbus_method(destination, path, interface, method_name, args):

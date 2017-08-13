@@ -172,6 +172,43 @@ def GetSavedVersion(client):
     return FindVersion(result, '--fwver')
 
 
+def GetRLZ(client):
+    """Get the RLZ brand code from vpd.
+
+    Args:
+        client: the object to run commands on
+
+    Returns:
+        The current RLZ code
+    """
+    return client.run('vpd -g rlz_brand_code').stdout.strip()
+
+
+def SetRLZ(client, rlz):
+    """Set the RLZ brand code in vpd
+
+    Args:
+        client: the object to run commands on
+        rlz: 4 character string.
+
+    Raises:
+        TestError if the RLZ code is too long or if setting the code failed.
+    """
+    rlz = rlz.strip()
+    if len(rlz) > 4:
+        raise error.TestError('RLZ is too long. Use a max of 4 characters')
+
+    if rlz == GetRLZ(client):
+        return
+    elif rlz:
+          client.run('vpd -s rlz_brand_code=%s' % rlz)
+    else:
+          client.run('vpd -d rlz_brand_code')
+
+    if rlz != GetRLZ(client):
+        raise error.TestError('Could not set RLZ code')
+
+
 def UsbUpdater(client, args):
     """Run usb_update with the given args.
 

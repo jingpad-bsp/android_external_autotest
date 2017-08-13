@@ -36,6 +36,7 @@ import datetime
 import logging
 import os
 import sys
+import warnings
 
 from django.db import connection as db_connection
 from django.db import transaction
@@ -306,12 +307,20 @@ def modify_host(id, **kwargs):
     # between the master and a shard.
     if kwargs.get('locked', None) and 'lock_time' not in kwargs:
         kwargs['lock_time'] = datetime.datetime.now()
-    host.update_object(kwargs)
 
     # force_modifying_locking is not an internal field in database, remove.
-    kwargs.pop('force_modify_locking', None)
+    shard_kwargs = dict(kwargs)
+    shard_kwargs.pop('force_modify_locking', None)
     rpc_utils.fanout_rpc([host], 'modify_host_local',
-                         include_hostnames=False, id=id, **kwargs)
+                         include_hostnames=False, id=id, **shard_kwargs)
+
+    # Update the local DB **after** RPC fanout is complete.
+    # This guarantees that the master state is only updated if the shards were
+    # correctly updated.
+    # In case the shard update fails mid-flight and the master-shard desync, we
+    # always consider the master state to be the source-of-truth, and any
+    # (automated) corrective actions will revert the (partial) shard updates.
+    host.update_object(kwargs)
 
 
 def modify_host_local(id, **kwargs):
@@ -1878,6 +1887,16 @@ def create_suite_job(
     if is_cloning:
         control_file = tools.remove_injection(control_file)
 
+    if isinstance(suite_args, str):
+        # TODO(ayatane): suite_args used to be passed as a string and
+        # evaluated later.
+        suite_args = ast.literal_eval(suite_args)
+    if not isinstance(suite_args, dict):
+        if suite_args is not None:
+            warnings.warn('suite_args should be None or dict, passed as %r'
+                          % (suite_args,))
+        suite_args = dict()
+
     inject_dict = {
         'board': board,
         # `build` is needed for suites like AU to stage image inside suite
@@ -1892,7 +1911,6 @@ def create_suite_job(
         'timeout_mins': timeout_mins,
         'devserver_url': ds.url(),
         'priority': priority,
-        'suite_args' : suite_args,
         'wait_for_results': wait_for_results,
         'job_retry': job_retry,
         'max_retries': max_retries,
@@ -1904,6 +1922,7 @@ def create_suite_job(
         'job_keyvals': job_keyvals,
         'test_args': test_args,
     }
+    inject_dict.update(suite_args)
     control_file = tools.inject_vars(inject_dict, control_file)
 
     return rpc_utils.create_job_common(name,

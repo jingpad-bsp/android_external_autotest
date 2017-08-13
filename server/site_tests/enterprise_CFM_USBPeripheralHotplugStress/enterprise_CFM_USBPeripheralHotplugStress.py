@@ -37,15 +37,8 @@ class enterprise_CFM_USBPeripheralHotplugStress(test.test):
     def _enroll_device_and_skip_oobe(self):
         """Enroll device into CFM and skip CFM oobe."""
         self.cfm_facade.enroll_device()
-        self.cfm_facade.restart_chrome_for_cfm()
-        self.cfm_facade.wait_for_telemetry_commands()
-        self.cfm_facade.wait_for_oobe_start_page()
-
-        if not self.cfm_facade.is_oobe_start_page():
-            raise error.TestFail('CFM did not reach oobe screen.')
-
-        self.cfm_facade.skip_oobe_screen()
-        time.sleep(_SHORT_TIMEOUT)
+        self.cfm_facade.skip_oobe_after_enrollment()
+        self.cfm_facade.wait_for_hangouts_telemetry_commands()
 
 
     def _set_peripheral(self, peripheral_dict):

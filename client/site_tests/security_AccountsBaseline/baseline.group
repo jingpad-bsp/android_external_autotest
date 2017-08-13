@@ -3,7 +3,7 @@ bin:!:1:root,bin,daemon
 daemon:!:2:root,bin,daemon
 sys:!:3:root,bin,adm
 adm:!:4:root,adm,daemon
-disk:!:6:root,adm
+disk:!:6:root,adm,cros-disks
 lp:!:7:lp,lpadmin,cups,chronos
 mem:!:8:
 kmem:!:9:
@@ -23,7 +23,7 @@ utmp:!:406:
 nogroup:!:65533:
 nobody:!:65534:
 chronos:!:1000:
-chronos-access:!:1001:root,ipsec,chronos,ntfs-3g,avfs,fuse-exfat,chaps,imageloaderd
+chronos-access:!:1001:root,ipsec,chronos,ntfs-3g,avfs,fuse-exfat,chaps,cros-disks,imageloaderd
 sslh:!:200:
 messagebus:!:201:
 syslog:!:202:

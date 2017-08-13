@@ -475,8 +475,9 @@ def parse_one(db, jobname, path, parse_options):
     # Serializing job into a binary file
     export_tko_to_file = global_config.global_config.get_config_value(
             'AUTOSERV', 'export_tko_job_to_file', type=bool, default=False)
+
+    binary_file_name = os.path.join(path, "job.serialize")
     if export_tko_to_file:
-        binary_file_name = os.path.join(path, "job.serialize")
         export_tko_job_to_file(job, jobname, binary_file_name)
 
     if reparse:

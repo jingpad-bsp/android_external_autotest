@@ -25,12 +25,14 @@ ATTRIBUTES_BVT_PB = (
     'suite:bvt-perbuild'
 )
 ATTRIBUTES_DAILY = 'suite:deqp, suite:graphics_per-day, suite:graphics_system'
+ATTRIBUTES_VMTEST = 'suite:vmtest-informational'
 
 class Suite(Enum):
     none = 1
     daily = 2
     bvtcq = 3
     bvtpb = 4
+    vmtest = 5
 
 test_file_folder = '/usr/local/deqp/master/'
 BVT_MASTER_FILE = '/usr/local/autotest/tests/graphics_dEQP/master/bvt.txt'
@@ -44,6 +46,7 @@ hasty_exclude_list = ['dEQP-VK-master']
 
 tests = [
     Test('bvt',                    Suite.bvtcq, shards=1,  hasty=False, time='FAST',     tag='bvt',           test_file=BVT_MASTER_FILE,    perf_failure_description='Failures_BVT'),
+    Test('bvt-informational',      Suite.vmtest,shards=1,  hasty=False, time='FAST',     tag='bvt',           test_file=BVT_MASTER_FILE,    perf_failure_description='Failures_BVT'),
     Test('dEQP-GLES2-master',      Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles2-master',  test_file=GLES2_MASTER_FILE,  perf_failure_description='Failures_GLES2'),
     Test('dEQP-GLES2-master',      Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles2-master',  test_file=GLES2_MASTER_FILE,  perf_failure_description=None),
     # The stress, accuracy and performance tests are not part of -master lists.
@@ -111,6 +114,8 @@ def get_attributes(test):
         return ATTRIBUTES_BVT_PB
     if test.suite == Suite.daily:
         return ATTRIBUTES_DAILY
+    if test.suite == Suite.vmtest:
+        return ATTRIBUTES_VMTEST
     return ''
 
 

@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run module CtsAppTestCases of the '
-       'Android 7.1_r7 Compatibility Test Suite (CTS), build 4120758,'
+       'Android 7.1_r8 Compatibility Test Suite (CTS), build 4226626,'
        'using arm ABI in the ARC++ container.')
 
 def run_CTS(machine):
