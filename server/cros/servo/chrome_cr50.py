@@ -330,3 +330,23 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             self._servo.set_nocheck('cr50_console_timeout', original_timeout)
 
         logging.info('Successfully disabled the lock')
+
+
+    def gettime(self):
+        """Get the current cr50 system time"""
+        result = self.send_command_get_output('gettime', [' = (.*) s'])
+        return float(result[0][1])
+
+    def wait_until_update_is_allowed(self):
+        """Wait until cr50 will be able to accept an update.
+
+        Cr50 rejects any attempt to update if it has been less than 60 seconds
+        since it last recovered from deep sleep or came up from reboot. This
+        will wait until cr50 gettime shows a time greater than 60.
+        """
+        cr50_time = self.gettime()
+        if cr50_time < 60:
+            sleep_time = 61 - cr50_time
+            logging.info('Cr50 has been up for %ds waiting %ds before update',
+                         cr50_time, sleep_time)
+            time.sleep(sleep_time)
