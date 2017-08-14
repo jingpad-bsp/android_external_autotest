@@ -14,7 +14,7 @@ if any of the following conditions occur:
   - If a required resolution is not supported when capturing a stream
   - If frame rate is not constant
 """
-ATTRIBUTES = ""
+ATTRIBUTES = "suite:usb-camera"
 TIME='MEDIUM'
 TEST_CATEGORY = 'V4L2'
 TEST_TYPE = 'client'
