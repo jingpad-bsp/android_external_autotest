@@ -208,7 +208,6 @@ class _LocalDrone(_AbstractDrone):
                 timestamp_remote_calls=timestamp_remote_calls)
         self.hostname = 'localhost'
         self._host = local_host.LocalHost()
-        self._drone_utility = drone_utility.DroneUtility()
 
 
     def send_file_to(self, drone, source_path, destination_path,
