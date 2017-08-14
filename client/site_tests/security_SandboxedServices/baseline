@@ -19,7 +19,7 @@ powerd,power,power,No,Yes,No,No
 ModemManager,modem,modem,No,Yes,Yes,No
 dhcpcd,dhcp,dhcp,No,Yes,No,No
 metrics_daemon,root,root,No,No,No,No
-disks,root,root,No,No,No,No
+disks,cros-disks,cros-disks,No,Yes,Yes,No
 update_engine,root,root,No,No,No,No
 bluetoothd,bluetooth,bluetooth,No,Yes,Yes,No
 debugd,root,root,No,No,No,No
