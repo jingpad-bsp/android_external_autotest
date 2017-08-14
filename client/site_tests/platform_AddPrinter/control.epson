@@ -3,13 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "The Chromium OS Authors"
-NAME = "platform_AddPrinter"
+NAME = "platform_AddPrinter.epson"
 TIME = "SHORT"
 TEST_TYPE = "client"
-#ATTRIBUTES = "suite:bvt-perbuild"
+CRITERIA = """
+The test fails in case of malfunctioning of CUPS printing stack (cupsd,
+cupstestppd, cups filters) or component updater (unable to download epson
+filter from Omaha server).
+"""
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-CRITERIA = "This test will fail if CUPS printing is not fully functional"
+#ATTRIBUTES = "suite:bvt-perbuild"
 
 DOC = """
 This is a test that emulates following user behavior:
@@ -23,4 +27,6 @@ a fake printer which compares the request to a golden file to verify its
 correctness.
 """
 
-job.run_test('platform_AddPrinter')
+job.run_test('platform_AddPrinter',
+             ppd_file='Epson-WF-3620_Series-epson-escpr-en.ppd',
+             golden_file='golden_printing_request_epson.bin')
