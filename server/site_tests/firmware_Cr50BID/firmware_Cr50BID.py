@@ -31,7 +31,7 @@ class firmware_Cr50BID(Cr50Test):
 
     # Board id locked debug files will use the board id, mask, and flags in the
     # gs filename
-    BID_FILE_INFO = [TEST_BOARD_ID, hex(TEST_MASK), hex(TEST_FLAGS)]
+    BID_FILE_INFO = [TEST_BOARD_ID, TEST_MASK, TEST_FLAGS]
     BID_MISMATCH = ['Board ID mismatched, but can not reboot.']
     BID_ERROR = 5
     SUCCESS = 0
@@ -126,7 +126,7 @@ class firmware_Cr50BID(Cr50Test):
             # TODO(mruthven): once they are released switch to using prod signed
             # board id locked images
             self.board_id_locked_path = self.download_cr50_debug_image(
-                devid, self.BID_FILE_INFO)
+                devid, self.BID_FILE_INFO)[0]
 
 
     def cleanup(self):

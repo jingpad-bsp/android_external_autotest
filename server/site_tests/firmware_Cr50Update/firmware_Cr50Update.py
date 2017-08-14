@@ -133,6 +133,10 @@ class firmware_Cr50Update(Cr50Test):
             self.check_state((self.checkers.crossystem_checker,
                               {'mainfw_type': 'normal'}))
 
+        # Cr50 is going to reject an update if it hasn't been up for more than
+        # 60 seconds. Wait until that passes before trying to run the update.
+        self.cr50.wait_until_update_is_allowed()
+
         # Running the usb update or rollback will enable ccd. Disable it again.
         self.cr50.ccd_disable()
 
@@ -189,9 +193,9 @@ class firmware_Cr50Update(Cr50Test):
         tmp_file = '/tmp/%s.bin' % image_name
 
         if not os.path.isfile(image_path):
-            image_path = self.fetch_image(ver)
-
-        _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
+            image_path, ver = self.fetch_image(ver)
+        else:
+            _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
 
         ver_str = cr50_utils.GetVersionString(ver)
 
