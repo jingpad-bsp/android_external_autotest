@@ -328,6 +328,10 @@ class Cr50Test(FirmwareTest):
         """
         original_ver = self.cr50.get_version()
 
+        # Cr50 is going to reject an update if it hasn't been up for more than
+        # 60 seconds. Wait until that passes before trying to run the update.
+        self.cr50.wait_until_update_is_allowed()
+
         rw_ver = self._cr50_run_update(path)
 
         # Running the update may cause cr50 to reboot. Wait for that before
