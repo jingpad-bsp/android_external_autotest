@@ -8,8 +8,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = ('suite:hotrod, suite:bluestreak, suite:bluestreak-pre-cq,'
-              'suite:bluestreak-release')
+ATTRIBUTES = ('suite:hotrod, suite:hotrod-release, suite:bluestreak,'
+              'suite:bluestreak-pre-cq, suite:bluestreak-release')
 JOB_RETRIES = 3
 
 DOC = """
