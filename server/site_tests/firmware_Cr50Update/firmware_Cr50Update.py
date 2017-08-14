@@ -193,9 +193,9 @@ class firmware_Cr50Update(Cr50Test):
         tmp_file = '/tmp/%s.bin' % image_name
 
         if not os.path.isfile(image_path):
-            image_path = self.fetch_image(ver)
-
-        _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
+            image_path, ver = self.fetch_image(ver)
+        else:
+            _, ver = cr50_utils.InstallImage(self.host, image_path, tmp_file)
 
         ver_str = cr50_utils.GetVersionString(ver)
 
