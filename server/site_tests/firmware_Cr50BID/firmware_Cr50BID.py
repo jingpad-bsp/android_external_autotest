@@ -31,7 +31,7 @@ class firmware_Cr50BID(Cr50Test):
 
     # Board id locked debug files will use the board id, mask, and flags in the
     # gs filename
-    BID_FILE_INFO = [TEST_BOARD_ID, hex(TEST_MASK), hex(TEST_FLAGS)]
+    BID_FILE_INFO = [TEST_BOARD_ID, TEST_MASK, TEST_FLAGS]
     BID_MISMATCH = ['Board ID mismatched, but can not reboot.']
     BID_ERROR = 5
     SUCCESS = 0
