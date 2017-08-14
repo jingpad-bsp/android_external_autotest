@@ -55,7 +55,7 @@ class Cr50Test(FirmwareTest):
             devid = self.servo.get('cr50_devid')
             try:
                 self._node_locked_cr50_image = self.download_cr50_debug_image(
-                    devid)
+                    devid)[0]
             except Exception, e:
                 raise error.TestError('Cannot restore the device state without '
                                       'a node-locked DBG image')
@@ -87,7 +87,7 @@ class Cr50Test(FirmwareTest):
             self._original_cr50_image = self._original_device_image
         else:
             self._original_cr50_image = self.download_cr50_release_image(
-                self._original_cr50_version[1])
+                self._original_cr50_version[1])[0]
         logging.info('cr50 version: %r', self._original_cr50_version)
         logging.info('rlz: %r', self._original_rlz)
         logging.info('cr50 bid: %08x:%08x:%08x', self._original_cr50_bid[0],
@@ -214,7 +214,7 @@ class Cr50Test(FirmwareTest):
         """Get the image from gs and save it in the autotest dir
 
         Returns:
-            the local path
+            A tuple with the local path and version
         """
         if not bucket:
             bucket, filename = self.find_cr50_gs_image(filename, image_type)
@@ -230,7 +230,8 @@ class Cr50Test(FirmwareTest):
                                            destination=remote_temp_dir)
 
         self.host.get_file(src, dest)
-        return dest
+        ver = cr50_utils.GetBinVersion(self.host, src)
+        return dest, ver
 
 
     def get_board_id_file_ext(self, board_id_info):
@@ -244,8 +245,8 @@ class Cr50Test(FirmwareTest):
             A string that can be used to dowload a board id locked file from
             google storage.
         """
-        return '.%s_%08x_%08x' % (board_id_info[0], board_id_info[1],
-                                  board_id_info[2])
+        return '%s_%08x_%08x' % (board_id_info[0], board_id_info[1],
+                                 board_id_info[2])
 
 
     def download_cr50_debug_image(self, devid, board_id_info=None):
@@ -258,12 +259,25 @@ class Cr50Test(FirmwareTest):
             board_id_info: a list of [board id str, board id mask int, board id
                                       flags int]
         Returns:
-            the local path to the debug image
+            A tuple with the debug image local path and version
         """
+        # Debug images are node locked with the devid. Add the devid to the
+        # filename
         filename = self.CR50_DEBUG_FILE % (devid.replace(' ', '_'))
+
+        # Add the board_id_info to the filename
         if board_id_info:
-            filename += self.get_board_id_file_ext(board_id_info)
-        return self.download_cr50_gs_image(filename, image_type='debug')
+            bid_ext = self.get_board_id_file_ext(board_id_info)
+            filename += '.' + bid_ext
+
+        # Download the image
+        dest, ver = self.download_cr50_gs_image(filename, image_type='debug')
+
+        # Compare the board id info to make sure the right image was found
+        if board_id_info and bid_ext.split('_') != ver[2].split(':'):
+            raise error.TestError('Could not download image with matching '
+                                  'board id')
+        return dest, ver
 
 
     def download_cr50_release_image(self, rw_ver, board_id_info=None):
@@ -276,12 +290,28 @@ class Cr50Test(FirmwareTest):
             board_id_info: a list of [board id str, board id mask int, board id
                                       flags int]
         Returns:
-            the local path to the release image
+            A tuple with the release image local path and version
         """
+        # Release images can be found using the rw version
         filename = self.CR50_PROD_FILE % rw_ver
+
+        # Add the board_id_info to the filename
         if board_id_info:
-            filename += self.get_board_id_file_ext(board_id_info)
-        return self.download_cr50_gs_image(filename, image_type='release')
+            bid_ext = self.get_board_id_file_ext(board_id_info)
+            filename += '.' + bid_ext
+
+        # Download the image
+        dest, ver = self.download_cr50_gs_image(filename, image_type='release')
+
+        # Compare the rw version and board id info to make sure the right image
+        # was found
+        if rw_ver != ver[1]:
+            raise error.TestError('Could not download image with matching '
+                                  'rw version')
+        if board_id_info and bid_ext.split('_') != ver[2].split(':'):
+            raise error.TestError('Could not download image with matching '
+                                  'board id')
+        return dest, ver
 
 
     def _cr50_verify_update(self, expected_ver, expect_rollback):
