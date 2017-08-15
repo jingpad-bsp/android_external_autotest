@@ -58,7 +58,9 @@ class GraphicsTest(test.test):
 
     def initialize(self, raise_error_on_hang=False, *args, **kwargs):
         """Initial state checker and report initial value to perf dashboard."""
-        self._GSC = GraphicsStateChecker(raise_error_on_hang)
+        self._GSC = GraphicsStateChecker(
+            raise_error_on_hang=raise_error_on_hang,
+            run_on_sw_rasterizer=utils.is_virtual_machine())
 
         self.output_perf_value(
             description='Timeout_Reboot',
@@ -860,16 +862,19 @@ class GraphicsKernelMemory(object):
         'gem_objects': ['/sys/kernel/debug/dri/0/i915_gem_objects'],
         'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
+    cirrus_fields = {}
 
     arch_fields = {
         'amdgpu': amdgpu_fields,
         'arm': arm_fields,
+        'cirrus': cirrus_fields,
         'exynos5': exynos_fields,
         'i915': i915_fields,
         'mediatek': mediatek_fields,
         'rockchip': rockchip_fields,
         'tegra': tegra_fields,
     }
+
 
     num_errors = 0
 
@@ -901,6 +906,8 @@ class GraphicsKernelMemory(object):
                 soc = 'amdgpu'
             elif "Intel Corporation" in pci_vga_device:
                 soc = 'i915'
+            elif "Cirrus Logic" in pci_vga_device:
+                soc = 'cirrus'
 
         if not soc in self.arch_fields:
             raise error.TestFail('Error: Architecture "%s" not yet supported.' % soc)
@@ -988,7 +995,7 @@ class GraphicsStateChecker(object):
     _HANGCHECK_WARNING = ['render ring idle']
     _MESSAGES_FILE = '/var/log/messages'
 
-    def __init__(self, raise_error_on_hang=True):
+    def __init__(self, raise_error_on_hang=True, run_on_sw_rasterizer=False):
         """
         Analyzes the initial state of the GPU and log history.
         """
@@ -998,9 +1005,10 @@ class GraphicsStateChecker(object):
         self._raise_error_on_hang = raise_error_on_hang
         logging.info(utils.get_board_with_frequency_and_memory())
         self.graphics_kernel_memory = GraphicsKernelMemory()
+        self._run_on_sw_rasterizer = run_on_sw_rasterizer
 
         if utils.get_cpu_arch() != 'arm':
-            if is_sw_rasterizer():
+            if not self._run_on_sw_rasterizer and is_sw_rasterizer():
                 raise error.TestFail('Refusing to run on SW rasterizer.')
             logging.info('Initialize: Checking for old GPU hangs...')
             messages = open(self._MESSAGES_FILE, 'r')
@@ -1038,7 +1046,7 @@ class GraphicsStateChecker(object):
                                     new_gpu_hang = True
             messages.close()
 
-            if is_sw_rasterizer():
+            if not self._run_on_sw_rasterizer and is_sw_rasterizer():
                 logging.warning('Finished test on SW rasterizer.')
                 raise error.TestFail('Finished test on SW rasterizer.')
             if self._raise_error_on_hang and new_gpu_hang:
