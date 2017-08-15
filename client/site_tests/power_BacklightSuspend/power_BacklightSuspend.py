@@ -26,7 +26,7 @@ class power_BacklightSuspend(test.test):
             resume_level = max_level - resume_level
         backlight.set_resume_level(resume_level)
 
-        sys_power.kernel_suspend(seconds=5, state=suspend_state)
+        sys_power.kernel_suspend(seconds=10, state=suspend_state)
 
         final_level = backlight.get_level()
         if final_level != resume_level:
