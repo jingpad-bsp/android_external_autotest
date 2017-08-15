@@ -213,7 +213,6 @@ class ContainerBucket(object):
         # Create the dir and set it up as a shared mount point.
         utils.run(('sudo mkdir "{path}" && '
                    'sudo mount --bind "{path}" "{path}" && '
-                   'sudo mount --make-unbindable "{path}" && '
                    'sudo mount --make-shared "{path}"')
                   .format(path=self.shared_host_path))
 
