@@ -1262,7 +1262,7 @@ class _BaseSuite(object):
 
     def _get_result_reporter(self):
         """Return the _ResultReporter instance to use for the suite."""
-        return _EmailResultReporter(self)
+        return _EmailReporter(self)
 
 
     def _finished_waiting(self):
@@ -1749,13 +1749,15 @@ class _ResultReporter(object):
         """
 
 
-class _TestBugReporter(_ResultReporter):
-    """Base class that implements making test bugs."""
-    # pylint: disable=abstract-method
+class _EmailReporter(_ResultReporter):
+    """Class that emails based on test failures."""
 
-    def __init__(self, suite, bug_template):
+    # TODO(akeshet): Document what |bug_template| is actually supposed to come
+    # from, and rename it to something unrelated to "bugs" which are no longer
+    # relevant now that this is purely an email sender.
+    def __init__(self, suite, bug_template=None):
         self._suite = suite
-        self._bug_template = bug_template
+        self._bug_template = bug_template or {}
 
     def _get_test_bug(self, result):
         """Get TestBug for the given result.
@@ -1809,52 +1811,6 @@ class _TestBugReporter(_ResultReporter):
                           'be used.', e)
             return {}
 
-
-class _BugResultReporter(_TestBugReporter):
-    """
-    Report test results as bugs.
-    """
-
-    def __init__(self, suite, bug_reporter, bug_template):
-        """
-        Instantiate instance.
-
-        @param suite: _BaseSuite instance
-        @param bug_reporter: Reporter instance for reporting bugs.
-        @param bug_template: A template dictionary specifying the default bug
-                             filing options for failures in this suite.
-        """
-        super(_BugResultReporter, self).__init__(suite, bug_template)
-        self._bug_reporter = bug_reporter
-
-    def report(self, result):
-        bug_id, bug_count = self._bug_reporter.report(
-                self._get_test_bug(result),
-                self._get_bug_template(result))
-
-        # We use keyvals to communicate bugs filed with run_suite.
-        if bug_id is not None:
-            bug_keyvals = tools.create_bug_keyvals(
-                    result.id, result.test_name,
-                    (bug_id, bug_count))
-            try:
-                utils.write_keyval(self._suite._results_dir,
-                                   bug_keyvals)
-            except ValueError:
-                logging.error('Unable to log bug keyval for:%s',
-                              result.test_name)
-
-
-class _EmailResultReporter(_ResultReporter):
-    """
-    Report test results as email.
-
-    @param suite: _BaseSuite instance
-    """
-
-    def __init__(self, suite):
-        self._suite = suite
-
     def report(self, result):
         # reporting modules have dependency on external
         # packages, e.g., httplib2 Such dependency can cause
@@ -1866,5 +1822,5 @@ class _EmailResultReporter(_ResultReporter):
         from autotest_lib.server.cros.dynamic_suite import reporting
 
         reporting.send_email(
-                self._suite._get_test_bug(result),
-                self._suite._get_bug_template(result))
+                self._get_test_bug(result),
+                self._get_bug_template(result))
