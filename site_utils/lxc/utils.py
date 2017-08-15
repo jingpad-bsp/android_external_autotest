@@ -5,6 +5,7 @@
 """This module provides some utilities used by LXC and its tools.
 """
 
+import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -58,6 +59,7 @@ def get_host_ip():
     netif = interface.Interface(lxc_network)
     return netif.ipv4_address
 
+
 def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     """Clones a container.
 
@@ -84,20 +86,6 @@ def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     utils.run(cmd)
 
 
-def cleanup_host_mount(host_dir):
-    """Unmounts and removes the given host dir.
-
-    @param host_dir: The host dir to unmount and remove.
-    """
-    try:
-        utils.run('sudo umount "%s"' % host_dir)
-    except error.CmdError:
-        # Ignore errors.  Most likely this occurred because the host dir
-        # was already unmounted.
-        pass
-    utils.run('sudo rm -r "%s"' % host_dir)
-
-
 @contextmanager
 def TempDir(*args, **kwargs):
     """Context manager for creating a temporary directory."""
@@ -106,3 +94,44 @@ def TempDir(*args, **kwargs):
         yield tmpdir
     finally:
         shutil.rmtree(tmpdir)
+
+
+class BindMount(object):
+    """Manages setup and cleanup of bind-mounts."""
+    def __init__(self, src, dst, rename=None, readonly=False):
+        """Sets up a new bind mount.
+
+        @param src: The path of the source file/dir.
+        @param dst: The destination directory.  The new mount point will be
+                    ${dst}/${src} unless renamed.  If the mount point does not
+                    already exist, it will be created.
+        @param rename: An optional path to rename the mount.  If provided, the
+                       mount point will be ${dst}/${rename} instead of
+                       ${dst}/${src}.
+        @param readonly: If True, the mount will be read-only.  False by
+                         default.
+        """
+        self.dst = (dst, (rename if rename else src).lstrip(os.path.sep))
+        full_dst = os.path.join(self.dst[0], self.dst[1])
+
+        if not path_exists(full_dst):
+            utils.run('sudo mkdir -p %s' % full_dst)
+            self._cleanup_dst = True
+        else:
+            self._cleanup_dst = False
+
+        utils.run('sudo mount --bind %s %s' % (src, full_dst))
+        if readonly:
+            utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
+
+
+    def cleanup(self):
+        """Cleans up the bind-mount.
+
+        Unmounts the destination, and deletes it if it was created by this
+        object.
+        """
+        full_dst = os.path.join(self.dst[0], self.dst[1])
+        utils.run('sudo umount %s' % full_dst)
+        if self._cleanup_dst:
+            utils.run('sudo bash -c "cd %s; rmdir -p %s"' % self.dst)
