@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import commands
 import logging
 import os
 import tempfile
@@ -28,7 +27,11 @@ class platform_AddPrinter(test.test):
     """
     version = 1
 
-    def initialize(self):
+    def initialize(self, ppd_file):
+        """
+        Args:
+        @param ppd_file: ppd file name
+        """
 
         # Instantiate Chrome browser.
         with tempfile.NamedTemporaryFile() as cap:
@@ -46,15 +49,14 @@ class platform_AddPrinter(test.test):
         current_dir = os.path.dirname(os.path.realpath(__file__))
         self.pdf_path = os.path.join(current_dir,
                            'to_print.pdf')
-        self.golden_file_path = os.path.join(current_dir,
-                                   'golden_printing_request.bin');
         self.printing_log_path = '/tmp/printing_request.log'
 
-        self.ppd_path = '/tmp/sample.ppd'
+        # Download ppd files
+        self.ppd_file = '/tmp/%s' % ppd_file
         file_utils.download_file(
             'https://storage.googleapis.com/chromiumos-test-assets-public'
-            '/platform_AddPrinter/Epson-WF-3620_Series-epson-escpr-en.ppd',
-            self.ppd_path);
+            '/platform_AddPrinter/%s' % ppd_file,
+            self.ppd_file);
 
         # Start fake printer.
         printer = FakePrinter()
@@ -66,16 +68,28 @@ class platform_AddPrinter(test.test):
         if hasattr(self, 'browser'):
             self.browser.close()
 
-        # Remove components
-        shutil.rmtree('/home/chronos/epson-inkjet-printer-escpr');
-        shutil.rmtree('/var/lib/imageloader/');
+        # Remove temp files
+        os.remove(self.ppd_file)
+        os.remove(self.printing_log_path)
+        # Remove escpr components (if exists)
+        shutil.rmtree('/home/chronos/epson-inkjet-printer-escpr',
+                      ignore_errors=True);
+        shutil.rmtree('/var/lib/imageloader/', ignore_errors=True);
         mount_folder = '/run/imageloader/epson-inkjet-printer-escpr/'
-        for foldername in os.listdir(mount_folder):
-            commands.getstatusoutput(
-                'umount ' + mount_folder + foldername)
+        if os.path.exists(mount_folder):
+            for foldername in os.listdir(mount_folder):
+                utils.system_output(
+                    'umount ' + mount_folder + foldername)
+            shutil.rmtree(mount_folder, ignore_errors=True);
 
-    def add_a_printer(self):
-        """Add a printer"""
+    def add_a_printer(self, ppd_path):
+        """
+        Add a printer through printer settings on chrome://settings
+
+        Args:
+        @param ppd_path: path to ppd file
+        """
+        logging.info('add printer from ppd:' + ppd_path);
 
         # Navigate to cups setup UI and wait until fully load.
         self.tab.Navigate("chrome://settings/cupsPrinters")
@@ -101,13 +115,13 @@ class platform_AddPrinter(test.test):
                 printerId: "",
                 printerManufacturer: "",
                 printerModel: "",
-                printerName: "epson",
+                printerName: "printer",
                 printerPPDPath: "%s",
                 printerProtocol: "socket",
                 printerQueue: "ipp/print",
                 printerStatus: ""
             }])
-        """ % (self.ppd_path);
+        """ % (ppd_path);
         self.tab.EvaluateJavaScript(add_cups_printer_query);
 
         # Wait for c++ handler to add printer finish.
@@ -124,11 +138,19 @@ class platform_AddPrinter(test.test):
                                             timeout=_SCRIPT_TIMEOUT)
         self.printerList = self.tab.EvaluateJavaScript("printerList");
 
-    def print_a_page(self):
-        """Print a page"""
+    def print_a_page(self, golden_file_path):
+        """
+        Print a page and check print request output
+
+        Args:
+        @param golden_file_path: path to printing request golden file.
+
+        @raises: error.TestFail if printing request generated cannot be
+        verified.
+        """
 
         # Issue print request.
-        commands.getstatusoutput(
+        utils.system_output(
             'lp -d %s %s' %
             (self.printerList[0].get('printerId'), self.pdf_path)
         );
@@ -136,12 +158,17 @@ class platform_AddPrinter(test.test):
 
         # Verify print request with a golden file.
         output = utils.system_output(
-            'cmp %s %s' % (self.printing_log_path, self.golden_file_path)
+            'cmp %s %s' % (self.printing_log_path, golden_file_path)
         )
         if output:
             error.TestFail('ERROR: Printing request is not verified!')
         logging.info('cmp output:' + output);
 
-    def run_once(self):
-        self.add_a_printer();
-        self.print_a_page();
+    def run_once(self, golden_file):
+        """
+        Args:
+        @param golden_file: printing request golden file name
+        """
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        self.add_a_printer(self.ppd_file)
+        self.print_a_page(os.path.join(current_dir, golden_file));
