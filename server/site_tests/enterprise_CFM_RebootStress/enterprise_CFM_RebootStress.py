@@ -39,11 +39,6 @@ class enterprise_CFM_RebootStress(test.test):
 
         try:
             self.cfm_facade.enroll_device()
-
-            # Reboot and sleep are a hack for devtools crash issue tracked in
-            # crbug.com/739474.
-            self.client.reboot()
-            time.sleep(SHORT_TIMEOUT)
             self.cfm_facade.skip_oobe_after_enrollment()
 
             while repeat:
