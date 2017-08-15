@@ -394,11 +394,41 @@ class Container(object):
 
     def install_control_file(self, control_file):
         """Installs the given control file.
-        The given file will be moved into the container.
+
+        The given file will be copied into the container.
 
         @param control_file: Path to the control file to install.
         """
+        dst = os.path.join(constants.CONTROL_TEMP_PATH,
+                           os.path.basename(control_file))
+        self.copy(control_file, dst)
+
+
+    def copy(self, host_path, container_path):
+        """Copies files into the container.
+
+        @param host_path: Path to the source file/dir to be copied.
+        @param container_path: Path to the destination dir (in the container).
+        """
         dst_path = os.path.join(self.rootfs,
-                                constants.CONTROL_TEMP_PATH.lstrip(os.path.sep))
-        utils.run('sudo mkdir -p %s' % dst_path)
-        utils.run('sudo mv %s %s' % (control_file, dst_path))
+                                container_path.lstrip(os.path.sep))
+        self._do_copy(src=host_path, dst=dst_path)
+
+
+    def _do_copy(self, src, dst):
+        """Copies files and directories on the host system.
+
+        @param src: The source file or directory.
+        @param dst: The destination file or directory.  If the path to the
+                    destination does not exist, it will be created.
+        """
+        # Create the dst dir if it doesn't exist.
+        dst_dir = os.path.dirname(dst)
+        if not lxc_utils.path_exists(dst_dir):
+            utils.run('sudo mkdir -p "%s"' % dst_dir)
+
+        # Make sure the source ends with `/.` if it's a directory. Otherwise
+        # command cp will not work.
+        if os.path.isdir(src) and os.path.split(src)[1] != '.':
+            src = os.path.join(src, '.')
+        utils.run('sudo cp -RL "%s" "%s"' % (src, dst))
