@@ -122,7 +122,7 @@ class ZygoteTests(unittest.TestCase):
 
             self.verifyBindMount(
                 zygote,
-                container_path=lxc.CONTAINER_AUTOTEST_DIR,
+                container_path=lxc.CONTAINER_HOST_DIR,
                 host_path=zygote.host_path)
 
 
@@ -146,11 +146,11 @@ class ZygoteTests(unittest.TestCase):
 
             self.verifyBindMount(
                 zygote,
-                container_path=lxc.CONTAINER_AUTOTEST_DIR,
+                container_path=lxc.CONTAINER_HOST_DIR,
                 host_path=zygote.host_path)
 
             # Verify that the old directory contents was preserved.
-            cmd = 'cat %s' % os.path.join(lxc.CONTAINER_AUTOTEST_DIR,
+            cmd = 'cat %s' % os.path.join(lxc.CONTAINER_HOST_DIR,
                                           test_filename)
             test_output = zygote.attach_run(cmd).stdout.strip()
             self.assertEqual(test_string, test_output)
@@ -197,6 +197,43 @@ class ZygoteTests(unittest.TestCase):
             zygote.attach_run(
                 'test -f %s' % os.path.join(lxc.CONTROL_TEMP_PATH,
                                             os.path.basename(tmpfile)))
+
+
+    def testCopyFile(self):
+        """Verifies that files are correctly copied into the container."""
+        control_string = 'amazingly few discotheques provide jukeboxes'
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            tmpfile.write(control_string)
+            tmpfile.flush()
+
+            with self.createZygote() as zygote:
+                dst = os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                   os.path.basename(tmpfile.name))
+                zygote.start(wait_for_network=False)
+                zygote.copy(tmpfile.name, dst)
+                # Verify the file content.
+                test_string = zygote.attach_run('cat %s' % dst).stdout
+                self.assertEquals(control_string, test_string)
+
+
+    def testCopyDirectory(self):
+        """Verifies that directories are correctly copied into the container."""
+        control_string = 'pack my box with five dozen liquor jugs'
+        with lxc_utils.TempDir() as tmpdir:
+            fd, tmpfile = tempfile.mkstemp(dir=tmpdir)
+            f = os.fdopen(fd, 'w')
+            f.write(control_string)
+            f.close()
+
+            with self.createZygote() as zygote:
+                dst = os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                   os.path.basename(tmpdir))
+                zygote.start(wait_for_network=False)
+                zygote.copy(tmpdir, dst)
+                # Verify the file content.
+                test_file = os.path.join(dst, os.path.basename(tmpfile))
+                test_string = zygote.attach_run('cat %s' % test_file).stdout
+                self.assertEquals(control_string, test_string)
 
 
     @contextmanager
