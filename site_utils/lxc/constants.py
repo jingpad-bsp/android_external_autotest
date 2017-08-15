@@ -46,6 +46,9 @@ DEFAULT_SHARED_HOST_PATH = global_config.get_config_value(
         'AUTOSERV',
         'container_shared_host_path')
 
+# Location of the host mount point in the container.
+CONTAINER_HOST_DIR = '/host'
+
 # Path to drone_temp folder in the container, which stores the control file for
 # test job to run.
 CONTROL_TEMP_PATH = os.path.join(CONTAINER_AUTOTEST_DIR, 'drone_tmp')
