@@ -2,13 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import os
-import tempfile
 
 import common
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import Container
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import lxc
@@ -53,7 +50,12 @@ class Zygote(Container):
             # If creating a new zygote, initialize the host dir.
             if not lxc_utils.path_exists(self.host_path):
                 utils.run('sudo mkdir %s' % self.host_path)
-            self.mount_dir(self.host_path, constants.CONTAINER_AUTOTEST_DIR)
+            # Create the mount point within the container's rootfs.
+            utils.run('sudo mkdir %s' %
+                      os.path.join(self.rootfs,
+                                   constants.CONTAINER_HOST_DIR.lstrip(
+                                           os.path.sep)))
+            self.mount_dir(self.host_path, constants.CONTAINER_HOST_DIR)
 
 
     def destroy(self, force=True):
@@ -86,43 +88,46 @@ class Zygote(Container):
         # /usr/local directory of the container's rootfs.  In order to unpack
         # with the correct directory structure, create a tmpdir, mount the
         # container's host dir as ./autotest, and unpack the SSP.
-        tmpdir = None
-        autotest_tmp = None
-        try:
-            tmpdir = tempfile.mkdtemp(dir=self.container_path,
-                                      prefix='%s.' % self.name,
-                                      suffix='.tmp')
-            autotest_tmp = os.path.join(tmpdir, 'autotest')
-            os.mkdir(autotest_tmp)
-            utils.run(
-                    'sudo mount --bind %s %s' % (self.host_path, autotest_tmp))
+        if not self.is_running():
+            super(Zygote, self).install_ssp(ssp_url)
+            return
+
+        usr_local_path = os.path.join(self.host_path, 'usr', 'local')
+        utils.run('sudo mkdir -p %s'% usr_local_path)
+
+        with lxc_utils.TempDir(dir=usr_local_path) as tmpdir:
             download_tmp = os.path.join(tmpdir,
                                         'autotest_server_package.tar.bz2')
-            lxc.download_extract(ssp_url, download_tmp, tmpdir)
-        finally:
-            if autotest_tmp is not None:
-                try:
-                    utils.run('sudo umount %s' % autotest_tmp)
-                except error.CmdError:
-                    logging.exception('Failure while cleaning up SSP tmpdir.')
-            if tmpdir is not None:
-                utils.run('sudo rm -rf %s' % tmpdir)
+            lxc.download_extract(ssp_url, download_tmp, usr_local_path)
 
+        container_ssp_path = os.path.join(
+                constants.CONTAINER_HOST_DIR,
+                constants.CONTAINER_AUTOTEST_DIR.lstrip(os.path.sep))
+        self.attach_run('mkdir -p %s && mount --bind %s %s' %
+                        (constants.CONTAINER_AUTOTEST_DIR,
+                         container_ssp_path,
+                         constants.CONTAINER_AUTOTEST_DIR))
 
-    def install_control_file(self, control_file):
-        """Installs the given control file.
+    def copy(self, host_path, container_path):
+        """Copies files into the zygote.
 
-        The given file will be moved into the container.
-
-        @param control_file: Path to the control file to install.
+        @param host_path: Path to the source file/dir to be copied.
+        @param container_path: Path to the destination dir (in the container).
         """
-        # Compute the control temp path relative to the host mount.
-        dst_path = os.path.join(
-                self.host_path,
-                os.path.relpath(constants.CONTROL_TEMP_PATH,
-                                constants.CONTAINER_AUTOTEST_DIR))
-        utils.run('sudo mkdir -p %s' % dst_path)
-        utils.run('sudo mv %s %s' % (control_file, dst_path))
+        if not self.is_running():
+            super(Zygote, self).copy(host_path, container_path)
+            return
+
+        # First copy the files into the host mount, then move them from within
+        # the container.
+        self._do_copy(src=host_path,
+                      dst=os.path.join(self.host_path,
+                                       container_path.lstrip(os.path.sep)))
+
+        src = os.path.join(constants.CONTAINER_HOST_DIR,
+                         container_path.lstrip(os.path.sep))
+        dst = os.path.dirname(container_path)
+        self.attach_run('mkdir -p %s && mv %s %s' % (dst, src, dst))
 
 
     def _cleanup_host_mount(self):

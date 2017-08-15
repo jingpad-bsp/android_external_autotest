@@ -22,6 +22,7 @@ from autotest_lib.site_utils.lxc import utils as lxc_utils
 from autotest_lib.site_utils.lxc.unittest_container_bucket \
         import FastContainerBucket
 
+
 options = None
 
 class ContainerTests(unittest.TestCase):
@@ -183,6 +184,43 @@ class ContainerTests(unittest.TestCase):
             container.attach_run(
                 'test -f %s' % os.path.join(lxc.CONTROL_TEMP_PATH,
                                             os.path.basename(tmpfile)))
+
+
+    def testCopyFile(self):
+        """Verifies that files are correctly copied into the container."""
+        control_string = 'amazingly few discotheques provide jukeboxes'
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            tmpfile.write(control_string)
+            tmpfile.flush()
+
+            with self.createContainer() as container:
+                dst = os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                   os.path.basename(tmpfile.name))
+                container.copy(tmpfile.name, dst)
+                container.start(wait_for_network=False)
+                # Verify the file content.
+                test_string = container.attach_run('cat %s' % dst).stdout
+                self.assertEquals(control_string, test_string)
+
+
+    def testCopyDirectory(self):
+        """Verifies that directories are correctly copied into the container."""
+        control_string = 'pack my box with five dozen liquor jugs'
+        with lxc_utils.TempDir() as tmpdir:
+            fd, tmpfile = tempfile.mkstemp(dir=tmpdir)
+            f = os.fdopen(fd, 'w')
+            f.write(control_string)
+            f.close()
+
+            with self.createContainer() as container:
+                dst = os.path.join(constants.CONTAINER_AUTOTEST_DIR,
+                                   os.path.basename(tmpdir))
+                container.copy(tmpdir, dst)
+                container.start(wait_for_network=False)
+                # Verify the file content.
+                test_file = os.path.join(dst, os.path.basename(tmpfile))
+                test_string = container.attach_run('cat %s' % test_file).stdout
+                self.assertEquals(control_string, test_string)
 
 
     @contextmanager
