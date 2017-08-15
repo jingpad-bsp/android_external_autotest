@@ -5,6 +5,10 @@
 """This module provides some utilities used by LXC and its tools.
 """
 
+import shutil
+import tempfile
+from contextlib import contextmanager
+
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -92,3 +96,13 @@ def cleanup_host_mount(host_dir):
         # was already unmounted.
         pass
     utils.run('sudo rm -r "%s"' % host_dir)
+
+
+@contextmanager
+def TempDir(*args, **kwargs):
+    """Context manager for creating a temporary directory."""
+    tmpdir = tempfile.mkdtemp(*args, **kwargs)
+    try:
+        yield tmpdir
+    finally:
+        shutil.rmtree(tmpdir)
