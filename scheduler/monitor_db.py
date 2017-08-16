@@ -561,8 +561,16 @@ class Dispatcher(object):
     def _get_special_task_agent_tasks(self, is_active=False):
         special_tasks = models.SpecialTask.objects.filter(
                 is_active=is_active, is_complete=False)
-        return [self._get_agent_task_for_special_task(task)
-                for task in special_tasks]
+        agent_tasks = []
+        for task in special_tasks:
+          try:
+              agent_tasks.append(self._get_agent_task_for_special_task(task))
+          except scheduler_lib.MalformedRecordError as e:
+              logging.exception('Skipping agent task for malformed special '
+                                'task.')
+              m = 'chromeos/autotest/scheduler/skipped_malformed_special_task'
+              metrics.Counter(m).increment()
+        return agent_tasks
 
 
     def _get_agent_task_for_queue_entry(self, queue_entry):
