@@ -144,6 +144,7 @@ suite:graphics_per-day
 suite:graphics_system
 suite:gts
 suite:hotrod
+suite:hotrod-release
 suite:hwqual
 suite:jailed_build
 suite:kernel_daily_benchmarks
