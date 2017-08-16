@@ -291,6 +291,8 @@ class OSInterface(object):
         """Return a concatenated string of device and partition number"""
         if 'mmcblk' in dev:
             return dev + 'p' + part
+        if 'nvme' in dev:
+            return dev + 'p' + part
         else:
             return dev + part
 
