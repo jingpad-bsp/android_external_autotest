@@ -1,0 +1,26 @@
+{
+    "run_oci_args": ["--cgroup_parent=chronos_containers"],
+    "program_argv": ["/bin/echo", "-n", "2"],
+    "expected_result": "0123",
+    "overrides": {
+	    "hooks": {
+		    "prestart": [
+			    {
+				    "path": "/bin/echo",
+				    "args": ["echo", "-n", "0"]
+			    },
+			    {
+				    "path": "/bin/echo",
+				    "args": ["echo", "-n", "1"]
+			    }
+		    ],
+		    "poststop": [
+			    {
+				    "path": "/bin/echo",
+				    "args": ["echo", "-n", "3"]
+			    }
+		    ]
+	    }
+    }
+}
+
