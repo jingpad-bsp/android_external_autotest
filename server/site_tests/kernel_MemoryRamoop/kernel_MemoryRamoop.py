@@ -21,7 +21,9 @@ class kernel_MemoryRamoop(test.test):
     """
     version = 1
 
-    _RAMOOP_PATH = '/dev/pstore/console-ramoops'
+    # The name of this file has changed starting with linux-3.19.
+    # Use a glob to match all existing records.
+    _RAMOOP_PATH_GLOB = '/dev/pstore/console-ramoops*'
     _KMSG_PATH = '/dev/kmsg'
     _LKDTM_PATH = '/sys/kernel/debug/provoke-crash/DIRECT'
 
@@ -68,7 +70,7 @@ class kernel_MemoryRamoop(test.test):
 
         test_function()
 
-        cmd = 'cat %s' % self._RAMOOP_PATH
+        cmd = 'cat %s' % self._RAMOOP_PATH_GLOB
         ramoop = self._client.run(cmd).stdout
 
         self._verify_random_msg(ramoop, msg, sig_pattern)
