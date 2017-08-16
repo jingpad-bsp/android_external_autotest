@@ -165,11 +165,12 @@ class security_RunOci(test.test):
         return True
 
 
-    def run_test(self, test_config):
+    def run_test(self, name, test_config):
         """
         Runs one test from the src directory.  Return 0 if the test passes,
         return 1 on failure.
 
+        @param name: The name of the test.
         @param test_config: The test's configuration in a dict.
         """
         chronos_uid = pwd.getpwnam('chronos').pw_uid
@@ -178,6 +179,17 @@ class security_RunOci(test.test):
         with open(os.path.join(td.name, 'config.json'), 'w') as config_file:
             config = json.loads(CONFIG_JSON_TEMPLATE)
             config['process']['args'] = test_config['program_argv']
+            if 'overrides' in test_config:
+              for path, value in test_config['overrides'].iteritems():
+                node = config
+                path = path.split('.')
+                for component in path[:-1]:
+                  if component not in node:
+                    node[component] = {}
+                  node = node[component]
+                node[path[-1]] = value
+            logging.debug('Running %s with config.json %s',
+                          name, json.dumps(config))
             json.dump(config, config_file, indent=2)
         rootfs_path = os.path.join(td.name, 'rootfs')
         os.mkdir(rootfs_path)
@@ -199,7 +211,7 @@ class security_RunOci(test.test):
         for p in glob.glob('%s/test-*.json' % self.srcdir):
             name = os.path.basename(p)
             logging.info('Running: %s', name)
-            if not self.run_test(json.load(file(p))):
+            if not self.run_test(name, json.load(file(p))):
                 failed.append(name)
             ran += 1
         if ran == 0:
