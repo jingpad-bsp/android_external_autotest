@@ -541,6 +541,8 @@ class FirmwareTest(FAFTBase):
         """
         if 'mmcblk' in dev:
             return dev + 'p' + part
+        elif 'nvme' in dev:
+            return dev + 'p' + part
         else:
             return dev + part
 
@@ -934,6 +936,9 @@ class FirmwareTest(FAFTBase):
         root_dev = self.faft_client.system.get_root_dev()
         if 'mmcblk' in root_dev:
             self.faft_client.system.run_shell_command('mmc status get %s' %
+                                                      root_dev)
+        elif 'nvme' in root_dev:
+            self.faft_client.system.run_shell_command('nvme flush %s' %
                                                       root_dev)
         else:
             self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
