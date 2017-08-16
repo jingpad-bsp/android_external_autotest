@@ -21,6 +21,7 @@
 
 import os
 import socket
+import urllib
 import urllib2
 from autotest_lib.client.common_lib import error as exceptions
 
@@ -106,7 +107,9 @@ class ServiceProxy(object):
         postdata = json_encoder_class().encode({'method': self.__serviceName,
                                                 'params': args + (kwargs,),
                                                 'id': 'jsonrpc'})
-        request = urllib2.Request(self.__serviceURL, data=postdata,
+        url_with_args = self.__serviceURL + '?' + urllib.urlencode({
+            'method': self.__serviceName})
+        request = urllib2.Request(url_with_args, data=postdata,
                                   headers=self.__headers)
         default_timeout = socket.getdefaulttimeout()
         if not default_timeout:
