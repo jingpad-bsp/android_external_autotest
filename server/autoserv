@@ -26,6 +26,7 @@ from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server import results_mocker
 
 try:
     from chromite.lib import metrics
@@ -690,10 +691,45 @@ def main():
         parser.options.install_in_tmpdir)
 
     exit_code = 0
+    # TODO(beeps): Extend this to cover different failure modes.
+    # Testing exceptions are matched against labels sent to autoserv. Eg,
+    # to allow only the hostless job to run, specify
+    # testing_exceptions: test_suite in the shadow_config. To allow both
+    # the hostless job and dummy_Pass to run, specify
+    # testing_exceptions: test_suite,dummy_Pass. You can figure out
+    # what label autoserv is invoked with by looking through the logs of a test
+    # for the autoserv command's -l option.
+    testing_exceptions = _CONFIG.get_config_value(
+            'AUTOSERV', 'testing_exceptions', type=list, default=[])
+    test_mode = _CONFIG.get_config_value(
+            'AUTOSERV', 'testing_mode', type=bool, default=False)
+    test_mode = (results_mocker and test_mode and not
+                 any([ex in parser.options.label
+                      for ex in testing_exceptions]))
+    is_task = (parser.options.verify or parser.options.repair or
+               parser.options.provision or parser.options.reset or
+               parser.options.cleanup or parser.options.collect_crashinfo)
     try:
         try:
-            run_autoserv(pid_file_manager, results, parser, ssp_url,
-                         use_ssp)
+            if test_mode:
+                # The parser doesn't run on tasks anyway, so we can just return
+                # happy signals without faking results.
+                if not is_task:
+                    machine = parser.options.results.split('/')[-1]
+
+                    # TODO(beeps): The proper way to do this would be to
+                    # refactor job creation so we can invoke job.record
+                    # directly. To do that one needs to pipe the test_name
+                    # through run_autoserv and bail just before invoking
+                    # the server job. See the comment in
+                    # puppylab/results_mocker for more context.
+                    results_mocker.ResultsMocker(
+                            'unknown-test', parser.options.results, machine
+                            ).mock_results()
+                return
+            else:
+                run_autoserv(pid_file_manager, results, parser, ssp_url,
+                             use_ssp)
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
