@@ -36,6 +36,9 @@ class platform_FilePerms(test.test):
         '/dev/pstore': {
             'type': ['pstore'],
             'options': standard_rw_options},
+        '/sys/fs/pstore': {
+            'type': ['pstore'],
+            'options': standard_rw_options},
         '/dev/pts': { # Special case, we want to track gid/mode too.
             'type': ['devpts'],
             'options': ['rw', 'nosuid', 'noexec', 'gid=5', 'mode=620']},
