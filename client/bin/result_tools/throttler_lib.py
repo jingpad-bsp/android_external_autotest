@@ -27,6 +27,7 @@ NON_THROTTLEABLE_FILE_NAMES = set([
         'sponge_invocation.xml',
         'status',
         'status.log',
+        'test_run_summary.json', # ACTS summary
         ])
 
 # Regex of result files sorted based on priority. Files can be throttled first
