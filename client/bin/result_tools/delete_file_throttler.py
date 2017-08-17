@@ -13,6 +13,11 @@ import utils_lib
 # Default threshold of file size in KB for a file to be qualified for deletion.
 DEFAULT_FILE_SIZE_THRESHOLD_BYTE = 1024 * 1024
 
+# Regex for file path that should not be deleted.
+NON_DELETABLE_FILE_PATH_PATTERNS = [
+        '.*/AndroidDevice.*', # Used for test tracker.
+        ]
+
 def _delete_file(file_info):
     """Delete the given file and update the summary.
 
@@ -49,7 +54,8 @@ def throttle(summary, max_result_size_KB,
     """
     file_infos, _ = throttler_lib.sort_result_files(summary)
     file_infos = throttler_lib.get_throttleable_files(
-            file_infos, exclude_file_patterns)
+            file_infos,
+            exclude_file_patterns + NON_DELETABLE_FILE_PATH_PATTERNS)
 
     for info in file_infos:
         if info.trimmed_size > file_size_threshold_byte:
