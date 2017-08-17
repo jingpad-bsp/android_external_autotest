@@ -1,0 +1,26 @@
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'qijiang'
+NAME = 'android_ACTS.Connectivity_Power'
+TIME = 'MEDIUM'
+TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_connectivity_power'
+DEPENDENCIES = 'android_hwcell'
+
+DOC = """
+This test runs hardware Power tests against an android test bed.
+
+"""
+
+def run(machine):
+    job.run_test('android_ACTS',
+                 testbed=hosts.create_testbed(machine),
+                 config_file='wifi_power_connectivity.config',
+                 testtracker_owner='android-comms-tvc@google.com',
+                 test_file='wifi_power_connectivity',
+                 testtracker_project_id=12602,
+                 acts_timeout=18000)
+
+parallel_simple(run, machines)
