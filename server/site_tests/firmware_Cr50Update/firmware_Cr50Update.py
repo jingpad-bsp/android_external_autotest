@@ -128,7 +128,7 @@ class firmware_Cr50Update(Cr50Test):
         # If a rollback is needed, flash the image into the inactive partition,
         # on or use usb_update to update to the new image if it is requested.
         if use_usb_update or rollback:
-            self.cr50_update(dest, rollback=rollback,
+            self.cr50_update(image_path, rollback=rollback,
                              erase_nvmem=self.erase_nvmem)
             self.check_state((self.checkers.crossystem_checker,
                               {'mainfw_type': 'normal'}))
