@@ -48,7 +48,9 @@ class enterprise_CFM_USBPeripheralRebootStress(test.test):
         logging.info('Session name: %s', hangout_name)
         logging.info('Now joining session.........')
         self.cfm_facade.start_new_hangout_session(hangout_name)
-        time.sleep(random.randrange(1, LONG_TIMEOUT))
+        # Minimum sleep time of 3 secs is needed to allow Hangout app to
+        # stabilize after starting a session before getting peripheral info.
+        time.sleep(random.randrange(3, LONG_TIMEOUT))
         if not self._compare_cmd_output(original_list):
             raise error.TestFail(
                 'After joining meeting list of USB devices is not the same.')
