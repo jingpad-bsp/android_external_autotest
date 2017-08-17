@@ -17,14 +17,19 @@ from autotest_lib.client.bin.result_tools import utils_lib
 LARGE_SIZE_BYTE = 1000
 MEDIUM_SIZE_BYTE = 800
 SMALL_SIZE_BYTE = 100
-# Maximum result size is set to 2KB so the file with MEDIUM_SIZE_BYTE will be
+# Maximum result size is set to 3KB so the file with MEDIUM_SIZE_BYTE will be
 # kept.
-MAX_RESULT_SIZE_KB = 2
+MAX_RESULT_SIZE_KB = 3
 # Any file with size above the threshold is qualified to be deleted.
 FILE_SIZE_THRESHOLD_BYTE = 512
 
 SUMMARY_AFTER_THROTTLE = {
     '': {utils_lib.DIRS: [
+            {'AndroidDeviceXXX': {
+                utils_lib.DIRS: [
+                    {'file5': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
+                    ],
+                utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
             {'file1.xml': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE,
                           utils_lib.TRIMMED_SIZE_BYTES: 0}},
             {'file2.jpg': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE,
@@ -41,9 +46,9 @@ SUMMARY_AFTER_THROTTLE = {
                 utils_lib.ORIGINAL_SIZE_BYTES: 2 * LARGE_SIZE_BYTE,
                 utils_lib.TRIMMED_SIZE_BYTES: LARGE_SIZE_BYTE}}],
          utils_lib.ORIGINAL_SIZE_BYTES:
-                4 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
+                5 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
          utils_lib.TRIMMED_SIZE_BYTES:
-                LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
+                2 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
     }
 
 class ThrottleTest(unittest.TestCase):
@@ -80,6 +85,12 @@ class ThrottleTest(unittest.TestCase):
         protected_file = os.path.join(folder1, 'keyval')
         unittest_lib.create_file(protected_file, LARGE_SIZE_BYTE)
         self.files_not_deleted.append(protected_file)
+
+        folder2 = os.path.join(self.test_dir, 'AndroidDeviceXXX')
+        os.mkdir(folder2)
+        file5 = os.path.join(folder2, 'file5')
+        unittest_lib.create_file(file5, LARGE_SIZE_BYTE)
+        self.files_not_deleted.append(file5)
 
     def tearDown(self):
         """Cleanup the test directory."""
