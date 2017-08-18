@@ -9,13 +9,7 @@ import re
 
 import common
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.utils import external_packages
-
-from autotest_lib.site_utils.autoupdate import import_common
-devserver = import_common.download_and_import('devserver',
-                                              external_packages.DevServerRepo())
-from devserver import gsutil_util
-
+from chromite.lib import gs
 
 # A string indicating a zip-file boundary within a URI path. This string must
 # end with a '/', in order for standard basename code to work correctly for
@@ -75,23 +69,18 @@ def gs_ls(pattern, archive_url, single):
     @return A list of URIs (possibly an empty list).
 
     """
-    try:
-        logging.debug('Searching for pattern %s from url %s', pattern,
-                      archive_url)
-        uri_list = gsutil_util.GetGSNamesWithWait(
-                pattern, archive_url, err_str=__name__, timeout=1)
-        # Convert to the format our clients expect (full archive path).
-        if uri_list:
-            if not single or (single and len(uri_list) == 1):
-                return ['/'.join([archive_url, u]) for u in uri_list]
-            else:
-                raise NotSingleItem()
+    logging.debug('Searching for pattern %s from url %s', pattern,
+                  archive_url)
+    uri_list = gs.GSContext().GetGsNamesWithWait(
+            pattern, archive_url, timeout=1)
+    # Convert to the format our clients expect (full archive path).
+    if uri_list:
+        if not single or (single and len(uri_list) == 1):
+            return ['/'.join([archive_url, u]) for u in uri_list]
+        else:
+            raise NotSingleItem()
 
-        return []
-    except gsutil_util.PatternNotSpecific as e:
-        raise TestImageError(str(e))
-    except gsutil_util.GSUtilError:
-        return []
+    return []
 
 
 def find_payload_uri(archive_url, delta=False, single=False):
