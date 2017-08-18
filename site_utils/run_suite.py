@@ -94,6 +94,9 @@ _MIN_RPC_TIMEOUT = 600
 # Number of days back to search for existing job.
 _SEARCH_JOB_MAX_DAYS = 14
 
+JSON_START_TOKEN = "#JSON_START#"
+JSON_END_TOKEN = "#JSON_END#"
+
 
 @functools.total_ordering
 class _ReturnResult(object):
@@ -1728,7 +1731,11 @@ def _run_suite(options):
     if options.create_and_return:
         msg = '--create_and_return was specified, terminating now.'
         logging.info(msg)
-        return SuiteResult(RETURN_CODES.OK, {'return_message': msg})
+        return SuiteResult(RETURN_CODES.OK, {
+            'return_message': msg,
+            'job_url': job_url,
+            'job_id': job_id
+        })
 
     if options.no_wait:
         return _handle_job_nowait(job_id, options, instance_server)
@@ -2028,7 +2035,8 @@ def main():
 def _dump_json(obj):
     """Write obj JSON to stdout."""
     output_json = json.dumps(obj, sort_keys=True)
-    sys.stdout.write('#JSON_START#%s#JSON_END#' % output_json.strip())
+    sys.stdout.write(''.join([
+        JSON_START_TOKEN, output_json.strip(), JSON_END_TOKEN]))
 
 
 if __name__ == "__main__":
