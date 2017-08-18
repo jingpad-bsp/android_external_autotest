@@ -144,4 +144,4 @@ class firmware_Cr50SetBoardId(Cr50Test):
             self.run_script(self.SUCCESS, phase)
 
             # Check that the board id and flags are actually set.
-            cr50_utils.CheckBoardId(self.host, self.platform_brand, flags)
+            cr50_utils.CheckChipBoardId(self.host, self.platform_brand, flags)
