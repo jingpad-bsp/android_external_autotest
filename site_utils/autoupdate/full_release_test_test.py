@@ -14,10 +14,7 @@ import unittest
 
 import common
 from autotest_lib.site_utils.autoupdate import full_release_test
-# This is convoluted because of the way we pull in gsutil_util.
-# pylint: disable-msg=W0611
-from autotest_lib.site_utils.autoupdate import test_image
-from test_image import gsutil_util
+from chromite.lib import gs
 
 
 def _ControlFileContainsLine(control_file, line):
@@ -72,6 +69,7 @@ class ParseVersionsTests(unittest.TestCase):
         self.assertEquals(('R41-6588.0.2014_12_16_1130-a1', 'R41-6588.0.2014_12_16_1130-a1'),
                           self.config_gen._parse_delta_filename(delta_filename))
 
+
 class FullReleaseTestTests(mox.MoxTestBase):
     """Tests for the full_release_test.py test harness."""
 
@@ -79,7 +77,7 @@ class FullReleaseTestTests(mox.MoxTestBase):
     def setUp(self):
         """Common setUp creates tmpdir."""
         mox.MoxTestBase.setUp(self)
-        self.mox.StubOutWithMock(gsutil_util, 'GSUtilRun')
+        self.mox.StubOutWithMock(gs.GSContext, 'GetGsNamesWithWait')
         self.tmpdir = tempfile.mkdtemp('control')
 
 
@@ -102,17 +100,17 @@ class FullReleaseTestTests(mox.MoxTestBase):
                 target, board]
 
         # Return npo delta
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
-                        branch, src, branch, target, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
+                                branch, src, branch, target, board)])
         # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, src, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                branch, target, board)])
 
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
@@ -135,17 +133,17 @@ class FullReleaseTestTests(mox.MoxTestBase):
                 target, board]
 
         # Return npo delta
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
-                        branch, src, branch, target, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
+                                branch, src, branch, target, board)])
         # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, src, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                branch, target, board)])
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
@@ -169,17 +167,17 @@ class FullReleaseTestTests(mox.MoxTestBase):
                 target, board]
 
         # Return npo delta
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains(archive_url)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
-                        branch, src, branch, target, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
+                                branch, src, branch, target, board)])
         # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains(archive_url)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, src, board))
+        gs.GSContext.GetGsNamesWithWait(
+                mox.IgnoreArg(), mox.IgnoreArg(),
+                timeout=mox.IgnoreArg()).AndReturn(
+                        ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                branch, target, board)])
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
@@ -202,17 +200,17 @@ class FullReleaseTestTests(mox.MoxTestBase):
 
         for board in boards:
             # Return npo delta
-            gsutil_util.GSUtilRun(mox.And(
-                    mox.StrContains('gsutil cat'),
-                    mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                    AndReturn('chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
-                            branch, src, branch, target, board))
+            gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
+                                    branch, src, branch, target, board)])
             # Return target full payload
-            gsutil_util.GSUtilRun(mox.And(
-                    mox.StrContains('gsutil cat'),
-                    mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                    AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                            branch, src, board))
+            gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                    branch, target, board)])
 
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
@@ -224,25 +222,23 @@ class FullReleaseTestTests(mox.MoxTestBase):
         for board in boards:
             # Return npo delta
             if board == bad_board:
-                gsutil_util.GSUtilRun(mox.And(
-                        mox.StrContains('gsutil cat'),
-                        mox.StrContains('%s/UPLOADED' % target)),
-                                        mox.IgnoreArg()).\
-                        AndReturn('NO DELTAS FOR YOU')
+                gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(None)
                 continue
 
-            gsutil_util.GSUtilRun(mox.And(
-                    mox.StrContains('gsutil cat'),
-                    mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                    AndReturn('chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
-                            branch, src, branch, target, board))
-
+            # Return npo delta
+            gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_R%s-%s_%s_delta_dev.bin' % (
+                                    branch, src, branch, target, board)])
             # Return target full payload
-            gsutil_util.GSUtilRun(mox.And(
-                    mox.StrContains('gsutil cat'),
-                    mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                    AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                            branch, src, board))
+            gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                    branch, target, board)])
 
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
@@ -262,17 +258,16 @@ class FullReleaseTestTests(mox.MoxTestBase):
                 target, board]
 
         # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, target, board))
-        # Return src full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, src, board))
+        gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                    branch, target, board)])
+        gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                    branch, target, board)])
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 0)
         self.assertTrue(_DoesControlFileHaveSourceTarget(
@@ -295,26 +290,24 @@ class FullReleaseTestTests(mox.MoxTestBase):
                 target, board]
 
         # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                AndReturn('chromeos_R%s-%s_%s_full_dev.bin' % (
-                        branch, target, board))
+        gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(
+                            ['chromeos_R%s-%s_%s_full_dev.bin' % (
+                                    branch, target, board)])
         # No src full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % src)), mox.IgnoreArg()).\
-                AndReturn('SOME OTHER DATA')
+        gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(None)
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 1)
         self.mox.VerifyAll()
 
         self.mox.ResetAll()
-        # Return target full payload
-        gsutil_util.GSUtilRun(mox.And(
-                mox.StrContains('gsutil cat'),
-                mox.StrContains('%s/UPLOADED' % target)), mox.IgnoreArg()).\
-                AndReturn('SOME OTHER DATA')
+        # No target full payload
+        gs.GSContext.GetGsNamesWithWait(
+                    mox.IgnoreArg(), mox.IgnoreArg(),
+                    timeout=mox.IgnoreArg()).AndReturn(None)
         self.mox.ReplayAll()
         self.assertEquals(full_release_test.main(argv), 1)
         self.mox.VerifyAll()
