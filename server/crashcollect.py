@@ -75,7 +75,8 @@ def _collect_log_file_with_summary(host, source_path, dest_path):
                     skip_summary_collection=skip_summary_collection)
 
 
-def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
+def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False,
+                     clean_content=False):
     """Collects a log file from the remote machine.
 
     Log files are collected from the remote machine and written into the
@@ -95,6 +96,8 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
                     on the host and download logs from there.
     @param clean: If True, remove dest_path after upload attempt even if it
                   failed.
+    @param clean_content: If True, remove files and directories in dest_path
+            after upload attempt even if it failed.
 
     """
     logging.info('Collecting %s...', log_path)
@@ -118,8 +121,12 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
         logging.exception('Non-critical failure: collection of %s failed: %s',
                           log_path, e)
     finally:
-        if clean:
-            host.run('rm -rf %s' % (pipes.quote(log_path),))
+        if clean_content:
+            path_to_delete = os.path.join(pipes.quote(log_path), '*')
+        elif clean:
+            path_to_delete = pipes.quote(log_path)
+        if clean or clean_content:
+            host.run('rm -rf %s' % path_to_delete)
 
 
 _FileStats = collections.namedtuple('_FileStats',
@@ -216,8 +223,8 @@ def get_crashinfo(host, test_start_time):
         # so collect all the files in the pstore dirs.
         log_path = os.path.join(crashinfo_dir, 'pstore')
         for pstore_dir in constants.LOG_PSTORE_DIRS:
-            collect_log_file(host, pstore_dir, log_path,
-                             clean=True)
+            collect_log_file(host, pstore_dir, log_path, use_tmp=True,
+                             clean_content=True)
         # Collect i915_error_state, only available on intel systems.
         # i915 contains the Intel graphics state. It might contain useful data
         # when a DUT hangs, times out or crashes.
