@@ -212,11 +212,12 @@ def get_crashinfo(host, test_start_time):
         os.makedirs(log_path)
         collect_log_file(host, constants.LOG_DIR, log_path)
 
-        # Collect console-ramoops
-        log_path = os.path.join(
-                crashinfo_dir, os.path.basename(constants.LOG_CONSOLE_RAMOOPS))
-        collect_log_file(host, constants.LOG_CONSOLE_RAMOOPS, log_path,
-                         clean=True)
+        # Collect console-ramoops.  The filename has changed in linux-3.19,
+        # so collect all the files in the pstore dirs.
+        log_path = os.path.join(crashinfo_dir, 'pstore')
+        for pstore_dir in constants.LOG_PSTORE_DIRS:
+            collect_log_file(host, pstore_dir, log_path,
+                             clean=True)
         # Collect i915_error_state, only available on intel systems.
         # i915 contains the Intel graphics state. It might contain useful data
         # when a DUT hangs, times out or crashes.
