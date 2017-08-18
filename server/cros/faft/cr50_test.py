@@ -68,8 +68,10 @@ class Cr50Test(FirmwareTest):
         at /opt/google/cr50/firmware/cr50.bin.prod. These will be used to
         restore the state during cleanup.
         """
-        # Save the RO and RW Versions, the device RLZ code, and the cr50 board
-        # id.
+        # Save the brand, RO and RW Versions, the device RLZ code, and the cr50
+        # board id.
+        self._original_platform_brand = self.host.run('mosys platform brand',
+            ignore_status=True).stdout.strip()
         self._original_cr50_version = cr50_utils.GetRunningVersion(self.host)
         self._original_rlz = cr50_utils.GetRLZ(self.host)
         self._original_cr50_bid = cr50_utils.GetBoardId(self.host)
@@ -159,12 +161,11 @@ class Cr50Test(FirmwareTest):
         cr50_utils.ClearUpdateStateAndReboot(self.host)
 
         mismatch = []
-        erased_rlz = not self._original_rlz
         # The vpd rlz code and mosys platform brand should be in sync, but
         # check both just in case.
-        brand = self.host.run('mosys platform brand', ignore_status=erased_rlz)
-        if ((not brand != erased_rlz) or
-            (brand and brand.stdout.strip() != self._original_rlz)):
+        brand = self.host.run('mosys platform brand',
+            ignore_status=True).stdout.strip()
+        if brand != self._original_platform_brand:
             mismatch.append('mosys platform brand')
         if cr50_utils.GetRLZ(self.host) != self._original_rlz:
             mismatch.append('vpd rlz code')
