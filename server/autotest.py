@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import installable_object
 from autotest_lib.server import utils
@@ -398,18 +399,18 @@ class Autotest(installable_object.InstallableObject):
             logging.info("Installation of autotest completed from %s",
                          self.source_material)
             self.installed = True
-            return
-
-        # if that fails try to install using svn
-        if utils.run('which svn').exit_status:
-            raise error.AutoservError('svn not found on target machine: %s' %
-                                      host.hostname)
-        try:
-            host.run('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
-        except error.AutoservRunError, e:
-            host.run('svn checkout %s %s' % (AUTOTEST_HTTP, autodir))
-        logging.info("Installation of autotest completed using SVN.")
-        self.installed = True
+        else:
+            # if that fails try to install using svn
+            if utils.run('which svn').exit_status:
+                raise error.AutoservError(
+                        'svn not found on target machine: %s' %
+                        host.hostname)
+            try:
+                host.run('svn checkout %s %s' % (AUTOTEST_SVN, autodir))
+            except error.AutoservRunError, e:
+                host.run('svn checkout %s %s' % (AUTOTEST_HTTP, autodir))
+            logging.info("Installation of autotest completed using SVN.")
+            self.installed = True
 
         # TODO(milleral): http://crbug.com/258161
         # Send over the most recent global_config.ini after installation if one
@@ -417,15 +418,18 @@ class Autotest(installable_object.InstallableObject):
         # This code is a bit duplicated from
         # _Run._create_client_config_file, but oh well.
         if self.installed and self.source_material:
-            logging.info('Installing updated global_config.ini.')
-            destination = os.path.join(self.host.get_autodir(),
-                                       'global_config.ini')
-            with tempfile.NamedTemporaryFile() as client_config:
-                config = global_config.global_config
-                client_section = config.get_section_values('CLIENT')
-                client_section.write(client_config)
-                client_config.flush()
-                self.host.send_file(client_config.name, destination)
+            self._send_shadow_config()
+
+    def _send_shadow_config(self):
+        logging.info('Installing updated global_config.ini.')
+        destination = os.path.join(self.host.get_autodir(),
+                                   'global_config.ini')
+        with tempfile.NamedTemporaryFile() as client_config:
+            config = global_config.global_config
+            client_section = config.get_section_values('CLIENT')
+            client_section.write(client_config)
+            client_config.flush()
+            self.host.send_file(client_config.name, destination)
 
 
     def uninstall(self, host=None):
