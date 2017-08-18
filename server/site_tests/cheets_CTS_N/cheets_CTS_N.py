@@ -266,7 +266,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         """Some tests are expected to fail and are skipped."""
         # newbie and novato are x86 VMs without binary translation. Skip the ARM
         # tests.
-        no_ARM_ABI_test_boards = ('newbie', 'novato')
+        no_ARM_ABI_test_boards = ('newbie', 'novato', 'novato-arc64')
         board = self._host.get_board().split(':')[1] # Remove 'board:' prefix.
         if board in no_ARM_ABI_test_boards:
             if self._abi == 'arm':
