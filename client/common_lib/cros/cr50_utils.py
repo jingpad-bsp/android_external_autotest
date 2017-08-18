@@ -75,6 +75,9 @@ UPDATE_OK = 1
 ERASED_BID_INT = 0xffffffff
 # With an erased bid, the flags and board id will both be erased
 ERASED_CHIP_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
+# Any image with this board id will run on any device
+EMPTY_IMAGE_BID = '00000000:00000000:00000000'
+SYMBOLIC_BID_LENGTH = 4
 
 usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
@@ -199,7 +202,7 @@ def SetRLZ(client, rlz):
         TestError if the RLZ code is too long or if setting the code failed.
     """
     rlz = rlz.strip()
-    if len(rlz) > 4:
+    if len(rlz) > SYMBOLIC_BID_LENGTH:
         raise error.TestError('RLZ is too long. Use a max of 4 characters')
 
     if rlz == GetRLZ(client):
@@ -381,7 +384,81 @@ def InstallImage(client, src, dest=CR50_FILE):
     return dest, ver
 
 
-def GetSymbolicBoardId(symbolic_board_id):
+def GetImageBoardIdInfo(board_id_str):
+    """Convert the string into board id args.
+
+    Returns:
+        the symbolic board id, mask, and flags
+    """
+    if not board_id_str:
+        return None
+
+    board_id, mask, flags = board_id_str.split(':')
+    board_id = GetSymbolicBoardId(board_id)
+    return board_id, int(mask, 16), int(flags, 16)
+
+
+def GetImageBoardIdString(board_id_info, symbolic=False):
+    """Convert the board id list or str into a symbolic or non symbolic str.
+
+    This can be used to convert the board id info list into a symbolic or non
+    symbolic board id string. It can also be used to convert a the board id
+    string into a board id string with a symbolic or non symbolic board id
+
+    Args:
+        board_id_info: A string of the form board_id:mask:flags or a list with
+                       the board_id, mask, flags
+
+    Returns:
+        symbolic_board_id:mask:flags, board_id:mask:flags, or None if the given
+        board id info is not valid
+    """
+    if not board_id_info:
+        return None
+
+    # Get the board id string, the mask value, and the flag value based on the
+    # board_id_info type
+    if isinstance(board_id_info, str):
+        board_id, mask, flags = GetImageBoardIdInfo(board_id_info)
+    else:
+        board_id, mask, flags = board_id_info
+
+    # Get the hex string for board id
+    board_id = '%08x' % GetIntBoardId(board_id)
+
+    # Convert the board id hex to a symbolic board id
+    if symbolic:
+        board_id = GetSymbolicBoardId(board_id)
+
+    # Return the board_id_str:8_digit_hex_mask: 8_digit_hex_flags
+    return '%s:%08x:%08x' % (board_id, mask, flags)
+
+
+def GetSymbolicBoardId(board_id):
+    """Convert an integer board id to a symbolic string
+
+    Args:
+        board_id: the board id to convert to the symbolic board id
+
+    Returns:
+        the 4 character symbolic board id
+    """
+    symbolic_board_id = ''
+    board_id = GetIntBoardId(board_id)
+
+    # Convert the int to a symbolic board id
+    for i in range(SYMBOLIC_BID_LENGTH):
+        symbolic_board_id += chr((board_id >> (i * 8)) & 0xff)
+    symbolic_board_id = symbolic_board_id[::-1]
+
+    # Verify the created board id is 4 characters
+    if len(symbolic_board_id) != SYMBOLIC_BID_LENGTH:
+        raise error.TestFail('Created invalid symbolic board id %s' %
+                             symbolic_board_id)
+    return symbolic_board_id
+
+
+def ConvertSymbolicBoardId(symbolic_board_id):
     """Convert the symbolic board id str to an int
 
     Args:
@@ -408,8 +485,8 @@ def GetIntBoardId(board_id):
     if type(board_id) == int:
         return board_id
 
-    if len(board_id) <= 4:
-        return GetSymbolicBoardId(board_id)
+    if len(board_id) <= SYMBOLIC_BID_LENGTH:
+        return ConvertSymbolicBoardId(board_id)
 
     return int(board_id, 16)
 
