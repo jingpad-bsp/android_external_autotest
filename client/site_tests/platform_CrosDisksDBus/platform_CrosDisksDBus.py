@@ -43,6 +43,7 @@ class CrosDisksAPITester(CrosDisksTester):
             ('DriveModel', dbus.String),
             ('IdLabel', dbus.String),
             ('NativePath', dbus.String),
+            ('FileSystemType', dbus.String),
         )
 
         for (prop_name, prop_value_type) in disk_properties:
