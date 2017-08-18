@@ -19,7 +19,7 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_international_roaming',
-                 additional_configs=['simcard_list.json'],
+                 additional_configs=['simcard_list.json', 'tel_data'],
                  override_build_url='git_master-release/sailfish-userdebug/latest',
                  testtracker_project_id=11435,
                  testtracker_owner='android-comms-tvc@google.com',
