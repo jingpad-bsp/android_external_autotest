@@ -119,6 +119,8 @@ class TestAutotest(unittest.TestCase):
                                        type=bool).and_return(False)
         self.host.send_file.expect_call('source_material', 'autodir',
                                         delete_dest=True)
+        self.god.stub_function(autotest.Autotest, "_send_shadow_config")
+        autotest.Autotest._send_shadow_config.expect_call()
 
         # run and check
         self.autotest.install_full_client()
@@ -137,7 +139,9 @@ class TestAutotest(unittest.TestCase):
                                        'serve_packages_from_autoserv',
                                        type=bool).and_return(True)
         self.autotest._install_using_send_file.expect_call(self.host,
-                                                                'autodir')
+                                                           'autodir')
+        self.god.stub_function(autotest.Autotest, "_send_shadow_config")
+        autotest.Autotest._send_shadow_config.expect_call()
         # run and check
         self.autotest.install()
         self.god.check_playback()
