@@ -109,7 +109,9 @@ class platform_BootPerf(test.test):
     _UPTIME_FILE_GLOB = os.path.join('/tmp', _UPTIME_PREFIX + '*')
     _DISK_FILE_GLOB = os.path.join('/tmp', _DISK_PREFIX + '*')
 
-    _RAMOOPS_FILE = "/dev/pstore/console-ramoops"
+    # The name of this file has changed starting with linux-3.19.
+    # Use a glob to snarf up all existing records.
+    _RAMOOPS_FILE_GLOB = "/dev/pstore/console-ramoops*"
 
 
     def _copy_timestamp_files(self):
@@ -126,10 +128,12 @@ class platform_BootPerf(test.test):
     def _copy_console_ramoops(self):
         """Copy console_ramoops from previous reboot."""
         # If reboot was misbehaving, looking at ramoops may provide clues.
-        try:
-            shutil.copy(self._RAMOOPS_FILE, self.resultsdir)
-        except Exception:
-            pass
+        for path in glob.glob(self._RAMOOPS_FILE_GLOB):
+            try:
+                shutil.copy(path, self.resultsdir)
+                break
+            except Exception:
+                pass
 
     def _parse_bootstat(self, filename, fieldnum):
         """Read values from a bootstat event file.
