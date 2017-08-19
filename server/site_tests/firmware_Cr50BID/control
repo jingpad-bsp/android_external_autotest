@@ -6,7 +6,7 @@ from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50BID"
-PURPOSE = "Verify usb_updater can set board id"
+PURPOSE = "Verify cr50 response to board id"
 TIME = "LONG"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
@@ -23,6 +23,24 @@ when it is updated to a mismatched board id image.
 All of the path args are optional. If they are given, then the test will use
 the local images to run the test. If they aren't, the test will download the
 needed cr50 images.
+
+The board id locked test image will be found using the given bid_path or
+downloaded from google storage using the information in bid, bid_mask, and
+bid_flags. If these aren't given the debug image with TEST:0xffff:0xff00 will
+be used.
+
+@param iterations: Number of times to run the test
+@param dev_path: local path for the dev image
+@param bid_path: local path for the board id locked image. If this is given, the
+                 board id, mask and flags will be gotten from the image. Bid,
+                 bid_mask, and bid_flags will be ignored.
+@param release_ver: The rw version string. This is needed to run the test with
+                    a released board id locked image. If this is used, you must
+                    also supply real board id.
+@param bid: The symbolic board id string. A value of 'TEST' will be used if
+            nothing is given.
+@param bid_mask: The hex string for the board id mask.
+@param bid_flags: The hex string for the board id flags.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -34,8 +52,14 @@ def run(machine):
     iterations = int(args_dict.get("iterations", 1))
     dev_path = args_dict.get("dev_path", "")
     bid_path = args_dict.get("bid_path", "")
+    release_ver = args_dict.get("release_ver", "")
+    bid = args_dict.get("bid", "")
+    bid_mask = args_dict.get("bid_mask", "")
+    bid_flags =args_dict.get("bid_flags", "")
 
     job.run_test("firmware_Cr50BID", host=host, cmdline_args=args,
-                 iterations=iterations, dev_path=dev_path, bid_path=bid_path)
+                 iterations=iterations, dev_path=dev_path, bid_path=bid_path,
+                 release_ver=release_ver, bid=bid, bid_mask=bid_mask,
+                 bid_flags=bid_flags)
 
 parallel_simple(run, machines)
