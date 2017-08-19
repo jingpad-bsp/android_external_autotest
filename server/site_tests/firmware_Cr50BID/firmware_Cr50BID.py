@@ -308,7 +308,7 @@ class firmware_Cr50BID(Cr50Test):
         self.cr50_update(getattr(self, image_type + '_path'), rollback=True)
 
         # Verify the board id was erased
-        if cr50_utils.GetBoardId(self.host) != cr50_utils.ERASED_BID:
+        if cr50_utils.GetChipBoardId(self.host) != cr50_utils.ERASED_CHIP_BID:
             raise error.TestFail('Could not erase bid')
 
 
@@ -325,13 +325,13 @@ class firmware_Cr50BID(Cr50Test):
             board id failed
         """
 
-        original_bid, _, original_flags = cr50_utils.GetBoardId(self.host)
+        original_bid, _, original_flags = cr50_utils.GetChipBoardId(self.host)
 
         if exit_code:
             exit_code = 'Error %d while setting board id' % exit_code
 
         try:
-            cr50_utils.SetBoardId(self.host, bid, flags)
+            cr50_utils.SetChipBoardId(self.host, bid, flags)
             result = self.SUCCESS
         except error.AutoservRunError, e:
             result = e.result_obj.stderr.strip()
@@ -343,7 +343,7 @@ class firmware_Cr50BID(Cr50Test):
 
         # Verify cr50 is still running with the same board id and flags
         if exit_code:
-            cr50_utils.CheckBoardId(self.host, original_bid, original_flags)
+            cr50_utils.CheckChipBoardId(self.host, original_bid, original_flags)
 
 
     def run_bid_test(self, image_name, bid, flags, bid_error):
