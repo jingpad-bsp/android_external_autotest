@@ -74,7 +74,7 @@ UPDATE_OK = 1
 
 ERASED_BID_INT = 0xffffffff
 # With an erased bid, the flags and board id will both be erased
-ERASED_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
+ERASED_CHIP_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
 
 usb_update = argparse.ArgumentParser()
 # use /dev/tpm0 to send the command
@@ -426,7 +426,7 @@ def GetExpectedFlags(flags):
     return flags if flags != None else 0xff00
 
 
-def GetBoardId(client):
+def GetChipBoardId(client):
     """Return the board id and flags
 
     Args:
@@ -451,7 +451,7 @@ def GetBoardId(client):
     return board_id, board_id_inv, flags
 
 
-def CheckBoardId(client, board_id, flags):
+def CheckChipBoardId(client, board_id, flags):
     """Compare the given board_id and flags to the running board_id and flags
 
     Interpret board_id and flags how usb_updater would interpret them, then
@@ -466,7 +466,7 @@ def CheckBoardId(client, board_id, flags):
         TestFail if the new board id info does not match
     """
     # Read back the board id and flags
-    new_board_id, _, new_flags = GetBoardId(client)
+    new_board_id, _, new_flags = GetChipBoardId(client)
 
     expected_board_id = GetExpectedBoardId(board_id)
     expected_flags = GetExpectedFlags(flags)
@@ -477,7 +477,7 @@ def CheckBoardId(client, board_id, flags):
                              new_board_id, new_flags))
 
 
-def SetBoardId(client, board_id, flags=None):
+def SetChipBoardId(client, board_id, flags=None):
     """Sets the board id and flags
 
     Args:
@@ -499,4 +499,4 @@ def SetBoardId(client, board_id, flags=None):
     # Set the board id using the given board id and flags
     result = UsbUpdater(client, ['-s', '-i', board_id_arg]).stdout.strip()
 
-    CheckBoardId(client, board_id, flags)
+    CheckChipBoardId(client, board_id, flags)
