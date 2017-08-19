@@ -74,7 +74,7 @@ class Cr50Test(FirmwareTest):
             ignore_status=True).stdout.strip()
         self._original_cr50_version = cr50_utils.GetRunningVersion(self.host)
         self._original_rlz = cr50_utils.GetRLZ(self.host)
-        self._original_cr50_bid = cr50_utils.GetBoardId(self.host)
+        self._original_chip_bid = cr50_utils.GetChipBoardId(self.host)
 
         # Save the image currently stored on the device
         binver = cr50_utils.GetBinVersion(self.host)
@@ -93,8 +93,9 @@ class Cr50Test(FirmwareTest):
                 self._original_cr50_version[1])[0]
         logging.info('cr50 version: %r', self._original_cr50_version)
         logging.info('rlz: %r', self._original_rlz)
-        logging.info('cr50 bid: %08x:%08x:%08x', self._original_cr50_bid[0],
-            self._original_cr50_bid[1], self._original_cr50_bid[2])
+        logging.info('cr50 chip bid: %08x:%08x:%08x',
+            self._original_chip_bid[0], self._original_chip_bid[1],
+            self._original_chip_bid[2])
         logging.info('DUT cr50 image version: %r', binver)
 
 
@@ -160,12 +161,12 @@ class Cr50Test(FirmwareTest):
 
         # The board id can only be set once. Set it before reinitializing the
         # RLZ code to make sure that ChromeOS won't set the board id.
-        if self._original_cr50_bid != cr50_utils.ERASED_BID:
+        if self._original_chip_bid != cr50_utils.ERASED_CHIP_BID:
             # Convert the board_id to at least a 5 char string, so usb_updater
             # wont treat it as a symbolic value.
-            cr50_utils.SetBoardId(self.host,
-                                  '0x%03x' % self._original_cr50_bid[0],
-                                  self._original_cr50_bid[2])
+            cr50_utils.SetChipBoardId(self.host,
+                                      '0x%03x' % self._original_chip_bid[0],
+                                      self._original_chip_bid[2])
         # Set the RLZ code
         cr50_utils.SetRLZ(self.host, self._original_rlz)
         # Make sure the /var/cache/cr50* state is restored
@@ -183,7 +184,7 @@ class Cr50Test(FirmwareTest):
             mismatch.append('original device image')
         if cr50_utils.GetRLZ(self.host) != self._original_rlz:
             mismatch.append('vpd rlz code')
-        if cr50_utils.GetBoardId(self.host) != self._original_cr50_bid:
+        if cr50_utils.GetChipBoardId(self.host) != self._original_chip_bid:
             mismatch.append('cr50 board_id')
         if (cr50_utils.GetRunningVersion(self.host) !=
             self._original_cr50_version):
