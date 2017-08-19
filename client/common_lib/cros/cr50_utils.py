@@ -396,7 +396,7 @@ def GetSymbolicBoardId(symbolic_board_id):
     return board_id
 
 
-def GetExpectedBoardId(board_id):
+def GetIntBoardId(board_id):
     """"Return the usb_updater interpretation of board_id
 
     Args:
@@ -468,7 +468,7 @@ def CheckChipBoardId(client, board_id, flags):
     # Read back the board id and flags
     new_board_id, _, new_flags = GetChipBoardId(client)
 
-    expected_board_id = GetExpectedBoardId(board_id)
+    expected_board_id = GetIntBoardId(board_id)
     expected_flags = GetExpectedFlags(flags)
 
     if new_board_id != expected_board_id or new_flags != expected_flags:
