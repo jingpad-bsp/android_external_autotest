@@ -372,15 +372,16 @@ class Cr50Test(FirmwareTest):
         Raises:
             TestFail if there is any unexpected update state
         """
+        errors = []
         running_ver = self.cr50.get_version()
         if expected_ver != running_ver:
-            raise error.TestFail('Unexpected update ver running %s not %s' %
-                                 (running_ver, expected_ver))
+            errors.append('running %s not %s' % (running_ver, expected_ver))
 
         if expect_rollback != self.cr50.rolledback():
-            raise error.TestFail('Unexpected rollback behavior: %srollback '
-                                 'detected' % 'no ' if expect_rollback else '')
-
+            errors.append('%srollback detected' %
+                          'no ' if expect_rollback else '')
+        if len(errors):
+            raise error.TestFail('cr50_update failed: %s' % ', '.join(errors))
         logging.info('RUNNING %s after %s', expected_ver,
                      'rollback' if expect_rollback else 'update')
 
