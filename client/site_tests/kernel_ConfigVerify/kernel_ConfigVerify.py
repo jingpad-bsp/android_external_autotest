@@ -28,7 +28,7 @@ class kernel_ConfigVerify(test.test):
         # Security; provides some protections against SYN flooding.
         'SYN_COOKIES',
         # Security; make sure PID_NS, NET_NS, and USER_NS are enabled for
-        # chrome's layer 1 sandbox.
+        # Chrome's layer 1 sandbox.
         'PID_NS',
         'NET_NS',
         'USER_NS',
@@ -42,7 +42,7 @@ class kernel_ConfigVerify(test.test):
         'BLK_DEV_SR',
         'BT',
         'TUN',
-        # Useful modules for users that should not be removed
+        # Useful modules for users that should not be removed.
         'USB_SERIAL_OTI6858',
     ]
     IS_ENABLED = [
@@ -55,7 +55,7 @@ class kernel_ConfigVerify(test.test):
         'CHARLIE_THE_UNICORN',  # Config not in real kernel config var list.
         # Dangerous; allows direct physical memory writing.
         'ACPI_CUSTOM_METHOD',
-        # Dangerous; disables brk ASLR.
+        # Dangerous; disables brk(2) ASLR.
         'COMPAT_BRK',
         # Dangerous; disables VDSO ASLR.
         'COMPAT_VDSO',
@@ -67,6 +67,10 @@ class kernel_ConfigVerify(test.test):
         'HIBERNATION',
         # Assists heap memory attacks; best to keep interface disabled.
         'INET_DIAG',
+        # We don't need to provide access to *all* symbols in /proc/kallsyms.
+        'KALLSYMS_ALL',
+        # bpf(2) syscall can be used to generate code patterns in kernel memory.
+        'BPF_SYSCALL',
     ]
     IS_EXCLUSIVE = [
         # Security; no surprise binary formats.
@@ -216,7 +220,7 @@ class kernel_ConfigVerify(test.test):
         # NaCl; allow mprotect+PROT_EXEC on noexec mapped files.
         config.has_value('MMAP_NOEXEC_TAINT', ['0'])
 
-        # Kernel: make sure port 0xED is the one used for I/O delay
+        # Kernel: make sure port 0xED is the one used for I/O delay.
         if self.is_x86_family(arch):
             config.has_builtin('IO_DELAY_0XED')
             needed = config.get('CONFIG_IO_DELAY_TYPE_0XED', None)

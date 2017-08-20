@@ -34,6 +34,7 @@ suite:android_wifi_sanity_nyc
 suite:android_wifi_scanner
 suite:android_wifi_softApStress
 suite:android_wifi_tel_coex
+suite:android_connectivity_power
 suite:another_suite
 suite:arc-bvt-perbuild
 suite:arc-cts

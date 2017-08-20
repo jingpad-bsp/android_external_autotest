@@ -258,9 +258,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         servo_attrs = (servo_host.SERVO_HOST_ATTR,
                        servo_host.SERVO_PORT_ATTR,
                        servo_host.SERVO_BOARD_ATTR)
-        return {key: args_dict[key]
-                for key in servo_attrs
-                if key in args_dict}
+        servo_args = {key: args_dict[key]
+                      for key in servo_attrs
+                      if key in args_dict}
+        return (
+            None
+            if servo_host.SERVO_HOST_ATTR in servo_args
+                and not servo_args[servo_host.SERVO_HOST_ATTR]
+            else servo_args)
 
 
     def _initialize(self, hostname, chameleon_args=None, servo_args=None,

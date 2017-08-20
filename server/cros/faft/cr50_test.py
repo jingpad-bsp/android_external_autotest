@@ -8,8 +8,8 @@ import os
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cr50_utils
+from autotest_lib.server.cros import debugd_dev_tools, gsutil_wrapper
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
-from autotest_lib.server.cros import gsutil_wrapper
 
 
 class Cr50Test(FirmwareTest):
@@ -68,16 +68,19 @@ class Cr50Test(FirmwareTest):
         at /opt/google/cr50/firmware/cr50.bin.prod. These will be used to
         restore the state during cleanup.
         """
-        # Save the RO and RW Versions, the device RLZ code, and the cr50 board
-        # id.
+        # Save the brand, RO and RW Versions, the device RLZ code, and the cr50
+        # board id.
+        self._original_platform_brand = self.host.run('mosys platform brand',
+            ignore_status=True).stdout.strip()
         self._original_cr50_version = cr50_utils.GetRunningVersion(self.host)
         self._original_rlz = cr50_utils.GetRLZ(self.host)
-        self._original_cr50_bid = cr50_utils.GetBoardId(self.host)
+        self._original_chip_bid = cr50_utils.GetChipBoardId(self.host)
 
         # Save the image currently stored on the device
         binver = cr50_utils.GetBinVersion(self.host)
         filename = 'device_image_' + self._original_cr50_version[1]
         self._original_device_image = os.path.join(self.resultsdir, filename)
+        self._original_device_image_version = binver
         self.host.get_file(cr50_utils.CR50_FILE, self._original_device_image)
 
         # If the running cr50 version matches the image on the DUT use that
@@ -90,8 +93,9 @@ class Cr50Test(FirmwareTest):
                 self._original_cr50_version[1])[0]
         logging.info('cr50 version: %r', self._original_cr50_version)
         logging.info('rlz: %r', self._original_rlz)
-        logging.info('cr50 bid: %08x:%08x:%08x', self._original_cr50_bid[0],
-            self._original_cr50_bid[1], self._original_cr50_bid[2])
+        logging.info('cr50 chip bid: %08x:%08x:%08x',
+            self._original_chip_bid[0], self._original_chip_bid[1],
+            self._original_chip_bid[2])
         logging.info('DUT cr50 image version: %r', binver)
 
 
@@ -115,11 +119,6 @@ class Cr50Test(FirmwareTest):
         Make 3 attempts to update to the original image. Use a rollback from
         the DBG image to erase the state that can only be erased by a DBG image.
         """
-        # Remove the image at /opt/google/cr50/firmware/cr50.bin.prod, so
-        # cr50-update wont update cr50 while we are rolling back.
-        self.host.run('rm /opt/google/cr50/firmware/cr50.bin.prod')
-        self.host.run('sync')
-
         for i in range(3):
             try:
                 # Update to the node-locked DBG image so we can erase all of
@@ -134,8 +133,25 @@ class Cr50Test(FirmwareTest):
                                 '%r', i, e)
 
 
+    def _rootfs_verification_is_disabled(self):
+        """Returns true if rootfs verification is enabled"""
+        # reboot the DUT to reset cryptohome. We need it to be running to check
+        # rootfs verification.
+        self.host.reboot()
+        rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
+        rootfs_tool.initialize(self.host)
+        # rootfs_tool.is_enabled is True, that means rootfs verification is
+        # disabled.
+        return rootfs_tool.is_enabled()
+
+
     def _restore_original_state(self):
-        """Update to the original image"""
+        """Restore the original cr50 related device state"""
+        # If rootfs verification has been disabled, copy the cr50 device image
+        # back onto the DUT.
+        if self._rootfs_verification_is_disabled():
+            cr50_utils.InstallImage(self.host, self._original_device_image)
+
         # Delete the RLZ code before updating to make sure that chromeos doesn't
         # set the board id during the update.
         cr50_utils.SetRLZ(self.host, '')
@@ -145,30 +161,30 @@ class Cr50Test(FirmwareTest):
 
         # The board id can only be set once. Set it before reinitializing the
         # RLZ code to make sure that ChromeOS won't set the board id.
-        if self._original_cr50_bid != cr50_utils.ERASED_BID:
+        if self._original_chip_bid != cr50_utils.ERASED_CHIP_BID:
             # Convert the board_id to at least a 5 char string, so usb_updater
             # wont treat it as a symbolic value.
-            cr50_utils.SetBoardId(self.host,
-                                  '0x%03x' % self._original_cr50_bid[0],
-                                  self._original_cr50_bid[2])
+            cr50_utils.SetChipBoardId(self.host,
+                                      '0x%03x' % self._original_chip_bid[0],
+                                      self._original_chip_bid[2])
         # Set the RLZ code
         cr50_utils.SetRLZ(self.host, self._original_rlz)
-        # Copy the original /opt/google/cr50/firmware image back onto the DUT.
-        cr50_utils.InstallImage(self.host, self._original_device_image)
         # Make sure the /var/cache/cr50* state is restored
         cr50_utils.ClearUpdateStateAndReboot(self.host)
 
         mismatch = []
-        erased_rlz = not self._original_rlz
         # The vpd rlz code and mosys platform brand should be in sync, but
         # check both just in case.
-        brand = self.host.run('mosys platform brand', ignore_status=erased_rlz)
-        if ((not brand != erased_rlz) or
-            (brand and brand.stdout.strip() != self._original_rlz)):
+        brand = self.host.run('mosys platform brand',
+            ignore_status=True).stdout.strip()
+        if brand != self._original_platform_brand:
             mismatch.append('mosys platform brand')
+        if (self._original_device_image_version !=
+            cr50_utils.GetBinVersion(self.host)):
+            mismatch.append('original device image')
         if cr50_utils.GetRLZ(self.host) != self._original_rlz:
             mismatch.append('vpd rlz code')
-        if cr50_utils.GetBoardId(self.host) != self._original_cr50_bid:
+        if cr50_utils.GetChipBoardId(self.host) != self._original_chip_bid:
             mismatch.append('cr50 board_id')
         if (cr50_utils.GetRunningVersion(self.host) !=
             self._original_cr50_version):
