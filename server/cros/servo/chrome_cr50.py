@@ -8,6 +8,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import cr50_utils
 from autotest_lib.server.cros.servo import chrome_ec
 
 
@@ -34,6 +35,11 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     VERSION_ERROR = 'Error'
     INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
     ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
+    BID_FORMAT = ':\s+([a-f0-9:]+) '
+    # The first group in the version strings is the relevant partition. Match
+    # that to get the relevant board id
+    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE, BID_FORMAT)
+    INACTIVE_BID = r'%s.*\1%s' % (INACTIVE, BID_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
@@ -188,6 +194,40 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_version_info(self.ACTIVE)
 
 
+    def get_active_board_id_str(self):
+        """Get the running image board id.
+
+        Returns:
+            The board id string or None if the image does not support board id
+            or the image is not board id locked.
+        """
+        # Getting the board id from the version console command is only
+        # supported in board id locked images .22 and above. Any image that is
+        # board id locked will have support for getting the image board id.
+        #
+        # If board id is not supported on the device, return None. This is
+        # still expected on all current non board id locked release images.
+        #
+        # TODO(mruthven): switch to only trying once when getting the cr50
+        # console command output becomes entirely reliable.
+        for i in range(3):
+            try:
+                version_info = self.get_version_info(self.ACTIVE_BID)
+                break
+            except error.TestFail, e:
+                logging.info(e.message)
+                version_info = None
+
+        if not version_info:
+            logging.info('Cannot use the version to get the board id')
+            return None
+
+        bid = version_info[3]
+        logging.info('%r %r', version_info, bid)
+
+        return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None
+
+
     def get_version(self):
         """Get the RW version"""
         return self.get_active_version_info()[1].strip()
@@ -336,6 +376,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """Get the current cr50 system time"""
         result = self.send_command_get_output('gettime', [' = (.*) s'])
         return float(result[0][1])
+
 
     def wait_until_update_is_allowed(self):
         """Wait until cr50 will be able to accept an update.
