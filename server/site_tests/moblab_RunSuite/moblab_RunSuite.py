@@ -64,7 +64,7 @@ class moblab_RunSuite(moblab_test.MoblabTest):
 
         logging.info('Running suite: %s.', suite_name)
         cmd = ("%s/site_utils/run_suite.py --pool='' --board=%s --build=%s "
-               "--suite_name=%s --retry=True " "--max_retries=%d"
+               "--suite_name=%s --retry=True " "--max_retries=%d "
                "--create_and_return --json_dump" %
                (moblab_host.AUTOTEST_INSTALL_DIR, board, target_build,
                 suite_name, moblab_suite_max_retries))
