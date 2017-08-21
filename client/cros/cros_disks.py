@@ -538,6 +538,7 @@ class VirtualFilesystemImage(object):
             self._mkfs_options = []
         self._image_file = None
         self._loop_device = None
+        self._loop_device_stat = None
         self._mount_dir = None
 
     def __del__(self):
@@ -651,6 +652,13 @@ class VirtualFilesystemImage(object):
         self._loop_device = output.split(':')[0]
         logging.debug('Attached image file "%s" to loop device "%s"',
                       self._image_file.name, self._loop_device)
+
+        self._loop_device_stat = os.stat(self._loop_device)
+        logging.debug('Loop device "%s" (uid=%d, gid=%d, permissions=%04o)',
+                      self._loop_device,
+                      self._loop_device_stat.st_uid,
+                      self._loop_device_stat.st_gid,
+                      stat.S_IMODE(self._loop_device_stat.st_mode))
         return self._loop_device
 
     def detach_from_loop_device(self):
@@ -663,6 +671,13 @@ class VirtualFilesystemImage(object):
         logging.debug('Cleaning up remaining mount points of loop device "%s"',
                       self._loop_device)
         utils.run('umount -f %s' % self._loop_device, ignore_status=True)
+
+        logging.debug('Restore ownership/permissions of loop device "%s"',
+                      self._loop_device)
+        os.chmod(self._loop_device,
+                 stat.S_IMODE(self._loop_device_stat.st_mode))
+        os.chown(self._loop_device,
+                 self._loop_device_stat.st_uid, self._loop_device_stat.st_gid)
 
         logging.debug('Detaching image file "%s" from loop device "%s"',
                       self._image_file.name, self._loop_device)
