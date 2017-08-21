@@ -68,30 +68,41 @@ class Cr50Test(FirmwareTest):
         at /opt/google/cr50/firmware/cr50.bin.prod. These will be used to
         restore the state during cleanup.
         """
-        # Save the brand, RO and RW Versions, the device RLZ code, and the cr50
-        # board id.
+        # Save the device brand
         self._original_platform_brand = self.host.run('mosys platform brand',
             ignore_status=True).stdout.strip()
-        self._original_cr50_version = cr50_utils.GetRunningVersion(self.host)
-        self._original_rlz = cr50_utils.GetRLZ(self.host)
+        # Save the running image RO and RW Versions
+        self._original_cr50_image_version = (
+            cr50_utils.GetRunningVersion(self.host))
+        # Save the running image board id. usb_updater -f does not retrieve the
+        # board id. Use the cr50 console command
+        self._original_cr50_image_bid_str = self.cr50.get_active_board_id_str()
+        # Save the chip bid
         self._original_chip_bid = cr50_utils.GetChipBoardId(self.host)
+        # Save the device RLZ code
+        self._original_rlz = cr50_utils.GetRLZ(self.host)
 
         # Save the image currently stored on the device
         binver = cr50_utils.GetBinVersion(self.host)
-        filename = 'device_image_' + self._original_cr50_version[1]
+        filename = 'device_image_' + self._original_cr50_image_version[1]
         self._original_device_image = os.path.join(self.resultsdir, filename)
         self._original_device_image_version = binver
         self.host.get_file(cr50_utils.CR50_FILE, self._original_device_image)
 
-        # If the running cr50 version matches the image on the DUT use that
-        # as the original image. If the versions don't match download the image
-        # from google storage
-        if self._original_cr50_version[1] == binver[1]:
+        # If the running cr50 image version matches the image on the DUT use
+        # the DUT image as the original image. If the versions don't match
+        # download the image from google storage
+        running_rw = self._original_cr50_image_version[1]
+        running_bid = self._original_cr50_image_bid_str
+        if running_rw == binver[1] and running_bid == binver[2]:
             self._original_cr50_image = self._original_device_image
+            image_ver = binver
         else:
-            self._original_cr50_image = self.download_cr50_release_image(
-                self._original_cr50_version[1])[0]
-        logging.info('cr50 version: %r', self._original_cr50_version)
+            image_info = self.download_cr50_release_image(running_rw,
+                                                          running_bid)
+            self._original_cr50_image, image_ver = image_info
+
+        logging.info('cr50 image version: %r', image_ver)
         logging.info('rlz: %r', self._original_rlz)
         logging.info('cr50 chip bid: %08x:%08x:%08x',
             self._original_chip_bid[0], self._original_chip_bid[1],
@@ -187,8 +198,11 @@ class Cr50Test(FirmwareTest):
         if cr50_utils.GetChipBoardId(self.host) != self._original_chip_bid:
             mismatch.append('cr50 board_id')
         if (cr50_utils.GetRunningVersion(self.host) !=
-            self._original_cr50_version):
-            mismatch.append('cr50_version')
+            self._original_cr50_image_version):
+            mismatch.append('cr50 image version')
+        if (self.cr50.get_active_board_id_str() !=
+            self._original_cr50_image_bid_str):
+            mismatch.append('cr50 image bid')
         if len(mismatch):
             raise error.TestError('Failed to restore original device state: %s'
                                   % ', '.join(mismatch))
