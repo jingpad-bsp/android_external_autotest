@@ -61,6 +61,8 @@ class FirmwareError(SuspendFailure):
             ('^stumpy', r'PNP: 002e\.4 70 irq size: 0x0000000001 not assigned'),
             # crbug.com/221538: no one knows what ME errors mean anyway
             ('^parrot', r'ME failed to respond'),
+            # b/64684441: eve SKU without eMMC
+            ('^eve', r'Card did not respond to voltage select!'),
         ]
 
 
