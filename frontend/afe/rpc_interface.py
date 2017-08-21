@@ -32,6 +32,7 @@ See doctests/001_rpc_test.txt for (lots) more examples.
 __author__ = 'showard@google.com (Steve Howard)'
 
 import ast
+import collections
 import datetime
 import logging
 import os
@@ -71,6 +72,17 @@ from autotest_lib.site_utils import stable_version_utils
 
 
 _CONFIG = global_config.global_config
+
+# Definition of LabHealthIndicator
+LabHealthIndicator = collections.namedtuple(
+        'LabHealthIndicator',
+        [
+                'if_lab_close',
+                'available_duts',
+                'devserver_health',
+                'upcoming_builds',
+        ]
+)
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
@@ -2342,3 +2354,21 @@ def get_tests_by_build(build, ignore_invalid_tests=True):
 
     test_objects = sorted(test_objects, key=lambda x: x.get('name'))
     return rpc_utils.prepare_for_serialization(test_objects)
+
+
+@rpc_utils.route_rpc_to_master
+def get_lab_health_indicators(board=None):
+    """Get the healthy indicators for whole lab.
+
+    The indicators now includes:
+    1. lab is closed or not.
+    2. Available DUTs list for a given board.
+    3. Devserver capacity.
+    4. When is the next major DUT utilization (e.g. CQ is coming in 3 minutes).
+
+    @param board: if board is specified, a list of available DUTs will be
+        returned for it. Otherwise, skip this indicator.
+
+    @returns: A healthy indicator object including health info.
+    """
+    return LabHealthIndicator(None, None, None, None)
