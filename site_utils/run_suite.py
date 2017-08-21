@@ -1460,8 +1460,7 @@ class ResultCollector(object):
         """Output test results, timings and web links."""
         # Output test results
         test_results = self._make_test_results()
-        max_name_length = max(len(test_result.name)
-                              for test_result in test_results)
+        max_name_length = max(0, *(len(t.name) for t in test_results))
         for test_result in test_results:
             test_result.log_using(logging.info, max_name_length + 3)
         # Output suite timings
