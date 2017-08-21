@@ -28,6 +28,11 @@ UNSHRINKABLE_EXTENSIONS = set([
         '.zip',
         ])
 
+# Regex for files that should not be shrunk.
+UNSHRINKABLE_FILE_PATTERNS = [
+        'test_run_.*' # ACTS test result files.
+        ]
+
 TRIMMED_FILE_HEADER = '!!! This file is trimmed !!!\n'
 ORIGINAL_SIZE_TEMPLATE = 'Original size: %d bytes\n\n'
 # Regex pattern to retrieve the original size of the file.
@@ -113,6 +118,14 @@ def _get_shrinkable_files(file_infos, file_size_limit_byte):
     for info in file_infos:
         ext = os.path.splitext(info.name)[1].lower()
         if ext in UNSHRINKABLE_EXTENSIONS:
+            continue
+
+        match_found = False
+        for pattern in UNSHRINKABLE_FILE_PATTERNS:
+            if re.match(pattern, info.name):
+                match_found = True
+                break
+        if match_found:
             continue
 
         if info.trimmed_size <= file_size_limit_byte:

@@ -31,10 +31,12 @@ SUMMARY_AFTER_TRIMMING = {
                         utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE,
                         utils_lib.TRIMMED_SIZE_BYTES: FILE_SIZE_LIMIT_BYTE}}],
                 utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE,
-                utils_lib.TRIMMED_SIZE_BYTES: FILE_SIZE_LIMIT_BYTE}}],
-         utils_lib.ORIGINAL_SIZE_BYTES: 4 * ORIGINAL_SIZE_BYTE,
+                utils_lib.TRIMMED_SIZE_BYTES: FILE_SIZE_LIMIT_BYTE}},
+            {'test_run_details.txt': {
+                    utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}}],
+         utils_lib.ORIGINAL_SIZE_BYTES: 5 * ORIGINAL_SIZE_BYTE,
          utils_lib.TRIMMED_SIZE_BYTES: (
-                 2 * ORIGINAL_SIZE_BYTE + 2 * FILE_SIZE_LIMIT_BYTE)}
+                 3 * ORIGINAL_SIZE_BYTE + 2 * FILE_SIZE_LIMIT_BYTE)}
     }
 
 OLD_TIME = 1498800000
@@ -60,6 +62,10 @@ class ShrinkFileThrottleTest(unittest.TestCase):
         unittest_lib.create_file(file3, ORIGINAL_SIZE_BYTE)
         self.files_to_shrink.append(file3)
         os.utime(file3, (OLD_TIME, OLD_TIME))
+
+        file4 = os.path.join(self.test_dir, 'test_run_details.txt')
+        unittest_lib.create_file(file4, ORIGINAL_SIZE_BYTE)
+        self.files_not_shrink.append(file4)
 
         folder1 = os.path.join(self.test_dir, 'folder1')
         os.mkdir(folder1)
@@ -111,7 +117,7 @@ class MultipleShrinkFileTest(unittest.TestCase):
         """Cleanup the test directory."""
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
-    def testTrime(self):
+    def testTrim(self):
         """Shrink the file twice and check its content."""
         summary = result_info.ResultInfo.build_from_path(
                 parent_dir=self.test_dir, name=utils_lib.ROOT_DIR,
