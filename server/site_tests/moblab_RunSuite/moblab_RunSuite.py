@@ -135,7 +135,7 @@ def _parse_job_id(run_suite_output):
     """Parses the job id from the output of a run suite invocation."""
     try:
         _, json_start = run_suite_output.split(JSON_START_TOKEN)
-        json_body = json_start.split(JSON_END_TOKEN)
+        json_body, _ = json_start.split(JSON_END_TOKEN)
         return json.loads(json_body).get('job_id')
     except ValueError:
         return None
