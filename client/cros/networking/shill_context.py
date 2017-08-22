@@ -14,7 +14,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros.networking import shill_proxy
 
-SHILL_START_LOCK_PATH = '/var/lock/shill-start.lock'
+SHILL_START_LOCK_PATH = '/run/lock/shill-start.lock'
 
 class ContextError(Exception):
     """An error raised by a context managers dealing with shill objects."""

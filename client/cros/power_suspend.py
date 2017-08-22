@@ -39,7 +39,7 @@ class Suspender(object):
         __del__: Restore tlsdated (must run eventually, but GC delay no problem)
         _set_pm_print_times: Enable/disable kernel device suspend timing output.
         _check_failure_log: Check /sys/.../suspend_stats for new failures.
-        _ts: Returns a timestamp from /var/run/power_manager/last_resume_timings
+        _ts: Returns a timestamp from /run/power_manager/last_resume_timings
         _hwclock_ts: Read RTC timestamp left on resume in hwclock-on-resume
         _device_resume_time: Read seconds overall device resume took from logs.
         _individual_device_times: Reads individual device suspend/resume times.
@@ -77,7 +77,7 @@ class Suspender(object):
 
     # File written by send_metrics_on_resume containing timing information about
     # the last resume.
-    _TIMINGS_FILE = '/var/run/power_manager/root/last_resume_timings'
+    _TIMINGS_FILE = '/run/power_manager/root/last_resume_timings'
 
     # Amount of lines to dump from the eventlog on a SpuriousWakeup. Should be
     # enough to include ACPI Wake Reason... 10 should be far on the safe side.
@@ -87,7 +87,7 @@ class Suspender(object):
     _MAX_RESUME_TIME = 10
 
     # File written by powerd_suspend containing the hwclock time at resume.
-    HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
+    HWCLOCK_FILE = '/run/power_manager/root/hwclock-on-resume'
 
     # File read by powerd to decide on the state to suspend (mem or freeze).
     _SUSPEND_STATE_PREF_FILE = 'suspend_to_idle'
