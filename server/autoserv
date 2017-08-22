@@ -422,6 +422,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     no_use_packaging = parser.options.no_use_packaging
     host_attributes = parser.options.host_attributes
     in_lab = bool(parser.options.lab)
+    cloud_trace_context = parser.options.cloud_trace_context
 
     # can't be both a client and a server side test
     if client and server:
@@ -559,11 +560,11 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     sys.exit(exit_code)
 
 
-def record_autoserv(options, duration_secs):
+def record_autoserv(options, start_time):
     """Record autoserv end-to-end time in metadata db.
 
     @param options: parser options.
-    @param duration_secs: How long autoserv has taken, in secs.
+    @param start_time: When autoserv started
     """
     # Get machine hostname
     machines = options.machines.replace(
@@ -576,19 +577,28 @@ def record_autoserv(options, duration_secs):
         machines.append('hostless')
 
     # Determine the status that will be reported.
+    status = get_job_status(options)
+    is_special_task = status not in [
+            job_overhead.Status.RUNNING, job_overhead.Status.GATHERING]
+    job_or_task_id = job_directories.get_job_id_or_task_id(options.results)
+    duration_secs = (datetime.datetime.now() - start_time).total_seconds()
+    job_overhead.record_state_duration(
+            job_or_task_id, machines[0], status, duration_secs,
+            is_special_task=is_special_task)
+
+
+def get_job_status(options):
+    """Returns the HQE Status for this run.
+
+    @param options: parser options.
+    """
     s = job_overhead.STATUS
     task_mapping = {
             'reset': s.RESETTING, 'verify': s.VERIFYING,
             'provision': s.PROVISIONING, 'repair': s.REPAIRING,
             'cleanup': s.CLEANING, 'collect_crashinfo': s.GATHERING}
-    match = filter(lambda task: getattr(options, task, False) == True,
-                   task_mapping)
-    status = task_mapping[match[0]] if match else s.RUNNING
-    is_special_task = status not in [s.RUNNING, s.GATHERING]
-    job_or_task_id = job_directories.get_job_id_or_task_id(options.results)
-    job_overhead.record_state_duration(
-            job_or_task_id, machines[0], status, duration_secs,
-            is_special_task=is_special_task)
+    match = [task for task in task_mapping if getattr(options, task, False)]
+    return task_mapping[match[0]] if match else s.RUNNING
 
 
 def main():
@@ -744,8 +754,7 @@ def main():
             pid_file_manager.close_file(exit_code)
         # Record the autoserv duration time. Must be called
         # just before the system exits to ensure accuracy.
-        duration_secs = (datetime.datetime.now() - start_time).total_seconds()
-        record_autoserv(parser.options, duration_secs)
+        record_autoserv(parser.options, start_time)
     sys.exit(exit_code)
 
 
