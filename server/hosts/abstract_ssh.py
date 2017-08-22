@@ -1,4 +1,4 @@
-import os, time, socket, shutil, glob, logging, traceback, tempfile, re
+import os, time, socket, shutil, glob, logging, tempfile, re
 import shlex
 import subprocess
 
@@ -500,7 +500,7 @@ class AbstractSSHHost(remote.RemoteHost):
             if excludes:
                 raise error.AutotestHostRunError(
                         '--exclude is not supported in scp, try to use rsync. '
-                        'excludes: %s' % excludes)
+                        'excludes: %s' % ','.join(excludes))
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest:
                 is_dir = self.run("ls -d %s/" % dest,
