@@ -28,6 +28,6 @@ def run_CTS(machine):
         target_module='CtsFileSystemTestCases',
         bundle='x86',
         warn_on_test_retry=False,
-        timeout=7200)
+        timeout=9000)
 
 parallel_simple(run_CTS, machines)
