@@ -22,6 +22,8 @@ FILE_SIZE_THRESHOLD_BYTE = 512
 
 SUMMARY_AFTER_TRIMMING = {
     '': {utils_lib.DIRS: [
+            {'BUILD_INFO-x':
+                    {utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}},
             {'file1.xml.tgz':
                 {utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE,
                  utils_lib.TRIMMED_SIZE_BYTES: 148}},
@@ -36,8 +38,8 @@ SUMMARY_AFTER_TRIMMING = {
                             utils_lib.TRIMMED_SIZE_BYTES: 140}}],
                 utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE,
                 utils_lib.TRIMMED_SIZE_BYTES: 140}}],
-         utils_lib.ORIGINAL_SIZE_BYTES: 4 * ORIGINAL_SIZE_BYTE,
-         utils_lib.TRIMMED_SIZE_BYTES: ORIGINAL_SIZE_BYTE + 435}
+         utils_lib.ORIGINAL_SIZE_BYTES: 5 * ORIGINAL_SIZE_BYTE,
+         utils_lib.TRIMMED_SIZE_BYTES: 2 * ORIGINAL_SIZE_BYTE + 435}
     }
 
 class ZipFileThrottleTest(unittest.TestCase):
@@ -48,6 +50,10 @@ class ZipFileThrottleTest(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         self.files_not_zip = []
         self.files_to_zip = []
+
+        build_info = os.path.join(self.test_dir, 'BUILD_INFO-x')
+        unittest_lib.create_file(build_info, ORIGINAL_SIZE_BYTE)
+        self.files_not_zip.append(build_info)
 
         file1 = os.path.join(self.test_dir, 'file1.xml')
         unittest_lib.create_file(file1, ORIGINAL_SIZE_BYTE)
