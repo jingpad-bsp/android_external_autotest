@@ -405,4 +405,10 @@ class firmware_Cr50BID(Cr50Test):
                 flags = flags if flags != None else self.test_flags
 
                 # Run the test with the given bid, flags, and result
-                self.run_bid_test(image_name, bid, flags, bid_error)
+                try:
+                    self.run_bid_test(image_name, bid, flags, bid_error)
+                except error.TestFail, e:
+                    raise error.TestFail('%s %s:%s %s with "%s"' % (test_type,
+                        bid, flags, bid_error, e.message))
+                logging.info('Verified %s %s:%s %s', test_type, bid, flags,
+                             bid_error)
