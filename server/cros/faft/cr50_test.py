@@ -116,16 +116,24 @@ class Cr50Test(FirmwareTest):
         self._original_device_image_version = cr50_utils.GetBinVersion(
             self.host)
 
-        logging.info('cr50 image version: (%s, %s, %s)',
-            self._original_cr50_image_version[0],
-            self._original_cr50_image_version[1],
-            self._original_cr50_image_bid_str)
+        logging.info('cr50 image version: %r',
+            self.get_saved_cr50_original_version())
         logging.info('rlz: %r', self._original_rlz)
         logging.info('cr50 chip bid: %08x:%08x:%08x',
             self._original_chip_bid[0], self._original_chip_bid[1],
             self._original_chip_bid[2])
         logging.info('DUT cr50 image version: %r',
                      self._original_device_image_version)
+
+
+    def get_saved_cr50_original_version(self):
+        """Return (ro ver, rw ver, bid)"""
+        if (not hasattr(self, '_original_cr50_image_version') or
+            not hasattr(self, '_original_cr50_image_bid_str')):
+            raise error.TestError('No record of original cr50 image version')
+        return (self._original_cr50_image_version[0],
+                self._original_cr50_image_version[1],
+                self._original_cr50_image_bid_str)
 
 
     def get_saved_cr50_original_path(self):
