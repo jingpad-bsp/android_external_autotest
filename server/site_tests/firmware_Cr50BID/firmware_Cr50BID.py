@@ -112,20 +112,20 @@ class firmware_Cr50BID(Cr50Test):
     #
     # If the start image is 'board_id_locked', we won't try to update to the
     # board id locked image.
-    BID_TEST_TYPE = {
+    BID_TEST_TYPE = [
         # Verify that the board id locked image rejects invalid board ids
-        'get/set' : BID_LOCKED,
+        ['get/set', BID_LOCKED],
 
         # Verify the cr50 response when doing a normal update to a board id
         # locked image. If there is a board id mismatch, cr50 should rollback
         # to the image that was already running.
-        'rollback' : ORIGINAL,
+        ['rollback', ORIGINAL],
 
         # TODO (mruthven): add support for verifying recovery
         # Certain devices are not able to successfully jump to the recovery
         # image when the TPM is locked down. We need to find a way to verify the
         # DUT is in recovery without being able to ssh into the DUT.
-    }
+    ]
 
     def initialize(self, host, cmdline_args, dev_path='', bid_path='',
                    release_ver=None, bid=None, bid_mask=None, bid_flags=None):
@@ -397,7 +397,7 @@ class firmware_Cr50BID(Cr50Test):
 
     def run_once(self):
         """Verify the Cr50 BID response of each test bid."""
-        for test_type, image_name in self.BID_TEST_TYPE.iteritems():
+        for test_type, image_name in self.BID_TEST_TYPE:
             logging.info('VERIFY: BID %s', test_type)
             for bid, flags, bid_error in self.tests:
                 # Replace place holder values with the test values
