@@ -170,6 +170,12 @@ def FindVersion(output, arg):
     # --binver is the only usb_updater command that may have bid keys in its
     # versions dictionary. If no bid keys exist, bid will be None.
     bid = GetVersion(versions, BID)
+    # Right now most images that aren't board id locked don't support getting
+    # the board id. To make all non board id locked board ids equal, replace
+    # an empty board id with None
+    #
+    # TODO(mruthven): Remove once all cr50 images support getting the board id.
+    bid = None if bid == EMPTY_IMAGE_BID else bid
     return ro, rw, bid
 
 
