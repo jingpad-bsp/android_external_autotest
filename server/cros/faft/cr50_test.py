@@ -162,16 +162,23 @@ class Cr50Test(FirmwareTest):
                                 '%r', i, e)
 
 
+    def rootfs_verification_disable(self):
+        """Remove rootfs verification"""
+        if not self._rootfs_verification_is_disabled():
+            logging.debug('Removing rootfs verification.')
+            self.rootfs_tool.enable()
+
+
     def _rootfs_verification_is_disabled(self):
         """Returns true if rootfs verification is enabled"""
         # reboot the DUT to reset cryptohome. We need it to be running to check
         # rootfs verification.
         self.host.reboot()
-        rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
-        rootfs_tool.initialize(self.host)
+        self.rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
+        self.rootfs_tool.initialize(self.host)
         # rootfs_tool.is_enabled is True, that means rootfs verification is
         # disabled.
-        return rootfs_tool.is_enabled()
+        return self.rootfs_tool.is_enabled()
 
 
     def _restore_original_state(self):
