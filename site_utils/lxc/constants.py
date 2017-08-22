@@ -26,11 +26,6 @@ RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results',
 # Attributes to retrieve about containers.
 ATTRIBUTES = ['name', 'state']
 
-# Format for mount entry to share a directory in host with container.
-# source is the directory in host, destination is the directory in container.
-# readonly is a binding flag for readonly mount, its value should be `,ro`.
-MOUNT_FMT = ('lxc.mount.entry = %(source)s %(destination)s none '
-             'bind%(readonly)s 0 0')
 SSP_ENABLED = global_config.get_config_value('AUTOSERV', 'enable_ssp_container',
                                              type=bool, default=True)
 # url to the folder stores base container.

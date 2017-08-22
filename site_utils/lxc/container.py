@@ -165,16 +165,7 @@ class Container(object):
         @return: Path to the rootfs of the container.
         """
         if not self._rootfs:
-            cmd = ('sudo lxc-info -P %s -n %s -c lxc.rootfs' %
-                   (self.container_path, self.name))
-            lxc_rootfs_config = utils.run(cmd).stdout.strip()
-            match = re.match('lxc.rootfs = (.*)', lxc_rootfs_config)
-            if not match:
-                raise error.ContainerError(
-                        'Failed to locate rootfs for container %s. lxc.rootfs '
-                        'in the container config file is %s' %
-                        (self.name, lxc_rootfs_config))
-            lxc_rootfs = match.group(1)
+            lxc_rootfs = self._get_lxc_config('lxc.rootfs')[0]
             cloned_from_snapshot = ':' in lxc_rootfs
             if cloned_from_snapshot:
                 self._rootfs = lxc_rootfs.split(':')[-1]
@@ -292,13 +283,9 @@ class Container(object):
         destination = destination.lstrip('/')
         # Create directory in container for mount.
         utils.run('sudo mkdir -p %s' % os.path.join(self.rootfs, destination))
-        config_file = os.path.join(self.container_path, self.name, 'config')
-        mount = constants.MOUNT_FMT % {'source': source,
-                                       'destination': destination,
-                                       'readonly': ',ro' if readonly else ''}
-        utils.run(
-            constants.APPEND_CMD_FMT % {'content': mount, 'file': config_file})
-
+        mount = ('%s %s none bind%s 0 0' %
+                 (source, destination, ',ro' if readonly else ''))
+        self._set_lxc_config('lxc.mount.entry', mount)
 
     def verify_autotest_setup(self, job_folder):
         """Verify autotest code is set up properly in the container.
@@ -369,13 +356,8 @@ class Container(object):
         """Sets the hostname within the container.  This needs to be called
         prior to starting the container.
         """
-        config_file = os.path.join(self.container_path, self.name, 'config')
-        lxc_utsname_setting = (
-                'lxc.utsname = ' +
-                constants.CONTAINER_UTSNAME_FORMAT % hostname)
-        utils.run(
-            constants.APPEND_CMD_FMT % {'content': lxc_utsname_setting,
-                                        'file': config_file})
+        self._set_lxc_config('lxc.utsname',
+                             constants.CONTAINER_UTSNAME_FORMAT % hostname)
 
 
     def install_ssp(self, ssp_url):
@@ -432,3 +414,45 @@ class Container(object):
         if os.path.isdir(src) and os.path.split(src)[1] != '.':
             src = os.path.join(src, '.')
         utils.run('sudo cp -RL "%s" "%s"' % (src, dst))
+
+
+    def _set_lxc_config(self, key, value):
+        """Sets an LXC config value for this container.
+
+        Configuration changes made while a container is running don't take
+        effect until the container is restarted.  Since this isn't a scenario
+        that should ever come up in our use cases, calling this method on a
+        running container will cause a ContainerError.
+
+        @param key: The LXC config key to set.
+        @param value: The value to use for the given key.
+
+        @raise error.ContainerError: If the container is already started.
+        """
+        if self.is_running():
+            raise error.ContainerError(
+                '_set_lxc_config(%s, %s) called on a running container.' %
+                (key, value))
+        config_file = os.path.join(self.container_path, self.name, 'config')
+        config = '%s = %s' % (key, value)
+        utils.run(
+            constants.APPEND_CMD_FMT % {'content': config, 'file': config_file})
+
+
+    def _get_lxc_config(self, key):
+        """Retrieves an LXC config value from the container.
+
+        @param key The key of the config value to retrieve.
+        """
+        cmd = ('sudo lxc-info -P %s -n %s -c %s' %
+               (self.container_path, self.name, key))
+        config = utils.run(cmd).stdout.strip().splitlines()
+
+        # Strip the decoration from line 1 of the output.
+        match = re.match('%s = (.*)' % key, config[0])
+        if not match:
+            raise error.ContainerError(
+                    'Config %s not found for container %s. (%s)' %
+                    (key, self.name, ','.join(config)))
+        config[0] = match.group(1)
+        return config
