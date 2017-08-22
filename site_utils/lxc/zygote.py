@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import Container
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import lxc
@@ -35,31 +37,50 @@ class Zygote(Container):
                           Otherwise, this can be used to override the host path
                           of the new container, for testing purposes.
         """
+        # Check if this is a pre-existing LXC container.  Do this before calling
+        # the super ctor, because that triggers container creation.
+        exists = lxc.get_container_info(container_path, name=name)
+
         super(Zygote, self).__init__(container_path, name, attribute_values,
                                      src, snapshot)
 
+        logging.debug(
+                'Creating Zygote (lxcpath:%s name:%s)', container_path, name)
+
         # host_path is a directory within a shared bind-mount, which enables
         # bind-mounts from the host system to be shared with the LXC container.
-        #
+        if host_path is not None:
+            # Allow the host_path to be injected, for testing.
+            self.host_path = host_path
+        else:
+            if exists:
+                # Pre-existing Zygotes must have a host path.
+                self.host_path = self._find_existing_host_dir()
+                if self.host_path is None:
+                    raise error.ContainerError(
+                            'Container %s has no host path.' %
+                            os.path.join(container_path, name))
+            else:
+                # New Zygotes use a predefined template to generate a host path.
+                self.host_path = os.path.join(
+                        os.path.realpath(constants.DEFAULT_SHARED_HOST_PATH),
+                        self.name)
+
         # host_path_ro is a directory for holding intermediate mount points,
         # which are necessary when creating read-only bind mounts.  See the
         # mount_dir method for more details.
-        if host_path is None:
-            self.host_path = os.path.join(
-                    os.path.realpath(constants.DEFAULT_SHARED_HOST_PATH),
-                    self.name)
-            self.host_path_ro = os.path.join(
-                    os.path.realpath(constants.DEFAULT_SHARED_HOST_PATH),
-                    '%s.ro' % self.name)
-        else:
-            # Allow the host_path to be injected, for testing.
-            self.host_path = host_path
-            # Generate an arbitrary host_path_ro based on the given host path.
-            ro_dir, ro_name = os.path.split(host_path.rstrip(os.path.sep))
-            self.host_path_ro = os.path.join(ro_dir, '%s.ro' % ro_name)
+        #
+        # Generate a host_path_ro based on host_path.
+        ro_dir, ro_name = os.path.split(self.host_path.rstrip(os.path.sep))
+        self.host_path_ro = os.path.join(ro_dir, '%s.ro' % ro_name)
 
-        if src is not None:
-            # If creating a new zygote, initialize the host dirs.
+        # Remember mounts so they can be cleaned up in destroy.
+        self.mounts = []
+
+        if exists:
+            self._find_existing_bind_mounts()
+        else:
+            # Creating a new Zygote - initialize the host dirs.
             if not lxc_utils.path_exists(self.host_path):
                 utils.run('sudo mkdir -p %s' % self.host_path)
             if not lxc_utils.path_exists(self.host_path_ro):
@@ -72,11 +93,17 @@ class Zygote(Container):
                                            os.path.sep)))
             self.mount_dir(self.host_path, constants.CONTAINER_HOST_DIR)
 
-        # Remember mounts for cleanup
-        self.mounts = []
-
 
     def destroy(self, force=True):
+        """Destroy the Zygote.
+
+        This destroys the underlying container (see Container.destroy) and also
+        cleans up any host mounts associated with it.
+
+        @param force: Force container destruction even if it's running.  See
+                      Container.destroy.
+        """
+        logging.debug('Destroying Zygote %s', self.name)
         super(Zygote, self).destroy(force)
         self._cleanup_host_mount()
 
@@ -125,14 +152,17 @@ class Zygote(Container):
                          container_ssp_path,
                          constants.CONTAINER_AUTOTEST_DIR))
 
+
     def copy(self, host_path, container_path):
-        """Copies files into the zygote.
+        """Copies files into the Zygote.
 
         @param host_path: Path to the source file/dir to be copied.
         @param container_path: Path to the destination dir (in the container).
         """
         if not self.is_running():
             return super(Zygote, self).copy(host_path, container_path)
+
+        logging.debug('copy %s to %s', host_path, container_path)
 
         # First copy the files into the host mount, then move them from within
         # the container.
@@ -141,9 +171,17 @@ class Zygote(Container):
                                        container_path.lstrip(os.path.sep)))
 
         src = os.path.join(constants.CONTAINER_HOST_DIR,
-                         container_path.lstrip(os.path.sep))
-        dst = os.path.dirname(container_path)
-        self.attach_run('mkdir -p %s && mv %s %s' % (dst, src, dst))
+                           container_path.lstrip(os.path.sep))
+        dst = container_path
+
+        # In the container, bind-mount from host path to destination.
+        # The mount destination must have the correct type (file vs dir).
+        if os.path.isdir(host_path):
+            self.attach_run('mkdir -p %s' % dst)
+        else:
+            self.attach_run(
+                'mkdir -p %s && touch %s' % (os.path.dirname(dst), dst))
+        self.attach_run('mount --bind %s %s' % (src, dst))
 
 
     def mount_dir(self, source, destination, readonly=False):
@@ -172,14 +210,14 @@ class Zygote(Container):
         if readonly:
             source_ro = os.path.join(self.host_path_ro,
                                      source.lstrip(os.path.sep))
-            self.mounts.append(lxc_utils.BindMount(
+            self.mounts.append(lxc_utils.BindMount.create(
                     source, self.host_path_ro, readonly=True))
             source = source_ro
 
         # Mount the directory into the host dir, then from the host dir into the
         # destination.
         self.mounts.append(
-                lxc_utils.BindMount(source, self.host_path, destination))
+                lxc_utils.BindMount.create(source, self.host_path, destination))
 
         container_host_path = os.path.join(constants.CONTAINER_HOST_DIR,
                                            destination.lstrip(os.path.sep))
@@ -200,3 +238,56 @@ class Zygote(Container):
         # which should all have been cleared out.  Use rmdir.
         if lxc_utils.path_exists(self.host_path_ro):
             utils.run('sudo rmdir "%s"' % self.host_path_ro)
+
+
+    def _find_existing_host_dir(self):
+        """Finds the host mounts for a pre-existing Zygote.
+
+        The host directory is passed into the Zygote constructor when creating a
+        new Zygote.  However, when a Zygote is instantiated on top of an already
+        existing LXC container, it has to reconnect to the existing host
+        directory.
+
+        @return: The host-side path to the host dir.
+        """
+        # Look for the mount that targets the "/host" dir within the container.
+        for mount in self._get_lxc_config('lxc.mount.entry'):
+            mount_cfg = mount.split(' ')
+            if mount_cfg[1] == 'host':
+                return mount_cfg[0]
+        return None
+
+
+    def _find_existing_bind_mounts(self):
+        """Locates bind mounts associated with an existing container.
+
+        When a Zygote object is instantiated on top of an existing LXC
+        container, this method needs to be called so that all the bind-mounts
+        associated with the container can be reconstructed.  This enables proper
+        cleanup later.
+        """
+        with open('/proc/self/mountinfo') as f:
+            for mountinfo in f.readlines():
+                mountpoint = mountinfo.split()[4]
+                # Check for bind mounts in the host and host_ro directories, and
+                # re-add them to self.mounts.
+                if _is_subdir(self.host_path, mountpoint):
+                    logging.debug('mount: %s', mountpoint)
+                    self.mounts.append(lxc_utils.BindMount.from_existing(
+                        self.host_path, mountpoint))
+                elif _is_subdir(self.host_path_ro, mountpoint):
+                    logging.debug('mount_ro: %s', mountpoint)
+                    self.mounts.append(lxc_utils.BindMount.from_existing(
+                        self.host_path_ro, mountpoint))
+
+
+def _is_subdir(parent, subdir):
+    """Determines whether the given subdir exists under the given parent dir.
+
+    @param parent: The parent directory.
+    @param subidr: The subdirectory.
+    """
+    # Append a trailing path separator because commonprefix basically just
+    # performs a prefix string comparison.
+    parent = os.path.join(parent, '')
+    return os.path.commonprefix([parent, subdir]) == parent
