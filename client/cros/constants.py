@@ -69,11 +69,11 @@ CRYPTOHOMED_LOG = '/var/log/cryptohomed.log'
 # Directories to copy out of cryptohome, relative to CRYPTOHOME_MOUNT_PT.
 CRYPTOHOME_DIRS_TO_RECOVER = ['crash', 'log']
 
-DISABLE_BROWSER_RESTART_MAGIC_FILE = '/var/run/disable_chrome_restart'
+DISABLE_BROWSER_RESTART_MAGIC_FILE = '/run/disable_chrome_restart'
 DEFAULT_OWNERSHIP_TIMEOUT = 300  # Ownership is an inherently random process.
 
 ENABLE_BROWSER_HANG_DETECTION_FILE = \
-    '/var/run/session_manager/enable_hang_detection'
+    '/run/session_manager/enable_hang_detection'
 
 FLIMFLAM_TEST_PATH = '/usr/lib/flimflam/test/'
 
@@ -121,7 +121,7 @@ SERVICE_LOGIN_AUTH_ERROR = 'The username or password you entered is incorrect.'
 SESSION_MANAGER = 'session_manager'
 SIGNED_POLICY_FILE = WHITELIST_DIR + '/policy'
 SPECIAL_CASE_DOMAIN = 'gmail.com'
-USER_POLICY_DIR = '/var/run/user_policy'
+USER_POLICY_DIR = '/run/user_policy'
 USER_POLICY_KEY_FILENAME = 'policy.pub'
 
 TOKEN_AUTH_URL = '/accounts/TokenAuth'
@@ -135,7 +135,7 @@ UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
 RESOLV_CONF_FILE = '/etc/resolv.conf'
 
 PENDING_SHUTDOWN_PATH = '/var/lib/crash_reporter/pending_clean_shutdown'
-UNCLEAN_SHUTDOWN_DETECTED_PATH = '/var/run/unclean-shutdown-detected'
+UNCLEAN_SHUTDOWN_DETECTED_PATH = '/run/unclean-shutdown-detected'
 
 INTERACTIVE_XMLRPC_SERVER_PORT = 9980
 INTERACTIVE_XMLRPC_SERVER_COMMAND = (
