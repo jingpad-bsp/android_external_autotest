@@ -377,7 +377,7 @@ def execute(path, max_size_KB):
     utils_lib.LOG('Directory summary of %s is saved to file %s.' %
                   (path, summary_file))
 
-    if max_size_KB > 0:
+    if max_size_KB > 0 and summary.trimmed_size > 0:
         old_size = summary.trimmed_size
         throttle_probability = float(max_size_KB * 1024) / old_size
         if random.random() < throttle_probability:
