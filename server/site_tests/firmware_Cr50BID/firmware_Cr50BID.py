@@ -397,18 +397,23 @@ class firmware_Cr50BID(Cr50Test):
 
     def run_once(self):
         """Verify the Cr50 BID response of each test bid."""
+        errors = []
         for test_type, image_name in self.BID_TEST_TYPE:
             logging.info('VERIFY: BID %s', test_type)
-            for bid, flags, bid_error in self.tests:
+            for i, args in enumerate(self.tests):
+                bid, flags, bid_error = args
                 # Replace place holder values with the test values
                 bid = bid if bid != None else self.test_bid
                 flags = flags if flags != None else self.test_flags
+                message = '%s %d %s:%s %s' % (test_type, i, bid, flags,
+                    bid_error)
 
                 # Run the test with the given bid, flags, and result
                 try:
                     self.run_bid_test(image_name, bid, flags, bid_error)
-                except error.TestFail, e:
-                    raise error.TestFail('%s %s:%s %s with "%s"' % (test_type,
-                        bid, flags, bid_error, e.message))
-                logging.info('Verified %s %s:%s %s', test_type, bid, flags,
-                             bid_error)
+                except (error.TestFail, error.TestError) as e:
+                    logging.info('FAILED %s with "%s"', message, e)
+                    errors.append('%s with "%s"' % (message, e))
+                logging.info('Verified %s', message)
+        if len(errors):
+            raise error.TestFail('failed tests: %s', errors)
