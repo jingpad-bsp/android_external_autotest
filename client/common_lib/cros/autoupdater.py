@@ -325,7 +325,7 @@ class ChromiumOSUpdater(BaseUpdater):
     REMOTE_TMP_STATEFUL_UPDATE = os.path.join(
             '/tmp', STATEFUL_UPDATE_SCRIPT)
     UPDATER_BIN = '/usr/bin/update_engine_client'
-    UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
+    UPDATED_MARKER = '/run/update_engine_autoupdate_completed'
     UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
 
     KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}
