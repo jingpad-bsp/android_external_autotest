@@ -65,7 +65,9 @@ class firmware_Cr50BID(Cr50Test):
     TEST_MASK = 0xffff
     TEST_FLAGS = DEFAULT_FLAGS
 
-    ORIGINAL = 'original'
+    # The universal image can be run on any system no matter the board id.
+    UNIVERSAL = 'universal'
+    # The board id locked can only run on devices with the right chip board id.
     BID_LOCKED = 'board_id_locked'
 
     # Board id locked debug files will use the board id, mask, and flags in the
@@ -119,7 +121,7 @@ class firmware_Cr50BID(Cr50Test):
         # Verify the cr50 response when doing a normal update to a board id
         # locked image. If there is a board id mismatch, cr50 should rollback
         # to the image that was already running.
-        ['rollback', ORIGINAL],
+        ['rollback', UNIVERSAL],
 
         # TODO (mruthven): add support for verifying recovery
         # Certain devices are not able to successfully jump to the recovery
@@ -150,7 +152,7 @@ class firmware_Cr50BID(Cr50Test):
 
         # Save the necessary images.
         self.dev_path = self.get_saved_cr50_dev_path()
-        self.original_path = self.get_saved_cr50_original_path()
+        self.universal_path = self.get_saved_cr50_original_path()
         self.save_board_id_locked_image(bid_path, release_ver, image_bid_info)
 
         # Clear the RLZ so ChromeOS doesn't set the board id during the updates.
@@ -294,7 +296,7 @@ class firmware_Cr50BID(Cr50Test):
 
         Args:
             image_type: the name of the image we want to be running at the end
-                        of reset_state: 'original' or 'board_id_locked'. This
+                        of reset_state: 'universal' or 'board_id_locked'. This
                         image name needs to correspond with some test attribute
                         ${image_type}_path
 
@@ -358,8 +360,7 @@ class firmware_Cr50BID(Cr50Test):
 
 
         Args:
-            image_name: The image name 'original', 'dev', or
-                        'board_id_locked'
+            image_name: The image name 'universal', 'dev', or 'board_id_locked'
             bid: A string representing the board id. Either the hex or symbolic
                  value
             flags: A int value for the flags to set
@@ -389,7 +390,7 @@ class firmware_Cr50BID(Cr50Test):
         # After setting the board id with a non boardid locked image, try to
         # update to the board id locked image. Verify that cr50 does/doesn't run
         # it. If there is a mismatch, the update should fail and Cr50 should
-        # rollback to the original image.
+        # rollback to the universal image.
         if not is_bid_locked_image:
             self.cr50_update(self.board_id_locked_path,
                              expect_rollback=(not not bid_error))
