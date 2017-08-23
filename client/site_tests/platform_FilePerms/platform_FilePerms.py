@@ -172,6 +172,10 @@ class platform_FilePerms(test.test):
             'type': ['squashfs'],
             'options': ['ro', 'nodev', 'nosuid']},
         '/sys': {'type': ['sysfs'], 'options': standard_rw_options},
+        # TODO: /run is already a tmpfs mountpoint, so ip should probably
+        # be modified to detect that, and not create a second mountpoint.
+        # crbug.com/757953
+        '/run/netns': {'type': ['tmpfs'], 'options': standard_rw_options},
         '/sys/fs/cgroup': {
             'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
@@ -416,7 +420,10 @@ class platform_FilePerms(test.test):
         # expectations for the second pass.
         mtabs = ['/var/log/mount_options.log', '/etc/mtab']
         ignored_fses = set(['/'])
-        ignored_types = set(['ecryptfs'])
+        # nsfs is ignored because it's a kernel filesystem used with
+        # network namespaces, and is not a traditional filesystem where
+        # arbitrary files may be created and executed.
+        ignored_types = set(['ecryptfs','nsfs'])
         for mtab_path in mtabs:
             mtab = self.read_mtab(mtab_path=mtab_path)
             for fs in mtab.keys():
