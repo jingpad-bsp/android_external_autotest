@@ -1248,32 +1248,6 @@ class ChromiteRepo(_ExternalGitRepo):
         return False
 
 
-class DevServerRepo(_ExternalGitRepo):
-    """Clones or updates the chromite repo."""
-
-    _GIT_URL = ('https://chromium.googlesource.com/'
-                'chromiumos/platform/dev-util')
-
-    def build_and_install(self, install_dir):
-        """
-        Clone if the repo isn't initialized, pull clean bits if it is.
-
-        Unlike it's hdctools counterpart the dev-util repo clones master
-        directly into site-packages. It doesn't use an intermediate temp
-        directory because it doesn't need installation.
-
-        @param install_dir: destination directory for chromite installation.
-        """
-        local_devserver_dir = os.path.join(install_dir, 'devserver')
-        git_repo = revision_control.GitRepo(local_devserver_dir, self._GIT_URL,
-                                            abs_work_tree=local_devserver_dir)
-        git_repo.reinit_repo_at(self.PROD_BRANCH)
-
-        if git_repo.get_latest_commit_hash():
-            return True
-        return False
-
-
 class BtsocketRepo(_ExternalGitRepo):
     """Clones or updates the btsocket repo."""
 
