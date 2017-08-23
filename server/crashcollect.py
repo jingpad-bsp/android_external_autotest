@@ -126,7 +126,7 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False,
         elif clean:
             path_to_delete = pipes.quote(log_path)
         if clean or clean_content:
-            host.run('rm -rf %s' % path_to_delete)
+            host.run('rm -rf %s' % path_to_delete, ignore_status=True)
 
 
 _FileStats = collections.namedtuple('_FileStats',

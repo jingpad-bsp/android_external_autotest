@@ -230,6 +230,39 @@ class ZygoteTests(unittest.TestCase):
                 self.assertEquals(control_string, test_string)
 
 
+    def testFindHostMount(self):
+        """Verifies that zygotes pick up the correct host dirs."""
+        with self.createZygote() as zygote0:
+            # Not a clone, this just instantiates zygote1 on top of the LXC
+            # container created by zygote0.
+            zygote1 = lxc.Zygote(container_path=zygote0.container_path,
+                                 name=zygote0.name,
+                                 attribute_values={})
+            # Verify that the new zygote picked up the correct host path
+            # from the existing LXC container.
+            self.assertEquals(zygote0.host_path, zygote1.host_path)
+            self.assertEquals(zygote0.host_path_ro, zygote1.host_path_ro)
+
+
+    def testDetectExistingMounts(self):
+        """Verifies that host mounts are properly reconstructed.
+
+        When a Zygote is instantiated on top of an already-running container,
+        any previously-created bind mounts have to be detected.  This enables
+        proper cleanup later.
+        """
+        with lxc_utils.TempDir() as tmpdir, self.createZygote() as zygote0:
+            zygote0.start(wait_for_network=False)
+            # Create a bind mounted directory.
+            zygote0.mount_dir(tmpdir, 'foo')
+            # Create another zygote on top of the existing container.
+            zygote1 = lxc.Zygote(container_path=zygote0.container_path,
+                                 name=zygote0.name,
+                                 attribute_values={})
+            # Verify that the new zygote contains the same bind mounts.
+            self.assertEqual(zygote0.mounts, zygote1.mounts)
+
+
     def testMountDirectory(self):
         """Verifies that read-write mounts work."""
         with lxc_utils.TempDir() as tmpdir, self.createZygote() as zygote:

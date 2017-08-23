@@ -98,8 +98,32 @@ def TempDir(*args, **kwargs):
 
 class BindMount(object):
     """Manages setup and cleanup of bind-mounts."""
-    def __init__(self, src, dst, rename=None, readonly=False):
+    def __init__(self, spec):
         """Sets up a new bind mount.
+
+        Do not call this directly, use the create or from_existing class
+        methods.
+
+        @param spec: A two-element tuple (dir, mountpoint) where dir is the
+                     location of an existing directory, and mountpoint is the
+                     path under that directory to the desired mount point.
+        """
+        self.spec = spec
+
+
+    def __eq__(self, rhs):
+        if isinstance(rhs, self.__class__):
+            return self.spec == rhs.spec
+        return NotImplemented
+
+
+    def __ne__(self, rhs):
+        return not (self == rhs)
+
+
+    @classmethod
+    def create(cls, src, dst, rename=None, readonly=False):
+        """Creates a new bind mount.
 
         @param src: The path of the source file/dir.
         @param dst: The destination directory.  The new mount point will be
@@ -110,28 +134,48 @@ class BindMount(object):
                        ${dst}/${src}.
         @param readonly: If True, the mount will be read-only.  False by
                          default.
+
+        @return An object representing the bind-mount, which can be used to
+                clean it up later.
         """
-        self.dst = (dst, (rename if rename else src).lstrip(os.path.sep))
-        full_dst = os.path.join(self.dst[0], self.dst[1])
+        spec = (dst, (rename if rename else src).lstrip(os.path.sep))
+        full_dst = os.path.join(*list(spec))
 
         if not path_exists(full_dst):
             utils.run('sudo mkdir -p %s' % full_dst)
-            self._cleanup_dst = True
-        else:
-            self._cleanup_dst = False
 
         utils.run('sudo mount --bind %s %s' % (src, full_dst))
         if readonly:
             utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
 
+        return cls(spec)
+
+
+    @classmethod
+    def from_existing(cls, host_dir, mount_point):
+        """Creates a BindMount for an existing mount point.
+
+        @param host_dir: Path of the host dir hosting the bind-mount.
+        @param mount_point: Full path to the mount point (including the host
+                            dir).
+
+        @return An object representing the bind-mount, which can be used to
+                clean it up later.
+        """
+        spec = (host_dir, os.path.relpath(mount_point, host_dir))
+        return cls(spec)
+
 
     def cleanup(self):
         """Cleans up the bind-mount.
 
-        Unmounts the destination, and deletes it if it was created by this
-        object.
+        Unmounts the destination, and deletes it.
         """
-        full_dst = os.path.join(self.dst[0], self.dst[1])
+        full_dst = os.path.join(*list(self.spec))
         utils.run('sudo umount %s' % full_dst)
-        if self._cleanup_dst:
-            utils.run('sudo bash -c "cd %s; rmdir -p %s"' % self.dst)
+        # Ignore errors because bind mount locations are sometimes nested
+        # alongside actual file content (e.g. SSPs install into
+        # /usr/local/autotest so rmdir -p will fail for any mounts located in
+        # /usr/local/autotest).
+        utils.run('sudo bash -c "cd %s; rmdir -p %s"' % self.spec,
+                  ignore_status=True)

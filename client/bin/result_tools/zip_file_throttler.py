@@ -5,6 +5,7 @@
 """This throttler tries to reduce result size by compress files to tgz file.
 """
 
+import re
 import os
 import tarfile
 
@@ -22,6 +23,11 @@ UNZIPPABLE_EXTENSIONS = set([
         '.xz',
         '.zip',
         ])
+
+# Regex for files that should not be compressed.
+UNZIPPABLE_FILE_PATTERNS = [
+        'BUILD_INFO-.*' # ACTS test result files.
+        ]
 
 # Default threshold of file size in byte for it to be qualified for compression.
 # Files smaller than the threshold will not be compressed.
@@ -75,6 +81,14 @@ def _get_zippable_files(file_infos, file_size_threshold_byte):
     for info in file_infos:
         ext = os.path.splitext(info.name)[1].lower()
         if ext in UNZIPPABLE_EXTENSIONS:
+            continue
+
+        match_found = False
+        for pattern in UNZIPPABLE_FILE_PATTERNS:
+            if re.match(pattern, info.name):
+                match_found = True
+                break
+        if match_found:
             continue
 
         if info.trimmed_size <= file_size_threshold_byte:
