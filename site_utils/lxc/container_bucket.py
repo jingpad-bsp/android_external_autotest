@@ -292,15 +292,6 @@ class ContainerBucket(object):
         # Create test container from the base container.
         container = self.create_from_base(name)
 
-        # Update the hostname of the test container to be `dut-name`.
-        # Some TradeFed tests use hostname in test results, which is used to
-        # group test results in dashboard. The default container name is set to
-        # be the name of the folder, which is unique (as it is composed of job
-        # id and timestamp. For better result view, the container's hostname is
-        # set to be a string containing the dut hostname.
-        if dut_name:
-            container.set_hostname(dut_name.replace('.', '-'))
-
         # Deploy server side package
         container.install_ssp(server_package_url)
 
@@ -334,6 +325,16 @@ class ContainerBucket(object):
 
         container.start(name)
         deploy_config_manager.deploy_post_start()
+
+        # Update the hostname of the test container to be `dut-name`.
+        # Some TradeFed tests use hostname in test results, which is used to
+        # group test results in dashboard. The default container name is set to
+        # be the name of the folder, which is unique (as it is composed of job
+        # id and timestamp. For better result view, the container's hostname is
+        # set to be a string containing the dut hostname.
+        if dut_name:
+            container.set_hostname(constants.CONTAINER_UTSNAME_FORMAT %
+                                   dut_name.replace('.', '-'))
 
         container.modify_import_order()
 

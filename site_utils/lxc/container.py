@@ -353,11 +353,22 @@ class Container(object):
 
 
     def set_hostname(self, hostname):
-        """Sets the hostname within the container.  This needs to be called
-        prior to starting the container.
+        """Sets the hostname within the container.
+
+        This method can only be called on a running container.
+
+        @param hostname The new container hostname.
+
+        @raise ContainerError: If the container is not running.
         """
-        self._set_lxc_config('lxc.utsname',
-                             constants.CONTAINER_UTSNAME_FORMAT % hostname)
+        if not self.is_running():
+            raise error.ContainerError(
+                    'set_hostname can only be called on running containers.')
+
+        self.attach_run('hostname %s' % (hostname))
+        self.attach_run(constants.APPEND_CMD_FMT % {
+                'content': '127.0.0.1 %s' % (hostname),
+                'file': '/etc/hosts'})
 
 
     def install_ssp(self, ssp_url):
