@@ -87,16 +87,35 @@ class ContainerTests(unittest.TestCase):
             self.assertEqual(test_name, hostname)
 
 
-    @unittest.skip('Setting the container hostname using lxc.utsname does not'
-                   'work on goobuntu.')
-    def testSetHostnameNotRunning(self):
-        """Verifies that the hostname can be set on a stopped container."""
+    def testSetHostnameRunning(self):
+        """Verifies that the hostname can be set on a running container."""
         with self.createContainer() as container:
             expected_hostname = 'my-new-hostname'
-            container.set_hostname(expected_hostname)
             container.start(wait_for_network=True)
-            hostname = container.attach_run('hostname').stdout.strip()
+            container.set_hostname(expected_hostname)
+            hostname = container.attach_run('hostname -f').stdout.strip()
             self.assertEqual(expected_hostname, hostname)
+
+
+    def testSetHostnameNotRunningRaisesException(self):
+        """Verifies that set_hostname on a stopped container raises an error.
+
+        The lxc.utsname config setting is unreliable (it only works if the
+        original container name is not a valid RFC-952 hostname, e.g. if it has
+        underscores).
+
+        A more reliable method exists for setting the hostname but it requires
+        the container to be running.  To avoid confusion, setting the hostname
+        on a stopped container is disallowed.
+
+        This test verifies that the operation raises a ContainerError.
+        """
+        with self.createContainer() as container:
+            with self.assertRaises(error.ContainerError):
+                # Ensure the container is not running
+                if container.is_running():
+                    raise RuntimeError('Container should not be running.')
+                container.set_hostname('foobar')
 
 
     def testClone(self):

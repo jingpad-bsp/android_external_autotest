@@ -95,16 +95,6 @@ class ZygoteTests(unittest.TestCase):
         # missing.
 
 
-    def testSetHostnameRunning(self):
-        """Verifies that the hostname can be set on a running container."""
-        with self.createZygote() as zygote:
-            expected_hostname = 'my-new-hostname'
-            zygote.start(wait_for_network=True)
-            zygote.set_hostname(expected_hostname)
-            hostname = zygote.attach_run('hostname -f').stdout.strip()
-            self.assertEqual(expected_hostname, hostname)
-
-
     def testHostDir(self):
         """Verifies that the host dir on the container is created, and correctly
         bind-mounted."""
