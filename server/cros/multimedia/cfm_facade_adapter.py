@@ -27,7 +27,7 @@ class CFMFacadeRemoteAdapter(object):
 
     @property
     def _cfm_proxy(self):
-        return self._proxy.cfm
+        return self._proxy.cfm_main_screen
 
 
     def enroll_device(self):
