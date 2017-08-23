@@ -52,6 +52,18 @@ class platform_FilePerms(test.test):
         '/mnt/stateful_partition/encrypted': {
             'type': ['ext4'],
             'options': standard_rw_options},
+        '/opt/google/containers/android/rootfs/android-data/data/dalvik-cache/'
+        'arm': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
+        '/opt/google/containers/android/rootfs/android-data/data/dalvik-cache/'
+        'x86': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
+        '/opt/google/containers/android/rootfs/android-data/data/dalvik-cache/'
+        'x86_64': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
         # Special case - Android container has devices and suid programs.
         # Note that after the user logs in we remount it as "exec",
         # therefore we do not enforce 'noexec'.
@@ -114,6 +126,15 @@ class platform_FilePerms(test.test):
             'device': root_device,
             'type': ['ext2', 'ext4'],
             'options': ['ro', 'nosuid', 'nodev']},
+        '/run/containers/android/root/data/dalvik-cache/arm': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
+        '/run/containers/android/root/data/dalvik-cache/x86': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
+        '/run/containers/android/root/data/dalvik-cache/x86_64': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
         '/run/containers/android/root/dev': {
             'type': ['tmpfs'],
             'options': ['rw', 'nosuid', 'mode=755']},
