@@ -7,7 +7,8 @@ from autotest_lib.server import utils
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50SetBoardId"
 PURPOSE = "Verify cr50-set-board-id"
-TIME = "LONG"
+ATTRIBUTES = "suite:cr50_stress_experimental"
+TIME = "MEDIUM"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
 
