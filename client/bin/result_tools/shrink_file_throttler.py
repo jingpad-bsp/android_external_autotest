@@ -30,7 +30,6 @@ UNSHRINKABLE_EXTENSIONS = set([
 
 # Regex for files that should not be shrunk.
 UNSHRINKABLE_FILE_PATTERNS = [
-        'test_run_.*' # ACTS test result files.
         ]
 
 TRIMMED_FILE_HEADER = '!!! This file is trimmed !!!\n'
