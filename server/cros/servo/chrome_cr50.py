@@ -154,8 +154,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             self._uart_wait_for_reboot(timeout)
 
 
-    def rollback(self, eraseflashinfo=True):
-        """Set the reset counter high enough to force a rollback then reboot"""
+    def rollback(self, eraseflashinfo=True, chip_bid=None, chip_flags=None):
+        """Set the reset counter high enough to force a rollback then reboot
+
+        Set the new board id before rolling back if one is given.
+
+        Args:
+            eraseflashinfo: True if eraseflashinfo should be run before rollback
+            chip_bid: the integer representation of chip board id or None if the
+                      board id should be erased during rollback
+            chip_flags: the integer representation of chip board id flags or
+                        None if the board id should be erased during rollback
+        """
         if not self.has_command('rw') or not self.has_command('eraseflashinfo'):
             raise error.TestError("need image with 'rw' and 'eraseflashinfo'")
 
@@ -164,8 +174,16 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self.send_command('rw 0x40000128 1')
         self.send_command('rw 0x4000012c %d' % (self.MAX_RETRY_COUNT + 2))
 
-        if eraseflashinfo:
+        # Set the board id if both the board id and flags have been given.
+        set_bid = chip_bid and chip_flags
+
+        # Erase the infomap
+        if eraseflashinfo or set_bid:
             self.send_command('eraseflashinfo')
+
+        # Update the board id after it has been erased
+        if set_bid:
+            self.send_command('bid 0x%x 0x%x' % (chip_bid, chip_flags))
 
         self.reboot()
 
