@@ -125,7 +125,6 @@ class subcommand(object):
 
         self.func = func
         self.args = args
-        self.lambda_function = lambda: func(*args)
         self.pid = None
         self.returncode = None
 
@@ -178,7 +177,7 @@ class subcommand(object):
         try:
             for hook in self.fork_hooks:
                 hook(self)
-            result = self.lambda_function()
+            result = self.func(*self.args)
             os.write(w, cPickle.dumps(result, cPickle.HIGHEST_PROTOCOL))
             exit_code = 0
         except Exception, e:
