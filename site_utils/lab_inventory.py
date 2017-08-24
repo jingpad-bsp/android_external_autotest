@@ -270,6 +270,9 @@ class _BoardCounts(object):
 
         """
         pool = host_history.host_pool
+        if pool not in MANAGED_POOLS:
+            raise Exception('Found non-manged pool %s on %s' %
+                            (pool, host_history.host.hostname))
         self._pools[pool].record_host(host_history)
 
 
