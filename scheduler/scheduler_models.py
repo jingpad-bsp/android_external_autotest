@@ -101,59 +101,6 @@ def get_job_metadata(job):
         return {}
 
 
-class DelayedCallTask(object):
-    """
-    A task object like AgentTask for an Agent to run that waits for the
-    specified amount of time to have elapsed before calling the supplied
-    callback once and finishing.  If the callback returns anything, it is
-    assumed to be a new Agent instance and will be added to the dispatcher.
-
-    @attribute end_time: The absolute posix time after which this task will
-            call its callback when it is polled and be finished.
-
-    Also has all attributes required by the Agent class.
-    """
-    def __init__(self, delay_seconds, callback, now_func=None):
-        """
-        @param delay_seconds: The delay in seconds from now that this task
-                will call the supplied callback and be done.
-        @param callback: A callable to be called by this task once after at
-                least delay_seconds time has elapsed.  It must return None
-                or a new Agent instance.
-        @param now_func: A time.time like function.  Default: time.time.
-                Used for testing.
-        """
-        assert delay_seconds > 0
-        assert callable(callback)
-        if not now_func:
-            now_func = time.time
-        self._now_func = now_func
-        self._callback = callback
-
-        self.end_time = self._now_func() + delay_seconds
-
-        # These attributes are required by Agent.
-        self.aborted = False
-        self.host_ids = ()
-        self.success = False
-        self.queue_entry_ids = ()
-        self.num_processes = 0
-
-
-    def poll(self):
-        if not self.is_done() and self._now_func() >= self.end_time:
-            self._callback()
-            self.success = True
-
-
-    def is_done(self):
-        return self.success or self.aborted
-
-
-    def abort(self):
-        self.aborted = True
-
-
 class DBError(Exception):
     """Raised by the DBObject constructor when its select fails."""
 
