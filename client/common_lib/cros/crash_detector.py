@@ -28,6 +28,13 @@ class CrashDetector(object):
         self.crash_files_list = []
 
 
+    def remove_crash_files(self):
+        """Delete crash files from host."""
+        for crash_path in self.crash_paths:
+            self.client.run('rm -rf %s/crash' % crash_path,
+                          ignore_status=True)
+
+
     def add_crash_files(self, crash_files, crash_path):
         """Checks if files list is empty and then adds to files_list
 
@@ -53,25 +60,30 @@ class CrashDetector(object):
                 self.add_crash_files(crash_files, crash_path)
 
 
+    def get_new_crash_files(self):
+        """ Gets the newly generated files since last .
+
+        @returns list of newly generated crashes
+        """
+        self.find_crash_files()
+        files_collected = set(self.files_found)
+        crash_files = set(self.crash_files_list)
+
+        diff = list(files_collected.difference(crash_files))
+        if diff:
+            self.crash_files_list.extend(diff)
+        return diff
+
+
     def is_new_crash_present(self):
         """Checks for kernel, browser, process crashes on host
 
         @returns False if there are no crashes; True otherwise
 
         """
-        is_new_crash = False
-        self.find_crash_files()
-
-        files_collected = set(self.files_found)
-        crash_files = set(self.crash_files_list)
-
-        files_diff = list(files_collected.difference(crash_files))
-
-        if files_diff:
-            is_new_crash = True
-            self.crash_files_list.extend(files_diff)
-
-        return is_new_crash
+        if self.get_new_crash_files():
+            return True
+        return False
 
 
     def get_crash_files(self):
