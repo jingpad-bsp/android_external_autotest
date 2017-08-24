@@ -166,8 +166,6 @@ class DroneManager(object):
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
     _STATS_KEY = 'drone_manager'
 
-    _ACTIVE_PROCESS_GAUGE = metrics.Gauge(
-        'chromeos/autotest/drone/active_processes')
 
 
     def __init__(self):
@@ -441,7 +439,8 @@ class DroneManager(object):
                 info = self._registered_pidfile_info[pidfile_id]
                 if info.num_processes is not None:
                     drone.active_processes += info.num_processes
-        self._ACTIVE_PROCESS_GAUGE.set(
+
+        metrics.Gauge('chromeos/autotest/drone/active_processes').set(
                 drone.active_processes,
                 fields={'drone_hostname': drone.hostname})
 
