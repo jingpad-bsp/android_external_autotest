@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'jimtan'
+AUTHOR = 'ajanti'
 NAME = 'android_ACTS.BluetoothPowerTest_LDAC_CD_MUSIC_SBC'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_bluetooth_power'
+DEPENDENCIES = 'bluetooth_power,sony_relay'
 
 DOC = """
 This test runs power tests for LDAC codec with CD quality music file and SBC codec
