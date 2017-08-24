@@ -19,7 +19,7 @@ class Cr50Test(FirmwareTest):
     version = 1
 
     CR50_GS_URL = 'gs://chromeos-localmirror-private/distfiles/chromeos-cr50-%s/'
-    CR50_DEBUG_FILE = 'cr50_dbg_%s.bin'
+    CR50_DEBUG_FILE = '*/cr50_dbg_%s.bin'
     CR50_PROD_FILE = 'cr50.%s.bin.prod'
 
     def initialize(self, host, cmdline_args, restore_cr50_state=False,

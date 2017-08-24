@@ -19,7 +19,7 @@ MEDIUM_SIZE_BYTE = 800
 SMALL_SIZE_BYTE = 100
 # Maximum result size is set to 3KB so the file with MEDIUM_SIZE_BYTE will be
 # kept.
-MAX_RESULT_SIZE_KB = 3
+MAX_RESULT_SIZE_KB = 4
 # Any file with size above the threshold is qualified to be deleted.
 FILE_SIZE_THRESHOLD_BYTE = 512
 
@@ -44,11 +44,13 @@ SUMMARY_AFTER_THROTTLE = {
                         {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
                     ],
                 utils_lib.ORIGINAL_SIZE_BYTES: 2 * LARGE_SIZE_BYTE,
-                utils_lib.TRIMMED_SIZE_BYTES: LARGE_SIZE_BYTE}}],
+                utils_lib.TRIMMED_SIZE_BYTES: LARGE_SIZE_BYTE}},
+            {'test_run_details.txt': {
+                utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}}],
          utils_lib.ORIGINAL_SIZE_BYTES:
-                5 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
+                6 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
          utils_lib.TRIMMED_SIZE_BYTES:
-                2 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
+                3 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
     }
 
 class ThrottleTest(unittest.TestCase):
@@ -91,6 +93,10 @@ class ThrottleTest(unittest.TestCase):
         file5 = os.path.join(folder2, 'file5')
         unittest_lib.create_file(file5, LARGE_SIZE_BYTE)
         self.files_not_deleted.append(file5)
+
+        test_run = os.path.join(self.test_dir, 'test_run_details.txt')
+        unittest_lib.create_file(test_run, LARGE_SIZE_BYTE)
+        self.files_not_deleted.append(test_run)
 
     def tearDown(self):
         """Cleanup the test directory."""

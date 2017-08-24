@@ -108,20 +108,6 @@ class Zygote(Container):
         self._cleanup_host_mount()
 
 
-    def set_hostname(self, hostname):
-        """Sets the hostname within the container.
-
-        @param hostname The new container hostname.
-        """
-        if self.is_running():
-            self.attach_run('hostname %s' % (hostname))
-            self.attach_run(constants.APPEND_CMD_FMT % {
-                'content': '127.0.0.1 %s' % (hostname),
-                'file': '/etc/hosts'})
-        else:
-            super(Zygote, self).set_hostname(hostname)
-
-
     def install_ssp(self, ssp_url):
         """Downloads and installs the given server package.
 

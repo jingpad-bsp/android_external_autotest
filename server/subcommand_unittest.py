@@ -19,7 +19,6 @@ def _create_subcommand(func, args):
             self.debug = None
             self.pid = None
             self.returncode = None
-            self.lambda_function = lambda: func(*args)
 
     return wrapper(func, args)
 

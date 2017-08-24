@@ -166,8 +166,6 @@ class DroneManager(object):
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
     _STATS_KEY = 'drone_manager'
 
-    _ACTIVE_PROCESS_GAUGE = metrics.Gauge(
-        'chromeos/autotest/drone/active_processes')
 
 
     def __init__(self):
@@ -441,7 +439,8 @@ class DroneManager(object):
                 info = self._registered_pidfile_info[pidfile_id]
                 if info.num_processes is not None:
                     drone.active_processes += info.num_processes
-        self._ACTIVE_PROCESS_GAUGE.set(
+
+        metrics.Gauge('chromeos/autotest/drone/active_processes').set(
                 drone.active_processes,
                 fields={'drone_hostname': drone.hostname})
 
@@ -626,11 +625,7 @@ class DroneManager(object):
 
 
     def _least_loaded_drone(self, drones):
-        drone_to_use = drones[0]
-        for drone in drones[1:]:
-            if drone.used_capacity() < drone_to_use.used_capacity():
-                drone_to_use = drone
-        return drone_to_use
+        return min(drones, key=lambda d: d.used_capacity())
 
 
     def _choose_drone_for_execution(self, num_processes, username,
