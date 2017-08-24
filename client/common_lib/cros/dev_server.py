@@ -718,15 +718,16 @@ class DevServer(object):
         # inside a restricted subnet. If so, only return the devservers in the
         # restricted subnet and doesn't allow retry.
         if host_ip and restricted_subnets:
-            for subnet_ip, mask_bits in restricted_subnets:
-                if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
-                    logging.debug('The host %s (%s) is in a restricted subnet. '
-                                  'Try to locate a devserver inside subnet '
-                                  '%s:%d.', hostname, host_ip, subnet_ip,
-                                  mask_bits)
-                    devservers = cls.get_devservers_in_same_subnet(
-                            subnet_ip, mask_bits)
-                    return devservers, False
+            subnet_ip, mask_bits = _get_subnet_for_host_ip(
+                    host_ip, restricted_subnets=restricted_subnets)
+            if subnet_ip:
+                logging.debug('The host %s (%s) is in a restricted subnet. '
+                              'Try to locate a devserver inside subnet '
+                              '%s:%d.', hostname, host_ip, subnet_ip,
+                              mask_bits)
+                devservers = cls.get_devservers_in_same_subnet(
+                        subnet_ip, mask_bits)
+                return devservers, False
 
         # If prefer_local_devserver is set to True and the host is not in
         # restricted subnet, pick a devserver in the same subnet if possible.
@@ -769,9 +770,18 @@ class DevServer(object):
         if devserver:
             return devserver
         else:
-            error_msg = ('All devservers are currently down: %s. '
+            subnet = None
+            host_ip = bin_utils.get_ip_address(hostname)
+            if host_ip:
+                subnet_ip, mask_bits = _get_subnet_for_host_ip(host_ip)
+                subnet = '%s/%s' % (str(subnet_ip), str(mask_bits))
+
+            c = metrics.Counter(
+                    'chromeos/autotest/devserver/subnet_without_devservers')
+            c.increment(fields={'subnet': subnet, 'hostname': hostname})
+            error_msg = ('All devservers in subnet %s are currently down: %s. '
                          'dut hostname: %s' %
-                         (tried_devservers, hostname))
+                         (subnet, tried_devservers, hostname))
             logging.error(error_msg)
             raise DevServerException(error_msg)
 
@@ -2504,6 +2514,23 @@ def _compare_load(devserver1, devserver2):
 
     """
     return int(devserver1[DevServer.DISK_IO] - devserver2[DevServer.DISK_IO])
+
+
+def _get_subnet_for_host_ip(host_ip,
+                            restricted_subnets=utils.RESTRICTED_SUBNETS):
+    """Get the subnet for a given host IP.
+
+    @param host_ip: the IP of a DUT.
+    @param restricted_subnets: A list of restriected subnets.
+
+    @return: a (subnet_ip, mask_bits) tuple. If no matched subnet for the
+             host_ip, return (None, None).
+    """
+    for subnet_ip, mask_bits in restricted_subnets:
+        if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
+            return subnet_ip, mask_bits
+
+    return None, None
 
 
 def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
