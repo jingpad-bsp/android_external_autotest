@@ -22,7 +22,6 @@ import datetime
 import itertools
 import logging
 import re
-import time
 import weakref
 
 from autotest_lib.client.common_lib import global_config, host_protections

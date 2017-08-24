@@ -625,11 +625,7 @@ class DroneManager(object):
 
 
     def _least_loaded_drone(self, drones):
-        drone_to_use = drones[0]
-        for drone in drones[1:]:
-            if drone.used_capacity() < drone_to_use.used_capacity():
-                drone_to_use = drone
-        return drone_to_use
+        return min(drones, key=lambda d: d.used_capacity())
 
 
     def _choose_drone_for_execution(self, num_processes, username,
