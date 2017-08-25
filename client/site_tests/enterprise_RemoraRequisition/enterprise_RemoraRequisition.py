@@ -38,5 +38,5 @@ class enterprise_RemoraRequisition(test.test):
                            disable_gaia_services=False,
                            disable_default_apps=False,
                            auto_login=False) as cr:
-            self.cfm_facade = cfm_facade_native.CFMFacadeNative(cr)
+            self.cfm_facade = cfm_facade_native.CFMFacadeNative(cr, 'hotrod')
             self.cfm_facade.check_hangout_extension_context()

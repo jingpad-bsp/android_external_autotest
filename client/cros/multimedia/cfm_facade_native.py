@@ -4,7 +4,9 @@
 
 """Facade to access the CFM functionality."""
 
-import logging, time
+import logging
+import time
+import urlparse
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cfm_hangouts_api
@@ -30,12 +32,13 @@ class CFMFacadeNative(object):
     _DEFAULT_TIMEOUT = 30
 
 
-    def __init__(self, resource):
+    def __init__(self, resource, screen):
         """Initializes a CFMFacadeNative.
 
         @param resource: A FacadeResource object.
         """
         self._resource = resource
+        self._screen = screen
 
 
     def enroll_device(self):
@@ -94,6 +97,20 @@ class CFMFacadeNative(object):
                 context.ExecuteJavaScript('chrome.runtime.restart();')
 
 
+    def _get_webview_context_by_screen(self, screen):
+        """Get webview context that matches the screen param in the url.
+
+        @param screen: Value of the screen param, e.g. 'hotrod' or 'control'.
+        """
+        ctxs = kiosk_utils.get_webview_contexts(self._resource._browser,
+                                                self._EXT_ID)
+        for ctx in ctxs:
+            parsed_url = urlparse.urlparse(ctx.GetUrl())
+            if urlparse.parse_qs(parsed_url.query)['screen'][0] == screen:
+                return ctx
+        return None
+
+
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
         self.restart_chrome_for_cfm()
@@ -106,12 +123,11 @@ class CFMFacadeNative(object):
     @property
     def _webview_context(self):
         """Get webview context object."""
-        return kiosk_utils.get_webview_context(
-                self._resource._browser, self._EXT_ID)
+        return self._get_webview_context_by_screen(self._screen)
 
 
     @property
-    def cfmApi(self):
+    def _cfmApi(self):
         """Instantiate appropriate cfm api wrapper"""
         if self._webview_context.EvaluateJavaScript(
                 "typeof window.hrRunDiagnosticsForTest == 'function'"):
@@ -143,24 +159,24 @@ class CFMFacadeNative(object):
     def wait_for_meetings_in_call_page(self):
         """Waits for the in-call page to launch."""
         self.wait_for_meetings_telemetry_commands()
-        self.cfmApi.wait_for_meetings_in_call_page()
+        self._cfmApi.wait_for_meetings_in_call_page()
 
 
     def wait_for_meetings_landing_page(self):
         """Waits for the landing page screen."""
         self.wait_for_meetings_telemetry_commands()
-        self.cfmApi.wait_for_meetings_landing_page()
+        self._cfmApi.wait_for_meetings_landing_page()
 
 
     # UI commands/functions
     def wait_for_oobe_start_page(self):
         """Wait for oobe start screen to launch."""
-        self.cfmApi.wait_for_oobe_start_page()
+        self._cfmApi.wait_for_oobe_start_page()
 
 
     def skip_oobe_screen(self):
         """Skip Chromebox for Meetings oobe screen."""
-        self.cfmApi.skip_oobe_screen()
+        self._cfmApi.skip_oobe_screen()
 
 
     def is_oobe_start_page(self):
@@ -168,7 +184,7 @@ class CFMFacadeNative(object):
 
         @return a boolean, based on oobe start page status.
         """
-        return self.cfmApi.is_oobe_start_page()
+        return self._cfmApi.is_oobe_start_page()
 
 
     # Hangouts commands/functions
@@ -177,12 +193,12 @@ class CFMFacadeNative(object):
 
         @param session_name: Name of the hangout session.
         """
-        self.cfmApi.start_new_hangout_session(session_name)
+        self._cfmApi.start_new_hangout_session(session_name)
 
 
     def end_hangout_session(self):
         """End current hangout session."""
-        self.cfmApi.end_hangout_session()
+        self._cfmApi.end_hangout_session()
 
 
     def is_in_hangout_session(self):
@@ -190,7 +206,7 @@ class CFMFacadeNative(object):
 
         @return a boolean, for hangout session state.
         """
-        return self.cfmApi.is_in_hangout_session()
+        return self._cfmApi.is_in_hangout_session()
 
 
     def is_ready_to_start_hangout_session(self):
@@ -198,7 +214,7 @@ class CFMFacadeNative(object):
 
         @return a boolean for hangout session ready state.
         """
-        return self.cfmApi.is_ready_to_start_hangout_session()
+        return self._cfmApi.is_ready_to_start_hangout_session()
 
 
     def join_meeting_session(self, session_name):
@@ -206,17 +222,17 @@ class CFMFacadeNative(object):
 
         @param session_name: Name of the meeting session.
         """
-        self.cfmApi.join_meeting_session(session_name)
+        self._cfmApi.join_meeting_session(session_name)
 
 
     def start_meeting_session(self):
         """Start a meeting."""
-        self.cfmApi.start_meeting_session()
+        self._cfmApi.start_meeting_session()
 
 
     def end_meeting_session(self):
         """End current meeting session."""
-        self.cfmApi.end_meeting_session()
+        self._cfmApi.end_meeting_session()
 
 
     # Diagnostics commands/functions
@@ -225,17 +241,17 @@ class CFMFacadeNative(object):
 
         @return a boolean for diagnostic run state.
         """
-        return self.cfmApi.is_diagnostic_run_in_progress()
+        return self._cfmApi.is_diagnostic_run_in_progress()
 
 
     def wait_for_diagnostic_run_to_complete(self):
         """Wait for hotrod diagnostics to complete."""
-        self.cfmApi.wait_for_diagnostic_run_to_complete()
+        self._cfmApi.wait_for_diagnostic_run_to_complete()
 
 
     def run_diagnostics(self):
         """Run hotrod diagnostics."""
-        self.cfmApi.run_diagnostics()
+        self._cfmApi.run_diagnostics()
 
 
     def get_last_diagnostics_results(self):
@@ -243,7 +259,7 @@ class CFMFacadeNative(object):
 
         @return a dict with diagnostic test results.
         """
-        return self.cfmApi.get_last_diagnostics_results()
+        return self._cfmApi.get_last_diagnostics_results()
 
 
     # Mic audio commands/functions
@@ -252,27 +268,27 @@ class CFMFacadeNative(object):
 
         @return a boolean for mic mute state.
         """
-        return self.cfmApi.is_mic_muted()
+        return self._cfmApi.is_mic_muted()
 
 
     def mute_mic(self):
         """Local mic mute from toolbar."""
-        self.cfmApi.mute_mic()
+        self._cfmApi.mute_mic()
 
 
     def unmute_mic(self):
         """Local mic unmute from toolbar."""
-        self.cfmApi.unmute_mic()
+        self._cfmApi.unmute_mic()
 
 
     def remote_mute_mic(self):
         """Remote mic mute request from cPanel."""
-        self.cfmApi.remote_mute_mic()
+        self._cfmApi.remote_mute_mic()
 
 
     def remote_unmute_mic(self):
         """Remote mic unmute request from cPanel."""
-        self.cfmApi.remote_unmute_mic()
+        self._cfmApi.remote_unmute_mic()
 
 
     def get_mic_devices(self):
@@ -280,7 +296,7 @@ class CFMFacadeNative(object):
 
         @return a list of mic devices.
         """
-        return self.cfmApi.get_mic_devices()
+        return self._cfmApi.get_mic_devices()
 
 
     def get_preferred_mic(self):
@@ -288,7 +304,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred mic name.
         """
-        return self.cfmApi.get_preferred_mic()
+        return self._cfmApi.get_preferred_mic()
 
 
     def set_preferred_mic(self, mic):
@@ -296,7 +312,7 @@ class CFMFacadeNative(object):
 
         @param mic: String with mic name.
         """
-        self.cfmApi.set_preferred_mic(mic)
+        self._cfmApi.set_preferred_mic(mic)
 
 
     # Speaker commands/functions
@@ -305,7 +321,7 @@ class CFMFacadeNative(object):
 
         @return a list of speaker devices.
         """
-        return self.cfmApi.get_speaker_devices()
+        return self._cfmApi.get_speaker_devices()
 
 
     def get_preferred_speaker(self):
@@ -313,7 +329,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred speaker name.
         """
-        return self.cfmApi.get_preferred_speaker()
+        return self._cfmApi.get_preferred_speaker()
 
 
     def set_preferred_speaker(self, speaker):
@@ -321,7 +337,7 @@ class CFMFacadeNative(object):
 
         @param speaker: String with speaker name.
         """
-        self.cfmApi.set_preferred_speaker(speaker)
+        self._cfmApi.set_preferred_speaker(speaker)
 
 
     def set_speaker_volume(self, volume_level):
@@ -329,7 +345,7 @@ class CFMFacadeNative(object):
 
         @param volume_level: String value ranging from 0-100 to set volume to.
         """
-        self.cfmApi.set_speaker_volume(volume_level)
+        self._cfmApi.set_speaker_volume(volume_level)
 
 
     def get_speaker_volume(self):
@@ -337,12 +353,12 @@ class CFMFacadeNative(object):
 
         @return a str value with speaker volume level 0-100.
         """
-        return self.cfmApi.get_speaker_volume()
+        return self._cfmApi.get_speaker_volume()
 
 
     def play_test_sound(self):
         """Play test sound."""
-        self.cfmApi.play_test_sound()
+        self._cfmApi.play_test_sound()
 
 
     # Camera commands/functions
@@ -351,7 +367,7 @@ class CFMFacadeNative(object):
 
         @return a list of camera devices.
         """
-        return self.cfmApi.get_camera_devices()
+        return self._cfmApi.get_camera_devices()
 
 
     def get_preferred_camera(self):
@@ -359,7 +375,7 @@ class CFMFacadeNative(object):
 
         @return a str with preferred camera name.
         """
-        return self.cfmApi.get_preferred_camera()
+        return self._cfmApi.get_preferred_camera()
 
 
     def set_preferred_camera(self, camera):
@@ -367,7 +383,7 @@ class CFMFacadeNative(object):
 
         @param camera: String with camera name.
         """
-        self.cfmApi.set_preferred_camera(camera)
+        self._cfmApi.set_preferred_camera(camera)
 
 
     def is_camera_muted(self):
@@ -375,14 +391,14 @@ class CFMFacadeNative(object):
 
         @return a boolean for camera muted state.
         """
-        return self.cfmApi.is_camera_muted()
+        return self._cfmApi.is_camera_muted()
 
 
     def mute_camera(self):
         """Turned camera off."""
-        self.cfmApi.mute_camera()
+        self._cfmApi.mute_camera()
 
 
     def unmute_camera(self):
         """Turned camera on."""
-        self.cfmApi.unmute_camera()
+        self._cfmApi.unmute_camera()
