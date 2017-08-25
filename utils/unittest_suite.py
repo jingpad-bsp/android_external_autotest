@@ -108,6 +108,7 @@ SKIP = set((
     'des_01_test.py',
     'des_02_test.py',
     # Require lxc to be installed
+    'base_image_unittest.py',
     'container_bucket_unittest.py',
     'container_unittest.py',
     'lxc_functional_test.py',

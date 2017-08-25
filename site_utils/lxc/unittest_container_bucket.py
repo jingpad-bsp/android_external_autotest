@@ -29,7 +29,7 @@ class FastContainerBucket(lxc.ContainerBucket):
 
                 # Clone the base container (snapshot for speed) to make a base
                 # container for the unit test.
-                base = lxc.Container.createFromExistingDir(
+                base = lxc.Container.create_from_existing_dir(
                         constants.DEFAULT_CONTAINER_PATH, constants.BASE)
                 lxc.Container.clone(src=base,
                                     new_name=constants.BASE,
@@ -40,7 +40,7 @@ class FastContainerBucket(lxc.ContainerBucket):
         finally:
             super(FastContainerBucket, self).__init__(lxc_path, host_path)
             if self.base_container is not None:
-                self._setup_shared_host_path()
+                self.setup_shared_host_path()
 
 
     def setup_base(self, *args, **kwargs):
