@@ -252,28 +252,14 @@ class Zygote(Container):
         associated with the container can be reconstructed.  This enables proper
         cleanup later.
         """
-        with open('/proc/self/mountinfo') as f:
-            for mountinfo in f.readlines():
-                mountpoint = mountinfo.split()[4]
-                # Check for bind mounts in the host and host_ro directories, and
-                # re-add them to self.mounts.
-                if _is_subdir(self.host_path, mountpoint):
-                    logging.debug('mount: %s', mountpoint)
-                    self.mounts.append(lxc_utils.BindMount.from_existing(
-                        self.host_path, mountpoint))
-                elif _is_subdir(self.host_path_ro, mountpoint):
-                    logging.debug('mount_ro: %s', mountpoint)
-                    self.mounts.append(lxc_utils.BindMount.from_existing(
-                        self.host_path_ro, mountpoint))
-
-
-def _is_subdir(parent, subdir):
-    """Determines whether the given subdir exists under the given parent dir.
-
-    @param parent: The parent directory.
-    @param subidr: The subdirectory.
-    """
-    # Append a trailing path separator because commonprefix basically just
-    # performs a prefix string comparison.
-    parent = os.path.join(parent, '')
-    return os.path.commonprefix([parent, subdir]) == parent
+        for info in lxc_utils.get_mount_info():
+            # Check for bind mounts in the host and host_ro directories, and
+            # re-add them to self.mounts.
+            if lxc_utils.is_subdir(self.host_path, info.mount_point):
+                logging.debug('mount: %s', info.mount_point)
+                self.mounts.append(lxc_utils.BindMount.from_existing(
+                        self.host_path, info.mount_point))
+            elif lxc_utils.is_subdir(self.host_path_ro, info.mount_point):
+                logging.debug('mount_ro: %s', info.mount_point)
+                self.mounts.append(lxc_utils.BindMount.from_existing(
+                        self.host_path_ro, info.mount_point))
