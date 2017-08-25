@@ -35,6 +35,13 @@ NON_THROTTLEABLE_FILE_NAMES = set([
         'test_run_summary.json',
         ])
 
+# A list of file name patterns that should not be throttled, that is, not
+# modified by deletion, deduping, trimming or compression.
+NON_THROTTLEABLE_FILE_PATTERNS = [
+        '.*/BUILD_INFO-.*',   # ACTS test result files.
+        '.*/AndroidDevice.*', # ACTS test result files.
+        ]
+
 # Regex of result files sorted based on priority. Files can be throttled first
 # have higher priority.
 RESULT_THROTTLE_PRIORITY = [
@@ -107,7 +114,7 @@ def get_throttleable_files(file_infos, extra_patterns=[]):
         if info.name in NON_THROTTLEABLE_FILE_NAMES:
             continue
         pattern_matched = False
-        for pattern in extra_patterns:
+        for pattern in extra_patterns + NON_THROTTLEABLE_FILE_PATTERNS:
             if re.match(pattern, info.path):
                 pattern_matched = True
                 break
