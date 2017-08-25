@@ -5,6 +5,7 @@
 """This module provides some utilities used by LXC and its tools.
 """
 
+import collections
 import os
 import shutil
 import tempfile
@@ -179,3 +180,56 @@ class BindMount(object):
         # /usr/local/autotest).
         utils.run('sudo bash -c "cd %s; rmdir -p %s"' % self.spec,
                   ignore_status=True)
+
+
+MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])
+
+
+def get_mount_info(mount_point=None):
+    """Retrieves information about currently mounted file systems.
+
+    @param mount_point: (optional) The mount point (a path).  If this is
+                        provided, only information about the given mount point
+                        is returned.  If this is omitted, info about all mount
+                        points is returned.
+
+    @return A generator yielding one MountInfo object for each relevant mount
+            found in /proc/self/mountinfo.
+    """
+    with open('/proc/self/mountinfo') as f:
+        for line in f.readlines():
+            # These lines are formatted according to the proc(5) manpage.
+            # Sample line:
+            # 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root \
+            #     rw,errors=continue
+            # Fields (descriptions omitted for fields we don't care about)
+            # 3: the root of the mount.
+            # 4: the mount point.
+            # 5: mount options.
+            # 6: tags.  There can be more than one of these.  This is where
+            #    shared mounts are indicated.
+            # 7: a dash separator marking the end of the tags.
+            mountinfo = line.split()
+            if mount_point is None or mountinfo[4] == mount_point:
+                tags = []
+                for field in mountinfo[6:]:
+                    if field == '-':
+                        break
+                    tags.append(field.split(':')[0])
+                yield MountInfo(root = mountinfo[3],
+                                mount_point = mountinfo[4],
+                                tags = tags)
+
+
+def is_subdir(parent, subdir):
+    """Determines whether the given subdir exists under the given parent dir.
+
+    @param parent: The parent directory.
+    @param subdir: The subdirectory.
+
+    @return True if the subdir exists under the parent dir, False otherwise.
+    """
+    # Append a trailing path separator because commonprefix basically just
+    # performs a prefix string comparison.
+    parent = os.path.join(parent, '')
+    return os.path.commonprefix([parent, subdir]) == parent
