@@ -13,6 +13,7 @@ import utils_lib
 # file.
 UNSHRINKABLE_EXTENSIONS = set([
         '.bin',
+        '.data',
         '.dmp',
         '.gz',
         '.htm',
