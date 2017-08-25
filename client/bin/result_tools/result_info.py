@@ -204,7 +204,14 @@ class ResultInfo(dict):
             self.trimmed_size = original_info[self.name][
                     utils_lib.TRIMMED_SIZE_BYTES]
         if self.is_dir:
-            for sub_file in original_info[self.name][utils_lib.DIRS]:
+            dirs = original_info[self.name][utils_lib.DIRS]
+            # TODO: Remove this conversion after R62 is in stable channel.
+            if isinstance(dirs, dict):
+                # The summary is generated from older format which stores sub-
+                # directories in a dictionary, rather than a list. Convert the
+                # data in old format to a list of dictionary.
+                dirs = [{dir_name: dirs[dir_name]} for dir_name in dirs]
+            for sub_file in dirs:
                 self.add_file(None, sub_file)
 
     def update_dir_original_size(self):
