@@ -202,19 +202,29 @@ class ContainerBucket(object):
         self.base_container = Container.createFromExistingDir(
                 self.container_path, name)
 
-        self._setup_shared_host_path()
+        self._setup_shared_host_path(force_delete)
 
 
-    def _setup_shared_host_path(self):
-        """Sets up the shared host directory."""
-        # First, clear out the old shared host dir if it exists.
+    def _setup_shared_host_path(self, force_delete=False):
+        """Sets up the shared host directory.
+
+        @param force_delete: If True, the host dir will be cleared and
+                             reinitialized if it already exists.
+        """
+        # If the host dir exists and is valid and force_delete is not set, there
+        # is nothing to do.  Otherwise, clear the host dir if it exists, then
+        # recreate it.
         if lxc_utils.path_exists(self.shared_host_path):
-            self._cleanup_shared_host_path()
-        # Create the dir and set it up as a shared mount point.
-        utils.run(('sudo mkdir "{path}" && '
-                   'sudo mount --bind "{path}" "{path}" && '
-                   'sudo mount --make-shared "{path}"')
-                  .format(path=self.shared_host_path))
+            if not force_delete and self._verify_shared_host_path():
+                return
+            else:
+                self._cleanup_shared_host_path()
+
+        utils.run('sudo mkdir "%(path)s" && '
+                  'sudo mount --bind "%(path)s" "%(path)s" && '
+                  'sudo mount --make-shared "%(path)s"' % {
+                          'path': self.shared_host_path
+                  })
 
 
     def _cleanup_shared_host_path(self):
@@ -227,14 +237,27 @@ class ContainerBucket(object):
         if not os.path.exists(self.shared_host_path):
             return
 
-        if len(os.listdir(self.shared_host_path)) > 0:
-            raise RuntimeError('Attempting to clean up host dir before all '
-                               'hosts have been disconnected')
+        # Unmount and delete everything in the host path.
+        for info in lxc_utils.get_mount_info():
+            if lxc_utils.is_subdir(self.shared_host_path, info.mount_point):
+                utils.run('sudo umount "%s"' % info.mount_point)
+
         # It's possible that the directory is no longer mounted (e.g. if the
         # system was rebooted), so check before unmounting.
         utils.run('if findmnt "%s" > /dev/null; then sudo umount "%s"; fi' %
                   (self.shared_host_path, self.shared_host_path))
-        utils.run('sudo rmdir "%s"' % self.shared_host_path)
+        utils.run('sudo rm -r "%s"' % self.shared_host_path)
+
+
+    def _verify_shared_host_path(self):
+        """Verifies that the shared host directory is set up correctly."""
+        logging.debug('Verifying existing host path: %s', self.shared_host_path)
+        host_mount = list(lxc_utils.get_mount_info(self.shared_host_path))
+        if host_mount:
+            # Check that the host mount is shared
+            logging.debug("Host mount: %r", host_mount)
+            return 'shared' in host_mount[0].tags
+        return False
 
 
     @metrics.SecondsTimerDecorator(
