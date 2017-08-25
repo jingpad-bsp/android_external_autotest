@@ -23,5 +23,5 @@ streams. The tests randomly pauses and plays the streams.
 This is a regression test for bug 718369.
 """
 
-job.run_test("webrtc_PausePlayPeerConnections", element_type='video')
+job.run_test("webrtc_PausePlayPeerConnections", element_type='video', tag='video')
 
