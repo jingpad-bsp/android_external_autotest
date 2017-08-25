@@ -306,8 +306,9 @@ class Autotest(installable_object.InstallableObject):
         # are fetched on that client. (for the tests,deps etc.
         # too apart from the client)
         pkg_dir = os.path.join(autodir, 'packages')
-        # clean up the autodir except for the packages directory
-        host.run('cd %s && ls | grep -v "^packages$"'
+        # clean up the autodir except for the packages and result_tools
+        # directory.
+        host.run('cd %s && ls | grep -v "^packages$" | grep -v "^result_tools$"'
                  ' | xargs rm -rf && rm -rf .[!.]*' % autodir)
         pkgmgr.install_pkg('autotest', 'client', pkg_dir, autodir,
                            preserve_install_dir=True)
