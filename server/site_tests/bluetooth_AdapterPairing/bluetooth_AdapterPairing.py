@@ -111,7 +111,7 @@ class bluetooth_AdapterPairing(
                 # After a suspend/resume, we need to wake the peripheral
                 # as it is not connected.
                 time.sleep(self.TEST_SLEEP_SECS)
-                self.test_connection_by_device(device.address)
+                self.test_connection_by_device(device)
 
                 time.sleep(self.TEST_SLEEP_SECS)
                 self.test_device_name(device.address, device.name)
