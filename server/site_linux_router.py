@@ -73,7 +73,14 @@ def build_router_proxy(test_name='', client_hostname=None, router_addr=None,
         raise error.TestError('Router at %s is not pingable.' %
                               router_hostname)
 
-    return LinuxRouter(hosts.create_host(router_hostname), test_name,
+    # Use CrosHost for all router hosts and avoid host detection.
+    # Host detection would use JetstreamHost for Whirlwind routers.
+    # JetstreamHost assumes ap-daemons are running.
+    # Testbed routers run the testbed-ap profile with no ap-daemons.
+    # TODO(ecgh): crbug.com/757075 Fix testbed-ap JetstreamHost detection.
+    return LinuxRouter(hosts.create_host(router_hostname,
+                                         host_class=hosts.CrosHost),
+                       test_name,
                        enable_avahi=enable_avahi)
 
 
