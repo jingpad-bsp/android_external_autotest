@@ -20,6 +20,7 @@ import time
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_logging
 
@@ -361,6 +362,11 @@ if __name__ == '__main__':
     options = parse_options()
     try:
         main(options)
+    except:
+        # If the cleanup code below raises additional errors, they obfuscate the
+        # actual error in the test.  Highlight the error to aid in debugging.
+        logging.exception('ERROR:\n%s', error.format_error())
+        raise
     finally:
         if not options.skip_cleanup:
             logging.info('Cleaning up temporary directory %s.', TEMP_DIR)
