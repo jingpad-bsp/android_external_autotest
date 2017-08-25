@@ -19,7 +19,7 @@ MEDIUM_SIZE_BYTE = 800
 SMALL_SIZE_BYTE = 100
 # Maximum result size is set to 3KB so the file with MEDIUM_SIZE_BYTE will be
 # kept.
-MAX_RESULT_SIZE_KB = 4
+MAX_RESULT_SIZE_KB = 5
 # Any file with size above the threshold is qualified to be deleted.
 FILE_SIZE_THRESHOLD_BYTE = 512
 
@@ -29,6 +29,8 @@ SUMMARY_AFTER_THROTTLE = {
                 utils_lib.DIRS: [
                     {'file5': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
                     ],
+                utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
+            {'chrome.123.perf.data': {
                 utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}},
             {'file1.xml': {utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE,
                           utils_lib.TRIMMED_SIZE_BYTES: 0}},
@@ -48,9 +50,9 @@ SUMMARY_AFTER_THROTTLE = {
             {'test_run_details.txt': {
                 utils_lib.ORIGINAL_SIZE_BYTES: LARGE_SIZE_BYTE}}],
          utils_lib.ORIGINAL_SIZE_BYTES:
-                6 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
+                7 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE,
          utils_lib.TRIMMED_SIZE_BYTES:
-                3 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
+                4 * LARGE_SIZE_BYTE + SMALL_SIZE_BYTE + MEDIUM_SIZE_BYTE}
     }
 
 class ThrottleTest(unittest.TestCase):
@@ -97,6 +99,10 @@ class ThrottleTest(unittest.TestCase):
         test_run = os.path.join(self.test_dir, 'test_run_details.txt')
         unittest_lib.create_file(test_run, LARGE_SIZE_BYTE)
         self.files_not_deleted.append(test_run)
+
+        perf_data = os.path.join(self.test_dir, 'chrome.123.perf.data')
+        unittest_lib.create_file(perf_data, LARGE_SIZE_BYTE)
+        self.files_not_deleted.append(perf_data)
 
     def tearDown(self):
         """Cleanup the test directory."""
