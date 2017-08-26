@@ -480,7 +480,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             'AUTOSERV', 'auto_start_servod', type=bool, default=False)
 
     site_utils.SetupTsMonGlobalState('autoserv', indirect=False,
-                                     short_lived=True)
+                                     auto_flush=False, short_lived=True)
     try:
         try:
             if repair:
