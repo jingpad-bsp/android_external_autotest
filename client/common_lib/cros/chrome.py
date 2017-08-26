@@ -264,7 +264,7 @@ class Chrome(object):
 
 
     @staticmethod
-    def wait_for_browser_restart(func):
+    def wait_for_browser_restart(func, browser):
         """Runs func, and waits for a browser restart.
 
         @param func: function to run.
@@ -274,6 +274,7 @@ class Chrome(object):
         pid = _cri.GetChromePid()
         Chrome.did_browser_crash(func)
         utils.poll_for_condition(lambda: pid != _cri.GetChromePid(), timeout=60)
+        browser.WaitForBrowserToComeUp()
 
 
     def wait_for_browser_to_come_up(self):

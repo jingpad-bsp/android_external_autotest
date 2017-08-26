@@ -23,7 +23,8 @@ def SwitchToRemora(browser):
     """
     chrome.Chrome.wait_for_browser_restart(
             lambda: _ExecuteOobeCmd(browser,
-                                    'Oobe.remoraRequisitionForTesting();'))
+                                    'Oobe.remoraRequisitionForTesting();'),
+            browser)
     utils.poll_for_condition(lambda: browser.oobe_exists, timeout=30)
 
 
@@ -35,10 +36,9 @@ def RemoraEnrollment(browser, user_id, password):
     @param password: login credentials password.
     """
     SwitchToRemora(browser)
-    chrome.Chrome.wait_for_browser_restart(
-            lambda: browser.oobe.NavigateGaiaLogin(
-                    user_id, password, enterprise_enroll=True,
-                    for_user_triggered_enrollment=False))
+    browser.oobe.NavigateGaiaLogin(
+            user_id, password, enterprise_enroll=True,
+            for_user_triggered_enrollment=False)
 
 
 def EnterpriseEnrollment(browser, user_id, password):
@@ -48,7 +48,6 @@ def EnterpriseEnrollment(browser, user_id, password):
     @param user_id: login credentials user_id.
     @param password: login credentials password.
     """
-    chrome.Chrome.wait_for_browser_restart(
-            lambda: browser.oobe.NavigateGaiaLogin(
-                    user_id, password, enterprise_enroll=True,
-                    for_user_triggered_enrollment=True))
+    browser.oobe.NavigateGaiaLogin(user_id, password,
+                                   enterprise_enroll=True,
+                                   for_user_triggered_enrollment=True)
