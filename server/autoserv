@@ -30,8 +30,11 @@ from autotest_lib.server import results_mocker
 
 try:
     from chromite.lib import metrics
+    from chromite.lib import cloud_trace
 except ImportError:
     metrics = utils.metrics_mock
+    import mock
+    cloud_trace = mock.MagicMock()
 
 _CONFIG = global_config.global_config
 
@@ -422,7 +425,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     no_use_packaging = parser.options.no_use_packaging
     host_attributes = parser.options.host_attributes
     in_lab = bool(parser.options.lab)
-    cloud_trace_context = parser.options.cloud_trace_context
 
     # can't be both a client and a server side test
     if client and server:
@@ -579,7 +581,7 @@ def record_autoserv(options, start_time):
     # Determine the status that will be reported.
     status = get_job_status(options)
     is_special_task = status not in [
-            job_overhead.Status.RUNNING, job_overhead.Status.GATHERING]
+            job_overhead.STATUS.RUNNING, job_overhead.STATUS.GATHERING]
     job_or_task_id = job_directories.get_job_id_or_task_id(options.results)
     duration_secs = (datetime.datetime.now() - start_time).total_seconds()
     job_overhead.record_state_duration(
@@ -719,6 +721,15 @@ def main():
     is_task = (parser.options.verify or parser.options.repair or
                parser.options.provision or parser.options.reset or
                parser.options.cleanup or parser.options.collect_crashinfo)
+
+    trace_labels = {
+            'job_id': job_directories.get_job_id_or_task_id(
+                    parser.options.results)
+    }
+    trace = cloud_trace.SpanStack(
+            labels=trace_labels,
+            global_context=parser.options.cloud_trace_context)
+    trace.enabled = parser.options.cloud_trace_context_enabled == 'True'
     try:
         try:
             if test_mode:
@@ -738,8 +749,9 @@ def main():
                             ).mock_results()
                 return
             else:
-                run_autoserv(pid_file_manager, results, parser, ssp_url,
-                             use_ssp)
+                with trace.Span(get_job_status(parser.options)):
+                    run_autoserv(pid_file_manager, results, parser, ssp_url,
+                                 use_ssp)
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
