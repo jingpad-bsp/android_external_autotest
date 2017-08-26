@@ -69,6 +69,9 @@ def run(machine):
         # USB Web camera
         "cat /sys/class/video4linux/video*/name | grep -E " :
             ["\"TeckNet|USB 2.0 PC Camera\""],
+        "eval /usr/local/autotest/tests/camera_V4L2/media_v4l2_test --device=/dev/video$"
+        "(ls /dev/video* | tail -n1 | cut -b11) | grep -E " :
+            ["\"TestResolutions pass\""],
         }
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
