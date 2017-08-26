@@ -259,6 +259,25 @@ class platform_ExternalUsbPeripherals(test.test):
         logging.debug('Connected devices list: %s', self.diff_list)
 
 
+    def prep_servo_for_test(self, stress_rack):
+        """Connects servo to DUT  and sets servo ports
+
+        @param stress_rack: either to prep servo for stress tests, where
+        usb_mux_1 port should be on. For usb peripherals on usb_mux_3,
+        the port is on, and the oe2,oe4 poers are off.
+        """
+        self.host.servo.switch_usbkey('dut')
+        self.host.servo.set('dut_hub1_rst1','off')
+        self.plug_peripherals(False)
+        if (stress_rack):
+            self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        else:
+            self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.host.servo.set('usb_mux_oe2', 'off')
+            self.host.servo.set('usb_mux_oe4', 'off')
+        time.sleep(_WAIT_DELAY)
+
+
     def cleanup(self):
         """Disconnect servo hub"""
         self.plug_peripherals(False)
@@ -281,16 +300,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.fail_reasons = list()
         self.action_step = None
 
-        self.host.servo.switch_usbkey('dut')
-        self.host.servo.set('dut_hub1_rst1','off')
-        self.plug_peripherals(False)
-        if (stress_rack):
-            self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
-        else:
-            self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
-            self.host.servo.set('usb_mux_oe2', 'off')
-            self.host.servo.set('usb_mux_oe4', 'off')
-        time.sleep(_WAIT_DELAY)
+        self.prep_servo_for_test(stress_rack)
 
         # Unplug, plug, compare usb peripherals, and leave plugged.
         self.check_connected_peripherals()
@@ -300,6 +310,11 @@ class platform_ExternalUsbPeripherals(test.test):
         boot_id = 0
         self. detect_crash = crash_detector.CrashDetector(self.host)
         self.detect_crash.remove_crash_files()
+
+        # Run camera client test to gather media_V4L2_test binary.
+        if 'media_v4l2_test' in str(self.usb_checks):
+            self.autotest_client.run_test("camera_V4L2")
+
         for iteration in xrange(1, repeat + 1):
             step = 0
             for action in actions:
