@@ -25,7 +25,6 @@ NEWEST_FILES_TO_KEEP_COUNT = 1
 NO_DEDUPE_FILE_PATTERNS = [
         'debug/.*',
         '.*perf.data$',       # Performance test data.
-        '.*/AndroidDevice.*', # Used for test tracker.
         '.*/debug/.*',
         '.*dir_summary_\d+.json',
         ]

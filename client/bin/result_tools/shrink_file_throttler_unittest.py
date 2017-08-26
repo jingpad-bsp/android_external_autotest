@@ -21,6 +21,8 @@ LARGE_SIZE_BYTE = 100 * 1024
 
 SUMMARY_AFTER_TRIMMING = {
     '': {utils_lib.DIRS: [
+            {'BUILD_INFO-HT7591A00171': {
+                    utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}},
             {'file1.xml': {utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}},
             {'file2.jpg': {utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}},
             {'file3.log': {utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE,
@@ -34,9 +36,9 @@ SUMMARY_AFTER_TRIMMING = {
                 utils_lib.TRIMMED_SIZE_BYTES: FILE_SIZE_LIMIT_BYTE}},
             {'test_run_details.txt': {
                     utils_lib.ORIGINAL_SIZE_BYTES: ORIGINAL_SIZE_BYTE}}],
-         utils_lib.ORIGINAL_SIZE_BYTES: 5 * ORIGINAL_SIZE_BYTE,
+         utils_lib.ORIGINAL_SIZE_BYTES: 6 * ORIGINAL_SIZE_BYTE,
          utils_lib.TRIMMED_SIZE_BYTES: (
-                 3 * ORIGINAL_SIZE_BYTE + 2 * FILE_SIZE_LIMIT_BYTE)}
+                 4 * ORIGINAL_SIZE_BYTE + 2 * FILE_SIZE_LIMIT_BYTE)}
     }
 
 OLD_TIME = 1498800000
@@ -49,6 +51,10 @@ class ShrinkFileThrottleTest(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         self.files_not_shrink = []
         self.files_to_shrink = []
+
+        build_info = os.path.join(self.test_dir, 'BUILD_INFO-HT7591A00171')
+        unittest_lib.create_file(build_info, ORIGINAL_SIZE_BYTE)
+        self.files_not_shrink.append(build_info)
 
         file1 = os.path.join(self.test_dir, 'file1.xml')
         unittest_lib.create_file(file1, ORIGINAL_SIZE_BYTE)
