@@ -36,7 +36,6 @@ import datetime
 import logging
 import os
 import sys
-import warnings
 
 from django.db import connection as db_connection
 from django.db import transaction
@@ -1887,15 +1886,18 @@ def create_suite_job(
     if is_cloning:
         control_file = tools.remove_injection(control_file)
 
-    if isinstance(suite_args, str):
-        # TODO(ayatane): suite_args used to be passed as a string and
-        # evaluated later.
-        suite_args = ast.literal_eval(suite_args)
-    if not isinstance(suite_args, dict):
-        if suite_args is not None:
-            warnings.warn('suite_args should be None or dict, passed as %r'
-                          % (suite_args,))
+    if suite_args is None:
         suite_args = dict()
+
+    # TODO(crbug.com/758427): suite_args_raw is needed to run old tests
+    if 'tests' in suite_args:
+        # TODO(crbug.com/758427): test_that used to have its own
+        # snowflake implementation of parsing command line arguments in
+        # the test
+        suite_args_raw = ' '.join([':lab:'] + suite_args['tests'])
+    else:
+        # TODO(crbug.com/758427): This is for suite_attr_wrapper
+        suite_args_raw = repr(suite_args)
 
     inject_dict = {
         'board': board,
@@ -1911,6 +1913,9 @@ def create_suite_job(
         'timeout_mins': timeout_mins,
         'devserver_url': ds.url(),
         'priority': priority,
+        # TODO(crbug.com/758427): injecting suite_args is needed to run
+        # old tests
+        'suite_args' : suite_args_raw,
         'wait_for_results': wait_for_results,
         'job_retry': job_retry,
         'max_retries': max_retries,
