@@ -5,7 +5,6 @@
 
 import argparse
 import os
-import pipes
 import signal
 import subprocess
 import sys
@@ -315,7 +314,7 @@ def _main_for_lab_run(argv, arguments):
                '--pool=%s' % (arguments.pool,),
                '--max_runtime_mins=%s' % str(arguments.max_runtime_mins),
                '--suite_args=%s'
-               % (pipes.quote(repr({'tests': _suite_arg_tests(argv)})),)]
+               % repr({'tests': _suite_arg_tests(argv)})]
     if arguments.web:
         command.extend(['--web=%s' % (arguments.web,)])
     logging.info('About to start lab suite with command %s.', command)

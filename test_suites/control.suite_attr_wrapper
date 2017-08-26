@@ -22,6 +22,7 @@ expression.
 @param check_hosts: require appropriate live hosts to exist in the lab.
 @param SKIP_IMAGE: (optional) If present and True, don't re-image devices.
 """
+import ast
 import logging
 
 import common
@@ -30,6 +31,11 @@ from autotest_lib.server.cros.dynamic_suite import suite
 from autotest_lib.server.cros import provision
 
 # Get the predicate object from attr_filter argument
+
+# TODO(crbug.com/758427): suite_args needed to support being run by old Autotest
+if 'attr_filter' not in args_dict:
+    args_dict['attr_filter'] = ast.literal_eval(suite_args)
+
 try:
     attr = args_dict['attr_filter']
     attr_predicate = suite.Suite.matches_attribute_expression_predicate(attr)
