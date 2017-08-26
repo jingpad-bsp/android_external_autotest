@@ -24,5 +24,5 @@ class enterprise_RemoraRequisition(test.test):
         with chrome.Chrome(auto_login=False,
                            disable_gaia_services=False) as cr:
             enrollment.RemoraEnrollment(cr.browser, user_id, password)
-            self.cfm_facade = cfm_facade_native.CFMFacadeNative(cr)
+            self.cfm_facade = cfm_facade_native.CFMFacadeNative(cr, 'hotrod')
             self.cfm_facade.check_hangout_extension_context()
