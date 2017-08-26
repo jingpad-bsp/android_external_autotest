@@ -30,6 +30,12 @@ def predicate(test):
   name = test.name[test.name.find('.') + 1:]
   if name not in args_dict.get('tests', ()):
     return False
+  # TODO(crbug.com/758427): suite_args needed to support being run by old Autotest
+  try:
+    if name not in suite_args:
+      return False
+  except NameError:
+    pass
   return True
 
 args_dict['name'] = NAME
