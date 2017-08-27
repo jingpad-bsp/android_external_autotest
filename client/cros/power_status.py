@@ -772,8 +772,8 @@ class CPUPackageStats(AbstractStats):
     ATOM         =              {'C2': 0x3F8, 'C4': 0x3F9, 'C6': 0x3FA}
     NEHALEM      =              {'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
     SANDY_BRIDGE = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
-    HASWELL      = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA,
-                                 'C8': 0x630, 'C9': 0x631,'C10': 0x632}
+    SILVERMONT   = {'C6': 0x3FA}
+    GOLDMONT     = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C10': 0x632}
 
     def __init__(self):
         def _get_platform_states():
@@ -782,35 +782,25 @@ class CPUPackageStats(AbstractStats):
 
             Returns: dict that maps C-state name to MSR address, or None.
             """
-            modalias = '/sys/devices/system/cpu/modalias'
-            if not os.path.exists(modalias):
-                return None
-
-            values = utils.read_one_line(modalias).split(':')
-            # values[2]: vendor, values[4]: family, values[6]: model (CPUID)
-            if values[2] != '0000' or values[4] != '0006':
-                return None
+            cpu_uarch = utils.get_intel_cpu_uarch()
 
             return {
-                # model groups pulled from Intel manual, volume 3 chapter 35
-                '0027': self.ATOM,         # unreleased? (Next Generation Atom)
-                '001A': self.NEHALEM,      # Bloomfield, Nehalem-EP (i7/Xeon)
-                '001E': self.NEHALEM,      # Clarks-/Lynnfield, Jasper (i5/i7/X)
-                '001F': self.NEHALEM,      # unreleased? (abandoned?)
-                '0025': self.NEHALEM,      # Arran-/Clarksdale (i3/i5/i7/C/X)
-                '002C': self.NEHALEM,      # Gulftown, Westmere-EP (i7/Xeon)
-                '002E': self.NEHALEM,      # Nehalem-EX (Xeon)
-                '002F': self.NEHALEM,      # Westmere-EX (Xeon)
-                '002A': self.SANDY_BRIDGE, # SandyBridge (i3/i5/i7/C/X)
-                '002D': self.SANDY_BRIDGE, # SandyBridge-E (i7)
-                '003A': self.SANDY_BRIDGE, # IvyBridge (i3/i5/i7/X)
-                '003C': self.HASWELL,      # Haswell (Core/Xeon)
-                '003D': self.HASWELL,      # Broadwell (Core)
-                '003E': self.SANDY_BRIDGE, # IvyBridge (Xeon)
-                '003F': self.HASWELL,      # Haswell-E (Core/Xeon)
-                '004F': self.HASWELL,      # Broadwell (Xeon)
-                '0056': self.HASWELL,      # Broadwell (Xeon D)
-                }.get(values[6], None)
+                # model groups pulled from Intel SDM, volume 4
+                # Group same package cstate using the older uarch name
+                'Airmont':      self.SILVERMONT,
+                'Atom':         self.ATOM,
+                'Broadwell':    self.SANDY_BRIDGE,
+                'Goldmont':     self.GOLDMONT,
+                'Haswell':      self.SANDY_BRIDGE,
+                'Ivy Bridge':   self.SANDY_BRIDGE,
+                'Ivy Bridge-E': self.SANDY_BRIDGE,
+                'Kaby Lake':    self.SANDY_BRIDGE,
+                'Nehalem':      self.NEHALEM,
+                'Sandy Bridge': self.SANDY_BRIDGE,
+                'Silvermont':   self.SILVERMONT,
+                'Skylake':      self.SANDY_BRIDGE,
+                'Westmere':     self.NEHALEM,
+                }.get(cpu_uarch, None)
 
         self._platform_states = _get_platform_states()
         super(CPUPackageStats, self).__init__(name='cpupkg')
