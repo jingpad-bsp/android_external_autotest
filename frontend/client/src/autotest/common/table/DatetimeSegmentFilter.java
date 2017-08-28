@@ -43,14 +43,15 @@ public class DatetimeSegmentFilter extends SimpleFilter {
         panel.add(endDatetimeBox);
 
         Date placeHolderDate = new Date();
-        // We want all entries from today, so advance end date to tomorrow.
-        CalendarUtil.addDaysToDate(placeHolderDate, 1);
-        placeHolderEndDatetime = format(placeHolderDate);
-        setEndTimeToPlaceHolderValue();
 
         CalendarUtil.addDaysToDate(placeHolderDate, -7);
         placeHolderStartDatetime = format(placeHolderDate);
         setStartTimeToPlaceHolderValue();
+
+        // We want all entries from today, so advance end date to tomorrow.
+        CalendarUtil.addDaysToDate(placeHolderDate, 1);
+        placeHolderEndDatetime = format(placeHolderDate);
+        setEndTimeToPlaceHolderValue();
 
         addValueChangeHandler(
             new ValueChangeHandler() {
@@ -59,26 +60,33 @@ public class DatetimeSegmentFilter extends SimpleFilter {
                 }
             },
             new ValueChangeHandler<String>() {
-                /*
-                 * Put a 2-week constraint on the width of the date interval;
-                 * whenever the endDate changes, update the start date if
-                 * needed, and update its minimum Date to be two weeks earlier
-                 * than the new endDate value.
-                 */
                 public void onValueChange(ValueChangeEvent<String> event) {
-                    Date newEndDate = parse(event.getValue());
-                    Date currentStartDate = parse(startDatetimeBox.getValue());
-                    Date startDateConstraint = minimumStartDate(newEndDate);
-                    Date newStartDate = (
-                        currentStartDate.compareTo(startDateConstraint) > 0
-                        ? currentStartDate
-                        : startDateConstraint);
-                    startDatetimeBox.setValue(format(newStartDate));
-                    startDatetimeBox.setMin(format(startDateConstraint));
+                    updateStartDateConstraint(event.getValue());
                     notifyListeners();
                 }
             }
         );
+    }
+
+    /*
+     * Put a 2-week constraint on the width of the date interval; whenever the
+     * endDate changes, update the start date if needed, and update its minimum
+     * Date to be two weeks earlier than the new endDate value.
+     */
+    public void updateStartDateConstraint(String newEndDateValue) {
+        Date newEndDate = parse(newEndDateValue);
+        String currentStartDateStr = startDatetimeBox.getValue();
+        Date startDateConstraint = minimumStartDate(newEndDate);
+        Date newStartDate = startDateConstraint;
+        // Only compare to the existing start date if it has been set.
+        if (!currentStartDateStr.equals("")) {
+            Date currentStartDate = parse(currentStartDateStr);
+            if (currentStartDate.compareTo(startDateConstraint) < 0) {
+                newStartDate = startDateConstraint;
+            }
+        }
+        startDatetimeBox.setValue(format(newStartDate));
+        startDatetimeBox.setMin(format(startDateConstraint));
     }
 
     public static String format(Date date) {
@@ -105,6 +113,7 @@ public class DatetimeSegmentFilter extends SimpleFilter {
 
     public void setEndTimeToPlaceHolderValue() {
         endDatetimeBox.setValue(placeHolderEndDatetime);
+        updateStartDateConstraint(placeHolderEndDatetime);
     }
 
     public void addValueChangeHandler(ValueChangeHandler<String> startTimeHandler,
