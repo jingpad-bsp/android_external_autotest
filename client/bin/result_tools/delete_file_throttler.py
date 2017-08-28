@@ -15,7 +15,7 @@ DEFAULT_FILE_SIZE_THRESHOLD_BYTE = 1024 * 1024
 
 # Regex for file path that should not be deleted.
 NON_DELETABLE_FILE_PATH_PATTERNS = [
-        '.*/AndroidDevice.*', # Used for test tracker.
+        '.*perf.data$',       # Performance test data.
         ]
 
 def _delete_file(file_info):

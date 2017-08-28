@@ -24,7 +24,7 @@ NEWEST_FILES_TO_KEEP_COUNT = 1
 # Files with path mathing following patterns should not be deduped.
 NO_DEDUPE_FILE_PATTERNS = [
         'debug/.*',
-        '.*/AndroidDevice.*', # Used for test tracker.
+        '.*perf.data$',       # Performance test data.
         '.*/debug/.*',
         '.*dir_summary_\d+.json',
         ]
