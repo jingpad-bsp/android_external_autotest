@@ -58,9 +58,8 @@ try:
     from chromite.lib import metrics
     from chromite.lib import ts_mon_config
 except ImportError:
-    from autotest_lib import site_utils
-    metrics = site_utils.metrics_mock
-    ts_mon_config = site_utils.metrics_mock
+    metrics = utils.metrics_mock
+    ts_mon_config = utils.metrics_mock
 
 
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
