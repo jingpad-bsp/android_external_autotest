@@ -32,7 +32,8 @@ try:
     from chromite.lib import metrics
     from chromite.lib import cloud_trace
 except ImportError:
-    metrics = utils.metrics_mock
+    from autotest_lib.client.common_lib import utils as common_utils
+    metrics = common_utils.metrics_mock
     import mock
     cloud_trace = mock.MagicMock()
 
