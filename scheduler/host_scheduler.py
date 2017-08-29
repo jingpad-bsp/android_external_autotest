@@ -60,6 +60,7 @@ import sys
 import time
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend import setup_django_environment
 
 # This import needs to come earlier to avoid using autotest's version of
@@ -72,7 +73,6 @@ except ImportError:
     ts_mon_config = utils.metrics_mock
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import rdb_lib
