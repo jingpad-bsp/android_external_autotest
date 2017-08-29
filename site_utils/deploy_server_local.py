@@ -472,7 +472,7 @@ def _sync_chromiumos_repo():
                     ')',
                     '-prune',
                     '-o', '-name', '*.pyc',
-                    '-delete'])
+                    '-exec', 'rm', '-f', '{}', '+'])
         except Exception as e:
             print('Warning: fail to remove .pyc! %s' % e)
     if ret != 0:
