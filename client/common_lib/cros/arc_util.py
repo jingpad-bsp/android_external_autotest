@@ -22,8 +22,7 @@ _ARC_SUPPORT_HOST_PAGENAME = '_generated_background_page.html'
 _DUMPSTATE_DEFAULT_TIMEOUT = 20
 _DUMPSTATE_PATH = '/var/log/arc-dumpstate.log'
 _DUMPSTATE_PIPE_PATH = '/run/arc/bugreport/pipe'
-_USERNAME = 'arcplusplustest@gmail.com'
-_USERNAME_DISPLAY = 'arcplusplustest@gmail.com'
+_USERNAME = 'crosarcplusplustest@gmail.com'
 _ARCP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
                 '/testing/arcplusplus-testing/arcp'
 _OPT_IN_BEGIN = 'Initializing ARC opt-in flow.'
