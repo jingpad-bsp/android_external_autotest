@@ -1736,6 +1736,7 @@ class ImageServer(ImageServerBase):
         try:
             return json.loads(response)
         except ValueError as e:
+            logging.debug('Failed to load json response: %s', response)
             raise DevServerException(e)
 
 

@@ -461,7 +461,18 @@ def _sync_chromiumos_repo():
         # Remove .pyc files via pyclean, which is a package on all ubuntu server
         print('Removing .pyc files')
         try:
-            subprocess.check_output(['pyclean', '.', '-q'])
+            subprocess.check_output([
+                    'find', '.',
+                    '(',
+                    # These are ignored to reduce IO load (crbug.com/759780).
+                    '-path', './site-packages',
+                    '-o', '-path', './containers',
+                    '-o', '-path', './logs',
+                    '-o', '-path', './results',
+                    ')',
+                    '-prune',
+                    '-o', '-name', '*.pyc',
+                    '-delete'])
         except Exception as e:
             print('Warning: fail to remove .pyc! %s' % e)
     if ret != 0:
