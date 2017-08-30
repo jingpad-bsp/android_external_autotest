@@ -48,10 +48,10 @@ except ImportError:
     metrics = utils.metrics_mock
 
 # TODO(ihf): Find a home for all these paths. This is getting out of hand.
-_SDK_TOOLS_DIR_M = 'gs://chromeos-arc-images/builds/git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341'
+_SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
 _SDK_TOOLS_FILES = ['aapt']
 # To stabilize adb behavior, we use dynamically linked adb.
-_ADB_DIR_M = 'gs://chromeos-arc-images/builds/git_mnc-dr-arc-dev-linux-cheets_arm-user/3554341'
+_ADB_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-cheets_arm-user/3544738'
 _ADB_FILES = ['adb']
 
 _ADB_POLLING_INTERVAL_SECONDS = 1
@@ -318,9 +318,7 @@ class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
 
-    # TODO(ihf): Remove _ABD_DIR_M/_SDK_TOOLS_DIR_M defaults once M is dead.
-    def initialize(self, host=None, adb_dir=_ADB_DIR_M,
-                   sdk_tools_dir=_SDK_TOOLS_DIR_M):
+    def initialize(self, host=None):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
         self._host = host
@@ -359,8 +357,8 @@ class TradefedTest(test.test):
         # Set permissions (rwxr-xr-x) to the executable binaries.
         permission = (stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
                 | stat.S_IXOTH)
-        self._install_files(adb_dir, _ADB_FILES, permission)
-        self._install_files(sdk_tools_dir, _SDK_TOOLS_FILES, permission)
+        self._install_files(_ADB_DIR, _ADB_FILES, permission)
+        self._install_files(_SDK_TOOLS_DIR, _SDK_TOOLS_FILES, permission)
 
     def cleanup(self):
         """Cleans up any dirtied state."""
