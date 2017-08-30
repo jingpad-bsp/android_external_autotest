@@ -33,17 +33,10 @@ _CTS_URI = {
     'media': _DL_CTS + 'android-cts-media-1.3.zip',
 }
 
-_SDK_TOOLS_DIR_N = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
-_ADB_DIR_N = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-cheets_arm-user/3544738'
-
 
 class cheets_CTS_N(tradefed_test.TradefedTest):
     """Sets up tradefed to run CTS tests."""
     version = 1
-
-    def initialize(self, host=None):
-        super(cheets_CTS_N, self).initialize(host=host, adb_dir=_ADB_DIR_N,
-                                             sdk_tools_dir=_SDK_TOOLS_DIR_N)
 
     def setup(self, bundle=None, uri=None):
         """Download and install a zipfile bundle from Google Storage.
