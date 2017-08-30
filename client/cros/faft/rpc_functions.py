@@ -338,6 +338,11 @@ class RPCFunctions(object):
         root_part = self._os_if.get_root_part()
         return self._os_if.is_removable_device(root_part)
 
+    def _system_get_internal_device(self):
+        """Get the internal disk by given the current disk."""
+        root_part = self._os_if.get_root_part()
+        return self._os_if.get_internal_disk(root_part)
+
     def _system_create_temp_dir(self, prefix='backup_'):
         """Create a temporary directory and return the path."""
         return tempfile.mkdtemp(prefix=prefix)
