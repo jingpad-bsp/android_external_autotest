@@ -20,8 +20,6 @@ from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
-from autotest_lib.site_utils.lxc.unittest_container_bucket \
-        import FastContainerBucket
 
 
 options = None
@@ -34,24 +32,31 @@ class ZygoteTests(unittest.TestCase):
     def setUpClass(cls):
         cls.test_dir = tempfile.mkdtemp(dir=lxc.DEFAULT_CONTAINER_PATH,
                                         prefix='zygote_unittest_')
-        cls.shared_host_path = os.path.join(cls.test_dir, 'host')
 
-        # Use a container bucket just to download and set up the base image.
-        cls.bucket = FastContainerBucket(cls.test_dir, cls.shared_host_path)
-
-        if cls.bucket.base_container is None:
-            logging.debug('Base container not found - reinitializing')
-            cls.bucket.setup_base()
-
-        cls.base_container = cls.bucket.base_container
+        # Check if a base container exists on this machine and download one if
+        # necessary.
+        image = lxc.BaseImage()
+        try:
+            cls.base_container = image.get()
+            cls.cleanup_base_container = False
+        except error.ContainerError:
+            image.setup()
+            cls.base_container = image.get()
+            cls.cleanup_base_container = True
         assert(cls.base_container is not None)
+
+        # Set up the zygote host path.
+        cls.shared_host_dir = lxc.SharedHostDir(
+                os.path.join(cls.test_dir, 'host'))
 
 
     @classmethod
     def tearDownClass(cls):
         cls.base_container = None
         if not options.skip_cleanup:
-            cls.bucket.destroy_all()
+            if cls.cleanup_base_container:
+                lxc.BaseImage().cleanup()
+            cls.shared_host_dir.cleanup()
             shutil.rmtree(cls.test_dir)
 
 
@@ -113,7 +118,7 @@ class ZygoteTests(unittest.TestCase):
     def testHostDirExists(self):
         """Verifies that the host dir is just mounted if it already exists."""
         # Pre-create the host dir and put a file in it.
-        test_host_path = os.path.join(self.shared_host_path,
+        test_host_path = os.path.join(self.shared_host_dir.path,
                                       'testHostDirExists')
         test_filename = 'test_file'
         test_host_file = os.path.join(test_host_path, test_filename)
@@ -309,7 +314,7 @@ class ZygoteTests(unittest.TestCase):
         if name is None:
             name = self.id().split('.')[-1]
         if host_path is None:
-            host_path = os.path.join(self.shared_host_path, name)
+            host_path = os.path.join(self.shared_host_dir.path, name)
         if attribute_values is None:
             attribute_values = {}
         zygote = lxc.Zygote(self.test_dir,
