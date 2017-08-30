@@ -662,8 +662,8 @@ def _main(arguments):
         # Reverify all the hosts
         reverify_all_push_duts()
 
-    message = ('\nAll tests are completed successfully, the prod branch of the '
-               'following repos ready to be pushed to the hash list below.\n'
+    message = ('\nAll tests completed successfully, the prod branch of the '
+               'following repos is ready to be pushed to the hash list below.\n'
                '%s\n\n\nInstructions for pushing to prod are available at '
                'https://goto.google.com/autotest-to-prod ' % updated_repo_msg)
     print message
