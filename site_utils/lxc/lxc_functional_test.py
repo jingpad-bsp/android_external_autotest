@@ -182,7 +182,8 @@ def setup_base(bucket):
     @param bucket: ContainerBucket to interact with containers.
     """
     logging.info('Rebuild base container in folder %s.', bucket.container_path)
-    bucket.setup_base()
+    lxc.BaseImage().setup()
+    bucket.setup_shared_host_path()
     containers = bucket.get_all()
     logging.info('Containers created: %s', containers.keys())
 
