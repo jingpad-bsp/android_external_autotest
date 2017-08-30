@@ -28,6 +28,6 @@ def run_CTS(machine):
         target_module='CtsSecurityTestCases',
         bundle='arm',
         warn_on_test_retry=False,
-        timeout=3600)
+        timeout=5400)
 
 parallel_simple(run_CTS, machines)
