@@ -266,7 +266,7 @@ class OSInterface(object):
         Return internal kernel disk.
         """
         if self.is_removable_device(device):
-            for p in ('/dev/mmcblk0', '/dev/mmcblk1'):
+            for p in ('/dev/mmcblk0', '/dev/mmcblk1', '/dev/nvme0n1'):
                 if self.path_exists(p):
                     return p
             return '/dev/sda'
