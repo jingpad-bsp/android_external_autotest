@@ -918,8 +918,26 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('cgpt prioritize -i%s %s' %
                 (self.KERNEL_MAP[part], root_dev))
 
-    def blocking_sync(self):
+    def do_blocking_sync(self, device):
         """Run a blocking sync command."""
+        logging.info("Blocking sync for %s", device)
+        if 'mmcblk' in device:
+            # For mmc devices, use `mmc status get` command to send an
+            # empty command to wait for the disk to be available again.
+            self.faft_client.system.run_shell_command('mmc status get %s' %
+                                                      device)
+        elif 'nvme' in device:
+            # For NVMe devices, use `nvme flush` command to commit data
+            # and metadata to non-volatile media.
+            self.faft_client.system.run_shell_command('nvme flush %s' %
+                                                      device)
+        else:
+            # For other devices, hdparm sends TUR to check if
+            # a device is ready for transfer operation.
+            self.faft_client.system.run_shell_command('hdparm -f %s' % device)
+
+    def blocking_sync(self):
+        """Sync root device and internal device."""
         # The double calls to sync fakes a blocking call
         # since the first call returns before the flush
         # is complete, but the second will wait for the
@@ -927,21 +945,15 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('sync')
         self.faft_client.system.run_shell_command('sync')
 
-        # sync only sends SYNCHRONIZE_CACHE but doesn't
-        # check the status. For mmc devices, use `mmc
-        # status get` command to send an empty command to
-        # wait for the disk to be available again.  For
-        # other devices, hdparm sends TUR to check if
-        # a device is ready for transfer operation.
+        # sync only sends SYNCHRONIZE_CACHE but doesn't check the status.
+        # This function will perform a device-specific sync command.
         root_dev = self.faft_client.system.get_root_dev()
-        if 'mmcblk' in root_dev:
-            self.faft_client.system.run_shell_command('mmc status get %s' %
-                                                      root_dev)
-        elif 'nvme' in root_dev:
-            self.faft_client.system.run_shell_command('nvme flush %s' %
-                                                      root_dev)
-        else:
-            self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
+        self.do_blocking_sync(root_dev)
+
+        # Also sync the internal device if booted from removable media.
+        if self.faft_client.system.is_removable_device_boot():
+            internal_dev = self.faft_client.system.get_internal_device()
+            self.do_blocking_sync(internal_dev)
 
     def sync_and_ec_reboot(self, flags=''):
         """Request the client sync and do a EC triggered reboot.
