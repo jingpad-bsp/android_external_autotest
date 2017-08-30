@@ -24,6 +24,10 @@ def run(machine):
                  config_file='android1758-power-test-station-codecs.config',
                  test_file='bt_power_test_ldac_hi_res_music',
                  additional_apks=[{'apk':'PMC.apk', 'package':'com.android.pmc', 'artifacts':'tests.zip'}],
+                 additional_configs=['android1758-power-test-station-codecs-relay-station-2.config',
+                                     'android1758-power-test-station-codecs-relay-station-3.config',
+                                     'android1758-power-test-station-codecs-relay-station-5.config',
+                                     'android1758-power-test-station-codecs-relay-station-6.config'],
                  acts_timeout=86400)
 
 
