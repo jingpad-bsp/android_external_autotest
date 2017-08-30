@@ -20,8 +20,6 @@ from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
-from autotest_lib.site_utils.lxc.unittest_container_bucket \
-        import FastContainerBucket
 
 
 options = None
@@ -33,17 +31,17 @@ class ContainerTests(unittest.TestCase):
     def setUpClass(cls):
         cls.test_dir = tempfile.mkdtemp(dir=lxc.DEFAULT_CONTAINER_PATH,
                                         prefix='container_unittest_')
-        cls.shared_host_path = os.path.join(cls.test_dir, 'host')
 
-        # Use a container bucket just to download and set up the base image.
-        cls.bucket = FastContainerBucket(cls.test_dir, cls.shared_host_path)
-
-        if cls.bucket.base_container is None:
-            logging.debug('Base container not found - reinitializing')
-            cls.bucket.setup_base()
-        else:
-            logging.debug('base container found')
-        cls.base_container = cls.bucket.base_container
+        # Check if a base container exists on this machine and download one if
+        # necessary.
+        image = lxc.BaseImage()
+        try:
+            cls.base_container = image.get()
+            cls.cleanup_base_container = False
+        except error.ContainerError:
+            image.setup()
+            cls.base_container = image.get()
+            cls.cleanup_base_container = True
         assert(cls.base_container is not None)
 
 
@@ -51,7 +49,8 @@ class ContainerTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.base_container = None
         if not options.skip_cleanup:
-            cls.bucket.destroy_all()
+            if cls.cleanup_base_container:
+                lxc.BaseImage().cleanup()
             shutil.rmtree(cls.test_dir)
 
 
