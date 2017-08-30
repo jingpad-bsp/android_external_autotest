@@ -17,4 +17,5 @@ from container_bucket import ContainerBucket
 from lxc import install_package
 from lxc import install_packages
 from lxc import install_python_package
+from shared_host_dir import SharedHostDir
 from zygote import Zygote
