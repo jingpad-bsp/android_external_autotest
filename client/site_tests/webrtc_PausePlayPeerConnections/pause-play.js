@@ -115,7 +115,6 @@ class TestRunner {
     this.feedTable = new FeedTable();
     this.iteration = 0;
     this.startTime;
-    this.lastIterationTime;
   }
 
   addPeerConnection(elementType) {
@@ -155,7 +154,6 @@ class TestRunner {
       }
     });
     const status = this.getStatus();
-    this.lastIterationTime = Date.now();
     $('status').textContent = status
     if (status != 'ok-done') {
       setTimeout(
@@ -178,11 +176,6 @@ class TestRunner {
       return `running, iteration: ${this.iteration}`;
     }
   }
-
-  getResults() {
-    const runTimeMillis = this.lastIterationTime - this.startTime;
-    return {'runTimeSeconds': runTimeMillis / 1000};
-  }
 }
 
 let testRunner;
@@ -197,3 +190,4 @@ function startTest(
   }
   testRunner.startTest();
 }
+
