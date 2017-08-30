@@ -44,48 +44,6 @@ class ContainerBucketTests(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
 
-    def testHostDirCreationAndCleanup(self):
-        """Verifies that the host dir is properly created and cleaned up when
-        the container bucket is set up and destroyed.
-        """
-        bucket = lxc.ContainerBucket(container_path, self.shared_host_path)
-
-        # Verify the host path in the container bucket.
-        self.assertEqual(os.path.realpath(bucket.shared_host_path),
-                         self.shared_host_path)
-
-        # Set up, verify that the path is created.
-        bucket.setup_shared_host_path()
-        self.assertTrue(os.path.isdir(self.shared_host_path))
-
-        # Clean up, verify that the path is removed.
-        bucket.destroy_all()
-        self.assertFalse(os.path.isdir(self.shared_host_path))
-
-
-    def testHostDirMissing(self):
-        """Verifies that a missing host dir does not cause container bucket
-        destruction to crash.
-        """
-        bucket = lxc.ContainerBucket(container_path, self.shared_host_path)
-
-        # Verify that the host path does not exist.
-        self.assertFalse(os.path.exists(self.shared_host_path))
-        # Do not call startup, just call destroy.  This should not throw.
-        bucket.destroy_all()
-
-
-    def testHostDirNotMounted(self):
-        """Verifies that an unmounted host dir does not cause container bucket
-        construction to crash.
-        """
-        # Create the shared host dir, but do not mount it.
-        os.makedirs(self.shared_host_path)
-        bucket = lxc.ContainerBucket(container_path, self.shared_host_path)
-
-        # Setup then destroy the bucket.  This should not emit any exceptions.
-        bucket.setup_shared_host_path()
-        bucket.destroy_all()
 
 
 def parse_options():
