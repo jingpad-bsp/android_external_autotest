@@ -55,7 +55,7 @@ class ContainerBucketTests(unittest.TestCase):
                          self.shared_host_path)
 
         # Set up, verify that the path is created.
-        bucket.setup_base()
+        bucket.setup_shared_host_path()
         self.assertTrue(os.path.isdir(self.shared_host_path))
 
         # Clean up, verify that the path is removed.
@@ -84,55 +84,9 @@ class ContainerBucketTests(unittest.TestCase):
         bucket = lxc.ContainerBucket(container_path, self.shared_host_path)
 
         # Setup then destroy the bucket.  This should not emit any exceptions.
-        bucket.setup_base()
+        bucket.setup_shared_host_path()
         bucket.destroy_all()
 
-
-class ContainerBucketSetupBaseTests(unittest.TestCase):
-    """Unit tests to verify the ContainerBucket setup_base method."""
-
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        self.shared_host_path = os.path.realpath(os.path.join(self.tmpdir,
-                                                              'host'))
-        self.bucket = lxc.ContainerBucket(container_path,
-                                          self.shared_host_path)
-
-
-    def tearDown(self):
-        for container in self.bucket.get_all().values():
-            container.stop()
-        self.bucket.destroy_all()
-        shutil.rmtree(self.tmpdir)
-
-
-    # TODO(kenobi): Read moblab_config.ini to get the correct base version
-    # instead of hard-coding it.
-    def testSetupBase05(self):
-        """Verifies that the code for installing the rootfs location into the
-        lxc config, is working correctly.
-        """
-        # Set up the bucket, then start the base container, and verify it works.
-        self.downloadAndStart('base_05')
-
-
-    # TODO(kenobi): Read shadow_config.ini to get the correct base version
-    # instead of hard-coding it.
-    def testSetupBase09(self):
-        """Verifies that the setup_base code works with the base_09 image. """
-        self.downloadAndStart('base_09')
-
-
-    def downloadAndStart(self, name):
-        """Calls setup_base with the given base image name, then starts the
-        container and verifies that it is running.
-
-        @param name: The name of the base image to download and test with.
-        """
-        self.bucket.setup_base(name=name)
-        base_container = self.bucket.get(name)
-        base_container.start()
-        self.assertTrue(base_container.is_running())
 
 def parse_options():
     """Parse command line inputs."""

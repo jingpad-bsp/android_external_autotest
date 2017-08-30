@@ -77,7 +77,7 @@ class Container(object):
 
 
     @classmethod
-    def createFromExistingDir(cls, lxc_path, name, **kwargs):
+    def create_from_existing_dir(cls, lxc_path, name, **kwargs):
         """Creates a new container instance for an lxc container that already
         exists on disk.
 
@@ -113,7 +113,7 @@ class Container(object):
             if not cleanup:
                 raise error.ContainerError('Container %s already exists.' %
                                            new_name)
-            container = Container.createFromExistingDir(new_path, new_name)
+            container = Container.create_from_existing_dir(new_path, new_name)
             try:
                 container.destroy()
             except error.CmdError as e:
@@ -265,6 +265,9 @@ class Container(object):
         @raise ContainerError: If container does not exist or failed to destroy
                                the container.
         """
+        logging.debug('Destroying container %s/%s',
+                      self.container_path,
+                      self.name)
         cmd = 'sudo lxc-destroy -P %s -n %s' % (self.container_path,
                                                 self.name)
         if force:
