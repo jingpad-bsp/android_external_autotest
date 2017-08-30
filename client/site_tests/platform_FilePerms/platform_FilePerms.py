@@ -71,6 +71,10 @@ class platform_FilePerms(test.test):
             'device': loop_device,
             'type': ['squashfs'],
             'options': ['ro']},
+        '/opt/google/containers/android/rootfs/root/system/lib/arm': {
+            'device': loop_device,
+            'type': ['squashfs'],
+            'options': ['ro', 'nosuid', 'nodev']},
         '/opt/google/containers/android/rootfs/root/vendor': {
             'device': loop_device,
             'type': ['squashfs'],
@@ -156,6 +160,10 @@ class platform_FilePerms(test.test):
         '/run/containers/android/root/oem': {
             'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/system/lib/arm': {
+            'device': loop_device,
+            'type': ['squashfs'],
+            'options': ['ro']},
         '/run/containers/android/root/var/run/anr': {
             'type': ['tmpfs'],
             'options': standard_rw_options},
