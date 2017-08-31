@@ -176,15 +176,15 @@ parallel_simple(run, machines)
 """
 
 
-def setup_base(bucket):
+def setup_base(container_path):
     """Test setup base container works.
 
     @param bucket: ContainerBucket to interact with containers.
     """
-    logging.info('Rebuild base container in folder %s.', bucket.container_path)
-    bucket.setup_base()
-    containers = bucket.get_all()
-    logging.info('Containers created: %s', containers.keys())
+    logging.info('Rebuild base container in folder %s.', container_path)
+    image = lxc.BaseImage(container_path)
+    image.setup()
+    logging.info('Base container created: %s', image.get().name)
 
 
 def setup_test(bucket, name, skip_cleanup):
@@ -341,9 +341,9 @@ def main(options):
     log_level=(logging.DEBUG if options.verbose else logging.INFO)
     unittest_logging.setup(log_level)
 
+    setup_base(TEMP_DIR)
     bucket = lxc.ContainerBucket(TEMP_DIR)
 
-    setup_base(bucket)
     container_test_name = (lxc.TEST_CONTAINER_NAME_FMT %
                            (TEST_JOB_ID, time.time(), os.getpid()))
     container = setup_test(bucket, container_test_name, options.skip_cleanup)

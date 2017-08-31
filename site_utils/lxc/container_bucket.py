@@ -9,12 +9,12 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.site_utils.lxc import Container
 from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import lxc
-from autotest_lib.site_utils.lxc import utils as lxc_utils
 from autotest_lib.site_utils.lxc.cleanup_if_fail import cleanup_if_fail
+from autotest_lib.site_utils.lxc.base_image import BaseImage
+from autotest_lib.site_utils.lxc.container import Container
 
 try:
     from chromite.lib import metrics
@@ -26,9 +26,7 @@ class ContainerBucket(object):
     """A wrapper class to interact with containers in a specific container path.
     """
 
-    def __init__(self,
-                 container_path=constants.DEFAULT_CONTAINER_PATH,
-                 shared_host_path = constants.DEFAULT_SHARED_HOST_PATH):
+    def __init__(self, container_path=constants.DEFAULT_CONTAINER_PATH):
         """Initialize a ContainerBucket.
 
         @param container_path: Path to the directory used to store containers.
@@ -36,15 +34,9 @@ class ContainerBucket(object):
                                global config.
         """
         self.container_path = os.path.realpath(container_path)
-        self.shared_host_path = os.path.realpath(shared_host_path)
-        # Try to create the base container.
-        try:
-            base_container = Container.createFromExistingDir(
-                    container_path, constants.BASE);
-            base_container.refresh_status()
-            self.base_container = base_container
-        except error.ContainerError:
-            self.base_container = None
+        # Try to create the base container.  Use the default path and image
+        # name.
+        self.base_container = BaseImage().get()
 
 
     def get_all(self):
@@ -56,8 +48,8 @@ class ContainerBucket(object):
         info_collection = lxc.get_container_info(self.container_path)
         containers = {}
         for info in info_collection:
-            container = Container.createFromExistingDir(self.container_path,
-                                                        **info)
+            container = Container.create_from_existing_dir(self.container_path,
+                                                           **info)
             containers[container.name] = container
         return containers
 
@@ -92,7 +84,6 @@ class ContainerBucket(object):
             containers, key=lambda n: 1 if n.name == constants.BASE else 0):
             logging.info('Destroy container %s.', container.name)
             container.destroy()
-        self._cleanup_shared_host_path()
 
 
     @metrics.SecondsTimerDecorator(
@@ -136,128 +127,6 @@ class ContainerBucket(object):
                                             snapshot=False,
                                             cleanup=force_cleanup)
                 return container
-
-
-    @cleanup_if_fail()
-    def setup_base(self, name=constants.BASE, force_delete=False):
-        """Setup base container.
-
-        @param name: Name of the base container, default to base.
-        @param force_delete: True to force to delete existing base container.
-                             This action will destroy all running test
-                             containers. Default is set to False.
-        """
-        if not self.container_path:
-            raise error.ContainerError(
-                    'You must set a valid directory to store containers in '
-                    'global config "AUTOSERV/ container_path".')
-
-        if not os.path.exists(self.container_path):
-            os.makedirs(self.container_path)
-
-        base_path = os.path.join(self.container_path, name)
-        if self.exist(name) and not force_delete:
-            logging.error(
-                    'Base container already exists. Set force_delete to True '
-                    'to force to re-stage base container. Note that this '
-                    'action will destroy all running test containers')
-            # Set proper file permission. base container in moblab may have
-            # owner of not being root. Force to update the folder's owner.
-            # TODO(dshi): Change root to current user when test container can be
-            # unprivileged container.
-            utils.run('sudo chown -R root "%s"' % base_path)
-            utils.run('sudo chgrp -R root "%s"' % base_path)
-            return
-
-        # Destroy existing base container if exists.
-        if self.exist(name):
-            # TODO: We may need to destroy all snapshots created from this base
-            # container, not all container.
-            self.destroy_all()
-
-        # Download and untar the base container.
-        tar_path = os.path.join(self.container_path, '%s.tar.xz' % name)
-        path_to_cleanup = [tar_path, base_path]
-        for path in path_to_cleanup:
-            if os.path.exists(path):
-                utils.run('sudo rm -rf "%s"' % path)
-        container_url = constants.CONTAINER_BASE_URL_FMT % name
-        lxc.download_extract(container_url, tar_path, self.container_path)
-        # Remove the downloaded container tar file.
-        utils.run('sudo rm "%s"' % tar_path)
-        # Set proper file permission.
-        # TODO(dshi): Change root to current user when test container can be
-        # unprivileged container.
-        utils.run('sudo chown -R root "%s"' % base_path)
-        utils.run('sudo chgrp -R root "%s"' % base_path)
-
-        # Update container config with container_path from global config.
-        config_path = os.path.join(base_path, 'config')
-        rootfs_path = os.path.join(base_path, 'rootfs')
-        utils.run(('sudo sed '
-                   '-i "s|\(lxc\.rootfs[[:space:]]*=\).*$|\\1 {rootfs}|" '
-                   '"{config}"').format(rootfs=rootfs_path,
-                                        config=config_path))
-
-        self.base_container = Container.createFromExistingDir(
-                self.container_path, name)
-
-        self._setup_shared_host_path(force_delete)
-
-
-    def _setup_shared_host_path(self, force_delete=False):
-        """Sets up the shared host directory.
-
-        @param force_delete: If True, the host dir will be cleared and
-                             reinitialized if it already exists.
-        """
-        # If the host dir exists and is valid and force_delete is not set, there
-        # is nothing to do.  Otherwise, clear the host dir if it exists, then
-        # recreate it.
-        if lxc_utils.path_exists(self.shared_host_path):
-            if not force_delete and self._verify_shared_host_path():
-                return
-            else:
-                self._cleanup_shared_host_path()
-
-        utils.run('sudo mkdir "%(path)s" && '
-                  'sudo mount --bind "%(path)s" "%(path)s" && '
-                  'sudo mount --make-shared "%(path)s"' % {
-                          'path': self.shared_host_path
-                  })
-
-
-    def _cleanup_shared_host_path(self):
-        """Removes the shared host directory.
-
-        This should only be called after all containers have been destroyed
-        (i.e. all host mounts have been disconnected and removed, so the shared
-        host directory should be empty).
-        """
-        if not os.path.exists(self.shared_host_path):
-            return
-
-        # Unmount and delete everything in the host path.
-        for info in lxc_utils.get_mount_info():
-            if lxc_utils.is_subdir(self.shared_host_path, info.mount_point):
-                utils.run('sudo umount "%s"' % info.mount_point)
-
-        # It's possible that the directory is no longer mounted (e.g. if the
-        # system was rebooted), so check before unmounting.
-        utils.run('if findmnt "%s" > /dev/null; then sudo umount "%s"; fi' %
-                  (self.shared_host_path, self.shared_host_path))
-        utils.run('sudo rm -r "%s"' % self.shared_host_path)
-
-
-    def _verify_shared_host_path(self):
-        """Verifies that the shared host directory is set up correctly."""
-        logging.debug('Verifying existing host path: %s', self.shared_host_path)
-        host_mount = list(lxc_utils.get_mount_info(self.shared_host_path))
-        if host_mount:
-            # Check that the host mount is shared
-            logging.debug("Host mount: %r", host_mount)
-            return 'shared' in host_mount[0].tags
-        return False
 
 
     @metrics.SecondsTimerDecorator(

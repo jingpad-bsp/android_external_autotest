@@ -20,8 +20,6 @@ from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
 from autotest_lib.site_utils.lxc import unittest_logging
 from autotest_lib.site_utils.lxc import utils as lxc_utils
-from autotest_lib.site_utils.lxc.unittest_container_bucket \
-        import FastContainerBucket
 
 
 options = None
@@ -33,17 +31,17 @@ class ContainerTests(unittest.TestCase):
     def setUpClass(cls):
         cls.test_dir = tempfile.mkdtemp(dir=lxc.DEFAULT_CONTAINER_PATH,
                                         prefix='container_unittest_')
-        cls.shared_host_path = os.path.join(cls.test_dir, 'host')
 
-        # Use a container bucket just to download and set up the base image.
-        cls.bucket = FastContainerBucket(cls.test_dir, cls.shared_host_path)
-
-        if cls.bucket.base_container is None:
-            logging.debug('Base container not found - reinitializing')
-            cls.bucket.setup_base()
-        else:
-            logging.debug('base container found')
-        cls.base_container = cls.bucket.base_container
+        # Check if a base container exists on this machine and download one if
+        # necessary.
+        image = lxc.BaseImage()
+        try:
+            cls.base_container = image.get()
+            cls.cleanup_base_container = False
+        except error.ContainerError:
+            image.setup()
+            cls.base_container = image.get()
+            cls.cleanup_base_container = True
         assert(cls.base_container is not None)
 
 
@@ -51,14 +49,15 @@ class ContainerTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.base_container = None
         if not options.skip_cleanup:
-            cls.bucket.destroy_all()
+            if cls.cleanup_base_container:
+                lxc.BaseImage().cleanup()
             shutil.rmtree(cls.test_dir)
 
 
     def testInit(self):
         """Verifies that containers initialize correctly."""
         # Make a container that just points to the base container.
-        container = lxc.Container.createFromExistingDir(
+        container = lxc.Container.create_from_existing_dir(
             self.base_container.container_path,
             self.base_container.name)
         # Calling is_running triggers an lxc-ls call, which should verify that
@@ -72,7 +71,8 @@ class ContainerTests(unittest.TestCase):
         """
         with tempfile.NamedTemporaryFile(dir=self.test_dir) as tmpfile:
             name = os.path.basename(tmpfile.name)
-            container = lxc.Container.createFromExistingDir(self.test_dir, name)
+            container = lxc.Container.create_from_existing_dir(self.test_dir,
+                                                               name)
             with self.assertRaises(error.ContainerError):
                 container.refresh_status()
 
@@ -122,6 +122,7 @@ class ContainerTests(unittest.TestCase):
         """Verifies that cloning a container works as expected."""
         clone = lxc.Container.clone(src=self.base_container,
                                     new_name="testClone",
+                                    new_path=self.test_dir,
                                     snapshot=True)
         try:
             # Throws an exception if the container is not valid.
@@ -136,10 +137,12 @@ class ContainerTests(unittest.TestCase):
         """
         lxc.Container.clone(src=self.base_container,
                             new_name="testCloneWithoutCleanup",
+                            new_path=self.test_dir,
                             snapshot=True)
         with self.assertRaises(error.ContainerError):
             lxc.Container.clone(src=self.base_container,
                                 new_name="testCloneWithoutCleanup",
+                                new_path=self.test_dir,
                                 snapshot=True)
 
 
@@ -147,6 +150,7 @@ class ContainerTests(unittest.TestCase):
         """Verifies that cloning a container with cleanup works properly."""
         clone0 = lxc.Container.clone(src=self.base_container,
                                      new_name="testClone",
+                                     new_path=self.test_dir,
                                      snapshot=True)
         clone0.start(wait_for_network=False)
         tmpfile = clone0.attach_run('mktemp').stdout
@@ -156,6 +160,7 @@ class ContainerTests(unittest.TestCase):
         # Clone another container in place of the existing container.
         clone1 = lxc.Container.clone(src=self.base_container,
                                      new_name="testClone",
+                                     new_path=self.test_dir,
                                      snapshot=True,
                                      cleanup=True)
         with self.assertRaises(error.CmdError):
@@ -283,7 +288,10 @@ class ContainerTests(unittest.TestCase):
         """
         if name is None:
             name = self.id().split('.')[-1]
-        container = self.bucket.create_from_base(name)
+        container = lxc.Container.clone(src=self.base_container,
+                                        new_name=name,
+                                        new_path=self.test_dir,
+                                        snapshot=True)
         try:
             yield container
         finally:
