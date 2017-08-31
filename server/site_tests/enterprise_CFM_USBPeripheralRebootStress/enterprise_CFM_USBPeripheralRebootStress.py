@@ -115,6 +115,7 @@ class enterprise_CFM_USBPeripheralRebootStress(test.test):
         while repeat > 0:
             self.client.reboot()
             time.sleep(random.randrange(1, IDLE_TIME))
+            self.cfm_facade.restart_chrome_for_cfm()
             self.cfm_facade.wait_for_telemetry_commands()
             if not self._compare_cmd_output(usb_original_list):
                 raise error.TestFail(

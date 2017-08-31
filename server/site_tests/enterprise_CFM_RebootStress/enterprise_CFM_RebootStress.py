@@ -49,6 +49,7 @@ class enterprise_CFM_RebootStress(test.test):
                     self.cfm_facade.wait_for_hangouts_telemetry_commands()
                 self.cfm_facade.reboot_device_with_chrome_api()
                 self.client.wait_for_restart(old_boot_id=boot_id)
+                self.cfm_facade.restart_chrome_for_cfm()
                 repeat -= 1
 
         except Exception as e:
