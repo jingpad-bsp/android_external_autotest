@@ -180,18 +180,30 @@ class android_ACTS(test.test):
             job_build_id = job_build_info['build_id']
 
         if not override_build_url:
+            branch_mapping_pieces = None
             if job_build_branch in branch_mappings:
                 logging.info('Replacing branch %s -> %s',
                              job_build_branch,
                              branch_mappings[job_build_branch].strip())
-                job_build_branch = branch_mappings[job_build_branch].strip()
-                job_build_id = "LATEST"
+                branch_mapping_pieces = branch_mappings[
+                    job_build_branch].strip().split('/')
             elif job_build_branch in self.aliases_map:
                 logging.info('Replacing branch %s -> %s',
                              job_build_branch,
                              self.aliases_map[job_build_branch][0].strip())
-                job_build_branch = self.aliases_map[job_build_branch][0].strip()
-                job_build_id = "LATEST"
+                branch_mapping_pieces = self.aliases_map[job_build_branch][
+                    0].strip().split('/')
+
+            if branch_mapping_pieces:
+                job_build_branch = branch_mapping_pieces[0]
+
+                if len(branch_mapping_pieces) > 1:
+                    job_build_target = branch_mapping_pieces[1]
+
+                if len(branch_mapping_pieces) > 2:
+                    job_build_id = branch_mapping_pieces[2]
+                else:
+                    job_build_id = "LATEST"
 
         build_name = '%s/%s/%s' % (job_build_branch,
                                    job_build_target,
@@ -217,10 +229,10 @@ class android_ACTS(test.test):
                                                                  target_zip)
 
         test_env = package.create_environment(
-                container_directory=ts_tempfolder,
-                testbed_name=testbed_name,
-                devices=valid_hosts,
-                internal_acts_directory=override_internal_acts_dir)
+            container_directory=ts_tempfolder,
+            testbed_name=testbed_name,
+            devices=valid_hosts,
+            internal_acts_directory=override_internal_acts_dir)
 
         test_env.install_sl4a_apk()
 
@@ -239,12 +251,12 @@ class android_ACTS(test.test):
             test_env.upload_campaign(test_file)
 
         results = test_env.run_test(
-                config_file,
-                campaign=test_file,
-                test_case=test_case,
-                python_bin=override_python_bin,
-                timeout=acts_timeout,
-                additional_cmd_line_params=additional_cmd_line_params)
+            config_file,
+            campaign=test_file,
+            test_case=test_case,
+            python_bin=override_python_bin,
+            timeout=acts_timeout,
+            additional_cmd_line_params=additional_cmd_line_params)
 
         results.log_output()
         results.report_to_autotest(self)
