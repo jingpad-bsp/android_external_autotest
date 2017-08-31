@@ -56,7 +56,9 @@ class PeerConnection {
         .then((stream) => this.streams.push(stream));
     });
     return Promise.all(promises).then(
-        () => this.onGetUserMediaSuccess(this.streams[0]));
+        // Start with the smallest video to not overload the machine instantly.
+        () =>
+            this.onGetUserMediaSuccess(this.streams[this.streams.length - 1]));
   };
 
   onGetUserMediaSuccess(stream) {
@@ -120,7 +122,6 @@ class TestRunner {
     this.numConnections = 0;
     this.iteration = 0;
     this.startTime = 0;  // initialized to dummy value
-    this.lastIterationTime;
   }
 
   addPeerConnection() {
@@ -153,7 +154,6 @@ class TestRunner {
   switchResolutionLoop() {
     this.iteration++;
     const status = this.getStatus();
-    this.lastIterationTime = Date.now();
     $('status').textContent = status;
     this.peerConnections.forEach((pc) => {
       pc.switchToRandomStream();
@@ -193,25 +193,15 @@ class TestRunner {
     return this.videoElements.find(
         (el) => el.videoWidth < minWidth || el.videoHeight < minHeight);
   }
-
-  getResults() {
-    const runTimeMillis = this.lastIterationTime - this.startTime;
-    return {'runTimeSeconds': runTimeMillis / 1000};
-  }
 }
 
 let testRunner;
 
 function startTest(
     runtimeSeconds, numPeerConnections, switchResolutionDelayMillis) {
-  console.log(
-      `*** Starting test, runtimeSeconds: ${runtimeSeconds}, ` +
-      `numPeerConnections: ${numPeerConnections}, ` +
-      `switchResolutionDelayMillis: ${switchResolutionDelayMillis}`);
   testRunner = new TestRunner(runtimeSeconds, switchResolutionDelayMillis);
   for (let i = 0; i < numPeerConnections; i++) {
     testRunner.addPeerConnection();
   }
   testRunner.startTest();
 }
-
