@@ -5,6 +5,7 @@
 """Facade to access the CFM functionality."""
 
 import logging
+import time
 import urlparse
 
 from autotest_lib.client.common_lib import error
@@ -27,6 +28,7 @@ class CFMFacadeNative(object):
     _USER_ID = 'cfmtest@croste.tv'
     _PWD = 'test0000'
     _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
+    _ENROLLMENT_DELAY = 15
     _DEFAULT_TIMEOUT = 30
 
 
@@ -45,6 +47,19 @@ class CFMFacadeNative(object):
                                             "disable_gaia_services": False})
         enrollment.RemoraEnrollment(self._resource._browser, self._USER_ID,
                 self._PWD)
+        # Timeout to allow for the device to stablize and go back to the
+        # login screen before proceeding.
+        time.sleep(self._ENROLLMENT_DELAY)
+
+
+    def restart_chrome_for_cfm(self):
+        """Restart chrome with custom values for CFM."""
+        custom_chrome_setup = {"clear_enterprise_policy": False,
+                               "dont_override_profile": True,
+                               "disable_gaia_services": False,
+                               "disable_default_apps": False,
+                               "auto_login": False}
+        self._resource.start_custom_chrome(custom_chrome_setup)
 
 
     def check_hangout_extension_context(self):
@@ -98,6 +113,7 @@ class CFMFacadeNative(object):
 
     def skip_oobe_after_enrollment(self):
         """Skips oobe and goes to the app landing page after enrollment."""
+        self.restart_chrome_for_cfm()
         self.check_hangout_extension_context()
         self.wait_for_hangouts_telemetry_commands()
         self.wait_for_oobe_start_page()
