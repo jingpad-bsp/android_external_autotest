@@ -59,7 +59,7 @@ class video_WebRtcResolutionSwitching(test.test):
         def _test_done():
             status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
             if status == 'video-broken':
-              raise error.TestFail('Video is broken')
+                raise error.TestFail('Video is broken')
             logging.debug(status)
             return status == 'ok-done'
 
@@ -75,22 +75,13 @@ class video_WebRtcResolutionSwitching(test.test):
                            init_network_controller = True) as cr:
             self.start_test(cr)
             self.wait_test_completed(TIMEOUT)
-            self.print_result()
+            self.verify_status_ok()
 
-    def print_result(self):
-        """Prints results unless status is different from ok-done.
+    def verify_status_ok(self):
+        """Verifies that the status of the test is 'ok-done'.
 
-        @raises TestError if the test failed outright.
+        @raises TestError the status is different from 'ok-done'
         """
         status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
         if status != 'ok-done':
             raise error.TestFail('Failed: %s' % status)
-
-        results = self.tab.EvaluateJavaScript('testRunner.getResults()')
-        logging.info('runTimeSeconds: %.2f', results['runTimeSeconds'])
-
-        self.output_perf_value(
-                description='run_time',
-                value=results['runTimeSeconds'],
-                units='seconds')
-
