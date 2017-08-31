@@ -647,14 +647,9 @@
     "dashboard_test_name": "tab_switching.typical_25"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.webrtc.peerconnection",
+    "autotest_name": "telemetry_Benchmarks.webrtc",
     "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "webrtc.peerconnection"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.webrtc.stress",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "webrtc.stress"
+    "dashboard_test_name": "webrtc"
   },
   {
     "autotest_name": "video_HangoutHardwarePerf",
