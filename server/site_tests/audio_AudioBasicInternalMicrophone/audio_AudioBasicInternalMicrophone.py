@@ -70,10 +70,10 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
 
             if not cfm_speaker:
                 audio_test_utils.check_audio_nodes(audio_facade,
-                        (['INTERNAL_MIC'], None))
+                        (None, ['INTERNAL_MIC']))
             else:
                 audio_test_utils.check_audio_nodes(audio_facade,
-                        (['USB'], None))
+                        (None, ['USB']))
 
             logging.info('Setting playback data on Chameleon')
             source.set_playback_data(golden_file)
