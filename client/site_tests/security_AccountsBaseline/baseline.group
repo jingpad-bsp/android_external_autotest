@@ -13,9 +13,9 @@ news:!:13:news
 uucp:!:14:uucp,gpsd
 console:!:17:
 audio:!:18:cras,chronos,volume,midis
-cdrom:!:19:
+cdrom:!:19:cros-disks
 tape:!:26:root
-cdrw:!:80:
+cdrw:!:80:cros-disks
 usb:!:85:mtp,brltty,dlm
 users:!:100:
 portage:!:250:portage
