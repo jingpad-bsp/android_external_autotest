@@ -123,6 +123,8 @@ DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
 GS_OFFLOADER_SUCCESS_TYPE = 'gs_offloader_success'
 GS_OFFLOADER_FAILURE_TYPE = 'gs_offloader_failure'
 
+# Autotest test to collect list of CTS tests
+TEST_LIST_COLLECTOR = 'tradefed-run-collect-tests-only'
 
 def _get_metrics_fields(dir_entry):
     """Get metrics fields for the given test result directory, including board
@@ -433,6 +435,16 @@ def _is_valid_result(build, result_pattern, suite):
     return True
 
 
+def _is_test_collector(package):
+    """Returns true if the test run is just to collect list of CTS tests.
+
+    @param package: Autotest package name. e.g. cheets_CTS_N.CtsGraphicsTestCase
+
+    @return Bool flag indicating a test package is CTS list generator or not.
+    """
+    return TEST_LIST_COLLECTOR in package
+
+
 def _upload_files(host, path, result_pattern, multiprocessing):
     keyval = models.test.parse_job_keyval(host)
     build = keyval.get('build')
@@ -449,22 +461,29 @@ def _upload_files(host, path, result_pattern, multiprocessing):
     package = folders[-4]
     timestamp = folders[-1]
 
-    # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
-    # or bucket/build/parent_job_id/cheets_GTS.*/job_id_timestamp/
-    cts_apfe_gs_path = os.path.join(
-            DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
-            package, job_id + '_' + timestamp) + '/'
+    # Results produced by CTS test list collector are dummy results.
+    # They don't need to be copied to APFE bucket which is mainly being used for
+    # CTS APFE submission.
+    if not _is_test_collector(package):
+        # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
+        # or bucket/build/parent_job_id/cheets_GTS.*/job_id_timestamp/
+        cts_apfe_gs_path = os.path.join(
+                DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
+                package, job_id + '_' + timestamp) + '/'
+
+        for zip_file in glob.glob(os.path.join('%s.zip' % path)):
+            utils.run(' '.join(_get_cmd_list(
+                    multiprocessing, zip_file, cts_apfe_gs_path)))
+            logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
+    else:
+        logging.debug('%s is a CTS Test collector Autotest test run.', package)
+        logging.debug('Skipping CTS results upload to APFE gs:// bucket.')
 
     # Path: bucket/cheets_CTS.*/job_id_timestamp/
     # or bucket/cheets_GTS.*/job_id_timestamp/
     test_result_gs_path = os.path.join(
             DEFAULT_CTS_RESULTS_GSURI, package,
             job_id + '_' + timestamp) + '/'
-
-    for zip_file in glob.glob(os.path.join('%s.zip' % path)):
-        utils.run(' '.join(_get_cmd_list(
-                multiprocessing, zip_file, cts_apfe_gs_path)))
-        logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
 
     for test_result_file in glob.glob(os.path.join(path, result_pattern)):
         # gzip test_result_file(testResult.xml/test_result.xml)
