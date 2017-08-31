@@ -187,6 +187,10 @@ class CrosDisksClient(DBusClient):
     MOUNT_COMPLETED_SIGNAL_ARGUMENTS = (
         'status', 'source_path', 'source_type', 'mount_path'
     )
+    RENAME_COMPLETED_SIGNAL = 'RenameCompleted'
+    RENAME_COMPLETED_SIGNAL_ARGUMENTS = (
+        'status', 'path'
+    )
 
     def __init__(self, main_loop, bus):
         """Initializes the instance.
@@ -208,6 +212,9 @@ class CrosDisksClient(DBusClient):
         self.handle_signal(self.CROS_DISKS_INTERFACE,
                            self.MOUNT_COMPLETED_SIGNAL,
                            self.MOUNT_COMPLETED_SIGNAL_ARGUMENTS)
+        self.handle_signal(self.CROS_DISKS_INTERFACE,
+                           self.RENAME_COMPLETED_SIGNAL,
+                           self.RENAME_COMPLETED_SIGNAL_ARGUMENTS)
 
     def is_alive(self):
         """Invokes the CrosDisks IsAlive method.
@@ -287,6 +294,46 @@ class CrosDisksClient(DBusClient):
                             signal.
         """
         return self.expect_signal(self.FORMAT_COMPLETED_SIGNAL,
+                                  expected_content)
+
+    def rename(self, path, volume_name=None):
+        """Invokes the CrosDisks Rename method.
+
+        Args:
+            path: The device path to rename.
+            volume_name: The new name used for renaming.
+        """
+        if volume_name is None:
+            volume_name = ''
+        self.clear_signal_content(self.RENAME_COMPLETED_SIGNAL)
+        self.interface.Rename(path, volume_name)
+
+    def wait_for_rename_completion(self):
+        """Waits for the CrosDisks RenameCompleted signal.
+
+        Returns:
+            The content of the RenameCompleted signal.
+        """
+        return self.wait_for_signal(self.RENAME_COMPLETED_SIGNAL)
+
+    def expect_rename_completion(self, expected_content):
+        """Waits and verifies for the CrosDisks RenameCompleted signal.
+
+        Args:
+            expected_content: The expected content of the RenameCompleted
+                              signal, which can be partially specified.
+                              Only specified fields are compared between the
+                              actual and expected content.
+
+        Returns:
+            The actual content of the RenameCompleted signal.
+
+        Raises:
+            error.TestFail: A test failure when there is a mismatch between the
+                            actual and expected content of the RenameCompleted
+                            signal.
+        """
+        return self.expect_signal(self.RENAME_COMPLETED_SIGNAL,
                                   expected_content)
 
     def mount(self, path, filesystem_type=None, options=None):
@@ -748,3 +795,22 @@ class VirtualFilesystemImage(object):
             raise RuntimeError(message)
         finally:
             self._remove_mount_dir()
+
+    def get_volume_label(self):
+        """Gets volume name information of |self._loop_device|
+
+        @return a string with volume name if it exists.
+        """
+        # This script is run as root in a normal autotest run,
+        # so this works: It doesn't have access to the necessary info
+        # when run as a non-privileged user
+        cmd = "blkid -c /dev/null -o udev %s" % self._loop_device
+        output = utils.system_output(cmd, ignore_status=True)
+
+        for line in output.splitlines():
+            udev_key, udev_val = line.split('=')
+
+            if udev_key == 'ID_FS_LABEL':
+                return udev_val
+
+        return None
