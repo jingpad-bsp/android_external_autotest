@@ -226,6 +226,14 @@ class video_WebRtcPerf(test.test):
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS +
                 EXTRA_BROWSER_ARGS, arc_mode=self.arc_mode,
                 init_network_controller=True) as cr:
+
+            # crbug/753292 - enforce the idle checks after login
+            if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
+                                           CPU_IDLE_USAGE):
+                raise error.TestError('Could not get idle CPU post login.')
+            if not utils.wait_for_cool_machine():
+                raise error.TestError('Could not get cold machine post login.')
+
             if utils.get_board() == 'daisy':
               logging.warning('Delay 30s for issue 588579 on daisy')
               time.sleep(30)
@@ -259,11 +267,12 @@ class video_WebRtcPerf(test.test):
             cpu_usage_end = utils.get_cpu_usage()
             return utils.compute_active_cpu_time(cpu_usage_start,
                                                       cpu_usage_end) * 100
-        if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
-                                       CPU_IDLE_USAGE):
-            raise error.TestError('Could not get idle CPU.')
-        if not utils.wait_for_cool_machine():
-            raise error.TestError('Could not get cool machine.')
+
+        # crbug/753292 - APNG login pictures increase CPU usage. Move the more
+        # strict idle checks after the login phase.
+        utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT, CPU_IDLE_USAGE)
+        utils.wait_for_cool_machine()
+
         # Stop the thermal service that may change the cpu frequency.
         self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
         self._service_stopper.stop_services()
