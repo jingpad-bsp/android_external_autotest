@@ -10,7 +10,9 @@ from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
+_LOWER_USB_PORT = 'usb_mux_sel3'
 _SUSPEND_TIME = 30
+_UPPER_USB_PORT = 'usb_mux_sel1'
 
 class platform_ExternalUsbPeripherals(test.test):
     """Uses servo to repeatedly connect/remove USB devices during boot."""
@@ -48,7 +50,7 @@ class platform_ExternalUsbPeripherals(test.test):
         switch = 'dut_sees_usbkey'
         if not on:
             switch = 'servo_sees_usbkey'
-        self.host.servo.set('usb_mux_sel3', switch)
+        self.host.servo.set(self.plug_port, switch)
         self.pluged_status = on
 
 
@@ -265,17 +267,21 @@ class platform_ExternalUsbPeripherals(test.test):
         @param stress_rack: either to prep servo for stress tests, where
         usb_mux_1 port should be on. For usb peripherals on usb_mux_3,
         the port is on, and the oe2,oe4 poers are off.
+
+        @returns port as string to plug/unplug the specific port
         """
+        port = _LOWER_USB_PORT
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('dut_hub1_rst1','off')
-        self.plug_peripherals(False)
-        if (stress_rack):
-            self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        if stress_rack:
+            port = _UPPER_USB_PORT
+            self.host.servo.set(port, 'dut_sees_usbkey')
         else:
-            self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+            self.host.servo.set(_UPPER_USB_PORT, 'servo_sees_usbkey')
             self.host.servo.set('usb_mux_oe2', 'off')
             self.host.servo.set('usb_mux_oe4', 'off')
         time.sleep(_WAIT_DELAY)
+        return port
 
 
     def cleanup(self):
@@ -300,7 +306,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.fail_reasons = list()
         self.action_step = None
 
-        self.prep_servo_for_test(stress_rack)
+        self.plug_port = self.prep_servo_for_test(stress_rack)
 
         # Unplug, plug, compare usb peripherals, and leave plugged.
         self.check_connected_peripherals()
