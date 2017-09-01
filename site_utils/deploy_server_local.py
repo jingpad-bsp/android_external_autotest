@@ -65,6 +65,25 @@ def strip_terminal_codes(text):
     return re.sub(ESC+r'\[[^m]*m', '', text)
 
 
+def _clean_pyc_files():
+    print('Removing .pyc files')
+    try:
+        subprocess.check_output([
+                'find', '.',
+                '(',
+                # These are ignored to reduce IO load (crbug.com/759780).
+                '-path', './site-packages',
+                '-o', '-path', './containers',
+                '-o', '-path', './logs',
+                '-o', '-path', './results',
+                ')',
+                '-prune',
+                '-o', '-name', '*.pyc',
+                '-exec', 'rm', '-f', '{}', '+'])
+    except Exception as e:
+        print('Warning: failed to remove all .pyc files!\n  %s' % e)
+
+
 def verify_repo_clean():
     """This function cleans the current repo then verifies that it is valid.
 
@@ -154,12 +173,8 @@ def repo_sync(update_push_servers=False):
         print('Updating server to prod branch')
         subprocess.check_output(['git', 'checkout', 'cros/prod'],
                                 stderr=subprocess.STDOUT)
-    # Remove .pyc files via pyclean, which is a package on all ubuntu server.
-    print('Removing .pyc files')
-    try:
-        subprocess.check_output(['pyclean', '.', '-q'])
-    except Exception as e:
-        print('Warning: fail to remove .pyc! %s' % e)
+    _clean_pyc_files()
+
 
 def discover_update_commands():
     """Lookup the commands to run on this server.
@@ -458,23 +473,7 @@ def _sync_chromiumos_repo():
     print('Updating ~chromeos-test/chromiumos')
     with ChangeDir(os.path.expanduser('~chromeos-test/chromiumos')):
         ret = subprocess.call(['repo', 'sync'], stderr=subprocess.STDOUT)
-        # Remove .pyc files via pyclean, which is a package on all ubuntu server
-        print('Removing .pyc files')
-        try:
-            subprocess.check_output([
-                    'find', '.',
-                    '(',
-                    # These are ignored to reduce IO load (crbug.com/759780).
-                    '-path', './site-packages',
-                    '-o', '-path', './containers',
-                    '-o', '-path', './logs',
-                    '-o', '-path', './results',
-                    ')',
-                    '-prune',
-                    '-o', '-name', '*.pyc',
-                    '-exec', 'rm', '-f', '{}', '+'])
-        except Exception as e:
-            print('Warning: fail to remove .pyc! %s' % e)
+        _clean_pyc_files()
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
 
@@ -501,7 +500,6 @@ def main(args):
         repo_sync(behaviors.update_push_servers)
         versions_after = repo_versions()
         cmd_versions_after = repo_versions_to_decide_whether_run_cmd_update()
-
         _sync_chromiumos_repo()
 
     if behaviors.actions:
