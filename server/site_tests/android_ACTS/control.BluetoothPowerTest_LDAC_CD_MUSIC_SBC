@@ -22,6 +22,8 @@ def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-power-test-station-codecs.config',
+                 test_tracker_project_id=11404,
+                 testtracker_owner='android-comms-tvc@google.com',
                  test_file='bt_power_test_ldac_cd_music_sbc',
                  additional_apks=[{'apk':'PMC.apk', 'package':'com.android.pmc', 'artifacts':'tests.zip'}],
                  additional_configs=['android1758-power-test-station-codecs-relay-station-2.config',
