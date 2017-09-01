@@ -6,9 +6,11 @@
 import argparse
 import logging
 import os
-import tempfile
+import random
 import shutil
 import sys
+import tempfile
+import time
 import unittest
 from contextlib import contextmanager
 
@@ -51,7 +53,7 @@ class ContainerTests(unittest.TestCase):
         if not options.skip_cleanup:
             if cls.cleanup_base_container:
                 lxc.BaseImage().cleanup()
-            shutil.rmtree(cls.test_dir)
+            utils.run('sudo rm -r %s' % cls.test_dir)
 
 
     def testInit(self):
@@ -278,6 +280,36 @@ class ContainerTests(unittest.TestCase):
             self.verifyBindMount(container, dst, tmpdir)
 
 
+    def testContainerIdPersistence(self):
+        """Verifies that container IDs correctly persist.
+
+        When a Container is instantiated on top of an existing container dir,
+        check that it picks up the correct ID.
+        """
+        with self.createContainer() as container:
+            test_id = random_container_id()
+            container.id = test_id
+
+            # Set up another container and verify that its ID matches.
+            test_container = lxc.Container.create_from_existing_dir(
+                    container.container_path, container.name)
+
+            self.assertEqual(test_id, test_container.id)
+
+
+    def testContainerIdIsNone_newContainer(self):
+        """Verifies that newly created/cloned containers have no ID."""
+        with self.createContainer() as container:
+            self.assertIsNone(container.id)
+            # Set an ID, clone the container, and verify the clone has no ID.
+            container.id = random_container_id()
+            clone = lxc.Container.clone(src=container,
+                                        new_name=container.name + '_clone',
+                                        snapshot=True)
+            self.assertIsNotNone(container.id)
+            self.assertIsNone(clone.id)
+
+
     @contextmanager
     def createContainer(self, name=None):
         """Creates a container from the base container, for testing.
@@ -312,6 +344,32 @@ class ContainerTests(unittest.TestCase):
         host_inode = utils.run('ls -id %s' % host_path).stdout.split()[0]
         # Compare the container and host inodes - they should match.
         self.assertEqual(container_inode, host_inode)
+
+
+class ContainerIdTests(unittest.TestCase):
+    """Unit tests for the ContainerId class."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+
+    def testPickle(self):
+        """Verifies the ContainerId persistence code."""
+        # Create a random ID, then save and load it and compare them.
+        control = random_container_id()
+        control.save(self.test_dir)
+
+        test_data = lxc.ContainerId.load(self.test_dir)
+        self.assertEqual(control, test_data)
+
+
+def random_container_id():
+    """Generate a random container ID for testing."""
+    return lxc.ContainerId(random.randint(0, 1000), time.time(), os.getpid())
 
 
 def parse_options():

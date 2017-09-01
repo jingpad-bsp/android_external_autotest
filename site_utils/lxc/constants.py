@@ -15,11 +15,6 @@ BASE = global_config.get_config_value('AUTOSERV', 'container_base_name')
 # Path to folder that contains autotest code inside container.
 CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 
-# Naming convention of test container, e.g., test_300_1422862512_2424, where:
-# 300:        The test job ID.
-# 1422862512: The tick when container is created.
-# 2424:       The PID of autoserv that starts the container.
-TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
 # Naming convention of the result directory in test container.
 RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results',
                               '%s')

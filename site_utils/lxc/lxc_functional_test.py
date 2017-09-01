@@ -187,11 +187,11 @@ def setup_base(container_path):
     logging.info('Base container created: %s', image.get().name)
 
 
-def setup_test(bucket, name, skip_cleanup):
+def setup_test(bucket, container_id, skip_cleanup):
     """Test container can be created from base container.
 
     @param bucket: ContainerBucket to interact with containers.
-    @param name: Name of the test container.
+    @param container_id: ID of the test container.
     @param skip_cleanup: Set to True to skip cleanup, used to troubleshoot
                          container failures.
 
@@ -199,8 +199,9 @@ def setup_test(bucket, name, skip_cleanup):
     """
     logging.info('Create test container.')
     os.makedirs(RESULT_PATH)
-    container = bucket.setup_test(name, TEST_JOB_ID, AUTOTEST_SERVER_PKG,
-                                  RESULT_PATH, skip_cleanup=skip_cleanup,
+    container = bucket.setup_test(container_id, TEST_JOB_ID,
+                                  AUTOTEST_SERVER_PKG, RESULT_PATH,
+                                  skip_cleanup=skip_cleanup,
                                   job_folder=TEST_JOB_FOLDER,
                                   dut_name='192.168.0.3')
 
@@ -344,9 +345,8 @@ def main(options):
     setup_base(TEMP_DIR)
     bucket = lxc.ContainerBucket(TEMP_DIR)
 
-    container_test_name = (lxc.TEST_CONTAINER_NAME_FMT %
-                           (TEST_JOB_ID, time.time(), os.getpid()))
-    container = setup_test(bucket, container_test_name, options.skip_cleanup)
+    container_id = lxc.ContainerId(TEST_JOB_ID, time.time(), os.getpid())
+    container = setup_test(bucket, container_id, options.skip_cleanup)
     test_share(container)
     test_autoserv(container)
     if options.dut:
