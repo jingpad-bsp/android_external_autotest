@@ -65,6 +65,11 @@ def parse_args():
                       action="store")
     parser.add_option("--dry-run", help="Do not actually commit any results.",
                       dest="dry_run", action="store_true", default=False)
+    parser.add_option(
+            "--detach", action="store_true",
+            help="Detach parsing process from the caller process. Used by "
+                 "monitor_db to safely restart without affecting parsing.",
+            default=False)
     parser.add_option("--write-pidfile",
                       help="write pidfile (.parser_execute)",
                       dest="write_pidfile", action="store_true",
@@ -647,6 +652,14 @@ def record_parsing(processed_jobs, duration_secs):
                     job_id, hostname, job_overhead.STATUS.PARSING,
                     duration_secs)
 
+def _detach_from_parent_process():
+    """Allow reparenting the parse process away from caller.
+
+    When monitor_db is run via upstart, restarting the job sends SIGTERM to
+    the whole process group. This makes us immune from that.
+    """
+    if os.getpid() != os.getpgid(0):
+        os.setsid()
 
 def main():
     """Main entrance."""
@@ -656,6 +669,10 @@ def main():
     processed_jobs = set()
 
     options, args = parse_args()
+
+    if options.detach:
+        _detach_from_parent_process()
+
     parse_options = _ParseOptions(options.reparse, options.mailit,
                                   options.dry_run, options.suite_report,
                                   options.datastore_creds,
