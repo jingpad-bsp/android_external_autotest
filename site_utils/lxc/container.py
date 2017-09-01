@@ -2,9 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 import os
+import pickle
 import re
+import tempfile
 import time
 
 import common
@@ -18,6 +21,61 @@ try:
     from chromite.lib import metrics
 except ImportError:
     metrics = utils.metrics_mock
+
+
+# Naming convention of test container, e.g., test_300_1422862512_2424, where:
+# 300:        The test job ID.
+# 1422862512: The tick when container is created.
+# 2424:       The PID of autoserv that starts the container.
+_TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
+# Name of the container ID file.
+_CONTAINER_ID_FILENAME = 'container_id.p'
+
+
+class ContainerId(collections.namedtuple('ContainerId',
+                                         ['job_id', 'creation_time', 'pid'])):
+    """An identifier for containers."""
+
+    # Optimization.  Avoids __dict__ creation.  Empty because this subclass has
+    # no instance vars of its own.
+    __slots__ = ()
+
+
+    def __str__(self):
+        return _TEST_CONTAINER_NAME_FMT % self
+
+
+    def save(self, path):
+        """Saves the ID to the given path.
+
+        @param path: Path to a directory where the container ID will be
+                     serialized.
+        """
+        dst = os.path.join(path, _CONTAINER_ID_FILENAME)
+        # Write to a tmpfile and then move it, so the operation is atomic.
+        with tempfile.NamedTemporaryFile(delete=False) as id_tmp:
+            pickle.dump(self, id_tmp)
+            id_tmp.close()
+            # sudo is needed because the container directory is owned by root.
+            utils.run('sudo mv %s %s' % (id_tmp.name, dst))
+
+
+    @classmethod
+    def load(cls, path):
+        """Reads the ID from the given path.
+
+        @param path: Path to check for a serialized container ID.
+
+        @return: A container ID if one is found on the given path, or None
+                 otherwise.
+        """
+        src = os.path.join(path, _CONTAINER_ID_FILENAME)
+        if lxc_utils.path_exists(src):
+            # Read as root because the container directory is owned by root.
+            pickle_data = utils.run('sudo cat %s' % src).stdout
+            return pickle.loads(pickle_data)
+        else:
+            return None
 
 
 class Container(object):
@@ -74,6 +132,12 @@ class Container(object):
             # Clone the source container to initialize this one.
             lxc_utils.clone(src.container_path, src.name, self.container_path,
                             self.name, snapshot)
+            # Newly cloned containers have no ID.
+            self._id = None
+        else:
+            # This may be an existing container.  Try to read the ID.
+            self._id = ContainerId.load(
+                    os.path.join(self.container_path, self.name))
 
 
     @classmethod
@@ -91,8 +155,17 @@ class Container(object):
         return cls(lxc_path, name, kwargs)
 
 
+    # Containers have a name and an ID.  The name is simply the name of the LXC
+    # container.  The ID is the actual key that is used to identify the
+    # container to the autoserv system.  In the case of a JIT-created container,
+    # we have the ID at the container's creation time so we use that to name the
+    # container.  This may not be the case for other types of containers.  The
+    # new_id parameter is temporarily added here while the code is being
+    # transitioned from being name-based to id-based.
+    # TODO(kenobi): Complete transition to id-based container identification.
     @classmethod
-    def clone(cls, src, new_name, new_path=None, snapshot=False, cleanup=False):
+    def clone(cls, src, new_name, new_path=None, snapshot=False, cleanup=False,
+              new_id=None):
         """Creates a clone of this container.
 
         @param src: The original container.
@@ -103,6 +176,7 @@ class Container(object):
         @param snapshot: Whether to snapshot, or create a full clone.
         @param cleanup: If a container with the given name and path already
                 exist, clean it up first.
+        @param new_id: An optional ContainerId to assign to the new container.
         """
         if new_path is None:
             new_path = src.container_path
@@ -124,7 +198,12 @@ class Container(object):
                 utils.run('sudo rm -rf "%s"' % container_folder)
 
         # Create and return the new container.
-        return cls(new_path, new_name, {}, src, snapshot)
+        new_container = cls(new_path, new_name, {}, src, snapshot)
+        # Set the container ID.
+        if new_id is not None:
+            new_container.id = new_id
+
+        return new_container
 
 
     def refresh_status(self):
@@ -409,6 +488,20 @@ class Container(object):
         dst_path = os.path.join(self.rootfs,
                                 container_path.lstrip(os.path.sep))
         self._do_copy(src=host_path, dst=dst_path)
+
+
+    @property
+    def id(self):
+        """Returns the container ID."""
+        return self._id
+
+
+    @id.setter
+    def id(self, new_id):
+        """Sets the container ID."""
+        self._id = new_id;
+        # Persist the ID so other container objects can pick it up.
+        self._id.save(os.path.join(self.container_path, self.name))
 
 
     def _do_copy(self, src, dst):
