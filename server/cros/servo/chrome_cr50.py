@@ -299,7 +299,6 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def ccd_enable(self):
         """Reenable CCD and reset servo interfaces"""
         logging.info("reenable ccd")
-        self._servo.set_nocheck('servo_v4_ccd_mode', 'ccd')
         self._servo.set_nocheck('servo_v4_dts_mode', 'on')
         self._servo.set_nocheck('power_state', 'ccd_reset')
         self.wait_for_ccd_enable()
