@@ -13,6 +13,7 @@
 from base_image import BaseImage
 from constants import *
 from container import Container
+from container import ContainerId
 from container_bucket import ContainerBucket
 from lxc import install_package
 from lxc import install_packages
