@@ -1297,10 +1297,14 @@ class FirmwareTest(FAFTBase):
             logging.info('No shellball given, use the original shellball and '
                          'replace its BIOS and EC images.')
             work_path = self.faft_client.updater.get_work_path()
-            bios_in_work_path = os.path.join(work_path, 'bios.bin')
-            ec_in_work_path = os.path.join(work_path, 'ec.bin')
+            bios_in_work_path = os.path.join(
+                work_path, self.faft_client.updater.get_bios_relative_path())
+            ec_in_work_path = os.path.join(
+                work_path, self.faft_client.updater.get_ec_relative_path())
+            logging.info('Writing current BIOS to: %s', bios_in_work_path)
             self.faft_client.bios.dump_whole(bios_in_work_path)
             if self.faft_config.chrome_ec:
+                logging.info('Writing current EC to: %s', ec_in_work_path)
                 self.faft_client.ec.dump_firmware(ec_in_work_path)
             self.faft_client.updater.repack_shellball()
 
