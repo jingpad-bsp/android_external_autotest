@@ -15,6 +15,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.site_utils.lxc import constants
 
 
 def path_exists(path):
@@ -70,7 +71,7 @@ def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     @param dst_name: The name of the destination container.
     @param snapshot: Whether or not to create a snapshot clone.
     """
-    snapshot_arg = '-s' if snapshot else ''
+    snapshot_arg = '-s' if snapshot and constants.SUPPORT_SNAPSHOT_CLONE else ''
     # overlayfs is the default clone backend storage. However it is not
     # supported in Ganeti yet. Use aufs as the alternative.
     aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
