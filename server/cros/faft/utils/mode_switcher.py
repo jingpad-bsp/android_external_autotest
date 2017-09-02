@@ -293,6 +293,8 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
         next item and pwr button selects current activated item.
         """
         time.sleep(self.faft_config.firmware_screen)
+        self.set_button('volume_up_hold', 100, ('Enter Recovery Menu.'))
+        time.sleep(self.faft_config.confirm_screen)
         self.servo.set_nocheck('volume_up_hold', 100)
         time.sleep(self.faft_config.confirm_screen)
         self.set_button('volume_up_hold', 100, ('Selecting power as '
