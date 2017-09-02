@@ -756,6 +756,14 @@ class RPCFunctions(object):
         """Get updater's work directory path."""
         return self._updater.get_work_path()
 
+    def _updater_get_bios_relative_path(self):
+        """Gets the relative path of the bios image in the shellball."""
+        return self._updater.get_bios_relative_path()
+
+    def _updater_get_ec_relative_path(self):
+        """Gets the relative path of the ec image in the shellball."""
+        return self._updater.get_ec_relative_path()
+
     def _rootfs_verify_rootfs(self, section):
         """Verifies the integrity of the root FS.
 
