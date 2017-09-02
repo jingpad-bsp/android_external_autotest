@@ -101,8 +101,20 @@ class BaseImageTests(unittest.TestCase):
         self.assertFalse(lxc_utils.path_exists(
                 os.path.join(base.container_path, base.name)))
         for container in clones:
-            self.assertFalse(lxc_utils.path_exists(
-                    os.path.join(container.container_path, container.name)))
+            if constants.SUPPORT_SNAPSHOT_CLONE:
+                # Snapshot clones should get deleted along with the base
+                # container.
+                self.assertFalse(lxc_utils.path_exists(
+                        os.path.join(container.container_path, container.name)))
+            else:
+                # If snapshot clones aren't supported (e.g. on moblab), the
+                # clones should not be affected by the destruction of the base
+                # container.
+                try:
+                    container.refresh_status()
+                except error.ContainerError:
+                    self.fail(error.format_error())
+
 
 
 class BaseImageSetupTests(unittest.TestCase):
@@ -134,6 +146,8 @@ class BaseImageSetupTests(unittest.TestCase):
         self.assertTrue(container.is_running())
 
 
+    @unittest.skipIf(constants.IS_MOBLAB,
+                     "Moblab does not support the regular base container.")
     def testSetupBase09(self):
         """Verifies that setup works for base container.
 

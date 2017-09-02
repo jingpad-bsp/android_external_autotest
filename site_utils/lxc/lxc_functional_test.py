@@ -233,7 +233,7 @@ def test_share(container):
     host_test_script = os.path.join(RESULT_PATH, TEST_SCRIPT)
     with open(host_test_script, 'w') as script:
         if utils.is_moblab():
-            script.write(TEST_SCRIPT_CONTENT)
+            script.write(TEST_SCRIPT_CONTENT % {'ts_mon_test': ''})
         else:
             script.write(TEST_SCRIPT_CONTENT %
                          {'ts_mon_test': TEST_SCRIPT_CONTENT_TS_MON})
