@@ -173,7 +173,10 @@ class Container(object):
         @param new_path: LXC path for the cloned container (optional; if not
                 specified, the new container is created in the same directory as
                 the source container).
-        @param snapshot: Whether to snapshot, or create a full clone.
+        @param snapshot: Whether to snapshot, or create a full clone.  Note that
+                         snapshot cloning is not supported on all platforms.  If
+                         this code is running on a platform that does not
+                         support snapshot clones, this flag is ignored.
         @param cleanup: If a container with the given name and path already
                 exist, clean it up first.
         @param new_id: An optional ContainerId to assign to the new container.

@@ -112,8 +112,7 @@ class ContainerBucket(object):
             raise error.ContainerError('Container %s already exists.' %
                                        str(container_id))
 
-        use_snapshot = (constants.SUPPORT_SNAPSHOT_CLONE and not
-                        disable_snapshot_clone)
+        use_snapshot = not disable_snapshot_clone
 
         try:
             return Container.clone(src=self.base_container,
