@@ -29,7 +29,9 @@ def run(machine):
                  additional_configs=['android1758-power-test-station-codecs-relay-station-2.config',
                                      'android1758-power-test-station-codecs-relay-station-3.config',
                                      'android1758-power-test-station-codecs-relay-station-5.config',
-                                     'android1758-power-test-station-codecs-relay-station-6.config'],
+                                     'android1758-power-test-station-codecs-relay-station-6.config',
+                                     'bt_music/Stereo-44kHz-16bits.wav',
+                                     'bt_music/Stereo-96kHz-24bits.wav'],
                  acts_timeout=86400)
 
 
