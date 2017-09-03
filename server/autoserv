@@ -140,12 +140,12 @@ def _stage_ssp(parser, resultsdir):
     return script_locals['ssp_url'], script_locals['error_msg']
 
 
-def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
+def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
                   job_folder, machines):
     """Run the server job with server-side packaging.
 
     @param job: The server job object.
-    @param container_name: Name of the container to run the test.
+    @param container_id: ID of the container to run the test.
     @param job_id: ID of the test job.
     @param results: Folder to store results. This could be different from
                     parser.options.results:
@@ -162,7 +162,7 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
                else None)
     try:
         dut_name = machines[0] if len(machines) >= 1 else None
-        test_container = bucket.setup_test(container_name, job_id, ssp_url,
+        test_container = bucket.setup_test(container_id, job_id, ssp_url,
                                            results, control=control,
                                            job_folder=job_folder,
                                            dut_name=dut_name)
@@ -331,8 +331,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     # handle_sigterm.
     job_or_task_id = job_directories.get_job_id_or_task_id(
             parser.options.results)
-    container_name = (lxc.TEST_CONTAINER_NAME_FMT %
-                      (job_or_task_id, time.time(), os.getpid()))
+    container_id = lxc.ContainerId(job_or_task_id, time.time(), os.getpid())
     job_folder = job_directories.get_job_folder_name(parser.options.results)
 
     # Implement SIGTERM handler
@@ -353,18 +352,18 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         time.sleep(.1)
         if use_ssp:
             logging.debug('Destroy container %s before aborting the autoserv '
-                          'process.', container_name)
+                          'process.', container_id)
             try:
                 bucket = lxc.ContainerBucket()
-                container = bucket.get(container_name)
+                container = bucket.get_container(container_id)
                 if container:
                     container.destroy()
                 else:
-                    logging.debug('Container %s is not found.', container_name)
+                    logging.debug('Container %s is not found.', container_id)
             except:
                 # Handle any exception so the autoserv process can be aborted.
                 logging.exception('Failed to destroy container %s.',
-                                  container_name)
+                                  container_id)
             # Try to correct the result file permission again after the
             # container is destroyed, as the container might have created some
             # new files in the result folder.
@@ -503,7 +502,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                     _start_servod(machines[0])
                 if use_ssp:
                     try:
-                        _run_with_ssp(job, container_name, job_or_task_id,
+                        _run_with_ssp(job, container_id, job_or_task_id,
                                         results, parser, ssp_url, job_folder,
                                         machines)
                     finally:

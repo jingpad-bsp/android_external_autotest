@@ -171,11 +171,12 @@ class video_PlaybackPerf(test.test):
             cpu_usage_end = utils.get_cpu_usage()
             return utils.compute_active_cpu_time(cpu_usage_start,
                                                       cpu_usage_end) * 100
-        if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
-                                       CPU_IDLE_USAGE):
-            raise error.TestError('Could not get idle CPU.')
-        if not utils.wait_for_cool_machine():
-            raise error.TestError('Could not get cold machine.')
+
+        # crbug/753292 - APNG login pictures increase CPU usage. Move the more
+        # strict idle checks after the login phase.
+        utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT, CPU_IDLE_USAGE)
+        utils.wait_for_cool_machine()
+
         # Stop the thermal service that may change the cpu frequency.
         self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
         self._service_stopper.stop_services()
@@ -245,6 +246,14 @@ class video_PlaybackPerf(test.test):
                 extra_browser_args=helper_logger.chrome_vmodule_flag(),
                 arc_mode=self.arc_mode,
                 init_network_controller=True) as cr:
+
+            # crbug/753292 - enforce the idle checks after login
+            if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
+                                           CPU_IDLE_USAGE):
+                raise error.TestError('Could not get idle CPU post login.')
+            if not utils.wait_for_cool_machine():
+                raise error.TestError('Could not get cold machine post login.')
+
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)

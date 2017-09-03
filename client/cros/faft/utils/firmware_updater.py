@@ -9,6 +9,7 @@ See FirmwareUpdater object below.
 """
 
 import os
+import re
 
 class FirmwareUpdater(object):
     """
@@ -25,9 +26,19 @@ class FirmwareUpdater(object):
         self._temp_path = '/var/tmp/faft/autest'
         self._keys_path = os.path.join(self._temp_path, 'keys')
         self._work_path = os.path.join(self._temp_path, 'work')
+        self._bios_path = 'bios.bin'
+        self._ec_path = 'ec.bin'
 
+        # _detect_image_paths always needs to run during initialization
+        # or after extract_shellball is called.
+        #
+        # If we are setting up the temp dir from scratch, we'll transitively
+        # call _detect_image_paths since extract_shellball is called.
+        # Otherwise, we need to scan the existing temp directory.
         if not self.os_if.is_dir(self._temp_path):
             self._setup_temp_dir()
+        else:
+            self._detect_image_paths()
 
 
     def _setup_temp_dir(self):
@@ -64,7 +75,7 @@ class FirmwareUpdater(object):
             Shellball's fwid.
         """
         self.os_if.run_shell_command('dump_fmap -x %s %s' %
-            (os.path.join(self._work_path, 'bios.bin'), 'RW_FWID_A'))
+            (os.path.join(self._work_path, self._bios_path), 'RW_FWID_A'))
 
         [fwid] = self.os_if.run_shell_command_get_output(
             "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
@@ -81,7 +92,7 @@ class FirmwareUpdater(object):
         self.os_if.run_shell_command(
                 '/usr/share/vboot/bin/resign_firmwarefd.sh '
                 '%s %s %s %s %s %s %s %d %d' % (
-                    os.path.join(self._work_path, 'bios.bin'),
+                    os.path.join(self._work_path, self._bios_path),
                     os.path.join(self._temp_path, 'output.bin'),
                     os.path.join(self._keys_path, 'firmware_data_key.vbprivk'),
                     os.path.join(self._keys_path, 'firmware.keyblock'),
@@ -91,7 +102,30 @@ class FirmwareUpdater(object):
                     version,
                     ro_normal))
         self.os_if.copy_file('%s' % os.path.join(self._temp_path, 'output.bin'),
-                             '%s' % os.path.join(self._work_path, 'bios.bin'))
+                             '%s' % os.path.join(
+                                 self._work_path, self._bios_path))
+
+
+    def _detect_image_paths(self):
+        """Scans shellball to find correct bios and ec image paths"""
+        model_result = self.os_if.run_shell_command_get_output(
+            'mosys platform model')
+        if model_result:
+            model = model_result[0]
+            search_path = os.path.join(
+                self._work_path, 'models', model, 'setvars.sh')
+            grep_result = self.os_if.run_shell_command_get_output(
+                'grep IMAGE_MAIN= %s' % search_path)
+            if grep_result:
+                match = re.match('IMAGE_MAIN=(.*)', grep_result[0])
+                if match:
+                    self._bios_path = match.group(1).replace('"', '')
+            grep_result = self.os_if.run_shell_command_get_output(
+                'grep IMAGE_EC= %s' % search_path)
+            if grep_result:
+                match = re.match('IMAGE_EC=(.*)', grep_result[0])
+                if match:
+                  self._ec_path = match.group(1).replace('"', '')
 
 
     def extract_shellball(self, append=None):
@@ -109,6 +143,8 @@ class FirmwareUpdater(object):
 
         self.os_if.run_shell_command('sh %s --sb_extract %s' % (
                 working_shellball, self._work_path))
+
+        self._detect_image_paths()
 
 
     def repack_shellball(self, append=None):
@@ -187,3 +223,11 @@ class FirmwareUpdater(object):
     def get_work_path(self):
         """Get work directory path."""
         return self._work_path
+
+    def get_bios_relative_path(self):
+        """Gets the relative path of the bios image in the shellball."""
+        return self._bios_path
+
+    def get_ec_relative_path(self):
+        """Gets the relative path of the ec image in the shellball."""
+        return self._ec_path

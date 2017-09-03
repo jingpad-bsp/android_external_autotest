@@ -362,6 +362,7 @@ def test_case_log(method):
     """
     @functools.wraps(method)
     def wrapper(instance, *args, **kwargs):
+        """Log the name of the wrapped method before execution"""
         logging.info('\n<... %s ...>', method.__name__)
         method(instance, *args, **kwargs)
     return wrapper
@@ -1220,8 +1221,17 @@ class BluetoothAdapterTests(test.test):
         """
 
 
-        def within_tolerance(a, b, ratio=0.1):
-            return abs(a - b) / abs(a) <= ratio
+        def within_tolerance(expected, actual, max_error=0.1):
+            """Determine if the percent error is within specified tolerance.
+
+            @param expected: The expected value.
+            @param actual: The actual (measured) value.
+            @param max_error: The maximum percent error acceptable.
+
+            @returns: True if the percent error is less than or equal to
+                      max_error.
+            """
+            return abs(expected - actual) / abs(expected) <= max_error
 
 
         start_str = 'Set Advertising Intervals:'

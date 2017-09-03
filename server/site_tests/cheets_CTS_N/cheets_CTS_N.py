@@ -148,6 +148,17 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         cmd.append('--logcat-on-failure')
         return cmd
 
+    def _get_timeout_factor(self):
+        """Returns the factor to be multiplied to the timeout parameter.
+        The factor is determined by the number of ABIs to run."""
+        if self._timeoutfactor is None:
+            abilist = self._run('adb', args=('shell', 'getprop',
+                'ro.product.cpu.abilist')).stdout.split(',')
+            prefix = {'x86': 'x86', 'arm': 'armeabi-'}.get(self._abi)
+            self._timeoutfactor = (1 if prefix is None else
+                sum(1 for abi in abilist if abi.startswith(prefix)))
+        return self._timeoutfactor
+
     def _run_cts_tradefed(self,
                           commands,
                           datetime_id=None,
@@ -171,7 +182,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             output = self._run(
                 self._cts_tradefed,
                 args=tuple(command),
-                timeout=self._timeout,
+                timeout=self._timeout * self._get_timeout_factor(),
                 verbose=True,
                 ignore_status=False,
                 # Make sure to tee tradefed stdout/stderr to autotest logs
@@ -306,6 +317,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         if self._get_release_channel == 'stable':
             self._timeout += 3600
         # Retries depend on channel.
+        self._timeoutfactor = None
         self._max_retry = (
             max_retry if max_retry is not None else self._get_channel_retry())
         logging.info('Maximum number of retry steps %d.', self._max_retry)

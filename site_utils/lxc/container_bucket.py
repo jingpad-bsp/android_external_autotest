@@ -42,6 +42,10 @@ class ContainerBucket(object):
     def get_all(self):
         """Get details of all containers.
 
+        Retrieves all containers owned by the bucket.  Note that this doesn't
+        include the base container, or any containers owned by the container
+        pool.
+
         @return: A dictionary of all containers with detailed attributes,
                  indexed by container name.
         """
@@ -50,30 +54,32 @@ class ContainerBucket(object):
         for info in info_collection:
             container = Container.create_from_existing_dir(self.container_path,
                                                            **info)
-            containers[container.name] = container
+            # Active containers have an ID.  Zygotes and base containers, don't.
+            if container.id is not None:
+                containers[container.id] = container
         return containers
 
 
-    def get(self, name):
+    def get_container(self, container_id):
         """Get a container with matching name.
 
-        @param name: Name of the container.
+        @param container_id: ID of the container.
 
         @return: A container object with matching name. Returns None if no
                  container matches the given name.
         """
-        return self.get_all().get(name, None)
+        return self.get_all().get(container_id, None)
 
 
-    def exist(self, name):
+    def exist(self, container_id):
         """Check if a container exists with the given name.
 
-        @param name: Name of the container.
+        @param container_id: ID of the container.
 
-        @return: True if the container with the given name exists, otherwise
+        @return: True if the container with the given ID exists, otherwise
                  returns False.
         """
-        return self.get(name) != None
+        return self.get_container(container_id) != None
 
 
     def destroy_all(self):
@@ -88,11 +94,11 @@ class ContainerBucket(object):
 
     @metrics.SecondsTimerDecorator(
         '%s/create_from_base_duration' % constants.STATS_KEY)
-    def create_from_base(self, name, disable_snapshot_clone=False,
+    def create_from_base(self, container_id, disable_snapshot_clone=False,
                          force_cleanup=False):
         """Create a container from the base container.
 
-        @param name: Name of the container.
+        @param container_id: ID to assign the new container.
         @param disable_snapshot_clone: Set to True to force to clone without
                 using snapshot clone even if the host supports that.
         @param force_cleanup: Force to cleanup existing container.
@@ -102,18 +108,19 @@ class ContainerBucket(object):
         @raise ContainerError: If the container already exist.
         @raise error.CmdError: If lxc-clone call failed for any reason.
         """
-        if self.exist(name) and not force_cleanup:
-            raise error.ContainerError('Container %s already exists.' % name)
+        if self.exist(container_id) and not force_cleanup:
+            raise error.ContainerError('Container %s already exists.' %
+                                       str(container_id))
 
-        use_snapshot = (constants.SUPPORT_SNAPSHOT_CLONE and not
-                        disable_snapshot_clone)
+        use_snapshot = not disable_snapshot_clone
 
         try:
             return Container.clone(src=self.base_container,
-                                   new_name=name,
+                                   new_name=str(container_id),
                                    new_path=self.container_path,
                                    snapshot=use_snapshot,
-                                   cleanup=force_cleanup)
+                                   cleanup=force_cleanup,
+                                   new_id=container_id)
         except error.CmdError:
             logging.debug('Creating snapshot clone failed. Attempting without '
                            'snapshot...')
@@ -122,7 +129,7 @@ class ContainerBucket(object):
             else:
                 # Snapshot clone failed, retry clone without snapshot.
                 container = Container.clone(src=self.base_container,
-                                            new_name=name,
+                                            new_id=container_id,
                                             new_path=self.container_path,
                                             snapshot=False,
                                             cleanup=force_cleanup)
@@ -132,7 +139,7 @@ class ContainerBucket(object):
     @metrics.SecondsTimerDecorator(
         '%s/setup_test_duration' % constants.STATS_KEY)
     @cleanup_if_fail()
-    def setup_test(self, name, job_id, server_package_url, result_path,
+    def setup_test(self, container_id, job_id, server_package_url, result_path,
                    control=None, skip_cleanup=False, job_folder=None,
                    dut_name=None):
         """Setup test container for the test job to run.
@@ -146,7 +153,7 @@ class ContainerBucket(object):
         TODO(dshi): Setup also needs to include test control file for autoserv
                     to run in container.
 
-        @param name: Name of the container.
+        @param container_id: ID to assign to the test container.
         @param job_id: Job id for the test job to run in the test container.
         @param server_package_url: Url to download autotest_server package.
         @param result_path: Directory to be mounted to container to store test
@@ -182,7 +189,7 @@ class ContainerBucket(object):
             utils.run('cp %s %s' % (control, safe_control))
 
         # Create test container from the base container.
-        container = self.create_from_base(name)
+        container = self.create_from_base(container_id)
 
         # Deploy server side package
         container.install_ssp(server_package_url)
@@ -215,7 +222,7 @@ class ContainerBucket(object):
         utils.run('sudo chown -R root "%s"' % autotest_path)
         utils.run('sudo chgrp -R root "%s"' % autotest_path)
 
-        container.start(name)
+        container.start(wait_for_network=True)
         deploy_config_manager.deploy_post_start()
 
         # Update the hostname of the test container to be `dut-name`.
@@ -232,5 +239,5 @@ class ContainerBucket(object):
 
         container.verify_autotest_setup(job_folder)
 
-        logging.debug('Test container %s is set up.', name)
+        logging.debug('Test container %s is set up.', container.name)
         return container

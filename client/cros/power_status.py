@@ -773,7 +773,9 @@ class CPUPackageStats(AbstractStats):
     NEHALEM      =              {'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
     SANDY_BRIDGE = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
     SILVERMONT   = {'C6': 0x3FA}
-    GOLDMONT     = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C10': 0x632}
+    GOLDMONT     = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9,'C10': 0x632}
+    HASWELL      = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA,
+                                 'C8': 0x630, 'C9': 0x631,'C10': 0x632}
 
     def __init__(self):
         def _get_platform_states():
@@ -789,16 +791,16 @@ class CPUPackageStats(AbstractStats):
                 # Group same package cstate using the older uarch name
                 'Airmont':      self.SILVERMONT,
                 'Atom':         self.ATOM,
-                'Broadwell':    self.SANDY_BRIDGE,
+                'Broadwell':    self.HASWELL,
                 'Goldmont':     self.GOLDMONT,
-                'Haswell':      self.SANDY_BRIDGE,
+                'Haswell':      self.HASWELL,
                 'Ivy Bridge':   self.SANDY_BRIDGE,
                 'Ivy Bridge-E': self.SANDY_BRIDGE,
-                'Kaby Lake':    self.SANDY_BRIDGE,
+                'Kaby Lake':    self.HASWELL,
                 'Nehalem':      self.NEHALEM,
                 'Sandy Bridge': self.SANDY_BRIDGE,
                 'Silvermont':   self.SILVERMONT,
-                'Skylake':      self.SANDY_BRIDGE,
+                'Skylake':      self.HASWELL,
                 'Westmere':     self.NEHALEM,
                 }.get(cpu_uarch, None)
 

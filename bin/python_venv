@@ -1,0 +1,57 @@
+#!/bin/bash
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Starts a python interpreter in virtualenv.
+#
+# This script will set up a virtualenv when it has not been created yet and
+# executes the Python interpreter.
+set -eu
+
+readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
+if [[ ! -d "${bin_dir}" ]]; then
+    echo "ERROR: Can not locate the location of python_env!" >&2
+    exit 1
+fi
+
+realpath() {
+    pushd "${bin_dir}" > /dev/null 2>&1
+    readlink -f -- "$1"
+    popd > /dev/null 2>&1
+}
+
+err_infra_virtualenv() {
+    echo "ERROR: infra_virtualenv directory cannot be located." >&2
+    echo "You need to update a constant inside python_venv, or your " >&2
+    echo "checkout might be incomplete." >&2
+    exit 1
+}
+
+if [[ -d $(realpath ../../../../../infra_virtualenv) ]]; then
+    readonly infra_virtualenv_path=$(realpath ../../../../../infra_virtualenv)
+elif [[ -d /opt/infra_virtualenv ]]; then
+    readonly infra_virtualenv_path=/opt/infra_virtualenv
+else
+    err_infra_virtualenv
+fi
+
+readonly create_venv="${infra_virtualenv_path}/bin/create_venv"
+if [[ ! -f "${create_venv}" ]]; then
+    err_infra_virtualenv
+fi
+
+readonly extra_imports_dir=$(realpath ../venv)
+if [[ ! -d "${extra_imports_dir}" ]]; then
+    echo "ERROR: venv directory is not found at ${bin_dir}/.." >&2
+    echo "See infra_virtualenv/README.md for details." >&2
+    exit 1
+fi
+
+readonly venv_dir=$("${create_venv}" "${extra_imports_dir}/requirements.txt")
+if [[ ! -d "${venv_dir}" ]]; then
+    echo "ERROR: Failed to set up virtualenv" >&2
+    exit 1
+fi
+export PYTHONPATH="${extra_imports_dir}"
+exec "${venv_dir}/bin/python" "$@"
