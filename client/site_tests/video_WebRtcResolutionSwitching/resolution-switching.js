@@ -22,96 +22,7 @@ const RESOLUTIONS = [
   {w:480, h:360},
   {w:640, h:480},
   {w:1280, h:720},
-].sort((x, y) => y.w - x.w);  // Ensure sorted in descending order to
-                              // conveniently request the highest
-                              // resolution first through GUM later.
-
-function createMediaConstraints(widthAndHeight) {
-  const constraint = {
-    width: {exact: widthAndHeight.w},
-    height: {exact: widthAndHeight.h}
-  };
-  return {
-    audio: true,
-    video: constraint
-  };
-}
-
-class PeerConnection {
-  constructor(videoElement) {
-    this.localConnection = null;
-    this.remoteConnection = null;
-    this.remoteView = videoElement;
-    this.streams = [];
-  }
-
-  start() {
-    // getUserMedia fails if we first request a low resolution and
-    // later a higher one. Hence, sort RESOLUTIONS above and
-    // start with the highest resolution here.
-    const promises = RESOLUTIONS.map((resolution) => {
-      const constraints = createMediaConstraints(resolution);
-      return navigator.mediaDevices
-        .getUserMedia(constraints)
-        .then((stream) => this.streams.push(stream));
-    });
-    return Promise.all(promises).then(
-        // Start with the smallest video to not overload the machine instantly.
-        () =>
-            this.onGetUserMediaSuccess(this.streams[this.streams.length - 1]));
-  };
-
-  onGetUserMediaSuccess(stream) {
-    this.localConnection = new RTCPeerConnection(null);
-    this.localConnection.onicecandidate = (event) => {
-      this.onIceCandidate(this.remoteConnection, event);
-    };
-
-    this.remoteConnection = new RTCPeerConnection(null);
-    this.remoteConnection.onicecandidate = (event) => {
-      this.onIceCandidate(this.localConnection, event);
-    };
-    this.remoteConnection.onaddstream = (e) => {
-      this.remoteView.srcObject = e.stream;
-    };
-    this.addStream(stream);
-  };
-
-  switchToRandomStream() {
-    const localStreams = this.localConnection.getLocalStreams();
-    const track = localStreams[0];
-    if (track != null) {
-      this.localConnection.removeStream(track);
-      const index = Math.floor(Math.random() * this.streams.length);
-      this.addStream(this.streams[index]);
-    }
-  }
-
-  addStream(stream) {
-    this.localConnection.addStream(stream);
-    this.localConnection
-        .createOffer({offerToReceiveAudio: 1, offerToReceiveVideo: 1})
-        .then((desc) => this.onCreateOfferSuccess(desc), logError);
-  }
-
-  onCreateOfferSuccess(desc) {
-    this.localConnection.setLocalDescription(desc);
-    this.remoteConnection.setRemoteDescription(desc);
-    this.remoteConnection.createAnswer().then(
-        (desc) => this.onCreateAnswerSuccess(desc), logError);
-  };
-
-  onCreateAnswerSuccess(desc) {
-    this.remoteConnection.setLocalDescription(desc);
-    this.localConnection.setRemoteDescription(desc);
-  };
-
-  onIceCandidate(connection, event) {
-    if (event.candidate) {
-      connection.addIceCandidate(new RTCIceCandidate(event.candidate));
-    }
-  };
-}
+];
 
 class TestRunner {
   constructor(runtimeSeconds, switchResolutionDelayMillis) {
@@ -129,7 +40,7 @@ class TestRunner {
     videoElement.autoplay = true;
     $('body').appendChild(videoElement);
     this.videoElements.push(videoElement);
-    this.peerConnections.push(new PeerConnection(videoElement));
+    this.peerConnections.push(new PeerConnection(videoElement, RESOLUTIONS));
   }
 
   startTest() {
@@ -187,7 +98,7 @@ class TestRunner {
     // Check if any video element is smaller than the minimum resolution we set
     // it to. If so, we might have encountered something like
     // https://crbug.com/758850.
-    const minResolution = RESOLUTIONS[RESOLUTIONS.length - 1];
+    const minResolution = RESOLUTIONS[0];
     const minWidth = minResolution.w;
     const minHeight = minResolution.h;
     return this.videoElements.find(
