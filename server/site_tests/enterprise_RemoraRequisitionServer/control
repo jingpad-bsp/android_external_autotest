@@ -9,7 +9,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = ('suite:hotrod, suite:hotrod-release, suite:bluestreak,'
-              'suite:bluestreak-pre-cq, suite:bluestreak-release')
+              'suite:bluestreak-release')
 JOB_RETRIES = 3
 
 DOC = """

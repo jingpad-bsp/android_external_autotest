@@ -467,8 +467,6 @@ class ArcTest(test.test):
         self.apks = None
         self.full_pkg_names = []
         self.uiautomator = False
-        self.email_id = None
-        self.password = None
         self._chrome = None
         if os.path.exists(_SCREENSHOT_DIR_PATH):
             shutil.rmtree(_SCREENSHOT_DIR_PATH)
@@ -478,11 +476,13 @@ class ArcTest(test.test):
         # total number sane to avoid issues.
         self.num_screenshots = 0
 
-    def initialize(self, extension_path=None,
+    def initialize(self, extension_path=None, username=None, password=None,
                    arc_mode=arc_common.ARC_MODE_ENABLED, **chrome_kargs):
         """Log in to a test account."""
         extension_paths = [extension_path] if extension_path else []
         self._chrome = chrome.Chrome(extension_paths=extension_paths,
+                                     username=username,
+                                     password=password,
                                      arc_mode=arc_mode,
                                      **chrome_kargs)
         if extension_path:
@@ -529,8 +529,7 @@ class ArcTest(test.test):
                     self._chrome.close()
 
     def arc_setup(self, dep_package=None, apks=None, full_pkg_names=None,
-                  uiautomator=False, email_id=None, password=None,
-                  block_outbound=False):
+                  uiautomator=False, block_outbound=False):
         """ARC test setup: Setup dependencies and install apks.
 
         This function disables package verification and enables non-market
@@ -542,10 +541,6 @@ class ArcTest(test.test):
         @param full_pkg_names: Array of full package names to be removed
                                in teardown.
         @param uiautomator: uiautomator python package is required or not.
-
-        @param email_id: email id to be attached to the android. Only used
-                         when  account_util is set to true.
-        @param password: password related to the email_id.
         @param block_outbound: block outbound network traffic during a test.
         """
         if not self.initialized:
@@ -555,8 +550,6 @@ class ArcTest(test.test):
         self.dep_package = dep_package
         self.apks = apks
         self.uiautomator = uiautomator
-        self.email_id = email_id
-        self.password = password
         # Setup dependent packages if required
         packages = []
         if dep_package:
