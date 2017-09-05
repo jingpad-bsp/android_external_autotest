@@ -39,8 +39,7 @@ class Pools:
     MANAGED_POOLS - The set of all the general purpose pools
         monitored for health.
     """
-    CRITICAL_POOLS = ['bvt', 'cq', 'continuous', 'cts', 'arc-presubmit',
-                      'crosperf', 'performance']
+    CRITICAL_POOLS = ['bvt', 'cq', 'continuous', 'cts', 'arc-presubmit']
     SPARE_POOL = 'suites'
     MANAGED_POOLS = CRITICAL_POOLS + [SPARE_POOL]
 
