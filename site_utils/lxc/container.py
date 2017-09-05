@@ -366,7 +366,8 @@ class Container(object):
         """
         # Destination path in container must be relative.
         destination = destination.lstrip('/')
-        # Create directory in container for mount.
+        # Create directory in container for mount.  Changes to container rootfs
+        # require sudo.
         utils.run('sudo mkdir -p %s' % os.path.join(self.rootfs, destination))
         mount = ('%s %s none bind%s 0 0' %
                  (source, destination, ',ro' if readonly else ''))
@@ -464,7 +465,7 @@ class Container(object):
         usr_local_path = os.path.join(self.rootfs, 'usr', 'local')
         autotest_pkg_path = os.path.join(usr_local_path,
                                          'autotest_server_package.tar.bz2')
-        # sudo is required so os.makedirs may not work.
+        # Changes within the container rootfs require sudo.
         utils.run('sudo mkdir -p %s'% usr_local_path)
 
         lxc.download_extract(ssp_url, autotest_pkg_path, usr_local_path)
