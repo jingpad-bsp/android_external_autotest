@@ -29,6 +29,8 @@ _WAIT_FOR_ADB_READY = 60
 _WAIT_FOR_ANDROID_PROCESS_SECONDS = 60
 _WAIT_FOR_DATA_MOUNTED_SECONDS = 60
 _VAR_LOGCAT_PATH = '/var/log/logcat'
+_PLAY_STORE_PKG = 'com.android.vending'
+_SETTINGS_PKG = 'com.android.settings'
 
 
 def setup_adb_host():
@@ -361,14 +363,37 @@ def is_android_container_alive():
     return utils.pid_is_alive(int(container_pid))
 
 
+def _is_in_installed_packages_list(package, option=None):
+    """Check if a package is in the list returned by pm list packages.
+
+    adb must be ready.
+
+    @param package: Package in request.
+    @param option: An option for the command adb shell pm list packages.
+                   Valid values include '-s', '-3', '-d', and '-e'.
+    """
+    command = 'pm list packages'
+    if option:
+        command += ' ' + option
+    packages = adb_shell(command).splitlines()
+    package_entry = 'package:' + package
+    return package_entry in packages
+
+
 def is_package_installed(package):
     """Check if a package is installed. adb must be ready.
 
     @param package: Package in request.
     """
-    packages = adb_shell('pm list packages').splitlines()
-    package_entry = 'package:{}'.format(package)
-    return package_entry in packages
+    return _is_in_installed_packages_list(package)
+
+
+def is_package_disabled(package):
+    """Check if an installed package is disabled. adb must be ready.
+
+    @param package: Package in request.
+    """
+    return _is_in_installed_packages_list(package, '-d')
 
 
 def _before_iteration_hook(obj):
@@ -467,6 +492,7 @@ class ArcTest(test.test):
         self.apks = None
         self.full_pkg_names = []
         self.uiautomator = False
+        self._should_reenable_play_store = False
         self._chrome = None
         if os.path.exists(_SCREENSHOT_DIR_PATH):
             shutil.rmtree(_SCREENSHOT_DIR_PATH)
@@ -529,7 +555,8 @@ class ArcTest(test.test):
                     self._chrome.close()
 
     def arc_setup(self, dep_package=None, apks=None, full_pkg_names=None,
-                  uiautomator=False, block_outbound=False):
+                  uiautomator=False, block_outbound=False,
+                  disable_play_store=False):
         """ARC test setup: Setup dependencies and install apks.
 
         This function disables package verification and enables non-market
@@ -542,6 +569,8 @@ class ArcTest(test.test):
                                in teardown.
         @param uiautomator: uiautomator python package is required or not.
         @param block_outbound: block outbound network traffic during a test.
+        @param disable_play_store: Set this to True if you want to prevent
+                                   GMS Core from updating.
         """
         if not self.initialized:
             logging.info('Skipping ARC setup: not initialized')
@@ -549,7 +578,7 @@ class ArcTest(test.test):
         logging.info('Starting ARC setup')
         self.dep_package = dep_package
         self.apks = apks
-        self.uiautomator = uiautomator
+        self.uiautomator = uiautomator or disable_play_store
         # Setup dependent packages if required
         packages = []
         if dep_package:
@@ -597,6 +626,11 @@ class ArcTest(test.test):
         if self.uiautomator:
             path = os.path.join(self.autodir, 'deps', self._PKG_UIAUTOMATOR)
             sys.path.append(path)
+        if disable_play_store and not is_package_disabled(_PLAY_STORE_PKG):
+            self._disable_play_store()
+            if not is_package_disabled(_PLAY_STORE_PKG):
+                raise error.TestFail('Failed to disable Google Play Store.')
+            self._should_reenable_play_store = True
         if block_outbound:
             self.block_outbound()
 
@@ -640,6 +674,8 @@ class ArcTest(test.test):
         if self.uiautomator:
             logging.info('Uninstalling %s', self._FULL_PKG_NAME_UIAUTOMATOR)
             adb_uninstall(self._FULL_PKG_NAME_UIAUTOMATOR)
+        if self._should_reenable_play_store:
+            adb_shell('pm enable ' + _PLAY_STORE_PKG)
         adb_shell('settings put secure install_non_market_apps 0')
         adb_shell('settings put global package_verifier_enable 1')
         adb_shell('settings put secure package_verifier_user_consent 0')
@@ -671,3 +707,20 @@ class ArcTest(test.test):
         _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
                        '-j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
+
+    def _disable_play_store(self):
+        """Disables the Google Play Store app."""
+        if is_package_disabled(_PLAY_STORE_PKG):
+            return
+        from uiautomator import device as d
+        adb_shell('am force-stop ' + _PLAY_STORE_PKG)
+        adb_shell('am start -W ' + _SETTINGS_PKG)
+        d(text='Apps', packageName=_SETTINGS_PKG).click.wait()
+        adb_shell('input text Store')
+        d(text='Google Play Store', packageName=_SETTINGS_PKG).click.wait()
+        d(textMatches='(?i)DISABLE').click.wait()
+        d(textMatches='(?i)DISABLE APP').click.wait()
+        ok_button = d(textMatches='(?i)OK')
+        if ok_button.exists:
+            ok_button.click.wait()
+        d(description='Close', packageName=_SETTINGS_PKG).click.wait()
