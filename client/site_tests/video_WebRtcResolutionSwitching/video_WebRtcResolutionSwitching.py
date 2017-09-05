@@ -9,6 +9,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import webrtc_utils
 from autotest_lib.client.cros.video import helper_logger
 
 EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream',
@@ -31,16 +32,15 @@ class video_WebRtcResolutionSwitching(test.test):
     """Tests multiple peerconnections that randomly change resolution."""
     version = 1
 
-    def start_test(self, cr):
+    def start_test(self, cr, html_file):
         """Opens the test page.
 
         @param cr: Autotest Chrome instance.
+        @param html_file: File object that contains the html to use for testing.
         """
-        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-
         self.tab = cr.browser.tabs[0]
         self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
-                os.path.join(self.bindir, 'resolution-switching.html')))
+                html_file.name))
         self.tab.WaitForDocumentReadyStateToBeComplete()
         self.tab.EvaluateJavaScript(
                 "startTest(%d, %d, %d)" % (
@@ -73,7 +73,32 @@ class video_WebRtcResolutionSwitching(test.test):
         with chrome.Chrome(extra_browser_args = EXTRA_BROWSER_ARGS + \
                            [helper_logger.chrome_vmodule_flag()],
                            init_network_controller = True) as cr:
-            self.start_test(cr)
+            own_script_path = os.path.join(
+                    self.bindir, 'resolution-switching.js')
+            loopback_script_path = webrtc_utils.get_common_script_path(
+                    'loopback-peerconnection.js')
+
+            # Create the URLs to the JS scripts to include in the html file.
+            # Normally we would use the http_server.UrlOf method. However,
+            # that requires starting the server first. The server reads
+            # all file contents on startup, meaning we must completely
+            # create the html file first. Hence we create the url
+            # paths relative to self.autodir which will be used as the
+            # base of the server (implicitly since all files we use
+            # share that path as a base).
+            own_script_url = own_script_path[len(self.autodir):]
+            loopback_script_url = loopback_script_path[len(self.autodir):]
+
+            html_file = webrtc_utils.create_temp_html_file(
+                    'Resolution Switching',
+                    self.tmpdir,
+                    own_script_url,
+                    loopback_script_url)
+            # Don't bother deleting the html file, the autotest tmp dir will be
+            # cleaned up by the autotest framework.
+            cr.browser.platform.SetHTTPServerDirectories(
+                [own_script_path, html_file.name, loopback_script_path])
+            self.start_test(cr, html_file)
             self.wait_test_completed(TIMEOUT)
             self.verify_status_ok()
 
@@ -85,3 +110,4 @@ class video_WebRtcResolutionSwitching(test.test):
         status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
         if status != 'ok-done':
             raise error.TestFail('Failed: %s' % status)
+
