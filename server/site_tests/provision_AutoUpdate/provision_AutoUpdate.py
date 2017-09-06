@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import urllib2
 
 from autotest_lib.client.common_lib import error
@@ -10,6 +11,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
+from autotest_lib.server.cros import provision
 
 
 _CONFIG = global_config.global_config
@@ -54,10 +56,14 @@ class provision_AutoUpdate(test.test):
                       the current image version.  If False and the image
                       version matches our expected image version, no
                       provisioning will be done.
-
         """
-        logging.debug('Start provisioning %s to %s', host, value)
-        image = value
+        with_cheets = False
+        logging.debug('Start provisioning %s to %s.', host, value)
+        if value.endswith(provision.CHEETS_SUFFIX):
+            image = re.sub(provision.CHEETS_SUFFIX + '$', '', value)
+            with_cheets = True
+        else:
+            image = value
 
         # If the host is already on the correct build, we have nothing to do.
         # Note that this means we're not doing any sort of stateful-only
@@ -107,10 +113,12 @@ class provision_AutoUpdate(test.test):
 
         logging.debug('Installing image')
         try:
-            afe_utils.machine_install_and_update_labels(host,
-                                                        force_update=True,
-                                                        update_url=url,
-                                                        force_full_update=force)
+            afe_utils.machine_install_and_update_labels(
+                    host,
+                    with_cheets=with_cheets,
+                    force_update=True,
+                    update_url=url,
+                    force_full_update=force)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))

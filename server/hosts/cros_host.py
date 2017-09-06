@@ -350,6 +350,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return afe_utils.get_stable_cros_image_name(info.board)
 
 
+    def host_version_prefix(self, image):
+        """Return version label prefix.
+
+        In case the CrOS provisioning version is something other than the
+        standard CrOS version e.g. CrOS TH version, this function will
+        find the prefix from provision.py.
+
+        @param image: The image name to find its version prefix.
+        @returns: A prefix string for the image type.
+        """
+        return provision.get_version_label_prefix(image)
+
+
     def verify_job_repo_url(self, tag=''):
         """
         Make sure job_repo_url of this host is valid.
@@ -2376,6 +2389,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if device_type:
             return device_type.split('=')[-1].strip()
         return ''
+
+
+    def get_arc_version(self):
+        """Return ARC version installed on the DUT.
+
+        @returns ARC version as string if the CrOS build has ARC, else None.
+        """
+        arc_version = self.run('grep CHROMEOS_ARC_VERSION /etc/lsb-release',
+                               ignore_status=True).stdout
+        if arc_version:
+            return arc_version.split('=')[-1].strip()
+        return None
 
 
     def get_os_type(self):
