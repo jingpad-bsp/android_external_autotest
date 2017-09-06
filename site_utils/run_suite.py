@@ -241,6 +241,9 @@ def make_parser():
         "-w", "--web", dest="web", default=None,
         help="Address of a webserver to receive suite requests.")
     parser.add_argument(
+        '--cheets_build', dest='cheets_build', default=None,
+        help='ChromeOS Android build to be installed on dut.')
+    parser.add_argument(
         '--firmware_rw_build', dest='firmware_rw_build', default=None,
         help='Firmware build to be installed in dut RW firmware.')
     parser.add_argument(
@@ -1602,9 +1605,14 @@ def _make_builds_from_options(options):
     @return: dict mapping version label prefixes to build names
     """
     builds = {}
+    build_prefix = None
     if options.build:
-        prefix = provision.get_version_label_prefix(options.build)
-        builds[prefix] = options.build
+        build_prefix = provision.get_version_label_prefix(options.build)
+        builds[build_prefix] = options.build
+    if options.cheets_build:
+        builds[provision.CROS_ANDROID_VERSION_PREFIX] = options.cheets_build
+        if build_prefix == provision.CROS_VERSION_PREFIX:
+            builds[build_prefix] += provision.CHEETS_SUFFIX
     if options.firmware_rw_build:
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
