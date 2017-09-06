@@ -1184,9 +1184,10 @@ class _BaseSuite(object):
             return
 
         for test in tests:
-            if not test.job_retries:
+            # We do honor if a test insists on JOB_RETRIES = 0.
+            if test.job_retries is None:
                 logging.debug(
-                        'Test %s requested no retries, but suite requires '
+                        'Test %s did not request retries, but suite requires '
                         'retries. Bumping retries up to 1. '
                         '(See crbug.com/730885)',
                         test.name)
