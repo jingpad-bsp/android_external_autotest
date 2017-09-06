@@ -59,7 +59,7 @@ class Chrome(object):
                  auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
                  arc_mode=None, disable_arc_opt_in=True,
-                 init_network_controller=False):
+                 init_network_controller=False, login_delay=0):
         """
         Constructor of telemetry wrapper.
 
@@ -88,6 +88,8 @@ class Chrome(object):
                          start.
         @param disable_arc_opt_in: For opt in flow autotest. This option is used
                                    to disable the arc opt in flow.
+        @param login_delay: Time for idle in login screen to simulate the time
+                            required for password typing.
         """
         self._autotest_ext_path = None
 
@@ -132,6 +134,7 @@ class Chrome(object):
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
+        b_options.login_delay = login_delay
 
         if utils.is_arc_available() and not disable_arc_opt_in:
             arc_util.set_browser_options_for_opt_in(b_options)
