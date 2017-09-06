@@ -786,7 +786,7 @@ def generate_control_file(tests=(), profilers=(),
 def create_job_page_handler(name, priority, control_file, control_type,
                             image=None, hostless=False, firmware_rw_build=None,
                             firmware_ro_build=None, test_source_build=None,
-                            is_cloning=False, **kwargs):
+                            is_cloning=False, cheets_build=None, **kwargs):
     """\
     Create and enqueue a job.
 
@@ -802,6 +802,8 @@ def create_job_page_handler(name, priority, control_file, control_type,
     @param test_source_build: Build to be used to retrieve test code. Default
                               to None.
     @param is_cloning: True if creating a cloning job.
+    @param cheets_build: ChromeOS Android build  to be installed in the dut.
+                         Default to None. Cheets build will not be updated.
     @param kwargs extra args that will be required by create_suite_job or
                   create_job.
 
@@ -824,6 +826,8 @@ def create_job_page_handler(name, priority, control_file, control_type,
     if image and hostless:
         builds = {}
         builds[provision.CROS_VERSION_PREFIX] = image
+        if cheets_build:
+            builds[provision.CROS_ANDROID_VERSION_PREFIX] = cheets_build
         if firmware_rw_build:
             builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
         if firmware_ro_build:

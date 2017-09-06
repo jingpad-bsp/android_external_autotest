@@ -210,6 +210,7 @@ class _SuiteSpec(object):
 
     _VERSION_PREFIXES = frozenset((
             provision.CROS_VERSION_PREFIX,
+            provision.CROS_ANDROID_VERSION_PREFIX,
             provision.ANDROID_BUILD_VERSION_PREFIX,
     ))
 
