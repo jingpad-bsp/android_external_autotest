@@ -10,6 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import enrollment
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
@@ -51,6 +52,7 @@ DMSERVER = '--device-management-url=%s'
 # they are not used to authenticate against GAIA.
 USERNAME = 'fake-user@managedchrome.com'
 PASSWORD = 'fakepassword'
+GAIA_ID = 'fake-gaia-id'
 
 
 class EnterprisePolicyTest(test.test):
@@ -70,20 +72,22 @@ class EnterprisePolicyTest(test.test):
 
 
     def _initialize_enterprise_policy_test(
-            self, case, env='dm-fake', dms_name=None,
-            username=USERNAME, password=PASSWORD):
+            self, case='', env='dm-fake', dms_name=None,
+            username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID):
         """Initialize test parameters, fake DM Server, and Chrome flags.
 
         @param case: String name of the test case to run.
         @param env: String environment of DMS and Gaia servers.
         @param username: String user name login credential.
         @param password: String password login credential.
+        @param gaia_id: String gaia_id login credential.
         @param dms_name: String name of test DM Server.
         """
         self.case = case
         self.env = env
         self.username = username
         self.password = password
+        self.gaia_id = gaia_id
         self.dms_name = dms_name
         self.dms_is_fake = (env == 'dm-fake')
         self._enforce_variable_restrictions()
@@ -151,9 +155,11 @@ class EnterprisePolicyTest(test.test):
                                   'env=dm-test.')
 
 
-    def setup_case(self, policy_name, policy_value, mandatory_policies={},
-                   suggested_policies={}, policy_name_is_suggested=False,
-                   skip_policy_value_verification=False):
+    def setup_case(self, policy_name=None, policy_value=None,
+                   mandatory_policies={}, suggested_policies={},
+                   policy_name_is_suggested=False,
+                   skip_policy_value_verification=False,
+                   enroll=False, auto_login=True):
         """Set up and confirm the preconditions of a test case.
 
         If the AutoTest fake DM Server is used, make a JSON policy blob
@@ -174,6 +180,8 @@ class EnterprisePolicyTest(test.test):
         @param policy_name_is_suggested: True if policy_name a suggested policy.
         @param skip_policy_value_verification: True if setup_case should not
                 verify that the correct policy value shows on policy page.
+        @param enroll: True for enrollment instead of login.
+        @param auto_login: Sign in to chromeos.
 
         @raises error.TestError if cryptohome vault is not mounted for user.
         @raises error.TestFail if |policy_name| and |policy_value| are not
@@ -184,18 +192,21 @@ class EnterprisePolicyTest(test.test):
         logging.info('Suggested policies: %s', suggested_policies)
 
         if self.dms_is_fake:
-            if policy_name_is_suggested:
-                suggested_policies[policy_name] = policy_value
-            else:
-                mandatory_policies[policy_name] = policy_value
+            if policy_name:
+                if policy_name_is_suggested:
+                    suggested_policies[policy_name] = policy_value
+                else:
+                    mandatory_policies[policy_name] = policy_value
+
             self.fake_dm_server.setup_policy(self._make_json_blob(
                 mandatory_policies, suggested_policies))
 
-        self._launch_chrome_browser()
-        if not cryptohome.is_vault_mounted(user=self.username,
-                                           allow_fail=True):
-            raise error.TestError('Expected to find a mounted vault for %s.'
-                                  % self.username)
+        self._create_chrome(enroll, auto_login)
+        # Skip policy check upon request, if there's no policy, or if we enroll
+        # but don't log in.
+        skip_policy_value_verification = (
+                skip_policy_value_verification or not policy_name or
+                not auto_login)
         if not skip_policy_value_verification:
             self.verify_policy_value(policy_name, policy_value)
 
@@ -384,8 +395,13 @@ class EnterprisePolicyTest(test.test):
         return env_flag_list
 
 
-    def _launch_chrome_browser(self):
-        """Launch Chrome browser and sign in."""
+    def _create_chrome(self, enroll, auto_login):
+        """
+        Create a Chrome object. Enroll and/or sign in.
+
+        @param enroll: enroll the device.
+        @param auto_login: sign in to chromeos.
+        """
         extra_flags = self._initialize_chrome_extra_flags()
 
         logging.info('Chrome Browser Arguments:')
@@ -394,12 +410,36 @@ class EnterprisePolicyTest(test.test):
         logging.info('  password: %s', self.password)
         logging.info('  gaia_login: %s', not self.dms_is_fake)
 
-        self.cr = chrome.Chrome(extra_browser_args=extra_flags,
-                                username=self.username,
-                                password=self.password,
-                                gaia_login=not self.dms_is_fake,
-                                disable_gaia_services=self.dms_is_fake,
-                                autotest_ext=True)
+        if enroll:
+            self.cr = chrome.Chrome(auto_login=False,
+                                    extra_browser_args=extra_flags)
+            if self.dms_is_fake:
+                enrollment.EnterpriseFakeEnrollment(
+                    self.cr.browser, self.username, self.password, self.gaia_id,
+                    auto_login=auto_login)
+            else:
+                enrollment.EnterpriseEnrollment(
+                    self.cr.browser, self.username, self.password,
+                    auto_login=auto_login)
+
+        elif auto_login:
+            self.cr = chrome.Chrome(extra_browser_args=extra_flags,
+                                    username=self.username,
+                                    password=self.password,
+                                    gaia_login=not self.dms_is_fake,
+                                    disable_gaia_services=self.dms_is_fake,
+                                    autotest_ext=True)
+        else:
+            self.cr = chrome.Chrome(auto_login=False,
+                                    extra_browser_args=extra_flags,
+                                    disable_gaia_services=self.dms_is_fake,
+                                    autotest_ext=True)
+
+        if auto_login:
+            if not cryptohome.is_vault_mounted(user=self.username,
+                                               allow_fail=True):
+                raise error.TestError('Expected to find a mounted vault for %s.'
+                                      % self.username)
 
 
     def navigate_to_url(self, url, tab=None):
