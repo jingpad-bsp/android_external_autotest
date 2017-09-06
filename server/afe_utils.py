@@ -11,6 +11,7 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
@@ -100,10 +101,12 @@ def _clear_host_attributes_before_provision(host, info):
         info.attributes.pop(key, None)
 
 
-def machine_install_and_update_labels(host, *args, **dargs):
+def machine_install_and_update_labels(host, with_cheets=False, *args, **dargs):
     """Calls machine_install and updates the version labels on a host.
 
     @param host: Host object to run machine_install on.
+    @param with_cheets: True if the cros-version: label value needs to be
+                        appended with -cheets suffix.
     @param *args: Args list to pass to machine_install.
     @param **dargs: dargs dict to pass to machine_install.
     """
@@ -121,5 +124,7 @@ def machine_install_and_update_labels(host, *args, **dargs):
 
     info = host.host_info_store.get()
     info.attributes.update(host_attributes)
+    if with_cheets == True:
+        image_name += provision.CHEETS_SUFFIX
     info.set_version_label(host.VERSION_PREFIX, image_name)
     host.host_info_store.commit(info)

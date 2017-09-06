@@ -2249,7 +2249,7 @@ def has_systemd():
 
 
 def version_match(build_version, release_version, update_url=''):
-    """Compare release versino from lsb-release with cros-version label.
+    """Compare release version from lsb-release with cros-version label.
 
     build_version is a string based on build name. It is prefixed with builder
     info and branch ID, e.g., lumpy-release/R43-6809.0.0. It may not include
@@ -2284,6 +2284,10 @@ def version_match(build_version, release_version, update_url=''):
     build version:   lumpy-release-pgo-generate/R28-3837.0.0-b2996
     release version: 3837.0.0-pgo-generate
 
+    7. build version with --cheetsth suffix.
+    build version:   lumpy-release/R28-3837.0.0-cheetsth
+    release version: 3837.0.0
+
     TODO: This logic has a bug if a trybot paladin build failed to be
     installed in a DUT running an older trybot paladin build with same
     platform number, but different build number (-b###). So to conclusively
@@ -2301,8 +2305,12 @@ def version_match(build_version, release_version, update_url=''):
     """
     # If the build is from release, CQ or PFQ builder, cros-version label must
     # be ended with release version in lsb-release.
-    if build_version.endswith(release_version):
+    if (build_version.endswith(release_version) or
+            build_version.endswith(release_version + '-cheetsth')):
         return True
+
+    if build_version.endswith('-cheetsth'):
+        build_version = re.sub('-cheetsth' + '$', '', build_version)
 
     # Remove R#- and -b# at the end of build version
     stripped_version = re.sub(r'(R\d+-|-b\d+)', '', build_version)
