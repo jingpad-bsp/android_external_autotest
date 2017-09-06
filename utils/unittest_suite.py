@@ -110,6 +110,7 @@ SKIP = set((
     # Require lxc to be installed
     'base_image_unittest.py',
     'container_bucket_unittest.py',
+    'container_factory_unittest.py',
     'container_unittest.py',
     'lxc_functional_test.py',
     'zygote_unittest.py',
