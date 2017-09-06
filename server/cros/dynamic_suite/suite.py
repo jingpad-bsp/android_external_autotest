@@ -631,7 +631,12 @@ def get_test_source_build(builds, **dargs):
     """
     if dargs.get('test_source_build', None):
         return dargs['test_source_build']
-    test_source_build = builds.get(provision.CROS_VERSION_PREFIX, None)
+    cros_build = builds.get(provision.CROS_VERSION_PREFIX, None)
+    if cros_build.endswith(provision.CHEETS_SUFFIX):
+        test_source_build = re.sub(
+                provision.CHEETS_SUFFIX + '$', '', cros_build)
+    else:
+        test_source_build = cros_build
     if not test_source_build:
         raise error.SuiteArgumentException(
                 'test_source_build must be specified if CrOS build is not '

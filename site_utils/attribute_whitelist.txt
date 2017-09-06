@@ -64,6 +64,7 @@ suite:arc-gts-qual
 suite:arc-gts-tot
 suite:arc-nightly
 suite:arc-weekly
+suite:arc-presubmit
 suite:au
 suite:audio
 suite:av_webcam
