@@ -10,7 +10,7 @@ This test will fail if VDA doesn't work with Chrome navigating to a VP9 webm
 file.
 """
 TIME = "SHORT"
-ATTRIBUTES = "suite:partners"
+ATTRIBUTES = "suite:bvt-perbuild, suite:partners"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
