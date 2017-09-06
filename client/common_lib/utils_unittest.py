@@ -959,12 +959,17 @@ class VersionMatchUnittest(unittest.TestCase):
         trybot_pre_cq_release = '7000.0.2016_03_12_2103'
         trybot_toolchain_build = 'trybot-nyan_big-gcc-toolchain/R56-8936.0.0-b14'
         trybot_toolchain_release = '8936.0.2016_10_26_1403'
-
+        cros_cheets_build = 'lumpy-release/R49-6899.0.0-cheetsth'
+        cros_cheets_release = '6899.0.0'
+        trybot_paladin_cheets_build = 'trybot-lumpy-paladin/R50-6900.0.0-b123-cheetsth'
+        trybot_paladin_cheets_release = '6900.0.2015_03_12_2103'
 
         builds = [canary_build, cq_build, trybot_paladin_build,
-                  trybot_pre_cq_build, trybot_toolchain_build]
+                  trybot_pre_cq_build, trybot_toolchain_build,
+                  cros_cheets_build, trybot_paladin_cheets_build]
         releases = [canary_release, cq_release, trybot_paladin_release,
-                    trybot_pre_cq_release, trybot_toolchain_release]
+                    trybot_pre_cq_release, trybot_toolchain_release,
+                    cros_cheets_release, trybot_paladin_cheets_release]
         for i in range(len(builds)):
             for j in range(len(releases)):
                 self.assertEqual(
