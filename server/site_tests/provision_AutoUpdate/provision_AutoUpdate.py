@@ -115,10 +115,10 @@ class provision_AutoUpdate(test.test):
         try:
             afe_utils.machine_install_and_update_labels(
                     host,
-                    with_cheets=with_cheets,
                     force_update=True,
                     update_url=url,
-                    force_full_update=force)
+                    force_full_update=force,
+                    with_cheets=with_cheets)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))

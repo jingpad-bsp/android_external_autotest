@@ -156,9 +156,10 @@ class provision_CheetsUpdate(test.test):
 
         cheets_prefix = host.host_version_prefix(value)
         info = host.host_info_store.get()
-        logging.info('Cheets build installed on the DUT: %s.', info.build)
         try:
             host_android_build = info.get_label_value(cheets_prefix)
+            logging.info('Cheets build from cheets-version: %s.',
+                         host_android_build)
         except:
             # In case the DUT has never run cheets tests before, there might not
             # be cheets build label set.
@@ -167,8 +168,11 @@ class provision_CheetsUpdate(test.test):
         # cheets-version label might not have been updated so checking the
         # cheets version installed on the DUT.
         dut_arc_version = host.get_arc_version()
-        if dut_arc_version in host_android_build:
-            # Update the cheets version label in case that is not correct.
+        logging.info('Cheets build installed on the DUT from lsb-release: %s.',
+                     dut_arc_version)
+        if dut_arc_version and dut_arc_version in value:
+            # Update the cheets version label in case the DUT label and
+            # installed cheets version aren't matching.
             if host_android_build != value:
                 info.set_version_label(cheets_prefix, value)
                 host.host_info_store.commit(info)
