@@ -5,6 +5,7 @@
 """Provides utility methods for controlling powerd in ChromiumOS."""
 
 import errno
+import fcntl
 import logging
 import multiprocessing
 import os
@@ -16,6 +17,9 @@ from autotest_lib.client.cros import upstart
 
 SYSFS_POWER_STATE = '/sys/power/state'
 SYSFS_WAKEUP_COUNT = '/sys/power/wakeup_count'
+
+PAUSE_ETHERNET_HOOK_FILE = '/run/autotest_pause_ethernet_hook'
+pause_ethernet_fd = 0
 
 
 class SuspendFailure(Exception):
@@ -138,6 +142,19 @@ def do_suspend(suspend_seconds, delay_seconds=0):
     @param delay_seconds: Number of seconds wait before suspending the DUT.
 
     """
+
+    # stop check_ethernet.hook from running until the test exits
+    if pause_ethernet_fd == 0:
+        # we don't write to the file - but we might need to create it.
+        pause_ethernet_fd = open(PAUSE_ETHERNET_HOOK_FILE,'a+')
+
+        if pause_ethernet_fd > 0:
+            try:
+                # this is a blocking call unless an error occurs.
+                fcntl.flock(pause_ethernet_fd, fcntl.LOCK_SH)
+            except IOError:
+                pass
+
     alarm, wakeup_count = prepare_wakeup(suspend_seconds)
     upstart.ensure_running('powerd')
     command = ('/usr/bin/powerd_dbus_suspend --delay=%d --timeout=30 '
