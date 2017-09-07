@@ -70,7 +70,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.files = OrderedDict(
                 [('one', FakeControlData(self._TAG, self._ATTR, 'data_one',
-                                         'FAST')),
+                                         'FAST', job_retries=None)),
                  ('two', FakeControlData(self._TAG, self._ATTR, 'data_two',
                                          'SHORT', dependencies=['feta'])),
                  ('three', FakeControlData(self._TAG, self._ATTR, 'data_three',
@@ -458,9 +458,11 @@ class SuiteTest(mox.MoxTestBase):
         for n in range(len(all_files)):
             test = all_files[n][1]
             job_id = n + 1
-            expected_retry_map[job_id] = {
-                    'state': RetryHandler.States.NOT_ATTEMPTED,
-                    'retry_max': max(test.job_retries, 1)}
+            job_retries = 1 if test.job_retries is None else test.job_retries
+            if job_retries > 0:
+                expected_retry_map[job_id] = {
+                        'state': RetryHandler.States.NOT_ATTEMPTED,
+                        'retry_max': job_retries}
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
