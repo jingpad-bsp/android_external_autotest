@@ -770,19 +770,20 @@ class DevServer(object):
         if devserver:
             return devserver
         else:
-            subnet = None
-            host_ip = bin_utils.get_ip_address(hostname)
-            if host_ip:
-                subnet_ip, mask_bits = _get_subnet_for_host_ip(host_ip)
-                subnet = '%s/%s' % (str(subnet_ip), str(mask_bits))
+            subnet = 'unrestricted subnet'
+            if hostname is not None:
+                host_ip = bin_utils.get_ip_address(hostname)
+                if host_ip:
+                    subnet_ip, mask_bits = _get_subnet_for_host_ip(host_ip)
+                    subnet = '%s/%s' % (str(subnet_ip), str(mask_bits))
 
-            c = metrics.Counter(
-                    'chromeos/autotest/devserver/subnet_without_devservers')
-            c.increment(fields={'subnet': subnet, 'hostname': hostname})
-            error_msg = ('All devservers in subnet %s are currently down: %s. '
-                         'dut hostname: %s' %
+            error_msg = ('All devservers in subnet: %s are currently down: '
+                         '%s. (dut hostname: %s)' %
                          (subnet, tried_devservers, hostname))
             logging.error(error_msg)
+            c = metrics.Counter(
+                    'chromeos/autotest/devserver/subnet_without_devservers')
+            c.increment(fields={'subnet': subnet, 'hostname': str(hostname)})
             raise DevServerException(error_msg)
 
 
