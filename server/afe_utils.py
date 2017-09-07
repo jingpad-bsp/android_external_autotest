@@ -101,15 +101,18 @@ def _clear_host_attributes_before_provision(host, info):
         info.attributes.pop(key, None)
 
 
-def machine_install_and_update_labels(host, with_cheets=False, *args, **dargs):
+def machine_install_and_update_labels(host, *args, **dargs):
     """Calls machine_install and updates the version labels on a host.
 
     @param host: Host object to run machine_install on.
-    @param with_cheets: True if the cros-version: label value needs to be
-                        appended with -cheets suffix.
     @param *args: Args list to pass to machine_install.
     @param **dargs: dargs dict to pass to machine_install.
+
     """
+    # **dargs also carries an additional bool arg to determine whether
+    # the provisioning is w/ or w/o cheets. with_cheets arg will be popped in
+    # beginning so machine_install isn't affected by with_cheets presence.
+    with_cheets = dargs.pop('with_cheets', False)
     info = host.host_info_store.get()
     info.clear_version_labels()
     _clear_host_attributes_before_provision(host, info)
