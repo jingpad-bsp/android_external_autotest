@@ -254,6 +254,7 @@ class _SpecialTaskAction(object):
                 actionable.add(label)
             else:
                 unactionable.add(label)
+
         return unactionable, actionable
 
 
