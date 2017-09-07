@@ -69,11 +69,12 @@ SPARE_POOL = constants.Pools.SPARE_POOL
 MANAGED_POOLS = constants.Pools.MANAGED_POOLS
 
 # _EXCLUDED_LABELS - A set of labels that disqualify a DUT from
-#     monitoring by this script.  Currently, we're excluding any
-#     'adb' host, because we're not ready to monitor Android or
-#     Brillo hosts.
+#     monitoring by this script.  Currently, we're excluding these:
+#   + 'adb' - We're not ready to monitor Android or Brillo hosts.
+#   + 'board:guado_moblab' - These are maintained by a separate
+#     process that doesn't use this script.
 
-_EXCLUDED_LABELS = set(['adb'])
+_EXCLUDED_LABELS = {'adb', 'board:guado_moblab'}
 
 # _DEFAULT_DURATION:
 #     Default value used for the --duration command line option.
