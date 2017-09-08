@@ -24,6 +24,8 @@ class PeerConnection {
     // Ensure sorted in descending order to conveniently request the highest
     // resolution first through GUM later.
     this.resolutions = resolutions.slice().sort((x, y) => y.w - x.w);
+    this.activeStreamIndex = resolutions.length - 1;
+    this.badResolutionsSeen = 0;
   }
 
   /**
@@ -41,11 +43,54 @@ class PeerConnection {
         .getUserMedia(constraints)
         .then((stream) => this.streams.push(stream));
     });
-    return Promise.all(promises).then(
-        // Start with the smallest video to not overload the machine instantly.
-        () =>
-            this.onGetUserMediaSuccess_(this.streams[this.streams.length - 1]));
+    return Promise.all(promises).then(() => {
+      // Start with the smallest video to not overload the machine instantly.
+      return this.onGetUserMediaSuccess_(this.streams[this.activeStreamIndex]);
+    })
   };
+
+  /**
+   * Verifies that the state of the streams are good. The state is good if all
+   * streams are active and their video elements report the resolution the
+   * stream is in. Video elements are allowed to report bad resolutions
+   * numSequentialBadResolutionsForFailure times before failure is reported
+   * since video elements occasionally report bad resolutions during the tests
+   * when we manipulate the streams frequently.
+   * @param {number} numSequentialBadResolutionsForFailure number of bad
+   *     resolution observations in a row before failure is reported.
+   * @throws {Error} in case the state is not-good.
+   */
+  verifyState(numSequentialBadResolutionsForFailure=10) {
+    this.verifyAllStreamsActive_();
+    const expectedResolution = this.resolutions[this.activeStreamIndex];
+    if (expectedResolution.w < 0 || expectedResolution.h < 0) {
+      // Video is disabled.
+      return;
+    }
+    if (this.remoteView.videoWidth !== expectedResolution.w ||
+        this.remoteView.videoHeight !== expectedResolution.h) {
+      this.badResolutionsSeen++;
+    } else if (
+        this.badResolutionsSeen < numSequentialBadResolutionsForFailure) {
+      // Reset the count, but only if we have not yet reached the limit. If the
+      // limit is reached, let keep the error state.
+      this.badResolutionsSeen = 0;
+    }
+    if (this.badResolutionsSeen >= numSequentialBadResolutionsForFailure) {
+      throw new Error(
+          'Expected video resolution ' +
+          resStr(expectedResolution.w, expectedResolution.h) +
+          ' but got another resolution ' + this.badResolutionsSeen +
+          ' consecutive times. Last resolution was: ' +
+          resStr(this.remoteView.videoWidth, this.remoteView.videoHeight));
+    }
+  }
+
+  verifyAllStreamsActive_() {
+    if (this.streams.some((x) => !x.active)) {
+      throw new Error('At least one media stream is not active')
+    }
+  }
 
   /**
    * Switches to a random stream, i.e., use a random resolution of the
@@ -57,8 +102,9 @@ class PeerConnection {
     const track = localStreams[0];
     if (track != null) {
       this.localConnection.removeStream(track);
-      const index = Math.floor(Math.random() * this.streams.length);
-      return this.addStream_(this.streams[index]);
+      const newStreamIndex = Math.floor(Math.random() * this.streams.length);
+      return this.addStream_(this.streams[newStreamIndex])
+          .then(() => this.activeStreamIndex = newStreamIndex);
     } else {
       return Promise.resolve();
     }
@@ -69,7 +115,6 @@ class PeerConnection {
     this.localConnection.onicecandidate = (event) => {
       this.onIceCandidate_(this.remoteConnection, event);
     };
-
     this.remoteConnection = new RTCPeerConnection(null);
     this.remoteConnection.onicecandidate = (event) => {
       this.onIceCandidate_(this.localConnection, event);
@@ -78,7 +123,7 @@ class PeerConnection {
       this.remoteView.srcObject = e.stream;
     };
     return this.addStream_(stream);
-  };
+  }
 
   addStream_(stream) {
     this.localConnection.addStream(stream);
@@ -126,7 +171,10 @@ function createMediaConstraints(widthAndHeight) {
   };
 }
 
+function resStr(width, height) {
+  return `${width}x${height}`
+}
+
 function logError(err) {
   console.error(err);
 }
-
