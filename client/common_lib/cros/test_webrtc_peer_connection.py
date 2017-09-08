@@ -31,7 +31,8 @@ class WebRtcPeerConnectionTest:
             timeout = 70,
             test_runtime_seconds = 60,
             num_peer_connections = 5,
-            iteration_delay_millis = 500):
+            iteration_delay_millis = 500,
+            before_start_hook = None):
         """
         Sets up a peer connection test.
 
@@ -47,6 +48,9 @@ class WebRtcPeerConnectionTest:
         @param num_peer_connections: Number of peer connections to use.
         @param iteration_delay_millis: delay in millis between each test
                 iteration.
+        @param before_start_hook: function accepting a Chrome browser tab as
+                argument. Is executed before the startTest() JS method call is
+                made.
         """
         self.title = title
         self.own_script = own_script
@@ -57,6 +61,7 @@ class WebRtcPeerConnectionTest:
         self.test_runtime_seconds = test_runtime_seconds
         self.num_peer_connections = num_peer_connections
         self.iteration_delay_millis = iteration_delay_millis
+        self.before_start_hook = before_start_hook
         self.tab = None
 
     def start_test(self, cr, html_file):
@@ -77,6 +82,8 @@ class WebRtcPeerConnectionTest:
         self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, html_file.name)))
         self.tab.WaitForDocumentReadyStateToBeComplete()
+        if self.before_start_hook is not None:
+            self.before_start_hook(self.tab)
         self.tab.EvaluateJavaScript(
                 "startTest(%d, %d, %d)" % (
                         self.test_runtime_seconds,

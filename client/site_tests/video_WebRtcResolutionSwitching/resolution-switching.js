@@ -33,6 +33,7 @@ class TestRunner {
     this.numConnections = 0;
     this.iteration = 0;
     this.startTime = 0;  // initialized to dummy value
+    this.status = this.getStatusInternal_();
   }
 
   addPeerConnection() {
@@ -43,69 +44,52 @@ class TestRunner {
     this.peerConnections.push(new PeerConnection(videoElement, RESOLUTIONS));
   }
 
-  startTest() {
-    this.startTime = Date.now();
-    const promises = testRunner.peerConnections.map((conn) => conn.start());
+  runTest() {
+    const promises = this.peerConnections.map((conn) => conn.start());
     Promise.all(promises)
         .then(() => {
           this.startTime = Date.now();
-          // Use setTimeout to get initial promises some time to resolve.
-          setTimeout(() => this.switchResolutionLoop(), 500);
+          this.switchResolutionLoop();
         })
         .catch((e) => {throw e});
   }
 
-  stopAll() {
-    console.log("STOP ALL");
-      this.videoElements.forEach((feed) => {
-        feed.pause();
-      });
-  }
-
   switchResolutionLoop() {
     this.iteration++;
-    const status = this.getStatus();
-    $('status').textContent = status;
-    this.peerConnections.forEach((pc) => {
-      pc.switchToRandomStream();
-    });
-    if (status != 'ok-done') {
-      setTimeout(
-          () => this.switchResolutionLoop(), this.switchResolutionDelayMillis);
-    } else {  // We're done. Pause all feeds.
-      this.videoElements.forEach((feed) => {
-        feed.pause();
-      });
+    this.status = this.getStatusInternal_();
+    $('status').textContent = this.status;
+    if (this.status != 'ok-done') {
+      Promise.all(this.peerConnections.map((pc) => pc.switchToRandomStream()))
+          .then(
+              () => setTimeout(
+                  () => this.switchResolutionLoop(),
+                  this.switchResolutionDelayMillis));
     }
   }
 
   getStatus() {
+    return this.status;
+  }
+
+  getStatusInternal_() {
     if (this.iteration == 0) {
       return 'not-started';
     }
-    if (this.isVideoBroken()) {
-      return 'video-broken';
+    try {
+      this.peerConnections.forEach((conn) => conn.verifyState());
+    } catch (e) {
+      return `failure: ${e.message}`;
     }
     const timeSpent = Date.now() - this.startTime;
     if (timeSpent >= this.runtimeSeconds * 1000) {
       return 'ok-done';
-    } else {
-      return `running, iteration: ${this.iteration}`;
     }
-  }
-
-  isVideoBroken() {
-    // Check if any video element is smaller than the minimum resolution we set
-    // it to. If so, we might have encountered something like
-    // https://crbug.com/758850.
-    const minResolution = RESOLUTIONS[0];
-    const minWidth = minResolution.w;
-    const minHeight = minResolution.h;
-    return this.videoElements.find(
-        (el) => el.videoWidth < minWidth || el.videoHeight < minHeight);
+    return `running, iteration: ${this.iteration}`;
   }
 }
 
+// Declare testRunner so that the Python code can access it to query status.
+// Also allows us to access it easily in dev tools for debugging.
 let testRunner;
 
 function startTest(
@@ -114,5 +98,6 @@ function startTest(
   for (let i = 0; i < numPeerConnections; i++) {
     testRunner.addPeerConnection();
   }
-  testRunner.startTest();
+  testRunner.runTest();
 }
+
