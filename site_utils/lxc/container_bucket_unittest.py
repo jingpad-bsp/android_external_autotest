@@ -3,8 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import argparse
-import logging
 import os
 import shutil
 import tempfile
@@ -12,10 +10,9 @@ import unittest
 
 import common
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils.lxc import unittest_logging
+from autotest_lib.site_utils.lxc import unittest_setup
 
 
-options = None
 container_path = None
 
 def setUpModule():
@@ -44,21 +41,6 @@ class ContainerBucketTests(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
 
-
-
-def parse_options():
-    """Parse command line inputs."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Print out ALL entries.')
-    args, _unused = parser.parse_known_args()
-    return args
-
-
 if __name__ == '__main__':
-    options = parse_options()
-
-    log_level=(logging.DEBUG if options.verbose else logging.INFO)
-    unittest_logging.setup(log_level)
-
+    unittest_setup.setup()
     unittest.main()

@@ -80,13 +80,16 @@ class Zygote(Container):
         if exists:
             self._find_existing_bind_mounts()
         else:
-            # Creating a new Zygote - initialize the host dirs.
+            # Creating a new Zygote - initialize the host dirs.  Don't use sudo,
+            # so that the resulting directories can be accessed by autoserv (for
+            # SSP installation, etc).
             if not lxc_utils.path_exists(self.host_path):
-                utils.run('sudo mkdir -p %s' % self.host_path)
+                os.makedirs(self.host_path)
             if not lxc_utils.path_exists(self.host_path_ro):
-                utils.run('sudo mkdir -p %s' % self.host_path_ro)
+                os.makedirs(self.host_path_ro)
 
             # Create the mount point within the container's rootfs.
+            # Changes within container's rootfs require sudo.
             utils.run('sudo mkdir %s' %
                       os.path.join(self.rootfs,
                                    constants.CONTAINER_HOST_DIR.lstrip(
@@ -123,7 +126,7 @@ class Zygote(Container):
             return
 
         usr_local_path = os.path.join(self.host_path, 'usr', 'local')
-        utils.run('sudo mkdir -p %s'% usr_local_path)
+        os.makedirs(usr_local_path)
 
         with lxc_utils.TempDir(dir=usr_local_path) as tmpdir:
             download_tmp = os.path.join(tmpdir,
