@@ -390,21 +390,25 @@ def InstallImage(client, src, dest=CR50_FILE):
     return dest, ver
 
 
-def GetImageBoardIdInfo(board_id_str):
+def GetBoardIdInfoTuple(board_id_str):
     """Convert the string into board id args.
 
+    Split the board id string board_id:(mask|board_id_inv):flags to a tuple of
+    its parts. The board id will be converted to its symbolic value. The flags
+    and the mask/board_id_inv will be converted to an int.
+
     Returns:
-        the symbolic board id, mask, and flags
+        the symbolic board id, mask|board_id_inv, and flags
     """
     if not board_id_str:
         return None
 
-    board_id, mask, flags = board_id_str.split(':')
+    board_id, param2, flags = board_id_str.split(':')
     board_id = GetSymbolicBoardId(board_id)
-    return board_id, int(mask, 16), int(flags, 16)
+    return board_id, int(param2, 16), int(flags, 16)
 
 
-def GetImageBoardIdString(board_id_info, symbolic=False):
+def GetBoardIdInfoString(board_id_info, symbolic=False):
     """Convert the board id list or str into a symbolic or non symbolic str.
 
     This can be used to convert the board id info list into a symbolic or non
@@ -412,12 +416,12 @@ def GetImageBoardIdString(board_id_info, symbolic=False):
     string into a board id string with a symbolic or non symbolic board id
 
     Args:
-        board_id_info: A string of the form board_id:mask:flags or a list with
-                       the board_id, mask, flags
+        board_id_info: A string of the form board_id:(mask|board_id_inv):flags
+                       or a list with the board_id, (mask|board_id_inv), flags
 
     Returns:
-        symbolic_board_id:mask:flags, board_id:mask:flags, or None if the given
-        board id info is not valid
+        (board_id|symbolic_board_id):(mask|board_id_inv):flags. Will return
+        None if if the given board id info is not valid
     """
     if not board_id_info:
         return None
@@ -425,9 +429,9 @@ def GetImageBoardIdString(board_id_info, symbolic=False):
     # Get the board id string, the mask value, and the flag value based on the
     # board_id_info type
     if isinstance(board_id_info, str):
-        board_id, mask, flags = GetImageBoardIdInfo(board_id_info)
+        board_id, param2, flags = GetBoardIdInfoTuple(board_id_info)
     else:
-        board_id, mask, flags = board_id_info
+        board_id, param2, flags = board_id_info
 
     # Get the hex string for board id
     board_id = '%08x' % GetIntBoardId(board_id)
@@ -437,7 +441,7 @@ def GetImageBoardIdString(board_id_info, symbolic=False):
         board_id = GetSymbolicBoardId(board_id)
 
     # Return the board_id_str:8_digit_hex_mask: 8_digit_hex_flags
-    return '%s:%08x:%08x' % (board_id, mask, flags)
+    return '%s:%08x:%08x' % (board_id, param2, flags)
 
 
 def GetSymbolicBoardId(board_id):
