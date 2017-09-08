@@ -136,11 +136,18 @@ class Cr50Test(FirmwareTest):
         return self._node_locked_cr50_image
 
 
-    def _restore_original_image(self):
+    def _restore_original_image(self, chip_bid, chip_flags):
         """Restore the cr50 image and erase the state.
 
         Make 3 attempts to update to the original image. Use a rollback from
         the DBG image to erase the state that can only be erased by a DBG image.
+        Set the chip board id during rollback
+
+        Args:
+            chip_bid: the integer representation of chip board id or None if the
+                      board id should be erased
+            chip_flags: the integer representation of chip board id flags or
+                        None if the board id should be erased
         """
         for i in range(3):
             try:
@@ -149,7 +156,8 @@ class Cr50Test(FirmwareTest):
                 self.cr50_update(self._node_locked_cr50_image)
 
                 # Rollback to the original cr50 image.
-                self.cr50_update(self._original_cr50_image, rollback=True)
+                self.cr50_update(self._original_cr50_image, rollback=True,
+                                 chip_bid=chip_bid, chip_flags=chip_flags)
                 break
             except Exception, e:
                 logging.warning('Failed to restore original image attempt %d: '
@@ -186,21 +194,13 @@ class Cr50Test(FirmwareTest):
         if self._rootfs_verification_is_disabled():
             cr50_utils.InstallImage(self.host, self._original_device_image)
 
-        # Delete the RLZ code before updating to make sure that chromeos doesn't
-        # set the board id during the update.
-        cr50_utils.SetRLZ(self.host, '')
-
+        chip_bid_info = self._original_state['chip_bid']
+        bid_is_erased = chip_bid_info == cr50_utils.ERASED_CHIP_BID
+        chip_bid = None if bid_is_erased else chip_bid_info[0]
+        chip_flags = None if bid_is_erased else chip_bid_info[2]
         # Update to the original image and erase the board id
-        self._restore_original_image()
+        self._restore_original_image(chip_bid, chip_flags)
 
-        chip_bid = self._original_state['chip_bid']
-        # The board id can only be set once. Set it before reinitializing the
-        # RLZ code to make sure that ChromeOS won't set the board id.
-        if chip_bid != cr50_utils.ERASED_CHIP_BID:
-            # Convert the board_id to at least a 5 char string, so usb_updater
-            # wont treat it as a symbolic value.
-            cr50_utils.SetChipBoardId(self.host, '0x%03x' % chip_bid[0],
-                                      chip_bid[2])
         # Set the RLZ code
         cr50_utils.SetRLZ(self.host, self._original_state['rlz'])
         # Make sure the /var/cache/cr50* state is restored
@@ -423,7 +423,7 @@ class Cr50Test(FirmwareTest):
 
 
     def cr50_update(self, path, rollback=False, erase_nvmem=False,
-                    expect_rollback=False):
+                    expect_rollback=False, chip_bid=None, chip_flags=None):
         """Attempt to update to the given image.
 
         If rollback is True, we assume that cr50 is already running an image
@@ -435,6 +435,10 @@ class Cr50Test(FirmwareTest):
                       the given image
             erase_nvmem: True if we need to erase nvmem during rollback
             expect_rollback: True if cr50 should rollback on its own
+            chip_bid: the integer representation of chip board id or None if the
+                      board id should be erased during rollback
+            chip_flags: the integer representation of chip board id flags or
+                        None if the board id should be erased during rollback
 
         Raises:
             TestFail if the update failed
@@ -456,7 +460,7 @@ class Cr50Test(FirmwareTest):
             self.cr50.erase_nvmem()
 
         if rollback:
-            self.cr50.rollback()
+            self.cr50.rollback(chip_bid=chip_bid, chip_flags=chip_flags)
 
         expected_ver = original_ver if expect_rollback else rw_ver
         # If we expect a rollback, the version should remain unchanged
