@@ -86,8 +86,8 @@ class Cr50Test(FirmwareTest):
         _, running_rw, running_bid = self.get_saved_cr50_original_version()
 
         # Make sure dut_bid and running_bid are in the same format
-        dut_bid = cr50_utils.GetImageBoardIdString(dut_bid)
-        running_bid = cr50_utils.GetImageBoardIdString(running_bid)
+        dut_bid = cr50_utils.GetBoardIdInfoString(dut_bid)
+        running_bid = cr50_utils.GetBoardIdInfoString(running_bid)
         if running_rw == dut_rw and running_bid == dut_bid:
             logging.info('Using device cr50 image %s %s', dut_rw, dut_bid)
             self._original_cr50_image = self._original_device_image
@@ -303,7 +303,7 @@ class Cr50Test(FirmwareTest):
         """
         # Add the image bid string to the filename
         if image_bid:
-            bid_str = cr50_utils.GetImageBoardIdString(image_bid,
+            bid_str = cr50_utils.GetBoardIdInfoString(image_bid,
                                                        symbolic=True)
             filename += '.' + bid_str.replace(':', '_')
 
@@ -325,7 +325,7 @@ class Cr50Test(FirmwareTest):
 
         # Compare the image board id to the downloaded image to make sure we got
         # the right file
-        downloaded_bid = cr50_utils.GetImageBoardIdString(ver[2], symbolic=True)
+        downloaded_bid = cr50_utils.GetBoardIdInfoString(ver[2], symbolic=True)
         if image_bid and bid_str != downloaded_bid:
             raise error.TestError('Could not download image with matching '
                                   'board id wanted %s got %s' % (bid_str,
