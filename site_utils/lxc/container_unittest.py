@@ -3,12 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import argparse
-import logging
 import os
 import random
 import shutil
-import sys
 import tempfile
 import time
 import unittest
@@ -20,11 +17,9 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
-from autotest_lib.site_utils.lxc import unittest_logging
+from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
-
-options = None
 
 class ContainerTests(unittest.TestCase):
     """Unit tests for the Container class."""
@@ -50,7 +45,7 @@ class ContainerTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.base_container = None
-        if not options.skip_cleanup:
+        if not unittest_setup.config.skip_cleanup:
             if cls.cleanup_base_container:
                 lxc.BaseImage().cleanup()
             utils.run('sudo rm -r %s' % cls.test_dir)
@@ -327,7 +322,7 @@ class ContainerTests(unittest.TestCase):
         try:
             yield container
         finally:
-            if not options.skip_cleanup:
+            if not unittest_setup.config.skip_cleanup:
                 container.destroy()
 
 
@@ -372,29 +367,6 @@ def random_container_id():
     return lxc.ContainerId(random.randint(0, 1000), time.time(), os.getpid())
 
 
-def parse_options():
-    """Parse command line inputs.
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Print out ALL entries.')
-    parser.add_argument('--skip_cleanup', action='store_true',
-                        help='Skip deleting test containers.')
-    args, argv = parser.parse_known_args()
-
-    # Hack: python unittest also processes args.  Construct an argv to pass to
-    # it, that filters out the options it won't recognize.
-    if args.verbose:
-        argv.insert(0, '-v')
-    argv.insert(0, sys.argv[0])
-
-    return args, argv
-
-
 if __name__ == '__main__':
-    options, unittest_argv = parse_options()
-
-    log_level=(logging.DEBUG if options.verbose else logging.INFO)
-    unittest_logging.setup(log_level)
-
-    unittest.main(argv=unittest_argv)
+    unittest_setup.setup()
+    unittest.main()

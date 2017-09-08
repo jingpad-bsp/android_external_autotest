@@ -3,12 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import argparse
-import logging
 import os
 import tempfile
 import shutil
-import sys
 import unittest
 from contextlib import contextmanager
 
@@ -18,11 +15,9 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import unittest_http
-from autotest_lib.site_utils.lxc import unittest_logging
+from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
-
-options = None
 
 @unittest.skipIf(lxc.IS_MOBLAB, 'Zygotes are not supported on moblab.')
 class ZygoteTests(unittest.TestCase):
@@ -53,7 +48,7 @@ class ZygoteTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.base_container = None
-        if not options.skip_cleanup:
+        if not unittest_setup.config.skip_cleanup:
             if cls.cleanup_base_container:
                 lxc.BaseImage().cleanup()
             cls.shared_host_dir.cleanup()
@@ -124,7 +119,7 @@ class ZygoteTests(unittest.TestCase):
         test_host_file = os.path.join(test_host_path, test_filename)
         test_string = 'jackdaws love my big sphinx of quartz.'
         os.makedirs(test_host_path)
-        with open(test_host_file, 'w+') as f:
+        with open(test_host_file, 'w') as f:
             f.write(test_string)
 
         # Sanity check
@@ -326,7 +321,7 @@ class ZygoteTests(unittest.TestCase):
         try:
             yield zygote
         finally:
-            if not options.skip_cleanup:
+            if not unittest_setup.config.skip_cleanup:
                 zygote.destroy()
 
 
@@ -345,29 +340,6 @@ class ZygoteTests(unittest.TestCase):
         self.assertEqual(container_inode, host_inode)
 
 
-def parse_options():
-    """Parse command line inputs.
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Print out ALL entries.')
-    parser.add_argument('--skip_cleanup', action='store_true',
-                        help='Skip deleting test containers.')
-    args, argv = parser.parse_known_args()
-
-    # Hack: python unittest also processes args.  Construct an argv to pass to
-    # it, that filters out the options it won't recognize.
-    if args.verbose:
-        argv.insert(0, '-v')
-    argv.insert(0, sys.argv[0])
-
-    return args, argv
-
-
 if __name__ == '__main__':
-    options, unittest_argv = parse_options()
-
-    log_level=(logging.DEBUG if options.verbose else logging.INFO)
-    unittest_logging.setup(log_level)
-
-    unittest.main(argv=unittest_argv)
+    unittest_setup.setup()
+    unittest.main()
