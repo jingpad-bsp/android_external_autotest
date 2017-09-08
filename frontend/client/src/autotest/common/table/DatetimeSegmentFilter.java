@@ -42,16 +42,14 @@ public class DatetimeSegmentFilter extends SimpleFilter {
         panel.add(toLabel);
         panel.add(endDatetimeBox);
 
-        Date placeHolderDate = new Date();
-
-        CalendarUtil.addDaysToDate(placeHolderDate, -7);
-        placeHolderStartDatetime = format(placeHolderDate);
-        setStartTimeToPlaceHolderValue();
-
+        // The order here matters. It is not possible to set startTime that is
+        // not close to endTime (see updateStartDateConstraint). So, we must
+        // first set endTime to really get the startTime we want.
         // We want all entries from today, so advance end date to tomorrow.
-        CalendarUtil.addDaysToDate(placeHolderDate, 1);
-        placeHolderEndDatetime = format(placeHolderDate);
+        placeHolderEndDatetime = getDateTimeStringOffsetFromToday(1);
         setEndTimeToPlaceHolderValue();
+        placeHolderStartDatetime = getDateTimeStringOffsetFromToday(-6);
+        setStartTimeToPlaceHolderValue();
 
         addValueChangeHandler(
             new ValueChangeHandler() {
@@ -120,5 +118,11 @@ public class DatetimeSegmentFilter extends SimpleFilter {
                                       ValueChangeHandler<String> endTimeHandler) {
         startDatetimeBox.addValueChangeHandler(startTimeHandler);
         endDatetimeBox.addValueChangeHandler(endTimeHandler);
+    }
+
+    private static String getDateTimeStringOffsetFromToday(int offsetDays) {
+        Date placeHolderDate = new Date();
+        CalendarUtil.addDaysToDate(placeHolderDate, offsetDays);
+        return format(placeHolderDate);
     }
 }
