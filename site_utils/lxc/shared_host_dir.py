@@ -39,6 +39,7 @@ class SharedHostDir(object):
                 self.cleanup()
 
         utils.run('sudo mkdir "%(path)s" && '
+                  'sudo chmod 777 "%(path)s" && '
                   'sudo mount --bind "%(path)s" "%(path)s" && '
                   'sudo mount --make-shared "%(path)s"' %
                   {'path': self.path})

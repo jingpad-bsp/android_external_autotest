@@ -3,11 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import argparse
-import logging
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -17,12 +14,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import BaseImage
 from autotest_lib.site_utils.lxc import constants
-from autotest_lib.site_utils.lxc import unittest_logging
+from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
-# Namespace object for parsing cmd line options.
-options = None
 test_dir = None
 # A reference to an existing base container that can be copied for tests that
 # need a base container.  This is an optimization.
@@ -176,7 +171,7 @@ def TestBaseContainer(name=constants.BASE):
     try:
         yield container
     finally:
-        if not options.skip_cleanup:
+        if not unittest_setup.config.skip_cleanup:
             container.destroy()
 
 
@@ -204,34 +199,12 @@ def setUpModule():
 
 def tearDownModule():
     """Deletes the test dir and reference container."""
-    if not options.skip_cleanup:
+    if not unittest_setup.config.skip_cleanup:
         if cleanup_ref_container:
             reference_container.destroy()
         shutil.rmtree(test_dir)
 
 
-def parse_options():
-    """Parse command line inputs."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Print out ALL entries.')
-    parser.add_argument('--skip_cleanup', action='store_true',
-                        help='Skip deleting test containers.')
-    args, argv = parser.parse_known_args()
-
-    # Hack: python unittest also processes args.  Construct an argv to pass to
-    # it, that filters out the options it won't recognize.
-    if args.verbose:
-        argv.insert(0, '-v')
-    argv.insert(0, sys.argv[0])
-
-    return args, argv
-
-
 if __name__ == '__main__':
-    options, unittest_argv = parse_options()
-
-    log_level=(logging.DEBUG if options.verbose else logging.INFO)
-    unittest_logging.setup(log_level)
-
-    unittest.main(argv=unittest_argv)
+    unittest_setup.setup()
+    unittest.main()

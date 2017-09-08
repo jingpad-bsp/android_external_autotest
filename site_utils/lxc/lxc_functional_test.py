@@ -22,7 +22,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils.lxc import unittest_logging
+from autotest_lib.site_utils.lxc import unittest_setup
 
 
 TEST_JOB_ID = 123
@@ -331,16 +331,11 @@ def main(options):
 
     @param options: Options to run the script.
     """
-    # Force to run the test as superuser.
-    # TODO(dshi): crbug.com/459344 Set remove this enforcement when test
-    # container can be unprivileged container.
-    if utils.sudo_require_password():
-        logging.warn('SSP requires root privilege to run commands, please '
-                     'grant root access to this process.')
-        utils.run('sudo true')
+    # Verify that the test is running as the correct user.
+    unittest_setup.verify_user()
 
     log_level=(logging.DEBUG if options.verbose else logging.INFO)
-    unittest_logging.setup(log_level)
+    unittest_setup.setup_logging(log_level)
 
     setup_base(TEMP_DIR)
     bucket = lxc.ContainerBucket(TEMP_DIR)
