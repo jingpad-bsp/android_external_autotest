@@ -1221,9 +1221,6 @@ class _BaseSuite(object):
         @param result: A result, encapsulating the status of the failed job.
         @return: True if we should report this failure.
         """
-        if self._has_retry(result):
-            return False
-
         return (self._file_bugs and result.test_executed and
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
@@ -1285,11 +1282,15 @@ class _BaseSuite(object):
         @param reporter: _ResultReporter instance.
         """
         self._record_result(result, record)
+        rescheduled = False
         if self._job_retry and self._retry_handler._should_retry(result):
-            self._retry_result(result, record, waiter)
-        # TODO (fdeng): If the suite times out before a retry could
-        # finish, we would lose the chance to file a bug for the
-        # original job.
+            rescheduled = self._retry_result(result, record, waiter)
+        # TODO (crbug.com/751428): If the suite times out before a retry could
+        # finish, we would lose the chance to report errors from the original
+        # job.
+        if self._has_retry(result) and rescheduled:
+             return
+
         if self._should_report(result):
             self._result_reporter.report(result)
 
@@ -1316,6 +1317,7 @@ class _BaseSuite(object):
                  prototype:
                    record(base_job.status_log_entry)
         @param waiter: JobResultsWaiter instance.
+        @returns: True if a job was scheduled for retry, False otherwise.
         """
         test = self._jobs_to_tests[result.id]
         try:
@@ -1324,8 +1326,10 @@ class _BaseSuite(object):
         except (error.RPCException, proxy.JSONRPCException) as e:
             logging.error('Failed to schedule test: %s, Reason: %s',
                           test.name, e)
+            return False
         else:
             waiter.add_job(new_job)
+            return bool(new_job)
 
 
     @property
