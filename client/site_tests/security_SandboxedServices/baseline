@@ -46,6 +46,7 @@ timberslide,root,root,No,No,No,No
 firewalld,firewall,firewall,Yes,Yes,Yes,No
 conntrackd,nfqueue,nfqueue,No,Yes,Yes,Yes
 avahi-daemon,avahi,avahi,No,Yes,No,No
+upstart-udev-br,root,root,No,No,No,No
 
 # ARC-related services running on Chrome OS.
 arc_camera_serv,arc-camera,arc-camera,No,Yes,No,No
