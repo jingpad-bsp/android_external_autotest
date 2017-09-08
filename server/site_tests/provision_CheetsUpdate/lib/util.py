@@ -33,7 +33,11 @@ def get_command_str(command):
 def check_call(*subprocess_args, dryrun=False, **kwargs):
   """Runs a subprocess and returns its exit code."""
   if logging.getLogger().isEnabledFor(logging.DEBUG):
-    logging.debug('Calling: %s', get_command_str(subprocess_args))
+    if kwargs:
+      logging.debug('Calling: %s (kwargs %r)', get_command_str(subprocess_args),
+                    kwargs)
+    else:
+      logging.debug('Calling: %s', get_command_str(subprocess_args))
   if dryrun:
     return
   try:
@@ -44,22 +48,39 @@ def check_call(*subprocess_args, dryrun=False, **kwargs):
     raise
 
 
-def check_output(*subprocess_args, dryrun=False, **kwargs):
+def check_output(*subprocess_args, dryrun=False, universal_newlines=True,
+                 **kwargs):
   """Runs a subprocess and returns its output."""
   if logging.getLogger().isEnabledFor(logging.DEBUG):
-    logging.debug('Calling: %s', get_command_str(subprocess_args))
+    if kwargs:
+      logging.debug('Calling: %s (kwargs %r)', get_command_str(subprocess_args),
+                    kwargs)
+    else:
+      logging.debug('Calling: %s', get_command_str(subprocess_args))
   if dryrun:
     logging.info('Cannot return any output without running the command. '
                  'Returning an empty string instead.')
     return ''
   try:
-    return subprocess.check_output(subprocess_args, universal_newlines=True,
+    return subprocess.check_output(subprocess_args,
+                                   universal_newlines=universal_newlines,
                                    **kwargs)
   except subprocess.CalledProcessError as e:
     logging.error('Error while executing %s', get_command_str(subprocess_args))
     logging.error(e.output)
     raise
 
+def find_repo_root(path=None):
+  """Locate the top level of this repo checkout starting at |path|."""
+  if path is None:
+    path = os.getcwd()
+  orig_path = path
+  path = os.path.abspath(path)
+  while not os.path.exists(os.path.join(path, '.repo')):
+    path = os.path.dirname(path)
+    if path == '/':
+      raise ValueError('Could not locate .repo in %s' % orig_path)
+  return path
 
 def makedirs(path):
   """Makes directories if necessary, like 'mkdir -p'"""
