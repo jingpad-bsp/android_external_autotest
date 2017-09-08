@@ -5,10 +5,11 @@
 
 import argparse
 import datetime
+import logging
 import os
 import re
 import sys
-import logging
+import time
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'frontend.settings'
 
@@ -61,6 +62,7 @@ cursor = connections['default'].cursor()
 # Globals for command line flag constants, for convenience.
 DRY_RUN = False
 STEP_SIZE = None
+LOAD_RATIO = 1.0
 
 class ProgressBar(object):
     TEXT = "{:<40s} [{:<20s}] ({:>9d}/{:>9d})"
@@ -207,12 +209,20 @@ def _delete_table_data_before_date(table_to_delete_from, primary_key,
             variables['rows'] = ','.join([str(x) for x in row_keys])
             sql = DELETE_ROWS_FORMAT % variables
 
+            start = time.time()
             logging.debug('SQL: %s', sql)
             if not DRY_RUN:
                 cursor.execute(sql, [])
                 transaction.commit_unless_managed(using='default')
+            end = time.time()
+
             pb.update(len(row_keys))
             pb.show()
+
+            if LOAD_RATIO != 1.0:
+                assert 0 < LOAD_RATIO <= 1, (
+                        'Load ratio must be a fraction between 0 and 1.')
+                time.sleep((end - start) / LOAD_RATIO)
 
 
 def _subtract_days(date, days_to_subtract):
@@ -351,6 +361,11 @@ def parse_args():
                         help='Check if the server should run db clean up.')
     parser.add_argument('--dry_run', action='store_true',
                         help='Print SQL queries instead of executing them.')
+    parser.add_argument('--load_ratio', type=float, action='store', default=0.2,
+                        help=('The fraction of time the script should be '
+                              'performing deletes. For example --load_ratio=.2 '
+                              'will cause the script to sleep 80% of the time, '
+                              'and perform work for the other 20%.'))
     parser.add_argument('date', help='Keep results newer than')
     return parser.parse_args()
 
@@ -381,9 +396,11 @@ def main():
         print 'Only shard can run db cleanup.'
         return
 
-    global STEP_SIZE, DRY_RUN
+    global STEP_SIZE, DRY_RUN, LOAD_RATIO
     STEP_SIZE = args.step
     DRY_RUN = args.dry_run
+    LOAD_RATIO = args.load_ratio
+
     _delete_all_data_before_date(args.date)
 
 
