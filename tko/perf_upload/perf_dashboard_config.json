@@ -56,6 +56,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "camera_HAL3Perf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "cheets_StartAndroid.stress",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "cheets_StartAndroid"
