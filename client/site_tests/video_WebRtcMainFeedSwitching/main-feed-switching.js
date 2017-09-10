@@ -14,6 +14,12 @@ const MAIN_FEED_RESOLUTION = {w:1280, h:720};
 // This resolution is what we typically get on Hangouts Meet.
 const SMALL_FEED_RESOLUTION = {w:182, h:136};
 
+// This test frequently reports weird resolutions although the visuals look OK.
+// Hence, require lots of consecutive bad resolutions before failure.
+// TODO(kerl): Effectively disabled now, investigate why we get so many bad
+// resolution reports.
+const NUM_BAD_RESOLUTIONS_FOR_FAILURE = Number.MAX_SAFE_INTEGER;
+
 class TestRunner {
   constructor(numConnections, runtimeSeconds, iterationDelayMillis) {
     this.runtimeSeconds = runtimeSeconds;
@@ -24,6 +30,7 @@ class TestRunner {
     this.numConnections = numConnections;
     this.iteration = 0;
     this.startTime = 0;  // initialized to dummy value
+    this.status = this.getStatusInternal_();
   }
 
   runTest() {
@@ -53,9 +60,9 @@ class TestRunner {
 
   switchFeedLoop() {
     this.iteration++;
-    const status = this.getStatus();
-    $('status').textContent = status;
-    if (status != 'ok-done') {
+    this.status = this.getStatusInternal_();
+    $('status').textContent = this.status;
+    if (this.status != 'ok-done') {
       const switchWith = Math.floor(Math.random() * this.videoElements.length);
       const newMainSrc = this.videoElements[switchWith].srcObject;
       this.videoElements[switchWith].srcObject = this.mainFeed.srcObject;
@@ -66,8 +73,18 @@ class TestRunner {
   }
 
   getStatus() {
+    return this.status;
+  }
+
+  getStatusInternal_() {
     if (this.iteration == 0) {
       return 'not-started';
+    }
+    try {
+      this.peerConnections.forEach(
+          (conn) => conn.verifyState(NUM_BAD_RESOLUTIONS_FOR_FAILURE));
+    } catch (e) {
+      return `failure: ${e.message}`;
     }
     const timeSpent = Date.now() - this.startTime;
     if (timeSpent >= this.runtimeSeconds * 1000) {
@@ -92,4 +109,3 @@ function startTest(
       numPeerConnections, runtimeSeconds, iterationDelayMillis);
   testRunner.runTest();
 }
-

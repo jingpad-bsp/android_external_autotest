@@ -272,7 +272,10 @@ class EnterprisePolicyTest(test.test):
             for (var i = 1, row; row = table.rows[i]; i++) {
                if (row.className !== 'expanded-value-container') {
                   var name_div = row.getElementsByClassName('name elide')[0];
-                  var name = name_div.textContent;
+                  var name_links = name_div.getElementsByClassName(
+                     'name-link');
+                  var name = (name_links.length > 0) ?
+                     name_links[0].textContent : name_div.textContent;
                   if (name === '%s') {
                      var value_span = row.getElementsByClassName('value')[0];
                      var value = value_span.textContent;
@@ -287,9 +290,9 @@ class EnterprisePolicyTest(test.test):
             rowValues;
         ''' % policy_name)
 
+        logging.debug('Policy %s row: %s', policy_name, row_values)
         value_shown = row_values[1].encode('ascii', 'ignore')
         status_shown = row_values[2].encode('ascii', 'ignore')
-        logging.debug('Policy %s row: %s', policy_name, row_values)
 
         if status_shown == 'Not set.':
             return None

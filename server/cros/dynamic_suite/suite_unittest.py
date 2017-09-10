@@ -556,13 +556,21 @@ class SuiteTest(mox.MoxTestBase):
 
         @return Suite object, after mocking out behavior needed to create it.
         """
+        self.result_reporter = _MemoryResultReporter()
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
-        suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
-                                       self.devserver,
-                                       self.getter,
-                                       afe=self.afe, tko=self.tko,
-                                       file_bugs=file_bugs, job_retry=True)
+        suite = Suite.create_from_name(
+                self._TAG,
+                self._BUILDS,
+                self._BOARD,
+                self.devserver,
+                self.getter,
+                afe=self.afe,
+                tko=self.tko,
+                file_bugs=file_bugs,
+                job_retry=True,
+                result_reporter=self.result_reporter,
+        )
         self.mox.ResetAll()
         return suite
 
@@ -795,6 +803,7 @@ class SuiteTest(mox.MoxTestBase):
         expected_jobs_to_tests = self.suite._jobs_to_tests.copy()
         expected_retry_map = self.suite._retry_handler._retry_map.copy()
         self.suite.wait(self.recorder.record_entry)
+        self.assertTrue(self.result_reporter.results)
         # Check retry map and _jobs_to_tests, ensure no retry was scheduled.
         self.assertEquals(self.suite._retry_handler._retry_map,
                           expected_retry_map)
@@ -817,6 +826,7 @@ class SuiteTest(mox.MoxTestBase):
                 error.RPCException('Expected during test'))
         # Do not file a bug.
         self.mox.StubOutWithMock(self.suite, '_should_report')
+        self.suite._should_report(mox.IgnoreArg()).AndReturn(False)
 
         self.mox.ReplayAll()
 
@@ -835,6 +845,16 @@ class SuiteTest(mox.MoxTestBase):
         self.assertEquals(self.suite._retry_handler._retry_map,
                           expected_retry_map)
         self.assertEquals(self.suite._jobs_to_tests, expected_jobs_to_tests)
+
+
+class _MemoryResultReporter(SuiteBase._ResultReporter):
+    """Reporter that stores results internally for testing."""
+    def __init__(self):
+        self.results = []
+
+    def report(self, result):
+        """Reports the result by storing it internally."""
+        self.results.append(result)
 
 
 if __name__ == '__main__':

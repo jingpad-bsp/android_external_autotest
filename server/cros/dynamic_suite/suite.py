@@ -977,7 +977,8 @@ class _BaseSuite(object):
             max_retries=sys.maxint,
             offload_failures_only=False,
             test_source_build=None,
-            job_keyvals=None
+            job_keyvals=None,
+            result_reporter=None,
     ):
         """Initialize instance.
 
@@ -1019,6 +1020,8 @@ class _BaseSuite(object):
         @param test_source_build: Build that contains the server-side test code.
         @param job_keyvals: General job keyvals to be inserted into keyval file,
                             which will be used by tko/parse later.
+        @param result_reporter: A _ResultReporter instance to report results. If
+                None, an _EmailReporter will be created.
         """
 
         self.tests = list(tests)
@@ -1042,6 +1045,10 @@ class _BaseSuite(object):
         self._retry_handler = None
         self.wait_for_results = wait_for_results
         self._job_keyvals = job_keyvals
+        if result_reporter is None:
+            self._result_reporter = _EmailReporter(self)
+        else:
+            self._result_reporter = result_reporter
 
         if extra_deps is None:
             extra_deps = []
@@ -1214,9 +1221,6 @@ class _BaseSuite(object):
         @param result: A result, encapsulating the status of the failed job.
         @return: True if we should report this failure.
         """
-        if self._has_retry(result):
-            return False
-
         return (self._file_bugs and result.test_executed and
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
@@ -1242,7 +1246,6 @@ class _BaseSuite(object):
                  prototype:
                    record(base_job.status_log_entry)
         """
-        reporter = self._get_result_reporter()
         waiter = job_status.JobResultWaiter(self._afe, self._tko)
         try:
             if self._suite_job_id:
@@ -1253,11 +1256,7 @@ class _BaseSuite(object):
                 jobs = self._jobs
             waiter.add_jobs(jobs)
             for result in waiter.wait_for_results():
-                self._handle_result(
-                    result=result,
-                    record=record,
-                    waiter=waiter,
-                    reporter=reporter)
+                self._handle_result(result=result, record=record, waiter=waiter)
                 if self._finished_waiting():
                     break
         except Exception:  # pylint: disable=W0703
@@ -1266,17 +1265,12 @@ class _BaseSuite(object):
                    'Exception waiting for results').record_result(record)
 
 
-    def _get_result_reporter(self):
-        """Return the _ResultReporter instance to use for the suite."""
-        return _EmailReporter(self)
-
-
     def _finished_waiting(self):
         """Return whether the suite is finished waiting for child jobs."""
         return False
 
 
-    def _handle_result(self, result, record, waiter, reporter):
+    def _handle_result(self, result, record, waiter):
         """
         Handle a test job result.
 
@@ -1288,12 +1282,17 @@ class _BaseSuite(object):
         @param reporter: _ResultReporter instance.
         """
         self._record_result(result, record)
+        rescheduled = False
         if self._job_retry and self._retry_handler._should_retry(result):
-            self._retry_result(result, record, waiter)
-        # TODO(akeshet): re-enable this check. Context: crbug.com/751762
-        # if self._should_report(result):
-        if False:
-            reporter.report(result)
+            rescheduled = self._retry_result(result, record, waiter)
+        # TODO (crbug.com/751428): If the suite times out before a retry could
+        # finish, we would lose the chance to report errors from the original
+        # job.
+        if self._has_retry(result) and rescheduled:
+             return
+
+        if self._should_report(result):
+            self._result_reporter.report(result)
 
 
     def _record_result(self, result, record):
@@ -1318,6 +1317,7 @@ class _BaseSuite(object):
                  prototype:
                    record(base_job.status_log_entry)
         @param waiter: JobResultsWaiter instance.
+        @returns: True if a job was scheduled for retry, False otherwise.
         """
         test = self._jobs_to_tests[result.id]
         try:
@@ -1326,8 +1326,10 @@ class _BaseSuite(object):
         except (error.RPCException, proxy.JSONRPCException) as e:
             logging.error('Failed to schedule test: %s, Reason: %s',
                           test.name, e)
+            return False
         else:
             waiter.add_job(new_job)
+            return bool(new_job)
 
 
     @property
@@ -1512,7 +1514,8 @@ class Suite(_BaseSuite):
             offload_failures_only=False,
             test_source_build=None,
             job_keyvals=None,
-            test_args=None
+            test_args=None,
+            result_reporter=None,
     ):
         """
         Constructor
@@ -1564,7 +1567,8 @@ class Suite(_BaseSuite):
                             which will be used by tko/parse later.
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
-
+        @param result_reporter: A _ResultReporter instance to report results. If
+                None, an _EmailReporter will be created.
         """
         tests = find_and_parse_tests(
                 cf_getter,
@@ -1595,7 +1599,9 @@ class Suite(_BaseSuite):
                 max_retries=max_retries,
                 offload_failures_only=offload_failures_only,
                 test_source_build=test_source_build,
-                job_keyvals=job_keyvals)
+                job_keyvals=job_keyvals,
+                result_reporter=result_reporter,
+        )
 
 
 class ProvisionSuite(_BaseSuite):
@@ -1647,9 +1653,8 @@ class ProvisionSuite(_BaseSuite):
         self._num_required = num_required
         self._num_successful = 0
 
-    def _handle_result(self, result, record, waiter, reporter):
-        super(ProvisionSuite, self)._handle_result(
-                result, record, waiter, reporter)
+    def _handle_result(self, result, record, waiter):
+        super(ProvisionSuite, self)._handle_result(result, record, waiter)
         if result.is_good():
             self._num_successful += 1
 
