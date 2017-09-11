@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script is located in internal ARC repo.
-# Search for android_libs/arc/push_to_device.py
-
 from __future__ import print_function
 
 import argparse
@@ -36,6 +33,7 @@ import time
 import xml.etree.cElementTree as ElementTree
 import zipfile
 
+import lib.build_artifact_fetcher
 import lib.util
 
 
@@ -72,11 +70,14 @@ _APK_KEY_UNKNOWN = 'unknown'
 _GMS_CORE_PACKAGE_NAME = 'com.google.android.gms'
 
 _ANDROID_SDK_MAPPING = {
-    23: "M (API 23)",
-    24: "N (API 24)",
-    25: "N_MR1 (API 25)",
-    26: "O (API 26)",
+    23: "MNC (API 23)",
+    24: "NYC (API 24)",
+    25: "NYC_MR1 (API 25)",
+    26: "OC (API 26)",
 }
+
+# Bytes per Megabyte.
+_MB = 1024**2
 
 class RemoteProxy(object):
   """Proxy class to run command line on the remote test device."""
@@ -152,28 +153,6 @@ class TemporaryDirectory(object):
     shutil.rmtree(self.name)
 
 
-class MountWrapper(object):
-  """A context object that mounts an image during the lifetime."""
-
-  def __init__(self, image_path, mountpoint):
-    self._image_path = image_path
-    self._mountpoint = mountpoint
-
-  def __enter__(self):
-    lib.util.check_call('/usr/bin/sudo', '/bin/mount', '-o', 'loop',
-                        self._image_path, self._mountpoint)
-    return self
-
-  def __exit__(self, exception_type, exception_value, traceback):
-    try:
-      lib.util.check_call('/usr/bin/sudo', '/bin/umount', self._mountpoint)
-    except Exception:
-      if not exception_type:
-        raise
-      # Instead of propagate the exception, record the one from exit body.
-      logging.exception('Failed to umount ' + self._mountpoint)
-
-
 class Simg2img(object):
   """Wrapper class of simg2img"""
 
@@ -209,8 +188,8 @@ def _verify_machine_arch(remote_proxy, target_product, dryrun):
   for arch_pattern, expected_set in _EXPECTED_TARGET_PRODUCTS.items():
     if re.search(arch_pattern, remote_arch):
       expected = itertools.chain.from_iterable(
-          (expected, 'aosp_' + expected, expected + '_gmscore_next') for
-          expected in expected_set)
+          (expected, 'aosp_' + expected, 'sdk_google_' + expected)
+          for expected in expected_set)
       assert target_product in expected, (
           ('Architecture mismatch: Deploying \'%s\' to \'%s\' seems incorrect.'
            % (target_product, remote_arch)))
@@ -317,8 +296,8 @@ def _verify_android_sdk_version(remote_proxy, provider, dryrun):
       remote_proxy, dryrun)
 
   if device_android_sdk_version is None:
-    if not boolean_prompt(('Unable to determine the target device\'s Android '
-                           'SDK version. Continue?'), False):
+    if not boolean_prompt('Unable to determine the target device\'s Android '
+                          'SDK version. Continue?', default=False):
       sys.exit(1)
   else:
     assert device_android_sdk_version == provider.get_build_version_sdk(), (
@@ -360,6 +339,16 @@ def _update_selinux_policy(remote_proxy, out):
 def _remount_rootfs_as_writable(remote_proxy):
   """Remounts root file system to make it writable."""
   remote_proxy.check_call('mount -o remount,rw /')
+
+
+def _get_free_space(remote_proxy):
+  """Gets the number of free bytes in the root partition."""
+  return int(remote_proxy.check_output(
+      'echo $(( '
+      '    $(df --output=avail --local --block-size 1 / | tail -n1) + '
+      '    $(du --bytes /opt/google/containers/android/system.raw.img | '
+      '      awk \'{print $1}\') '
+      '))'))
 
 
 def boolean_prompt(prompt, default=True, true_value='yes', false_value='no',
@@ -419,14 +408,14 @@ def _disable_rootfs_verification(force, remote_proxy):
   make_dev_ssd_path = \
       '/usr/libexec/debugd/helpers/dev_features_rootfs_verification'
   make_dev_ssd_command = remote_proxy.get_ssh_commandline(make_dev_ssd_path)
+  logging.info('Detected that the device has rootfs verification enabled.')
+  logging.info('This script can remove the rootfs verification using `%s`, '
+               'which requires that the device is rebooted afterwards.',
+               lib.util.get_command_str(make_dev_ssd_command))
   if not force:
-    logging.error('Detected that the device has rootfs verification enabled.')
-    logging.info('This script can automatically remove the rootfs '
-                 'verification using `%s`, which requires that the device is '
-                 'rebooted afterwards.',
-                 lib.util.get_command_str(make_dev_ssd_command))
-    logging.info('Skip this prompt by specifying --force.')
-    if not boolean_prompt('Remove rootfs verification?', False):
+    logging.info('Automatically remove rootfs verification and skip this '
+                 'prompt by specifying --force.')
+    if not boolean_prompt('Remove rootfs verification?', default=False):
       return False
   remote_proxy.check_call(make_dev_ssd_path)
   reboot_time = time.time()
@@ -453,15 +442,7 @@ def _stop_ui(remote_proxy):
 
       # Unmount the container root/vendor and root if necessary.
       'stop arc-system-mount',
-      # TODO(yusukes): Remove the manual umount below once everyone starts using
-      #                arc-system-mount.conf with the post-stop script.
-      'if mountpoint -q %(_CONTAINER_ROOT)s/vendor; then',
-      '  umount %(_CONTAINER_ROOT)s/vendor',
-      'fi',
-      'if mountpoint -q %(_CONTAINER_ROOT)s; then',
-      '  umount %(_CONTAINER_ROOT)s',
-      'fi',
-  ]) % {'_CONTAINER_ROOT': _CONTAINER_ROOT})
+  ]))
 
 
 class ImageUpdateMode(object):
@@ -494,15 +475,12 @@ class ImageUpdateMode(object):
       _stop_ui(self._remote_proxy)
       # Try to remount rootfs as writable. Bail out if it fails this time.
       _remount_rootfs_as_writable(self._remote_proxy)
-    try:
-      self._remote_proxy.check_call('\n'.join([
-          # Delete the image file if it is a symlink.
-          'test -L %(_ANDROID_ROOT)s/system.raw.img && '
-          '  rm %(_ANDROID_ROOT)s/system.raw.img',
-      ]) % {'_ANDROID_ROOT': _ANDROID_ROOT})
-    except Exception:
-      # Not a symlink.
-      pass
+    self._remote_proxy.check_call('\n'.join([
+        # Delete the image file if it is a symlink.
+        'if [ -L %(_ANDROID_ROOT)s/system.raw.img ]; then'
+        '  rm %(_ANDROID_ROOT)s/system.raw.img;'
+        'fi',
+    ]) % {'_ANDROID_ROOT': _ANDROID_ROOT})
     if self._push_to_stateful:
       self._remote_proxy.check_call('\n'.join([
           # Create the destination directory in the stateful partition.
@@ -574,6 +552,33 @@ class PreserveTimestamps(object):
                          self._original_timestamp.st_mtime))
 
 
+def _download_artifact(out_dir, build_id, product, build_variant):
+  mapping = dict(build_id=build_id, product=product)
+  uploaded_filename = _BUILD_FILENAME.substitute(mapping)
+  filename = os.path.join(out_dir, uploaded_filename)
+  fetcher = lib.build_artifact_fetcher.BuildArtifactFetcher(
+      lib.util.get_product_arch(product), build_variant, build_id)
+  fetcher.fetch(uploaded_filename, filename)
+  return filename
+
+
+def _extract_selinux_policy(out_dir, system_raw_img, paths):
+  _UNSQUASHFS_PATH = '/usr/bin/unsquashfs'
+  if not os.path.exists(_UNSQUASHFS_PATH):
+    raise EnvironmentError('"%s" not found. You may need to install it '
+                           'with "sudo apt install squashfs-tools".' %
+                           _UNSQUASHFS_PATH)
+  with TemporaryDirectory() as tmp_dir:
+    lib.util.check_call(
+        _UNSQUASHFS_PATH, '-d', tmp_dir.name, '-no-progress', '-f',
+        system_raw_img, *[path[0] for path in paths])
+    for path in paths:
+      source = os.path.join(tmp_dir.name, path[0])
+      destination = os.path.join(out_dir, path[1])
+      os.makedirs(os.path.dirname(destination), exist_ok=True)
+      shutil.copyfile(source, destination)
+
+
 def _extract_artifact(simg2img, out_dir, filename):
   with zipfile.ZipFile(filename, 'r') as z:
     z.extract('system.img', out_dir)
@@ -583,15 +588,9 @@ def _extract_artifact(simg2img, out_dir, filename):
   # could try to change the program flow.
   simg2img.convert(os.path.join(out_dir, 'system.img'),
                    os.path.join(out_dir, 'system.raw.img'))
-  # Extract the SELinux policy.
-  with TemporaryDirectory() as mnt_dir:
-    with MountWrapper(os.path.join(out_dir, 'system.raw.img'),
-                      mnt_dir.name):
-      os.makedirs(os.path.join(out_dir, 'root'))
-      shutil.copyfile(os.path.join(mnt_dir.name, 'sepolicy'),
-                      os.path.join(out_dir, 'root', 'sepolicy'))
-      shutil.copyfile(os.path.join(mnt_dir.name, 'system', 'build.prop'),
-                      os.path.join(out_dir, 'build.prop'))
+  _extract_selinux_policy(out_dir, os.path.join(out_dir, 'system.raw.img'),
+                          [('sepolicy', 'root/sepolicy'),
+                           ('system/build.prop', 'build.prop')])
 
 
 def _make_tempdir_deleted_on_exit():
@@ -600,7 +599,7 @@ def _make_tempdir_deleted_on_exit():
   return d
 
 
-def _detect_cert_inconsistency(remote_proxy, new_variant, dryrun):
+def _detect_cert_inconsistency(force, remote_proxy, new_variant, dryrun):
   """Prompt to ask for deleting data based on detected situation (best effort).
 
   Detection is only accurate for active session, so it won't fix other profiles.
@@ -640,10 +639,14 @@ def _detect_cert_inconsistency(remote_proxy, new_variant, dryrun):
 
   if is_inconsistent:
     new_apk_key = _APK_KEY_RELEASE if new_variant == 'user' else _APK_KEY_DEBUG
-    return boolean_prompt(
-        'Detected apk signature change (%s -> %s[%s]) on current user.  Delete '
-        '/data and /cache?' % (device_apk_key, new_apk_key, new_variant),
-        default=True)
+    logging.info('Detected apk signature change (%s -> %s[%s]) on current user.'
+        % (device_apk_key, new_apk_key, new_variant))
+    if force:
+        logging.info('Deleting /data and /cache.')
+        return True
+    logging.info('Automatically delete and skip this prompt by specifying '
+                 '--force.')
+    return boolean_prompt('Delete /data and /cache?', default=True)
 
   # Switching from/to user build.
   if (device_variant == 'user') != (new_variant == 'user'):
@@ -783,6 +786,29 @@ class BaseProvider(object):
       os.remove(build_prop_file)
 
 
+class PrebuiltProvider(BaseProvider):
+  """A provider to provides prebuilt image from Android builder."""
+
+  def __init__(self, product, build_variant, build_id, simg2img):
+    super(PrebuiltProvider, self).__init__()
+    self._product = product
+    self._build_variant = build_variant
+    self._build_id = build_id
+    self._simg2img = simg2img
+
+  def prepare(self):
+    fingerprint = '_'.join([self._product, self._build_variant, self._build_id])
+
+    out_dir = _make_tempdir_deleted_on_exit()
+    filename = _download_artifact(out_dir, self._build_id, self._product,
+                                  self._build_variant)
+    _extract_artifact(self._simg2img, out_dir, filename)
+
+    build_prop_file = os.path.join(out_dir, 'build.prop')
+    self.read_build_prop_file(build_prop_file)
+    return out_dir, self._product, fingerprint
+
+
 class LocalPrebuiltProvider(BaseProvider):
   """A provider that provides prebuilt image from a local file."""
 
@@ -900,7 +926,8 @@ class NullProvider(BaseProvider):
 
 
 def _parse_prebuilt(param):
-  m = re.search(r'^(cheets_(?:arm|x86))/(user|userdebug|eng)/(P?\d+)$', param)
+  m = re.search(r'^(cheets_(?:arm|x86|x86_64))/(user|userdebug|eng)/(P?\d+)$',
+                param)
   if not m:
     sys.exit('Invalid format of --use-prebuilt')
   return m.group(1), m.group(2), m.group(3)
@@ -974,7 +1001,7 @@ $ %(prog)s --use-prebuilt-file path/to/cheets_arm-img-123456.zip <remote>
   parser.add_argument(
       '--push-to-stateful-partition', action='store_true',
       help=('Place the system.raw.img on the stateful partition instead of /. '
-            'This is always used for -eng builds since they do not fit on /.'))
+            'This is always used for builds that do not fit on /.'))
   parser.add_argument(
       'remote',
       help=('The target test device. This is passed to ssh command etc., '
@@ -998,6 +1025,9 @@ def main():
   # product (e.g. cheets_arm) and a build fingerprint.
   if args.dryrun:
     provider = NullProvider()
+  elif args.use_prebuilt:
+    product, build_variant, build_id = args.use_prebuilt
+    provider = PrebuiltProvider(product, build_variant, build_id, simg2img)
   elif args.prebuilt_file:
     provider = LocalPrebuiltProvider(args.prebuilt_file, simg2img)
   else:
@@ -1016,7 +1046,7 @@ def main():
     clobber_data = True
   else:
     clobber_data = _detect_cert_inconsistency(
-        remote_proxy, provider.get_build_variant(), args.dryrun)
+        args.force, remote_proxy, provider.get_build_variant(), args.dryrun)
 
   logging.info('Converting images to raw images...')
   (large_image_list, image_list) = _convert_images(
@@ -1024,17 +1054,47 @@ def main():
 
   is_selinux_policy_updated = _is_selinux_policy_updated(remote_proxy, out,
                                                          args.dryrun)
+  total_bytes = sum(os.stat(filename).st_size for filename in large_image_list)
+  free_bytes = _get_free_space(remote_proxy)
   push_to_stateful = (args.push_to_stateful_partition or
-                      'eng' == provider.get_build_variant())
+                      total_bytes >= free_bytes)
+
+  if not args.push_to_stateful_partition and push_to_stateful:
+    logging.info('Pushing image to stateful partition '
+                 'since it does not fit on / (%.2f MiB, %.2f free MiB).',
+                 float(total_bytes) / _MB, float(free_bytes) / _MB)
 
   with ImageUpdateMode(remote_proxy, is_selinux_policy_updated,
                        push_to_stateful, clobber_data, args.force):
     is_debuggable = 'user' != provider.get_build_variant()
-    remote_proxy.check_call(' '.join([
-        '/bin/sed', '-i',
-        r'"s/^\(env ANDROID_DEBUGGABLE=\).*/\1%(_IS_DEBUGGABLE)d/"',
-        '/etc/init/arc-setup.conf'
-    ]) % {'_IS_DEBUGGABLE': is_debuggable})
+    try:
+      remote_proxy.check_call(' '.join([
+          '/bin/sed', '-i',
+          r'"s/^\(export ANDROID_DEBUGGABLE=\).*/\1%(_IS_DEBUGGABLE)d/"',
+          '/etc/init/arc-setup-env'
+      ]) % {'_IS_DEBUGGABLE': is_debuggable})
+      # Unconditionally disable font sharing so that 'adb sync' will always
+      # work. Disabling the feature is safe because locally built system
+      # image always has all fonts. Images from ab/ also have all fonts.
+      remote_proxy.check_call(' '.join([
+          '/bin/sed', '-i',
+          r'"s/^\(export SHARE_FONTS=\).*/\1%(_SHARE_FONTS)d/"',
+          '/etc/init/arc-setup-env'
+      ]) % {'_SHARE_FONTS': False})
+    except Exception:
+      # The device is old and doesn't have arc-setup-env. Fall back to the
+      # older method.
+      # TODO(yusukes): Remove the fallback code.
+      remote_proxy.check_call(' '.join([
+          '/bin/sed', '-i',
+          r'"s/^\(env ANDROID_DEBUGGABLE=\).*/\1%(_IS_DEBUGGABLE)d/"',
+          '/etc/init/arc-setup.conf'
+      ]) % {'_IS_DEBUGGABLE': is_debuggable})
+      remote_proxy.check_call(' '.join([
+          '/bin/sed', '-i',
+          r'"s/^\(env SHARE_FONTS=\).*/\1%(_SHARE_FONTS)d/"',
+          '/etc/init/arc-system-mount.conf'
+      ]) % {'_SHARE_FONTS': False})
 
     logging.info('Syncing image files to ChromeOS...')
     if large_image_list:
