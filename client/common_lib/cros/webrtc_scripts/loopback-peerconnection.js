@@ -56,19 +56,24 @@ class PeerConnection {
    * numSequentialBadResolutionsForFailure times before failure is reported
    * since video elements occasionally report bad resolutions during the tests
    * when we manipulate the streams frequently.
-   * @param {number} numSequentialBadResolutionsForFailure number of bad
+   * @param {number=} numSequentialBadResolutionsForFailure number of bad
    *     resolution observations in a row before failure is reported.
+   * @param {number=} allowedDelta allowed difference between expected and
+   *     actual resolution. We have seen videos assigned a resolution one pixel
+   *     off from the requested.
    * @throws {Error} in case the state is not-good.
    */
-  verifyState(numSequentialBadResolutionsForFailure=10) {
+  verifyState(numSequentialBadResolutionsForFailure=10, allowedDelta=1) {
     this.verifyAllStreamsActive_();
     const expectedResolution = this.resolutions[this.activeStreamIndex];
     if (expectedResolution.w < 0 || expectedResolution.h < 0) {
       // Video is disabled.
       return;
     }
-    if (this.remoteView.videoWidth !== expectedResolution.w ||
-        this.remoteView.videoHeight !== expectedResolution.h) {
+    if (!isWithin(
+            this.remoteView.videoWidth, expectedResolution.w, allowedDelta) ||
+        !isWithin(
+            this.remoteView.videoHeight, expectedResolution.h, allowedDelta)) {
       this.badResolutionsSeen++;
     } else if (
         this.badResolutionsSeen < numSequentialBadResolutionsForFailure) {
@@ -149,6 +154,17 @@ class PeerConnection {
       connection.addIceCandidate(new RTCIceCandidate(event.candidate));
     }
   };
+}
+
+/**
+ * Checks if a value is within an expected value plus/minus a delta.
+ * @param {number} actual
+ * @param {number} expected
+ * @param {number} delta
+ * @return {boolean}
+ */
+function isWithin(actual, expected, delta) {
+  return actual <= expected + delta && actual >= actual - delta;
 }
 
 /**
