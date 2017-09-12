@@ -8,7 +8,7 @@ PURPOSE = "Verify that H.264 decode acceleration works for MSE videos in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an MSE mp4 file.
 """
-ATTRIBUTES = "suite:bvt-perbuild, suite:partners"
+ATTRIBUTES = "suite:bvt-cq, suite:partners"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
