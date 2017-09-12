@@ -156,7 +156,6 @@ class TestBug(Bug):
             'build_artifacts': links.artifacts,
             'results_log': links.results,
             'status_log': links.status_log,
-            'buildbot_stages': links.buildbot,
             'job': links.job,
             'test_history_url': links.test_history_url,
             'retry_url': links.retry_url,
