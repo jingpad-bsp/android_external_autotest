@@ -5,7 +5,9 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import webrtc_utils
+from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.video import helper_logger
+from telemetry.util import image_util
 
 
 EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream',
@@ -28,6 +30,7 @@ class WebRtcPeerConnectionTest:
             common_script,
             bindir,
             tmpdir,
+            resultsdir,
             timeout = 70,
             test_runtime_seconds = 60,
             num_peer_connections = 5,
@@ -42,6 +45,8 @@ class WebRtcPeerConnectionTest:
                 tree.
         @param bindir: The directory that contains the test files and
                 own_script.
+        @param resultsdir: The directory to which results, e.g. screenshots,
+                should be written.
         @param timeout: Timeout in seconds for the test.
         @param test_runtime_seconds: How long to run the test. If errors occur
                 the test can exit earlier.
@@ -57,6 +62,7 @@ class WebRtcPeerConnectionTest:
         self.common_script = common_script
         self.bindir = bindir
         self.tmpdir = tmpdir
+        self.resultsdir = resultsdir
         self.timeout = timeout
         self.test_runtime_seconds = test_runtime_seconds
         self.num_peer_connections = num_peer_connections
@@ -65,7 +71,8 @@ class WebRtcPeerConnectionTest:
         self.tab = None
 
     def start_test(self, cr, html_file):
-        """Opens the test page.
+        """
+        Opens the test page.
 
         @param cr: Autotest Chrome instance.
         @param html_file: File object containing the HTML code to use in the
@@ -113,7 +120,9 @@ class WebRtcPeerConnectionTest:
 
     @helper_logger.video_log_wrapper
     def run_test(self):
-        """Starts the test and waits until it is completed."""
+        """
+        Starts the test and waits until it is completed.
+        """
         with chrome.Chrome(extra_browser_args = EXTRA_BROWSER_ARGS + \
                            [helper_logger.chrome_vmodule_flag()],
                            init_network_controller = True) as cr:
@@ -142,18 +151,73 @@ class WebRtcPeerConnectionTest:
                     common_script_url)
             # Don't bother deleting the html file, the autotest tmp dir will be
             # cleaned up by the autotest framework.
-            cr.browser.platform.SetHTTPServerDirectories(
-                [own_script_path, html_file.name, common_script_path])
-            self.start_test(cr, html_file)
-            self.wait_test_completed(self.timeout)
-            self.verify_status_ok()
+            try:
+                cr.browser.platform.SetHTTPServerDirectories(
+                    [own_script_path, html_file.name, common_script_path])
+                self.start_test(cr, html_file)
+                self.wait_test_completed(self.timeout)
+                self.verify_status_ok()
+            finally:
+                # Ensure we always have a screenshot, both when succesful and
+                # when failed - useful for debugging.
+                self.take_screenshots()
 
     def verify_status_ok(self):
-        """Verifies that the status of the test is 'ok-done'.
+        """
+        Verifies that the status of the test is 'ok-done'.
 
         @raises TestError the status is different from 'ok-done'.
         """
         status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
         if status != 'ok-done':
             raise error.TestFail('Failed: %s' % status)
+
+    def take_screenshots(self):
+        """
+        Takes screenshots using two different mechanisms.
+
+        Takes one screenshot using graphics_utils which is a really low level
+        api that works between the kernel and userspace. The advantage is that
+        this captures the entire screen regardless of Chrome state. Disadvantage
+        is that it does not always work.
+
+        Takes one screenshot of the current tab using Telemetry.
+
+        Saves the screenshot in the results directory.
+        """
+        # Replace spaces with _ and lowercase the screenshot name for easier
+        # tab completion in terminals.
+        screenshot_name = self.title.replace(' ', '-').lower() + '-screenshot'
+        self.take_graphics_utils_screenshot(screenshot_name)
+        self.take_browser_tab_screenshot(screenshot_name)
+
+    def take_graphics_utils_screenshot(self, screenshot_name):
+        """
+        Takes a screenshot of what is currently displayed.
+
+        Uses the low level graphics_utils API.
+
+        @param screenshot_name: Name of the screenshot.
+        """
+        try:
+            full_filename = screenshot_name + '_graphics_utils'
+            graphics_utils.take_screenshot(self.resultsdir, full_filename)
+        except RuntimeError as e:
+            logging.warn('Screenshot using graphics_utils failed', exc_info=e)
+
+    def take_browser_tab_screenshot(self, screenshot_name):
+        """
+        Takes a screenshot of the current browser tab.
+
+        @param screenshot_name: Name of the screenshot.
+        """
+        if self.tab is not None and self.tab.screenshot_supported:
+            screenshot = self.tab.Screenshot()
+            full_filename = os.path.join(
+                    self.resultsdir, screenshot_name + '_browser_tab.png')
+            image_util.WritePngFile(screenshot, full_filename)
+        else:
+            logging.warn(
+                    'Screenshot using telemetry tab.Screenshot() not supported')
+
 
