@@ -43,12 +43,6 @@ _gs_file_prefix = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'gs_file_prefix', default='')
 
 
-# global configurations needed for buildbot stages link
-_buildbot_builders = global_config.global_config.get_config_value(
-    BUG_CONFIG_SECTION, 'buildbot_builders', default='')
-_build_prefix = global_config.global_config.get_config_value(
-    BUG_CONFIG_SECTION, 'build_prefix', default='')
-
 _CRBUG_URL = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'crbug_url')
 
