@@ -7,6 +7,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import webrtc_utils
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.video import helper_logger
+from telemetry.core import exceptions
 from telemetry.util import image_util
 
 
@@ -203,7 +204,7 @@ class WebRtcPeerConnectionTest:
             full_filename = screenshot_name + '_graphics_utils'
             graphics_utils.take_screenshot(self.resultsdir, full_filename)
         except RuntimeError as e:
-            logging.warn('Screenshot using graphics_utils failed', exc_info=e)
+            logging.warn('Screenshot using graphics_utils failed', exc_info = e)
 
     def take_browser_tab_screenshot(self, screenshot_name):
         """
@@ -212,10 +213,17 @@ class WebRtcPeerConnectionTest:
         @param screenshot_name: Name of the screenshot.
         """
         if self.tab is not None and self.tab.screenshot_supported:
-            screenshot = self.tab.Screenshot()
-            full_filename = os.path.join(
-                    self.resultsdir, screenshot_name + '_browser_tab.png')
-            image_util.WritePngFile(screenshot, full_filename)
+            try:
+                screenshot = self.tab.Screenshot(timeout = 10)
+                full_filename = os.path.join(
+                        self.resultsdir, screenshot_name + '_browser_tab.png')
+                image_util.WritePngFile(screenshot, full_filename)
+            except exceptions.Error as e:
+                # This can for example occur if Chrome crashes. It will
+                # cause the Screenshot call to timeout.
+                logging.warn(
+                        'Screenshot using telemetry tab.Screenshot failed',
+                        exc_info = e)
         else:
             logging.warn(
                     'Screenshot using telemetry tab.Screenshot() not supported')
