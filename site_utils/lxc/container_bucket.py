@@ -15,6 +15,7 @@ from autotest_lib.site_utils.lxc import lxc
 from autotest_lib.site_utils.lxc.cleanup_if_fail import cleanup_if_fail
 from autotest_lib.site_utils.lxc.base_image import BaseImage
 from autotest_lib.site_utils.lxc.container import Container
+from autotest_lib.site_utils.lxc.container_factory import ContainerFactory
 
 try:
     from chromite.lib import metrics
@@ -26,18 +27,21 @@ class ContainerBucket(object):
     """A wrapper class to interact with containers in a specific container path.
     """
 
-    def __init__(self, container_path=constants.DEFAULT_CONTAINER_PATH):
+    def __init__(self, container_path=constants.DEFAULT_CONTAINER_PATH,
+                 container_factory=None):
         """Initialize a ContainerBucket.
 
         @param container_path: Path to the directory used to store containers.
                                Default is set to AUTOSERV/container_path in
                                global config.
+        @param container_factory: A factory for creating Containers.
         """
         self.container_path = os.path.realpath(container_path)
-        # Try to create the base container.  Use the default path and image
-        # name.
-        self.base_container = BaseImage().get()
-
+        if container_factory is not None:
+            self._factory = container_factory
+        else:
+            # Default container factory.  Use the default BaseImage.
+            self._factory = ContainerFactory(base_container = BaseImage().get())
 
     def get_all(self):
         """Get details of all containers.
@@ -93,50 +97,6 @@ class ContainerBucket(object):
 
 
     @metrics.SecondsTimerDecorator(
-        '%s/create_from_base_duration' % constants.STATS_KEY)
-    def create_from_base(self, container_id, disable_snapshot_clone=False,
-                         force_cleanup=False):
-        """Create a container from the base container.
-
-        @param container_id: ID to assign the new container.
-        @param disable_snapshot_clone: Set to True to force to clone without
-                using snapshot clone even if the host supports that.
-        @param force_cleanup: Force to cleanup existing container.
-
-        @return: A Container object for the created container.
-
-        @raise ContainerError: If the container already exist.
-        @raise error.CmdError: If lxc-clone call failed for any reason.
-        """
-        if self.exist(container_id) and not force_cleanup:
-            raise error.ContainerError('Container %s already exists.' %
-                                       str(container_id))
-
-        use_snapshot = not disable_snapshot_clone
-
-        try:
-            return Container.clone(src=self.base_container,
-                                   new_name=str(container_id),
-                                   new_path=self.container_path,
-                                   snapshot=use_snapshot,
-                                   cleanup=force_cleanup,
-                                   new_id=container_id)
-        except error.CmdError:
-            logging.debug('Creating snapshot clone failed. Attempting without '
-                           'snapshot...')
-            if not use_snapshot:
-                raise
-            else:
-                # Snapshot clone failed, retry clone without snapshot.
-                container = Container.clone(src=self.base_container,
-                                            new_id=container_id,
-                                            new_path=self.container_path,
-                                            snapshot=False,
-                                            cleanup=force_cleanup)
-                return container
-
-
-    @metrics.SecondsTimerDecorator(
         '%s/setup_test_duration' % constants.STATS_KEY)
     @cleanup_if_fail()
     def setup_test(self, container_id, job_id, server_package_url, result_path,
@@ -189,7 +149,8 @@ class ContainerBucket(object):
             utils.run('cp %s %s' % (control, safe_control))
 
         # Create test container from the base container.
-        container = self.create_from_base(container_id)
+        container = self._factory.create_container(container_id,
+                                                   self.container_path)
 
         # Deploy server side package
         container.install_ssp(server_package_url)
