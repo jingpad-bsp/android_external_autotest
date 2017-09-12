@@ -24,51 +24,7 @@ EMAIL_CREDS_FILE = global_config.global_config.get_config_value(
         'NOTIFICATIONS', 'gmail_api_credentials_test_failure', default=None)
 
 
-class Bug(object):
-    """Holds the minimum information needed to make a dedupable bug report."""
-
-    def __init__(self, title, summary, search_marker=None, labels=None,
-                 owner='', cc=None, components=None):
-        """
-        Initializes Bug object.
-
-        @param title: The title of the bug.
-        @param summary: The summary of the bug.
-        @param search_marker: The string used to determine if a bug is a
-                              duplicate report or not. All Bugs with the same
-                              search_marker are considered to be for the same
-                              bug. Make this None if you do not want to dedupe.
-        @param labels: The labels that the filed bug will have.
-        @param owner: The owner/asignee of this bug. Typically left blank.
-        @param cc: Who to cc'd for this bug.
-        @param components: The components that the filed bug will have.
-        """
-        self._title = title
-        self._summary = summary
-        self._search_marker = search_marker
-        self.owner = owner
-
-        self.labels = labels if labels is not None else []
-        self.components = components if components is not None else []
-        self.cc = cc if cc is not None else []
-
-
-    def title(self):
-        """Combines information about this bug into a title string."""
-        return self._title
-
-
-    def summary(self):
-        """Combines information about this bug into a summary string."""
-        return self._summary
-
-
-    def search_marker(self):
-        """Return an Anchor that we can use to dedupe this exact bug."""
-        return self._search_marker
-
-
-class TestBug(Bug):
+class TestBug(object):
     """
     Wrap up all information needed to make an intelligent report about an
     issue. Each TestBug has a search marker associated with it that can be
