@@ -375,6 +375,11 @@ def make_parser():
         help=('Check lab and job status before kicking off a suite. Used by '
               'suite scheduler v2.'))
 
+    # TODO(crbug.com/763207): This is to support calling old moblab RPC
+    # with ToT code.  This does not need to be supported after M62.
+    parser.add_argument('--oldrpc', action='store_true',
+                        help='Use old AFE RPC.')
+
     return parser
 
 
@@ -1631,6 +1636,19 @@ def create_suite(afe, options):
     """
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
+
+    # TODO(crbug.com/763207): This is to support calling old moblab RPC
+    # with ToT code.  This does not need to be supported after M62.
+    if options.oldrpc:
+        suite_args = options.suite_args
+        if 'tests' in suite_args:
+            # This is for test_that_wrapper
+            suite_args = ' '.join([':lab:'] + suite_args['tests'])
+        else:
+            # This is for suite_attr_wrapper
+            suite_args = repr(suite_args)
+        options.suite_args = suite_args
+
     return afe.run(
         'create_suite_job',
         name=options.name,
