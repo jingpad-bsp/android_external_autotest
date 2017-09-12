@@ -113,6 +113,7 @@ class enterprise_CFM_Perf(test.test):
         writer.writerow(['cpu', 'memory', 'temperature', 'timestamp', 'board',
                          'build'])
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
+            # Note: No sleep in this loop, self._cpu_usage() sleeps.
             perf_keyval['cpu_usage'] = self._cpu_usage()
             perf_keyval['memory_usage'] = self._memory_usage()
             perf_keyval['temperature'] = self._temperature_data()
@@ -126,7 +127,6 @@ class enterprise_CFM_Perf(test.test):
             cpu_usage_list.append(perf_keyval['cpu_usage'])
             memory_usage_list.append(perf_keyval['memory_usage'])
             temperature_list.append(perf_keyval['temperature'])
-            time.sleep(_MEASUREMENT_DURATION_SECONDS)
         perf_file.close()
         utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
                            {'perf_csv_folder': self.resultsdir})
