@@ -774,7 +774,7 @@ class CPUPackageStats(AbstractStats):
     SANDY_BRIDGE = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA}
     SILVERMONT   = {'C6': 0x3FA}
     GOLDMONT     = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9,'C10': 0x632}
-    HASWELL      = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA,
+    BROADWELL    = {'C2': 0x60D, 'C3': 0x3F8, 'C6': 0x3F9, 'C7': 0x3FA,
                                  'C8': 0x630, 'C9': 0x631,'C10': 0x632}
 
     def __init__(self):
@@ -789,18 +789,22 @@ class CPUPackageStats(AbstractStats):
             return {
                 # model groups pulled from Intel SDM, volume 4
                 # Group same package cstate using the older uarch name
+                #
+                # TODO(harry.pan): As the keys represent microarchitecture
+                # names, we could consider to rename the PC state groups
+                # to avoid ambiguity.
                 'Airmont':      self.SILVERMONT,
                 'Atom':         self.ATOM,
-                'Broadwell':    self.HASWELL,
+                'Broadwell':    self.BROADWELL,
                 'Goldmont':     self.GOLDMONT,
-                'Haswell':      self.HASWELL,
+                'Haswell':      self.SANDY_BRIDGE,
                 'Ivy Bridge':   self.SANDY_BRIDGE,
                 'Ivy Bridge-E': self.SANDY_BRIDGE,
-                'Kaby Lake':    self.HASWELL,
+                'Kaby Lake':    self.BROADWELL,
                 'Nehalem':      self.NEHALEM,
                 'Sandy Bridge': self.SANDY_BRIDGE,
                 'Silvermont':   self.SILVERMONT,
-                'Skylake':      self.HASWELL,
+                'Skylake':      self.BROADWELL,
                 'Westmere':     self.NEHALEM,
                 }.get(cpu_uarch, None)
 
