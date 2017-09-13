@@ -85,9 +85,10 @@ class camera_HAL3Perf(test.test):
             '--gtest_filter=Camera3StillCaptureTest/'
             'Camera3SimpleStillCaptureTest.PerformanceTest/*',
             '--output_log=%s' % test_log_file]
-        if utils.system(' '.join([binary_path, ' '.join(args)]),
-                        timeout=self.timeout) != 0:
+        ret = utils.system(' '.join([binary_path, ' '.join(args)]),
+                           timeout=self.timeout)
+        self._analyze_log(test_log_file)
+        if ret != 0:
             msg = 'Failed to execute command: ' + ' '.join([binary_path,
                                                            ' '.join(args)])
             raise error.TestFail(msg)
-        self._analyze_log(test_log_file)
