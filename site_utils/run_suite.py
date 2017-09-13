@@ -375,6 +375,11 @@ def make_parser():
         help=('Check lab and job status before kicking off a suite. Used by '
               'suite scheduler v2.'))
 
+    # TODO(crbug.com/763207): This is to support calling old moblab RPC
+    # with ToT code.  This does not need to be supported after M62.
+    parser.add_argument('--oldrpc', action='store_true',
+                        help='Use old AFE RPC.')
+
     return parser
 
 
@@ -1631,6 +1636,19 @@ def create_suite(afe, options):
     """
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
+
+    # TODO(crbug.com/763207): This is to support calling old moblab RPC
+    # with ToT code.  This does not need to be supported after M62.
+    if options.oldrpc:
+        suite_args = options.suite_args
+        if 'tests' in suite_args:
+            # This is for test_that_wrapper
+            suite_args = ' '.join([':lab:'] + suite_args['tests'])
+        else:
+            # This is for suite_attr_wrapper
+            suite_args = repr(suite_args)
+        options.suite_args = suite_args
+
     return afe.run(
         'create_suite_job',
         name=options.name,
@@ -1924,11 +1942,15 @@ def _should_run(options):
     start_time = str(datetime.now() -
                      timedelta(days=_SEARCH_JOB_MAX_DAYS))
     afe = _create_afe(options)
-    return not afe.get_jobs(
+    afe_job_id = afe.get_jobs(
             name__istartswith=options.test_source_build,
             name__iendswith='control.'+options.name,
             created_on__gte=start_time,
             min_rpc_timeout=_MIN_RPC_TIMEOUT)
+    if afe_job_id:
+        logging.info('Found duplicate suite %s scheduled in past.',
+                     afe_job_id)
+        return False
 
 
 def _poke_buildbot_with_output(afe, job_id, job_timer):
@@ -2008,12 +2030,14 @@ def main():
         logging.disable(logging.CRITICAL)
 
     options_okay = verify_and_clean_options(options)
+    # Set StreamHandler first to capture error messages if suite is not run.
+    utils.setup_logging()
     if not options_okay:
         parser.print_help()
         result = SuiteResult(RETURN_CODES.INVALID_OPTIONS)
     elif options.pre_check and not _should_run(options):
-        logging.info('Lab is closed, OR build %s is blocked, OR suite '
-                     '%s for this build has already been kicked off '
+        logging.info('Suite %s-%s is terminated: Lab is closed, OR build is '
+                     'blocked, OR this suite has already been kicked off '
                      'once in past %d days.',
                      options.test_source_build, options.name,
                      _SEARCH_JOB_MAX_DAYS)

@@ -23,6 +23,7 @@ class video_WebRtcMainFeedSwitching(test.test):
             common_script = 'loopback-peerconnection.js',
             bindir = self.bindir,
             tmpdir = self.tmpdir,
+            resultsdir = self.resultsdir,
             num_peer_connections = 5,
             iteration_delay_millis = 50)
         test.run_test()
