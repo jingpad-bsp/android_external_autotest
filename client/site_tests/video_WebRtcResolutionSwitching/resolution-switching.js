@@ -41,7 +41,8 @@ class TestRunner {
     videoElement.autoplay = true;
     $('body').appendChild(videoElement);
     this.videoElements.push(videoElement);
-    this.peerConnections.push(new PeerConnection(videoElement, RESOLUTIONS));
+    this.peerConnections.push(
+        new PeerConnection(videoElement, RESOLUTIONS, cpuOveruseDetection));
   }
 
   runTest() {
@@ -91,6 +92,8 @@ class TestRunner {
 // Declare testRunner so that the Python code can access it to query status.
 // Also allows us to access it easily in dev tools for debugging.
 let testRunner;
+// Set from the Python test runner
+let cpuOveruseDetection = null;
 
 function startTest(
     runtimeSeconds, numPeerConnections, switchResolutionDelayMillis) {
