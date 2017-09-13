@@ -740,7 +740,9 @@ class RPCFunctions(object):
 
     def _updater_run_recovery(self):
         """Run chromeos-firmwareupdate with recovery mode."""
-        options = ['--noupdate_ec', '--nocheck_rw_compatible']
+        options = ['--noupdate_ec',
+                   '--nocheck_rw_compatible',
+                   '--nocheck_keys' ]
         self._updater.run_firmwareupdate(mode='recovery',
                                          options=options)
 
