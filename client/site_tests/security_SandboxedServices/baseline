@@ -14,7 +14,7 @@ dbus-daemon,messagebus,messagebus,No,Yes,No,No
 wpa_supplicant,wpa,wpa,No,Yes,Yes,No
 shill,root,root,No,No,No,No
 chapsd,chaps,chronos-access,No,Yes,Yes,No
-cryptohomed,cryptohome,cryptohome,No,Yes,No,No
+cryptohomed,root,root,No,No,No,No
 powerd,power,power,No,Yes,No,No
 ModemManager,modem,modem,No,Yes,Yes,No
 dhcpcd,dhcp,dhcp,No,Yes,No,No
