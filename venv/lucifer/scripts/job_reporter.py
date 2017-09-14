@@ -15,10 +15,9 @@ from lucifer import loglib
 
 logger = logging.getLogger(__name__)
 
-# TODO(ayatane): This should be job_shepherd after job_shepherd can be
-# deployed to prod.  For now, use a dummy program so job_reporter can be
-# embedded into monitor_db.py.
-_JOB_SHEPHERD_PROGRAM = 'true'
+# TODO(crbug.com/748234): This is for moblab.  Prod may require
+# different path.
+_JOB_SHEPHERD_PROGRAM = '/usr/lib/job_shepherd'
 
 
 def main(args):
@@ -30,21 +29,19 @@ def main(args):
     loglib.add_logging_options(parser)
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
-    return _run_shepherd(event_handler=_handle_event, logfile=sys.stderr)
+    return _run_shepherd(_handle_event)
 
 
-def _run_shepherd(event_handler, logfile):
+def _run_shepherd(event_handler):
     """Run job_shepherd.
 
     Events issues by the job_shepherd will be handled by event_handler.
 
     @param event_handler: callable that takes an Event.
-    @param logfile: logfile for job_shepherd stderr.
     """
     return eventlib.run_event_command(
             event_handler=event_handler,
-            args=[_JOB_SHEPHERD_PROGRAM],
-            logfile=logfile)
+            args=[_JOB_SHEPHERD_PROGRAM])
 
 
 def _handle_event(event):
