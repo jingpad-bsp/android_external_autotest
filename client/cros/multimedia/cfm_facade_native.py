@@ -25,7 +25,7 @@ class CFMFacadeNative(object):
 
     The methods inside this class only accept Python native types.
     """
-    _USER_ID = 'cfmtest@croste.tv'
+    _USER_ID = 'cr0s-cfm-la6-aut0t3st-us3r@croste.tv'
     _PWD = 'test0000'
     _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
     _ENROLLMENT_DELAY = 15
