@@ -35,6 +35,7 @@ PERF_DAILY_RUN_TESTS = (
     'dromaeo.domcorequery',
     'dromaeo.domcoretraverse',
     'image_decoding.image_decoding_measurement',
+    'memory.desktop',
     'page_cycler_v2.typical_25',
     'robohornet_pro',
     'smoothness.tough_animation_cases',
@@ -44,6 +45,7 @@ PERF_DAILY_RUN_TESTS = (
     'smoothness.tough_scrolling_cases',
     'smoothness.tough_webgl_cases',
     'sunspider',
+    'system_health.memory_desktop',
     'webrtc',
 )
 
@@ -54,7 +56,7 @@ PERF_NO_SUITE = (
 ALL_TESTS = PERF_PER_BUILD_TESTS + PERF_DAILY_RUN_TESTS + PERF_NO_SUITE
 
 CONTROLFILE_TEMPLATE = (
-"""# Copyright 2014 The Chromium OS Authors. All rights reserved.
+"""# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
