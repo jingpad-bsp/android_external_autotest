@@ -15,8 +15,8 @@ class MysqlStatsTest(unittest.TestCase):
     def testQueryAndEmit(self):
         """Test for QueryAndEmit."""
         connection = mock.Mock()
-        connection.Execute.return_value.fetchone.return_value = (
-            'Column-name', 0)
+        connection.Fetchall.return_value = [(
+            'Column-name', 0)]
 
         # This shouldn't raise an exception.
         mysql_stats.QueryAndEmit(collections.defaultdict(lambda: 0), connection)
