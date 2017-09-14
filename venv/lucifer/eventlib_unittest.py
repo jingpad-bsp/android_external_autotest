@@ -10,12 +10,62 @@ import collections
 import os
 import unittest
 import signal
-import tempfile
+import sys
+import time
 
 import mock
+import pytest
+import subprocess32
 
 from lucifer import eventlib
 from lucifer.eventlib import Event
+
+
+@pytest.fixture
+def signal_mock():
+    """Pytest fixture for mocking out signal handler setting."""
+    fake_signal = _FakeSignal(mock.sentinel.default_handler)
+    with mock.patch('signal.signal', fake_signal):
+        yield fake_signal
+
+
+def test_happy_path(signal_mock, capfd):
+    """Test happy path."""
+    handler = _FakeHandler()
+
+    ret = eventlib.run_event_command(
+            event_handler=handler,
+            args=['bash', '-c',
+                  'echo starting;'
+                  'echo log message >&2;'
+                  'echo completed;'])
+
+    # Handler should be called with events in order.
+    assert handler.events == [Event('starting'), Event('completed')]
+    # Handler should return the exit status of the command.
+    assert ret == 0
+    # Signal handler should be restored.
+    assert signal_mock.handlers[signal.SIGUSR1] == signal_mock.default_handler
+    # stderr should go to stderr.
+    out, err = capfd.readouterr()
+    assert out == ''
+    assert err == 'log message\n'
+
+
+@pytest.mark.xfail(reason='Flaky due to sleep')
+def test_SIGUSR1_aborts():
+    """Test sending SIGUSR1 aborts."""
+    with subprocess32.Popen(
+            [sys.executable, '-m', 'lucifer.scripts.run_event_command',
+             sys.executable, '-m', 'lucifer.scripts.wait_for_abort']) as proc:
+        time.sleep(0.2)  # Wait for process to come up.
+        os.kill(proc.pid, signal.SIGUSR1)
+        time.sleep(0.1)
+        proc.poll()
+        # If this is None, the process failed to abort.  If this is
+        # -SIGUSR1 (-10), then the processes did not finish setting up
+        # yet.
+        assert proc.returncode == 0
 
 
 class RunEventCommandTestCase(unittest.TestCase):
@@ -28,44 +78,13 @@ class RunEventCommandTestCase(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
 
-    def test_happy_path(self):
-        """Test happy path."""
-        handler = _FakeHandler()
-
-        with tempfile.TemporaryFile() as logfile:
-            ret = eventlib.run_event_command(
-                    event_handler=handler,
-                    args=['bash', '-c',
-                          'echo starting;'
-                          'echo log message >&2;'
-                          'echo completed;'],
-                    logfile=logfile)
-
-            # Handler should be called with events in order.
-            self.assertEqual(handler.events,
-                             [Event('starting'), Event('completed')])
-            # Handler should return the exit status of the command.
-            self.assertEqual(ret, 0)
-            # Signal handler should be restored.
-            self.assertEqual(self.signal.handlers[signal.SIGINT],
-                             mock.sentinel.default_handler)
-            self.assertEqual(self.signal.handlers[signal.SIGTERM],
-                             mock.sentinel.default_handler)
-            self.assertEqual(self.signal.handlers[signal.SIGHUP],
-                             mock.sentinel.default_handler)
-            # stderr should go to the logfile.
-            logfile.seek(0)
-            self.assertEqual(logfile.read(), 'log message\n')
-
     def test_failed_command(self):
         """Test failed command."""
         handler = _FakeHandler()
 
-        with open(os.devnull, 'w') as devnull:
-            ret = eventlib.run_event_command(
-                    event_handler=handler,
-                    args=['bash', '-c', 'exit 1'],
-                    logfile=devnull)
+        ret = eventlib.run_event_command(
+                event_handler=handler,
+                args=['bash', '-c', 'exit 1'])
 
         # Handler should return the exit status of the command.
         self.assertEqual(ret, 1)
@@ -74,11 +93,9 @@ class RunEventCommandTestCase(unittest.TestCase):
         """Test passing invalid events."""
         handler = _FakeHandler()
 
-        with open(os.devnull, 'w') as devnull:
-            eventlib.run_event_command(
-                    event_handler=handler,
-                    args=['bash', '-c', 'echo foo; echo bar'],
-                    logfile=devnull)
+        eventlib.run_event_command(
+                event_handler=handler,
+                args=['bash', '-c', 'echo foo; echo bar'])
 
         # Handler should not be called with invalid events.
         self.assertEqual(handler.events, [])
@@ -86,19 +103,18 @@ class RunEventCommandTestCase(unittest.TestCase):
     def test_should_not_hide_handler_exception(self):
         """Test handler exceptions."""
         handler = _RaisingHandler(_TestError)
-        with open(os.devnull, 'w') as devnull:
-            with self.assertRaises(_TestError):
-                eventlib.run_event_command(
-                        event_handler=handler,
-                        args=['bash', '-c', 'echo starting; echo completed'],
-                        logfile=devnull)
+        with self.assertRaises(_TestError):
+            eventlib.run_event_command(
+                    event_handler=handler,
+                    args=['bash', '-c', 'echo starting; echo completed'])
 
 
 class _FakeSignal(object):
     """Fake for signal.signal()"""
 
-    def __init__(self, handler):
-        self.handlers = collections.defaultdict(lambda: handler)
+    def __init__(self, default_handler):
+        self.default_handler = default_handler
+        self.handlers = collections.defaultdict(lambda: default_handler)
 
     def __call__(self, signum, handler):
         old = self.handlers[signum]
