@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Run an event command.
+"""Wait for an abort command.
 
-This is used for testing run_event_command() outside of Python.
+This is used for testing run_event_command().
 
 See eventlib for information about event commands.
 """
@@ -15,23 +15,19 @@ from __future__ import print_function
 
 import sys
 
-from lucifer import eventlib
 from lucifer import loglib
 
 
-def main(args):
+def main(_args):
     """Main function
 
     @param args: list of command line args
     """
-    loglib.configure_logging(name='run_event_command')
-    return eventlib.run_event_command(
-            event_handler=_handle_event,
-            args=args)
-
-
-def _handle_event(event):
-    print(event.name)
+    loglib.configure_logging(name='wait_for_abort')
+    while True:
+        line = sys.stdin.readline()
+        if line == 'abort\n':
+            sys.exit(0)
 
 
 if __name__ == '__main__':

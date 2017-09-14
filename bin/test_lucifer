@@ -10,33 +10,4 @@ readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
 # cd for pytest configuration files
 cd "$bin_dir/../venv"
 
-log() {
-    printf "test_lucifer: %s\n" "$1" >&2
-}
-
-test_sigterm_is_proxied() {
-    "${bin_dir}/python_venv" -m lucifer.scripts.run_event_command bash -c "\
-cleanup() {
-    kill \$(jobs -p)
-    exit 0
-}
-trap cleanup TERM
-sleep 3 &
-wait
-exit 1
-" &
-    pid=$!
-    sleep 0.2  # Wait for Python to start Bash
-    kill "$pid"
-    wait "$pid" 2>/dev/null
-}
-
 "${bin_dir}/python_venv" -m pytest lucifer
-
-log "Testing that run_event_command proxies SIGTERM"
-if ! test_sigterm_is_proxied; then
-    echo "FAIL: run_event_command did not return successfully"
-    exit 1
-fi
-
-echo "OK"
