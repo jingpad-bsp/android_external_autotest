@@ -58,7 +58,9 @@ TEST_IDX = 'test_idx'
 # intended.
 cursor = connections['default'].cursor()
 
-STEP_SIZE = None  # Threading this through properly is disgusting.
+# Globals for command line flag constants, for convenience.
+DRY_RUN = False
+STEP_SIZE = None
 
 class ProgressBar(object):
     TEXT = "{:<40s} [{:<20s}] ({:>9d}/{:>9d})"
@@ -197,16 +199,18 @@ def _delete_table_data_before_date(table_to_delete_from, primary_key,
     if not rows or rows == [None]:
         with ProgressBar(table_to_delete_from, 0) as pb:
             pb.show()
-        logging.debug('Noting to delete for %s', table_to_delete_from)
+        logging.debug('Nothing to delete for %s', table_to_delete_from)
         return
 
     with ProgressBar(table_to_delete_from, len(rows)) as pb:
         for row_keys in grouper(rows, STEP_SIZE):
             variables['rows'] = ','.join([str(x) for x in row_keys])
             sql = DELETE_ROWS_FORMAT % variables
+
             logging.debug('SQL: %s', sql)
-            cursor.execute(sql, [])
-            transaction.commit_unless_managed(using='default')
+            if not DRY_RUN:
+                cursor.execute(sql, [])
+                transaction.commit_unless_managed(using='default')
             pb.update(len(row_keys))
             pb.show()
 
@@ -345,6 +349,8 @@ def parse_args():
                         help='Number of rows to delete at once')
     parser.add_argument('-c', '--check_server', action='store_true',
                         help='Check if the server should run db clean up.')
+    parser.add_argument('--dry_run', action='store_true',
+                        help='Print SQL queries instead of executing them.')
     parser.add_argument('date', help='Keep results newer than')
     return parser.parse_args()
 
@@ -363,7 +369,8 @@ def main():
     """main"""
     args = parse_args()
 
-    level = logging.DEBUG if args.verbose else logging.INFO
+    verbose = args.verbose or args.dry_run
+    level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=level, format=LOGGING_FORMAT)
     logging.info('Calling: %s', sys.argv)
 
@@ -374,8 +381,9 @@ def main():
         print 'Only shard can run db cleanup.'
         return
 
-    global STEP_SIZE
+    global STEP_SIZE, DRY_RUN
     STEP_SIZE = args.step
+    DRY_RUN = args.dry_run
     _delete_all_data_before_date(args.date)
 
 
