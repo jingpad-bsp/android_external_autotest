@@ -348,7 +348,38 @@ class JetstreamServicesVerifier(hosts.Verifier):
         return 'Jetstream services must be running'
 
 
-class ServoSysRqRepair(hosts.RepairAction):
+class _ResetRepairAction(hosts.RepairAction):
+    """Common handling for repair actions that reset a DUT."""
+
+    def _collect_logs(self, host):
+        """Collect logs from a successfully repaired DUT."""
+        dirname = 'after_%s' % self.tag
+        local_log_dir = crashcollect.get_crashinfo_dir(host, dirname)
+        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
+        # Collect crash info.
+        crashcollect.get_crashinfo(host, None)
+
+    def _check_reset_success(self, host):
+        """Check whether reset succeeded, and gather logs if possible."""
+        if host.wait_up(host.BOOT_TIMEOUT):
+            try:
+                # Collect logs once we regain ssh access before
+                # clobbering them.
+                self._collect_logs(host)
+            except Exception:
+                # If the DUT is up, we want to declare success, even if
+                # log gathering fails for some reason.  So, if there's
+                # a failure, just log it and move on.
+                logging.exception('Unexpected failure in log '
+                                  'collection during %s.',
+                                  self.tag)
+            return
+        raise hosts.AutoservRepairError(
+                'Host %s is still offline after %s.' %
+                (host.hostname, self.tag))
+
+
+class ServoSysRqRepair(_ResetRepairAction):
     """
     Repair a Chrome device by sending a system request to the kernel.
 
@@ -372,23 +403,14 @@ class ServoSysRqRepair(hosts.RepairAction):
                       'cannot press sysrq-x: %s.' % str(ex))
             # less than 5 seconds between presses.
             time.sleep(2.0)
-
-        if host.wait_up(host.BOOT_TIMEOUT):
-            # Collect logs once we regain ssh access before clobbering them.
-            local_log_dir = crashcollect.get_crashinfo_dir(host, 'after_sysrq')
-            host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
-            # Collect crash info.
-            crashcollect.get_crashinfo(host, None)
-            return
-        raise hosts.AutoservRepairError(
-                '%s is still offline after sysrq-x.' % host.hostname)
+        self._check_reset_success(host)
 
     @property
     def description(self):
         return 'Reset the DUT via keyboard sysrq-x'
 
 
-class ServoResetRepair(hosts.RepairAction):
+class ServoResetRepair(_ResetRepairAction):
     """Repair a Chrome device by resetting it with servo."""
 
     def repair(self, host):
@@ -396,15 +418,7 @@ class ServoResetRepair(hosts.RepairAction):
             raise hosts.AutoservRepairError(
                     '%s has no servo support.' % host.hostname)
         host.servo.get_power_state_controller().reset()
-        if host.wait_up(host.BOOT_TIMEOUT):
-            # Collect logs once we regain ssh access before clobbering them.
-            local_log_dir = crashcollect.get_crashinfo_dir(host, 'after_reset')
-            host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
-            # Collect crash info.
-            crashcollect.get_crashinfo(host, None)
-            return
-        raise hosts.AutoservRepairError(
-                '%s is still offline after servo reset.' % host.hostname)
+        self._check_reset_success(host)
 
     @property
     def description(self):
