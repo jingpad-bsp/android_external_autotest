@@ -9,7 +9,7 @@ AUTHOR = 'ARC++ Team'
 NAME = 'cheets_CTS_N.arm.CtsNetTestCasesPreconditions'
 ATTRIBUTES = 'suite:cts_N_Pre'
 DEPENDENCIES = 'arc'
-JOB_RETRIES = 2
+JOB_RETRIES = 6
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
