@@ -1098,8 +1098,11 @@ def suspend_to_disk():
     set_power_state('disk')
 
 
-_AMD_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/amd_pci_ids.json'
-_INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
+_AUTOTEST_CLIENT_PATH = os.path.join(os.path.dirname(__file__), '..')
+_AMD_PCI_IDS_FILE_PATH = os.path.join(_AUTOTEST_CLIENT_PATH,
+                                      'bin/amd_pci_ids.json')
+_INTEL_PCI_IDS_FILE_PATH = os.path.join(_AUTOTEST_CLIENT_PATH,
+                                        'bin/intel_pci_ids.json')
 _UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
 
 # Command to check if a package is installed. If the package is not installed
