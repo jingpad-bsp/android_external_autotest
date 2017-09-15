@@ -14,14 +14,14 @@ TEST_TYPE = "client"
 JOB_RETRIES = 2
 
 CRITERIA = """
-This test fails if we can not add printers to CUPS through debugd.
+This test fails if the incorrect error is reported for a Cups
+autoconfiguration failure.
 """
 
 DOC = """
-Exercises the debugd CupsAddManuallyConfigured Printer operation.
+Exercises the debugd CupsAddAutoConfiguredPrinter method.
 
-Verifies that we can add a printer with a valid PPD to CUPS.
+Verifies that the error code is correct for an unreachable printer.
 """
 
-job.run_test('platform_DebugDaemonCupsAddPrinters',
-             situation='valid_config', tag='valid_config')
+job.run_test('platform_DebugDaemonCupsAddPrinters')
