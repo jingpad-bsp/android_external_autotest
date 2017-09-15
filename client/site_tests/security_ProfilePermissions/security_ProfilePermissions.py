@@ -122,15 +122,14 @@ class security_ProfilePermissions(test.test):
                 vaultpath = os.path.join(mountpath, '../vault')
                 if os.path.exists(vaultpath):
                     passes.append(self.check_owner_mode(vaultpath,
-                                                        "cryptohome", 0700))
-                passes.append(self.check_owner_mode(mountpath,
-                                                    "cryptohome", 0700))
+                                                        "root", 0700))
+                passes.append(self.check_owner_mode(mountpath, "root", 0700))
                 passes.append(self.check_owner_mode(mountpath + "/../master.0",
-                                                    "cryptohome", 0600))
+                                                    "root", 0600))
                 passes.append(self.check_owner_mode(mountpath + "/../",
-                                                    "cryptohome", 0700))
+                                                    "root", 0700))
                 passes.append(self.check_owner_mode(mountpath + "/../../",
-                                                    "cryptohome", 0700))
+                                                    "root", 0700))
 
             if False in passes:
                 raise error.TestFail(
