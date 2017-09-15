@@ -18,11 +18,15 @@ _db: DatabaseConnection for this module.
 _drone_manager: reference to global DroneManager instance.
 """
 
+import base64
 import datetime
+import errno
 import itertools
 import logging
 import re
 import weakref
+
+import google.protobuf.internal.well_known_types as types
 
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
@@ -37,8 +41,11 @@ from autotest_lib.server.cros import provision
 
 try:
     from chromite.lib import metrics
+    from chromite.lib import cloud_trace
 except ImportError:
     metrics = utils.metrics_mock
+    import mock
+    cloud_trace = mock.Mock()
 
 
 _notify_email_statuses = []
@@ -626,6 +633,7 @@ class HostQueueEntry(DBObject):
             self.job.stop_if_necessary()
         if self.started_on:
             self.set_finished_on_now()
+            self._log_trace()
         if self.job.shard_id is not None:
             # If shard_id is None, the job will be synced back to the master
             self.job.update_field('shard_id', None)
@@ -636,6 +644,25 @@ class HostQueueEntry(DBObject):
             pidfile_id = _drone_manager.get_pidfile_id_from(
                     self.execution_path(), pidfile_name=pidfile_name)
             _drone_manager.unregister_pidfile(pidfile_id)
+
+    def _log_trace(self):
+        """Emits a Cloud Trace span for the HQE's duration."""
+        if self.started_on and self.finished_on:
+            span = cloud_trace.Span('HQE', spanId='0',
+                                    traceId=hqe_trace_id(self.id))
+            # TODO(phobbs) make a .SetStart() and .SetEnd() helper method
+            span.startTime = types.Timestamp()
+            span.startTime.FromDatetime(self.started_on)
+            span.endTime = types.Timestamp()
+            span.endTime.FromDatetime(self.finished_on)
+            # TODO(phobbs) any LogSpan calls need to be wrapped in this for
+            # safety during tests, so this should be caught within LogSpan.
+            try:
+                cloud_trace.LogSpan(span)
+            except IOError as e:
+                if e.errno == errno.ENOENT:
+                    logging.warning('Error writing to cloud trace results '
+                                    'directory: %s', e)
 
 
     def _get_status_email_contents(self, status, summary=None, hostname=None):
@@ -867,6 +894,18 @@ class HostQueueEntry(DBObject):
         return (self.host_id is None
                 and self.meta_host is None)
 
+def hqe_trace_id(hqe_id):
+    """Constructs the canonical trace id based on the HQE's id.
+
+    Encodes 'HQE' in base16 and concatenates with the hex representation
+    of the HQE's id.
+
+    @param hqe_id: The HostQueueEntry's id.
+
+    Returns:
+        A trace id (in hex format)
+    """
+    return base64.b16encode('HQE') + hex(hqe_id)[2:]
 
 class Job(DBObject):
     _table_name = 'afe_jobs'
