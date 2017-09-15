@@ -137,12 +137,21 @@ class bluetooth_AdapterPairing(
             # Verify that the adapter could disconnect the device.
             self.test_disconnection_by_adapter(device.address)
 
-            # Verify that the device could initiate the connection.
             time.sleep(self.TEST_SLEEP_SECS)
-            self.test_connection_by_device(device)
+            if device.can_init_connection:
+                # Verify that the device could initiate the connection.
+                self.test_connection_by_device(device)
+            else:
+                # Reconnect so that we can test disconnection from the kit
+                self.test_connection_by_adapter(device.address)
 
-            # Verify that the device could initiate the disconnection.
-            self.test_disconnection_by_device(device)
+            # TODO(alent): Needs a new capability, but this is a good proxy
+            if device.can_init_connection:
+                # Verify that the device could initiate the disconnection.
+                self.test_disconnection_by_device(device)
+            else:
+                # Reconnect so that we can test disconnection from the kit
+                self.test_disconnection_by_adapter(device.address)
 
             # Verify that the adapter could remove the paired device.
             self.test_remove_pairing(device.address)
