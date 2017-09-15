@@ -75,7 +75,7 @@ class bluetooth_AdapterHIDReports(
             self.test_connection_by_adapter(device.address)
 
             # Run tests about mouse reports.
-            if device_type == 'MOUSE':
+            if device_type.endswith('MOUSE'):
                 self._run_mouse_tests(device)
 
             # Disconnect the device, and remove the pairing.
