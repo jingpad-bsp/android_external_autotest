@@ -249,15 +249,7 @@ sudo ln -sf "${AT_DIR}"/apache/apache-conf \
 
 # Disable currently active default
 sudo a2dissite 000-default default || true
-# TODO(ayatane): We rely on this in Puppet to provision shards.  After
-# running setup_dev_autotest.sh, we then modify this autotest-server
-# symlink to point elsewhere.  So, rerunning setup_dev_autotest.sh
-# will fail.  Let us ignore this failure here, but not ignore the sins
-# of our predecessors nor our own.
-sudo a2ensite autotest-server.conf \
-    || echo "\
-setup_dev_autotest: Failed to enable autotest-server; \
-expected when re-running on shards" >&2
+sudo a2ensite autotest-server.conf
 
 sudo a2enmod rewrite
 sudo a2enmod wsgi
