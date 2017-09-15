@@ -83,5 +83,4 @@ atrus:!:286:286:Atrus daemon used by the atrusctl package:/dev/null:/bin/false
 cfm-firmware-updaters:!:288:288:CFM(Chromebox for Meetings) peripheral firmware updaters:/dev/null:/bin/false
 rtanalytics:!:289:289:CFM (Chromebox for Meetings) user for running real time analytics:/dev/null:/bin/false
 touch_firmware_calibration:!:290:290:touch_firmware_calibration:/dev/null:/bin/false
-cryptohome:!:292:292:cryptohome service and client:/dev/null:/bin/false
 arc-art:!:610:610:For ART container in ARC:/dev/null:/bin/false
