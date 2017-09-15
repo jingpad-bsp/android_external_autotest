@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test, autotest
+from autotest_lib.server import autotest
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
@@ -24,37 +23,52 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         super(firmware_FWMPDisableCCD, self).initialize(host, cmdline_args)
 
         self.host = host
-        self.test_cr50_unlock = hasattr(self, "cr50")
+        # Test CCD if servo has access to Cr50, is running with CCD v1, and has
+        # testlab mode enabled.
+        self.test_ccd_unlock = (hasattr(self, "cr50") and
+            self.cr50.has_command('ccdstate') and
+            self.servo.get('cr50_testlab') == 'enabled')
 
-        if self.test_cr50_unlock:
-            rv = self.cr50.send_command_get_output('lock dummy', ['.+>'])
-            if 'Access Denied' in rv[0]:
-                self.test_cr50_unlock = False
-                logging.warning('Cr50 image is permanently locked.')
+        logging.info('%sTesting CCD Unlock', '' if self.test_ccd_unlock else
+            'Not ')
 
 
-    def cr50_try_unlock(self, fwmp_disabled_unlock):
-        """Run lock disable
+    def try_ccd_level_change(self, level, fwmp_disabled_unlock):
+        """Try changing the ccd privilege level
 
-        The FWMP flags may disable ccd. If they do then we expect lock disable
-        to fail.
+        The FWMP flags may disable ccd. If they do, unlocking or opening CCD
+        should fail.
 
+        @param level: the ccd privilege level: open or unlock.
         @param fwmp_disabled_unlock: True if the unlock process should fail
         """
-        if fwmp_disabled_unlock:
-            if 'DBG' in self.servo.get('cr50_version'):
-                response = self.cr50.FWMP_LOCKED_DBG
-            else:
-                response = self.cr50.FWMP_LOCKED_PROD
-            self.cr50.send_command_get_output('lock disable', response)
-        else:
-            self.cr50.lock_disable()
+        # Verify that the ccd disable flag is set
+        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
+
+        # Enable the lock
+        self.cr50.ccd_set_level('lock')
+        try:
+            self.cr50.ccd_set_level(level)
+            success = True
+            logging.info('Cr50 CCD %s Succeeded', level)
+        except error.TestFail, e:
+            logging.info('Cr50 CCD %s Failed', level)
+            success = False
+
+        if fwmp_disabled_unlock == success:
+            raise error.TestFail('Did not expect %s %s with fwmp unlock %sabled'
+                                 % (level, 'success' if success else 'fail',
+                                 'dis' if fwmp_disabled_unlock else 'en'))
+
+        # Verify that the ccd disable flag is still set
+        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
 
 
     def cr50_check_fwmp_flag(self, fwmp_disabled_unlock):
         """Verify cr50 thinks the flag is set or cleared"""
         response = 'Console unlock%s allowed' % (' not' if fwmp_disabled_unlock
                                                  else '')
+        self.cr50.send_command('ccd testlab open')
         self.cr50.send_command_get_output('sysrst pulse', [response])
 
 
@@ -68,26 +82,20 @@ class firmware_FWMPDisableCCD(FirmwareTest):
 
         @param flags: A string with the FWMP settings.
         """
-        if not self.test_cr50_unlock:
+        if not self.test_ccd_unlock:
             return
 
         fwmp_disabled_unlock = (self.FWMP_DEV_DISABLE_CCD_UNLOCK &
                                int(flags, 16))
 
-        logging.info('Flags are set to %s ccd unlock is %s', flags,
+        logging.info('Flags are set to %s ccd level change is %s', flags,
                      'disabled' if fwmp_disabled_unlock else 'enabled')
 
-        # Verify that the ccd disable flag is still set
-        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
+        # The ccd privilege level can be changed to unlock or open. Make sure
+        # that the fwmp setting affects both the same.
+        self.try_ccd_level_change('unlock', fwmp_disabled_unlock)
+        self.try_ccd_level_change('open', fwmp_disabled_unlock)
 
-        # Enable the lock
-        self.cr50.lock_enable()
-
-        # Try to disable it
-        self.cr50_try_unlock(fwmp_disabled_unlock)
-
-        # Verify that the ccd disable flag is still set
-        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
 
 
     def check_fwmp(self, flags, clear_tpm_owner):
@@ -111,6 +119,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
 
 
     def run_once(self):
+        """Verify FWMP disable with different flag values"""
         self.check_fwmp('0xaa00', True)
         # Verify that the flags can be changed on the same boot
         self.check_fwmp('0xbb00', False)
