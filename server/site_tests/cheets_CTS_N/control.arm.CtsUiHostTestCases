@@ -11,9 +11,10 @@ DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
+MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsUiHostTestCases of the '
-       'Android 7.1_r8 Compatibility Test Suite (CTS), build 4226626,'
+       'Android 7.1_r9 Compatibility Test Suite (CTS), build 4305494,'
        'using arm ABI in the ARC++ container.')
 
 def run_CTS(machine):
