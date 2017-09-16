@@ -1905,14 +1905,22 @@ def create_suite_job(
     if suite_args is None:
         suite_args = dict()
 
-    # TODO(crbug.com/758427): suite_args_raw is needed to run old tests
+    # TODO(crbug.com/758427): suite_args_raw is needed to run old tests.
+    # Can be removed after R64.
     if 'tests' in suite_args:
         # TODO(crbug.com/758427): test_that used to have its own
         # snowflake implementation of parsing command line arguments in
         # the test
         suite_args_raw = ' '.join([':lab:'] + suite_args['tests'])
+    # TODO(crbug.com/760675): Needed for CTS/GTS as above, but when
+    # 'tests' is not passed.  Can be removed after R64.
+    elif name.rpartition('/')[-1] in {'control.cts_N',
+                                      'control.cts_N_preconditions',
+                                      'control.gts'}:
+        suite_args_raw = ''
     else:
-        # TODO(crbug.com/758427): This is for suite_attr_wrapper
+        # TODO(crbug.com/758427): This is for suite_attr_wrapper.  Can
+        # be removed after R64.
         suite_args_raw = repr(suite_args)
 
     inject_dict = {
