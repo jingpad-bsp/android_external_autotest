@@ -863,6 +863,7 @@ class GraphicsKernelMemory(object):
         'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
     cirrus_fields = {}
+    virtio_fields = {}
 
     arch_fields = {
         'amdgpu': amdgpu_fields,
@@ -873,6 +874,7 @@ class GraphicsKernelMemory(object):
         'mediatek': mediatek_fields,
         'rockchip': rockchip_fields,
         'tegra': tegra_fields,
+        'virtio': virtio_fields,
     }
 
 
@@ -907,7 +909,15 @@ class GraphicsKernelMemory(object):
             elif "Intel Corporation" in pci_vga_device:
                 soc = 'i915'
             elif "Cirrus Logic" in pci_vga_device:
+                # Used on qemu with kernels 3.18 and lower. Limited to 800x600
+                # resolution.
                 soc = 'cirrus'
+            else:
+                pci_vga_device = utils.run('lshw -c video').stdout.rstrip()
+                groups = re.search('configuration:.*driver=(\S*)',
+                                   pci_vga_device)
+                if groups and 'virtio' in groups.group(1):
+                    soc = 'virtio'
 
         if not soc in self.arch_fields:
             raise error.TestFail('Error: Architecture "%s" not yet supported.' % soc)
