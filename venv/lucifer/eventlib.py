@@ -16,13 +16,12 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-import os
-from signal import SIGHUP
-from signal import SIGINT
-from signal import SIGTERM
+from signal import SIGUSR1
+from signal import SIG_IGN
 
 import enum
 import subprocess32
+from subprocess32 import PIPE
 
 from lucifer import sigtrap
 
@@ -46,7 +45,24 @@ class Event(enum.Enum):
     COMPLETED = 'completed'
 
 
-def run_event_command(event_handler, args, logfile):
+class Command(enum.Enum):
+    """Command enum
+
+    Members of this enum represent all possible command
+    that can be sent to an event command.
+
+    The value of enum members must be a string, which is printed by
+    itself on a line to signal the event.
+
+    This should be backward compatible with all versions of
+    job_shepherd, which lives in the infra/lucifer repository.
+
+    This should only contain one command, ABORT.
+    """
+    ABORT = 'abort'
+
+
+def run_event_command(event_handler, args):
     """Run a command that emits events.
 
     Events printed by the command will be handled by event_handler.
@@ -55,21 +71,28 @@ def run_event_command(event_handler, args, logfile):
 
     @param event_handler: callable that takes an Event instance.
     @param args: passed to subprocess.Popen.
-    @param logfile: file to store stderr.  Must be associated
-                    with a file descriptor.
     """
     logger.debug('Starting event command with %r', args)
-    with open(os.devnull, 'w+') as devnull, \
-         sigtrap.handle_signal(SIGHUP, lambda s, f: None), \
-         subprocess32.Popen(args,
-                            stdin=devnull,
-                            stdout=subprocess32.PIPE,
-                            stderr=logfile) as proc, \
-         sigtrap.handle_signals([SIGINT, SIGTERM],
-                                lambda s, f: os.kill(proc.pid, s)):
+
+    def abort_handler(_signum, _frame):
+        """Handle SIGUSR1 by sending abort to subprocess."""
+        _send_command(proc.stdin, Command.ABORT)
+
+    with sigtrap.handle_signal(SIGUSR1, SIG_IGN), \
+         subprocess32.Popen(args, stdin=PIPE, stdout=PIPE) as proc, \
+         sigtrap.handle_signal(SIGUSR1, abort_handler):
         _handle_subprocess_events(event_handler, proc)
     logger.debug('Subprocess exited with %d', proc.returncode)
     return proc.returncode
+
+
+def _send_command(f, command):
+    """Send a command.
+
+    f is a pipe file object.  command is a Command instance.
+    """
+    f.write('%s\n' % command.value)
+    f.flush()
 
 
 def _handle_subprocess_events(event_handler, proc):

@@ -24,11 +24,10 @@ def main(args):
 
     @param args: list of command line args
     """
-    loglib.configure_logging('run_event_command')
+    loglib.configure_logging(name='run_event_command')
     return eventlib.run_event_command(
             event_handler=_handle_event,
-            args=args,
-            logfile=sys.stderr)
+            args=args)
 
 
 def _handle_event(event):

@@ -10,7 +10,7 @@ PURPOSE = ('Test bluetooth adapter receiving reports from '
            'bluetooth HID devices.')
 CRITERIA = 'Adapter should receive HID events correctly.'
 ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_sanity'
-TIME = 'SHORT'
+TIME = 'SHORT' # This test takes about 3 minutes
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
 TEST_TYPE = 'server'

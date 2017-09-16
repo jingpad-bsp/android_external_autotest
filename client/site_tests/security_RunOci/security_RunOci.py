@@ -149,7 +149,8 @@ class security_RunOci(test.test):
         """
         result = utils.run(
                 ['/usr/bin/run_oci'] + test_config['run_oci_args'] +
-                [oci_path] + test_config.get('program_extra_argv', '').split(),
+                ['run', '-c', oci_path, 'test_container'] +
+                test_config.get('program_extra_argv', '').split(),
                 ignore_status=True, stderr_is_expected=True, verbose=True,
                 stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
         expected = test_config['expected_result'].strip()
