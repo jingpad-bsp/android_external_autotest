@@ -24,7 +24,7 @@ class video_WebRtcResolutionSwitching(test.test):
                 'common_script': 'loopback-peerconnection.js',
                 'bindir': self.bindir,
                 'tmpdir': self.tmpdir,
-                'resultsdir': self.resultsdir,
+                'debugdir': self.debugdir,
                 'num_peer_connections': 5,
                 'iteration_delay_millis': 300
         }

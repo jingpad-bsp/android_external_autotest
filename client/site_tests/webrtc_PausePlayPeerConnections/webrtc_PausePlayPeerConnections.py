@@ -23,7 +23,7 @@ class webrtc_PausePlayPeerConnections(test.test):
             'common_script': 'loopback-peerconnection.js',
             'bindir': self.bindir,
             'tmpdir': self.tmpdir,
-            'resultsdir': self.resultsdir,
+            'debugdir': self.debugdir,
             'num_peer_connections': 10,
             'iteration_delay_millis': 20,
             'before_start_hook': lambda tab: tab.EvaluateJavaScript(
