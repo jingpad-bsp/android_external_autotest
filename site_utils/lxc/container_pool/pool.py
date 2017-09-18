@@ -3,12 +3,28 @@
 # found in the LICENSE file.
 
 import Queue
-import collections
 import threading
+import time
 
 import common
+from autotest_lib.site_utils.lxc.container_pool import error
 from autotest_lib.site_utils.lxc.container_pool import multi_logger
 
+
+# The maximum number of concurrent workers.  Each worker is responsible for
+# managing the creation of a single container.
+# TODO(kenobi): This may be need to be adjusted for different hosts (e.g. full
+# vs quarter shards)
+_MAX_CONCURRENT_WORKERS = 5
+# Timeout (in seconds) for container creation.  After this amount of time,
+# container creation tasks are abandoned and retried.
+_CONTAINER_CREATION_TIMEOUT = 600
+# The period (in seconds) affects the rate at which the monitor thread runs its
+# event loop.  This drives a number of other factors, e.g. how long to wait for
+# the thread to respond to shutdown requests.
+_MIN_MONITOR_PERIOD = 0.1
+# The default size of the container pool.
+_DEFAULT_POOL_SIZE = 20
 
 _logger = multi_logger.create('pool')
 
@@ -16,35 +32,38 @@ _logger = multi_logger.create('pool')
 class Pool(object):
     """A fixed-size pool of LXC containers.
 
-    Containers are created using a factory instance that is passed to the Pool.
-    The Pool utilizes a worker thread to instantiate Container instances in the
-    background.
+    Containers are created using a factory that is passed to the Pool.  A pool
+    size is passed at construction time - this is the number of containers the
+    Pool will attempt to maintain.  Whenever the number of containers falls
+    below the given size, the Pool will start creating new containers to
+    replenish itself.
 
-    The worker thread logs errors thrown by the factory and attempts to
-    continue.  Only the last 10 errors seen are kept.
+    In order to avoid overloading the host, the number of simultaneous container
+    creations is limited to _MAX_CONCURRENT_WORKERS.
+
+    When container creation produces errors, those errors are saved (see
+    Pool.errors).  It is the client's responsibility to periodically check and
+    empty out the error queue.
     """
 
-    def __init__(self, factory, size=5):
+    def __init__(self, factory, size=_DEFAULT_POOL_SIZE):
         """Creates a new Pool instance.
 
         @param factory: A factory object that will be called upon to create new
                         containers.  The passed object must have a method called
                         "create_container" that takes no arguments and returns
                         an instance of a Container.
-        @param size: The maximum size of the Pool.  The worker thread attempts
-                     to keep this many Container instances in the Pool at all
-                     times.
+        @param size: The size of the Pool.  The Pool attempts to keep this many
+                     containers running at all times.
         """
         # Pools of size less than 2 don't make sense.  Don't allow them.
         if size < 2:
             raise ValueError('Invalid pool size.')
 
-        # At any given time, the worker thread is holding on to one item and
-        # waiting to add it to the pool.  So to get an effective max pool size
-        # of n, the waiting queue is actually of size (n-1).
-        self._pool = Queue.Queue(size-1)
-        self._worker = _FactoryWorker(factory, self._pool)
-        self._worker.start()
+        _logger.debug('Pool.__init__ called.  Size: %d', size)
+        self._pool = Queue.Queue(size)
+        self._monitor = _Monitor(factory, self._pool)
+        self._monitor.start()
 
 
     def get(self, timeout=0):
@@ -62,99 +81,340 @@ class Pool(object):
         @return: A container from the pool.
         """
         try:
-            # Block only if timout is not zero.
+            # Block only if timeout is not zero.
+            _logger.info('Pool.get called.')
             return self._pool.get(block=(timeout != 0),
                                   timeout=timeout)
         except Queue.Empty:
             return None
 
 
-    def cleanup(self, pedantic=False):
+    def cleanup(self, timeout=0):
         """Cleans up the container pool.
 
-        Stops the worker thread, and destroys all Containers still in the Pool.
+        Stops all worker threads, and destroys all Containers still in the Pool.
 
-        @param pedantic: If set to True, this function will raise an error if
-                         the worker thread does not shut down cleanly.  False by
-                         default.
+        @param timeout: For testing.  If this is non-zero, it specifies the
+                        number of seconds to wait for each worker to shut down.
+                        An error is raised if shutdown has not occurred by then.
+                        If zero (the default), don't wait for worker threads to
+                        shut down, just return immediately.
         """
-        # Stop the factory thread, then drain the pool.
-        self._worker.stop()
+        _logger.info('Pool.cleanup called.')
+        # Stop the monitor thread, then drain the pool.
+        self._monitor.stop(timeout)
+
         try:
+            dcount = 0
             _logger.debug('Emptying container pool')
             while True:
-                # Allow a timeout so the factory thread has a chance to exit.
-                # This ensures all containers are cleaned up.
-                container = self._pool.get(timeout=0.1)
+                container = self._pool.get(block=False)
+                dcount += 1
                 container.destroy()
         except Queue.Empty:
             pass
-        if pedantic:
-            # Ensure the worker thread shuts down.  Raise an error if this does
-            # not happen within 1 second.
-            _logger.debug('Waiting for worker thread to exit...')
-            self._worker.join(1)
-            if self._worker.is_alive():
-                raise threading.ThreadError('FactoryWorker failed to stop.')
+        finally:
+            _logger.debug('Done.  Destroyed %d containers', dcount)
 
 
     @property
     def errors(self):
-        """The last 10 errors the worker thread encountered.
+        """Returns worker errors.
 
-        @return: A list containing up to 10 errors.
+        @return: A Queue containing all the errors encountered on worker
+                 threads.
         """
-        return self._worker.errors;
+        return self._monitor.errors;
 
 
-class _FactoryWorker(threading.Thread):
-    """A thread whose task it is to keep the pool filled."""
+class _Monitor(threading.Thread):
+    """A thread that manages the creation of containers for the pool.
+
+    Container creation is potentially time-consuming and can hang or crash.  The
+    Monitor class manages a pool of independent threads, each responsible for
+    the creation of a single Container.  This provides parallelized container
+    creation and ensures that a single Container creation hanging/crashing does
+    not starve or crash the Pool.
+    """
 
     def __init__(self, factory, pool):
-        """Creates a new worker thread.
+        """Creates a new monitor.
 
         @param factory: A container factory.
         @param pool: A pool instance to push created containers into.
         """
+        super(_Monitor, self).__init__(name='pool_monitor')
+
         self._factory = factory
         self._pool = pool
+
+        # List of worker threads.  Access this only from the monitor thread.
+        self._workers = []
+
+        # A flag for stopping the monitor.
         self._stop = False
-        self._errors_lock = threading.Lock()
-        self._errors = collections.deque(maxlen=10)
-        super(_FactoryWorker, self).__init__(name='pool_worker')
+
+        # Stores errors from worker threads.
+        self.errors = Queue.Queue()
 
 
     def run(self):
         """Supplies the container pool with containers."""
-        # Just continuously create containers and push them into the pool.
-        # TODO(kenobi): This is too simplistic.  If the factory hangs, it will
-        # hang the entire worker thread, which will starve the pool (and also
-        # prevent it from shutting down).  This placeholder code is just here
-        # for now to get an initial prototype up and running.
         _logger.debug('Start event loop.')
         while not self._stop:
-            try:
-                container = self._factory.create_container()
-                self._pool.put(container)
-                _logger.debug('Pool size: %d', self._pool.qsize())
-            except Exception as e:
-                # Log errors, try again.
-                with self._errors_lock:
-                    self._errors.append(e)
+            self._create_workers()
+            self._poll_workers()
+            time.sleep(_MIN_MONITOR_PERIOD)
         _logger.debug('Exit event loop.')
 
-
-    def stop(self):
-        """Stops this thread."""
-        _logger.debug('Stop requested.')
-        self._stop = True
+        # Clean up - stop all workers.
+        for worker in self._workers:
+            worker.cancel()
 
 
-    @property
-    def errors(self):
-        """The last 10 errors that this thread encountered.
+    def stop(self, timeout=0):
+        """Stops this thread.
 
-        @return: A list containing up to 10 errors.
+        This function blocks until the monitor thread has stopped.
+
+        @param timeout: If this is a non-zero number, wait this long (in
+                        seconds) for each worker thread to stop.  If zero (the
+                        default), don't wait for worker threads to exit.
+
+        @raise WorkerTimeoutError: If a worker thread does not exit within the
+                                   specified timeout.
         """
-        with self._errors_lock:
-            return list(self._errors)
+        _logger.info('Stop requested.')
+        self._stop = True
+        self.join()
+        _logger.info('Stopped.')
+        # Wait for workers if timeout was requested.
+        if timeout > 0:
+            _logger.debug('Waiting for workers to terminate...')
+            for worker in self._workers:
+                worker.join(timeout)
+                if worker.is_alive():
+                    raise error.WorkerTimeoutError()
+
+
+    def _create_workers(self):
+        """Spawns workers to handle container requests.
+
+        This method modifies the _workers list and should only be called from
+        within run().
+        """
+        if self._pool.full():
+            return
+
+        # Create workers to refill the pool.
+        qsize = self._pool.qsize()
+        shortfall = self._pool.maxsize - qsize
+        old_worker_count = len(self._workers)
+
+        # Avoid spamming - only log if the monitor is taking some action.  Log
+        # this before creating worker threads, because we are counting live
+        # threads and want to avoid race conditions w.r.t. threads actually
+        # starting.
+        if old_worker_count != shortfall:
+            new_workers = shortfall - old_worker_count
+            # This can include workers that aren't currently in the self._worker
+            # list, e.g. workers that were dropped from the list because they
+            # timed out.
+            active_workers = sum([1 for t in threading.enumerate()
+                                  if type(t) is _Worker])
+            # qsize    : Current size of the container pool.
+            # shortfall: Number of empty slots currently in the pool.
+            # workers  : m+n, where m is the current number of active worker
+            #            threads and n is the number of new threads created.
+            _logger.debug('qsize:%d shortfall:%d workers:%d+%d',
+                          qsize, shortfall, active_workers, new_workers)
+
+        while len(self._workers) < shortfall:
+            worker = _Worker(self._factory)
+            worker.start()
+            self._workers.append(worker)
+
+
+
+    def _poll_workers(self):
+        """Checks worker states and deals with them.
+
+        This method modifies the _workers list and should only be called from
+        within run().
+
+        Completed workers are taken off the worker list and their results/errors
+        are logged.
+        """
+        completed = []
+        incomplete = []
+        for worker in self._workers:
+            if worker.check_health():
+                incomplete.append(worker)
+            else:
+                completed.append(worker)
+
+        self._workers = incomplete
+
+        for worker in completed:
+            try:
+                container = worker.get_result()
+            except Exception as e:
+                self.errors.put(e)
+                _logger.error('Error: %s', e)
+            else:
+                # A worker might yield no container if it was cancelled.
+                if container is not None:
+                    self._pool.put(container)
+                    _logger.debug('Pool size: %d/%d', self._pool.qsize(),
+                                  self._pool.maxsize)
+                else:
+                    # Workers can return None results if they are cancelled.
+                    # But -- workers aren't cancelled until the monitor exits
+                    # its event loop, and this method is only called from within
+                    # the monitor event loop.  So this should never happen.
+                    _logger.warn('Worker yielded no container.')
+
+
+class _Worker(threading.Thread):
+    """A worker thread tasked with managing the creation of a single container.
+
+    The worker is a daemon thread that calls upon a container factory to create
+    a single container.  If container creation raises any exceptions, they are
+    logged and the worker exits.  The worker also provides a mechanism for the
+    parent thread to impose timeouts on container creation.
+    """
+
+    # Throttles the number of concurrent running workers.  Workers attempt to
+    # acquire the semaphore at the start of their run() method.  Throttled
+    # workers are thus alive, but waiting.  Workers release the semaphore when
+    # they are done running, or when they are cancelled.
+    _throttle = threading.BoundedSemaphore(value=_MAX_CONCURRENT_WORKERS)
+
+
+    def __init__(self, factory):
+        """Creates a new Worker.
+
+        @param factory: A factory object that will be called upon to create
+                        Containers.
+        """
+        super(_Worker, self).__init__(name='pool_worker')
+        # Hanging worker threads should not keep the pool process alive.
+        self.daemon = True
+
+        self._factory = factory
+
+        # Use a single-entry Queue to ensure atomicity when retrieving results.
+        # This ensures that the output container has only one owner, and it
+        # cannot (for example) accidentally be destroyed by calling
+        # Worker.cancel on a Worker whose result has already been retrieved.
+        self._result = Queue.Queue(1)
+        self._error = None
+
+        self._cancelled = False
+        self._start_time = None
+
+        # A lock for breaking race conditions in worker cancellation.
+        self._completion_lock = threading.Lock()
+        self._completed = False
+
+
+    def run(self):
+        """Creates a single container."""
+        self._throttle.acquire()
+        self._start_time = time.time()
+        container = None
+        try:
+            container = self._factory.create_container()
+        except Exception as e:
+            _logger.error('Error: %s', e)
+            self._error = e
+        finally:
+            # All this has to happen atomically, otherwise race conditions can
+            # arise w.r.t. cancellation.
+            with self._completion_lock:
+                self._completed = True
+                if self._cancelled:
+                    # If the job was cancelled, destroy the container instead of
+                    # putting it in the result queue.  Do not release the
+                    # throttle, as it would have been released when the
+                    # cancellation occurred.
+                    if container is not None:
+                        container.destroy()
+                else:
+                    # Put the container in the result field.  Release the
+                    # throttle so another task can be picked up.
+                    self._result.put(container)
+                    self._throttle.release()
+
+
+    def cancel(self):
+        """Cancels the work request.
+
+        The container will be destroyed when created, instead of being added to
+        the container pool.
+        """
+        with self._completion_lock:
+            try:
+                container = self._result.get(block=False)
+            except Queue.Empty:
+                if self._completed:
+                    # The thread completed, but the result was already
+                    # retrieved.  There is nothing to do in this case.
+                    pass
+                else:
+                    # The thread is not yet done - set the cancellation flag -
+                    # when completion occurs, the container will be destroyed.
+                    # Since a worker is being cancelled, release the throttle so
+                    # another worker can proceed.
+                    self._cancelled = True
+                    self._throttle.release()
+            else:
+                # If completion occurred, destroy the resulting container.
+                # TODO(kenobi): Spawn a thread for this, so that we don't block
+                # Monitor._check_health when a worker times out.
+                container.destroy()
+
+
+    def check_health(self):
+        """Checks that a worker is alive and has not timed out.
+
+        Checks the run time of the worker to make sure it hasn't timed out.
+        Cancels workers that exceed the timeout.
+
+        @return: True if the worker is alive and has not timed out, False
+                 otherwise.
+        """
+        if not self.is_alive() or self._cancelled:
+            return False
+
+        # If alive, check the timeout and cancel if necessary.  Check for
+        # _start_time being None because it is not actually set until the thread
+        # acquires a grant from the throttle.
+        if (self._start_time is not None and
+                time.time() - self._start_time > _CONTAINER_CREATION_TIMEOUT):
+            # Set the error first before cancelling, to avoid race conditions
+            # where cancelled threads yield no error.
+            self._error = error.WorkerTimeoutError()
+            self.cancel()
+            return False
+
+        return True
+
+
+    def get_result(self):
+        """Returns a container if one is available.
+
+        Note that calling this transfers ownership of the container from the
+        Worker to the caller.  Calling this more than once will result in an
+        error.
+
+        @raises Exception: If some error occurred during container creation, it
+                           is raised at this point.
+        """
+        if self._error:
+            # If an error occurred during the operation, raise it here.
+            raise self._error
+        else:
+            # get_result should not be called before the worker has finished, or
+            # if it is cancelled.  In that case, this will raise Queue.Empty.
+            return self._result.get(block=False)
