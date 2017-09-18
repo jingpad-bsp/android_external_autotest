@@ -1,9 +1,11 @@
 import logging
 import os
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import system_metrics_collector
 from autotest_lib.client.common_lib.cros import webrtc_utils
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.video import helper_logger
@@ -15,7 +17,7 @@ EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream',
                       '--use-fake-device-for-media-stream']
 
 
-class WebRtcPeerConnectionTest:
+class WebRtcPeerConnectionTest(object):
     """
     Runs a WebRTC peer connection test.
 
@@ -98,6 +100,21 @@ class WebRtcPeerConnectionTest:
                         self.num_peer_connections,
                         self.iteration_delay_millis))
 
+    def _test_done(self):
+        """
+        Determines if the test is done or not.
+
+        Does so by querying status of the JavaScript test runner.
+        @return True if the test is done, false if it is still in progress.
+        @raise TestFail if the status check returns a failure status.
+        """
+        status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
+        if status.startswith('failure'):
+            raise error.TestFail(
+                    'Test status starts with failure, status is: ' + status)
+        logging.debug(status)
+        return status == 'ok-done'
+
     def wait_test_completed(self, timeout_secs):
         """
         Waits until the test is done.
@@ -107,17 +124,21 @@ class WebRtcPeerConnectionTest:
         @raises TestError on timeout, or javascript eval fails, or
                 error status from the testRunner.getStatus() JS method.
         """
-        def _test_done():
-            status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
-            if status.startswith('failure'):
-                raise error.TestFail(
-                        'Test status starts with failure, status is: ' + status)
-            logging.debug(status)
-            return status == 'ok-done'
+        start_secs = time.time()
+        while not self._test_done():
+            spent_time = time.time() - start_secs
+            if spent_time > timeout_secs:
+                raise utils.TimeoutError(
+                        'Test timed out after {} seconds'.format(spent_time))
+            self.do_in_wait_loop()
 
-        utils.poll_for_condition(
-                _test_done, timeout=timeout_secs, sleep_interval=1,
-                desc='test reports itself as finished')
+    def do_in_wait_loop(self):
+        """
+        Called repeatedly in a loop while the test waits for completion.
+
+        Subclasses can override and provide specific behavior.
+        """
+        time.sleep(1)
 
     @helper_logger.video_log_wrapper
     def run_test(self):
@@ -228,4 +249,40 @@ class WebRtcPeerConnectionTest:
             logging.warn(
                     'Screenshot using telemetry tab.Screenshot() not supported')
 
+
+
+class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
+    """
+    Runs a WebRTC performance test.
+    """
+    def __init__(
+            self,
+            title,
+            own_script,
+            common_script,
+            bindir,
+            tmpdir,
+            resultsdir,
+            timeout = 70,
+            test_runtime_seconds = 60,
+            num_peer_connections = 5,
+            iteration_delay_millis = 500,
+            before_start_hook = None):
+          super(WebRtcPeerConnectionPerformanceTest, self).__init__(
+                  title,
+                  own_script,
+                  common_script,
+                  bindir,
+                  tmpdir,
+                  resultsdir,
+                  timeout,
+                  test_runtime_seconds,
+                  num_peer_connections,
+                  iteration_delay_millis,
+                  before_start_hook)
+          self.collector = system_metrics_collector.SystemMetricsCollector()
+
+    def do_in_wait_loop(self):
+        self.collector.collect_snapshot()
+        time.sleep(1)
 
