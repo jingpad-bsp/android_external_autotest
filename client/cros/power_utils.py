@@ -353,12 +353,14 @@ class KbdBacklight(object):
         if result.exit_status:
             raise KbdBacklightException('Keyboard backlight support' +
                                         'is not enabled')
-        cmd = 'get_powerd_initial_backlight_level --keyboard 2>/dev/null'
-        self._default_backlight_level = int(
-            utils.system_output(cmd).rstrip())
-        logging.info("Default keyboard backlight brightness level = %d",
-                     self._default_backlight_level)
-
+        try:
+            cmd = 'get_powerd_initial_backlight_level --keyboard 2>/dev/null'
+            self._default_backlight_level = int(
+                utils.system_output(cmd).rstrip())
+            logging.info("Default keyboard backlight brightness level = %d",
+                         self._default_backlight_level)
+        except Exception:
+            raise KbdBacklightException('Keyboard backlight is malfunctioning')
 
 
     def get_percent(self):
