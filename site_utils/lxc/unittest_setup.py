@@ -26,7 +26,7 @@ def setup_logging(log_level):
     logger.addHandler(handler)
 
 
-def verify_user():
+def verify_user(require_sudo):
     """Checks that the current user is not root, but has sudo.
 
     Running unit tests as root can mask permissions problems, as not all the
@@ -39,7 +39,7 @@ def verify_user():
     # However, most of the unit tests do require sudo.
     # TODO(dshi): crbug.com/459344 Set remove this enforcement when test
     # container can be unprivileged container.
-    if utils.sudo_require_password():
+    if require_sudo and utils.sudo_require_password():
         logging.warn('SSP requires root privilege to run commands, please '
                      'grant root access to this process.')
         utils.run('sudo true')
@@ -79,11 +79,11 @@ class Config(object):
 config = Config()
 
 
-def setup():
+def setup(require_sudo=True):
     """Performs global setup for unit-tests."""
     config.parse_options()
 
-    verify_user()
+    verify_user(require_sudo)
 
     log_level = logging.DEBUG if config.verbose else logging.INFO
     setup_logging(log_level)
