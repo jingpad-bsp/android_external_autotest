@@ -22,9 +22,12 @@ class firmware_Cr50SetBoardId(Cr50Test):
     # the command to get the brand name
     GET_BRAND = 'mosys platform brand'
 
+    # Used when the flags were not initialized in the factory.
     UNKNOWN_FLAGS = 0xff00
+    # Used for dev, proto, EVT, and DVT phases.
     DEVELOPMENT_FLAGS = 0xff7f
-    RELEASE_FLAGS = 0xff80
+    # Used for PVT and MP builds.
+    RELEASE_FLAGS = 0x7f80
     PHASE_FLAGS_DICT = {
         'unknown' : UNKNOWN_FLAGS,
 
