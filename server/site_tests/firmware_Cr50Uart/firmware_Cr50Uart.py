@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 import logging
+import pprint
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest, test
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
@@ -22,50 +21,66 @@ class firmware_Cr50Uart(FirmwareTest):
     # Time used to wait for Cr50 to detect the servo state
     SLEEP = 2
 
-    # Strings used for the Cr50 CCD command
-    CCD = 'CCD'
-    CCD_UART = 'ccd uart'
-    ENABLE = 'enable'
-    DISABLE = 'disable'
-    GET_STATE = ':\s+(%s|%s)' % (ENABLE, DISABLE)
-    CCD_STATE = '%s%s' % (CCD, GET_STATE)
-    UART_RESPONSE = ['(AP UART)%s' % GET_STATE, '(EC UART)%s' % GET_STATE]
-
     # A list of the actions we should verify
     TEST_CASES = [
-        'fake_servo on, uart enable, fake_servo off, uart enable',
-        'uart enable, fake_servo on, uart disable',
+        'fake_servo on, cr50_run reboot',
+        'fake_servo on, rdd attach, cr50_run reboot',
+
+        'rdd attach, fake_servo on, cr50_run reboot, fake_servo off',
+        'rdd attach, fake_servo on, rdd detach',
+        'rdd attach, fake_servo off, rdd detach',
     ]
-    # used to reset the CCD uart and servo state
-    RESET = 'uart disable, fake_servo off'
+    # Used to reset the servo and ccd state after the test.
+    CLEANUP = 'fake_servo on, rdd attach'
+
+    ON = 'on'
+    OFF = 'off'
+    UNDETECTABLE = 'undetectable'
+    # There are many valid CCD state strings. These lists define which strings
+    # translate to off, on and unknown.
+    STATE_VALUES = {
+        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC'],
+        ON : ['on', 'connected', 'enabled', 'UARTAP+TX UARTEC+TX I2C SPI'],
+        UNDETECTABLE : ['undetectable'],
+    }
     # A dictionary containing an order of steps to verify and the expected uart
     # response as the value.
-    # The keys are a list of strings [ap uart state, ec uart state]. There are
-    # three valid states: None, 'enable', or 'disable'. None should be used if
-    # the state can not be determined and the check should be skipped. 'enable'
-    # and 'disable' are the valid states.
+    # The values are the expected state of [state flags, ccd ext, servo].
+    RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
+    # The keys are a list of strings with the order of steps to run.
+    # There are three valid states: UNDETECTABLE, ON, or OFF. Undetectable only
+    # describes the servo state when EC uart is enabled. If the ec uart is
+    # enabled, cr50 cannot detect servo, so the state becomes undetectable. All
+    # other states can only be off or on. Cr50 has a lot of different words for
+    # off and on. These other descriptors are in STATE_VALUES.
     EXPECTED_RESULTS = {
-        # We cannot guarantee the ap uart state, because we dont know if servo
-        # is connected.
-        'uart disable' : [None,  DISABLE],
-        # This should be the state used to start of each test
-        'uart disable, fake_servo off' : [ENABLE, DISABLE],
-        # uart enable will enable both the EC and AP uart
-        'uart enable' : [ENABLE, ENABLE],
-        # Cr50 cannot detect servo connect when uart is enabled
-        'uart enable, fake_servo on' : [ENABLE, ENABLE],
-        # Cr50 will disable the AP uart too, because it will detect servo
-        'uart enable, fake_servo on, uart disable' : [DISABLE, DISABLE],
-        # Cr50 will disable both uarts when servo is connected
-        'fake_servo on' : [DISABLE, DISABLE],
-        # Cr50 cannot enable uart when servo is connected
-        'fake_servo on, uart enable' : [DISABLE, DISABLE],
-        # Cr50 will detect the servo disconnect then enable AP uart. It doesn't
-        # reenable the ec uart
-        'fake_servo on, uart enable, fake_servo off' : [ENABLE, DISABLE],
-        # uart enable needs to be run again to reenable ec uart
-        'fake_servo on, uart enable, fake_servo off, uart enable' :
-            [ENABLE, ENABLE],
+        # The state all tests will start with. Servo and the ccd cable are
+        # disconnected.
+        'reset_ccd state' : [OFF, OFF, OFF],
+
+        # If rdd is attached all ccd functionality will be enabled, and servo
+        # will be undetectable.
+        'rdd attach' : [ON, ON, UNDETECTABLE],
+
+        # Cr50 cannot detect servo if ccd has been enabled first
+        'rdd attach, fake_servo off' : [ON, ON, UNDETECTABLE],
+        'rdd attach, fake_servo off, rdd detach' : [OFF, OFF, OFF],
+        'rdd attach, fake_servo on' : [ON, ON, UNDETECTABLE],
+        'rdd attach, fake_servo on, rdd detach' : [OFF, OFF, ON],
+        # Cr50 can detect servo after a reboot even if rdd was attached before
+        # servo.
+        'rdd attach, fake_servo on, cr50_run reboot' : [OFF, ON, ON],
+        # Once servo is detached, Cr50 will immediately reenable the EC uart.
+        'rdd attach, fake_servo on, cr50_run reboot, fake_servo off' :
+            [ON, ON, UNDETECTABLE],
+
+        # Cr50 can detect a servo attach
+        'fake_servo on' : [OFF, OFF, ON],
+        # Cr50 knows servo is attached when ccd is enabled, so it wont enable
+        # uart.
+        'fake_servo on, rdd attach' : [OFF, ON, ON],
+        'fake_servo on, rdd attach, cr50_run reboot' : [OFF, ON, ON],
+        'fake_servo on, cr50_run reboot' : [OFF, OFF, ON],
     }
 
 
@@ -74,25 +89,53 @@ class firmware_Cr50Uart(FirmwareTest):
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
-        if self.cr50.using_ccd():
-            raise error.TestNAError('Use a flex cable instead of CCD cable.')
 
-        if self.servo.get('ccd_lock') == 'on':
-            raise error.TestNAError('Console needs to be unlocked to run test')
+        if self.servo.get_servo_version() != 'servo_v4_with_servo_micro':
+            raise error.TestNAError('Must use servo v4 with servo micro')
 
-        self.ccd_set_state(self.ENABLE)
+        if self.servo.get('cr50_testlab') != 'enabled':
+            raise error.TestNAError('Cr50 testlab mode needs to be enabled')
+
+        self._orignal_ccdstate = self.get_ccdstate()
+
+        try:
+            self.verify_servo_v4_dts()
+        except error.TestFail, e:
+            raise error.TestNAError('Need working servo v4 DTS control')
+
+
+    def verify_servo_v4_dts(self):
+        """Verify servo v4 dts enable/disable works."""
+        self.reset_ccd()
+        self.run_steps('rdd attach')
 
 
     def cleanup(self):
         """Disable CCD and reenable the EC uart"""
-        # reenable the EC uart
-        self.fake_servo('on')
-        # disable CCD
-        self.ccd_set_state(self.DISABLE)
+        if (hasattr(self, '_orignal_ccdstate') and
+            self._orignal_ccdstate != self.get_ccdstate()):
+            self.reset_ccd()
+            self.run_steps(self.CLEANUP)
+
         super(firmware_Cr50Uart, self).cleanup()
 
 
-    def verify_uart(self, run):
+    def get_ccdstate(self):
+        """Get the current Cr50 CCD states"""
+        self.cr50.send_command('ccd testlab open')
+        rv = self.cr50.send_command_get_output('ccdstate',
+            ['ccdstate(.*)>'])[0][1].split('\n')
+        ccdstate = {}
+        for line in rv:
+            line = line.strip()
+            if line:
+                k, v = line.split(':', 1)
+                ccdstate[k.strip()] = v.strip()
+        logging.info('Current CCD state:\n%s', pprint.pformat(ccdstate))
+        return ccdstate
+
+
+    def verify_ccdstate(self, run):
         """Verify the current state matches the expected result from the run.
 
         Args:
@@ -101,45 +144,55 @@ class firmware_Cr50Uart(FirmwareTest):
         Raises:
             TestError if any of the states are not correct
         """
+        if run not in self.EXPECTED_RESULTS:
+            raise error.TestError('Add results for %s to EXPECTED_RESULTS', run)
         expected_states = self.EXPECTED_RESULTS[run]
-        current_state = self.cr50.send_command_get_output(self.CCD,
-                                                          self.UART_RESPONSE)
+        mismatch = []
+        ccdstate = self.get_ccdstate()
         for i, expected_state in enumerate(expected_states):
-            _, uart, state = current_state[i]
-            if expected_state and expected_state != state:
-                raise error.TestError('%s: unexpected %s state got %s instead '
-                                      'of %s.' % (run, uart.lower(), state,
-                                                  expected_state))
+            name = self.RESULT_ORDER[i]
+            actual_state = ccdstate[name]
+            valid_values = self.STATE_VALUES[expected_state]
+            # Check that the current state is one of the valid states.
+            if actual_state not in valid_values:
+                mismatch.append('%s: "%s" not in "%s"' % (name, actual_state,
+                    ', '.join(valid_values)))
+        if mismatch:
+            raise error.TestFail('Unexpected states after %s: %s' % (run,
+                mismatch))
 
 
-    def ccd_set_state(self, state):
-        """Enable or disable CCD
+    def cr50_run(self, action):
+        """Reboot cr50
 
-        Args:
-            state: string 'enable' or 'disable'
-
-        Raises:
-            TestError if CCD was not set
+        @param action: string 'reboot'
         """
-        # try to set the state
-        self.cr50.send_command('%s %s' % (self.CCD, state))
+        if action == 'reboot':
+            self.cr50.reboot()
+            self.cr50.send_command('ccd testlab open')
+            time.sleep(self.SLEEP)
 
-        # wait for Cr50 to enable/disable CCD
+
+    def reset_ccd(self, state=None):
+        """detach the ccd cable and disconnect servo.
+
+        State is ignored. It just exists to be consistent with the other action
+        functions.
+
+        @param state: a var that is ignored
+        """
+        self.rdd('detach')
+        self.fake_servo('off')
+
+
+    def rdd(self, state):
+        """Attach or detach the ccd cable.
+
+        @param state: string 'attach' or 'detach'
+        """
+        self.servo.set_nocheck('servo_v4_dts_mode',
+            'on' if state == 'attach' else 'off')
         time.sleep(self.SLEEP)
-
-        # get the state
-        resp = self.cr50.send_command_get_output(self.CCD, [self.CCD_STATE])
-        logging.info(resp)
-        if resp[0][1] != state:
-            raise error.TestError('Could not %s ccd' % state.lower())
-
-
-    def uart(self, state):
-        """Enable or disable the CCD uart
-
-        @param state: string 'enable' or 'disable'
-        """
-        self.cr50.send_command('%s %s' % (self.CCD_UART, state))
 
 
     def fake_servo(self, state):
@@ -174,18 +227,19 @@ class firmware_Cr50Uart(FirmwareTest):
             self.run_steps(separated_steps[0])
 
         step = separated_steps[-1]
-        # the func and state are separated by ' '
+        # The func and state are separated by ' '
         func, state = step.split(' ')
         logging.info('running %s', step)
         getattr(self, func)(state)
 
-        # Verify the AP and EC uart states match the expected result
-        self.verify_uart(steps)
+        # Verify the ccd state is correct
+        self.verify_ccdstate(steps)
 
 
     def run_once(self):
+        """Run through TEST_CASES and verify that Cr50 enables/disables uart"""
         for steps in self.TEST_CASES:
-            self.run_steps(self.RESET)
-            logging.info('TESTING: %s' % steps)
+            self.run_steps('reset_ccd state')
+            logging.info('TESTING: %s', steps)
             self.run_steps(steps)
-            logging.info('VERIFIED: %s' % steps)
+            logging.info('VERIFIED: %s', steps)
