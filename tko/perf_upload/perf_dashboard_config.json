@@ -502,6 +502,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "platform_LogoutPerf",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "platform_MemoryMonitor",
     "master_name": "ChromeOSPerf"
   },
