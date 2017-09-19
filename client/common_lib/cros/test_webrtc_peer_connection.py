@@ -224,7 +224,7 @@ class WebRtcPeerConnectionTest(object):
         try:
             full_filename = screenshot_name + '_graphics_utils'
             graphics_utils.take_screenshot(self.resultsdir, full_filename)
-        except RuntimeError as e:
+        except StandardError as e:
             logging.warn('Screenshot using graphics_utils failed', exc_info = e)
 
     def take_browser_tab_screenshot(self, screenshot_name):
