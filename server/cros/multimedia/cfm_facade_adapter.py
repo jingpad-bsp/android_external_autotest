@@ -30,6 +30,18 @@ class CFMFacadeRemoteAdapter(object):
         return self._proxy.cfm_main_screen
 
 
+    @property
+    def main_screen(self):
+        """CFM main screen API."""
+        return self._proxy.cfm_main_screen
+
+
+    @property
+    def mimo_screen(self):
+        """CFM mimo screen API."""
+        return self._proxy.cfm_mimo_screen
+
+
     def enroll_device(self):
         """Enroll device into CFM."""
         self._cfm_proxy.enroll_device()
