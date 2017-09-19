@@ -2,7 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, time
+import datetime
+import logging
+import os
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
@@ -28,6 +31,28 @@ class enterprise_CFM_Sanity(test.test):
            7. Is able to run hotrod diagnostics.
     """
     version = 1
+
+
+    def take_screenshot(self, screenshot_name):
+        """
+        Takes a screenshot (in .png format) and saves it in the debug dir.
+
+        @param screenshot_name: Name of the screenshot file without extension.
+        """
+        try:
+            target_dir = self.debugdir
+            logging.info('Taking screenshot and saving under %s...',
+                         target_dir)
+            remote_path = self.cfm_facade.take_screenshot()
+            if remote_path:
+                # Copy the screenshot from the DUT.
+                self.client.get_file(
+                    remote_path,
+                    os.path.join(target_dir, screenshot_name + '.png'))
+            else:
+                logging.warning('Taking screenshot failed')
+        except StandardError as e:
+            logging.warning('Exception while taking a screenshot', exc_info = e)
 
 
     def _hangouts_sanity_test(self):
@@ -143,6 +168,8 @@ class enterprise_CFM_Sanity(test.test):
             self._peripherals_sanity_test()
             self._diagnostics_sanity_test()
         except Exception as e:
+            self.take_screenshot('sanity_exception')
+            logging.exception(e)
             raise error.TestFail(str(e))
         finally:
             tpm_utils.ClearTPMOwnerRequest(self.client)

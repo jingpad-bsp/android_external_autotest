@@ -4,6 +4,8 @@
 
 """An adapter to remotely access the CFM facade on DUT."""
 
+import os
+import tempfile
 import time
 
 
@@ -119,6 +121,17 @@ class CFMFacadeRemoteAdapter(object):
         """End current hangout session."""
         self._cfm_proxy.end_hangout_session()
 
+
+    def take_screenshot(self):
+        """
+        Takes a screenshot on the DUT.
+
+        @return The file path to the screenshot on the DUT or None.
+        """
+        # No suffix since cfm_proxy.take_screenshot() automactially appends one.
+        with tempfile.NamedTemporaryFile() as f:
+            basename = os.path.basename(f.name)
+            return self._cfm_proxy.take_screenshot(basename)
 
     def is_in_hangout_session(self):
         """Check if device is in hangout session.
