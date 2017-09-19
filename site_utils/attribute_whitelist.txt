@@ -69,6 +69,7 @@ suite:au
 suite:audio
 suite:av_webcam
 suite:bluestreak
+suite:bluestreak-perbuild
 suite:bluestreak-pre-cq
 suite:bluestreak-release
 suite:bluetooth
