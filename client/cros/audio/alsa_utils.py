@@ -8,10 +8,12 @@ import subprocess
 from autotest_lib.client.cros.audio import cmd_utils
 
 
+ACONNECT_PATH = '/usr/bin/aconnect'
 ARECORD_PATH = '/usr/bin/arecord'
 APLAY_PATH = '/usr/bin/aplay'
 AMIXER_PATH = '/usr/bin/amixer'
 CARD_NUM_RE = re.compile(r'(\d+) \[.*\]:')
+CLIENT_NUM_RE = re.compile(r'client (\d+):')
 DEV_NUM_RE = re.compile(r'.* \[.*\], device (\d+):')
 CONTROL_NAME_RE = re.compile(r"name='(.*)'")
 SCONTROL_NAME_RE = re.compile(r"Simple mixer control '(.*)'")
@@ -321,3 +323,28 @@ def mixer_cmd(card_id, cmd):
     if p.wait() != 0:
         raise RuntimeError('amixer command failed')
     return output
+
+
+def get_num_seq_clients():
+    '''Returns the number of seq clients.
+
+    The number of clients is parsed from aconnect -io.
+    This is run as the chronos user to catch permissions problems.
+    Sample content:
+
+      client 0: 'System' [type=kernel]
+          0 'Timer           '
+          1 'Announce        '
+      client 14: 'Midi Through' [type=kernel]
+          0 'Midi Through Port-0'
+
+    @raise RuntimeError: If no seq device is available.
+    '''
+    cmd = [ACONNECT_PATH, '-io']
+    output = cmd_utils.execute(cmd, stdout=subprocess.PIPE, run_as='chronos')
+    num_clients = 0
+    for line in output.splitlines():
+        match = CLIENT_NUM_RE.match(line)
+        if match:
+            num_clients += 1
+    return num_clients
