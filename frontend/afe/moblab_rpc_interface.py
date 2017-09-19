@@ -12,6 +12,7 @@ import common
 import logging
 import os
 import re
+import sys
 import shutil
 import socket
 import StringIO
@@ -816,8 +817,8 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
             pool=pool, run_prod_code=False, test_source_build=build,
-            wait_for_results=False, suite_args=processed_suite_args,
-            test_args=test_args, job_retry=True)
+            wait_for_results=True, suite_args=processed_suite_args,
+            test_args=test_args, job_retry=True, max_retries=sys.maxint)
 
 
 def _enable_notification_using_credentials_in_bucket():
