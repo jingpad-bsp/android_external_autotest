@@ -67,14 +67,13 @@ BUILD_REGEX = 'R[\d]+-[\d]+\.[\d]+\.[\d]+'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
+TESTBED_SUITE = 'testbed_push'
 # TODO(shuqianz): Dynamically get android build after crbug.com/646068 fixed
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_EMAIL = CONFIG.get_config_value(
         'SCHEDULER', 'notify_email', type=list, default=[])
-# TODO(crbug.com/743077): Bump up tesbed requirement back to 1 when we re-enable
-# testbed tests.
-DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 0}"
+DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 1}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -620,8 +619,17 @@ def _main(arguments):
         asynchronous_suite.daemon = True
         asynchronous_suite.start()
 
+        # Test suite for testbed
+        testbed_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
+                      arguments, False, False, True))
+        testbed_suite.daemon = use_daemon
+        testbed_suite.start()
+
         while (push_to_prod_suite.is_alive()
-               or asynchronous_suite.is_alive()):
+               or asynchronous_suite.is_alive()
+               or testbed_suite.is_alive()):
             check_queue(queue)
             time.sleep(5)
 
@@ -629,6 +637,7 @@ def _main(arguments):
 
         push_to_prod_suite.join()
         asynchronous_suite.join()
+        testbed_suite.join()
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
         push_prod_next_branch(updated_repo_heads)
