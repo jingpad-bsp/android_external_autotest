@@ -20,6 +20,7 @@ def run(machine):
                  test_file='wifi_tel_coex',
                  additional_configs=['android1758-test-station-48-simcard-list.json'],
                  testtracker_owner='android-comms-tvc@google.com',
+                 additional_apks=[{'apk':'ConnectivityUIDTest.apk', 'package':'com.android.tests.connectivity.uid', 'artifacts':'tests.zip'}],
                  testtracker_project_id=733,
                  acts_timeout=36000)
 
