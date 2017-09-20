@@ -193,7 +193,7 @@ class UpdateEngineTest(test.test):
 
     def _error_initial_check(self, expected, actual, mismatched_attrs):
         """Error message for when update fails at initial update check."""
-        err_msg = ('The update appears to have completed successfully but '
+        err_msg = ('The update test appears to have completed successfully but '
                    'we found a problem while verifying the hostlog of events '
                    'returned from the update. Some attributes reported for '
                    'the initial update check event are not what we expected: '
@@ -201,13 +201,14 @@ class UpdateEngineTest(test.test):
         if 'version' in mismatched_attrs:
             err_msg += ('The expected version is (%s) but reported version was '
                         '(%s). ' % (expected['version'], actual['version']))
-            err_msg += ('This can happen if we retried the update after '
-                        'the first time failed applying stateful (rootfs '
-                        'completed successfully). When this happens the second '
-                        'update starts on the target version instead of the '
-                        'source version so the version reported will be '
-                        'incorrect. ')
-
+            err_msg += ('If reported version = target version, it is likely '
+                        'we retried the update because the test thought the '
+                        'first attempt failed but it actually succeeded '
+                        '(e.g due to SSH disconnect, DUT not reachable by '
+                        'hostname, applying stateful failed after rootfs '
+                        'succeeded). This second update attempt is then started'
+                        ' from the target version instead of the source '
+                        'version, so our hostlog verification is invalid.')
         err_msg += ('Check the full hostlog for this update in the %s file in '
                     'the %s directory.' % (self._DEVSERVER_HOSTLOG_ROOTFS,
                                            dev_server.AUTO_UPDATE_LOG_DIR))
