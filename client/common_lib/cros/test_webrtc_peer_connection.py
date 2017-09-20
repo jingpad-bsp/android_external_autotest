@@ -82,11 +82,12 @@ class WebRtcPeerConnectionTest(object):
                 test. The html file needs to have the following JS methods:
                 startTest(runtimeSeconds, numPeerConnections, iterationDelay)
                         Starts the test. Arguments are all numbers.
-                testRunner.getStatus()
+                getStatus()
                         Gets the status of the test. Returns a string with the
                         failure message. If the string starts with 'failure', it
                         is interpreted as failure. The string 'ok-done' denotes
-                        that the test is complete.
+                        that the test is complete. This method should not throw
+                        an exception.
         """
         self.tab = cr.browser.tabs[0]
         self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
@@ -108,7 +109,7 @@ class WebRtcPeerConnectionTest(object):
         @return True if the test is done, false if it is still in progress.
         @raise TestFail if the status check returns a failure status.
         """
-        status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
+        status = self.tab.EvaluateJavaScript('getStatus()')
         if status.startswith('failure'):
             raise error.TestFail(
                     'Test status starts with failure, status is: ' + status)
@@ -122,7 +123,7 @@ class WebRtcPeerConnectionTest(object):
         @param timeout_secs Max time to wait in seconds.
 
         @raises TestError on timeout, or javascript eval fails, or
-                error status from the testRunner.getStatus() JS method.
+                error status from the getStatus() JS method.
         """
         start_secs = time.time()
         while not self._test_done():
@@ -190,7 +191,7 @@ class WebRtcPeerConnectionTest(object):
 
         @raises TestError the status is different from 'ok-done'.
         """
-        status = self.tab.EvaluateJavaScript('testRunner.getStatus()')
+        status = self.tab.EvaluateJavaScript('getStatus()')
         if status != 'ok-done':
             raise error.TestFail('Failed: %s' % status)
 
@@ -224,7 +225,7 @@ class WebRtcPeerConnectionTest(object):
         try:
             full_filename = screenshot_name + '_graphics_utils'
             graphics_utils.take_screenshot(self.resultsdir, full_filename)
-        except RuntimeError as e:
+        except StandardError as e:
             logging.warn('Screenshot using graphics_utils failed', exc_info = e)
 
     def take_browser_tab_screenshot(self, screenshot_name):

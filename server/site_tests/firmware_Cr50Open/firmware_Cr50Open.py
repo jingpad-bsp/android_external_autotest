@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_Cr50Unlock(FirmwareTest):
+class firmware_Cr50Open(FirmwareTest):
     """Verify cr50 unlock.
 
     Enable the lock on cr50, run 'lock disable', and then press the power
@@ -15,8 +16,8 @@ class firmware_Cr50Unlock(FirmwareTest):
     version = 1
 
     def initialize(self, host, cmdline_args):
-        """Initialize servo and check that it has access to cr50 with ccd"""
-        super(firmware_Cr50Unlock, self).initialize(host, cmdline_args)
+        """Initialize the test"""
+        super(firmware_Cr50Open, self).initialize(host, cmdline_args)
 
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
@@ -29,7 +30,7 @@ class firmware_Cr50Unlock(FirmwareTest):
 
 
     def run_once(self):
-        """Lock CCD and then Unlock it."""
+        """Lock CCD and then Open it."""
         self.cr50.ccd_set_level('lock')
-        self.cr50.ccd_set_level('unlock')
+        self.cr50.ccd_set_level('open')
 

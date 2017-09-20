@@ -127,6 +127,14 @@ def _save_android_dumpstate(timeout=_DUMPSTATE_DEFAULT_TIMEOUT):
         logging.exception('Failed to save Android dumpstate.')
 
 
+def get_test_account_info():
+    """Retrieve test account information."""
+    with tempfile.NamedTemporaryFile() as pltp:
+        file_utils.download_file(_ARCP_URL, pltp.name)
+        password = pltp.read().rstrip()
+    return (_USERNAME, password)
+
+
 def set_browser_options_for_opt_in(b_options):
     """
     Setup Chrome for gaia login and opt_in.
@@ -134,10 +142,7 @@ def set_browser_options_for_opt_in(b_options):
     @param b_options: browser options object used by chrome.Chrome.
 
     """
-    b_options.username = _USERNAME
-    with tempfile.NamedTemporaryFile() as pltp:
-        file_utils.download_file(_ARCP_URL, pltp.name)
-        b_options.password = pltp.read().rstrip()
+    b_options.username, b_options.password = get_test_account_info()
     b_options.disable_default_apps = False
     b_options.disable_component_extensions_with_background_pages = False
     b_options.gaia_login = True

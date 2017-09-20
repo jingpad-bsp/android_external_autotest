@@ -322,71 +322,64 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self.wait_for_ccd_enable()
 
 
-    def lock_enable(self):
-        """Enable the lock on cr50"""
-        # Lock enable can be run, but we won't be able to use the power button
-        # to disable the lock. Let's not allow the console lock to be enabled
-        # if it can't be disabled without some change to the test setup
-        if self.using_ccd():
-            raise error.TestError("Cannot run 'lock enable' using CCD.")
-        self.send_command_get_output('lock enable',
-                                     ['The restricted console lock is enabled'])
+    def _level_change_req_pp(self, level):
+        """Returns True if setting the level will require physical presence"""
+        testlab_pp = level != 'testlab open' and 'testlab' in level
+        open_pp = level == 'open'
+        return testlab_pp or open_pp
 
 
-    def _attempt_unlock(self):
-        """Try to unlock the console.
-
-        Raises:
-            TestError if the unlock process fails.
-        """
-        # Get the current time.
-        rv = self.send_command_get_output('gettime', self.GETTIME)
-        current_time = float(rv[0][1])
-
-        # Start the unlock process.
-        rv = self.send_command_get_output('lock disable', self.UNLOCK)
-        unlock_finished = float(rv[0][1])
-
-        # Calculate the unlock timeout. There is a 10s countdown to start the
-        # unlock process, so unlock_timeout will be around 10s longer than
-        # necessary.
-        unlock_timeout = int(unlock_finished - current_time)
-        end_time = time.time() + unlock_timeout
-
-        logging.info('Pressing power button for %ds to unlock the console.',
-                     unlock_timeout)
-        logging.info('The process should end at %s', time.ctime(end_time))
-
-        # Press the power button once a second to unlock the console.
-        while time.time() < end_time:
-            self._servo.power_short_press()
-            time.sleep(1)
-
-        if self._servo.get('ccd_lock') != 'off':
-            raise error.TestError('Could not disable lock')
-
-
-    def lock_disable(self):
+    def ccd_set_level(self, level):
         """Increase the console timeout and try disabling the lock."""
-        # We cannot press the power button using ccd.
-        if self.using_ccd():
-            raise error.TestError("Cannot run 'lock disable' using CCD.")
+        # TODO(mruthven): add support for CCD password
+        level = level.lower().strip()
 
-        # The unlock process takes a while to start. Increase the cr50 console
-        # timeout so we can get the entire output of the 'lock disable' start
-        # process
-        original_timeout = self._servo.get('cr50_console_timeout')
-        self._servo.set_nocheck('cr50_console_timeout',
-                                self.START_UNLOCK_TIMEOUT)
+        if level in self._servo.get('cr50_ccd_level').lower():
+            logging.info('CCD privilege level is already %s', level)
+            return
 
-        try:
-            # Try to disable the lock
-            self._attempt_unlock()
-        finally:
-            # Reset the cr50_console timeout
-            self._servo.set_nocheck('cr50_console_timeout', original_timeout)
+        if 'testlab' in level:
+            raise error.TestError("Can't change testlab mode using "
+                "ccd_set_level")
 
-        logging.info('Successfully disabled the lock')
+        testlab_enabled = self._servo.get('cr50_testlab') == 'enabled'
+        req_pp = self._level_change_req_pp(level)
+        has_pp = not self.using_ccd()
+        dbg_en = 'DBG' in self._servo.get('cr50_version')
+
+        if req_pp and not has_pp:
+            raise error.TestError("Can't change privilege level to '%s' "
+                "without physical presence." % level)
+
+        if not testlab_enabled and not has_pp:
+            raise error.TestError("Wont change privilege level without "
+                "physical presence or testlab mode enabled")
+
+        resp = ['(Access Denied|%sCCD %s)' % ('Starting ' if req_pp else '',
+                                              level)]
+        # Start the unlock process.
+        rv = self.send_command_get_output('ccd %s' % level, resp)
+        if 'Access Denied' in rv[0][1]:
+            raise error.TestFail("'ccd %s' Access Denied" % level)
+
+        if req_pp:
+            # DBG images have shorter unlock processes
+            unlock_timeout = 15 if dbg_en else 300
+            end_time = time.time() + unlock_timeout
+
+            logging.info('Pressing power button for %ds to unlock the console.',
+                         unlock_timeout)
+            logging.info('The process should end at %s', time.ctime(end_time))
+
+            # Press the power button once a second to unlock the console.
+            while time.time() < end_time:
+                self._servo.power_short_press()
+                time.sleep(1)
+
+        if level not in self._servo.get('cr50_ccd_level').lower():
+            raise error.TestFail('Could not set privilege level to %s' % level)
+
+        logging.info('Successfully set CCD privelege level to %s', level)
 
 
     def gettime(self):
