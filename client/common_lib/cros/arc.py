@@ -419,6 +419,9 @@ def _after_iteration_hook(obj):
         obj: the test itself
     """
     if not obj.run_once_finished:
+        if is_adb_connected():
+            logging.debug('Recent activities dump:\n%s',
+                          adb_shell('dumpsys activity recents'))
         if not os.path.exists(_SCREENSHOT_DIR_PATH):
             os.mkdir(_SCREENSHOT_DIR_PATH, 0755)
         obj.num_screenshots += 1
@@ -626,6 +629,7 @@ class ArcTest(test.test):
         if self.uiautomator:
             path = os.path.join(self.autodir, 'deps', self._PKG_UIAUTOMATOR)
             sys.path.append(path)
+            self._add_ui_object_not_found_handler()
         if disable_play_store and not is_package_disabled(_PLAY_STORE_PKG):
             self._disable_play_store()
             if not is_package_disabled(_PLAY_STORE_PKG):
@@ -707,6 +711,12 @@ class ArcTest(test.test):
         _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
                        '-j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
+
+    def _add_ui_object_not_found_handler(self):
+        """Logs the device dump upon uiautomator.UiObjectNotFoundException."""
+        from uiautomator import device as d
+        d.handlers.on(lambda d: logging.debug('Device window dump:\n%s',
+                                              d.dump()))
 
     def _disable_play_store(self):
         """Disables the Google Play Store app."""
