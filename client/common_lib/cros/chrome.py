@@ -131,6 +131,7 @@ class Chrome(object):
         b_options.disable_gaia_services = disable_gaia_services
         b_options.disable_default_apps = disable_default_apps
         b_options.disable_component_extensions_with_background_pages = disable_default_apps
+        b_options.disable_background_networking = False
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
