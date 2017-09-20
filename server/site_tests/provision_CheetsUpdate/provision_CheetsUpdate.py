@@ -118,7 +118,8 @@ class provision_CheetsUpdate(test.test):
                self.android_build_path,
                '--simg2img',
                SIMG2IMG_PATH,
-               host.hostname]
+               host.hostname,
+               '--verbose']
         try:
             logging.info('Running push to device:')
             logging.info(
@@ -189,7 +190,8 @@ class provision_CheetsUpdate(test.test):
             self.run_push_to_device(host)
             info = host.host_info_store.get()
             logging.info('Updating DUT version label: %s:%s', cheets_prefix, value)
-            info.set_version_label(host.host_version_prefix(value), value)
+            info.clear_version_labels(cheets_prefix)
+            info.set_version_label(cheets_prefix, value)
             host.host_info_store.commit(info)
 
 
