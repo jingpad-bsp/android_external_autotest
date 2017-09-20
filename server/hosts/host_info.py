@@ -109,12 +109,19 @@ class HostInfo(object):
         return values[0] if values else ''
 
 
-    def clear_version_labels(self):
-        """Clear all version labels for the host."""
+    def clear_version_labels(self, version_prefix=None):
+        """Clear all or a particular version label(s) for the host.
+
+        @param version_prefix: The prefix label which needs to be cleared.
+                               If this is set to None, all version labels will
+                               be cleared.
+        """
+        version_labels = ([version_prefix] if version_prefix else
+                          self._VERSION_LABELS)
         self.labels = [
                 label for label in self.labels if
                 not any(label.startswith(prefix + ':')
-                        for prefix in self._VERSION_LABELS)]
+                        for prefix in version_labels)]
 
 
     def set_version_label(self, version_prefix, version):
