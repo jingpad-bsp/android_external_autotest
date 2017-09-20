@@ -33,7 +33,7 @@ class WebRtcPeerConnectionTest(object):
             common_script,
             bindir,
             tmpdir,
-            resultsdir,
+            debugdir,
             timeout = 70,
             test_runtime_seconds = 60,
             num_peer_connections = 5,
@@ -48,7 +48,7 @@ class WebRtcPeerConnectionTest(object):
                 tree.
         @param bindir: The directory that contains the test files and
                 own_script.
-        @param resultsdir: The directory to which results, e.g. screenshots,
+        @param debugdir: The directory to which debug data, e.g. screenshots,
                 should be written.
         @param timeout: Timeout in seconds for the test.
         @param test_runtime_seconds: How long to run the test. If errors occur
@@ -65,7 +65,7 @@ class WebRtcPeerConnectionTest(object):
         self.common_script = common_script
         self.bindir = bindir
         self.tmpdir = tmpdir
-        self.resultsdir = resultsdir
+        self.debugdir = debugdir
         self.timeout = timeout
         self.test_runtime_seconds = test_runtime_seconds
         self.num_peer_connections = num_peer_connections
@@ -238,7 +238,7 @@ class WebRtcPeerConnectionTest(object):
             try:
                 screenshot = self.tab.Screenshot(timeout = 10)
                 full_filename = os.path.join(
-                        self.resultsdir, screenshot_name + '_browser_tab.png')
+                        self.debugdir, screenshot_name + '_browser_tab.png')
                 image_util.WritePngFile(screenshot, full_filename)
             except exceptions.Error as e:
                 # This can for example occur if Chrome crashes. It will
@@ -263,7 +263,7 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
             common_script,
             bindir,
             tmpdir,
-            resultsdir,
+            debugdir,
             timeout = 70,
             test_runtime_seconds = 60,
             num_peer_connections = 5,
@@ -275,7 +275,7 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
                   common_script,
                   bindir,
                   tmpdir,
-                  resultsdir,
+                  debugdir,
                   timeout,
                   test_runtime_seconds,
                   num_peer_connections,
