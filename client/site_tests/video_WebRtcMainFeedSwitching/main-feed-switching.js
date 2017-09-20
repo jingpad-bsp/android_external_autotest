@@ -109,3 +109,8 @@ function startTest(
       numPeerConnections, runtimeSeconds, iterationDelayMillis);
   testRunner.runTest();
 }
+
+function getStatus() {
+  return testRunner ? testRunner.getStatus() : 'not-initialized';
+}
+
