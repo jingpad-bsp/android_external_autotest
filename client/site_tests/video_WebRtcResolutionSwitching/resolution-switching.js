@@ -101,3 +101,7 @@ function startTest(
   testRunner.runTest();
 }
 
+function getStatus() {
+  return testRunner ? testRunner.getStatus() : 'not-initialized';
+}
+
