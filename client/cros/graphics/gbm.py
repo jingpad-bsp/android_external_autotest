@@ -223,3 +223,33 @@ def crtcScreenshot(crtc_id=None):
 
     raise RuntimeError(
         "Unable to take screenshot. There may not be anything on the screen.")
+
+
+def crtcGetPixel(x, y, crtc_id=None):
+    """Get a pixel from the specified screen, returning a rgb tuple.
+
+    @param x: The x-coordinate of the desired pixel.
+    @param y: The y-coordinate of the desired pixel.
+    @param crtc_id: The CRTC to get the pixel from.
+                    None for first found CRTC with mode set
+                    or "internal" for crtc connected to internal LCD
+                    or "external" for crtc connected to external display
+                    or "usb" "evdi" or "udl" for crtc with valid mode on evdi
+                    or udl display
+                    or DRM integer crtc_id
+    """
+    crtc = drm.getCrtc(crtc_id)
+    if crtc is None:
+        raise RuntimeError(
+            "Unable to get pixel. There may not be anything on the screen.")
+    device = GBMDevice.fromHandle(drm._drm._fd)
+    framebuffer = crtc.fb()
+    bo = GBMBuffer.fromFD(device,
+                          framebuffer.getFD(), framebuffer.width,
+                          framebuffer.height, framebuffer.pitch,
+                          GBM_FORMAT_ARGB8888, GBM_BO_USE_SCANOUT)
+    map_void_p, _ = bo.map(int(x), int(y), 1, 1, GBM_BO_TRANSFER_READ, 0)
+    map_int_p = cast(map_void_p, POINTER(c_int))
+    pixel = _bgrx24(map_int_p[0])
+    bo.unmap(bo._map_p)
+    return pixel
