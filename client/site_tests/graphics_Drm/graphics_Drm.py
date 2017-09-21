@@ -132,24 +132,23 @@ class graphics_Drm(graphics_utils.GraphicsTest):
     # graphics_Drm runs all available tests if tests = None.
     def run_once(self, tests=None, perf_report=False):
         self._test_failure_report_enable = perf_report
-        for test_name in drm_tests:
-            if tests and test_name not in tests:
+        for test in drm_tests.itervalues():
+            if tests and test.name not in tests:
                 continue
 
-            test = drm_tests.get(test_name)
-            logging.info('-----------------[%s]-----------------' % test_name)
+            logging.info('-----------------[%s]-----------------' % test.name)
             if test.should_run():
                 if test.can_run():
-                    logging.debug('Running test %s.', test_name)
+                    logging.debug('Running test %s.', test.name)
                     passed = test.run()
                     if not passed:
-                        self.add_failures(test_name)
+                        self.add_failures(test.name)
                 else:
                     logging.info('Failed: test %s can not be run on current '
-                                 'configurations.' % test_name)
-                    self.add_failures(test_name)
+                                 'configurations.' % test.name)
+                    self.add_failures(test.name)
             else:
-                logging.info('Skipping test: %s.' % test_name)
+                logging.info('Skipping test: %s.' % test.name)
 
         if self.get_failures():
             raise error.TestFail('Failed: %s' % self.get_failures())
