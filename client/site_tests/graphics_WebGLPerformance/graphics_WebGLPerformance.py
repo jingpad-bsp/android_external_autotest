@@ -13,6 +13,7 @@ to catch performance regressions in a given browser and system.
 
 import logging
 import os
+import math
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -25,6 +26,8 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
     version = 1
     _test_duration_secs = 0
     perf_keyval = {}
+    _waived_tests = ['convert-Canvas-to-rgb-float.html',
+                     'convert-Canvas-to-rgb-float-premultiplied.html']
 
     def setup(self):
         self.job.setup_dep(['webgl_perf'])
@@ -56,8 +59,26 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
         tab.WaitForJavaScriptCondition('test_completed == true',
                                        timeout=self._test_duration_secs)
 
+        # Get all the result data
+        results = tab.EvaluateJavaScript('testsRun')
+        logging.info('results: %s', results)
         # Get the geometric mean of individual runtimes.
-        time_ms_geom_mean = tab.EvaluateJavaScript('time_ms_geom_mean')
+        sumOfLogResults = 0
+        sumOfPassed = 0
+        sumOfFailed = 0
+        sumOfWaived = 0
+        for result in results:
+            if result.get('url') in self._waived_tests:
+                sumOfWaived += 1
+                continue
+            if 'error' in result:
+                sumOfFailed += 1
+                continue
+            sumOfLogResults += math.log(result['testResult'])
+            sumOfPassed += 1
+        time_ms_geom_mean = round(100 * math.exp(
+            sumOfLogResults / len(results))) / 100
+
         logging.info('WebGLPerformance: time_ms_geom_mean = %f',
                      time_ms_geom_mean)
 
@@ -90,12 +111,8 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
         f.write(test_report)
         f.close()
 
-        total_tests = tab.EvaluateJavaScript('testPageURLs.length')
-        total_passed = tab.EvaluateJavaScript('numberOfResults')
-        total_waived = tab.EvaluateJavaScript('numberOfWaived')
-        total_failed = total_tests - total_passed - total_waived
         tab.Close()
-        return total_passed, total_waived, total_failed
+        return sumOfPassed, sumOfWaived, sumOfFailed
 
     @graphics_utils.GraphicsTest.failure_report_decorator('graphics_WebGLPerformance')
     def run_once(self, test_duration_secs=2700, fullscreen=True):
