@@ -2,13 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Status change events module.
+"""Event subprocess module.
 
-This is used to standardize communication of events between processes
-through a pipe, generally through stdout.
+Event subprocesses are subprocesses that print event changes to stdout
+and reads command from stdin.
 
-run_event_command() starts a process that sends such events to stdout
-and handles them through a callback.
+Each event and command is a UNIX line, with a terminating newline
+character.
+
+Only the abort command is supported.  The main process aborts the event
+subprocess when SIGUSR1 is received.
+
+run_event_command() starts such a process.
 """
 
 from __future__ import absolute_import
@@ -42,6 +47,7 @@ class Event(enum.Enum):
     job_shepherd, which lives in the infra/lucifer repository.
     """
     STARTING = 'starting'
+    PARSING = 'parsing'
     COMPLETED = 'completed'
 
 
@@ -65,9 +71,12 @@ class Command(enum.Enum):
 def run_event_command(event_handler, args):
     """Run a command that emits events.
 
-    Events printed by the command will be handled by event_handler.
-    While the process for the command is running, trapped signals will
-    be passed on to it so it can abort gracefully.
+    Events printed by the command will be handled by event_handler.  All
+    exceptions raised by event_handler will be caught and logged;
+    however, event_handler should not let any exceptions escape.
+
+    While the event command is running, SIGUSR1 is interpreted as an
+    abort command and sent to the subprocess via stdin.
 
     @param event_handler: callable that takes an Event instance.
     @param args: passed to subprocess.Popen.
@@ -106,10 +115,9 @@ def _handle_subprocess_events(event_handler, proc):
     while True:
         logger.debug('Reading subprocess stdout')
         line = proc.stdout.readline()
-        if line:
-            _handle_output_line(event_handler, line)
-        else:
+        if not line:
             break
+        _handle_output_line(event_handler, line)
 
 
 def _handle_output_line(event_handler, line):
@@ -122,5 +130,5 @@ def _handle_output_line(event_handler, line):
         event = Event(line.rstrip())
     except ValueError:
         logger.warning('Invalid output %r received', line)
-    else:
-        event_handler(event)
+        return
+    event_handler(event)
