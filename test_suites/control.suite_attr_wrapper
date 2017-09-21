@@ -34,7 +34,7 @@ from autotest_lib.server.cros import provision
 
 # TODO(crbug.com/758427): suite_args needed to support being run by old Autotest
 if 'attr_filter' not in args_dict:
-    args_dict['attr_filter'] = ast.literal_eval(suite_args)
+    args_dict.update(ast.literal_eval(suite_args))
 
 try:
     attr = args_dict['attr_filter']
