@@ -158,7 +158,7 @@ def _get_file_stats(host, path):
     cmd = 'ls -ld %s | cut -d" " -f5' % (pipes.quote(path),)
     try:
         file_size = int(host.run(cmd).stdout)
-    except error.CmdError as e:
+    except (error.CmdError, ValueError) as e:
         logging.warning('Getting size of file %r on host %r failed: %s',
                         path, host, e)
         file_size = 0
