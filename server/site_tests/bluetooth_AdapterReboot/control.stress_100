@@ -6,7 +6,7 @@ from autotest_lib.server import utils
 
 
 AUTHOR = 'rjahagir'
-NAME = 'bluetooth_AdapterReboot'
+NAME = 'bluetooth_AdapterReboot.stress_100'
 PURPOSE = 'Test bluetooth adapter state with rebooting the DUT.'
 CRITERIA = 'Adapter should power on or off with correct parameters.'
 ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_stress'
