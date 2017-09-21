@@ -172,7 +172,10 @@ class firmware_Cr50Update(Cr50Test):
                     the devids
         """
         if ver:
-            return self.download_cr50_release_image(ver)
+            bid = None
+            if '/' in ver:
+                ver, bid = ver.split('/', 1)
+            return self.download_cr50_release_image(ver, bid)
         return self.download_cr50_debug_image(self.devid)
 
 
