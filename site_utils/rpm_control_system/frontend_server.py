@@ -367,7 +367,10 @@ if __name__ == '__main__':
     email_handler = rpm_logging_config.set_up_logging_to_file(
             sys.argv[1], LOG_FILENAME_FORMAT)
     frontend_server = RPMFrontendServer(email_handler=email_handler)
-    address = rpm_config.get('RPM_INFRASTRUCTURE', 'frontend_addr')
+    # We assume that external clients will always connect to us via the
+    # hostname, so listening on the hostname ensures we pick the right network
+    # interface.
+    address = socket.gethostname()
     port = rpm_config.getint('RPM_INFRASTRUCTURE', 'frontend_port')
     server = MultiThreadedXMLRPCServer((address, port), allow_none=True)
     server.register_instance(frontend_server)
