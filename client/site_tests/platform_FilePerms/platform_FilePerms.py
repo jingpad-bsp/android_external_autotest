@@ -171,6 +171,9 @@ class platform_FilePerms(test.test):
             'type': ['tmpfs'],
             'options': standard_rw_options + [
                 'uid=655360', 'gid=656360', 'mode=775']},
+        '/run/containers/android/root/var/run/arc/apkcache': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
         '/run/containers/android/root/var/run/arc/bugreport': {
             'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},

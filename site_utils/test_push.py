@@ -11,7 +11,7 @@ pushed. Link to design document:
 https://docs.google.com/a/google.com/document/d/1JMz0xS3fZRSHMpFkkKAL_rxsdbNZomhHbC3B8L71uuI/edit
 
 To verify if prod branch can be pushed to lab, run following command in
-chromeos-autotest.cbf server:
+chromeos-staging-master2.hot server:
 /usr/local/autotest/site_utils/test_push.py -e someone@company.com
 
 The script uses latest gandof stable build as test build by default.
@@ -73,7 +73,9 @@ DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_EMAIL = CONFIG.get_config_value(
         'SCHEDULER', 'notify_email', type=list, default=[])
-DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 1}"
+# TODO(crbug.com/767302): Bump up tesbed requirement back to 1 when we
+# re-enable testbed tests.
+DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 0}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -195,7 +197,7 @@ def reverify_all_push_duts():
     AFE.reverify_hosts(hostnames=hosts)
 
 
-def get_default_build(board='gandof', server='chromeos-autotest.hot'):
+def get_default_build(board='gandof', server='chromeos-staging-master2.hot'):
     """Get the default build to be used for test.
 
     @param board: Name of board to be tested, default is gandof.
@@ -233,7 +235,7 @@ def parse_arguments():
                         help='Default is the latest stable build of given '
                              'board. Must be a stable build, otherwise AU test '
                              'will fail.')
-    parser.add_argument('-w', '--web', default='chromeos-autotest.hot',
+    parser.add_argument('-w', '--web', default='chromeos-staging-master2.hot',
                         help='Specify web server to grab stable version from.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
                         default='shamu-2', help='Android board to test.')
@@ -620,16 +622,16 @@ def _main(arguments):
         asynchronous_suite.start()
 
         # Test suite for testbed
-        testbed_suite = multiprocessing.Process(
-                target=test_suite_wrapper,
-                args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
-                      arguments, False, False, True))
-        testbed_suite.daemon = use_daemon
-        testbed_suite.start()
+        #testbed_suite = multiprocessing.Process(
+        #        target=test_suite_wrapper,
+        #        args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
+        #              arguments, False, False, True))
+        #testbed_suite.daemon = use_daemon
+        #testbed_suite.start()
 
         while (push_to_prod_suite.is_alive()
-               or asynchronous_suite.is_alive()
-               or testbed_suite.is_alive()):
+               or asynchronous_suite.is_alive()):
+               #or testbed_suite.is_alive()):
             check_queue(queue)
             time.sleep(5)
 
@@ -637,7 +639,7 @@ def _main(arguments):
 
         push_to_prod_suite.join()
         asynchronous_suite.join()
-        testbed_suite.join()
+        #testbed_suite.join()
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
         push_prod_next_branch(updated_repo_heads)

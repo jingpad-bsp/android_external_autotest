@@ -114,7 +114,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def reboot(self):
         """Reboot Cr50 and wait for cr50 to reset"""
         response = [] if self.using_ccd() else self.START_STR
-        rv = self.send_command_get_output('reboot', response)
+        self.send_command_get_output('reboot', response)
 
         # ccd will stop working after the reboot. Wait until that happens and
         # reenable it.

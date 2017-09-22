@@ -256,8 +256,8 @@ class provision_Cr50Update(Cr50Test):
 
         # If we aren't changing the board id, don't pass any values into the bid
         # args.
-        chip_bid = chip_bid_info[0] if set_bid else None
-        chip_flags = chip_bid_info[2] if set_bid else None
+        chip_bid = chip_bid_info[0] if need_rollback else None
+        chip_flags = chip_bid_info[2] if need_rollback else None
         # Update to the new image, setting the chip board id and rolling back if
         # necessary.
         self.cr50_update(self.local_path, rollback=need_rollback,

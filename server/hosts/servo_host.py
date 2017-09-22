@@ -66,7 +66,7 @@ class ServoHost(ssh_host.SSHHost):
     DEFAULT_PORT = 9999
 
     # Timeout for initializing servo signals.
-    INITIALIZE_SERVO_TIMEOUT_SECS = 30
+    INITIALIZE_SERVO_TIMEOUT_SECS = 60
 
     # Ready test function
     SERVO_READY_METHOD = 'get_version'
