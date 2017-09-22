@@ -132,7 +132,12 @@ class CFMFacadeNative(object):
         if self._webview_context.EvaluateJavaScript(
                 "typeof window.hrRunDiagnosticsForTest == 'function'"):
             return cfm_hangouts_api.CfmHangoutsAPI(self._webview_context)
-        return cfm_meetings_api.CfmMeetingsAPI(self._webview_context)
+        if self._webview_context.EvaluateJavaScript(
+                "typeof window.hrTelemetryApi != 'undefined'"):
+            return cfm_meetings_api.CfmMeetingsAPI(self._webview_context)
+        raise error.TestFail('No hangouts or meet telemetry API available. '
+                             'Current url is "%s"' %
+                             self._webview_context.GetUrl())
 
 
     #TODO: This is a legacy api. Deprecate this api and update existing hotrod
