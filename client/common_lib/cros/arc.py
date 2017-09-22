@@ -85,6 +85,11 @@ def _is_android_data_mounted():
     return _android_shell('getprop ro.data_mounted') == '1'
 
 
+def get_zygote_type():
+    """Return zygote service type."""
+    return _android_shell('getprop ro.zygote')
+
+
 def _wait_for_data_mounted(timeout=_WAIT_FOR_DATA_MOUNTED_SECONDS):
     utils.poll_for_condition(
             condition=_is_android_data_mounted,
