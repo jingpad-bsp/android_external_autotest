@@ -2,16 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import ConfigParser
+import socket
 import threading
 import xmlrpclib
 
 CONFIG_FILE = 'rpm_config.ini'
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read(CONFIG_FILE)
-remote_uri = CONFIG.get('RPM_INFRASTRUCTURE', 'frontend_uri')
+REMOTE_PORT = CONFIG.getint('RPM_INFRASTRUCTURE', 'frontend_port')
 
 
 def queue_request(dut_hostname, state):
+    remote_uri = 'http://%s:%d' % (socket.gethostname(), REMOTE_PORT)
     client = xmlrpclib.ServerProxy(remote_uri, verbose=False)
     result = client.queue_request(dut_hostname, state)
     print dut_hostname, result
