@@ -11,7 +11,7 @@ pushed. Link to design document:
 https://docs.google.com/a/google.com/document/d/1JMz0xS3fZRSHMpFkkKAL_rxsdbNZomhHbC3B8L71uuI/edit
 
 To verify if prod branch can be pushed to lab, run following command in
-chromeos-autotest.cbf server:
+chromeos-staging-master2.hot server:
 /usr/local/autotest/site_utils/test_push.py -e someone@company.com
 
 The script uses latest gandof stable build as test build by default.
@@ -197,7 +197,7 @@ def reverify_all_push_duts():
     AFE.reverify_hosts(hostnames=hosts)
 
 
-def get_default_build(board='gandof', server='chromeos-autotest.hot'):
+def get_default_build(board='gandof', server='chromeos-staging-master2.hot'):
     """Get the default build to be used for test.
 
     @param board: Name of board to be tested, default is gandof.
@@ -235,7 +235,7 @@ def parse_arguments():
                         help='Default is the latest stable build of given '
                              'board. Must be a stable build, otherwise AU test '
                              'will fail.')
-    parser.add_argument('-w', '--web', default='chromeos-autotest.hot',
+    parser.add_argument('-w', '--web', default='chromeos-staging-master2.hot',
                         help='Specify web server to grab stable version from.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
                         default='shamu-2', help='Android board to test.')
