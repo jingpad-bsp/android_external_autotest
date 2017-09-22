@@ -383,6 +383,7 @@ class VideoLabel(base_label.StringLabel):
         'hw_video_acc_enc_h264',
         'hw_video_acc_enc_vp8',
         'webcam',
+        '4k_video',
     ]
 
     def generate_labels(self, host):
