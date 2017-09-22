@@ -89,7 +89,7 @@ def _make_locked_lease(tmpdir, job_id):
 def _lock_lease(path):
     with subprocess32.Popen(
             [sys.executable, '-um',
-             'lucifer.scripts.fcntl_lock', path],
+             'lucifer.scripts.test.fcntl_lock', path],
             stdout=subprocess32.PIPE) as proc:
         # Wait for lock grab.
         proc.stdout.readline()
