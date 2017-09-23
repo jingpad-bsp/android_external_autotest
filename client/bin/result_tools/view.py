@@ -8,6 +8,7 @@ collected during the test.
 """
 
 import os
+import re
 
 import common
 from autotest_lib.client.bin.result_tools import utils_lib
@@ -23,6 +24,8 @@ GS_FILE_BASE_URL = CONFIG.get_config_value('CROS', 'gs_file_base_url')
 DEFAULT_SIZE_TRIMMED_WIDTH = 50
 
 DEFAULT_RESULT_SUMMARY_NAME = 'result_summary.html'
+
+DIR_SUMMARY_PATTERN = 'dir_summary_\d+.json'
 
 # ==================================================
 # Following are key names used in the html templates:
@@ -336,6 +339,11 @@ def _get_dirs_html(dirs, parent_path, total_bytes, indentation):
     entries = dict((entry.keys()[0], entry) for entry in dirs)
     for name in sorted(entries.keys()):
         entry = entries[name]
+        if not entry.is_dir and re.match(DIR_SUMMARY_PATTERN, name):
+            # Do not include directory summary json files in the html, as they
+            # will be deleted.
+            continue
+
         size_data = {SIZE_PERCENT: _get_size_percent(entry.original_size,
                                                      total_bytes),
                      SIZE_ORIGINAL:
