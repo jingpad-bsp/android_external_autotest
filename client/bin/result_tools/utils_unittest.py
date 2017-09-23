@@ -285,11 +285,12 @@ class MergeSummaryTest(unittest.TestCase):
 
     def testMergeSummaries(self):
         """Test method merge_summaries."""
-        client_collected_bytes, merged_summary = result_utils.merge_summaries(
+        collected_bytes, merged_summary, files = result_utils.merge_summaries(
                 self.test_dir)
 
         self.assertEqual(EXPECTED_MERGED_SUMMARY, merged_summary)
-        self.assertEqual(client_collected_bytes, 12 * SIZE)
+        self.assertEqual(collected_bytes, 12 * SIZE)
+        self.assertEqual(len(files), 3)
 
     def testMergeSummariesFromNoHistory(self):
         """Test method merge_summaries can handle results with no existing
@@ -298,12 +299,13 @@ class MergeSummaryTest(unittest.TestCase):
         os.remove(self.summary_1)
         os.remove(self.summary_2)
         os.remove(self.summary_3)
-        client_collected_bytes, _ = result_utils.merge_summaries(self.test_dir)
+        client_collected_bytes, _, _ = result_utils.merge_summaries(
+                self.test_dir)
         self.assertEqual(client_collected_bytes, 0)
 
     def testBuildView(self):
         """Test build method in result_view module."""
-        client_collected_bytes, summary = result_utils.merge_summaries(
+        client_collected_bytes, summary, _ = result_utils.merge_summaries(
                 self.test_dir)
         html_file = os.path.join(self.test_dir,
                                  result_view.DEFAULT_RESULT_SUMMARY_NAME)
