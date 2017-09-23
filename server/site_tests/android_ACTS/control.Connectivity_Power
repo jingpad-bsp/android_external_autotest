@@ -21,6 +21,6 @@ def run(machine):
                  testtracker_owner='qijiang@google.com',
                  test_file='wifi_power_connectivity',
                  testtracker_project_id=12602,
-                 acts_timeout=18000)
+                 acts_timeout=54000)
 
 parallel_simple(run, machines)
