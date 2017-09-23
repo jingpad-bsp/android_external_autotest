@@ -191,11 +191,13 @@ def merge_summaries(path):
     directory summary.
 
     @param path: A path to search for directory summaries.
-    @return a tuple of (client_collected_bytes, merged_summary):
+    @return a tuple of (client_collected_bytes, merged_summary, files):
             client_collected_bytes: The total size of results collected from
                 the DUT. The number can be larger than the total file size of
                 the given path, as files can be overwritten or removed.
             merged_summary: The merged directory summary of the given path.
+            files: All summary files in the given path, including
+                sub-directories.
     """
     path = _preprocess_result_dir_path(path)
     # Find all directory summary files and sort them by the time stamp in file
@@ -237,11 +239,7 @@ def merge_summaries(path):
     else:
         merged_summary = last_summary
 
-    # Save the merged summary.
-    final_summary = os.path.join(path, MERGED_SUMMARY_FILENAME)
-    result_info.save_summary(merged_summary, final_summary);
-
-    return client_collected_bytes, merged_summary
+    return client_collected_bytes, merged_summary, summary_files
 
 
 def _throttle_results(summary, max_result_size_KB):
