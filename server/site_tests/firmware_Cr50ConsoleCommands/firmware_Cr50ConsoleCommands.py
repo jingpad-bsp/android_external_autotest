@@ -99,7 +99,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
                 self.state.update(match.groupdict())
 
             # Remove the matching string from the output.
-            output, n = re.subn('%s' % regexp, '', output, 1)
+            output, n = re.subn('%s\s*' % regexp, '', output, 1)
             if not n:
                 missing.append(regexp)
 
@@ -122,6 +122,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
 
 
     def run_once(self, host):
+        """Verify the Cr50 gpiocfg, pinmux, and help output."""
         err = []
         self.get_brdprop()
         for command, regexp, split_str in self.TESTS:
