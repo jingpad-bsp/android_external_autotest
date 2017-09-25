@@ -230,9 +230,9 @@ class video_WebRtcPerf(test.test):
             # crbug/753292 - enforce the idle checks after login
             if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
                                            CPU_IDLE_USAGE):
-                raise error.TestError('Could not get idle CPU post login.')
+                logging.warning('Could not get idle CPU post login.')
             if not utils.wait_for_cool_machine():
-                raise error.TestError('Could not get cold machine post login.')
+                logging.warning('Could not get cold machine post login.')
 
             if utils.get_board() == 'daisy':
               logging.warning('Delay 30s for issue 588579 on daisy')
@@ -272,6 +272,11 @@ class video_WebRtcPerf(test.test):
         # strict idle checks after the login phase.
         utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT, CPU_IDLE_USAGE)
         utils.wait_for_cool_machine()
+        if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
+                                       CPU_IDLE_USAGE):
+            logging.warning('Could not get idle CPU pre login.')
+        if not utils.wait_for_cool_machine():
+            logging.warning('Could not get cold machine pre login.')
 
         # Stop the thermal service that may change the cpu frequency.
         self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
