@@ -54,8 +54,6 @@ ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = CONFIG.get_config_value(
         'CROS', 'enable_devserver_trigger_auto_update', type=bool,
         default=False)
 
-LUCID_SLEEP_BOARDS = ['samus', 'lulu']
-
 
 class FactoryImageCheckerException(error.AutoservError):
     """Exception raised when an image is a factory image."""
@@ -2327,15 +2325,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         finally:
             utils.system_output = original_system_output
             common_utils.read_file = original_read_file
-
-
-    def has_lucid_sleep_support(self):
-        """Determine if the device under test has support for lucid sleep.
-
-        @return 'lucidsleep' if this board supports lucid sleep; None otherwise
-        """
-        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
-        return 'lucidsleep' if board in LUCID_SLEEP_BOARDS else None
 
 
     def is_boot_from_usb(self):
