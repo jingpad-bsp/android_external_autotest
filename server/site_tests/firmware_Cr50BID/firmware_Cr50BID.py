@@ -339,7 +339,7 @@ class firmware_Cr50BID(Cr50Test):
             self.board_id_locked_path, ver = self.download_cr50_debug_image(
                 devid, image_bid_info)
 
-        image_bid_info = cr50_utils.GetImageBoardIdInfo(ver[2])
+        image_bid_info = cr50_utils.GetBoardIdInfoTuple(ver[2])
         if not image_bid_info:
             raise error.TestError('Need board id locked image to run test')
         # Save the image board id info
