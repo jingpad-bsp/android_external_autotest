@@ -119,7 +119,8 @@ class provision_CheetsUpdate(test.test):
                '--simg2img',
                SIMG2IMG_PATH,
                host.hostname,
-               '--verbose']
+               '--loglevel',
+               'DEBUG']
         try:
             logging.info('Running push to device:')
             logging.info(
