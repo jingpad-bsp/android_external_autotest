@@ -43,16 +43,23 @@ class firmware_Cr50Uart(FirmwareTest):
         ON : ['on', 'connected', 'enabled', 'UARTAP+TX UARTEC+TX I2C SPI'],
         UNDETECTABLE : ['undetectable'],
     }
-    # A dictionary containing an order of steps to verify and the expected uart
-    # response as the value.
-    # The values are the expected state of [state flags, ccd ext, servo].
+    # RESULT_ORDER is a list of the CCD state strings. The order corresponds
+    # with the order of the key states in EXPECTED_RESULTS.
     RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
+    # A dictionary containing an order of steps to verify and the expected ccd
+    # states as the value.
+    #
     # The keys are a list of strings with the order of steps to run.
+    #
+    # The values are the expected state of [state flags, ccd ext, servo]. The
+    # ccdstate strings are in RESULT_ORDER. The order of the EXPECTED_RESULTS
+    # key states must match the order in RESULT_ORDER.
+    #
     # There are three valid states: UNDETECTABLE, ON, or OFF. Undetectable only
     # describes the servo state when EC uart is enabled. If the ec uart is
-    # enabled, cr50 cannot detect servo, so the state becomes undetectable. All
-    # other states can only be off or on. Cr50 has a lot of different words for
-    # off and on. These other descriptors are in STATE_VALUES.
+    # enabled, cr50 cannot detect servo and the state becomes undetectable. All
+    # other ccdstates can only be off or on. Cr50 has a lot of different words
+    # for off and on. These other descriptors are in STATE_VALUES.
     EXPECTED_RESULTS = {
         # The state all tests will start with. Servo and the ccd cable are
         # disconnected.
