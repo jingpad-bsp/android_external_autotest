@@ -94,6 +94,7 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          'dummy_Fail.Warn$':             'WARN',
                          'dummy_Fail.NAError$':          'TEST_NA',
                          'dummy_Fail.Crash$':            'GOOD',
+                         'autotest_SyncCount$':          'GOOD',
                          }
 
 EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
