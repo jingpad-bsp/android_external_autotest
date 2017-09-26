@@ -30,10 +30,11 @@ def test_monkeypatch():
         ('autotest_lib.server', False),
         ('some_lib.common', False),
 ])
-def test__CommonRemovingFinder__is_autotest_common(fullname, expected):
-    """Test _CommonRemovingFinder._is_common()."""
+def test__CommonRemovingFinder_find_module(fullname, expected):
+    """Test _CommonRemovingFinder.find_module()."""
     finder = autotest._CommonRemovingFinder()
-    assert finder._is_autotest_common(fullname) == expected
+    got = finder.find_module(fullname)
+    assert got == (finder if expected else None)
 
 
 @pytest.mark.parametrize('name,expected', [
