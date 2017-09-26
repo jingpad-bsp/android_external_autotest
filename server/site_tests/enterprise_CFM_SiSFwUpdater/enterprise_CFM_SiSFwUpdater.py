@@ -85,7 +85,7 @@ class enterprise_CFM_SiSFwUpdater(test.test):
         else:
             output = result.stdout
         if print_output:
-            logging.info('Output: %s', output.split('\n'))
+            logging.info('Output: %s', ''.join(output))
         if str_compare and str_compare not in ''.join(output):
             return output, False
         else:
@@ -201,14 +201,14 @@ class enterprise_CFM_SiSFwUpdater(test.test):
             raise error.TestFail('Expect \'{}\' in output, '
                                  'but didn\'t find it.'.format(expect_output))
 
-        # Triger udev to run FW updater.
-        self.triger_updater()
+        # No need to manually triger udev to run FW updater here.
+        # Previous FW updating process will reset SiS after it finish.
 
         # Wait for fw updater to finish.
         time.sleep(UPDATER_WAIT_TIME+15)
 
         # Try flash the new firmware, should detect same fw version.
-        expect_output = 'The device has the same FW as system.'
+        expect_output = 'The device has the same FW as system'
         output, succeed = self.flash_fw(self.new_fw_path,
                                         str_compare=expect_output)
         self.log_file_obj.write('{}Log info for writing '
