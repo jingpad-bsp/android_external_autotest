@@ -16,6 +16,7 @@ import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.ListBox;
 import com.google.gwt.user.client.ui.SimplePanel;
 import com.google.gwt.user.client.ui.TextArea;
+import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
 import java.util.Arrays;
@@ -37,6 +38,12 @@ public class SuiteRunnerView extends TabView {
   private Button actionButton;
   private TextArea suiteArgsTextArea;
   private HorizontalPanel thirdOptionalLine;
+
+  private TextBox bugIdTextBox;
+  private HorizontalPanel fourthOptionalLine;
+
+  private TextBox partIdTextBox;
+  private HorizontalPanel fifthOptionalLine;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq",
       "bvt-inline", "cts", "cts_N", "cts_N_preconditions", "gts",
@@ -60,6 +67,8 @@ public class SuiteRunnerView extends TabView {
     roFirmwareSelector.clear();
     poolSelector.clear();
     suiteArgsTextArea.setText("");
+    bugIdTextBox.setText("");
+    partIdTextBox.setText("");
 
     buildSelector.addItem("Select the build");
     suiteSelector.addItem("Select the suite");
@@ -89,6 +98,9 @@ public class SuiteRunnerView extends TabView {
     poolSelector = new ListBox();
     suiteArgsTextArea = new TextArea();
     suiteArgsTextArea.getElement().setPropertyString("placeholder", TEST_LIST_PLACEHOLDER);
+
+    bugIdTextBox = new TextBox();
+    partIdTextBox = new TextBox();
 
     boardSelector.addChangeHandler(new ChangeHandler() {
       @Override
@@ -124,6 +136,8 @@ public class SuiteRunnerView extends TabView {
     poolSelector.setStyleName("run_suite_selector");
 
     suiteArgsTextArea.setStyleName("run_suite_test_args");
+    bugIdTextBox.setStyleName("run_suite_avl_args");
+    partIdTextBox.setStyleName("run_suite_avl_args");
 
     HorizontalPanel firstLine = createHorizontalLineItem("Select board:", boardSelector);
     HorizontalPanel secondLine = createHorizontalLineItem("Select build:", buildSelector);
@@ -131,6 +145,12 @@ public class SuiteRunnerView extends TabView {
     thirdOptionalLine = createHorizontalLineItem("Only run specified tests (Optional):",
                                                  suiteArgsTextArea);
     thirdOptionalLine.setVisible(false);
+    fourthOptionalLine = createHorizontalLineItem("AVL process bug ID (Optional):",
+                                                 bugIdTextBox);
+    fourthOptionalLine.setVisible(false);
+    fifthOptionalLine = createHorizontalLineItem("AVL part number (Optional):",
+                                                 partIdTextBox);
+    fifthOptionalLine.setVisible(false);
     HorizontalPanel fourthLine = createHorizontalLineItem("RW Firmware (Optional):", rwFirmwareSelector);
     HorizontalPanel fifthLine = createHorizontalLineItem("RO Firmware (Optional):", roFirmwareSelector);
     HorizontalPanel sixthLine = createHorizontalLineItem("Pool (Optional):", poolSelector);
@@ -145,24 +165,26 @@ public class SuiteRunnerView extends TabView {
         int roFirmwareSelection = roFirmwareSelector.getSelectedIndex();
         if (boardSelection != 0 && buildSelection != 0 && suiteSelection != 0) {
           String poolLabel = new String();
-	  if (poolSelection != 0) {
-	    poolLabel = poolSelector.getItemText(poolSelection);
-	  }
-	  String rwFirmware = new String();
-	  if (rwFirmwareSelection != 0) {
-	    rwFirmware = rwFirmwareSelector.getItemText(rwFirmwareSelection);
-	  }
-	  String roFirmware = new String();
-	  if (roFirmwareSelection != 0) {
-	    roFirmware = roFirmwareSelector.getItemText(roFirmwareSelection);
-	  }
+          if (poolSelection != 0) {
+            poolLabel = poolSelector.getItemText(poolSelection);
+          }
+          String rwFirmware = new String();
+          if (rwFirmwareSelection != 0) {
+            rwFirmware = rwFirmwareSelector.getItemText(rwFirmwareSelection);
+          }
+          String roFirmware = new String();
+          if (roFirmwareSelection != 0) {
+            roFirmware = roFirmwareSelector.getItemText(roFirmwareSelection);
+          }
           runSuite(boardSelector.getItemText(boardSelection),
               buildSelector.getItemText(buildSelection),
               suiteSelector.getItemText(suiteSelection),
               poolLabel,
               rwFirmware,
               roFirmware,
-              suiteArgsTextArea.getText());
+              suiteArgsTextArea.getText(),
+              bugIdTextBox.getText(),
+              partIdTextBox.getText());
         } else {
           Window.alert("You have to select a valid board, build and suite.");
         }
@@ -178,6 +200,8 @@ public class SuiteRunnerView extends TabView {
     suiteRunnerMainPanel.add(secondLine);
     suiteRunnerMainPanel.add(thirdLine);
     suiteRunnerMainPanel.add(thirdOptionalLine);
+    suiteRunnerMainPanel.add(fourthOptionalLine);
+    suiteRunnerMainPanel.add(fifthOptionalLine);
     suiteRunnerMainPanel.add(fourthLine);
     suiteRunnerMainPanel.add(fifthLine);
     suiteRunnerMainPanel.add(sixthLine);
@@ -220,9 +244,18 @@ public class SuiteRunnerView extends TabView {
       listIndex == suiteNames.indexOf("cts_N_preconditions") ||
       listIndex == suiteNames.indexOf("cts_N")) {
       thirdOptionalLine.setVisible(true);
+      fourthOptionalLine.setVisible(false);
+      fifthOptionalLine.setVisible(false);
+    } else if(listIndex == suiteNames.indexOf("hardware_storagequal") ||
+        listIndex == suiteNames.indexOf("hardware_memoryqual")) {
+      thirdOptionalLine.setVisible(false);
+      fourthOptionalLine.setVisible(true);
+      fifthOptionalLine.setVisible(true);
     } else {
       suiteArgsTextArea.setText("");
       thirdOptionalLine.setVisible(false);
+      fourthOptionalLine.setVisible(false);
+      fifthOptionalLine.setVisible(false);
     }
   }
 
@@ -341,15 +374,19 @@ public class SuiteRunnerView extends TabView {
    * @param rwFirmware, an optional firmware to use for some qual tests.
    * @param roFirmware, an optional firmware to use for some qual tests.
    * @param suiteArgs, optional params to pass to the suite.
+   * @param bugId, an optional param indicates the bugnizer ticket for
+   * memory/hardware avl process.
+   * @param partId, an optional param identifies the component involved for
+   * memory/hardare avl process.
    */
   private void runSuite(String board, String build, String suite, String pool, String rwFirmware,
-      String roFirmware, String suiteArgs) {
+      String roFirmware, String suiteArgs, String bugId, String partId) {
     String realPoolLabel = pool;
     if (pool != null && !pool.isEmpty()) {
       realPoolLabel = pool.trim();
     }
     MoblabRpcHelper.runSuite(board, build, suite, realPoolLabel, rwFirmware, roFirmware,
-        suiteArgs, new RunSuiteCallback() {
+        suiteArgs, bugId, partId, new RunSuiteCallback() {
       @Override
       public void onRunSuiteComplete() {
         Window.Location.assign("/afe");
