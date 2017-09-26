@@ -3,11 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Run tests for lucifer.
+# Job aborter daemon
+#
+# See http://goto.google.com/monitor_db_per_job_refactor
+
 set -eu
 readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
-
-# cd for pytest configuration files
-cd "$bin_dir/../venv"
-
-"${bin_dir}/python_venv" -m pytest lucifer "$@"
+exec "${bin_dir}/python_venv" -m lucifer.scripts.job_aborter "$@"
