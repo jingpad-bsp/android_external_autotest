@@ -4,16 +4,11 @@
 
 """Event subprocess module.
 
-Event subprocesses are subprocesses that print event changes to stdout
-and reads command from stdin.
+Event subprocesses are subprocesses that print event changes to stdout.
 
-Each event and command is a UNIX line, with a terminating newline
-character.
+Each event is a UNIX line, with a terminating newline character.
 
-Only the abort command is supported.  The main process aborts the event
-subprocess when SIGUSR1 is received.
-
-run_event_command() starts such a process.
+run_event_command() starts such a process with a synchronous event handler.
 """
 
 from __future__ import absolute_import
@@ -21,14 +16,10 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-from signal import SIGUSR1
-from signal import SIG_IGN
 
 import enum
 import subprocess32
 from subprocess32 import PIPE
-
-from lucifer import sigtrap
 
 logger = logging.getLogger(__name__)
 
@@ -51,57 +42,25 @@ class Event(enum.Enum):
     COMPLETED = 'completed'
 
 
-class Command(enum.Enum):
-    """Command enum
-
-    Members of this enum represent all possible command
-    that can be sent to an event command.
-
-    The value of enum members must be a string, which is printed by
-    itself on a line to signal the event.
-
-    This should be backward compatible with all versions of
-    job_shepherd, which lives in the infra/lucifer repository.
-
-    This should only contain one command, ABORT.
-    """
-    ABORT = 'abort'
-
-
 def run_event_command(event_handler, args):
     """Run a command that emits events.
 
-    Events printed by the command will be handled by event_handler.  All
-    exceptions raised by event_handler will be caught and logged;
-    however, event_handler should not let any exceptions escape.
-
-    While the event command is running, SIGUSR1 is interpreted as an
-    abort command and sent to the subprocess via stdin.
+    Events printed by the command will be handled by event_handler
+    synchronously.  Exceptions raised by event_handler will not be
+    caught.  If an exception escapes, the child process's standard file
+    descriptors are closed and the process is waited for.  The
+    event command should terminate if this happens.
 
     @param event_handler: callable that takes an Event instance.
     @param args: passed to subprocess.Popen.
     """
     logger.debug('Starting event command with %r', args)
-
-    def abort_handler(_signum, _frame):
-        """Handle SIGUSR1 by sending abort to subprocess."""
-        _send_command(proc.stdin, Command.ABORT)
-
-    with sigtrap.handle_signal(SIGUSR1, SIG_IGN), \
-         subprocess32.Popen(args, stdin=PIPE, stdout=PIPE) as proc, \
-         sigtrap.handle_signal(SIGUSR1, abort_handler):
+    with subprocess32.Popen(args, stdout=PIPE) as proc:
+        logger.debug('Event command child pid is %d', proc.pid)
         _handle_subprocess_events(event_handler, proc)
-    logger.debug('Subprocess exited with %d', proc.returncode)
+    logger.debug('Event command child with pid %d exited with %d',
+                 proc.pid, proc.returncode)
     return proc.returncode
-
-
-def _send_command(f, command):
-    """Send a command.
-
-    f is a pipe file object.  command is a Command instance.
-    """
-    f.write('%s\n' % command.value)
-    f.flush()
 
 
 def _handle_subprocess_events(event_handler, proc):

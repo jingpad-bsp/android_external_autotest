@@ -92,6 +92,8 @@ def load(name):
     This enforces that monkeypatch() is called first.  Otherwise,
     autotest imports may or may not work.  When they do work, they may
     screw up global state.
+
+    @param name: name of module as string, e.g., 'frontend.afe.models'
     """
     if not _setup_done:
         raise ImportError('cannot load Autotest modules before monkeypatching')
