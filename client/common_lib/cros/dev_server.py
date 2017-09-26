@@ -71,6 +71,7 @@ DEVSERVER_SSH_TIMEOUT_MINS = 1
 
 # Error message for invalid devserver response.
 ERR_MSG_FOR_INVALID_DEVSERVER_RESPONSE = 'Proxy Error'
+ERR_MSG_FOR_DOWN_DEVSERVER = 'Service Unavailable'
 
 # Error message for devserver call timedout.
 ERR_MSG_FOR_TIMED_OUT_CALL = 'timeout'
@@ -968,13 +969,36 @@ class ImageServerBase(DevServer):
         server_name = get_hostname(call)
         is_in_restricted_subnet = utils.get_restricted_subnet(
                 server_name, utils.RESTRICTED_SUBNETS)
-        if (not ENABLE_SSH_CONNECTION_FOR_DEVSERVER or
-            not is_in_restricted_subnet):
-            return super(ImageServerBase, cls).run_call(
-                    call, readline=readline, timeout=timeout)
-        else:
-            return cls.run_ssh_call(
-                    call, readline=readline, timeout=timeout)
+        def kickoff_call():
+            """Invoke a given devserver call using urllib.open or ssh.
+
+            @param call: a url string that calls a method to a devserver.
+            @param is_in_restricted_subnet: whether the devserver is in subnet.
+            @param readline: whether read http response line by line.
+            @param timeout: The timeout seconds for urlopen call or ssh call.
+            """
+            if (not ENABLE_SSH_CONNECTION_FOR_DEVSERVER or
+                not is_in_restricted_subnet):
+                response = super(ImageServerBase, cls).run_call(
+                        call, readline=readline, timeout=timeout)
+            else:
+                response = cls.run_ssh_call(
+                        call, readline=readline, timeout=timeout)
+            # Retry if devserver service is temporarily down, e.g. in a
+            # devserver push.
+            if ERR_MSG_FOR_DOWN_DEVSERVER in response:
+                return False
+
+            return response
+
+        try:
+            return bin_utils.poll_for_condition(
+                    kickoff_call,
+                    exception=bin_utils.TimeoutError(),
+                    timeout=60,
+                    sleep_interval=5)
+        except bin_utils.TimeoutError:
+            return ERR_MSG_FOR_DOWN_DEVSERVER
 
 
     @classmethod
