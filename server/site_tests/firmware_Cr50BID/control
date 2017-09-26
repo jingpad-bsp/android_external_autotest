@@ -35,13 +35,8 @@ be used.
 @param bid_path: local path for the board id locked image. If this is given, the
                  board id, mask and flags will be gotten from the image. Bid,
                  bid_mask, and bid_flags will be ignored.
-@param release_ver: The rw version string. This is needed to run the test with
-                    a released board id locked image. If this is used, you must
-                    also supply real board id.
-@param bid: The symbolic board id string. A value of 'TEST' will be used if
-            nothing is given.
-@param bid_mask: The hex string for the board id mask.
-@param bid_flags: The hex string for the board id flags.
+@param release_ver: The version string. ${rw_ver}/${image_bid}. This is needed
+                    to run the test with a released board id locked image.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -54,13 +49,9 @@ def run(machine):
     dev_path = args_dict.get("dev_path", "")
     bid_path = args_dict.get("bid_path", "")
     release_ver = args_dict.get("release_ver", "")
-    bid = args_dict.get("bid", "")
-    bid_mask = args_dict.get("bid_mask", "")
-    bid_flags =args_dict.get("bid_flags", "")
 
     job.run_test("firmware_Cr50BID", host=host, cmdline_args=args,
                  iterations=iterations, dev_path=dev_path, bid_path=bid_path,
-                 release_ver=release_ver, bid=bid, bid_mask=bid_mask,
-                 bid_flags=bid_flags)
+                 release_ver=release_ver)
 
 parallel_simple(run, machines)
