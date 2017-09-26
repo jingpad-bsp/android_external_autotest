@@ -781,9 +781,11 @@ def _run_bucket_performance_test(key_id, key_secret, bucket_name,
     # enabled.
 
 
+# TODO(haddowk) Change suite_args name to "test_filter_list" or similar. May
+# also need to make changes at MoblabRpcHelper.java
 @rpc_utils.moblab_only
 def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
-              pool=None, suite_args=None):
+              pool=None, suite_args=None, bug_id=None, part_id=None):
     """ RPC handler to run a test suite.
 
     @param board: a board name connected to the moblab.
@@ -793,18 +795,29 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     @param rw_firmware: Optional rw firmware build number to use.
     @param pool: Optional pool name to run the suite in.
     @param suite_args: Arguments to be used in the suite control file.
+    @param bug_id: Optilnal bug ID used for AVL qualification process.
+    @param part_id: Optilnal part ID used for AVL qualification
+    process.
 
     @return: None
     """
     builds = {'cros-version': build}
+    processed_suite_args = dict()
     if rw_firmware:
         builds['fwrw-version'] = rw_firmware
     if ro_firmware:
         builds['fwro-version'] = ro_firmware
     if suite_args:
-        processed_suite_args = {'tests':
-                                [s.strip() for s in suite_args.split(',')]}
-    else:
+        processed_suite_args['tests'] = \
+            [s.strip() for s in suite_args.split(',')]
+    if bug_id:
+        processed_suite_args['bug_id'] = bug_id
+    if part_id:
+        processed_suite_args['part_id'] = part_id
+
+    # set processed_suite_args to None instead of empty dict when there is no
+    # argument in processed_suite_args
+    if len(processed_suite_args) == 0:
         processed_suite_args = None
 
     test_args = {}
