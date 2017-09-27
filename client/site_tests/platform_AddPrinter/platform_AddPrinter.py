@@ -2,22 +2,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import dbus
 import logging
 import os
-import tempfile
-import time
 import shutil
+import tempfile
 from threading import Thread
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros import debugd_util
 from fake_printer import FakePrinter
 
-_SCRIPT_TIMEOUT = 5
-_PRINTER_ADD_TIMEOUT = 3
 _FAKE_SERVER_JOIN_TIMEOUT = 10
+_FAKE_PRINTER_ID = 'FakePrinterID'
+
+# Values are from platform/system_api/dbus/debugd/dbus-constants.h.
+_CUPS_SUCCESS = 0
 
 class platform_AddPrinter(test.test):
     """
@@ -65,12 +68,17 @@ class platform_AddPrinter(test.test):
         self.server_thread.start();
 
     def cleanup(self):
+        """
+        Delete downloaded ppd file, fake printer log file, component (if
+        downloaded);
+        """
         if hasattr(self, 'browser'):
             self.browser.close()
 
         # Remove temp files
         os.remove(self.ppd_file)
         os.remove(self.printing_log_path)
+
         # Remove escpr components (if exists)
         shutil.rmtree('/home/chronos/epson-inkjet-printer-escpr',
                       ignore_errors=True);
@@ -82,61 +90,33 @@ class platform_AddPrinter(test.test):
                     'umount ' + mount_folder + foldername)
             shutil.rmtree(mount_folder, ignore_errors=True);
 
+    def load_ppd(self, ppd_path):
+        """
+        Returns the contents of a file as a dbus.ByteArray.
+
+        @param file_name: The path of the file.
+
+        """
+        with open(ppd_path, 'rb') as f:
+            content = dbus.ByteArray(f.read())
+            return content
+
     def add_a_printer(self, ppd_path):
         """
-        Add a printer through printer settings on chrome://settings
+        Add a printer manually given ppd file.
 
         Args:
         @param ppd_path: path to ppd file
         """
         logging.info('add printer from ppd:' + ppd_path);
 
-        # Navigate to cups setup UI and wait until fully load.
-        self.tab.Navigate("chrome://settings/cupsPrinters")
-        self.tab.WaitForDocumentReadyStateToBeInteractiveOrBetter(
-            timeout=_SCRIPT_TIMEOUT);
-
-        # call getCupsPrintersList to confirm no printer yet added.
-        get_added_printer_query = """
-            var printerList;
-            cr.sendWithPromise("getCupsPrintersList").then(function(defs) {
-                printerList = defs['printerList'];
-            });
-        """;
-        self.tab.EvaluateJavaScript(get_added_printer_query);
-        self.tab.WaitForJavaScriptCondition('printerList.length == 0',
-                                            timeout=_SCRIPT_TIMEOUT)
-
-        # call addCupsPrinter API with ppd file to trigger download.
-        add_cups_printer_query = """
-            chrome.send("addCupsPrinter", [{
-                printerAddress: "127.0.0.1",
-                printerDescription: "",
-                printerId: "",
-                printerManufacturer: "",
-                printerModel: "",
-                printerName: "printer",
-                printerPPDPath: "%s",
-                printerProtocol: "socket",
-                printerQueue: "ipp/print",
-                printerStatus: ""
-            }])
-        """ % (ppd_path);
-        self.tab.EvaluateJavaScript(add_cups_printer_query);
-
-        # Wait for c++ handler to add printer finish.
-        time.sleep(_PRINTER_ADD_TIMEOUT)
-
-        # call getCupsPrintersList to confirm printer added.
-        get_added_printer_query="""
-            cr.sendWithPromise("getCupsPrintersList").then(function(defs) {
-                printerList = defs['printerList'];
-            });
-        """;
-        self.tab.EvaluateJavaScript(get_added_printer_query);
-        self.tab.WaitForJavaScriptCondition('printerList.length == 1',
-                                            timeout=_SCRIPT_TIMEOUT)
-        self.printerList = self.tab.EvaluateJavaScript("printerList");
+        ppd_contents = self.load_ppd(ppd_path)
+        result = debugd_util.iface().CupsAddManuallyConfiguredPrinter(
+                                     _FAKE_PRINTER_ID, 'socket://127.0.0.1/',
+                                                      ppd_contents)
+        if result != _CUPS_SUCCESS:
+            raise error.TestFail('valid_config - Could not setup valid '
+                'printer %d' % result)
 
     def print_a_page(self, golden_file_path):
         """
@@ -152,7 +132,7 @@ class platform_AddPrinter(test.test):
         # Issue print request.
         utils.system_output(
             'lp -d %s %s' %
-            (self.printerList[0].get('printerId'), self.pdf_path)
+            (_FAKE_PRINTER_ID, self.pdf_path)
         );
         self.server_thread.join(_FAKE_SERVER_JOIN_TIMEOUT)
 
@@ -164,11 +144,31 @@ class platform_AddPrinter(test.test):
             error.TestFail('ERROR: Printing request is not verified!')
         logging.info('cmp output:' + output);
 
-    def run_once(self, golden_file):
+
+    def download_component(self, component):
+        """
+        Download filter component via dbus API
+
+        Args:
+        @param component: name of component
+        """
+        logging.info('download component:' + component);
+
+        stdout=utils.system_output(
+            'dbus-send --system --type=method_call --print-reply '
+            '--dest=org.chromium.ComponentUpdaterService '
+            '/org/chromium/ComponentUpdaterService '
+            'org.chromium.ComponentUpdaterService.LoadComponent '
+            '"string:%s"' % (component))
+
+    def run_once(self, golden_file, component=None):
         """
         Args:
         @param golden_file: printing request golden file name
         """
+        if component:
+            self.download_component(component)
+
         current_dir = os.path.dirname(os.path.realpath(__file__))
         self.add_a_printer(self.ppd_file)
         self.print_a_page(os.path.join(current_dir, golden_file));
