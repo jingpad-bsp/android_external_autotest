@@ -565,6 +565,11 @@
     "dashboard_test_name": "kraken"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.memory.desktop",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "memory.desktop"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.memory.top_7_stress",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "memory.top_7_stress"
