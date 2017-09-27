@@ -162,7 +162,10 @@ def get_pushed_commits(repo, repo_dir, pushed_commits_range):
             pushed_commits = autotest_commits
 
         print 'Successfully got pushed CLs for %s repo!\n' % repo
-        return '\n%s:\n%s\n%s\n' % (repo, get_commits_cmd, pushed_commits)
+        displayed_cmd = get_commits_cmd
+        if repo == 'autotest':
+          displayed_cmd += ' | grep autotest'
+        return '\n%s:\n%s\n%s\n' % (repo, displayed_cmd, pushed_commits)
 
 
 def kick_off_deploy():
