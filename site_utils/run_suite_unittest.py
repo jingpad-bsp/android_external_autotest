@@ -325,6 +325,7 @@ class ResultCollectorUnittest(unittest.TestCase):
             include_self_aborted_test=False,
             include_aborted_by_suite_test=False,
             include_good_retry=False, include_bad_retry=False,
+            include_good_test=True,
             suite_job_timed_out=False, suite_job_status='GOOD'):
         """A helper method for testing ResultCollector end-to-end.
 
@@ -348,6 +349,10 @@ class ResultCollectorUnittest(unittest.TestCase):
                 If True, include a test that passed after retry.
         @param include_bad_retry:
                 If True, include a test that failed after retry.
+        @param include_good_test:
+                If True, include a test that passed. If False, pretend no tests
+                (including the parent suite job) came back with any test
+                results.
         @param suite_job_status: One of 'GOOD' 'FAIL' 'ABORT' 'RUNNING'
 
         @returns: A ResultCollector instance.
@@ -447,8 +452,16 @@ class ResultCollectorUnittest(unittest.TestCase):
                 'original test failed', {},
                 '2014-04-29 13:10:03', '2014-04-29 13:10:04')
 
-        test_views = [server_job_view, good_test]
-        child_jobs = set([good_job_id])
+        test_views = []
+        child_jobs = set()
+        missing_results = []
+        if include_good_test:
+            test_views.append(server_job_view)
+            test_views.append(good_test)
+            child_jobs.add(good_job_id)
+        # Emulate missing even the parent/suite job.
+        else:
+            missing_results.append(suite_job_id)
         if include_bad_test:
             test_views.append(bad_test)
             child_jobs.add(bad_job_id)
@@ -469,14 +482,23 @@ class ResultCollectorUnittest(unittest.TestCase):
         if include_aborted_by_suite_test:
             test_views.append(aborted_by_suite)
             child_jobs.add(aborted_by_suite_job_id)
-        self._mock_tko_get_detailed_test_views(test_views)
+        self._mock_tko_get_detailed_test_views(test_views,
+               missing_results=missing_results)
         self._mock_afe_get_jobs(suite_job_id, child_jobs)
         collector = run_suite.ResultCollector(
                'fake_server', self.afe, self.tko,
                'lumpy-release/R36-5788.0.0', 'lumpy', 'dummy', suite_job_id,
                return_code_function=run_suite._ReturnCodeComputer())
         collector.run()
+        collector.output_results()
         return collector
+
+
+    def testEndToEndSuiteEmpty(self):
+        """Test it returns code INFRA_FAILURE when no tests report back."""
+        collector = self._end_to_end_test_helper(include_good_test=False)
+        self.assertEqual(collector.return_result.return_code,
+                         run_suite.RETURN_CODES.INFRA_FAILURE)
 
 
     def testEndToEndSuitePass(self):
