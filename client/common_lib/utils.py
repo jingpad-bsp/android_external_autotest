@@ -2735,7 +2735,8 @@ def poll_for_condition(condition,
             return value
         if time.time() + sleep_interval - start_time > timeout:
             if exception:
-                logging.error(exception)
+                logging.error('Will raise error %r due to unexpected return: '
+                              '%r', exception, value)
                 raise exception
 
             if desc:
