@@ -575,7 +575,8 @@ def _extract_selinux_policy(out_dir, system_raw_img, paths):
     for path in paths:
       source = os.path.join(tmp_dir.name, path[0])
       destination = os.path.join(out_dir, path[1])
-      os.makedirs(os.path.dirname(destination), exist_ok=True)
+      if not os.path.exists(os.path.dirname(destination)):
+        os.makedirs(os.path.dirname(destination))
       shutil.copyfile(source, destination)
 
 

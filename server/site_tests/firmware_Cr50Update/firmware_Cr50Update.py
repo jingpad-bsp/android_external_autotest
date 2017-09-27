@@ -76,6 +76,18 @@ class firmware_Cr50Update(Cr50Test):
         self.verify_update_order()
         logging.info("Update %s", self.update_order)
 
+        self.chip_bid = None
+        self.chip_flags = None
+        chip_bid_info = cr50_utils.GetChipBoardId(self.host)
+        if chip_bid_info != cr50_utils.ERASED_CHIP_BID:
+            self.chip_bid, _, self.chip_flags = chip_bid_info
+            logging.info('chip board id will be erased during rollback. %x:%x '
+                'will be restored after rollback.',  self.chip_bid,
+                self.chip_flags)
+        else:
+            logging.info('No chip board id is set. This test will not attempt '
+                'to restore anything during rollback.')
+
         # Update to the dev image
         self.run_update(self.DEV_NAME)
 
@@ -129,7 +141,8 @@ class firmware_Cr50Update(Cr50Test):
         # on or use usb_update to update to the new image if it is requested.
         if use_usb_update or rollback:
             self.cr50_update(image_path, rollback=rollback,
-                             erase_nvmem=self.erase_nvmem)
+                chip_bid=self.chip_bid, chip_flags=self.chip_flags,
+                erase_nvmem=self.erase_nvmem)
             self.check_state((self.checkers.crossystem_checker,
                               {'mainfw_type': 'normal'}))
 

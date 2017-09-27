@@ -10,11 +10,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_Cr50Uart(FirmwareTest):
-    """Verify Cr50 uart control
+class firmware_Cr50CCDServoCap(FirmwareTest):
+    """Verify Cr50 CCD output enable/disable when servo is connected.
 
-    Verify Cr50 will enable/disable the AP and EC uart when servo is
-    disconnected/connected.
+    Verify Cr50 will enable/disable the CCD servo output capabilities when servo
+    is attached/detached.
     """
     version = 1
 
@@ -43,16 +43,23 @@ class firmware_Cr50Uart(FirmwareTest):
         ON : ['on', 'connected', 'enabled', 'UARTAP+TX UARTEC+TX I2C SPI'],
         UNDETECTABLE : ['undetectable'],
     }
-    # A dictionary containing an order of steps to verify and the expected uart
-    # response as the value.
-    # The values are the expected state of [state flags, ccd ext, servo].
+    # RESULT_ORDER is a list of the CCD state strings. The order corresponds
+    # with the order of the key states in EXPECTED_RESULTS.
     RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
+    # A dictionary containing an order of steps to verify and the expected ccd
+    # states as the value.
+    #
     # The keys are a list of strings with the order of steps to run.
+    #
+    # The values are the expected state of [state flags, ccd ext, servo]. The
+    # ccdstate strings are in RESULT_ORDER. The order of the EXPECTED_RESULTS
+    # key states must match the order in RESULT_ORDER.
+    #
     # There are three valid states: UNDETECTABLE, ON, or OFF. Undetectable only
     # describes the servo state when EC uart is enabled. If the ec uart is
-    # enabled, cr50 cannot detect servo, so the state becomes undetectable. All
-    # other states can only be off or on. Cr50 has a lot of different words for
-    # off and on. These other descriptors are in STATE_VALUES.
+    # enabled, cr50 cannot detect servo and the state becomes undetectable. All
+    # other ccdstates can only be off or on. Cr50 has a lot of different words
+    # for off and on. These other descriptors are in STATE_VALUES.
     EXPECTED_RESULTS = {
         # The state all tests will start with. Servo and the ccd cable are
         # disconnected.
@@ -85,7 +92,7 @@ class firmware_Cr50Uart(FirmwareTest):
 
 
     def initialize(self, host, cmdline_args):
-        super(firmware_Cr50Uart, self).initialize(host, cmdline_args)
+        super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args)
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
@@ -117,7 +124,7 @@ class firmware_Cr50Uart(FirmwareTest):
             self.reset_ccd()
             self.run_steps(self.CLEANUP)
 
-        super(firmware_Cr50Uart, self).cleanup()
+        super(firmware_Cr50CCDServoCap, self).cleanup()
 
 
     def get_ccdstate(self):

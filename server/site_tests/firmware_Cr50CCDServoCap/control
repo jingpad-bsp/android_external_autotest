@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
-NAME = "firmware_Cr50Uart"
+NAME = "firmware_Cr50CCDServoCap"
 PURPOSE = "Verify uart control"
 ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "SHORT"
@@ -13,7 +13,7 @@ TEST_TYPE = "server"
 DEPENDENCIES = "servo"
 
 DOC = """
-Verify cr50 handles enabling/disabling the uart if servo is
+Verify cr50 handles enabling/disabling uart, i2c, and spi if servo is
 disconnected/connected.
 
 This must be done using servo instead of CCD, because we need to be able to
@@ -26,6 +26,6 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    job.run_test("firmware_Cr50Uart", host=host, cmdline_args=args)
+    job.run_test("firmware_Cr50CCDServoCap", host=host, cmdline_args=args)
 
 parallel_simple(run, machines)

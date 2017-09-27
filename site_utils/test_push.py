@@ -94,6 +94,7 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          'dummy_Fail.Warn$':             'WARN',
                          'dummy_Fail.NAError$':          'TEST_NA',
                          'dummy_Fail.Crash$':            'GOOD',
+                         'autotest_SyncCount$':          'GOOD',
                          }
 
 EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
@@ -621,17 +622,8 @@ def _main(arguments):
         asynchronous_suite.daemon = True
         asynchronous_suite.start()
 
-        # Test suite for testbed
-        #testbed_suite = multiprocessing.Process(
-        #        target=test_suite_wrapper,
-        #        args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
-        #              arguments, False, False, True))
-        #testbed_suite.daemon = use_daemon
-        #testbed_suite.start()
-
         while (push_to_prod_suite.is_alive()
                or asynchronous_suite.is_alive()):
-               #or testbed_suite.is_alive()):
             check_queue(queue)
             time.sleep(5)
 
@@ -639,7 +631,6 @@ def _main(arguments):
 
         push_to_prod_suite.join()
         asynchronous_suite.join()
-        #testbed_suite.join()
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
         push_prod_next_branch(updated_repo_heads)

@@ -260,10 +260,12 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         return ((tests == passed + failed) or
                 (tests == passed + failed + notexecuted))
 
-    def _run_precondition_scripts(self, host, commands):
+    def _run_precondition_scripts(self, host, commands, steps):
         for command in commands:
-            logging.info('RUN: %s\n', command)
-            output = host.run(command, ignore_status=True)
+            # Replace {0} (if any) with the retry count.
+            formatted_command = command.format(steps)
+            logging.info('RUN: %s\n', formatted_command)
+            output = host.run(formatted_command, ignore_status=True)
             logging.info('END: %s\n', output)
 
     def _should_skip_test(self):
@@ -361,7 +363,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
-                    pre_condition_commands)
+                    pre_condition_commands,
+                    steps)
 
                 # Only push media for tests that need it. b/29371037
                 if needs_push_media and not pushed_media:
@@ -425,7 +428,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
-                    pre_condition_commands)
+                    pre_condition_commands,
+                    steps)
                 logging.info('Retrying failures of %s with session_id %d:',
                              test_name, session_id)
                 expected_tests = failed + notexecuted

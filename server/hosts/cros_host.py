@@ -1545,8 +1545,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @returns True if the service is running, False otherwise.
         """
-        return self.run('status %s | grep start/running' %
-                        service_name).stdout.strip() != ''
+        return 'start/running' in self.run('status %s' % service_name,
+                                           ignore_status=True).stdout
 
 
     def verify_software(self):
