@@ -10,11 +10,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
-class firmware_Cr50Uart(FirmwareTest):
-    """Verify Cr50 uart control
+class firmware_Cr50CCDServoCap(FirmwareTest):
+    """Verify Cr50 CCD output enable/disable when servo is connected.
 
-    Verify Cr50 will enable/disable the AP and EC uart when servo is
-    disconnected/connected.
+    Verify Cr50 will enable/disable the CCD servo output capabilities when servo
+    is attached/detached.
     """
     version = 1
 
@@ -92,7 +92,7 @@ class firmware_Cr50Uart(FirmwareTest):
 
 
     def initialize(self, host, cmdline_args):
-        super(firmware_Cr50Uart, self).initialize(host, cmdline_args)
+        super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args)
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
@@ -124,7 +124,7 @@ class firmware_Cr50Uart(FirmwareTest):
             self.reset_ccd()
             self.run_steps(self.CLEANUP)
 
-        super(firmware_Cr50Uart, self).cleanup()
+        super(firmware_Cr50CCDServoCap, self).cleanup()
 
 
     def get_ccdstate(self):
