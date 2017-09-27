@@ -15,8 +15,11 @@ class PeerConnection {
    * @param {!Element} videoElement the video element to render the feed on.
    * @param {!Array<!{x: number, y: number}>} resolutions. A width of -1 will
    *     result in disabled video for that stream.
+   * @param {?boolean=} cpuOveruseDetection Whether to enable
+   *     googCpuOveruseDetection (lower video quality if CPU usage is high).
+   *     Default is null which means that the constraint is not set at all.
    */
-  constructor(videoElement, resolutions) {
+  constructor(videoElement, resolutions, cpuOveruseDetection=null) {
     this.localConnection = null;
     this.remoteConnection = null;
     this.remoteView = videoElement;
@@ -26,6 +29,11 @@ class PeerConnection {
     this.resolutions = resolutions.slice().sort((x, y) => y.w - x.w);
     this.activeStreamIndex = resolutions.length - 1;
     this.badResolutionsSeen = 0;
+    if (cpuOveruseDetection !== null) {
+      this.pcConstraints = {
+        'optional': [{'googCpuOveruseDetection': cpuOveruseDetection}]
+      };
+    }
   }
 
   /**
@@ -116,11 +124,11 @@ class PeerConnection {
   }
 
   onGetUserMediaSuccess_(stream) {
-    this.localConnection = new RTCPeerConnection(null);
+    this.localConnection = new RTCPeerConnection(null, this.pcConstraints);
     this.localConnection.onicecandidate = (event) => {
       this.onIceCandidate_(this.remoteConnection, event);
     };
-    this.remoteConnection = new RTCPeerConnection(null);
+    this.remoteConnection = new RTCPeerConnection(null, this.pcConstraints);
     this.remoteConnection.onicecandidate = (event) => {
       this.onIceCandidate_(this.localConnection, event);
     };

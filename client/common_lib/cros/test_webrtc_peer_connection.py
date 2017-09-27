@@ -269,6 +269,15 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
             num_peer_connections = 5,
             iteration_delay_millis = 500,
             before_start_hook = None):
+
+          def perf_before_start_hook(tab):
+              """
+              Before start hook to disable cpu overuse detection.
+              """
+              if before_start_hook:
+                  before_start_hook(tab)
+              tab.EvaluateJavaScript('cpuOveruseDetection = false')
+
           super(WebRtcPeerConnectionPerformanceTest, self).__init__(
                   title,
                   own_script,
@@ -280,7 +289,7 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
                   test_runtime_seconds,
                   num_peer_connections,
                   iteration_delay_millis,
-                  before_start_hook)
+                  perf_before_start_hook)
           self.collector = system_metrics_collector.SystemMetricsCollector()
 
     def do_in_wait_loop(self):
