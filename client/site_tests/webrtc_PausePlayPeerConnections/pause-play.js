@@ -32,7 +32,8 @@ class TestRunner {
       throw new Error('elementType must be one of "audio" or "video"');
     }
     this.elements.push(element);
-    this.peerConnections.push(new PeerConnection(element, [resolution]));
+    this.peerConnections.push(
+        new PeerConnection(element, [resolution], cpuOveruseDetection));
   }
 
   runTest() {
@@ -88,6 +89,7 @@ class TestRunner {
 // Also allows us to access it easily in dev tools for debugging.
 let testRunner;
 // Set from the Python test runner
+let cpuOveruseDetection = null;
 let elementType;
 
 function startTest(
