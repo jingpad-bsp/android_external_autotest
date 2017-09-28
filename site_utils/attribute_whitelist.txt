@@ -82,6 +82,7 @@ suite:brillo-smoke
 suite:bvt-arc
 suite:bvt-cq
 suite:bvt-inline
+suite:bvt-installer
 suite:bvt-perbuild
 suite:cell_emulator
 suite:cellular_endtoend
