@@ -9,7 +9,7 @@ NAME = 'bluetooth_AdapterPairing.mouse.suspend_resume_stress_100'
 PURPOSE = ('Stress test for 100 iterations on bluetooth suspend/resume '
            'and adapter pairing and connection.')
 CRITERIA = 'Adapter should work in correct states.'
-ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_stress'
+ATTRIBUTES = 'suite:bluetooth'
 TIME = 'LONG'   # This test takes about 3 hours.
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
