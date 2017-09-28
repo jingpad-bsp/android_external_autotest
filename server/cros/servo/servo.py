@@ -443,10 +443,13 @@ class Servo(object):
 
 
     def get_board(self):
-        """Get the board connected to servod.
-
-        """
+        """Get the board connected to servod."""
         return self._server.get_board()
+
+
+    def get_base_board(self):
+        """Get the board of the base connected to servod."""
+        return self._server.get_base_board()
 
 
     def _get_xmlrpclib_exception(self, xmlexc):
