@@ -482,7 +482,11 @@ class BluetoothAdapterTests(test.test):
 
         """
         logging.info('The DUT suspends for %d seconds...', suspend_time)
-        self.host.suspend(suspend_time=suspend_time)
+        try:
+            self.host.suspend(suspend_time=suspend_time)
+        except error.AutoservSuspendError:
+            logging.error('The DUT did not suspend for %d seconds', suspend_time)
+            pass
         logging.info('The DUT is waken up.')
 
 
