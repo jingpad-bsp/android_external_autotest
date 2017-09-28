@@ -11,6 +11,7 @@ import pprint
 import sys
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
@@ -25,6 +26,12 @@ from autotest_lib.server.cros.multimedia import kiosk_facade_adapter
 from autotest_lib.server.cros.multimedia import system_facade_adapter
 from autotest_lib.server.cros.multimedia import usb_facade_adapter
 from autotest_lib.server.cros.multimedia import video_facade_adapter
+
+
+# Log the client messages in the DEBUG level, with the prefix [client].
+CLIENT_LOG_STREAM = logging_manager.LoggingFile(
+        level=logging.DEBUG,
+        prefix='[client] ')
 
 
 class _Method:
@@ -77,6 +84,7 @@ class RemoteFacadeProxy(object):
         """
         self._client = host
         self._xmlrpc_proxy = None
+        self._log_saving_job = None
         self._no_chrome = no_chrome
         self._extra_browser_args = extra_browser_args
         self.connect()
@@ -100,6 +108,24 @@ class RemoteFacadeProxy(object):
         @param dargs: The rest of dict-type arguments.
         @return: The return value of the RPC method.
         """
+        def process_log():
+            """Process the log from client, i.e. showing the log messages."""
+            if self._log_saving_job:
+                # final_read=True to process all data until the end
+                self._log_saving_job.process_output(
+                        stdout=True, final_read=True)
+                self._log_saving_job.process_output(
+                        stdout=False, final_read=True)
+
+        def call_rpc_with_log():
+            """Call the RPC with log."""
+            value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+            process_log()
+            if type(value) is str and value.startswith('Traceback'):
+                raise Exception('RPC error: %s\n%s' % (name, value))
+            logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
+            return value
+
         try:
             # TODO(ihf): This logs all traffic from server to client. Make
             # the spew optional.
@@ -108,11 +134,7 @@ class RemoteFacadeProxy(object):
                 (pprint.pformat(name), pprint.pformat(args),
                  pprint.pformat(dargs)))
             try:
-                value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
-                if type(value) is str and value.startswith('Traceback'):
-                    raise Exception('RPC error: %s\n%s' % (name, value))
-                logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
-                return value
+                return call_rpc_with_log()
             except (socket.error,
                     xmlrpclib.ProtocolError,
                     httplib.BadStatusLine):
@@ -124,15 +146,34 @@ class RemoteFacadeProxy(object):
                             extra_browser_args=self._extra_browser_args)
                 # Try again.
                 logging.warning('Retrying RPC %s.', rpc)
-                value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
-                if type(value) is str and value.startswith('Traceback'):
-                    raise Exception('RPC error: %s\n%s' % (name, value))
-                logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
-                return value
+                return call_rpc_with_log()
         except:
+            # Process the log if any. It is helpful for debug.
+            process_log()
             logging.error(
                 'Failed RPC %s with status [%s].', rpc, sys.exc_info()[0])
             raise
+
+
+    def save_log_bg(self):
+        """Save the log from client in background."""
+        # Run a tail command in background that keeps all the log messages from
+        # client.
+        command = 'tail -n0 -f %s' % constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE
+        full_command = '%s "%s"' % (self._client.ssh_command(), command)
+
+        if self._log_saving_job:
+            # Kill and join the previous job, probably due to a DUT reboot.
+            # In this case, a new job will be recreated.
+            logging.info('Kill and join the previous log job.')
+            utils.nuke_subprocess(self._log_saving_job.sp)
+            utils.join_bg_jobs([self._log_saving_job])
+
+        # Create the background job and pipe its stdout and stderr to the
+        # Autotest logging.
+        self._log_saving_job = utils.BgJob(full_command,
+                                           stdout_tee=CLIENT_LOG_STREAM,
+                                           stderr_tee=CLIENT_LOG_STREAM)
 
 
     def connect(self):
@@ -166,6 +207,10 @@ class RemoteFacadeProxy(object):
 
         logging.info('Setup the connection to RPC server, with retries...')
         connect_with_retries()
+
+        logging.info('Start a job to save the log from the client.')
+        self.save_log_bg()
+
         return True
 
 
