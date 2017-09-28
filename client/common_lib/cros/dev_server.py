@@ -2065,39 +2065,6 @@ class ImageServer(ImageServerBase):
         return board, build_type, milestone
 
 
-    def _parse_buildname_from_gs_uri(self, uri):
-        """Get parameters needed for AU metrics when build_name is not known.
-
-        autoupdate_EndToEndTest is run with two Google Storage URIs from the
-        gs://chromeos-releases bucket. URIs in this bucket do not have the
-        build_name in the format samus-release/R60-0000.0.0.
-
-        We can get the milestone and board by checking the instructions.json
-        file contained in the bucket with the payloads.
-
-        @param uri: The partial uri we received from autoupdate_EndToEndTest.
-        """
-        try:
-            # Get the instructions file that contains info about the build.
-            gs_file = 'gs://chromeos-releases/' + uri + '/*instructions.json'
-            files = bin_utils.gs_ls(gs_file)
-            for f in files:
-                gs_folder, _, instruction_file = f.rpartition('/')
-                self.stage_artifacts(image=uri,
-                                     files=[instruction_file],
-                                     archive_url=gs_folder)
-                json_file = self.get_staged_file_url(instruction_file, uri)
-                response = urllib2.urlopen(json_file)
-                data = json.load(response)
-                return data['board'], 'release', data['version']['milestone']
-        except (ValueError, error.CmdError, urllib2.URLError) as e:
-            logging.debug('Problem getting values for metrics: %s', e)
-            logging.warning('Unable to parse build name %s from AU test for '
-                            'metrics. Continuing anyway.', uri)
-
-        return '', '', ''
-
-
     def auto_update(self, host_name, build_name, original_board=None,
                     original_release_version=None, log_dir=None,
                     force_update=False, full_update=False,
@@ -2140,8 +2107,7 @@ class ImageServer(ImageServerBase):
                   'full_update': full_update,
                   'clobber_stateful': clobber_stateful}
 
-        is_aue2etest = payload_filename is not None
-        if is_aue2etest:
+        if payload_filename is not None:
             kwargs['payload_filename'] = payload_filename
 
         error_msg = 'CrOS auto-update failed for host %s: %s'
@@ -2151,13 +2117,7 @@ class ImageServer(ImageServerBase):
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
         error_list = []
         retry_with_another_devserver = False
-
-        if is_aue2etest:
-            board, build_type, milestone = self._parse_buildname_from_gs_uri(
-                build_name)
-        else:
-            board, build_type, milestone = self._parse_buildname_safely(
-                build_name)
+        board, build_type, milestone = self._parse_buildname_safely(build_name)
 
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
@@ -2180,8 +2140,7 @@ class ImageServer(ImageServerBase):
                          'board': board,
                          'build_type': build_type,
                          'milestone': milestone,
-                         'original_build': original_build,
-                         'is_aue2etest': is_aue2etest}
+                         'original_build': original_build}
                     c.increment(fields=f)
 
                     logging.debug('Try updating stateful partition of the '
@@ -2268,8 +2227,7 @@ class ImageServer(ImageServerBase):
              'board': board,
              'build_type': build_type,
              'milestone': milestone,
-             'error': raised_error,
-             'is_aue2etest': is_aue2etest}
+             'error': raised_error}
         c.increment(fields=f)
 
         # Per-DUT cros_update metric.
@@ -2277,8 +2235,7 @@ class ImageServer(ImageServerBase):
         f = {'success': is_au_success,
              'board': board,
              'error': raised_error,
-             'dut_host_name': host_name,
-             'is_aue2etest': is_aue2etest}
+             'dut_host_name': host_name}
         c.increment(fields=f)
 
         if is_au_success:
