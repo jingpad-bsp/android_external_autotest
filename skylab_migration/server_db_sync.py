@@ -332,6 +332,7 @@ def _main(options):
 def main(argv):
   """Entry point."""
   parser, options, args = parse_options()
+  sync_succeed = False
   if not verify_options_and_args(options, args):
     parser.print_help()
     sys.exit(1)
@@ -339,8 +340,8 @@ def main(argv):
   with ts_mon_config.SetupTsMonGlobalState(service_name='sync_server_db',
                                            indirect=True):
     try:
-      sync_succeed = True
       _main(options)
+      sync_succeed = True
     except:
       raise
     finally:
