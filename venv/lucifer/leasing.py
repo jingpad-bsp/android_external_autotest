@@ -130,7 +130,17 @@ def _job_leases_iter(jobdir):
     @param jobdir: job lease file directory
     """
     for entry in scandir(jobdir):
-        yield JobLease(entry)
+        if _is_lease_entry(entry):
+            yield JobLease(entry)
+
+
+def _is_lease_entry(entry):
+    """Return True if the DirEntry is for a lease."""
+    try:
+        int(entry.name)
+    except ValueError:
+        return False
+    return True
 
 
 def _fcntl_locked(path):
