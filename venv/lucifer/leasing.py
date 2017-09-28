@@ -18,6 +18,7 @@ from __future__ import print_function
 import fcntl
 import logging
 import os
+import socket
 
 from scandir import scandir
 
@@ -108,6 +109,22 @@ class JobLease(object):
     def cleanup(self):
         """Remove the lease file."""
         os.unlink(self._entry.path)
+
+    def abort(self):
+        """Abort the job."""
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        logger.debug('Connecting to abort socket %s', self._sock_path)
+        sock.connect(self._sock_path)
+        logger.debug('Sending abort to %s', self._sock_path)
+        # The value sent does not matter.
+        sent = sock.send("abort")
+        if sent < 1:
+            # Socket was closed, no abort is needed.
+            pass
+
+    @property
+    def _sock_path(self):
+        return self._entry.path + ".sock"
 
 
 def _filter_leased(jobdir, dbjobs):

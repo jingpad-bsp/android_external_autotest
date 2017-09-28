@@ -7,13 +7,17 @@ from __future__ import division
 from __future__ import print_function
 
 import contextlib
+import logging
 import os
 import sys
 
 import mock
+import pytest
 import subprocess32
 
 from lucifer import leasing
+
+logger = logging.getLogger(__name__)
 
 
 def test_get_expired_leases(tmpdir):
@@ -78,6 +82,27 @@ def test_Job_cleanup(tmpdir):
     assert not os.path.exists(path)
 
 
+def test_Job_abort(tmpdir):
+    """Test Job.abort()."""
+    _make_lease(tmpdir, 123)
+    with _abort_socket(tmpdir, 123) as proc:
+        for job in leasing.get_expired_leases(str(tmpdir)):
+            job.abort()
+        proc.wait()
+        assert proc.returncode == 0
+
+
+def test_Job_abort_with_closed_socket(tmpdir):
+    """Test Job.abort() with closed socket."""
+    _make_lease(tmpdir, 123)
+    with _abort_socket(tmpdir, 123) as proc:
+        proc.terminate()
+        proc.wait()
+        for job in leasing.get_expired_leases(str(tmpdir)):
+            with pytest.raises(Exception):
+                job.abort()
+
+
 @contextlib.contextmanager
 def _make_locked_lease(tmpdir, job_id):
     path = _make_lease(tmpdir, job_id)
@@ -95,6 +120,23 @@ def _lock_lease(path):
         proc.stdout.readline()
         try:
             yield
+        finally:
+            proc.terminate()
+
+
+@contextlib.contextmanager
+def _abort_socket(tmpdir, job_id):
+    "Open a testing abort socket and listener for a job."
+    path = os.path.join(str(tmpdir), '%d.sock' % job_id)
+    logger.debug('Making abort socket at %s', path)
+    with subprocess32.Popen(
+            [sys.executable, '-um',
+             'lucifer.scripts.test.abort_socket', path],
+            stdout=subprocess32.PIPE) as proc:
+        # Wait for socket bind.
+        proc.stdout.readline()
+        try:
+            yield proc
         finally:
             proc.terminate()
 
