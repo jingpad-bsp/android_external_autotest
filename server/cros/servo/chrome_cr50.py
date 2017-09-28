@@ -31,14 +31,15 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     This class is to abstract these interfaces.
     """
     IDLE_COUNT = 'count: (\d+)'
-    VERSION_FORMAT = '\d+\.\d+\.\d+'
-    VERSION_ERROR = 'Error'
-    INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
-    ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
+    # The version string will either be something like '0.0.24' or Error if the
+    # image in the region has been corrupted
+    VERSION_FORMAT = '\nRW_(A|B): +%s +(\d+\.\d+\.\d+|Error)(/DBG|)?'
+    INACTIVE_VERSION = VERSION_FORMAT % ''
+    ACTIVE_VERSION = VERSION_FORMAT % '\*'
     BID_FORMAT = ':\s+([a-f0-9:]+) '
     # The first group in the version strings is the relevant partition. Match
     # that to get the relevant board id
-    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE, BID_FORMAT)
+    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE_VERSION, BID_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
@@ -202,12 +203,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_inactive_version_info(self):
         """Get the active partition, version, and hash"""
-        return self.get_version_info(self.INACTIVE)
+        return self.get_version_info(self.INACTIVE_VERSION)
 
 
     def get_active_version_info(self):
         """Get the active partition, version, and hash"""
-        return self.get_version_info(self.ACTIVE)
+        return self.get_version_info(self.ACTIVE_VERSION)
 
 
     def get_active_board_id_str(self):
