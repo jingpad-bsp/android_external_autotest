@@ -19,7 +19,9 @@ from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 from autotest_lib.server.cros.faft.utils import mode_switcher
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
-from autotest_lib.server.cros.servo import chrome_cr50, chrome_ec
+from autotest_lib.server.cros.servo import chrome_base_ec
+from autotest_lib.server.cros.servo import chrome_cr50
+from autotest_lib.server.cros.servo import chrome_ec
 
 ConnectionError = mode_switcher.ConnectionError
 
@@ -145,6 +147,9 @@ class FirmwareTest(FAFTBase):
         # Get plankton console
         self.plankton = host.plankton
         self.plankton_host = host._plankton_host
+
+        # Create the BaseEC object. None if not available.
+        self.base_ec = chrome_base_ec.create_base_ec(self.servo)
 
         self._setup_uart_capture()
         self._setup_servo_log()
