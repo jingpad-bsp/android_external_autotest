@@ -19,7 +19,7 @@ import sampler
 import threading
 import time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -83,17 +83,6 @@ class graphics_WebGLAquarium(graphics_utils.GraphicsTest):
             self._backlight.restore()
         if self._service_stopper:
             self._service_stopper.restore_services()
-
-        if self._GSC:
-            keyvals = self._GSC.get_memory_difference_keyvals()
-            if not self._test_power:
-                for key, val in keyvals.iteritems():
-                    self.output_perf_value(
-                        description=key,
-                        value=val,
-                        units='bytes',
-                        higher_is_better=False)
-            self.write_perf_keyval(keyvals)
         super(graphics_WebGLAquarium, self).cleanup()
 
     def run_fish_test(self, browser, test_url, num_fishes, perf_log=True):
