@@ -68,14 +68,13 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
         sumOfFailed = 0
         sumOfWaived = 0
         for result in results:
-            if result.get('url') in self._waived_tests:
+            if result.get('url') in self._waived_tests or result.get('skip'):
                 sumOfWaived += 1
-                continue
-            if 'error' in result:
+            elif 'error' in result:
                 sumOfFailed += 1
-                continue
-            sumOfLogResults += math.log(result['testResult'])
-            sumOfPassed += 1
+            else:
+                sumOfLogResults += math.log(result['testResult'])
+                sumOfPassed += 1
         time_ms_geom_mean = round(100 * math.exp(
             sumOfLogResults / len(results))) / 100
 
