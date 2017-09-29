@@ -39,11 +39,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     # The first group in the version strings is the relevant partition. Match
     # that to get the relevant board id
     ACTIVE_BID = r'%s.*\1%s' % (ACTIVE, BID_FORMAT)
-    INACTIVE_BID = r'%s.*\1%s' % (INACTIVE, BID_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
-    UNLOCK = ['Unlock sequence starting. Continue until (\S+)']
     FWMP_LOCKED_PROD = ["Managed device console can't be unlocked"]
     FWMP_LOCKED_DBG = ['Ignoring FWMP unlock setting']
     MAX_RETRY_COUNT = 5
