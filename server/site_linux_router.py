@@ -886,23 +886,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.release_interface(interface)
 
 
-    def setup_management_frame_interface(self, channel):
-        """
-        Setup interface for injecting management frames.
-
-        @param channel int channel to inject the frames.
-
-        @return string name of the interface.
-
-        """
-        frequency = hostap_config.HostapConfig.get_frequency_for_channel(
-                channel)
-        interface = self.get_wlanif(frequency, 'monitor')
-        self.router.run('%s link set %s up' % (self.cmd_ip, interface))
-        self.iw_runner.set_freq(interface, frequency)
-        return interface
-
-
     def send_management_frame(self, interface, frame_type, channel,
                               ssid_prefix=None, num_bss=None,
                               frame_count=None, delay=None,
