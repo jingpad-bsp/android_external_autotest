@@ -17,6 +17,7 @@ import subprocess32
 from lucifer import autotest
 
 
+@pytest.mark.slow
 def test_monkeypatch():
     """Test monkeypatch()."""
     common_file = subprocess32.check_output(
