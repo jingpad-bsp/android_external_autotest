@@ -25,6 +25,15 @@ def test_get_expired_leases(tmpdir):
     assert [job.id for job in got] == [123]
 
 
+def test_get_expired_leases_with_sock_files(tmpdir):
+    """Test get_expired_leases()."""
+    _make_lease(tmpdir, 123)
+    tmpdir.join('123.sock').write('')
+    got = list(leasing.get_expired_leases(str(tmpdir)))
+    assert all(isinstance(job, leasing.JobLease) for job in got)
+    assert [job.id for job in got] == [123]
+
+
 def test_get_timed_out_leases(tmpdir):
     """Test get_timed_out_leases()."""
     mock_model = mock.Mock()
