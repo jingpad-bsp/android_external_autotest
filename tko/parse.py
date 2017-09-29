@@ -404,12 +404,6 @@ def parse_one(db, jobname, path, parse_options):
             path, log=tko_utils.dprint)
     job.keyval_dict.update(result_size_info.__dict__)
 
-    # Upload job details to Sponge.
-    if not dry_run:
-        sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
-        if sponge_url:
-            job.keyval_dict['sponge_url'] = sponge_url
-
     # TODO(dshi): Update sizes with sponge_invocation.xml and throttle it.
 
     # check for failures
@@ -435,6 +429,15 @@ def parse_one(db, jobname, path, parse_options):
                                  % (jobname, job.user))
                 mailfailure(jobname, job, message)
 
+            # Upload perf values to the perf dashboard, if applicable.
+            for test in job.tests:
+                perf_uploader.upload_test(job, test, jobname)
+
+            # Upload job details to Sponge.
+            sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
+            if sponge_url:
+                job.keyval_dict['sponge_url'] = sponge_url
+
             # write the job into the database.
             job_data = db.insert_job(
                 jobname, job,
@@ -454,10 +457,6 @@ def parse_one(db, jobname, path, parse_options):
                             'chromeos/autotest/result/db_save_failure',
                             description='The number of times parse failed to '
                             'save job to TKO database.').increment()
-
-            # Upload perf values to the perf dashboard, if applicable.
-            for test in job.tests:
-                perf_uploader.upload_test(job, test, jobname)
 
             # Although the cursor has autocommit, we still need to force it to
             # commit existing changes before we can use django models, otherwise
