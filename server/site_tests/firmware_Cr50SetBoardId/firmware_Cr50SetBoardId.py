@@ -65,7 +65,11 @@ class firmware_Cr50SetBoardId(Cr50Test):
         if not self.cr50.has_command('bid'):
             raise error.TestNAError('Cr50 image does not support board id')
 
-        self.platform_brand = self.host.run(self.GET_BRAND).stdout.strip()
+        result = self.host.run(self.GET_BRAND, ignore_status=True)
+        platform_brand = result.stdout.strip()
+        if result.exit_status or not platform_brand:
+            raise error.TestNAError('Could not get "mosys platform brand"')
+        self.platform_brand = platform_brand
         self.erase_bid()
         if 'running' in self.host.run('status trunksd').stdout.strip():
             self.host.run('stop trunksd')
