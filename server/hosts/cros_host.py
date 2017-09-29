@@ -119,9 +119,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _USB_POWER_TIMEOUT = 5
     _POWER_CYCLE_TIMEOUT = 10
 
-    _RPM_RECOVERY_BOARDS = CONFIG.get_config_value('CROS',
-            'rpm_recovery_boards', type=str).split(',')
-
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
