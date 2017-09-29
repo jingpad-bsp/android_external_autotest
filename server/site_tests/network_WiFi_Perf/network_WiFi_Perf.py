@@ -91,9 +91,11 @@ class network_WiFi_Perf(wifi_cell_test_base.WiFiCellTestBase):
             session = netperf_session.NetperfSession(self.context.client,
                                                      self.context.router)
 
-            # Conduct the performance tests while toggling powersave mode.
-            for power_save in (True, False):
-                self.do_run(ap_config, session, power_save)
+            # Flag a test error if we disconnect for any reason.
+            with self.context.client.assert_no_disconnects():
+                # Conduct the performance tests while toggling powersave mode.
+                for power_save in (True, False):
+                    self.do_run(ap_config, session, power_save)
 
             # Clean up router and client state for the next run.
             self.context.client.shill.disconnect(self.context.router.get_ssid())
