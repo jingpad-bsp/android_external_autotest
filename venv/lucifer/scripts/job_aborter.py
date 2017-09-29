@@ -68,17 +68,13 @@ def _mark_expired_jobs_aborted(jobdir):
 def _abort_timed_out_jobs(jobdir):
     models = autotest.load('frontend.afe.models')
     for lease in leasing.get_timed_out_leases(models, jobdir):
-        # TODO(crbug.com/748234): Abort job not implemented yet (in
-        # job_shepherd)
-        pass
+        lease.abort()
 
 
 def _abort_jobs_marked_aborting(jobdir):
     models = autotest.load('frontend.afe.models')
     for lease in leasing.get_marked_aborting_leases(models, jobdir):
-        # TODO(crbug.com/748234): Abort job not implemented yet (in
-        # job_shepherd)
-        pass
+        lease.abort()
 
 
 def _abort_special_tasks_marked_aborted():
