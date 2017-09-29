@@ -4,6 +4,7 @@
 
 """This class defines the CrosHost Label class."""
 
+import collections
 import logging
 import os
 import re
@@ -21,6 +22,20 @@ from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils import hwid_lib
 
 # pylint: disable=missing-docstring
+LsbOutput = collections.namedtuple('LsbOutput', ['unibuild', 'board'])
+
+def _parse_lsb_output(host):
+  """Parses the LSB output and returns key data points for labeling.
+
+  @param host: Host that the command will be executed against
+  @returns: LsbOutput with the result of parsing the /etc/lsb-release output
+  """
+  release_info = utils.parse_cmd_output('cat /etc/lsb-release',
+                                        run_method=host.run)
+
+  unibuild = release_info.get('CHROMEOS_RELEASE_UNIBUILD') == '1'
+  return LsbOutput(unibuild, release_info['CHROMEOS_RELEASE_BOARD'])
+
 
 class BoardLabel(base_label.StringPrefixLabel):
     """Determine the correct board label for the device."""
@@ -37,14 +52,22 @@ class BoardLabel(base_label.StringPrefixLabel):
             if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
 
-        # TODO(kevcheng): for now this will dup the code in CrosHost and a
-        # separate cl will refactor the get_board in CrosHost to just return the
-        # board without the BOARD_PREFIX and all the other callers will be
-        # updated to not need to clear it out and this code will be replaced to
-        # just call the host's get_board() method.
-        release_info = utils.parse_cmd_output('cat /etc/lsb-release',
-                                              run_method=host.run)
-        return [release_info['CHROMEOS_RELEASE_BOARD']]
+        # Board is used as the primary scheduling criteria for all autotest
+        # runs.  Pre-unified builds, the board and build names matched.
+        #
+        # With unified builds, this is now the name of the builder
+        # and no longer the name of the board that's being targeted for testing.
+        #
+        # Until cbuildbot is migrated to begin using the model label for
+        # scheduling, we need compatibility with the board label so that it
+        # will work with unified builds in the meantime.
+        lsb_output = _parse_lsb_output(host)
+        if lsb_output.unibuild:
+            cmd = 'mosys platform model'
+            result = host.run(command=cmd, ignore_status=True)
+            return [result.stdout.strip()]
+        else:
+            return [lsb_output.board]
 
 
 class ModelLabel(base_label.StringPrefixLabel):
@@ -59,13 +82,17 @@ class ModelLabel(base_label.StringPrefixLabel):
             if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
 
-        cmd = "mosys platform model"
+        cmd = 'mosys platform model'
         result = host.run(command=cmd, ignore_status=True)
         if result.exit_status == 0:
-            return result.stdout
+            return [result.stdout.strip()]
         else:
-            logging.info("%s exited with status %d", cmd, result.exit_status)
-            return ""
+            # We need some sort of backwards compatibility for boards that
+            # are not yet supported with mosys and unified builds.
+            # This is necessary so that we can begin changing cbuildbot to take
+            # advantage of the model/board label differentiations for
+            # scheduling, while still retaining backwards compatibility.
+            return [_parse_lsb_output(host).board]
 
 
 class LightSensorLabel(base_label.BaseLabel):
@@ -530,6 +557,7 @@ CROS_LABELS = [
     AudioLoopbackDongleLabel(),
     BluetoothLabel(),
     BoardLabel(),
+    ModelLabel(),
     ChameleonConnectionLabel(),
     ChameleonLabel(),
     ChameleonPeripheralsLabel(),
