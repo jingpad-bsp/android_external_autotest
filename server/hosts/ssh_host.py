@@ -13,7 +13,6 @@ You should import the "hosts" package instead of importing each type of host.
 import inspect
 import logging
 import re
-import warnings
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import pxssh
 from autotest_lib.server import utils
@@ -261,8 +260,6 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         return result
 
 
-    @metrics.SecondsTimerDecorator(
-            'chromeos/autotest/ssh/master_ssh_time')
     def run_very_slowly(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
             connect_timeout=30, options='', stdin=None, verbose=True, args=(),
@@ -291,25 +288,30 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservRunError: if the command failed
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
-        if verbose:
-            stack = self._get_server_stack_state(lowest_frames=1, highest_frames=7)
-            logging.debug("Running (ssh) '%s' from '%s'", command, stack)
-            command = self._verbose_logger_command(command)
+        with metrics.SecondsTimer('chromeos/autotest/ssh/master_ssh_time',
+                                  scale=0.001):
+            if verbose:
+                stack = self._get_server_stack_state(lowest_frames=1,
+                                                     highest_frames=7)
+                logging.debug("Running (ssh) '%s' from '%s'", command, stack)
+                command = self._verbose_logger_command(command)
 
-        # Start a master SSH connection if necessary.
-        self.start_master_ssh()
+            # Start a master SSH connection if necessary.
+            self.start_master_ssh()
 
-        env = " ".join("=".join(pair) for pair in self.env.iteritems())
-        try:
-            return self._run(command, timeout, ignore_status,
-                             stdout_tee, stderr_tee, connect_timeout, env,
-                             options, stdin, args, ignore_timeout,
-                             ssh_failure_retry_ok)
-        except error.CmdError, cmderr:
-            # We get a CmdError here only if there is timeout of that command.
-            # Catch that and stuff it into AutoservRunError and raise it.
-            timeout_message = str('Timeout encountered: %s' % cmderr.args[0])
-            raise error.AutoservRunError(timeout_message, cmderr.args[1])
+            env = " ".join("=".join(pair) for pair in self.env.iteritems())
+            try:
+                return self._run(command, timeout, ignore_status,
+                                 stdout_tee, stderr_tee, connect_timeout, env,
+                                 options, stdin, args, ignore_timeout,
+                                 ssh_failure_retry_ok)
+            except error.CmdError, cmderr:
+                # We get a CmdError here only if there is timeout of that
+                # command. Catch that and stuff it into AutoservRunError and
+                # raise it.
+                timeout_message = str('Timeout encountered: %s' %
+                                      cmderr.args[0])
+                raise error.AutoservRunError(timeout_message, cmderr.args[1])
 
 
     def run(self, *args, **kwargs):
