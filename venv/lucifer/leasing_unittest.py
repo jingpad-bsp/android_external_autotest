@@ -20,6 +20,7 @@ from lucifer import leasing
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.slow
 def test_get_expired_leases(tmpdir):
     """Test get_expired_leases()."""
     _make_lease(tmpdir, 123)
@@ -82,6 +83,7 @@ def test_Job_cleanup(tmpdir):
     assert not os.path.exists(path)
 
 
+@pytest.mark.slow
 def test_Job_abort(tmpdir):
     """Test Job.abort()."""
     _make_lease(tmpdir, 123)
@@ -92,6 +94,7 @@ def test_Job_abort(tmpdir):
         assert proc.returncode == 0
 
 
+@pytest.mark.slow
 def test_Job_abort_with_closed_socket(tmpdir):
     """Test Job.abort() with closed socket."""
     _make_lease(tmpdir, 123)
