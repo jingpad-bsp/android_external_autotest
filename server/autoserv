@@ -673,10 +673,11 @@ def main():
     if ssp_url_warning:
         logging.warn(
                 'Autoserv is required to run with server-side packaging. '
-                'However, no server-side package can be found based on '
+                'However, no server-side package can be staged based on '
                 '`--image`, host attribute job_repo_url or host OS version '
                 'label. It could be that the build to test is older than the '
-                'minimum version that supports server-side packaging. The test '
+                'minimum version that supports server-side packaging, or no '
+                'devserver can be found to stage server-side package. The test '
                 'will be executed without using erver-side packaging. '
                 'Following is the detailed error:\n%s', ssp_error_msg)
 

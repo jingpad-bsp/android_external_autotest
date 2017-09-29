@@ -82,6 +82,7 @@ suite:brillo-smoke
 suite:bvt-arc
 suite:bvt-cq
 suite:bvt-inline
+suite:bvt-installer
 suite:bvt-perbuild
 suite:cell_emulator
 suite:cellular_endtoend
@@ -102,6 +103,7 @@ suite:chameleon_hdmi_stress
 suite:chameleon_vga
 suite:chrome-informational
 suite:cr50_stress_experimental
+suite:cr50_stress_flaky
 suite:crosbolt_arc_perf_nightly
 suite:crosbolt_arc_perf_perbuild
 suite:crosbolt_perf_nightly

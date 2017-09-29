@@ -46,8 +46,8 @@ class TestRunner {
         setSize(videoElement, SMALL_FEED_RESOLUTION);
         this.videoElements.push(videoElement);
       }
-      this.peerConnections.push(
-          new PeerConnection(videoElement, [MAIN_FEED_RESOLUTION]));
+      this.peerConnections.push(new PeerConnection(
+          videoElement, [MAIN_FEED_RESOLUTION], cpuOveruseDetection));
     }
     const promises = this.peerConnections.map((conn) => conn.start());
     Promise.all(promises)
@@ -102,6 +102,8 @@ function setSize(element, size) {
 // Declare testRunner so that the Python code can access it to query status.
 // Also allows us to access it easily in dev tools for debugging.
 let testRunner;
+// Set from the Python test runner
+let cpuOveruseDetection = null;
 
 function startTest(
     runtimeSeconds, numPeerConnections, iterationDelayMillis) {

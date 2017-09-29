@@ -104,15 +104,27 @@ class platform_ImageLoader(test.test):
 
         return self._load_component(versioned_name)
 
+    def _get_unmount_all_paths(self):
+        """Returns a set representing all the paths that would be unmounted by
+        imageloader.
+        """
+        return subprocess.check_output([
+                '/usr/sbin/imageloader', '--dry_run', '--unmount_all',
+        ]).splitlines()
+
     def initialize(self):
+        """Initialize the test variables."""
         self._paths_to_unmount = []
         self._components_to_delete = []
 
     def run_once(self, component1=None, component2=None):
+        """Executes the test cases."""
 
         if component1 == None or component2 == None:
             raise error.TestError('Must supply two versions of '
                                   'a production signed component.')
+
+        paths_before = self._get_unmount_all_paths()
 
         # Make sure there is no version returned at first.
         if self._get_component_version(self.COMPONENT_NAME) != self.BAD_RESULT:
@@ -249,7 +261,31 @@ class platform_ImageLoader(test.test):
                                             '1') != self.BAD_RESULT:
             raise error.TestError('Mounted component with corrupt table')
 
+        # Determine which mount points were added during the test and verify
+        # that they match the expected mount points.
+        paths_after = self._get_unmount_all_paths()
+        measured_unmount = set(paths_after) - set(paths_before);
+        expected_unmount = set(self._paths_to_unmount);
+        if measured_unmount != expected_unmount:
+            raise error.TestError('Discrepency between --unmount_all and '
+                                  'paths_to_unmount "%s" and "%s"' %
+                                  (measured_unmount, expected_unmount))
+
+        # Clean up each mount point created by the test to verify the
+        # functionality of the --unmount flag.
+        for path in expected_unmount:
+            if subprocess.call([
+                    '/usr/sbin/imageloader', '--unmount',
+                    '--mount_point=%s' % (path,)]) != 0:
+                raise error.TestError('Failed to unmount component')
+
+        # Verify that the mount points were indeed cleaned up.
+        paths_cleanup = self._get_unmount_all_paths()
+        if paths_cleanup != paths_before:
+            raise error.TestError('--unmount failed.')
+
     def cleanup(self):
+        """Cleans up the files and mounts created by the test."""
         shutil.rmtree(self.CORRUPT_COMPONENT_PATH, ignore_errors=True)
         for name in self._components_to_delete:
             shutil.rmtree(os.path.join(self.STORAGE, name), ignore_errors=True)

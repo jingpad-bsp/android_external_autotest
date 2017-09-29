@@ -5,7 +5,7 @@
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50Update.erase_nvmem"
 PURPOSE = "Verify Cr50 update"
-ATTRIBUTES = "suite:cr50_stress_experimental"
+ATTRIBUTES = "suite:cr50_stress_flaky"
 TIME = "SHORT"
 TEST_TYPE = "server"
 
