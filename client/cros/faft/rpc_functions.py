@@ -347,6 +347,14 @@ class RPCFunctions(object):
         """Create a temporary directory and return the path."""
         return tempfile.mkdtemp(prefix=prefix)
 
+    def _system_remove_file(self, file_path):
+        """Remove the file."""
+        return self._os_if.remove_file(file_path)
+
+    def _system_remove_dir(self, dir_path):
+        """Remove the directory."""
+        return self._os_if.remove_dir(dir_path)
+
     def _bios_reload(self):
         """Reload the firmware image that may be changed."""
         self._bios_handler.reload()
