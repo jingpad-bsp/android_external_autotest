@@ -449,7 +449,16 @@ class Servo(object):
 
     def get_base_board(self):
         """Get the board of the base connected to servod."""
-        return self._server.get_base_board()
+        try:
+            return self._server.get_base_board()
+        except  xmlrpclib.Fault as e:
+            # TODO(waihong): Remove the following compatibility check when
+            # the new versions of hdctools are deployed.
+            if 'not supported' in str(e):
+                logging.warning('The servod is too old that get_base_board '
+                        'not supported.')
+                return ''
+            raise
 
 
     def _get_xmlrpclib_exception(self, xmlexc):
