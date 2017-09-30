@@ -111,7 +111,7 @@ def create_base_ec(servo):
     Returns:
       A ChromeBaseEC object, or None if not found.
     """
-    base_board = servo._server.get_base_board()
+    base_board = servo.get_base_board()
     if base_board:
         return ChromeBaseEC(servo, base_board)
     else:
