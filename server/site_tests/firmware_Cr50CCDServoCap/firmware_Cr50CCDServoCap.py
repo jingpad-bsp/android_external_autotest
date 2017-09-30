@@ -100,6 +100,9 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         if self.servo.get_servo_version() != 'servo_v4_with_servo_micro':
             raise error.TestNAError('Must use servo v4 with servo micro')
 
+        if not self.cr50.has_command('ccdstate'):
+            raise error.TestNAError('Cannot test on Cr50 with old CCD version')
+
         if self.servo.get('cr50_testlab') != 'enabled':
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
 
