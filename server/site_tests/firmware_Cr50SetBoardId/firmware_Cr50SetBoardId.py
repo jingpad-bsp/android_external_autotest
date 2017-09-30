@@ -65,6 +65,9 @@ class firmware_Cr50SetBoardId(Cr50Test):
         if not self.cr50.has_command('bid'):
             raise error.TestNAError('Cr50 image does not support board id')
 
+        if not self.host.path_exists(self.BID_SCRIPT):
+            raise error.TestNAError('Device does not have "cr50-set-board-id"')
+
         result = self.host.run(self.GET_BRAND, ignore_status=True)
         platform_brand = result.stdout.strip()
         if result.exit_status or not platform_brand:
