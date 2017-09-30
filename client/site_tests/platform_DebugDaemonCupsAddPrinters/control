@@ -6,7 +6,7 @@ AUTHOR = "skau@chromium.org"
 NAME = "platform_DebugDaemonCupsAddPrinters"
 PURPOSE = "Verify that debugd's Cups* functions behave properly."
 
-ATTRIBUTES = "suite:bvt-cq"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
