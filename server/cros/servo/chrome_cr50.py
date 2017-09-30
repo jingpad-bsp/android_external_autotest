@@ -31,14 +31,28 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     This class is to abstract these interfaces.
     """
     IDLE_COUNT = 'count: (\d+)'
-    # The version string will either be something like '0.0.24' or Error if the
-    # image in the region has been corrupted
-    VERSION_FORMAT = '\nRW_(A|B): +%s +(\d+\.\d+\.\d+|Error)(/DBG|)?'
+    # The version has four groups: the partition, the header version, debug
+    # descriptor and then version string.
+    # There are two partitions A and B. The active partition is marked with a
+    # '*'. If it is a debug image '/DBG' is added to the version string. If the
+    # image has been corrupted, the version information will be replaced with
+    # 'Error'.
+    # So the output may look something like this.
+    #   RW_A:    0.0.21/cr50_v1.1.6133-fd788b
+    #   RW_B:  * 0.0.22/DBG/cr50_v1.1.6138-b9f0b1d
+    # Or like this if the region was corrupted.
+    #   RW_A:  * 0.0.21/cr50_v1.1.6133-fd788b
+    #   RW_B:    Error
+    VERSION_FORMAT = '\nRW_(A|B): +%s +(\d+\.\d+\.\d+|Error)(/DBG)?(\S+)?\s'
     INACTIVE_VERSION = VERSION_FORMAT % ''
     ACTIVE_VERSION = VERSION_FORMAT % '\*'
+    # Following lines of the version output may print the image board id
+    # information. eg.
+    # BID A:   5a5a4146:ffffffff:00007f00 Yes
+    # BID B:   00000000:00000000:00000000 Yes
+    # Use the first group from ACTIVE_VERSION to match the active board id
+    # partition.
     BID_FORMAT = ':\s+([a-f0-9:]+) '
-    # The first group in the version strings is the relevant partition. Match
-    # that to get the relevant board id
     ACTIVE_BID = r'%s.*\1%s' % (ACTIVE_VERSION, BID_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
@@ -239,7 +253,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info('Cannot use the version to get the board id')
             return None
 
-        bid = version_info[3]
+        bid = version_info[-1]
         logging.info('%r %r', version_info, bid)
 
         return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None
