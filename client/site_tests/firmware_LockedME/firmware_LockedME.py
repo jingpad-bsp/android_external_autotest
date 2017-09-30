@@ -87,6 +87,11 @@ class firmware_LockedME(test.test):
 
         @param expect_me_present: False means the system has no ME.
         """
+        cpu_arch = utils.get_cpu_arch()
+        if cpu_arch == "arm":
+            raise error.TestNAError('This test is not applicable, '
+                    'because an ARM device has been detected. '
+                    'ARM devices do not have an ME (Management Engine)')
 
         # See if the system even has an ME, and whether we expected that.
         if self.has_ME():
