@@ -119,9 +119,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _USB_POWER_TIMEOUT = 5
     _POWER_CYCLE_TIMEOUT = 10
 
-    _RPM_RECOVERY_BOARDS = CONFIG.get_config_value('CROS',
-            'rpm_recovery_boards', type=str).split(',')
-
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
@@ -1957,14 +1954,22 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @returns a string representing this host's platform.
         """
-        crossystem = utils.Crossystem(self)
-        crossystem.init()
-        # Extract fwid value and use the leading part as the platform id.
-        # fwid generally follow the format of {platform}.{firmware version}
-        # Example: Alex.X.YYY.Z or Google_Alex.X.YYY.Z
-        platform = crossystem.fwid().split('.')[0].lower()
-        # Newer platforms start with 'Google_' while the older ones do not.
-        return platform.replace('google_', '')
+        cmd = 'mosys platform model'
+        result = self.run(command=cmd, ignore_status=True)
+        if result.exit_status == 0:
+            return result.stdout.strip()
+        else:
+            # $(mosys platform model) should support all platforms, but it
+            # currently doesn't, so this reverts to parsing the fw
+            # for any unsupported mosys platforms.
+            crossystem = utils.Crossystem(self)
+            crossystem.init()
+            # Extract fwid value and use the leading part as the platform id.
+            # fwid generally follow the format of {platform}.{firmware version}
+            # Example: Alex.X.YYY.Z or Google_Alex.X.YYY.Z
+            platform = crossystem.fwid().split('.')[0].lower()
+            # Newer platforms start with 'Google_' while the older ones do not.
+            return platform.replace('google_', '')
 
 
     def get_architecture(self):

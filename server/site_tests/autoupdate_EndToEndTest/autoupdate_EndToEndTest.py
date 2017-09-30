@@ -279,7 +279,7 @@ class autoupdate_EndToEndTest(update_engine_test.UpdateEngineTest):
         logging.debug('Reading perf results from %s.', perf_file)
         try:
             with open(perf_file, 'r') as perf_file_handle:
-                perf_data = json.loads(perf_file_handle.read())
+                perf_data = json.load(perf_file_handle)
         except Exception as e:
             logging.warning('Error while reading the perf data file: %s', e)
             return
@@ -295,6 +295,16 @@ class autoupdate_EndToEndTest(update_engine_test.UpdateEngineTest):
         else:
             logging.warning('No rss_peak key in JSON returned by update '
                             'engine perf script.')
+
+        update_time = perf_data.get('update_length')
+        if update_time:
+            logging.info('Time it took to update: %s seconds', update_time)
+            self.output_perf_value(description='update_length',
+                                   value=int(update_time), units='sec',
+                                   higher_is_better=False)
+        else:
+            logging.warning('No data about how long it took to update was '
+                            'found.')
 
 
     def _verify_active_slot_changed(self, source_active_slot,

@@ -37,6 +37,8 @@ def main(args):
     parser.add_argument('--job-id', type=int, default=None)
     parser.add_argument('--autoserv-exit', type=int, default=None,
                         help='autoserv exit status')
+    parser.add_argument('job_shepherd_args', nargs=argparse.REMAINDER,
+                        help='Arguments passed to job_shepherd')
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
 
@@ -55,19 +57,19 @@ def main(args):
         # TODO(crbug.com/748234): Full jobs not implemented yet.
         raise NotImplementedError('not implemented yet')
     handler = _EventHandler(job, hqes, autoserv_exit=args.autoserv_exit)
-    return _run_shepherd(handler, job_id=args.job_id)
+    return _run_shepherd(handler, args)
 
 
-def _run_shepherd(event_handler, job_id):
+def _run_shepherd(event_handler, args):
     """Run job_shepherd.
 
     Events issues by the job_shepherd will be handled by event_handler.
 
     @param event_handler: callable that takes an Event
-    @param job_id: job ID
+    @param args: parsed arguments
     """
     args = [_JOB_SHEPHERD_PROGRAM]
-    args.append('%d' % job_id)
+    args.extend(args.job_shepherd_args)
     return eventlib.run_event_command(event_handler=event_handler, args=args)
 
 

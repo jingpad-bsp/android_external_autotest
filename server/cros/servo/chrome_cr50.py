@@ -31,19 +31,32 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     This class is to abstract these interfaces.
     """
     IDLE_COUNT = 'count: (\d+)'
-    VERSION_FORMAT = '\d+\.\d+\.\d+'
-    VERSION_ERROR = 'Error'
-    INACTIVE = '\nRW_(A|B): +(%s|%s)(/DBG|)?' % (VERSION_FORMAT, VERSION_ERROR)
-    ACTIVE = '\nRW_(A|B): +\* +(%s)(/DBG|)?' % (VERSION_FORMAT)
+    # The version has four groups: the partition, the header version, debug
+    # descriptor and then version string.
+    # There are two partitions A and B. The active partition is marked with a
+    # '*'. If it is a debug image '/DBG' is added to the version string. If the
+    # image has been corrupted, the version information will be replaced with
+    # 'Error'.
+    # So the output may look something like this.
+    #   RW_A:    0.0.21/cr50_v1.1.6133-fd788b
+    #   RW_B:  * 0.0.22/DBG/cr50_v1.1.6138-b9f0b1d
+    # Or like this if the region was corrupted.
+    #   RW_A:  * 0.0.21/cr50_v1.1.6133-fd788b
+    #   RW_B:    Error
+    VERSION_FORMAT = '\nRW_(A|B): +%s +(\d+\.\d+\.\d+|Error)(/DBG)?(\S+)?\s'
+    INACTIVE_VERSION = VERSION_FORMAT % ''
+    ACTIVE_VERSION = VERSION_FORMAT % '\*'
+    # Following lines of the version output may print the image board id
+    # information. eg.
+    # BID A:   5a5a4146:ffffffff:00007f00 Yes
+    # BID B:   00000000:00000000:00000000 Yes
+    # Use the first group from ACTIVE_VERSION to match the active board id
+    # partition.
     BID_FORMAT = ':\s+([a-f0-9:]+) '
-    # The first group in the version strings is the relevant partition. Match
-    # that to get the relevant board id
-    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE, BID_FORMAT)
-    INACTIVE_BID = r'%s.*\1%s' % (INACTIVE, BID_FORMAT)
+    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE_VERSION, BID_FORMAT)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
-    UNLOCK = ['Unlock sequence starting. Continue until (\S+)']
     FWMP_LOCKED_PROD = ["Managed device console can't be unlocked"]
     FWMP_LOCKED_DBG = ['Ignoring FWMP unlock setting']
     MAX_RETRY_COUNT = 5
@@ -204,12 +217,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_inactive_version_info(self):
         """Get the active partition, version, and hash"""
-        return self.get_version_info(self.INACTIVE)
+        return self.get_version_info(self.INACTIVE_VERSION)
 
 
     def get_active_version_info(self):
         """Get the active partition, version, and hash"""
-        return self.get_version_info(self.ACTIVE)
+        return self.get_version_info(self.ACTIVE_VERSION)
 
 
     def get_active_board_id_str(self):
@@ -240,7 +253,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info('Cannot use the version to get the board id')
             return None
 
-        bid = version_info[3]
+        bid = version_info[-1]
         logging.info('%r %r', version_info, bid)
 
         return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None

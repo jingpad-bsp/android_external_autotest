@@ -17,10 +17,12 @@ import subprocess32
 from lucifer import autotest
 
 
+@pytest.mark.slow
 def test_monkeypatch():
     """Test monkeypatch()."""
     common_file = subprocess32.check_output(
-            [sys.executable, '-m', 'lucifer.scripts.autotest_monkeypatcher'])
+            [sys.executable, '-m',
+             'lucifer.scripts.test.autotest_monkeypatcher'])
     assert common_file.rstrip() == '<removed>'
 
 
