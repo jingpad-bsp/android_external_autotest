@@ -645,10 +645,9 @@ class MySQLdbPackage(ExternalPackage):
     """mysql package, used in scheduler."""
     module_name = 'MySQLdb'
     version = '1.2.3'
-    urls = ('http://downloads.sourceforge.net/project/mysql-python/'
-            'mysql-python/%(version)s/MySQL-python-%(version)s.tar.gz'
-            % dict(version=version),)
     local_filename = 'MySQL-python-%s.tar.gz' % version
+    urls = ('http://commondatastorage.googleapis.com/chromeos-mirror/gentoo/'
+            'distfiles/%s' % local_filename,)
     hex_sum = '3511bb8c57c6016eeafa531d5c3ea4b548915e3c'
 
     _build_and_install_current_dir = (
