@@ -408,6 +408,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         since it last recovered from deep sleep or came up from reboot. This
         will wait until cr50 gettime shows a time greater than 60.
         """
+        if self.get_active_version_info()[2]:
+            logging.info("Running DBG image. Don't need to wait for update.")
+            return
         cr50_time = self.gettime()
         if cr50_time < 60:
             sleep_time = 61 - cr50_time
