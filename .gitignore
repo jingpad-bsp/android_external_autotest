@@ -45,6 +45,7 @@ tko/parsers/test/site_scenarios
 ExternalSource
 /frontend/client/www/
 /shadow_config.ini
+/shadow_config.param.ini
 /site-packages/
 monitor_db.pid
 server/cros/chaos_shadow_ap_list.conf
