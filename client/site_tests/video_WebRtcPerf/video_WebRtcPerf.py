@@ -81,10 +81,10 @@ ADD_STATS_JAVASCRIPT = (
         '  }'
         '}')
 
-# Measure the stats until getting 10 samples or exceeding 15 seconds. addStats
+# Measure the stats until getting 10 samples or exceeding 30 seconds. addStats
 # is called once per second for now.
 NUM_DECODE_TIME_SAMPLES = 10
-TIMEOUT = 15
+TIMEOUT = 60
 
 
 class video_WebRtcPerf(test.test):
