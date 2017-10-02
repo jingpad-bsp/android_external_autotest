@@ -449,7 +449,7 @@ class firmware_Cr50BID(Cr50Test):
                 # Replace place holder values with the test values
                 bid = bid if bid != None else self.test_bid
                 flags = flags if flags != None else self.test_flags
-                message = '%s %d %s:%s %s' % (test_type, i, bid, flags,
+                message = '%s %d %s:%x %s' % (test_type, i, bid, flags,
                     bid_error)
 
                 # Run the test with the given bid, flags, and result
