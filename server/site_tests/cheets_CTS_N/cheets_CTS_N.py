@@ -20,8 +20,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.cros import tradefed_test
 
-# likely hang unit the TIMEOUT hits and no RETRY steps will happen.
-_CTS_MAX_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
 # Maximum default time allowed for each individual CTS module.
 _CTS_TIMEOUT_SECONDS = 3600
 
@@ -37,6 +35,9 @@ _CTS_URI = {
 class cheets_CTS_N(tradefed_test.TradefedTest):
     """Sets up tradefed to run CTS tests."""
     version = 1
+
+    _BOARD_RETRY = {'betty': 0}
+    _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
 
     def setup(self, bundle=None, uri=None):
         """Download and install a zipfile bundle from Google Storage.
@@ -236,20 +237,6 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # only a single run command is executing at any moment.
         return session_id + 1, self._run_cts_tradefed(commands)
 
-    def _get_release_channel(self):
-        """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
-        # TODO(ihf): check CHROMEOS_RELEASE_DESCRIPTION and return channel.
-        return 'dev'
-
-    def _get_channel_retry(self):
-        """Returns the maximum number of retries for DUT image channel."""
-        channel = self._get_release_channel()
-        if channel in _CTS_MAX_RETRY:
-            return _CTS_MAX_RETRY[channel]
-        retry = _CTS_MAX_RETRY['dev']
-        logging.warning('Could not establish channel. Using retry=%d.', retry)
-        return retry
-
     def _consistent(self, tests, passed, failed, notexecuted):
         """Verifies that the given counts are plausible.
 
@@ -321,7 +308,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Retries depend on channel.
         self._timeoutfactor = None
         self._max_retry = (
-            max_retry if max_retry is not None else self._get_channel_retry())
+            max_retry if max_retry is not None else self._get_max_retry(
+                self._host))
         logging.info('Maximum number of retry steps %d.', self._max_retry)
         session_id = 0
 
