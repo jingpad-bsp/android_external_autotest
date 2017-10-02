@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'jimtan'
+AUTHOR = 'ajanti'
 NAME = 'android_ACTS.BluetoothPowerTest_AAC_aptX_HD_SBC'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_bluetooth_power'
+DEPENDENCIES = 'bluetooth_power,ak_relay'
 
 DOC = """
 This test runs power tests for AAC, aptX, aptX-HD and SBC codecs
@@ -24,6 +26,10 @@ def run(machine):
                  testtracker_owner='android-comms-tvc@google.com',
                  test_file='bt_power_test_aac_aptx_hd_sbc',
                  additional_apks=[{'apk':'PMC.apk', 'package':'com.android.pmc', 'artifacts':'tests.zip'}],
+                 additional_configs=['android1758-power-test-station-codecs-relay-station-1.config',
+                                     'android1758-power-test-station-codecs-relay-station-4.config',
+                                     'bt_music/Stereo-44kHz-16bits.wav',
+                                     'bt_music/Stereo-96kHz-24bits.wav'],
                  acts_timeout=86400)
 
 
