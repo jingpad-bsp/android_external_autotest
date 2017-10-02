@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib.cros import cfm_hangouts_api
 from autotest_lib.client.common_lib.cros import cfm_meetings_api
 from autotest_lib.client.common_lib.cros import enrollment
 from autotest_lib.client.common_lib.cros import kiosk_utils
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class TimeoutException(Exception):
@@ -82,6 +83,22 @@ class CFMFacadeNative(object):
                 raise error.TestFail(
                     'Unexpected extension context urls, expected one of %s, '
                     'got %s' % (expected_urls, url))
+
+
+    def take_screenshot(self, screenshot_name):
+        """
+        Takes a screenshot of what is currently displayed in png format.
+
+        The screenshot is stored in /tmp. Uses the low level graphics_utils API.
+
+        @param screenshot_name: Name of the screenshot file.
+        @returns The path to the screenshot or None.
+        """
+        try:
+            return graphics_utils.take_screenshot('/tmp', screenshot_name)
+        except StandardError as e:
+            logging.warning('Taking screenshot failed', exc_info = e)
+            return None
 
 
     def reboot_device_with_chrome_api(self):
