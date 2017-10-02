@@ -574,13 +574,16 @@ class NetperfRunner(object):
             # We are in an unhandled error case.
             logging.info('Retrying netperf after an unknown error.')
 
-        if result.exit_status and not ignore_failures:
+        if ignore_failures and (result is None or result.exit_status):
+            return None
+
+        if result is None:
+            raise error.TestFail("No results; cmd: %s", netperf)
+
+        if result.exit_status:
             raise error.CmdError(netperf, result,
                                  "Command returned non-zero exit status")
 
         duration = time.time() - start_time
-        if result is None or result.exit_status:
-            return None
-
         return NetperfResult.from_netperf_results(
                 self._config.test_type, result.stdout, duration)
