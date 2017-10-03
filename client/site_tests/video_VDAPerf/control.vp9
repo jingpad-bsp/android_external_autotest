@@ -31,8 +31,4 @@ test_cases = [
     ['crowd/crowd1080-fa0fcc36d28e514c8f0a4fdace3443ce.vp9', 1920, 1080, 500, 500, 12, 50]
 ]
 
-constraints = [
-    'crowd1080_vp9_frame_drop_rate == 0']
-
-job.run_test('video_VDAPerf', test_cases=test_cases, constraints=constraints,
-             tag='vp9')
+job.run_test('video_VDAPerf', test_cases=test_cases, tag='vp9')
