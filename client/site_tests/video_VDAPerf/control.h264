@@ -32,9 +32,4 @@ test_cases = [
     ['crowd/crowd720-8f5d51b87ca7942133b76c9132438883.h264', 1280, 720, 500, 502, 1, 50]
 ]
 
-constraints = [
-    'crowd1080_h264_frame_drop_rate == 0',
-    'crowd720_h264_frame_drop_rate == 0']
-
-job.run_test('video_VDAPerf', test_cases=test_cases, constraints=constraints,
-             tag='h264')
+job.run_test('video_VDAPerf', test_cases=test_cases, tag='h264')
