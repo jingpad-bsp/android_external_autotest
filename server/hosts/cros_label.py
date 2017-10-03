@@ -402,6 +402,7 @@ class VideoLabel(base_label.StringLabel):
     # List gathered from
     # https://chromium.googlesource.com/chromiumos/
     # platform2/+/master/avtest_label_detect/main.c#19
+    # TODO(hiroh): '4k_video' won't be used. It will be removed in the future.
     _NAME = [
         'hw_jpeg_acc_dec',
         'hw_video_acc_h264',
@@ -411,6 +412,9 @@ class VideoLabel(base_label.StringLabel):
         'hw_video_acc_enc_vp8',
         'webcam',
         '4k_video',
+        '4k_video_h264',
+        '4k_video_vp8',
+        '4k_video_vp9',
     ]
 
     def generate_labels(self, host):
