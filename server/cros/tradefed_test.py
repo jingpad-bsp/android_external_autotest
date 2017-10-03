@@ -318,6 +318,10 @@ class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
 
+    # Default max_retry based on board and channel.
+    _BOARD_RETRY = {}
+    _CHANNEL_RETRY = {'dev': 5}
+
     def initialize(self, host=None):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -963,3 +967,40 @@ class TradefedTest(test.test):
         logging.info('Finished loading expected failures: %s',
                      expected_failures)
         return expected_failures
+
+    def _get_release_channel(self, host):
+        """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
+        # TODO(ihf): check CHROMEOS_RELEASE_DESCRIPTION and return channel.
+        return 'dev'
+
+    def _get_board_name(self, host):
+        """Return target DUT board name."""
+        return host.get_board().split(':')[1]
+
+    def _get_max_retry(self, host):
+        """Return the maximum number of retries."""
+        board_retry = self._get_board_retry(host)
+        if board_retry is not None:
+            return board_retry
+        channel_retry = self._get_channel_retry()
+        return channel_retry
+
+    def _get_board_retry(self, host):
+        """Return the maxium number of retries for DUT board name.
+        @param host: target DUT for retry adjustment.
+        @return number of max_retry for this specific board or None.
+        """
+        board = self._get_board_name(host)
+        if board in self._BOARD_RETRY:
+            return self._BOARD_RETRY[board]
+        logging.debug('No board retry specified for board: %s', board)
+        return None
+
+    def _get_channel_retry(self):
+        """Returns the maximum number of retries for DUT image channel."""
+        channel = self._get_release_channel()
+        if channel in self._CHANNEL_RETRY:
+            return self._CHANNEL_RETRY[channel]
+        retry = self._CHANNEL_RETRY['dev']
+        logging.warning('Could not establish channel. Using retry=%d.', retry)
+        return retry

@@ -333,6 +333,13 @@ class _SuiteChildJobCreator(object):
                   test_name is used to preserve the higher level TEST_NAME
                   name of the job.
         """
+        # For a system running multiple suites which share tests, the priority
+        # overridden may lead to unexpected scheduling order that adds extra
+        # provision jobs.
+        test_priority = self._priority
+        if utils.is_moblab():
+            test_priority = max(self._priority, test.priority)
+
         test_obj = self._afe.create_job(
             control_file=test.text,
             name=tools.create_job_name(
@@ -347,7 +354,7 @@ class _SuiteChildJobCreator(object):
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
-            priority=self._priority,
+            priority=test_priority,
             synch_count=test.sync_count,
             require_ssp=test.require_ssp)
 
