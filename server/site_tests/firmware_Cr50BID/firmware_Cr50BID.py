@@ -133,6 +133,8 @@ class firmware_Cr50BID(Cr50Test):
         # Save the necessary images.
         self.dev_path = self.get_saved_cr50_dev_path()
 
+        self.image_versions = {}
+
         original_version = self.get_saved_cr50_original_version()
         self.save_universal_image(original_version)
         self.save_board_id_locked_image(original_version, bid_path, release_ver)
@@ -276,6 +278,7 @@ class firmware_Cr50BID(Cr50Test):
             # Copy the universal image onto the DUT.
             dest, ver = cr50_utils.InstallImage(self.host, self.universal_path)
             logging.info('Copied %s to %s', ver, dest)
+        self.image_versions[self.UNIVERSAL] = universal_ver
 
 
     def save_board_id_locked_image(self, original_version, bid_path,
@@ -330,12 +333,31 @@ class firmware_Cr50BID(Cr50Test):
         # Save the image board id info
         self.test_bid, self.test_mask, self.test_flags = image_bid_info
         logging.info('Running test with bid locked image %s', ver)
+        self.image_versions[self.BID_LOCKED] = ver
 
 
     def cleanup(self):
         """Clear the TPM Owner"""
         super(firmware_Cr50BID, self).cleanup()
         tpm_utils.ClearTPMOwnerRequest(self.host)
+
+
+    def is_running_version(self, rw_ver, bid_str):
+        """Returns True if the running image has the same rw ver and bid
+
+        Args:
+            rw_ver: rw version string
+            bid_str: A symbolic or non-smybolic board id
+
+        Returns:
+            True if cr50 is running an image with the given rw version and
+            board id.
+        """
+        running_rw = self.cr50.get_version()
+        running_bid = self.cr50.get_active_board_id_str()
+        # Convert the image board id to a non symbolic board id
+        bid_str = cr50_utils.GetBoardIdInfoString(bid_str, symbolic=False)
+        return running_rw == rw_ver and bid_str == running_bid
 
 
     def reset_state(self, image_type):
@@ -354,6 +376,15 @@ class firmware_Cr50BID(Cr50Test):
         Raises:
             TestFail if the board id was not erased
         """
+        _, rw_ver, bid = self.image_versions[image_type]
+        chip_bid = cr50_utils.GetChipBoardId(self.host)
+        if self.is_running_version(rw_ver, bid) and (chip_bid ==
+            cr50_utils.ERASED_CHIP_BID):
+            logging.info('Skipping reset. Already running %s image with erased '
+                'chip board id', image_type)
+            return
+        logging.info('Updating to %s image and erasing chip bid', image_type)
+
         self.cr50_update(self.dev_path)
 
         # Rolling back will take care of erasing the board id
@@ -428,7 +459,7 @@ class firmware_Cr50BID(Cr50Test):
         logging.info('EXPECT %s setting bid to %s:%x with %s image',
                      response, bid, flags, image_name)
 
-        # Reset the board id and update to the correct image
+        # Erase the chip board id and update to the correct image
         self.reset_state(image_name)
 
         # Try to set the board id and flags
@@ -467,9 +498,9 @@ class firmware_Cr50BID(Cr50Test):
                 # Run the test with the given bid, flags, and result
                 try:
                     self.run_bid_test(image_name, bid, flags, bid_error)
+                    logging.info('Verified %s', message)
                 except (error.TestFail, error.TestError) as e:
                     logging.info('FAILED %s with "%s"', message, e)
                     errors.append('%s with "%s"' % (message, e))
-                logging.info('Verified %s', message)
         if len(errors):
             raise error.TestFail('failed tests: %s', errors)
