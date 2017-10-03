@@ -34,7 +34,9 @@ _DEFAULT_FILES_TO_LOG_PER_BOOT = [
     '/proc/modules',
     '/proc/interrupts',
     '/proc/partitions',
-    '/var/log/',
+    '/var/log/bios_info.txt',
+    '/var/log/messages',
+    '/var/log/storage_info.txt',
 ] + list(constants.LOG_PSTORE_DIRS)
 _DEFAULT_FILES_TO_LOG_BEFORE_ITERATION = [
     '/proc/schedstat', '/proc/meminfo', '/proc/slabinfo', '/proc/interrupts'
