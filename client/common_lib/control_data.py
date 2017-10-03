@@ -13,6 +13,7 @@ import re
 
 from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import priorities
 
 REQUIRED_VARS = set(['author', 'doc', 'name', 'time', 'test_type'])
 OBSOLETE_VARS = set(['experimental'])
@@ -102,6 +103,7 @@ class ControlData(object):
         self.require_ssp = None
         self.attributes = set()
         self.max_result_size_KB = DEFAULT_MAX_RESULT_SIZE_KB
+        self.priority = priorities.Priority.DEFAULT
 
         _validate_control_file_fields(self.path, vars, raise_warnings)
 
@@ -287,6 +289,9 @@ class ControlData(object):
 
     def set_max_result_size_kb(self, val):
         self._set_int('max_result_size_KB', val)
+
+    def set_priority(self, val):
+        self._set_int('priority', val)
 
     def set_attributes(self, val):
         # Add subsystem:default if subsystem is not specified.
