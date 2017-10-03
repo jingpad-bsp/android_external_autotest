@@ -37,6 +37,8 @@ be used.
                  bid_mask, and bid_flags will be ignored.
 @param release_ver: The version string. ${rw_ver}/${image_bid}. This is needed
                     to run the test with a released board id locked image.
+@param test_subset: a ',' separated string with the index of each test case to
+                    run.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -49,9 +51,10 @@ def run(machine):
     dev_path = args_dict.get("dev_path", "")
     bid_path = args_dict.get("bid_path", "")
     release_ver = args_dict.get("release_ver", "")
+    test_subset = args_dict.get("test_subset", "")
 
     job.run_test("firmware_Cr50BID", host=host, cmdline_args=args,
                  iterations=iterations, dev_path=dev_path, bid_path=bid_path,
-                 release_ver=release_ver)
+                 release_ver=release_ver, test_subset=test_subset)
 
 parallel_simple(run, machines)
