@@ -214,7 +214,8 @@ class Backlight(object):
             return
 
         if not self.default_brightness_percent:
-            cmd = "backlight_tool --get_initial_brightness 2>/dev/null"
+            cmd = \
+                "backlight_tool --get_initial_brightness --lux=150 2>/dev/null"
             try:
                 level = float(utils.system_output(cmd).rstrip())
                 self.default_brightness_percent = \
