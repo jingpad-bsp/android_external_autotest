@@ -8,7 +8,7 @@ import pprint
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import cr50_utils
+from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
 from autotest_lib.server.cros import debugd_dev_tools, gsutil_wrapper
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
@@ -173,9 +173,8 @@ class Cr50Test(FirmwareTest):
 
     def _rootfs_verification_is_disabled(self):
         """Returns true if rootfs verification is enabled"""
-        # reboot the DUT to reset cryptohome. We need it to be running to check
-        # rootfs verification.
-        self.host.reboot()
+        # Clear the TPM owner before trying to check rootfs verification
+        tpm_utils.ClearTPMOwnerRequest(self.host)
         self.rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
         self.rootfs_tool.initialize(self.host)
         # rootfs_tool.is_enabled is True, that means rootfs verification is
