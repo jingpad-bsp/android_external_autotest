@@ -119,7 +119,7 @@ class firmware_Cr50BID(Cr50Test):
     ]
 
     def initialize(self, host, cmdline_args, dev_path='', bid_path='',
-                   release_ver=None):
+                   release_ver=None, test_subset=None):
         # Restore the original image, rlz code, and board id during cleanup.
         super(firmware_Cr50BID, self).initialize(host, cmdline_args,
                                                  restore_cr50_state=True,
@@ -142,6 +142,14 @@ class firmware_Cr50BID(Cr50Test):
 
         # Add tests to the test list based on the running board id infomation
         self.build_tests()
+
+        # TODO(mruthven): remove once the test becomes more reliable.
+        #
+        # While tests randomly fail, keep this in so we can rerun individual
+        # tests.
+        self.test_subset = None
+        if test_subset:
+            self.test_subset = [int(case) for case in test_subset.split(',')]
 
 
     def add_test(self, board_id, flags, expected_result):
@@ -451,6 +459,10 @@ class firmware_Cr50BID(Cr50Test):
                 flags = flags if flags != None else self.test_flags
                 message = '%s %d %s:%x %s' % (test_type, i, bid, flags,
                     bid_error)
+
+                if self.test_subset and i not in self.test_subset:
+                    logging.info('Skipped %s', message)
+                    continue
 
                 # Run the test with the given bid, flags, and result
                 try:
