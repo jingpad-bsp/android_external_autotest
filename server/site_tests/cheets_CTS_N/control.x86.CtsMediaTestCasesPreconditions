@@ -12,6 +12,7 @@ DEPENDENCIES = 'arc, cts_abi_x86, noloopback'
 JOB_RETRIES = 6
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
+PRIORITY = 50
 
 DOC = ('Run module CtsMediaTestCases of the '
        'Android 7.1_r6 Compatibility Test Suite (CTS), build 4009365,'

@@ -982,7 +982,7 @@ class TradefedTest(test.test):
         board_retry = self._get_board_retry(host)
         if board_retry is not None:
             return board_retry
-        channel_retry = self._get_channel_retry()
+        channel_retry = self._get_channel_retry(host)
         return channel_retry
 
     def _get_board_retry(self, host):
@@ -996,9 +996,9 @@ class TradefedTest(test.test):
         logging.debug('No board retry specified for board: %s', board)
         return None
 
-    def _get_channel_retry(self):
+    def _get_channel_retry(self, host):
         """Returns the maximum number of retries for DUT image channel."""
-        channel = self._get_release_channel()
+        channel = self._get_release_channel(host)
         if channel in self._CHANNEL_RETRY:
             return self._CHANNEL_RETRY[channel]
         retry = self._CHANNEL_RETRY['dev']
