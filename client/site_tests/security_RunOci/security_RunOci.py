@@ -188,7 +188,12 @@ class security_RunOci(test.test):
                   if component not in node:
                     node[component] = {}
                   node = node[component]
-                node[path[-1]] = value
+                if (path[-1] in node and
+                    isinstance(node[path[-1]], list) and
+                    isinstance(value, list)):
+                  node[path[-1]].extend(value)
+                else:
+                  node[path[-1]] = value
             logging.debug('Running %s with config.json %s',
                           name, json.dumps(config))
             json.dump(config, config_file, indent=2)
