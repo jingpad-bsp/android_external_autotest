@@ -8,17 +8,11 @@ import socket
 import threading
 from multiprocessing import connection
 
+import common
+from autotest_lib.site_utils.lxc.container_pool import multi_logger
 
-def _setup_logger():
-    """Creates a custom logger for better multithreaded logging."""
-    logger = logging.getLogger('container_pool')
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-            logging.Formatter('%(asctime)s [%(threadName)s] %(message)s'))
-    logger.addHandler(handler)
-    logger.propagate = False
-    return logger
-_logger = _setup_logger()
+
+_logger = multi_logger.create('async_listener')
 
 
 class AsyncListener(object):
@@ -28,22 +22,18 @@ class AsyncListener(object):
     Connections are listened for on a separate thread, and queued up to be dealt
     with.
     """
-    def __init__(self, address, authkey):
+    def __init__(self, address):
         """Opens a socket with the given address and key.
 
         @param address: The socket address.
-        @param authkey: The authentication key (a string).
 
         @raises socket.error: If the address is already in use or is not a valid
                               path.
         @raises TypeError: If the address is not a valid unix domain socket
                            address.
         """
-        self._socket = connection.Listener(address,
-                                           family='AF_UNIX',
-                                           authkey=authkey)
+        self._socket = connection.Listener(address, family='AF_UNIX')
         self._address = address
-        self._authkey = authkey
         self._queue = Queue.Queue()
         self._thread = None
         self._running = False
@@ -56,7 +46,7 @@ class AsyncListener(object):
         After calling this function, incoming connections may be retrieved by
         calling the get_connection method.
         """
-        logging.info('Starting connection listener.')
+        logging.debug('Starting connection listener.')
         self._running = True
         self._thread = threading.Thread(name='connection_listener',
                                         target=self._poll)
@@ -86,7 +76,7 @@ class AsyncListener(object):
         if not self._running:
             return False
 
-        _logger.info('Stopping connection listener.')
+        _logger.debug('Stopping connection listener.')
         # Setting this to false causes the thread's event loop to exit on the
         # next iteration.
         self._running = False
@@ -102,7 +92,7 @@ class AsyncListener(object):
             _logger.error('Timeout while attempting to close socket listener.')
             return False
 
-        _logger.info('Socket closed. Waiting for thread to terminate.')
+        _logger.debug('Socket closed. Waiting for thread to terminate.')
         self._thread.join(1)
         return not self._thread.isAlive()
 
@@ -112,6 +102,7 @@ class AsyncListener(object):
 
         If the listener thread is running, it is first stopped.
         """
+        _logger.debug('AsyncListener.close called.')
         if self._running:
             self.stop()
         self._socket.close()
@@ -140,22 +131,17 @@ class AsyncListener(object):
     def _poll(self):
         """Polls the socket for incoming connections.
 
-        This function is intended to be run on the listener thread.  It listens
-        for and accepts incoming socket connections.  Authenticated connections
-        are placed on the queue of incoming connections.  Unauthenticated
-        connections are logged and dropped.
+        This function is intended to be run on the listener thread.  It accepts
+        incoming socket connections, and queues them up to be handled.
         """
-        _logger.debug('Entering connection listener event loop...')
+        _logger.debug('Start event loop.')
         while self._running:
-            _logger.debug('Listening for connection')
             try:
                 self._queue.put(self._socket.accept())
-                _logger.debug('Received connection from %s',
-                              self._socket.last_accepted)
-            except connection.AuthenticationError as e:
-                _logger.error('Authentication failure: %s', e)
+                _logger.debug('Received incoming connection.')
             except IOError:
                 # The stop method uses a fake connection to unblock the polling
                 # thread.  This results in an IOError but this is an expected
                 # outcome.
                 _logger.debug('Connection aborted.')
+        _logger.debug('Exit event loop.')
