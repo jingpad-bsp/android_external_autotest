@@ -8,6 +8,8 @@ from autotest_lib.client.common_lib import autotemp, revision_control, utils
 
 _READ_SIZE = 64*1024
 _MAX_PACKAGE_SIZE = 100*1024*1024
+_CHROMEOS_MIRROR = ('http://commondatastorage.googleapis.com/'
+                    'chromeos-mirror/gentoo/distfiles/')
 
 
 class Error(Exception):
@@ -591,8 +593,7 @@ class SetuptoolsPackage(ExternalPackage):
     # try to install the latest found on the upstream.
     minimum_version = '18.0.1'
     version = '18.0.1'
-    urls = ('http://pypi.python.org/packages/source/s/setuptools/'
-            'setuptools-%s.tar.gz' % (version,),)
+    urls = (_CHROMEOS_MIRROR + 'setuptools-%s.tar.gz' % (version,),)
     local_filename = 'setuptools-%s.tar.gz' % version
     hex_sum = 'ebc4fe81b7f6d61d923d9519f589903824044f52'
 
@@ -668,7 +669,7 @@ class DjangoPackage(ExternalPackage):
     """django package."""
     version = '1.5.1'
     local_filename = 'Django-%s.tar.gz' % version
-    urls = ('http://www.djangoproject.com/download/%s/tarball/' % version,)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '0ab97b90c4c79636e56337f426f1e875faccbba1'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -688,8 +689,7 @@ class NumpyPackage(ExternalPackage):
     """numpy package, required by matploglib."""
     version = '1.7.0'
     local_filename = 'numpy-%s.tar.gz' % version
-    urls = ('http://downloads.sourceforge.net/project/numpy/NumPy/%(version)s/'
-            'numpy-%(version)s.tar.gz' % dict(version=version),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'ba328985f20390b0f969a5be2a6e1141d5752cf9'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -707,8 +707,7 @@ class MatplotlibPackage(ExternalPackage):
     version = '0.98.5.3'
     short_version = '0.98.5'
     local_filename = 'matplotlib-%s.tar.gz' % version
-    urls = ('http://downloads.sourceforge.net/project/matplotlib/matplotlib/'
-            'matplotlib-%s/matplotlib-%s.tar.gz' % (short_version, version),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '2f6c894cf407192b3b60351bcc6468c0385d47b6'
     os_requirements = {('/usr/include/freetype2/ft2build.h',
                         '/usr/include/ft2build.h'): 'libfreetype6-dev',
@@ -724,8 +723,7 @@ class JsonRPCLib(ExternalPackage):
     version = '0.1.3'
     module_name = 'jsonrpclib'
     local_filename = '%s-%s.tar.gz' % (module_name, version)
-    urls = ('http://pypi.python.org/packages/source/j/%s/%s' %
-            (module_name, local_filename), )
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '431714ed19ab677f641ce5d678a6a95016f5c452'
 
     def _get_installed_version_from_module(self, module):
@@ -791,8 +789,7 @@ class PyudevPackage(ExternalPackage):
     version = '0.16.1'
     url_filename = 'pyudev-%s.tar.gz' % version
     local_filename = url_filename
-    urls = ('http://pypi.python.org/packages/source/p/pyudev/%s' % (
-        url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'b36bc5c553ce9b56d32a5e45063a2c88156771c0'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -833,8 +830,7 @@ class PySeleniumPackage(ExternalPackage):
     version = '2.37.2'
     url_filename = 'selenium-%s.tar.gz' % version
     local_filename = url_filename
-    urls = ('https://pypi.python.org/packages/source/s/selenium/%s' % (
-        url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '66946d5349e36d946daaad625c83c30c11609e36'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -850,8 +846,7 @@ class FaultHandlerPackage(ExternalPackage):
     version = '2.3'
     url_filename = '%s-%s.tar.gz' % (module_name, version)
     local_filename = url_filename
-    urls = ('http://pypi.python.org/packages/source/f/faulthandler/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'efb30c068414fba9df892e48fcf86170cbf53589'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -867,8 +862,7 @@ class PsutilPackage(ExternalPackage):
     version = '2.1.1'
     url_filename = '%s-%s.tar.gz' % (module_name, version)
     local_filename = url_filename
-    urls = ('http://pypi.python.org/packages/source/p/psutil/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '0c20a20ed316e69f2b0881530439213988229916'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
@@ -902,8 +896,7 @@ class Urllib3Package(ExternalPackage):
     version = '1.9'
     url_filename = 'urllib3-%s.tar.gz' % version
     local_filename = url_filename
-    urls = ('https://pypi.python.org/packages/source/u/urllib3/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '9522197efb2a2b49ce804de3a515f06d97b6602f'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -939,10 +932,7 @@ class AstroidPackage(ExternalPackage):
     version = '1.5.3'
     url_filename = 'astroid-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=6f65e4ea8290ec032320460905afb828
-    urls = ('https://pypi.python.org/packages/d7/b7/'
-            '112288f75293d6f12b1e41bac1e822fd0f29b0f88e2c4378cdd295b9d838/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'e654225ab5bd2788e5e246b156910990bf33cde6'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -954,10 +944,7 @@ class LazyObjectProxyPackage(ExternalPackage):
     version = '1.3.1'
     url_filename = 'lazy-object-proxy-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=e128152b76eb5b9ba759504936139fd0
-    urls = ('https://pypi.python.org/packages/55/08/'
-            '23c0753599bdec1aec273e322f277c4e875150325f565017f6280549f554/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '984828d8f672986ca926373986214d7057b772fb'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -969,10 +956,7 @@ class SingleDispatchPackage(ExternalPackage):
     version = '3.4.0.3'
     url_filename = 'singledispatch-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=af2fc6a3d6cc5a02d0bf54d909785fcb
-    urls = ('https://pypi.python.org/packages/d9/e9/'
-            '513ad8dc17210db12cb14f2d4d190d618fb87dd38814203ea71c87ba5b68/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'f93241b06754a612af8bb7aa208c4d1805637022'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -984,10 +968,7 @@ class Enum34Package(ExternalPackage):
     version = '1.1.6'
     url_filename = 'enum34-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=5f13a0841a61f7fc295c514490d120d0
-    urls = ('https://pypi.python.org/packages/bf/3e/'
-            '31d502c25302814a7c2f1d3959d2a3b3f78e509002ba91aea64993936876/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '014ef5878333ff91099893d615192c8cd0b1525a'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1014,10 +995,7 @@ class SixPackage(ExternalPackage):
     version = '1.10.0'
     url_filename = 'six-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=34eed507548117b2ab523ab14b2f8b55
-    urls = ('https://pypi.python.org/packages/b3/b2/'
-            '238e2590826bfdd113244a40d9d3eb26918bd798fc187e2360a8367068db/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '30d480d2e352e8e4c2aae042cf1bf33368ff0920'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1029,10 +1007,7 @@ class LruCachePackage(ExternalPackage):
     version = '1.4'
     url_filename = 'backports.functools_lru_cache-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=b954e7d5e2ca0f0f66ad2ed12ba800e5
-    urls = ('https://pypi.python.org/packages/4e/91/'
-            '0e93d9455254b7b630fb3ebe30cc57cab518660c5fad6a08aac7908a4431/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '8a546e7887e961c2873c9b053f4e2cd2a96bd71d'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1045,10 +1020,7 @@ class LogilabCommonPackage(ExternalPackage):
     module_name = 'logilab'
     url_filename = 'logilab-common-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=daa7b20c8374ff5f525882cf67e258c0
-    urls = ('https://pypi.python.org/packages/63/5b/'
-            'd4d93ad9e683a06354bc5893194514fbf5d05ef86b06b0285762c3724509/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'ecad2d10c31dcf183c8bed87b6ec35e7ed397d27'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1060,10 +1032,7 @@ class PyLintPackage(ExternalPackage):
     version = '1.7.2'
     url_filename = 'pylint-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=27ee752cdcfacb05bf4940947e6b35c6
-    urls = ('https://pypi.python.org/packages/0d/6b/'
-            '31d4a60fad9f040da6e47a93458f69f41cd9c7367a68b596fa116ca6ed0f/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '42d8b9394e5a485377ae128b01350f25d8b131e0'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1075,10 +1044,7 @@ class ConfigParserPackage(ExternalPackage):
     version = '3.5.0'
     url_filename = 'configparser-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=cfdd915a5b7a6c09917a64a573140538
-    urls = ('https://pypi.python.org/packages/7c/69/'
-            'c2ce7e91c89dc073eb1aa74c0621c3eefbffe8216b3f9af9d3885265c01c/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '8ee6b29c6a11977c0e094da1d4f5f71e7e7ac78b'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1090,10 +1056,7 @@ class IsortPackage(ExternalPackage):
     version = '4.2.15'
     url_filename = 'isort-%s.tar.gz' % version
     local_filename = url_filename
-    #md5=34915a2ce60e6fe3dbcbf5982deef9b4
-    urls = ('https://pypi.python.org/packages/4d/d5/'
-            '7c8657126a43bcd3b0173e880407f48be4ac91b4957b51303eab744824cf/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'acacc36e476b70e13e6fda812c193f4c3c187781'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -1120,10 +1083,7 @@ class Tzlocal(ExternalPackage):
     version = '1.3'
     url_filename = 'tzlocal-%s.tar.gz' % version
     local_filename = url_filename
-    # md5=3cb544b3975b59f91a793850a072d4a8
-    urls = ('https://pypi.python.org/packages/d3/64/'
-            'e4b18738496213f82b88b31c431a0e4ece143801fb6771dddd1c2bf0101b/%s' %
-            (url_filename),)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = '730e9d7112335865a1dcfabec69c8c3086be424f'
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
