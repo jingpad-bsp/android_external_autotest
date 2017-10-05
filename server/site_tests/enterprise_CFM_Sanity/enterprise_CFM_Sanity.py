@@ -4,13 +4,10 @@
 
 import datetime
 import logging
-import os
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test
-from autotest_lib.server.cros.multimedia import remote_facade_factory
+from autotest_lib.server.cros.cfm import cfm_base_test
 
 
 LONG_TIMEOUT = 10
@@ -18,7 +15,7 @@ SHORT_TIMEOUT = 5
 FAILED_TEST_LIST = list()
 
 
-class enterprise_CFM_Sanity(test.test):
+class enterprise_CFM_Sanity(cfm_base_test.CfmBaseTest):
     """Tests the following fuctionality works on CFM enrolled devices:
            1. Is able to reach the oobe screen
            2. Is able to start a hangout session
@@ -31,29 +28,6 @@ class enterprise_CFM_Sanity(test.test):
            7. Is able to run hotrod diagnostics.
     """
     version = 1
-
-
-    def take_screenshot(self, screenshot_name):
-        """
-        Takes a screenshot (in .png format) and saves it in the debug dir.
-
-        @param screenshot_name: Name of the screenshot file without extension.
-        """
-        try:
-            target_dir = self.debugdir
-            logging.info('Taking screenshot and saving under %s...',
-                         target_dir)
-            remote_path = self.cfm_facade.take_screenshot()
-            if remote_path:
-                # Copy the screenshot from the DUT.
-                self.client.get_file(
-                    remote_path,
-                    os.path.join(target_dir, screenshot_name + '.png'))
-            else:
-                logging.warning('Taking screenshot failed')
-        except StandardError as e:
-            logging.warning('Exception while taking a screenshot', exc_info = e)
-
 
     def _hangouts_sanity_test(self):
         """Execute a series of test actions and perform verifications.
@@ -143,36 +117,12 @@ class enterprise_CFM_Sanity(test.test):
             FAILED_TEST_LIST.append('Diagnostics failed')
 
 
-    def run_once(self, host=None):
+    def run_once(self):
         """Runs the test."""
-        self.client = host
-
-        factory = remote_facade_factory.RemoteFacadeFactory(
-                host, no_chrome=True)
-        self.cfm_facade = factory.create_cfm_facade()
-
-        tpm_utils.ClearTPMOwnerRequest(self.client)
-
-        if self.client.servo:
-            self.client.servo.switch_usbkey('dut')
-            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-            time.sleep(SHORT_TIMEOUT)
-            self.client.servo.set('dut_hub1_rst1', 'off')
-            time.sleep(SHORT_TIMEOUT)
-
-        try:
-            self.cfm_facade.enroll_device()
-            self.cfm_facade.skip_oobe_after_enrollment()
-            self.cfm_facade.wait_for_hangouts_telemetry_commands()
-            self._hangouts_sanity_test()
-            self._peripherals_sanity_test()
-            self._diagnostics_sanity_test()
-        except Exception as e:
-            self.take_screenshot('sanity_exception')
-            logging.exception(e)
-            raise error.TestFail(str(e))
-        finally:
-            tpm_utils.ClearTPMOwnerRequest(self.client)
+        self.cfm_facade.wait_for_hangouts_telemetry_commands()
+        self._hangouts_sanity_test()
+        self._peripherals_sanity_test()
+        self._diagnostics_sanity_test()
 
         if FAILED_TEST_LIST:
             raise error.TestFail('Test failed because of following reasons: %s'
