@@ -470,7 +470,7 @@ class NetperfRunner(object):
     NETPERF_DATA_PORT = 12866
     NETPERF_PORT = 12865
     NETSERV_STARTUP_WAIT_TIME = 3
-    NETPERF_COMMAND_TIMEOUT_MARGIN = 120
+    NETPERF_COMMAND_TIMEOUT_MARGIN = 60
 
 
     def __init__(self, client_proxy, server_proxy, config):
