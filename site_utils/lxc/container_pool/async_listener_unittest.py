@@ -7,7 +7,6 @@ import os
 import shutil
 import socket
 import tempfile
-import threading
 import unittest
 from multiprocessing import connection
 
@@ -15,6 +14,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc.container_pool import async_listener
+from autotest_lib.site_utils.lxc.container_pool import unittest_client
 
 
 # Namespace object for parsing cmd line options.
@@ -28,8 +28,7 @@ class AsyncListenerTests(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.address = os.path.join(self.tmpdir, 'socket')
         self.authkey = 'foo'
-        self.listener = async_listener.AsyncListener(self.address,
-                                                     authkey=self.authkey)
+        self.listener = async_listener.AsyncListener(self.address)
 
 
     def tearDown(self):
@@ -41,19 +40,19 @@ class AsyncListenerTests(unittest.TestCase):
         """Verifies that invalid socket paths raise errors."""
         with self.assertRaises(socket.error):
             invalid_address = os.path.join(self.tmpdir, 'foo', 'socket')
-            async_listener.AsyncListener(invalid_address, authkey=self.authkey)
+            async_listener.AsyncListener(invalid_address)
 
 
     def testAddressConflict(self):
         """Verifies that address conflicts raise errors."""
         with self.assertRaises(socket.error):
-            async_listener.AsyncListener(self.address, authkey=self.authkey)
+            async_listener.AsyncListener(self.address)
 
 
     def testInetAddresses(self):
         """Verifies that inet addresses raise errors."""
         with self.assertRaises(TypeError):
-            async_listener.AsyncListener(('127.0.0.1', 0), authkey=self.authkey)
+            async_listener.AsyncListener(('127.0.0.1', 0))
 
 
     def testStartStop(self):
@@ -97,22 +96,7 @@ class AsyncListenerTests(unittest.TestCase):
         # Start a client connection, verify that the listener now returns a
         # pending connection.  Keep a reference to the client, so it doesn't get
         # GC'd while the test is in progress.
-        _unused = connection.Client(self.address, authkey=self.authkey)
-        self.assertIsNotNone(self.listener.get_connection(timeout=1))
-
-
-    def testAuthFailure(self):
-        """Tests connections with failed authentication."""
-        self.listener.start()
-
-        # Verify that a bad auth key results in a failed connection.
-        with self.assertRaises(connection.AuthenticationError):
-            _unused = connection.Client(self.address,
-                                        authkey=self.authkey+'foo')
-        self.assertIsNone(self.listener.get_connection(timeout=1))
-
-        # Verify that subsequent connections still work.
-        _unused = connection.Client(self.address, authkey=self.authkey)
+        _unused = connection.Client(self.address)
         self.assertIsNotNone(self.listener.get_connection(timeout=1))
 
 
@@ -156,53 +140,10 @@ class AsyncListenerTests(unittest.TestCase):
 
         @return: A host, client connection pair.
         """
-        client = _ClientFactory(self.address, authkey=self.authkey).connect()
+        client = unittest_client.connect(self.address)
         host = self.listener.get_connection(timeout=1)
         return host, client
 
-
-class _ClientFactory(threading.Thread):
-    """Factory class for making client connections with a timeout.
-
-    Instantiate this with an address and a key, and call make_connection.  If a
-    connection is not established within a set period of time, the
-    make_connction call will raise a socket.timeout exception instead of hanging
-    indefinitely.
-    """
-    def __init__(self, address, authkey):
-        super(_ClientFactory, self).__init__()
-        # Use a daemon thread, so that if this thread hangs, it doesn't keep the
-        # parent thread alive.  All daemon threads die when the parent process
-        # dies.
-        self.daemon = True
-        self._address = address
-        self._authkey = authkey
-        self._client = None
-
-
-    def run(self):
-        """Instantiates a connection.Client."""
-        self._client = connection.Client(self._address, authkey=self._authkey)
-
-
-    def connect(self):
-        """Attempts to create a connection.Client with a timeout.
-
-        @return: A connection.Client connected using the address and authkey
-                 that were specified when this factory was created.
-
-        @raises socket.timeout: If the connection is not established after 1
-                                second.
-        """
-        # Start the thread, which attempts to open the connection.  Wait one
-        # second for the connection to complete, and if it does not, raise a
-        # timeout exception.
-        self.start()
-        self.join(1)
-        if self._client is not None:
-            return self._client
-        else:
-            raise socket.timeout('timed out')
 
 
 if __name__ == '__main__':

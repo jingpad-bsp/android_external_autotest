@@ -58,12 +58,18 @@ import time
 
 import common
 from autotest_lib.server import frontend
+from autotest_lib.server import site_utils
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils.suite_scheduler import constants
-
+from chromite.lib import metrics
 from chromite.lib import parallel
 
+try:
+  from infra_libs import ts_mon
+except (ImportError, RuntimeError):
+  import mock
+  ts_mon = mock.Mock()
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
 # This is the ratio of all boards we should calculate the default max number of
@@ -236,7 +242,8 @@ class _DUTPool(object):
 
         """
         num_ineligible = len(self.ineligible_hosts)
-        if target_total < num_ineligible:
+        spares_needed = target_total >= num_ineligible
+        if not spares_needed:
             _log_error('%s %s pool: Target of %d is below '
                        'minimum of %d DUTs.',
                        self.board, self.pool,
@@ -244,6 +251,14 @@ class _DUTPool(object):
             _log_error('Adjusting target to %d DUTs.', num_ineligible)
             target_total = num_ineligible
         adjustment = target_total - self.total_hosts
+        metrics.Boolean(
+            'chromeos/autotest/balance_pools/exhausted_pools',
+            "True for each pool/board which requests more DUTs than supplied",
+            field_spec=[
+                ts_mon.StringField('pool'), ts_mon.StringField('board')]).set(
+                    not spares_needed,
+                    fields={'pool': self.pool, 'board': self.board}
+                )
         return len(self.broken_hosts) + adjustment
 
     def allocate_surplus(self, num_broken):
@@ -296,6 +311,16 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
         return
     _log_info(dry_run, 'Transferring %d DUTs from %s to %s.',
               len(hosts), spare_pool.pool, target_pool.pool)
+    metrics.Counter(
+        'chromeos/autotest/balance_pools/duts_moved',
+        "DUTs transferred between pools",
+        field_spec=[ts_mon.StringField('board'),
+                    ts_mon.StringField('source_pool'),
+                    ts_mon.StringField('target_pool')]
+    ).increment_by(len(hosts),
+                   fields={'board': target_pool.board,
+                           'source_pool': spare_pool.pool,
+                           'target_pool': target_pool.pool})
     additions = target_pool.pool_labels
     removals = spare_pool.pool_labels
     for host in hosts:
@@ -441,7 +466,6 @@ def _too_many_broken_boards(inventory, pool, arguments):
                   '%s pool',
                   max_broken_boards, pool)
 
-
     broken_boards = [board for board, counts in inventory.items()
                      if counts.get_broken(pool) != 0]
     broken_boards.sort()
@@ -544,55 +568,74 @@ def _parse_command(argv):
     return arguments
 
 
-def main(argv):
-    """Standard main routine.
+def specify_balance_args(afe, arguments, pools):
+    """Take some arguments and translate them to a list of boards to balance
 
-    @param argv  Command line arguments including `sys.argv[0]`.
+    Args:
+    @param afe           AFE object to be used for taking inventory.
+    @param arguments     Parsed command line arguments.
+    @param pools         The list of pools to balance.
+
+    @returns    a list of (board, pool) pairs to be balanced
 
     """
-    def balancer(i, board, pool):
-      """Balance the specified board.
-
-      @param i The index of the board.
-      @param board The board name.
-      @param pool The pool to rebalance for the board.
-      """
-      if i > 0:
-          _log_message('')
-      _balance_board(arguments, afe, board, pool, start_time, end_time)
-
-    arguments = _parse_command(argv)
-    end_time = time.time()
-    start_time = end_time - 24 * 60 * 60
-    afe = frontend.AFE(server=None)
-    boards = arguments.boards
-    pools = (lab_inventory.CRITICAL_POOLS
-             if arguments.pool == _ALL_CRITICAL_POOLS
-             else [arguments.pool])
     board_info = []
+    boards = arguments.boards
     if arguments.all_boards:
         inventory = lab_inventory.get_inventory(afe)
         for pool in pools:
-            if _too_many_broken_boards(inventory, pool, arguments):
+            quarantine = _too_many_broken_boards(inventory, pool, arguments)
+            if quarantine:
                 _log_error('Refusing to balance all boards for %s pool, '
                            'too many boards with at least 1 broken DUT '
                            'detected.', pool)
             else:
                 boards_in_pool = inventory.get_managed_boards(pool=pool)
                 current_len_board_info = len(board_info)
-                board_info.extend([(i + current_len_board_info, board, pool)
-                                   for i, board in enumerate(boards_in_pool)])
+                board_info.extend([(board, pool) for board in boards_in_pool])
+            metrics.Boolean(
+                'chromeos/autotest/balance_pools/unchanged_pools').set(
+                    quarantine, fields={'pool': pool})
     else:
-        # We have specified boards with a specified pool, setup the args to the
-        # balancer properly.
+        # We have specified boards with a specified pool, setup the args to
+        # the balancer properly.
         for pool in pools:
             current_len_board_info = len(board_info)
-            board_info.extend([(i + current_len_board_info, board, pool)
-                               for i, board in enumerate(boards)])
-    try:
-        parallel.RunTasksInProcessPool(balancer, board_info, processes=8)
-    except KeyboardInterrupt:
-        pass
+            board_info.extend([(board, pool) for board in boards])
+    return board_info
+
+
+def main(argv):
+    """Standard main routine.
+
+    @param argv  Command line arguments including `sys.argv[0]`.
+
+    """
+    def balancer(board, pool):
+      """Balance the specified board.
+
+      @param board The board name.
+      @param pool The pool to rebalance for the board.
+      """
+      _balance_board(arguments, afe, board, pool, start_time, end_time)
+      _log_message('')
+
+    with site_utils.SetupTsMonGlobalState('balance_pools',
+                                          short_lived=True,
+                                          auto_flush=False):
+        arguments = _parse_command(argv)
+        end_time = time.time()
+        start_time = end_time - 24 * 60 * 60
+        afe = frontend.AFE(server=None)
+        pools = (lab_inventory.CRITICAL_POOLS
+                 if arguments.pool == _ALL_CRITICAL_POOLS
+                 else [arguments.pool])
+        board_info = specify_balance_args(afe, arguments, pools)
+        try:
+            parallel.RunTasksInProcessPool(balancer, board_info, processes=8)
+        except KeyboardInterrupt:
+            pass
+        metrics.Flush()
 
 
 if __name__ == '__main__':
