@@ -29,7 +29,6 @@ INPUT_FPS = 30
 # The rendering fps in the vda_unittest.
 RENDERING_FPS = 30
 
-# The unit(s) should match chromium/src/tools/perf/unit-info.json.
 UNIT_PERCENT = '%'
 UNIT_WATT = 'W'
 

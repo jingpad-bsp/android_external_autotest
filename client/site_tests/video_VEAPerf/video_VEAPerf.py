@@ -44,10 +44,9 @@ KEY_CPU_KERNEL_USAGE = 'cpu_usage.kernel'
 KEY_CPU_USER_USAGE = 'cpu_usage.user'
 
 # Units of performance values:
-# (These strings should match chromium/src/tools/perf/unit-info.json.)
 UNIT_MILLISECOND = 'milliseconds'
 UNIT_MICROSECOND = 'us'
-UNIT_PERCENT = 'percent'
+UNIT_RATIO = 'ratio'
 UNIT_FPS = 'fps'
 
 RE_FPS = re.compile(r'^Measured encoder FPS: ([+\-]?[0-9.]+)$', re.MULTILINE)
@@ -129,8 +128,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         with open(time_log_file) as f:
             content = f.read()
         r, s, u = (float(x) for x in content.split())
-        self._logperf(test_name, KEY_CPU_USER_USAGE, u / r, UNIT_PERCENT)
-        self._logperf(test_name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_PERCENT)
+        self._logperf(test_name, KEY_CPU_USER_USAGE, u / r, UNIT_RATIO)
+        self._logperf(test_name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_RATIO)
 
     def _analyze_frame_stats(self, test_name, frame_stats_file):
         """
