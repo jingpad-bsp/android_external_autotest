@@ -262,6 +262,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         else:
             interface = self.get_wlanif(
                 configuration.frequency, 'managed', configuration.min_streams)
+        phy_name = self.iw_runner.get_interface(interface).phy
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
         log_file = self.HOSTAPD_LOG_FILE_PATTERN % interface
@@ -279,8 +280,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Run hostapd.
         logging.info('Starting hostapd on %s(%s) channel=%s...',
-                     interface, self.iw_runner.get_interface(interface).phy,
-                     configuration.channel)
+                     interface, phy_name, configuration.channel)
         self.router.run('rm %s' % log_file, ignore_status=True)
         self.router.run('stop wpasupplicant', ignore_status=True)
         start_command = '%s -dd -t %s > %s 2> %s & echo $!' % (
@@ -324,6 +324,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         else:
             raise error.TestFail('Timed out while waiting for hostapd '
                                  'to start.')
+
+        if configuration.frag_threshold:
+            threshold = self.iw_runner.get_fragmentation_threshold(phy_name)
+            if threshold != configuration.frag_threshold:
+                raise error.TestNAError('Router does not support setting '
+                                        'fragmentation threshold')
 
 
     def _kill_process_instance(self,

@@ -24,9 +24,9 @@ class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
 
         """
 
-        # TODO (crbug.com/753177): autodetect this with 'iw phy' -- existing
-        # images (7849.0.2016_01_20_2103) don't know that they're broken, so we
-        # need this at least until those are phased out.
+        # Whirlwind routers don't support fragmentation, and older builds
+        # (up to 7849.0.2016_01_20_2103) don't know that they don't, so check
+        # here using board name.
         if self.context.router.board == "whirlwind":
             raise error.TestNAError('Whirlwind AP does not support frag threshold')
 
