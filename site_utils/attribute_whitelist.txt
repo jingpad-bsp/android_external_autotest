@@ -65,7 +65,6 @@ suite:arc-gts-tot
 suite:arc-nightly
 suite:arc-unit-test
 suite:arc-weekly
-suite:au
 suite:audio
 suite:av_webcam
 suite:bluestreak
