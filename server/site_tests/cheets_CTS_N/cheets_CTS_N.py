@@ -275,6 +275,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  max_retry=None,
                  cts_tradefed_args=None,
                  pre_condition_commands=[],
+                 login_pre_condition_commands=[],
                  warn_on_test_retry=True,
                  timeout=_CTS_TIMEOUT_SECONDS):
         """Runs the specified CTS once, but with several retries.
@@ -294,8 +295,10 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @param needs_push_media: need to push test media streams.
         @param max_retry: number of retry steps before reporting results.
         @param timeout: time after which tradefed can be interrupted.
-        @param pre_condition_command: a list of scripts to be run on the
+        @param pre_condition_commands: a list of scripts to be run on the
         dut before the test is run, the scripts must already be installed.
+        @param login_pre_condition_commands: a list of scripts to be run on the
+        dut before the log-in for the test is performed.
         @param warn_on_test_retry: False if you want to skip warning message
         about tradefed retries.
         @param cts_tradefed_args: a list of args to pass to tradefed.
@@ -347,6 +350,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Unconditionally run CTS module until we see some tests executed.
         while total_tests == 0 and steps < self._max_retry:
             steps += 1
+            self._run_precondition_scripts(
+                self._host, login_pre_condition_commands, steps)
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
@@ -412,6 +417,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # retry them iteratively MAX_RETRY times.
         while steps < self._max_retry and failed + notexecuted > waived:
             steps += 1
+            self._run_precondition_scripts(
+                self._host, login_pre_condition_commands, steps)
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
