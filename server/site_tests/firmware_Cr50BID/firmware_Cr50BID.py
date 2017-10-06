@@ -211,9 +211,10 @@ class firmware_Cr50BID(Cr50Test):
         to verify cr50 responds appropriately to different flags.
         """
         flag_str = bin(self.test_flags).split('b')[1]
-        flag_str = '0' + flag_str if len(flag_str) < 32 else flag_str
-        zero_index = flag_str.find('0')
-        one_index = flag_str.find('1')
+        flag_str_pad = '0' + flag_str if len(flag_str) < 32 else flag_str
+        flag_str_pad_rev = flag_str_pad[::-1]
+        zero_index = flag_str_pad_rev.find('0')
+        one_index = flag_str_pad_rev.find('1')
 
         # If we care about any flag bits, setting the flags to 0 should cause
         # a rejection
@@ -222,7 +223,6 @@ class firmware_Cr50BID(Cr50Test):
 
         # Flip a 0 to 1 to make sure it is accepted.
         if zero_index != -1:
-            zero_index = flag_str.rindex('0')
             test_flags = self.test_flags | (1 << zero_index)
             logging.info('Test Case: image flags %x with test flags %x should '
                          'pass', self.test_flags, test_flags)
@@ -230,7 +230,6 @@ class firmware_Cr50BID(Cr50Test):
 
         # Flip a 1 to 0 to make sure it is rejected.
         if one_index != -1:
-            one_index = flag_str.rindex('1')
             test_flags = self.test_flags ^ (1 << one_index)
             logging.info('Test Case: image flags %x with test flags %x should '
                          'fail', self.test_flags, test_flags)
