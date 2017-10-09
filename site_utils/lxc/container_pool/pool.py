@@ -230,10 +230,11 @@ class _Monitor(threading.Thread):
                           qsize, shortfall, active_workers, new_workers)
 
         while len(self._workers) < shortfall:
-            worker = _Worker(self._factory)
+            worker = _Worker(self._factory,
+                             self._on_worker_result,
+                             self._on_worker_error)
             worker.start()
             self._workers.append(worker)
-
 
 
     def _poll_workers(self):
@@ -255,24 +256,25 @@ class _Monitor(threading.Thread):
 
         self._workers = incomplete
 
-        for worker in completed:
-            try:
-                container = worker.get_result()
-            except Exception as e:
-                self.errors.put(e)
-                _logger.error('Error: %s', e)
-            else:
-                # A worker might yield no container if it was cancelled.
-                if container is not None:
-                    self._pool.put(container)
-                    _logger.debug('Pool size: %d/%d', self._pool.qsize(),
-                                  self._pool.maxsize)
-                else:
-                    # Workers can return None results if they are cancelled.
-                    # But -- workers aren't cancelled until the monitor exits
-                    # its event loop, and this method is only called from within
-                    # the monitor event loop.  So this should never happen.
-                    _logger.warn('Worker yielded no container.')
+
+    def _on_worker_result(self, result):
+        """Receives results from completed worker threads.
+
+        Pass this as the result callback for worker threads.  Worker threads
+        should call this when they produce a container.
+        """
+        _logger.debug('Worker result: %r' % result)
+        self._pool.put(result)
+
+
+    def _on_worker_error(self, err):
+        """Receives errors from worker threads.
+
+        Pass this as the error callback for worker threads.  Worker threads
+        should call this if errors occur.
+        """
+        self.errors.put(err)
+        _logger.error('Worker error: %s', err)
 
 
 class _Worker(threading.Thread):
@@ -291,7 +293,7 @@ class _Worker(threading.Thread):
     _throttle = threading.BoundedSemaphore(value=_MAX_CONCURRENT_WORKERS)
 
 
-    def __init__(self, factory):
+    def __init__(self, factory, result_cb, error_cb):
         """Creates a new Worker.
 
         @param factory: A factory object that will be called upon to create
@@ -303,12 +305,8 @@ class _Worker(threading.Thread):
 
         self._factory = factory
 
-        # Use a single-entry Queue to ensure atomicity when retrieving results.
-        # This ensures that the output container has only one owner, and it
-        # cannot (for example) accidentally be destroyed by calling
-        # Worker.cancel on a Worker whose result has already been retrieved.
-        self._result = Queue.Queue(1)
-        self._error = None
+        self._result_cb = result_cb
+        self._error_cb = error_cb
 
         self._cancelled = False
         self._start_time = None
@@ -327,7 +325,7 @@ class _Worker(threading.Thread):
             container = self._factory.create_container()
         except Exception as e:
             _logger.error('Error: %s', e)
-            self._error = e
+            self._error_cb(e)
         finally:
             # All this has to happen atomically, otherwise race conditions can
             # arise w.r.t. cancellation.
@@ -343,7 +341,9 @@ class _Worker(threading.Thread):
                 else:
                     # Put the container in the result field.  Release the
                     # throttle so another task can be picked up.
-                    self._result.put(container)
+                    # Container may be None if errors occurred.
+                    if container is not None:
+                        self._result_cb(container)
                     self._throttle.release()
 
 
@@ -354,25 +354,12 @@ class _Worker(threading.Thread):
         the container pool.
         """
         with self._completion_lock:
-            try:
-                container = self._result.get(block=False)
-            except Queue.Empty:
-                if self._completed:
-                    # The thread completed, but the result was already
-                    # retrieved.  There is nothing to do in this case.
-                    pass
-                else:
-                    # The thread is not yet done - set the cancellation flag -
-                    # when completion occurs, the container will be destroyed.
-                    # Since a worker is being cancelled, release the throttle so
-                    # another worker can proceed.
-                    self._cancelled = True
-                    self._throttle.release()
+            if self._completed:
+                return False
             else:
-                # If completion occurred, destroy the resulting container.
-                # TODO(kenobi): Spawn a thread for this, so that we don't block
-                # Monitor._check_health when a worker times out.
-                container.destroy()
+                self._cancelled = True
+                self._throttle.release()
+                return True
 
 
     def check_health(self):
@@ -392,29 +379,8 @@ class _Worker(threading.Thread):
         # acquires a grant from the throttle.
         if (self._start_time is not None and
                 time.time() - self._start_time > _CONTAINER_CREATION_TIMEOUT):
-            # Set the error first before cancelling, to avoid race conditions
-            # where cancelled threads yield no error.
-            self._error = error.WorkerTimeoutError()
-            self.cancel()
+            if self.cancel():
+                self._error_cb(error.WorkerTimeoutError())
             return False
 
         return True
-
-
-    def get_result(self):
-        """Returns a container if one is available.
-
-        Note that calling this transfers ownership of the container from the
-        Worker to the caller.  Calling this more than once will result in an
-        error.
-
-        @raises Exception: If some error occurred during container creation, it
-                           is raised at this point.
-        """
-        if self._error:
-            # If an error occurred during the operation, raise it here.
-            raise self._error
-        else:
-            # get_result should not be called before the worker has finished, or
-            # if it is cancelled.  In that case, this will raise Queue.Empty.
-            return self._result.get(block=False)
