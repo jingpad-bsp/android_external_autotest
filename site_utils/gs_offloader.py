@@ -369,10 +369,9 @@ def correct_results_folder_permission(dir_entry):
 
     logging.info('Trying to correct file permission of %s.', dir_entry)
     try:
+        owner = '%s:%s' % (os.getuid(), os.getgid())
         subprocess.check_call(
-                ['sudo', '-n', 'chown', '-R', str(os.getuid()), dir_entry])
-        subprocess.check_call(
-                ['sudo', '-n', 'chgrp', '-R', str(os.getgid()), dir_entry])
+                ['sudo', '-n', 'chown', '-R', owner, dir_entry])
     except subprocess.CalledProcessError as e:
         logging.error('Failed to modify permission for %s: %s',
                       dir_entry, e)
@@ -506,6 +505,21 @@ def _emit_gs_returncode_metric(returncode):
     metrics.Counter(m_gs_returncode).increment(fields={'return_code': rcode})
 
 
+def _handle_dir_os_error(dir_entry, fix_permission=False):
+    """Try to fix the result directory's permission issue if needed.
+
+    @param dir_entry: Directory entry to offload.
+    @param fix_permission: True to change the directory's owner to the same one
+            running gs_offloader.
+    """
+    if fix_permission:
+        correct_results_folder_permission(dir_entry)
+    m_permission_error = ('chromeos/autotest/errors/gs_offloader/'
+                          'wrong_permissions_count')
+    metrics_fields = _get_metrics_fields(dir_entry)
+    metrics.Counter(m_permission_error).increment(fields=metrics_fields)
+
+
 class BaseGSOffloader(object):
 
     """Google Storage offloader interface."""
@@ -555,7 +569,16 @@ class GSOffloader(BaseGSOffloader):
         with tempfile.TemporaryFile('w+') as stdout_file, \
              tempfile.TemporaryFile('w+') as stderr_file:
             try:
-                self._offload(dir_entry, dest_path, stdout_file, stderr_file)
+                try:
+                    self._offload(dir_entry, dest_path, stdout_file,
+                                  stderr_file)
+                except OSError as e:
+                    # Correct file permission error of the directory, then raise
+                    # the exception so gs_offloader can retry later.
+                    _handle_dir_os_error(dir_entry, e.errno==errno.EACCES)
+                    # Try again after the permission issue is fixed.
+                    self._offload(dir_entry, dest_path, stdout_file,
+                                  stderr_file)
             except _OffloadError as e:
                 metrics_fields = _get_metrics_fields(dir_entry)
                 m_any_error = 'chromeos/autotest/errors/gs_offloader/any_error'
@@ -662,16 +685,12 @@ class GSOffloader(BaseGSOffloader):
         try:
             shutil.rmtree(dir_entry)
         except OSError as e:
-            # The wrong file permission can lead call
-            # `shutil.rmtree(dir_entry)` to raise OSError with message
-            # 'Permission denied'. Details can be found in
-            # crbug.com/536151
-            if e.errno == errno.EACCES:
-                correct_results_folder_permission(dir_entry)
-            m_permission_error = ('chromeos/autotest/errors/gs_offloader/'
-                                  'wrong_permissions_count')
-            metrics_fields = _get_metrics_fields(dir_entry)
-            metrics.Counter(m_permission_error).increment(fields=metrics_fields)
+            # The wrong file permission can lead call `shutil.rmtree(dir_entry)`
+            # to raise OSError with message 'Permission denied'. Details can be
+            # found in crbug.com/536151
+            _handle_dir_os_error(dir_entry, e.errno==errno.EACCES)
+            # Try again after the permission issue is fixed.
+            shutil.rmtree(dir_entry)
 
 
 class _OffloadError(Exception):
