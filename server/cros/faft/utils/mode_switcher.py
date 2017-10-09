@@ -286,8 +286,8 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
                  Language
            Menu options seen in TO_DEV screen:
                  Confirm enabling developer mode
-                 Cancel
-                 Power off*
+                 Cancel*
+                 Power off
                  Language
         Vol up button selects previous item, vol down button selects
         next item and pwr button selects current activated item.
@@ -301,8 +301,6 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
                         'enter key to select Enable Developer Mode'))
         self.servo.power_short_press()
         logging.info('Transitioning from REC to TO_DEV screen.')
-        time.sleep(self.faft_config.confirm_screen)
-        self.servo.set_nocheck('volume_up_hold', 100)
         time.sleep(self.faft_config.confirm_screen)
         self.set_button('volume_up_hold', 100, ('Selecting power as '
                         'enter key to select Confirm enabling '
