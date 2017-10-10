@@ -32,7 +32,7 @@ class firmware_ECBootTime(FirmwareTest):
         # platforms. http://crosbug.com/p/21628 has been opened to track this
         # issue.
         if self._x86:
-            boot_anchors = ["\[([0-9\.]+) PB", "\[([0-9\.]+) Port 80"]
+            boot_anchors = ["\[([0-9\.]+) PB", "\[([0-9\.]+) .*(HC 0x|Port 80|ACPI query)"]
         elif self._arm_legacy:
             boot_anchors = ["\[([0-9\.]+) AP running ...",
                             "\[([0-9\.]+) XPSHOLD seen"]
