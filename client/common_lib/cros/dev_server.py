@@ -1986,20 +1986,19 @@ class ImageServer(ImageServerBase):
         return re.split('\n', response)[-1]
 
 
-    def _classify_exceptions(self, error_list):
+    def _classify_exceptions(self, target_error):
         """Parse the error that was raised from auto_update.
 
-        @param error_list: The list of errors (string) happened in auto-update
+        @param target_error: A single string representing one time provision
+            error happened in auto_update().
 
-        @return: A classified exception type (string) from _EXCEPTION_PATTERNS
-          or 'Unknown exception'. Current patterns in _EXCEPTION_PATTERNS are
-          very specific so that errors cannot match more than one pattern.
+        @return: If target_error is empty, return None. Otherwise, return a
+            classified exception type (string) from _EXCEPTION_PATTERNS
+            or 'Unknown exception'. Current patterns in _EXCEPTION_PATTERNS are
+            very specific so that errors cannot match more than one pattern.
         """
-        raised_error = ''
-        if not error_list:
-            return raised_error
-        else:
-            target_error = error_list[0]
+        if not target_error:
+            return None
 
         for err_pattern, classification in _EXCEPTION_PATTERNS:
             match = re.match(err_pattern, target_error)
@@ -2063,6 +2062,75 @@ class ImageServer(ImageServerBase):
             board, build_type, milestone = ('', '', '')
 
         return board, build_type, milestone
+
+
+    def _emit_auto_update_metrics(self, error_list, is_au_success, board,
+                                  build_type, milestone, dut_host_name):
+        """Send metrics for auto_update.
+
+        Please note: to avoid reaching or exceeding the monarch field
+        cardinality limit, we avoid a metric that includes both dut hostname
+        and other high cardinality fields.
+
+        @param error_list: a list of errors happened in provision. Usually it
+            contains 1 ~ AU_RETRY_LIMIT errors since we only retry provision
+            for several times.
+        @param is_au_success: a field in metrics, representing whether this
+            auto_update succeeds or not.
+        @param board: a field in metrics representing which board this
+            auto_update tries to update.
+        @param build_type: a field in metrics representing which build type this
+            auto_update tries to update.
+        @param milestone: a field in metrics representing which milestone this
+            auto_update tries to update.
+        @param dut_host_name: a field in metrics representing which DUT this
+            auto_update tries to update.
+        """
+        # Per-devserver cros_update metric.
+        c1 = metrics.Counter(
+                'chromeos/autotest/provision/cros_update_by_devserver')
+        f1 = {'dev_server': self.resolved_hostname,
+              'success': is_au_success,
+              'board': board,
+              'build_type': build_type,
+              'milestone': milestone,
+              'error': ''}
+        # Per-DUT cros_update metric.
+        c2 = metrics.Counter(
+                'chromeos/autotest/provision/cros_update_per_dut')
+        f2 = {'success': is_au_success,
+              'board': board,
+              'dut_host_name': dut_host_name,
+              'error': ''}
+        # Per auto_update metric.
+        c3 = metrics.Counter(
+                'chromeos/autotest/provision/cros_update_failure_per_devserver')
+        f3 = {'dev_server': self.resolved_hostname,
+              'board': board,
+              'build_type': build_type,
+              'milestone': milestone,
+              'error': ''}
+
+        # Add a field |error| here. Current error's pattern is manually
+        # specified in _EXCEPTION_PATTERNS.
+        if not error_list:
+            c1.increment(fields=f1)
+            c2.increment(fields=f2)
+        else:
+            # In metrics, use the first error as the real provision errors.
+            raised_error = str(self._classify_exceptions(error_list[0]))
+            f1['error'] = raised_error
+            c1.increment(fields=f1)
+            f2['error'] = raised_error
+            c2.increment(fields=f2)
+
+            # Record all errors in metrics cros_update_failure_per_devserver,
+            # to make it truly reflect whether there're some particular errors
+            # hit lab frequently. Previously, all errors raised in the second
+            # try of auto_update will be eaten.
+            for err in error_list:
+                f3['error'] = str(self._classify_exceptions(err))
+                c3.increment(fields=f3)
 
 
     def auto_update(self, host_name, build_name, original_board=None,
@@ -2213,46 +2281,27 @@ class ImageServer(ImageServerBase):
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
 
-        # Note: To avoid reaching or exceeding the monarch field cardinality
-        # limit, we avoid a metric that includes both dut hostname and other
-        # high cardinality fields.
-        # Per-devserver cros_update metric.
-        c = metrics.Counter(
-                'chromeos/autotest/provision/cros_update_by_devserver')
-        # Add a field |error| here. Current error's pattern is manually
-        # specified in _EXCEPTION_PATTERNS.
-        raised_error = self._classify_exceptions(error_list)
-        f = {'dev_server': self.resolved_hostname,
-             'success': is_au_success,
-             'board': board,
-             'build_type': build_type,
-             'milestone': milestone,
-             'error': raised_error}
-        c.increment(fields=f)
-
-        # Per-DUT cros_update metric.
-        c = metrics.Counter('chromeos/autotest/provision/cros_update_per_dut')
-        f = {'success': is_au_success,
-             'board': board,
-             'error': raised_error,
-             'dut_host_name': host_name}
-        c.increment(fields=f)
+        self._emit_auto_update_metrics(error_list, is_au_success, board,
+                                       build_type, milestone, host_name)
 
         if is_au_success:
             return (is_au_success, pid)
 
-        # If errors happen in the CrOS AU process, report the first error
-        # since the following errors might be caused by the first error.
+        # If errors happen in the CrOS AU process, report the concatenation
+        # of the errors happening in first & second provision.
         # If error happens in RPCs of cleaning track log, collecting
-        # auto-update logs, or killing auto-update processes, just report
-        # them together.
+        # auto-update logs, or killing auto-update processes, just report a
+        # common error here.
         if error_list:
+            real_error = ''
+            for i in range(len(error_list)):
+                real_error += '%d) %s, ' % (i, error_list[i])
             if retry_with_another_devserver:
                 raise RetryableProvisionException(
-                        error_msg % (host_name, error_list[0]))
+                        error_msg % (host_name, real_error))
             else:
                 raise DevServerException(
-                        error_msg % (host_name, error_list[0]))
+                        error_msg % (host_name, real_error))
         else:
             raise DevServerException(error_msg % (
                         host_name, ('RPC calls after the whole auto-update '
