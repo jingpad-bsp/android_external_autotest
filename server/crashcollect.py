@@ -107,6 +107,10 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False,
         return
     try:
         file_stats = _get_file_stats(host, log_path)
+        if not file_stats:
+            # Failed to get file stat, the file may not exist.
+            return
+
         if (not result_tools_runner.ENABLE_RESULT_THROTTLING and
             random.random() > file_stats.collection_probability):
             logging.warning('Collection of %s skipped:'
@@ -156,12 +160,21 @@ def _get_file_stats(host, path):
     @returns: _FileStats namedtuple with file size and collection probability.
     """
     cmd = 'ls -ld %s | cut -d" " -f5' % (pipes.quote(path),)
+    output = None
+    file_size = 0
     try:
-        file_size = int(host.run(cmd).stdout)
-    except (error.CmdError, ValueError) as e:
-        logging.warning('Getting size of file %r on host %r failed: %s',
-                        path, host, e)
-        file_size = 0
+        output = host.run(cmd).stdout
+    except error.CmdError as e:
+        logging.warning('Getting size of file %r on host %r failed: %s. '
+                        'Default its size to 0', path, host, e)
+    try:
+        if output is not None:
+            file_size = int(output)
+    except ValueError:
+        logging.warning('Failed to convert size string "%s" for %s on host %r. '
+                        'File may not exist.', output, path, host)
+        return
+
     if file_size == 0:
         return _FileStats(0, 1.0)
     else:
