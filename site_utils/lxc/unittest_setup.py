@@ -26,7 +26,7 @@ def setup_logging(log_level):
     logger.addHandler(handler)
 
 
-def verify_user(require_sudo):
+def verify_user(require_sudo=True):
     """Checks that the current user is not root, but has sudo.
 
     Running unit tests as root can mask permissions problems, as not all the
