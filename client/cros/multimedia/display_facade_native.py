@@ -40,7 +40,7 @@ class DisplayFacadeNative(object):
     The methods inside this class only accept Python native types.
     """
 
-    CALIBRATION_IMAGE_PATH = '/tmp/calibration.svg'
+    CALIBRATION_IMAGE_PATH = '/tmp/calibration.png'
     MINIMUM_REFRESH_RATE_EXPECTED = 25.0
     DELAY_TIME = 3
     MAX_TYPEC_PORT = 6
