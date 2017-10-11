@@ -5,6 +5,12 @@
 """Run a job against Autotest.
 
 See http://goto.google.com/monitor_db_per_job_refactor
+
+See also job_shepherd in
+https://chromium.googlesource.com/chromiumos/infra/lucifer
+
+job_reporter is a thin wrapper around job_shepherd and only updates the
+Autotest database according to status events.
 """
 
 from __future__ import absolute_import
@@ -21,10 +27,6 @@ from lucifer import loglib
 
 logger = logging.getLogger(__name__)
 
-# TODO(crbug.com/748234): This is for moblab.  Prod may require
-# different path.
-_JOB_SHEPHERD_PROGRAM = '/usr/lib/job_shepherd'
-
 
 def main(args):
     """Main function
@@ -37,6 +39,8 @@ def main(args):
     parser.add_argument('--job-id', type=int, default=None)
     parser.add_argument('--autoserv-exit', type=int, default=None,
                         help='autoserv exit status')
+    parser.add_argument('--job-shepherd', default='/usr/lib/job_shepherd',
+                        help='Path to job_shepherd binary')
     parser.add_argument('job_shepherd_args', nargs=argparse.REMAINDER,
                         help='Arguments passed to job_shepherd')
     args = parser.parse_args(args)
@@ -57,18 +61,20 @@ def main(args):
         # TODO(crbug.com/748234): Full jobs not implemented yet.
         raise NotImplementedError('not implemented yet')
     handler = _EventHandler(job, hqes, autoserv_exit=args.autoserv_exit)
-    return _run_shepherd(handler, args)
+    return _run_shepherd(args.job_shepherd, handler, args)
 
 
-def _run_shepherd(event_handler, args):
+def _run_shepherd(path, event_handler, args):
     """Run job_shepherd.
 
     Events issues by the job_shepherd will be handled by event_handler.
 
+    @param path: path to job_shepherd binary
     @param event_handler: callable that takes an Event
     @param args: parsed arguments
+    @returns: exit status of job_shepherd
     """
-    args = [_JOB_SHEPHERD_PROGRAM]
+    args = [path]
     args.extend(args.job_shepherd_args)
     return eventlib.run_event_command(event_handler=event_handler, args=args)
 
@@ -110,6 +116,7 @@ class _EventHandler(object):
 
     def _handle_parsing(self):
         # TODO(crbug.com/748234): monitor_db leaves the HQEs in parsing
+        # for now
         pass
 
     def _handle_completed(self):
@@ -122,7 +129,6 @@ class _EventHandler(object):
         Status = afe_models.HostQueueEntry.Status
         if self._job_was_aborted():
             return Status.ABORTED
-
         if self._autoserv_exit == 0:
             return Status.COMPLETED
         return Status.FAILED

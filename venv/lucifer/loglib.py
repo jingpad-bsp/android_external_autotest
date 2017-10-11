@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""lucifer scripts shared logging related functions."""
+"""Shared logging functions"""
 
 from __future__ import absolute_import
 from __future__ import division
