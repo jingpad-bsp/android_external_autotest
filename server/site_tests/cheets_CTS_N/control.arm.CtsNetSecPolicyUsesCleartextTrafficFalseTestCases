@@ -14,7 +14,7 @@ TIME = 'LENGTHY'
 MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsNetSecPolicyUsesCleartextTrafficFalseTestCases of the '
-       'Android 7.1_r9 Compatibility Test Suite (CTS), build 4305494,'
+       'Android 7.1_r10 Compatibility Test Suite (CTS), build 4372030,'
        'using arm ABI in the ARC++ container.')
 
 def run_CTS(machine):
@@ -29,6 +29,7 @@ def run_CTS(machine):
         target_module='CtsNetSecPolicyUsesCleartextTrafficFalseTestCases',
         bundle='arm',
         warn_on_test_retry=False,
+        retry_manual_tests=True,
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
