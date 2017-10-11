@@ -82,9 +82,6 @@ REPORT_INTERVAL_SECS = 60 * 60
 RESULTS_DIR = '/usr/local/autotest/results'
 FAILED_OFFLOADS_FILE = os.path.join(RESULTS_DIR, 'FAILED_OFFLOADS')
 
-# Hosts sub-directory that contains cleanup, verify and repair jobs.
-HOSTS_SUB_DIR = 'hosts'
-
 FAILED_OFFLOADS_FILE_HEADER = '''
 This is the list of gs_offloader failed jobs.
 Last offloader attempt at %s failed to offload %d files.
