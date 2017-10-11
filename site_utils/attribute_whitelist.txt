@@ -181,6 +181,7 @@ suite:paygen_au_dev
 suite:paygen_au_stable
 suite:perf_v2
 suite:perfalerts
+suite:policy
 suite:power_build
 suite:power_daily
 suite:power_requirements
