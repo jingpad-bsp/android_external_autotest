@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
 TELEMETRY_RUN_GPU_TESTS_SCRIPT = 'content/test/gpu/run_gpu_integration_test.py'
-TELEMETRY_TIMEOUT_MINS = 120
+TELEMETRY_TIMEOUT_MINS = 150
 
 DUT_CHROME_ROOT = '/usr/local/telemetry/src'
 DUT_COMMON_SSH_OPTIONS = ['-o StrictHostKeyChecking=no',
