@@ -54,10 +54,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         self._cts_tradefed = os.path.join(self._android_cts, 'android-cts',
                                           'tools', 'cts-tradefed')
         logging.info('CTS-tradefed path: %s', self._cts_tradefed)
-
         # Load waivers and manual tests so TF doesn't re-run them.
-        self.waivers_and_manual_tests = self._get_expected_failures(
-            'expectations')
+        self._waivers = self._get_expected_failures('expectations')
+        self._manual_tests = self._get_expected_failures('manual_tests')
         # Load modules with no tests.
         self.notest_modules = self._get_expected_failures('notest_modules')
 
@@ -204,8 +203,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Collect tradefed logs for autotest.
         tradefed = os.path.join(self._android_cts, 'android-cts')
         self._collect_logs(tradefed, datetime_id, result_destination)
-        return self._parse_result_v2(output,
-                                     waivers=self.waivers_and_manual_tests)
+        return self._parse_result_v2(output, waivers=self._waivers)
 
     def _tradefed_retry(self, test_name, session_id):
         """Retries failing tests in session.
@@ -273,6 +271,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  target_method=None,
                  needs_push_media=False,
                  max_retry=None,
+                 retry_manual_tests=False,
                  cts_tradefed_args=None,
                  pre_condition_commands=[],
                  login_pre_condition_commands=[],
@@ -294,6 +293,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @param target_method: the name of the method to be tested.
         @param needs_push_media: need to push test media streams.
         @param max_retry: number of retry steps before reporting results.
+        @param retry_manual_tests: a flag to track whether manual tests
+                need to be retried or not. Autotest lab skips manual tests,
+                while moblab runs them.
         @param timeout: time after which tradefed can be interrupted.
         @param pre_condition_commands: a list of scripts to be run on the
         dut before the test is run, the scripts must already be installed.
@@ -316,6 +318,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         logging.info('Maximum number of retry steps %d.', self._max_retry)
         session_id = 0
 
+        if not retry_manual_tests:
+            self._waivers.update(self._manual_tests)
         self.result_history = {}
         steps = -1  # For historic reasons the first iteration is not counted.
         pushed_media = False
