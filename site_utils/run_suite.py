@@ -531,7 +531,7 @@ class LogLink(object):
 
 
     def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
-                 retry_count=0, testname=None):
+                 retry_count=0, testname=None, sponge_url=None):
         """Initialize the LogLink by generating the log URL.
 
         @param anchor      The link text.
@@ -541,12 +541,14 @@ class LogLink(object):
         @param reason      A string representing the reason of failure if any.
         @param retry_count How many times the test has been retried.
         @param testname    Optional Arg that supplies the testname.
+        @param sponge_url  url to Sponge result.
         """
         self.anchor = anchor
         self.url = _URL_PATTERN % (server, job_string)
         self.reason = reason
         self.retry_count = retry_count
         self.testname = testname
+        self.sponge_url = sponge_url
         if bug_info:
             self.bug_id, self.bug_count = bug_info
         else:
@@ -1430,7 +1432,8 @@ class ResultCollector(object):
                     server=self._instance_server,
                     job_string=job_id_owner,
                     bug_info=bug_info, retry_count=retry_count,
-                    testname=v.get_testname())
+                    testname=v.get_testname(),
+                    sponge_url=suite_job_keyvals.get('sponge_url'))
             self._web_links.append(link)
 
             if v.should_display_buildbot_link():
@@ -1525,6 +1528,7 @@ class ResultCollector(object):
             test_info = tests_dict.get(test_name)
             if test_info:
                 test_info['link_to_logs'] = link.url
+                test_info['sponge_url'] = link.sponge_url
                 # Write the wmatrix link into the dict.
                 if link in self.buildbot_links and link.testname:
                     test_info['wmatrix_link'] \
