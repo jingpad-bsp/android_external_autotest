@@ -177,7 +177,7 @@ class ResultCollectorUnittest(unittest.TestCase):
                  test_missing])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build='fake/build', board='fake', suite_name='dummy',
+                build=build, board='fake', suite_name=suite_name,
                 suite_job_id=suite_job_id,
                 return_code_function=run_suite._ReturnCodeComputer())
         collector._missing_results = {
@@ -264,17 +264,22 @@ class ResultCollectorUnittest(unittest.TestCase):
         board = 'lumpy'
         fake_job = mock.MagicMock()
         fake_job.parent = suite_job_id
+        test_sponge_url = 'http://test_url'
+        job_keyvals = {'sponge_url': test_sponge_url}
         suite_job_view = run_suite.TestView(
                 self._build_view(
-                    20, 'Suite job', '----', 'GOOD', suite_job_id),
+                    20, 'Suite job', '----', 'GOOD', suite_job_id,
+                    job_keyvals=job_keyvals),
                 fake_job, suite_name, build, 'chromeos-test')
         good_test = run_suite.TestView(
                 self._build_view(
-                    21, 'test_Pass', 'fake/subdir', 'GOOD', 101),
+                    21, 'test_Pass', 'fake/subdir', 'GOOD', 101,
+                    job_keyvals=job_keyvals),
                 fake_job, suite_name, build, 'chromeos-test')
         bad_test = run_suite.TestView(
                 self._build_view(
-                    23, 'test_Fail', 'fake/subdir', 'FAIL', 102),
+                    23, 'test_Fail', 'fake/subdir', 'FAIL', 102,
+                    job_keyvals=job_keyvals),
                 fake_job, suite_name, build, 'chromeos-test')
 
         collector = run_suite.ResultCollector(
@@ -292,13 +297,15 @@ class ResultCollectorUnittest(unittest.TestCase):
         expected_web_links = [
                  (v.get_testname(),
                   URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
+                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')),
+                  test_sponge_url)
                  for v in collector._test_views]
         # Verify web links are generated correctly.
         for i in range(len(collector._web_links)):
             expect = expected_web_links[i]
             self.assertEqual(collector._web_links[i].anchor, expect[0])
             self.assertEqual(collector._web_links[i].url, expect[1])
+            self.assertEqual(collector._web_links[i].sponge_url, expect[2])
 
         expected_buildbot_links = [
                  (v.get_testname(),
