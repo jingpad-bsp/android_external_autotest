@@ -545,7 +545,7 @@ class CrashTest(test.test):
         script_output = ""
         try:
             script_output = utils.system_output(
-                '/bin/sh -c "%s" 2>&1' % self._CRASH_SENDER_PATH,
+                '%s 2>&1' % self._CRASH_SENDER_PATH,
                 ignore_status=should_fail)
         except error.CmdError as err:
             raise error.TestFail('"%s" returned an unexpected non-zero '
