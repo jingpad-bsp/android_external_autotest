@@ -68,7 +68,7 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
                                  (tab_urls, policy_value))
 
 
-    def run_test_case(self, case):
+    def run_once(self, case):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| string and |policies_dict| data based
@@ -80,8 +80,9 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
         """
         case_value = self.TEST_CASES[case]
         if case_value == None:
-            supporting_policies = {'RestoreOnStartup': None}
+            user_policies = {'RestoreOnStartup': None}
         else:
-            supporting_policies = {'RestoreOnStartup': 4}
-        self.setup_case(self.POLICY_NAME, case_value, supporting_policies)
+            user_policies = {'RestoreOnStartup': 4}
+        user_policies[self.POLICY_NAME] = case_value
+        self.setup_case(user_policies=user_policies)
         self._test_startup_urls(case_value)
