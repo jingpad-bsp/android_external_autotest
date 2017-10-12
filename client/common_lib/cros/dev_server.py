@@ -969,6 +969,7 @@ class ImageServerBase(DevServer):
         server_name = get_hostname(call)
         is_in_restricted_subnet = utils.get_restricted_subnet(
                 server_name, utils.RESTRICTED_SUBNETS)
+        _EMPTY_SENTINEL_VALUE = object()
         def kickoff_call():
             """Invoke a given devserver call using urllib.open or ssh.
 
@@ -989,14 +990,17 @@ class ImageServerBase(DevServer):
             if ERR_MSG_FOR_DOWN_DEVSERVER in response:
                 return False
 
-            return response
+            # Don't return response directly since it may be empty string,
+            # which causes poll_for_condition to retry.
+            return _EMPTY_SENTINEL_VALUE if not response else response
 
         try:
-            return bin_utils.poll_for_condition(
+            response = bin_utils.poll_for_condition(
                     kickoff_call,
                     exception=bin_utils.TimeoutError(),
                     timeout=60,
                     sleep_interval=5)
+            return '' if response is _EMPTY_SENTINEL_VALUE else response
         except bin_utils.TimeoutError:
             return ERR_MSG_FOR_DOWN_DEVSERVER
 
