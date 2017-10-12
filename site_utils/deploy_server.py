@@ -117,7 +117,8 @@ def parse_arguments(args):
     parser.add_argument('--continue', action='store_true', dest='cont',
             help='Continue to the next server on failure.')
     parser.add_argument('--afe', required=True,
-            help='What is the main server for this installation? (cautotest).')
+            help='The AFE server used to get servers from server_db,'
+                 'e.g, cautotest.')
     parser.add_argument('--update_push_servers', action='store_true',
             help='Indicate to update test_push servers.')
     parser.add_argument('--force_update', action='store_true',
@@ -311,8 +312,8 @@ def main(args):
             print('  %s' % server)
         print()
         print('To retry:')
-        print('  %s <options> %s' %
-              (str(args[0]), str(' '.join(failed + skipped))))
+        print('  %s --afe=%s %s' %
+              (str(args[0]), options.afe, str(' '.join(failed + skipped))))
         # Exit with error.
         return 1
 
