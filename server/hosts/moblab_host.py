@@ -241,13 +241,26 @@ class MoblabHost(cros_host.CrosHost):
         super(MoblabHost, self).verify_software()
 
 
-    @retry.retry(error.AutoservError, timeout_min=2, delay_sec=10)
+    @retry.retry(error.AutoservError, timeout_min=0.5, delay_sec=10)
     def _verify_upstart_service(self, service):
-        """Retry to verify the required moblab services are up and running.
+        """Verify the required moblab service is up and running.
 
-        Regarding crbug.com/649811, moblab services takes longer to restart
-        under the new provision framework. This is a fix to retry the service
-        check until all services are successfully restarted.
+        upstart services depend on one another, so a small amount of delay is to
+        be expected between various services starting.
+
+        @param service: the moblab upstart service.
+
+        @return True if this service is started and running, otherwise False.
+        """
+        return self.upstart_status(service)
+
+
+    @retry.retry(error.AutoservError, timeout_min=5, delay_sec=10)
+    def _verify_upstart_service_long_wait(self, service):
+        """Verify that required moblab service is up, with a long retry.
+
+        The first moblab service can take a long time to start up. Especially on
+        first, boot lxc container setup can delay the services for ~5 minutes.
 
         @param service: the moblab upstart service.
 
@@ -261,10 +274,19 @@ class MoblabHost(cros_host.CrosHost):
 
         @raises AutoservError if any moblab service is not running.
         """
-        for service in MOBLAB_SERVICES:
+        if not MOBLAB_SERVICES:
+            return
+
+        service = MOBLAB_SERVICES[0]
+        if not self._verify_upstart_service_long_wait(service):
+            raise error.AutoservError('Moblab service: %s is not running.' %
+                                      service)
+
+        for service in MOBLAB_SERVICES[1:]:
             if not self._verify_upstart_service(service):
                 raise error.AutoservError('Moblab service: %s is not running.'
                                           % service)
+
         for process in MOBLAB_PROCESSES:
             try:
                 self.run('pgrep %s' % process)
