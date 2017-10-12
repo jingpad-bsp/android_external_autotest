@@ -1959,6 +1959,8 @@ def _should_run(options):
                      afe_job_id)
         return False
 
+    return True
+
 
 def _poke_buildbot_with_output(afe, job_id, job_timer):
     """Poke buildbot so it doesn't timeout from silence.
