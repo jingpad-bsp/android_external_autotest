@@ -181,6 +181,8 @@ class SiteDrone(object):
             except (error.AutoservRunError, error.AutotestHostRunError):
                 # Local drone raises AutotestHostRunError, while remote drone
                 # raises AutoservRunError.
+                logging.exception('Drone %s does not support server-side '
+                                  'packaging.', self.hostname)
                 self._support_ssp = False
         return self._support_ssp
 
