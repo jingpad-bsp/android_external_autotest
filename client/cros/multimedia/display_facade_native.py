@@ -9,6 +9,7 @@ import multiprocessing
 import numpy
 import os
 import re
+import shutil
 import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -332,6 +333,15 @@ class DisplayFacadeNative(object):
         """
 
         graphics_utils.take_screenshot_crop(path, crtc_id=id)
+        return True
+
+
+    def save_calibration_image(self, path):
+        """Save the calibration image to the given path.
+
+        @param path: path to image file.
+        """
+        shutil.copy(self.CALIBRATION_IMAGE_PATH, path)
         return True
 
 
