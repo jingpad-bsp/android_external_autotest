@@ -23,7 +23,7 @@ class platform_Perf(test.test):
       re.compile(r'chrome'),
       re.compile(r'ld-.*\.so.*'),
       re.compile(r'libbase.*\.so.*'),
-      re.compile(r'libc.*\.so.*'),
+      re.compile(r'libc-.*\.so.*'),
       re.compile(r'libdbus.*\.so.*'),
       re.compile(r'libpthread.*\.so.*'),
       re.compile(r'libstdc\+\+.*\.so.*'),
