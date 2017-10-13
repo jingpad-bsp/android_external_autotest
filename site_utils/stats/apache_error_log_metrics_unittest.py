@@ -109,12 +109,28 @@ class ApacheErrorTest(unittest.TestCase):
             with open(temp_file.name) as fh:
                 contents = fh.read()
 
-            self.assertTrue(re.search(
-                apache_error_log_metrics.ERROR_LOG_LINE_METRIC[1:] + r'\b',
-                contents))
-            self.assertTrue(re.search(
-                apache_error_log_metrics.ERROR_LOG_METRIC[1:] + r'\b',
-                contents))
+        self.assertTrue(re.search(
+            apache_error_log_metrics.ERROR_LOG_LINE_METRIC[1:] + r'\b',
+            contents))
+        self.assertTrue(re.search(
+            apache_error_log_metrics.ERROR_LOG_METRIC[1:] + r'\b',
+            contents))
+
+
+    def testApachErrorLogScriptWithSpecialLines(self):
+        """Sending lines with specific messages ."""
+        with tempfile.NamedTemporaryFile() as temp_file:
+            p = subprocess.Popen([SCRIPT_PATH,
+                                  '--debug-metrics-file', temp_file.name],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            p.communicate('[foo] [:bar] [pid 123] WARNING Segmentation fault')
+
+            with open(temp_file.name) as fh:
+                contents = fh.read()
+
+        self.assertTrue(re.search(
+            apache_error_log_metrics.SEGFAULT_METRIC[1:] + r'\b',
+            contents))
 
 
 if __name__ == '__main__':

@@ -35,7 +35,7 @@ class graphics_Gralloc(graphics_utils.GraphicsTest, arc.ArcTest):
         # the test to /sdcard/, then move it to a /data/ subdirectory we create.
         # The permissions on the exectuable have to be modified as well.
         arc.adb_root()
-        arc.adb_shell('mkdir -p %s' % (_EXEC_DIR))
+        arc._android_shell('mkdir -p %s' % (_EXEC_DIR))
         for binary in _POSSIBLE_BINARIES:
             cros_path = os.path.join(_CROS_BIN_DIR, binary)
             cros_cmd = '%s %s' % (_TEST_COMMAND, cros_path)
@@ -47,14 +47,14 @@ class graphics_Gralloc(graphics_utils.GraphicsTest, arc.ArcTest):
             arc.adb_cmd('-e push %s %s' % (cros_path, sdcard_path))
 
             exec_path = os.path.join(_EXEC_DIR, binary)
-            arc.adb_shell('mv %s %s' % (sdcard_path, exec_path))
-            arc.adb_shell('chmod o+rwx %s' % (exec_path))
+            arc._android_shell('mv %s %s' % (sdcard_path, exec_path))
+            arc._android_shell('chmod o+rwx %s' % (exec_path))
             self._executables.append(exec_path)
 
     def arc_teardown(self):
         for executable in self._executables:
         # Remove test contents from Android container.
-            arc.adb_shell('rm -rf %s' % (executable))
+            arc._android_shell('rm -rf %s' % (executable))
         super(graphics_Gralloc, self).arc_teardown()
 
     def run_once(self):
@@ -67,7 +67,7 @@ class graphics_Gralloc(graphics_utils.GraphicsTest, arc.ArcTest):
         for executable in self._executables:
             try:
                 cmd = '%s %s' % (executable, _OPTION)
-                stdout = arc.adb_shell(cmd)
+                stdout = arc._android_shell(cmd)
             except Exception:
                 logging.error('Exception running %s', cmd)
                 raise error.TestFail('Failed: gralloc on %s' % gpu_family)
