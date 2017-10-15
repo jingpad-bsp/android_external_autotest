@@ -9,7 +9,6 @@ These can be exposed via a xmlrpci server running on the DUT.
 
 import functools, os, tempfile
 
-import common
 from autotest_lib.client.cros.faft.utils import (cgpt_handler,
                                                  os_interface,
                                                  firmware_check_keys,
@@ -88,6 +87,7 @@ class RPCFunctions(object):
         _keys_path: Path of a directory, keys/, in temp directory.
         _work_path: Path of a directory, work/, in temp directory.
     """
+
     def __init__(self):
         """Initialize the data attributes of this class."""
         # TODO(waihong): Move the explicit object.init() methods to the
@@ -241,7 +241,7 @@ class RPCFunctions(object):
         return self._os_if.run_host_shell_command_get_output(command)
 
     def _host_run_nonblock_shell_command(self, command):
-        """Run non-blocking shell command
+        """Run non-blocking shell command.
 
         @param command: A shell command to be run.
         @return: none
@@ -295,7 +295,7 @@ class RPCFunctions(object):
         self._os_if.cs.fwb_tries = count
 
     def _system_set_fw_try_next(self, next, count=0):
-        """Set fw_try_next to A or B
+        """Set fw_try_next to A or B.
 
         @param next: Next FW to reboot to (A or B)
         @param count: # of times to try booting into FW <next>
@@ -305,7 +305,7 @@ class RPCFunctions(object):
             self._os_if.cs.fw_try_count = count
 
     def _system_get_fw_vboot2(self):
-        """Get fw_vboot2"""
+        """Get fw_vboot2."""
         try:
             return self._os_if.cs.fw_vboot2 == '1'
         except os_interface.OSInterfaceError:
@@ -750,13 +750,53 @@ class RPCFunctions(object):
         """Run chromeos-firmwareupdate with recovery mode."""
         options = ['--noupdate_ec',
                    '--nocheck_rw_compatible',
-                   '--nocheck_keys' ]
+                   '--nocheck_keys']
         self._updater.run_firmwareupdate(mode='recovery',
                                          options=options)
+
+    def _updater_cbfs_setup_work_dir(self):
+        """Sets up cbfstool work directory."""
+        return self._updater.cbfs_setup_work_dir()
+
+    def _updater_cbfs_extract_chip(self, fw_name):
+        """Runs cbfstool to extract chip firmware.
+
+        @param fw_name: Name of chip firmware to extract.
+        @return: Boolean success status.
+        """
+        return self._updater.cbfs_extract_chip(fw_name)
+
+    def _updater_cbfs_get_chip_hash(self, fw_name):
+        """Gets the chip firmware hash blob.
+
+        @param fw_name: Name of chip firmware whose hash blob to return.
+        @return: Hex string of hash blob.
+        """
+        return self._updater.cbfs_get_chip_hash(fw_name)
+
+    def _updater_cbfs_replace_chip(self, fw_name):
+        """Runs cbfstool to replace chip firmware.
+
+        @param fw_name: Name of chip firmware to extract.
+        @return: Boolean success status.
+        """
+        return self._updater.cbfs_replace_chip(fw_name)
+
+    def _updater_cbfs_sign_and_flash(self):
+        """Runs cbfs signer and flash it.
+
+        @param fw_name: Name of chip firmware to extract.
+        @return: Boolean success status.
+        """
+        return self._updater.cbfs_sign_and_flash()
 
     def _updater_get_temp_path(self):
         """Get updater's temp directory path."""
         return self._updater.get_temp_path()
+
+    def _updater_get_cbfs_work_path(self):
+        """Get updater's cbfs work directory path."""
+        return self._updater.get_cbfs_work_path()
 
     def _updater_get_keys_path(self):
         """Get updater's keys directory path."""
