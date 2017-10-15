@@ -36,7 +36,7 @@ def run_CTS(machine):
         bundle='x86',
         warn_on_test_retry=False,
         timeout=3600,
-        pre_condition_commands=[
+        precondition_commands=[
            '/usr/local/autotest/cros/scripts/wifi connect %s %s' % (ssid, wifipass),
            '/usr/local/autotest/cros/scripts/reorder-services-moblab.sh wifi',
         ])
