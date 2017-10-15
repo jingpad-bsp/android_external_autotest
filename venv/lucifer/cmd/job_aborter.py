@@ -2,13 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""job_aborter
+"""Monitor jobs and abort them as necessary.
 
-This monitors job leases via the mtime on key files.  If a job fails to
-update its lease (by touching its file), it will be considered dead and
-the job will be aborted.
+This daemon does a number of upkeep tasks:
 
-See http://goto.google.com/monitor_db_per_job_refactor
+* When a process owning a job crashes, job_aborter will mark the job as
+  aborted in the database and clean up its lease files.
+
+* When a job is marked aborted in the database, job_aborter will signal
+  the process owning the job to abort.
+
+See also http://goto.google.com/monitor_db_per_job_refactor
 """
 
 from __future__ import absolute_import
@@ -52,7 +56,7 @@ def _main_loop(jobdir):
 
 
 def _main_loop_body(jobdir):
-    _mark_expired_jobs_aborted(jobdir)
+    _process_expired_jobs(jobdir)
     _abort_timed_out_jobs(jobdir)
     _abort_jobs_marked_aborting(jobdir)
     _abort_special_tasks_marked_aborted()
@@ -60,33 +64,42 @@ def _main_loop_body(jobdir):
     # job_shepherd
 
 
-def _mark_expired_jobs_aborted(jobdir):
+def _process_expired_jobs(jobdir):
+    leases = leasing.get_expired_leases(jobdir)
     job_ids = {job.id for job in leasing.get_expired_jobs(jobdir)}
     _mark_aborted(job_ids)
+    # Clean up files after marking them aborted in case we crash.
+    for lease in leases:
+        lease.clean()
 
 
 def _abort_timed_out_jobs(jobdir):
     models = autotest.load('frontend.afe.models')
-    for lease in leasing.get_timed_out_leases(models, jobdir):
+    for lease in leasing.get_timed_out_leases(models.Job, jobdir):
         lease.abort()
 
 
 def _abort_jobs_marked_aborting(jobdir):
     models = autotest.load('frontend.afe.models')
-    for lease in leasing.get_marked_aborting_leases(models, jobdir):
+    for lease in leasing.get_marked_aborting_leases(models.Job, jobdir):
         lease.abort()
 
 
 def _abort_special_tasks_marked_aborted():
-    # TODO(crbug.com/748234): Special tasks not implemented yet
+    # TODO(crbug.com/748234): Special tasks not implemented yet.  This
+    # would abort jobs running on the behalf of special tasks and thus
+    # need to check a different database table.
     pass
 
 
 def _mark_aborted(job_ids):
     """Mark jobs aborted in database."""
     models = autotest.load('frontend.afe.models')
-    for dbjob in models.Job.objects.filter(id__in=job_ids):
-        dbjob.abort()
+    jobs = (models.Job.objects
+            .filter(id__in=job_ids)
+            .prefetch_related('hostqueueentry'))
+    for job in jobs:
+        job.abort()
 
 
 if __name__ == '__main__':

@@ -2,40 +2,45 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Job leasing.
+"""Job leasing utilities
+
+See infra/lucifer for the implementation of job leasing.
+
+https://chromium.googlesource.com/chromiumos/infra/lucifer
 
 Jobs are leased to processes to own and run.  A process owning a job
-grabs a fcntl lock on the corresponding job lease file.  If the lock on
-the job is released, the owning process is considered dead and the job
-lease is considered expired.  Some other process (job_aborter) will need
-to make the necessary updates to reflect the job's failure.
+obtain a job lease.  Ownership of the lease is established using an
+exclusive fcntl lock on the lease file.
+
+If a lease file is older than a few seconds and is not locked, then its
+owning process should be considered crashed.
 """
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import errno
 import fcntl
 import logging
 import os
 import socket
+import time
 
 from scandir import scandir
-
-_HEARTBEAT_DEADLINE_SECS = 10 * 60
-_HEARTBEAT_SECS = 3 * 60
 
 logger = logging.getLogger(__name__)
 
 
 def get_expired_leases(jobdir):
-    """Yield expired JobLeases in jobdir.
+    """Yield expired Leases in jobdir.
 
     Expired jobs are jobs whose lease files are no longer locked.
 
     @param jobdir: job lease file directory
+    @returns: iterator of Leases
     """
-    for lease in _job_leases_iter(jobdir):
+    for lease in leases_iter(jobdir):
         if lease.expired():
             yield lease
 
@@ -45,6 +50,7 @@ def get_timed_out_leases(dbjob_model, jobdir):
 
     @param dbjob_model: Django model for Job
     @param jobdir: job lease file directory
+    @returns: iterator of Leases
     """
     all_timed_out_dbjobs = (
             dbjob_model.objects
@@ -61,6 +67,7 @@ def get_marked_aborting_leases(dbjob_model, jobdir):
 
     @param dbjob_model: Django model for Job
     @param jobdir: job lease file directory
+    @returns: iterator of Leases
     """
     all_aborting_dbjobs = (
             dbjob_model.objects
@@ -72,23 +79,23 @@ def get_marked_aborting_leases(dbjob_model, jobdir):
         yield lease
 
 
-def make_lease_file(jobdir, job_id):
-    """Make lease file corresponding to a job.
-
-    Kept to document/pin public API.  The actual creation happens in the
-    job_shepherd (which is written in Go).
+def leases_iter(jobdir):
+    """Yield Lease instances from jobdir.
 
     @param jobdir: job lease file directory
-    @param job_id: Job ID
+    @returns: iterator of Leases
     """
-    path = os.path.join(jobdir, str(job_id))
-    with open(path, 'w'):
-        pass
-    return path
+    for entry in scandir(jobdir):
+        if _is_lease_entry(entry):
+            yield Lease(entry)
 
 
-class JobLease(object):
+class Lease(object):
     "Represents a job lease."
+
+    # Seconds after a lease file's mtime where its owning process is not
+    # considered dead.
+    _FRESH_LIMIT = 5
 
     def __init__(self, entry):
         """Initialize instance.
@@ -103,61 +110,83 @@ class JobLease(object):
         return int(self._entry.name)
 
     def expired(self):
-        """Return True if the lease is expired."""
+        """Return True if the lease is expired.
+
+        A lease is considered expired if there is no fcntl lock on it
+        and the grace period for the owning process to obtain the lock
+        has passed.  The lease is not considered expired if the owning
+        process removed the lock file normally, as an expired lease
+        indicates that some error has occurred and clean up operations
+        are needed.
+        """
+        try:
+            stat_result = self._entry.stat()
+        except OSError as e:  # pragma: no cover
+            if e.errno == errno.ENOENT:
+                return False
+            raise
+        mtime = stat_result.st_mtime_ns / (10 ** 9)
+        if time.time() - mtime < self._FRESH_LIMIT:
+            return False
         return not _fcntl_locked(self._entry.path)
 
     def cleanup(self):
-        """Remove the lease file."""
-        os.unlink(self._entry.path)
+        """Remove the lease file.
+
+        This does not need to be called normally, as the owning process
+        should clean up its files.
+        """
+        try:
+            os.unlink(self._entry.path)
+        except OSError as e:
+            logger.warning('Error removing %s: %s', self._entry.path, e)
+        try:
+            os.unlink(self._sock_path)
+        except OSError as e:
+            logger.warning('Error removing %s: %s', self._sock_path, e)
 
     def abort(self):
-        """Abort the job."""
+        """Abort the job.
+
+        This sends a datagram to the abort socket associated with the
+        lease.
+
+        If the socket is closed, either the connect() call or the send()
+        call will raise socket.error with ECONNREFUSED.
+        """
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         logger.debug('Connecting to abort socket %s', self._sock_path)
         sock.connect(self._sock_path)
         logger.debug('Sending abort to %s', self._sock_path)
         # The value sent does not matter.
-        sent = sock.send("abort")
-        if sent < 1:
-            # Socket was closed, no abort is needed.
-            pass
+        sent = sock.send('abort')
+        # TODO(ayatane): I don't know if it is possible for sent to be 0
+        assert sent > 0
 
     @property
     def _sock_path(self):
+        """Return the path of the abort socket corresponding to the lease."""
         return self._entry.path + ".sock"
 
 
 def _filter_leased(jobdir, dbjobs):
     """Filter Job models for leased jobs.
 
-    Yields pairs of Job model and JobLease instances.
+    Yields pairs of Job model and Lease instances.
 
     @param jobdir: job lease file directory
     @param dbjobs: iterable of Django model Job instances
+    @returns: iterator of Leases
     """
-    our_jobs = {job.id: job for job in _job_leases_iter(jobdir)}
+    our_jobs = {job.id: job for job in leases_iter(jobdir)}
     for dbjob in dbjobs:
         if dbjob.id in our_jobs:
             yield dbjob, our_jobs[dbjob.id]
 
 
-def _job_leases_iter(jobdir):
-    """Yield JobLease instances from jobdir.
-
-    @param jobdir: job lease file directory
-    """
-    for entry in scandir(jobdir):
-        if _is_lease_entry(entry):
-            yield JobLease(entry)
-
-
 def _is_lease_entry(entry):
     """Return True if the DirEntry is for a lease."""
-    try:
-        int(entry.name)
-    except ValueError:
-        return False
-    return True
+    return entry.name.isdigit()
 
 
 def _fcntl_locked(path):
