@@ -4,6 +4,7 @@
 import logging
 import re
 
+import common
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import test
 from autotest_lib.server.hosts import moblab_host
@@ -35,13 +36,13 @@ class MoblabTest(test.test):
         self._host.verify_moblab_services()
         self._host.wait_afe_up()
         self._host.install_boto_file(boto_path)
-        self.set_image_storage_server(image_storage_server)
+        self._set_image_storage_server(image_storage_server)
         self._host.find_and_add_duts()
         self._host.verify_duts()
         self._host.verify_special_tasks_complete()
 
 
-    def set_image_storage_server(self, image_storage_server):
+    def _set_image_storage_server(self, image_storage_server):
         """Set the image storage server.
 
         @param image_storage_server: Name of image storage server to use. Must
