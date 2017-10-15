@@ -8,7 +8,8 @@ Event subprocesses are subprocesses that print event changes to stdout.
 
 Each event is a UNIX line, with a terminating newline character.
 
-run_event_command() starts such a process with a synchronous event handler.
+run_event_command() starts such a process with a synchronous event
+handler.
 """
 
 from __future__ import absolute_import
@@ -36,6 +37,8 @@ class Event(enum.Enum):
 
     This should be backward compatible with all versions of
     job_shepherd, which lives in the infra/lucifer repository.
+
+    https://chromium.googlesource.com/chromiumos/infra/lucifer
     """
     STARTING = 'starting'
     PARSING = 'parsing'
@@ -45,14 +48,18 @@ class Event(enum.Enum):
 def run_event_command(event_handler, args):
     """Run a command that emits events.
 
-    Events printed by the command will be handled by event_handler
-    synchronously.  Exceptions raised by event_handler will not be
-    caught.  If an exception escapes, the child process's standard file
-    descriptors are closed and the process is waited for.  The
-    event command should terminate if this happens.
+    Events printed by the command to stdout will be handled by
+    event_handler synchronously.  Exceptions raised by event_handler
+    will not be caught.  If an exception escapes, the child process's
+    standard file descriptors are closed and the process is waited for.
+    The event command should terminate if this happens.
+
+    event_handler is called with Event instances.  Malformed events
+    emitted by the command will be logged and discarded.
 
     @param event_handler: callable that takes an Event instance.
     @param args: passed to subprocess.Popen.
+    @param returns: exit status of command.
     """
     logger.debug('Starting event command with %r', args)
     with subprocess32.Popen(args, stdout=PIPE) as proc:

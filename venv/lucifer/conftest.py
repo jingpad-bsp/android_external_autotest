@@ -19,7 +19,7 @@ def pytest_addoption(parser):
 
 def pytest_collection_modifyitems(config, items):
     """Modify tests to remove slow tests if --skipslow was passed."""
-    if config.getoption("--skipslow"):
+    if config.getoption("--skipslow"):  # pragma: no cover
         skip_slow = pytest.mark.skip(reason="--skipslow option was passed")
         for item in items:
             if "slow" in item.keywords:
