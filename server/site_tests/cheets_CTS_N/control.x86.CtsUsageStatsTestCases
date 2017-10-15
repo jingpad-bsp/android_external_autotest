@@ -14,7 +14,7 @@ TIME = 'LENGTHY'
 MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsUsageStatsTestCases of the '
-       'Android 7.1_r9 Compatibility Test Suite (CTS), build 4305494,'
+       'Android 7.1_r10 Compatibility Test Suite (CTS), build 4372030,'
        'using x86 ABI in the ARC++ container.')
 
 def run_CTS(machine):
@@ -29,6 +29,11 @@ def run_CTS(machine):
         target_module='CtsUsageStatsTestCases',
         bundle='x86',
         warn_on_test_retry=False,
+        retry_manual_tests=True,
+        pre_condition_commands=[
+    '/usr/local/autotest/cros/scripts/wifi connect %s %s' % (ssid, wifipass),
+    '/usr/local/autotest/cros/scripts/reorder-services-moblab.sh wifi',
+],
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
