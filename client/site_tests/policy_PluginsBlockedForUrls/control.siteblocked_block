@@ -4,7 +4,7 @@
 
 AUTHOR = 'scunningham'
 NAME = 'policy_PluginsBlockedForUrls.siteblocked_block'
-ATTRIBUTES = 'suite:regression'
+ATTRIBUTES = 'suite:regression, suite:policy'
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
