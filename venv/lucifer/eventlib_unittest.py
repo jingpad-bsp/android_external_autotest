@@ -49,13 +49,14 @@ def test_run_event_command_with_failed_command():
     ret = eventlib.run_event_command(
             event_handler=handler,
             args=['bash', '-c', 'exit 1'])
+    # Handler should return the exit status of the command.
     assert ret == 1
 
 
 def test_run_event_command_should_not_hide_handler_exception():
     """Test handler exceptions."""
-    handler = _RaisingHandler(_TestError)
-    with pytest.raises(_TestError):
+    handler = _RaisingHandler(_FakeError)
+    with pytest.raises(_FakeError):
         eventlib.run_event_command(
                 event_handler=handler,
                 args=['bash', '-c', 'echo starting; echo completed'])
@@ -81,5 +82,5 @@ class _RaisingHandler(object):
         raise self._exception
 
 
-class _TestError(Exception):
+class _FakeError(Exception):
     """Fake exception for tests."""
