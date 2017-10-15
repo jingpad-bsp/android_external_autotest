@@ -15,6 +15,8 @@ from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
 
 
+# TODO (crbug/774595): Fix this flakey test.
+@unittest.skip('Flakey (http://crbug/774595)')
 class SharedHostDirTests(unittest.TestCase):
     """Unit tests for the ContainerBucket class."""
 
