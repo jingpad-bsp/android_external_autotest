@@ -1,0 +1,40 @@
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = "dsunkara@chromium.org"
+NAME = "platform_CFM_USBPeripheralStress.hotplug_stress_huddly_cam"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+ATTRIBUTES = "suite:bluestreak, suite:bluestreak-release"
+
+
+DOC = """
+This test logs in the device in consumer mode and then starts stress testing
+the hotplugging and unplugging of USB peripherals. With each hotplug / unplug,
+the test verifies if peripheral is enumerated on USB port without issues.
+The test fails if
+- Cannot perform desktopui_SimpleLogin.
+- Peripheral is not found on the DUT.
+- Peripheral hotplugged is not found.
+"""
+
+args_dict = utils.args_to_dict(args)
+
+def run(machine):
+    host = hosts.create_host(machine, servo_args=None)
+    repeat = int(args_dict.get("repeat", 10))
+    default_actions = str("login, hotplug")
+    action_sequence = str(args_dict.get("action_sequence", default_actions))
+    peripheral_dict = {'Huddly Go Camera': ('2bd9', '0011')}
+    job.run_test('platform_CFM_USBPeripheralStress', host=host,
+            client_autotest='desktopui_SimpleLogin', repeat = repeat,
+            action_sequence=action_sequence, crash_check=True,
+            peripheral_dict=peripheral_dict, tag='hotplug_stress_huddly_cam')
+
+
+parallel_simple(run, machines)
