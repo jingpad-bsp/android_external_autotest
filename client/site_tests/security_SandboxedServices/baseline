@@ -1,5 +1,26 @@
 exe,euser,egroup,pidns,caps,nonewprivs,filter
 
+# This is a comma separated file listing services that run on the device and the
+# expected security features that are enabled for it.
+#
+# Note: If you add a new service and it's being rejected because it's running as
+# root, do not just whitelist it here.  Services should rarely be running under
+# the root account.  Spend the time to improve the security of the system early
+# rather than trying to retrofit it later (especially in response to an attack).
+#
+# The fields:
+# exe: The name of the process in /proc/PID/comm (Note the 15 char limit).
+# euser: The user the account runs under (e.g. "syslog").
+# egroup: The group the account runs under (e.g. "syslog").
+# pidns: Whether the process runs in a unique pid namespace (Yes|No).
+# caps: Whether the process runs with restricted capabilities (Yes|No).
+# nonewprivs: Whether the process runs with no_new_privs set (minijail's -n).
+# filter: Whether the process runs with a seccomp filter (Yes|No).
+#
+# exe,euser,egroup are mandatory checks.  All the other fields are opt-in.  That
+# is to say, a "No" setting means the check is skipped, while a "Yes" setting
+# enforces the permission setting.
+
 # Since udev creates device nodes and changes owners/perms, it needs to run as
 # root.  TODO: We should namespace it.
 udevd,root,root,No,No,No,No
