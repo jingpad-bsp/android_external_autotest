@@ -41,18 +41,10 @@ from autotest_lib.server.cros import telemetry_runner
 # as possible and takes a short time to execute. At this point the
 # list of benchmarks is in flux.
 TELEMETRY_AFDO_BENCHMARKS = (
-    ('page_cycler_v2.typical_25', ('--pageset-repeat=1',)),
-    ('page_cycler_v2.intl_ja_zh', ('--pageset-repeat=1',)),
-    # Temporarily disable these two benchmarks to finish in 60 minutes.
-    # ('page_cycler_v2.intl_ar_fa_he', ('--pageset-repeat=1',)),
-    # ('page_cycler_v2.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
-    # ('page_cycler_v2.intl_ko_th_vi', ('--pageset-repeat=1',)),
-    # ('page_cycler_v2.intl_hi_ru', ('--pageset-repeat=1',)),
-    ('octane',),
-    ('kraken',),
     ('speedometer',),
-    ('dromaeo.domcoreattr',),
-    ('dromaeo.domcoremodify',),
+    ('speedometer',),
+    ('speedometer2',),
+    ('speedometer2',),
     )
 
 # Temporarily disable this benchmark because it is failing a
