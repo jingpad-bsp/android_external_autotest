@@ -273,8 +273,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  max_retry=None,
                  retry_manual_tests=False,
                  cts_tradefed_args=None,
-                 pre_condition_commands=[],
-                 login_pre_condition_commands=[],
+                 precondition_commands=[],
+                 login_precondition_commands=[],
                  warn_on_test_retry=True,
                  timeout=_CTS_TIMEOUT_SECONDS):
         """Runs the specified CTS once, but with several retries.
@@ -297,9 +297,9 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 need to be retried or not. Autotest lab skips manual tests,
                 while moblab runs them.
         @param timeout: time after which tradefed can be interrupted.
-        @param pre_condition_commands: a list of scripts to be run on the
+        @param precondition_commands: a list of scripts to be run on the
         dut before the test is run, the scripts must already be installed.
-        @param login_pre_condition_commands: a list of scripts to be run on the
+        @param login_precondition_commands: a list of scripts to be run on the
         dut before the log-in for the test is performed.
         @param warn_on_test_retry: False if you want to skip warning message
         about tradefed retries.
@@ -355,12 +355,12 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         while total_tests == 0 and steps < self._max_retry:
             steps += 1
             self._run_precondition_scripts(
-                self._host, login_pre_condition_commands, steps)
+                self._host, login_precondition_commands, steps)
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
-                    pre_condition_commands,
+                    precondition_commands,
                     steps)
 
                 # Only push media for tests that need it. b/29371037
@@ -422,12 +422,12 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         while steps < self._max_retry and failed + notexecuted > waived:
             steps += 1
             self._run_precondition_scripts(
-                self._host, login_pre_condition_commands, steps)
+                self._host, login_precondition_commands, steps)
             with self._login_chrome(dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
-                    pre_condition_commands,
+                    precondition_commands,
                     steps)
                 logging.info('Retrying failures of %s with session_id %d:',
                              test_name, session_id)
