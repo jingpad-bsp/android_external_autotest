@@ -33,17 +33,13 @@ logger = logging.getLogger(__name__)
 def monkeypatch():
     """Do necessary Autotest monkeypatching.
 
-    This should be called before any autotest_lib imports in the main
-    function in scripts.  Thus, only the main function in scripts can
-    import autotest_lib.
-
-    Library code should rely on dependency injection, falling back to
-    load().
+    This should be called before any calls to load().  Only the main
+    function in scripts should call this function.
 
     This should be called no more than once.
 
-    This adds Autotest's site-packages and modifies sys.meta_path so
-    that all common.py imports are no-ops.
+    This adds Autotest's site-packages to the import path and modifies
+    sys.meta_path so that all common.py imports are no-ops.
     """
     global _setup_done
     assert not _setup_done
@@ -89,9 +85,7 @@ class _CommonRemovingFinder(object):
 def load(name):
     """Import module from autotest.
 
-    This enforces that monkeypatch() is called first.  Otherwise,
-    autotest imports may or may not work.  When they do work, they may
-    screw up global state.
+    This enforces that monkeypatch() is called first.
 
     @param name: name of module as string, e.g., 'frontend.afe.models'
     """

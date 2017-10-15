@@ -266,7 +266,8 @@ class CrosDisksClient(DBusClient):
         if options is None:
             options = []
         self.clear_signal_content(self.FORMAT_COMPLETED_SIGNAL)
-        self.interface.Format(path, filesystem_type, options)
+        self.interface.Format(path, filesystem_type,
+                              dbus.Array(options, signature='s'))
 
     def wait_for_format_completion(self):
         """Waits for the CrosDisks FormatCompleted signal.
@@ -349,7 +350,8 @@ class CrosDisksClient(DBusClient):
         if options is None:
             options = []
         self.clear_signal_content(self.MOUNT_COMPLETED_SIGNAL)
-        self.interface.Mount(path, filesystem_type, options)
+        self.interface.Mount(path, filesystem_type,
+                             dbus.Array(options, signature='s'))
 
     def unmount(self, path, options=None):
         """Invokes the CrosDisks Unmount method.
@@ -360,7 +362,7 @@ class CrosDisksClient(DBusClient):
         """
         if options is None:
             options = []
-        self.interface.Unmount(path, options)
+        self.interface.Unmount(path, dbus.Array(options, signature='s'))
 
     def wait_for_mount_completion(self):
         """Waits for the CrosDisks MountCompleted signal.

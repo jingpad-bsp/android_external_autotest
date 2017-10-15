@@ -96,7 +96,7 @@ class CFMFacadeNative(object):
         """
         try:
             return graphics_utils.take_screenshot('/tmp', screenshot_name)
-        except StandardError as e:
+        except Exception as e:
             logging.warning('Taking screenshot failed', exc_info = e)
             return None
 
