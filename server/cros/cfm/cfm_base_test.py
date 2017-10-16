@@ -84,6 +84,6 @@ class CfmBaseTest(test.test):
                     os.path.join(target_dir, screenshot_name + '.png'))
             else:
                 logging.warning('Taking screenshot failed')
-        except StandardError as e:
+        except Exception as e:
             logging.warning('Exception while taking a screenshot', exc_info = e)
 
