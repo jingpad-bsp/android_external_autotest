@@ -109,12 +109,6 @@ def get_container_info(container_path, **filters):
     return info_collection
 
 
-# Make sure retries only happen in the non-timeout case.
-@retry.retry((error.CmdError),
-             blacklist=[error.CmdTimeoutError],
-             timeout_min=(constants.DEVSERVER_CALL_TIMEOUT *
-                          constants.DEVSERVER_CALL_RETRY / 60),
-             delay_sec=constants.DEVSERVER_CALL_DELAY)
 def download_extract(url, target, extract_dir):
     """Download the file from given url and save it to the target, then extract.
 
@@ -129,10 +123,7 @@ def download_extract(url, target, extract_dir):
         # This can be run in multiple threads, pick a unique tmp_file.name.
         with tempfile.NamedTemporaryFile(prefix=os.path.basename(target) + '_',
                                          delete=False) as tmp_file:
-            dev_server.ImageServerBase.download_file(
-                    url,
-                    tmp_file.name,
-                    timeout=constants.DEVSERVER_CALL_TIMEOUT)
+            _download_via_devserver(url, tmp_file.name)
             common_utils.run('sudo mv %s %s' % (tmp_file.name, target))
     else:
         # We do not want to retry on CmdTimeoutError but still retry on
@@ -140,8 +131,18 @@ def download_extract(url, target, extract_dir):
         common_utils.run('sudo wget -nv %s -O %s' % (url, target),
                          stderr_tee=common_utils.TEE_TO_LOGS,
                          timeout=constants.DEVSERVER_CALL_TIMEOUT)
-
     common_utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
+
+
+# Make sure retries only happen in the non-timeout case.
+@retry.retry((error.CmdError),
+             blacklist=[error.CmdTimeoutError],
+             timeout_min=(constants.DEVSERVER_CALL_TIMEOUT *
+                          constants.DEVSERVER_CALL_RETRY / 60),
+             delay_sec=constants.DEVSERVER_CALL_DELAY)
+def _download_via_devserver(url, target_file_path):
+    dev_server.ImageServerBase.download_file(
+            url, target_file_path, timeout=constants.DEVSERVER_CALL_TIMEOUT)
 
 
 def _install_package_precheck(packages):
