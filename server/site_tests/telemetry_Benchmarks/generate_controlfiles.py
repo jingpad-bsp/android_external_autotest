@@ -45,15 +45,21 @@ PERF_DAILY_RUN_TESTS = (
     'smoothness.tough_scrolling_cases',
     'smoothness.tough_webgl_cases',
     'sunspider',
-    'system_health.memory_desktop',
     'webrtc',
+)
+
+PERF_WEEKLY_RUN_TESTS = (
+    'system_health.memory_desktop',
 )
 
 PERF_NO_SUITE = (
     'page_cycler.typical_25',
 )
 
-ALL_TESTS = PERF_PER_BUILD_TESTS + PERF_DAILY_RUN_TESTS + PERF_NO_SUITE
+ALL_TESTS = (PERF_PER_BUILD_TESTS +
+             PERF_DAILY_RUN_TESTS +
+             PERF_WEEKLY_RUN_TESTS +
+             PERF_NO_SUITE)
 
 CONTROLFILE_TEMPLATE = (
 """# Copyright 2017 The Chromium OS Authors. All rights reserved.
@@ -95,6 +101,8 @@ def _get_suite(test):
         return 'ATTRIBUTES = \'suite:crosbolt_perf_perbuild\''
     elif test in PERF_DAILY_RUN_TESTS:
         return 'ATTRIBUTES = \'suite:crosbolt_perf_nightly\''
+    elif test in PERF_WEEKLY_RUN_TESTS:
+        return 'ATTRIBUTES = \'suite:crosbolt_perf_weekly\''
     return ''
 
 
