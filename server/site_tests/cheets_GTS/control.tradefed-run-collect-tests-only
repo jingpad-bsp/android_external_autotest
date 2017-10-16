@@ -20,7 +20,11 @@ def run_GTS(machine):
         host=host,
         iterations=1,
         tag='tradefed-run-collect-tests-only',
-        gts_tradefed_args = ['run', 'commandAndExit', 'collect-tests-only'],
+        gts_tradefed_args = ['run', 'commandAndExit', 'collect-tests-only',
+            # TODO(b/67474330): Remove this workaround for GTS5.0 once it's fixed
+            '--preparer-whitelist',
+            'com.android.compatibility.common.tradefed.targetprep.DynamicConfigPusher'
+        ],
         timeout=600)
 
 parallel_simple(run_GTS, machines)
