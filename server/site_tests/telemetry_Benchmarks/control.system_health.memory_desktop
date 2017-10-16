@@ -8,7 +8,7 @@ from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'sbasi, achuith, rohitbm'
 NAME = 'telemetry_Benchmarks.system_health.memory_desktop'
-ATTRIBUTES = 'suite:crosbolt_perf_nightly'
+ATTRIBUTES = 'suite:crosbolt_perf_weekly'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
 TEST_CLASS = 'performance'
