@@ -117,16 +117,16 @@ def download_extract(url, target, extract_dir):
     @param extract_dir: Directory to extract the content of the file to.
     """
     remote_url = dev_server.DevServer.get_server_url(url)
-    # TODO(xixuan): Better to only ssh to devservers in lab, and continue using
-    # wget for ganeti devservers.
-    if remote_url in dev_server.ImageServerBase.servers():
-        # This can be run in multiple threads, pick a unique tmp_file.name.
-        with tempfile.NamedTemporaryFile(prefix=os.path.basename(target) + '_',
-                                         delete=False) as tmp_file:
+    # This can be run in multiple threads, pick a unique tmp_file.name.
+    with tempfile.NamedTemporaryFile(prefix=os.path.basename(target) + '_',
+                                     delete=False) as tmp_file:
+        if remote_url in dev_server.ImageServerBase.servers():
+            # TODO(xixuan): Better to only ssh to devservers in lab, and
+            # continue using wget for ganeti devservers.
             _download_via_devserver(url, tmp_file.name)
-            common_utils.run('sudo mv %s %s' % (tmp_file.name, target))
-    else:
-        _download_via_wget(url, target)
+        else:
+            _download_via_wget(url, tmp_file.name)
+        common_utils.run('sudo mv %s %s' % (tmp_file.name, target))
     common_utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
