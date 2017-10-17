@@ -8,6 +8,7 @@ import logging
 import time
 import urlparse
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import cfm_hangouts_api
 from autotest_lib.client.common_lib.cros import cfm_meetings_api
@@ -119,13 +120,38 @@ class CFMFacadeNative(object):
 
         @param screen: Value of the screen param, e.g. 'hotrod' or 'control'.
         """
-        ctxs = kiosk_utils.get_webview_contexts(self._resource._browser,
-                                                self._EXT_ID)
-        for ctx in ctxs:
-            parsed_url = urlparse.urlparse(ctx.GetUrl())
-            if urlparse.parse_qs(parsed_url.query)['screen'][0] == screen:
-                return ctx
-        return None
+        def _get_context():
+            try:
+                ctxs = kiosk_utils.get_webview_contexts(self._resource._browser,
+                                                        self._EXT_ID)
+                for ctx in ctxs:
+                    url_query = urlparse.urlparse(ctx.GetUrl()).query
+                    logging.info('Webview query: "%s"', url_query)
+                    params = urlparse.parse_qs(url_query,
+                                               keep_blank_values = True)
+                    is_oobe_slave_screen = ('nooobestatesync' in params and
+                                            'oobedone' in params)
+                    if is_oobe_slave_screen:
+                        # Skip the oobe slave screen. Not doing this can cause
+                        # the wrong webview context to be returned.
+                        continue
+                    if params['screen'][0] == screen:
+                        return ctx
+            except Exception as e:
+                # Having a MIMO attached to the DUT causes a couple of webview
+                # destruction/construction operations during OOBE. If we query a
+                # destructed webview it will throw an exception. Instead of
+                # failing the test, we just swallow the exception.
+                logging.exception(
+                    "Exception occured while querying the webview contexts.")
+            return None
+
+        return utils.poll_for_condition(
+                    _get_context,
+                    exception=error.TestFail(
+                        'Webview with screen param "%s" not found.', screen),
+                    timeout=self._DEFAULT_TIMEOUT,
+                    sleep_interval = 1)
 
 
     def skip_oobe_after_enrollment(self):
