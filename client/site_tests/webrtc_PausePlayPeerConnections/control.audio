@@ -7,7 +7,7 @@ NAME = "webrtc_PausePlayPeerConnections.audio"
 PURPOSE = "Ensures frequent pause and plays of peer connection streams work"
 CRITERIA = "Fails if the tab freezes during the test"
 ATTRIBUTES = ("suite:hotrod, suite:bluestreak, suite:bluestreak-release, "
-        "suite:bluestreak-perbuild")
+        "suite:bluestreak-perbuild, suite:bluestreak-pre-cq")
 TIME = "MEDIUM"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "audio"
