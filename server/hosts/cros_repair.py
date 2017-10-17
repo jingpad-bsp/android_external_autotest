@@ -202,6 +202,12 @@ class TPMStatusVerifier(hosts.Verifier):
     """Verify that the host's TPM is in a good state."""
 
     def verify(self, host):
+        if _is_virual_machine(host):
+            # We do not forward host TPM / emulated TPM to qemu VMs, so skip
+            # this verification step.
+            logging.debug('Skipped verification %s on VM', self)
+            return
+
         # This cryptohome command emits status information in JSON format. It
         # looks something like this:
         # {
@@ -666,3 +672,15 @@ def create_jetstream_repair_strategy():
     verify_dag = _jetstream_verify_dag()
     repair_actions = _jetstream_repair_actions()
     return hosts.RepairStrategy(verify_dag, repair_actions)
+
+
+# TODO(pprabhu) Move this to a better place. I have no idea what that place
+# would be.
+def _is_virual_machine(host):
+    """Determine whether the given |host| is a virtual machine.
+
+    @param host: a hosts.Host object.
+    @returns True if the host is a virtual machine, False otherwise.
+    """
+    output = host.run('cat /proc/cpuinfo | grep "model name"')
+    return output.stdout and 'qemu' in output.stdout.lower()
