@@ -173,6 +173,8 @@ class PoolTests(unittest.TestCase):
         self.assertGreater(error_count, 0)
 
 
+    # TODO (crbug/774534): Fix this flakey test.
+    @unittest.skip('Flakey (http://crbug/774534)')
     def testCleanup_timeout(self):
         """Verifies that timed out containers are still destroyed."""
         # Simulate the factory hanging.
