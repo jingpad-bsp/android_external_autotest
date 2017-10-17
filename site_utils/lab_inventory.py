@@ -271,9 +271,6 @@ class _BoardCounts(object):
 
         """
         pool = host_history.host_pool
-        if pool not in MANAGED_POOLS:
-            raise Exception('Found non-manged pool %s on %s' %
-                            (pool, host_history.host.hostname))
         self._pools[pool].record_host(host_history)
 
 
@@ -421,12 +418,15 @@ class _LabInventory(dict):
     def _eligible_host(afehost):
         """Return whether this host is eligible for monitoring.
 
-        Hosts with any label that's in `_EXCLUDED_LABELS` aren't
-        eligible.
+        A host is eligible if it's in exactly one pool and it has no
+        labels from the `_EXCLUDED_LABELS` set.
 
         @param afehost  The host to be tested for eligibility.
         """
-        return not len(_EXCLUDED_LABELS.intersection(afehost.labels))
+        pools = [l for l in afehost.labels
+                     if l.startswith(constants.Labels.POOL_PREFIX)]
+        excluded = _EXCLUDED_LABELS.intersection(afehost.labels)
+        return len(pools) == 1 and not excluded
 
 
     @classmethod
