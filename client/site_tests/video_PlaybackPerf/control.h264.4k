@@ -9,7 +9,7 @@ CRITERIA = """
 The test outputs the cpu usage and dropped frame count of H264 4K video
 playback.
 """
-ATTRIBUTES = "suite:crosbolt_perf_nightly"
+ATTRIBUTES = "suite:crosbolt_perf_perbuild"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
