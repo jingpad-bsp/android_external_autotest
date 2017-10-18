@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import Queue
+import logging
 import threading
 import time
 import unittest
@@ -291,6 +292,8 @@ class WorkerTests(unittest.TestCase):
     def setUp(self):
         """Starts tests with a fully populated container pool."""
         self.factory = TestFactory()
+        self.worker_results = Queue.Queue()
+        self.worker_errors = Queue.Queue()
 
 
     def tearDown(self):
@@ -299,16 +302,16 @@ class WorkerTests(unittest.TestCase):
 
     def testGetResult(self):
         """Verifies that get_result transfers container ownership."""
-        worker = pool._Worker(self.factory)
+        worker = self.createWorker()
         worker.start()
         worker.join(TEST_TIMEOUT)
 
-        container = worker.get_result()
-        self.assertIsNotNone(container)
-
-        # Calling get again should raise an error.
+        # Verify that one result was returned.
+        self.assertIsNotNone(self.worker_results.get_nowait())
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
+
+        self.assertNoWorkerErrors()
 
 
     def testThrottle(self):
@@ -318,7 +321,7 @@ class WorkerTests(unittest.TestCase):
         self.factory.pause(worker_max * 2)
         # Create workers.  Check that the factory is getting called.
         for i in range(worker_max):
-            worker = pool._Worker(self.factory)
+            worker = self.createWorker()
             worker.start()
             self.factory.wait(i+1)
             workers.append(worker)
@@ -331,7 +334,7 @@ class WorkerTests(unittest.TestCase):
         # Create more workers (above the max).  Verify that the factory isn't
         # getting more create calls.
         for _ in range(worker_max):
-            worker = pool._Worker(self.factory)
+            worker = self.createWorker()
             worker.start()
             while not worker.is_alive():
                 time.sleep(0.1)
@@ -342,61 +345,67 @@ class WorkerTests(unittest.TestCase):
             self.factory.resume(1)
             self.factory.wait(worker_max + i)
 
+        self.assertNoWorkerErrors()
+
 
     def testCancel_running(self):
         """Tests cancelling a worker while it's running."""
-        worker = pool._Worker(self.factory)
+        worker = self.createWorker()
+
         self.factory.pause()
         worker.start()
         # Wait for the worker to call the factory.
         self.factory.wait(1)
 
+        # Cancel the worker, then allow the factory call to proceed, then wait
+        # for the worker to finish.
         worker.cancel()
         self.factory.resume()
-
         worker.join(TEST_TIMEOUT)
+
+        # Verify that the container was destroyed.
         self.assertEqual(1, self.factory.destroy_count)
 
+        # Verify that no results were received.
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
+
+        self.assertNoWorkerErrors()
 
 
     def testCancel_completed(self):
         """Tests cancelling a worker after it's done."""
-        worker = pool._Worker(self.factory)
-        # Start the worker and let it finish, then cancel it.
+        worker = self.createWorker()
+
+        # Start the worker and let it finish.
         worker.start()
         worker.join(TEST_TIMEOUT)
-        worker.cancel()
 
-        # Verify create and destroy counts.  The container should have been
-        # created, and then destroyed by the cancel call.
-        self.assertEqual(1, self.factory.create_count)
-        self.assertEqual(1, self.factory.destroy_count)
+        # Cancel the worker after it completes.  Verify that this returns False.
+        self.assertFalse(worker.cancel())
 
-        # get_result should fail because the worker was cancelled.
+        # Verify that one result was delivered.
+        self.assertIsNotNone(self.worker_results.get_nowait())
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
+
+        self.assertNoWorkerErrors()
 
 
-    def testCancel_completed_retrieved(self):
-        """Tests cancelling a worker after the result has been retrieved."""
-        worker = pool._Worker(self.factory)
-        # Start the worker, let it finish, retrieve the container, then cancel.
-        worker.start()
-        worker.join(TEST_TIMEOUT)
-        container = worker.get_result()
-        self.assertIsNotNone(container)
-        worker.cancel()
+    def createWorker(self):
+        """Creates a new pool worker for testing."""
+        return pool._Worker(self.factory,
+                            self.worker_results.put,
+                            self.worker_errors.put)
 
-        # Verify the create count.
-        self.assertEqual(1, self.factory.create_count)
-        # Verify the destroy count.  Cancellation should not have triggered a
-        # container destruction.
-        self.assertEqual(0, self.factory.destroy_count)
 
+    def assertNoWorkerErrors(self):
+        """Fails if the error queue contains errors."""
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            e = self.worker_errors.get_nowait()
+            logging.error('Unexpected worker error: %r', e)
+
+
 
 
 class TestFactory(object):
