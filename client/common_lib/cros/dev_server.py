@@ -2069,7 +2069,8 @@ class ImageServer(ImageServerBase):
 
 
     def _emit_auto_update_metrics(self, error_list, is_au_success, board,
-                                  build_type, milestone, dut_host_name):
+                                  build_type, milestone, dut_host_name,
+                                  is_aue2etest):
         """Send metrics for auto_update.
 
         Please note: to avoid reaching or exceeding the monarch field
@@ -2089,6 +2090,8 @@ class ImageServer(ImageServerBase):
             auto_update tries to update.
         @param dut_host_name: a field in metrics representing which DUT this
             auto_update tries to update.
+        @param is_aue2etest: a field in metrics representing if provision was
+            done as part of the autoupdate_EndToEndTest.
         """
         # Per-devserver cros_update metric.
         c1 = metrics.Counter(
@@ -2115,11 +2118,24 @@ class ImageServer(ImageServerBase):
               'milestone': milestone,
               'error': ''}
 
+        # TODO(dhaddock): replace above metrics with these. See crbug/769399
+        c4 = metrics.Counter(
+              'chromeos/autotest/provision/cros_update_per_devserver')
+        c5 = metrics.Counter('chromeos/autotest/provision/cros_update_by_dut')
+        c6 = metrics.Counter(
+                'chromeos/autotest/provision/cros_update_failure_by_devserver')
+
         # Add a field |error| here. Current error's pattern is manually
         # specified in _EXCEPTION_PATTERNS.
         if not error_list:
             c1.increment(fields=f1)
             c2.increment(fields=f2)
+
+            # TODO(dhaddock): replace above metrics. See crbug/769399
+            f1['is_aue2etest'] = is_aue2etest
+            f2['is_aue2etest'] = is_aue2etest
+            c4.increment(fields=f1)
+            c5.increment(fields=f2)
         else:
             # In metrics, use the first error as the real provision errors.
             raised_error = str(self._classify_exceptions(error_list[0]))
@@ -2135,6 +2151,49 @@ class ImageServer(ImageServerBase):
             for err in error_list:
                 f3['error'] = str(self._classify_exceptions(err))
                 c3.increment(fields=f3)
+
+            # TODO(dhaddock): replace above metrics. See crbug/769399
+            f1['is_aue2etest'] = is_aue2etest
+            f2['is_aue2etest'] = is_aue2etest
+            f3['is_aue2etest'] = is_aue2etest
+            c4.increment(fields=f1)
+            c5.increment(fields=f2)
+            for err in error_list:
+                f3['error'] = str(self._classify_exceptions(err))
+                c6.increment(fields=f3)
+
+
+    def _parse_buildname_from_gs_uri(self, uri):
+        """Get parameters needed for AU metrics when build_name is not known.
+
+        autoupdate_EndToEndTest is run with two Google Storage URIs from the
+        gs://chromeos-releases bucket. URIs in this bucket do not have the
+        build_name in the format samus-release/R60-0000.0.0.
+
+        We can get the milestone and board by checking the instructions.json
+        file contained in the bucket with the payloads.
+
+        @param uri: The partial uri we received from autoupdate_EndToEndTest.
+        """
+        try:
+            # Get the instructions file that contains info about the build.
+            gs_file = 'gs://chromeos-releases/' + uri + '/*instructions.json'
+            files = bin_utils.gs_ls(gs_file)
+            for f in files:
+                gs_folder, _, instruction_file = f.rpartition('/')
+                self.stage_artifacts(image=uri,
+                                     files=[instruction_file],
+                                     archive_url=gs_folder)
+                json_file = self.get_staged_file_url(instruction_file, uri)
+                response = urllib2.urlopen(json_file)
+                data = json.load(response)
+                return data['board'], 'release', data['version']['milestone']
+        except (ValueError, error.CmdError, urllib2.URLError) as e:
+            logging.debug('Problem getting values for metrics: %s', e)
+            logging.warning('Unable to parse build name %s from AU test for '
+                            'metrics. Continuing anyway.', uri)
+
+        return '', '', ''
 
 
     def auto_update(self, host_name, build_name, original_board=None,
@@ -2179,7 +2238,9 @@ class ImageServer(ImageServerBase):
                   'full_update': full_update,
                   'clobber_stateful': clobber_stateful}
 
-        if payload_filename is not None:
+        is_aue2etest = payload_filename is not None
+
+        if is_aue2etest:
             kwargs['payload_filename'] = payload_filename
 
         error_msg = 'CrOS auto-update failed for host %s: %s'
@@ -2189,7 +2250,13 @@ class ImageServer(ImageServerBase):
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
         error_list = []
         retry_with_another_devserver = False
-        board, build_type, milestone = self._parse_buildname_safely(build_name)
+
+        if is_aue2etest:
+            board, build_type, milestone = self._parse_buildname_from_gs_uri(
+                build_name)
+        else:
+            board, build_type, milestone = self._parse_buildname_safely(
+                build_name)
 
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
@@ -2286,7 +2353,8 @@ class ImageServer(ImageServerBase):
                             host_name_ip)
 
         self._emit_auto_update_metrics(error_list, is_au_success, board,
-                                       build_type, milestone, host_name)
+                                       build_type, milestone, host_name,
+                                       is_aue2etest)
 
         if is_au_success:
             return (is_au_success, pid)
