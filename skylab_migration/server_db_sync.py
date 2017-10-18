@@ -19,6 +19,7 @@ import contextlib
 import logging
 import optparse
 import sys
+import subprocess
 import yaml
 
 import common
@@ -45,6 +46,13 @@ ServerRole = collections.namedtuple('ServerRole',
 
 # Metrics
 _METRICS_PREFIX = 'chromeos/autotest/skylab_migration/server_db'
+
+# API
+API_ROOT = 'https://inventory-dot-chromeos-skylab.googleplex.com/_ah/api'
+API = 'infrastructure'
+VERSION = 'v1'
+SERVER_LIST = 'servers'
+
 
 class SyncUpExpection(Exception):
   """Raised when failed to sync up server db."""
@@ -85,19 +93,24 @@ def inventory_server_list():
 
   @returns: the response in String format.
   """
-  # TODO(shuqianz): implement this after b/64848355 is fixed.
-  return ''
+  api_url = '%s/%s/%s/%s' % (API_ROOT, API, VERSION, SERVER_LIST)
+  result = subprocess.check_output(['sso_client', '--url', api_url],
+                                   stderr=subprocess.STDOUT)
+  return result
 
 
-def inventory_api_response_parse(response_str):
+def inventory_api_response_parse(response_str, environment):
   """Parse the response from inventory API to namedtuples.
 
   @param response_str: the String format of the response.
+  @environment: the lab environment of the servers, prod or staging.
 
   @returns: a dict of servers, server_attrs, server_roles namedtuples list.
   """
   summaries = yaml.load(response_str)['servers']
   # Parse server tuples, replace notes with note in summaries
+  summaries = [s for s in summaries
+               if s['environment'].lower() == environment.lower()]
   servers = []
   for d in summaries:
     d['note'] = d['notes']
@@ -112,7 +125,7 @@ def inventory_api_response_parse(response_str):
   server_attrs = []
   for nest_dict in summaries:
     hostname = nest_dict['hostname']
-    for k, v in nest_dict['attributes'].iteritems():
+    for k, v in nest_dict.get('attributes', {}).iteritems():
       # Skip the entry whose attribute's value is null
       if v:
         flat_dict = {'hostname':hostname, 'attribute':k, 'value':v.lower()}
@@ -132,7 +145,8 @@ def inventory_api_response_parse(response_str):
   return api_output
 
 
-def create_mysql_updates(api_output, db_output, table, server_id_map):
+def create_mysql_updates(api_output, db_output, table,
+                         server_id_map, warn_only):
   """Sync up servers table in server db with the inventory service.
 
   First step, entries in server_db but not in inventory services will be deleted
@@ -146,6 +160,8 @@ def create_mysql_updates(api_output, db_output, table, server_id_map):
                     namedtuples parsed from server db.
   @param table: name of the targeted server_db table.
   @param server_id_map: server hostname to id mapping dict.
+  @param warn_only: whether it is warn_only. If yes, there will be no server id
+                    for server_attributes and server_roles.
 
   @returns a list of mysql update commands, e.g.
   ['DELETE FROM a WHERE xx', 'INSERT ...']
@@ -178,6 +194,14 @@ def create_mysql_updates(api_output, db_output, table, server_id_map):
                  ' be inserted in to server db:\n%s', table, insert_entries)
 
     for entry in insert_entries:
+      # If this is warn_only, it is very likely that the server id for new
+      # entry does not exsit since the server has not been inserted into servers
+      # table yet. For this case, fake it as 0.
+      if warn_only and not server_id_map.get(entry.hostname):
+        server_id = 0
+      else:
+        server_id = server_id_map[entry.hostname]
+
       if table == 'servers':
         cname = entry.cname.__repr__() if entry.cname else 'NULL'
         cmd = ('INSERT INTO servers (hostname, cname, status, note) '
@@ -187,12 +211,12 @@ def create_mysql_updates(api_output, db_output, table, server_id_map):
                                            entry.note))
       elif table == 'server_attributes':
         cmd = ('INSERT INTO server_attributes (server_id, attribute, value) '
-               'VALUES(%d, %r, %r)' % (server_id_map[entry.hostname],
+               'VALUES(%d, %r, %r)' % (server_id,
                                        entry.attribute,
                                        entry.value))
       else:
         cmd = ('INSERT INTO server_roles (server_id, role) VALUES(%d, %r)' %
-               (server_id_map[entry.hostname], entry.role))
+               (server_id, entry.role))
       mysql_cmds.append(cmd)
 
   return mysql_cmds
@@ -214,6 +238,9 @@ def parse_options():
                     help='Only raise warnings if server_db is inconsistent '
                          'with inventory service. Do not attempt to update '
                          'server_db to match inventory service.')
+  parser.add_option('-e', '--environment', default='prod',
+                    help='Environment of the server_db, prod or staging. '
+                         'Default is prod')
   options, args = parser.parse_args()
   return parser, options, args
 
@@ -303,7 +330,8 @@ def _main(options):
   """
 
   response_str = inventory_server_list()
-  skylab_server_data = inventory_api_response_parse(response_str)
+  skylab_server_data = inventory_api_response_parse(response_str,
+                                                    options.environment)
   with _msql_connection_with_transaction(options) as conn:
     with _cursor(conn) as cursor:
       db_output = server_db_dump(cursor)
@@ -312,11 +340,13 @@ def _main(options):
       # also delete entries in server_attributes and server_roles
       # associated with that deleted server.
       for table in ['servers', 'server_attributes', 'server_roles']:
+        cursor.execute('SELECT id, hostname FROM servers')
         server_id_map = {row[1]:row[0] for row in cursor.fetchall()}
         mysql_cmds = create_mysql_updates(skylab_server_data,
                                           db_output,
                                           table,
-                                          server_id_map)
+                                          server_id_map,
+                                          options.warn_only)
         if not options.warn_only:
           logging.info('Start updating table %s', table)
           _modify_table(cursor, mysql_cmds, table)
@@ -327,10 +357,12 @@ def _main(options):
         # again after syncing up servers table.
         if table == 'servers':
           db_output = server_db_dump(cursor)
-          cursor.execute('SELECT id, hostname FROM servers')
 
 def main(argv):
   """Entry point."""
+  logging.basicConfig(level=logging.INFO,
+                      format="%(asctime)s - %(name)s - " +
+                      "%(levelname)s - %(message)s")
   parser, options, args = parse_options()
   sync_succeed = False
   if not verify_options_and_args(options, args):
