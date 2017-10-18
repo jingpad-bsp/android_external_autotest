@@ -135,7 +135,7 @@ class CFMFacadeNative(object):
                         # Skip the oobe slave screen. Not doing this can cause
                         # the wrong webview context to be returned.
                         continue
-                    if params['screen'][0] == screen:
+                    if 'screen' in params and params['screen'][0] == screen:
                         return ctx
             except Exception as e:
                 # Having a MIMO attached to the DUT causes a couple of webview
@@ -149,7 +149,7 @@ class CFMFacadeNative(object):
         return utils.poll_for_condition(
                     _get_context,
                     exception=error.TestFail(
-                        'Webview with screen param "%s" not found.', screen),
+                        'Webview with screen param "%s" not found.' % screen),
                     timeout=self._DEFAULT_TIMEOUT,
                     sleep_interval = 1)
 
