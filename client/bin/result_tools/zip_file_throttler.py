@@ -98,7 +98,8 @@ def _get_zippable_files(file_infos, file_size_threshold_byte):
 
 
 def throttle(summary, max_result_size_KB,
-             file_size_threshold_byte=DEFAULT_FILE_SIZE_THRESHOLD_BYTE):
+             file_size_threshold_byte=DEFAULT_FILE_SIZE_THRESHOLD_BYTE,
+             skip_autotest_log=False):
     """Throttle the files in summary by compressing file.
 
     Stop throttling until all files are processed or the result file size is
@@ -108,9 +109,14 @@ def throttle(summary, max_result_size_KB,
     @param max_result_size_KB: Maximum test result size in KB.
     @param file_size_threshold_byte: Threshold of file size in byte for it to be
             qualified for compression.
+    @param skip_autotest_log: True to skip shrink Autotest logs, default is
+            False.
     """
     file_infos, _ = throttler_lib.sort_result_files(summary)
-    file_infos = throttler_lib.get_throttleable_files(file_infos)
+    extra_patterns = ([throttler_lib.AUTOTEST_LOG_PATTERN] if skip_autotest_log
+                      else [])
+    file_infos = throttler_lib.get_throttleable_files(
+            file_infos, extra_patterns)
     file_infos = _get_zippable_files(file_infos, file_size_threshold_byte)
     for info in file_infos:
         _zip_file(info)
