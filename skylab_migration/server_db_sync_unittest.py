@@ -25,7 +25,7 @@ class ServerDbSyncTest(unittest.TestCase):
     "mysql_server_id": "2"
    },
    "cname": "",
-   "environment": "INVALID",
+   "environment": "PROD",
    "hostname": "foo",
    "notes": "autotest database slave",
    "roles": [
@@ -72,21 +72,36 @@ class ServerDbSyncTest(unittest.TestCase):
     self.assertEqual(expect_returns, results)
 
 
-  def testInventoryApiResponseParse(self):
+  def testInventoryApiResponseParseProdServer(self):
     """Test inventory_api_response_parse."""
-    results = sds.inventory_api_response_parse(self.INVENTORY_RESPOND)
+    results = sds.inventory_api_response_parse(self.INVENTORY_RESPOND, 'prod')
 
     expect_servers = [sds.Server('foo', None, 'primary',
-                                 'autotest database slave'),
-                      sds.Server('bar', None, 'backup', '')]
+                                 'autotest database slave')]
     expect_server_attrs = [
         sds.ServerAttribute('foo', 'max_processes', '0'),
         sds.ServerAttribute('foo', 'mysql_server_id', '2'),
+    ]
+    expect_server_roles = [
+        sds.ServerRole('foo', 'database_slave'),
+    ]
+
+    self.assertEqual(expect_servers, results['servers'])
+    self.assertEqual(expect_server_attrs, results['server_attributes'])
+    self.assertEqual(expect_server_roles, results['server_roles'])
+
+
+  def testInventoryApiResponseParseStagingServer(self):
+    """Test inventory_api_response_parse."""
+    results = sds.inventory_api_response_parse(self.INVENTORY_RESPOND,
+                                               'staging')
+
+    expect_servers = [sds.Server('bar', None, 'backup', '')]
+    expect_server_attrs = [
         sds.ServerAttribute('bar', 'max_processes', '0'),
         sds.ServerAttribute('bar', 'ip', '1.2.3.4'),
     ]
     expect_server_roles = [
-        sds.ServerRole('foo', 'database_slave'),
         sds.ServerRole('bar', 'crash_server')
     ]
 
@@ -107,7 +122,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
 
@@ -124,7 +140,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     delete_cmd = "DELETE FROM servers WHERE hostname='foo'"
     insert_cmd = ("INSERT INTO servers (hostname, cname, status, note) "
                   "VALUES('foo', NULL, 'backup', '')")
@@ -145,7 +162,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
 
@@ -165,7 +183,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     insert_cmd = ("INSERT INTO server_attributes (server_id, attribute, value)"
                   " VALUES(2, 'ip', '2')")
     self.assertEqual([insert_cmd], result)
@@ -183,7 +202,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
 
@@ -201,7 +221,8 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map)
+                                      server_id_map,
+                                      False)
     delete_cmd = ("DELETE FROM server_roles WHERE server_id=2 "
                   "and role='scheduler'")
     self.assertEqual([delete_cmd], result)
