@@ -17,57 +17,8 @@ import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import chip_utils
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
-
-
-class generic_chip(object):
-  """A chip we don't actually support."""
-
-  chip_name = 'unknown'
-  fw_name = None
-
-  def __init__(self):
-    self.fw_ver = None
-
-  def set_fw_ver_from_string(self, version):
-    """Set version property from string."""
-    self.fw_ver = int(version, 0)
-
-
-class ps8751(generic_chip):
-  """The PS8751 TCPC chip."""
-
-  chip_name = 'ps8751'
-  fw_name = 'ps8751_a3'
-  cbfs_hash_name = fw_name + '.hash'
-
-  def fw_ver_from_hash(self, blob):
-    """Return the firmware version encoded in the firmware hash."""
-
-    return blob[1]
-
-
-class anx3429(generic_chip):
-  """The ANX3429 TCPC chip."""
-
-  chip_name = 'anx3429'
-  fw_name = 'anx3429_ocm'
-  cbfs_hash_name = fw_name + '.hash'
-
-  def fw_ver_from_hash(self, blob):
-    """Return the firmware version encoded in the firmware hash."""
-
-    return blob[0]
-
-
-#
-# map of chip IDs to corresponding class
-#
-
-chip_id_map = {
-    '0x8751': ps8751,
-    '0x3429': anx3429,
-}
 
 
 class firmware_CompareChipFwToShellBall(FirmwareTest):
@@ -79,9 +30,7 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
   """
   version = 1
 
-  CBFSTOOL = 'cbfstool'
   BIOS = 'bios.bin'
-  HEXDUMP = 'hexdump -v -e \'1/1 "0x%02x\\n"\''
   MAXPORTS = 100
 
   def initialize(self, host, cmdline_args):
@@ -89,29 +38,13 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
           self).initialize(host, cmdline_args)
     dict_args = utils.args_to_dict(cmdline_args)
     self.new_bios_path = dict_args['bios'] if 'bios' in dict_args else None
-    self.cbfs_extract_dir = None
+    self.cbfs_work_dir = None
     self.dut_bios_path = None
 
   def cleanup(self):
-    if self.cbfs_extract_dir:
-      self.faft_client.system.remove_dir(self.cbfs_extract_dir)
+    if self.cbfs_work_dir:
+      self.faft_client.system.remove_dir(self.cbfs_work_dir)
     super(firmware_CompareChipFwToShellBall, self).cleanup()
-
-  def dut_run_cmd_status(self, command):
-    """Executes a command on DUT.
-
-    Args:
-      command: shell command to be executed on DUT.
-
-    Returns:
-      Exit status as boolean.
-    """
-
-    try:
-      self.faft_client.system.run_shell_command(command)
-    except Exception:
-      return False
-    return True
 
   def dut_get_chip(self, port):
     """Gets the chip info for a port.
@@ -130,10 +63,10 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
       return None
     chip_id = chip_id[0]
 
-    if chip_id not in chip_id_map:
+    if chip_id not in chip_utils.chip_id_map:
       logging.info('chip type %s not recognized', chip_id)
-      return generic_chip()
-    chip = chip_id_map[chip_id]()
+      return chip_utils.generic_chip()
+    chip = chip_utils.chip_id_map[chip_id]()
 
     cmd = 'mosys -s fw_version pd chip %d' % port
     fw_rev = self.faft_client.system.run_shell_command_get_output(cmd)
@@ -162,7 +95,7 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
       if not chip:
         return (chip_types, port2chip)
       port2chip.append(chip)
-      chip_types.add(chip.__class__)
+      chip_types.add(type(chip))
     logging.error('found at least %u TCPC ports '
                   '- please update test to handle more ports '
                   'if this is expected.', self.MAXPORTS)
@@ -183,36 +116,25 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
     bios_bin = os.path.join(work_path, bios_relative_path)
     return bios_bin
 
-  def dut_prep_cbfs(self, host):
+  def dut_prep_cbfs(self):
     """Sets up cbfs on DUT.
 
     Finds bios.bin on the DUT and sets up a temp dir to operate on
     bios.bin.  If a bios.bin was specified, it is copied to the DUT
     and used instead of the native bios.bin.
-
-    Args:
-      host: A Handle for remote DUT operations.
     """
 
-    self.cbfs_extract_dir = self.faft_client.system.create_temp_dir('extract-')
-    if self.new_bios_path:
-      self.dut_bios_path = os.path.join(self.cbfs_extract_dir, self.BIOS)
-      host.send_file(self.new_bios_path, self.dut_bios_path)
-    else:
-      self.dut_bios_path = self.dut_locate_bios_bin()
-
-    cmd = '%s %s print -r FW_MAIN_A' % (
-        self.CBFSTOOL, self.dut_bios_path)
-    out = self.faft_client.system.run_shell_command_get_output(cmd)
-    if not out:
-      raise error.TestError('%s failed.' % self.CBFSTOOL)
+    cbfs_path = self.faft_client.updater.cbfs_setup_work_dir()
+    bios_relative_path = self.faft_client.updater.get_bios_relative_path()
+    self.cbfs_work_dir = cbfs_path
+    self.dut_bios_path = os.path.join(cbfs_path, bios_relative_path)
 
   def dut_cbfs_extract_chips(self, chip_types):
     """Extracts firmware hash blobs from cbfs.
 
     Iterates over requested chip types and looks for corresponding
     firmware hash blobs in cbfs.  These firmware hash blobs are
-    extracted into cbfs_extract_dir.
+    extracted into cbfs_work_dir.
 
     Args:
       chip_types:
@@ -228,23 +150,15 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
       chip = chip_type()
       fw = chip.fw_name
       if not fw:
+        # must be an unfamiliar chip
         continue
-      cbfs_extract = '%s %s extract -r FW_MAIN_A -n %s%%s -f %s%%s' % (
-          self.CBFSTOOL,
-          self.dut_bios_path,
-          fw,
-          os.path.join(self.cbfs_extract_dir, fw))
 
-      cmd = cbfs_extract % ('.hash', '.hash')
-      if not self.dut_run_cmd_status(cmd):
-        logging.warning('%s firmware hash not bundled in %s',
+      if not self.faft_client.updater.cbfs_extract_chip(chip.fw_name):
+        logging.warning('%s firmware not bundled in %s',
                         chip.chip_name, self.BIOS)
         continue
 
-      cmd = '%s %s.hash' % (
-          self.HEXDUMP,
-          os.path.join(self.cbfs_extract_dir, fw))
-      hashblob = self.faft_client.system.run_shell_command_get_output(cmd)
+      hashblob = self.faft_client.updater.cbfs_get_chip_hash(chip.fw_name)
       if not hashblob:
         logging.warning('%s firmware hash not extracted from %s',
                         chip.chip_name, self.BIOS)
@@ -301,6 +215,9 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
       logging.info('mosys reported no chips on DUT, skipping test')
       return
 
-    self.dut_prep_cbfs(host)
+    self.dut_prep_cbfs()
+    if self.new_bios_path:
+      host.send_file(self.new_bios_path, self.dut_bios_path)
+
     ref_chip_info = self.dut_cbfs_extract_chips(dut_chip_types)
     self.check_chip_versions(dut_chips, ref_chip_info)

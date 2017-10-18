@@ -42,6 +42,9 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def start_capture(self):
+        """
+        Start packet capture.
+        """
         logging.debug('Starting packet capture')
         self.context.capture_host.start_capture(
                 self._ap_config.frequency,
@@ -49,6 +52,11 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def request_scans(self, num_scans=DEFAULT_NUM_SCANS):
+        """
+        Helper to request a few scans with the configured randomization.
+
+        @param num_scans: The number of scans to perform.
+        """
         for i in range(num_scans):
             # Request scan through shill rather than iw because iw won't
             # set the random MAC flag in the scan request netlink packet.
@@ -78,6 +86,6 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
         frames = tcpdump_analyzer.get_frames(
                 results[0].local_pcap_path,
                 tcpdump_analyzer.WLAN_PROBE_REQ_ACCEPTOR,
-                bad_fcs='include')
+                bad_fcs='discard')
 
         return [frame for frame in frames if self._frame_matches_ssid(frame)]
