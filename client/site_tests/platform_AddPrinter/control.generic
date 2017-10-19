@@ -12,7 +12,7 @@ cupstestppd, cups filters).
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-#ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-perbuild"
 
 DOC = """
 This is a test that emulates following user behavior:
