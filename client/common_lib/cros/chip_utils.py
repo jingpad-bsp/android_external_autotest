@@ -9,83 +9,86 @@ import os
 
 
 class generic_chip(object):
-  """A chip we don't actually support."""
 
-  chip_name = 'unknown'
-  fw_name = None
+    """A chip we don't actually support."""
 
-  def __init__(self):
-    self.fw_ver = None
-    self.fw_file_name = None
+    chip_name = 'unknown'
+    fw_name = None
 
-  def set_fw_ver_from_string(self, version):
-    """Sets version property from string."""
-    self.fw_ver = int(version, 0)
+    def __init__(self):
+        self.fw_ver = None
+        self.fw_file_name = None
 
-  def set_from_file(self, file_name):
-    """Sets chip params from file name.
+    def set_fw_ver_from_string(self, version):
+        """Sets version property from string."""
+        self.fw_ver = int(version, 0)
 
-    The typical firmware blob file name format is: <chip>_0x00.bin
+    def set_from_file(self, file_name):
+        """Sets chip params from file name.
 
-    Args:
-      file_name: Firmware blob file name.
+        The typical firmware blob file name format is: <chip>_0x00.bin
 
-    Raises:
-      ValueError: Failed to decompose firmware file name.
-    """
+        Args:
+            file_name: Firmware blob file name.
 
-    basename = os.path.basename(file_name)
-    if not basename.startswith(self.chip_name):
-      raise ValueError('filename did not start with %s' % self.chip_name)
-    fname = basename.split('.')[0]
-    if '_' not in fname:
-      raise ValueError('could not parse filename %s' % basename)
-    rev = fname.split('_')[-1]
-    self.set_fw_ver_from_string(rev)
-    self.fw_file_name = file_name
+        Raises:
+            ValueError: Failed to decompose firmware file name.
+        """
+
+        basename = os.path.basename(file_name)
+        if not basename.startswith(self.chip_name):
+            raise ValueError('filename did not start with %s' % self.chip_name)
+        fname = basename.split('.')[0]
+        if '_' not in fname:
+            raise ValueError('could not parse filename %s' % basename)
+        rev = fname.split('_')[-1]
+        self.set_fw_ver_from_string(rev)
+        self.fw_file_name = file_name
 
 
 class ps8751(generic_chip):
-  """The PS8751 TCPC chip."""
 
-  chip_name = 'ps8751'
-  fw_name = 'ps8751_a3'
-  cbfs_bin_name = fw_name + '.bin'
-  cbfs_hash_name = fw_name + '.hash'
+    """The PS8751 TCPC chip."""
 
-  def fw_ver_from_hash(self, blob):
-    """Return the firmware version encoded in the firmware hash."""
+    chip_name = 'ps8751'
+    fw_name = 'ps8751_a3'
+    cbfs_bin_name = fw_name + '.bin'
+    cbfs_hash_name = fw_name + '.hash'
 
-    return blob[1]
+    def fw_ver_from_hash(self, blob):
+        """Return the firmware version encoded in the firmware hash."""
 
-  def compute_hash_bytes(self):
-    """Generates the firmware blob hash."""
+        return blob[1]
 
-    h = bytearray(2)
-    h[0] = 0xa3
-    h[1] = self.fw_ver
-    return h
+    def compute_hash_bytes(self):
+        """Generates the firmware blob hash."""
+
+        h = bytearray(2)
+        h[0] = 0xa3
+        h[1] = self.fw_ver
+        return h
 
 
 class anx3429(generic_chip):
-  """The ANX3429 TCPC chip."""
 
-  chip_name = 'anx3429'
-  fw_name = 'anx3429_ocm'
-  cbfs_bin_name = fw_name + '.bin'
-  cbfs_hash_name = fw_name + '.hash'
+    """The ANX3429 TCPC chip."""
 
-  def fw_ver_from_hash(self, blob):
-    """Return the firmware version encoded in the firmware hash."""
+    chip_name = 'anx3429'
+    fw_name = 'anx3429_ocm'
+    cbfs_bin_name = fw_name + '.bin'
+    cbfs_hash_name = fw_name + '.hash'
 
-    return blob[0]
+    def fw_ver_from_hash(self, blob):
+        """Return the firmware version encoded in the firmware hash."""
 
-  def compute_hash_bytes(self):
-    """Generates the firmware blob hash."""
+        return blob[0]
 
-    h = bytearray(1)
-    h[0] = self.fw_ver
-    return h
+    def compute_hash_bytes(self):
+        """Generates the firmware blob hash."""
+
+        h = bytearray(1)
+        h[0] = self.fw_ver
+        return h
 
 
 chip_id_map = {
