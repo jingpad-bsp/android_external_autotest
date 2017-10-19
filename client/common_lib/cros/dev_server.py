@@ -2095,47 +2095,36 @@ class ImageServer(ImageServerBase):
         """
         # Per-devserver cros_update metric.
         c1 = metrics.Counter(
-                'chromeos/autotest/provision/cros_update_by_devserver')
+                'chromeos/autotest/provision/cros_update_per_devserver')
         f1 = {'dev_server': self.resolved_hostname,
               'success': is_au_success,
               'board': board,
               'build_type': build_type,
               'milestone': milestone,
-              'error': ''}
+              'error': '',
+              'is_aue2etest': is_aue2etest}
         # Per-DUT cros_update metric.
-        c2 = metrics.Counter(
-                'chromeos/autotest/provision/cros_update_per_dut')
+        c2 = metrics.Counter('chromeos/autotest/provision/cros_update_by_dut')
         f2 = {'success': is_au_success,
               'board': board,
               'dut_host_name': dut_host_name,
-              'error': ''}
+              'error': '',
+              'is_aue2etest': is_aue2etest}
         # Per auto_update metric.
         c3 = metrics.Counter(
-                'chromeos/autotest/provision/cros_update_failure_per_devserver')
+                'chromeos/autotest/provision/cros_update_failure_by_devserver')
         f3 = {'dev_server': self.resolved_hostname,
               'board': board,
               'build_type': build_type,
               'milestone': milestone,
-              'error': ''}
-
-        # TODO(dhaddock): replace above metrics with these. See crbug/769399
-        c4 = metrics.Counter(
-              'chromeos/autotest/provision/cros_update_per_devserver')
-        c5 = metrics.Counter('chromeos/autotest/provision/cros_update_by_dut')
-        c6 = metrics.Counter(
-                'chromeos/autotest/provision/cros_update_failure_by_devserver')
+              'error': '',
+              'is_aue2etest': is_aue2etest}
 
         # Add a field |error| here. Current error's pattern is manually
         # specified in _EXCEPTION_PATTERNS.
         if not error_list:
             c1.increment(fields=f1)
             c2.increment(fields=f2)
-
-            # TODO(dhaddock): replace above metrics. See crbug/769399
-            f1['is_aue2etest'] = is_aue2etest
-            f2['is_aue2etest'] = is_aue2etest
-            c4.increment(fields=f1)
-            c5.increment(fields=f2)
         else:
             # In metrics, use the first error as the real provision errors.
             raised_error = str(self._classify_exceptions(error_list[0]))
@@ -2144,23 +2133,13 @@ class ImageServer(ImageServerBase):
             f2['error'] = raised_error
             c2.increment(fields=f2)
 
-            # Record all errors in metrics cros_update_failure_per_devserver,
+            # Record all errors in metrics cros_update_failure_by_devserver,
             # to make it truly reflect whether there're some particular errors
             # hit lab frequently. Previously, all errors raised in the second
             # try of auto_update will be eaten.
             for err in error_list:
                 f3['error'] = str(self._classify_exceptions(err))
                 c3.increment(fields=f3)
-
-            # TODO(dhaddock): replace above metrics. See crbug/769399
-            f1['is_aue2etest'] = is_aue2etest
-            f2['is_aue2etest'] = is_aue2etest
-            f3['is_aue2etest'] = is_aue2etest
-            c4.increment(fields=f1)
-            c5.increment(fields=f2)
-            for err in error_list:
-                f3['error'] = str(self._classify_exceptions(err))
-                c6.increment(fields=f3)
 
 
     def _parse_buildname_from_gs_uri(self, uri):
