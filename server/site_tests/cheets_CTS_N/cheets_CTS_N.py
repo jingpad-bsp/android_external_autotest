@@ -46,10 +46,10 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                        dictionary. Can be 'arm', 'x86' and undefined.
         @param uri: URI of CTS bundle. Required if |abi| is undefined.
         """
-        if bundle in _CTS_URI:
-            self._android_cts = self._install_bundle(_CTS_URI[bundle])
-        else:
+        if uri:
             self._android_cts = self._install_bundle(uri)
+        elif bundle in _CTS_URI:
+            self._android_cts = self._install_bundle(_CTS_URI[bundle])
 
         self._cts_tradefed = os.path.join(self._android_cts, 'android-cts',
                                           'tools', 'cts-tradefed')
