@@ -135,7 +135,8 @@ def _get_shrinkable_files(file_infos, file_size_limit_byte):
 
 
 def throttle(summary, max_result_size_KB,
-             file_size_limit_byte=DEFAULT_FILE_SIZE_LIMIT_BYTE):
+             file_size_limit_byte=DEFAULT_FILE_SIZE_LIMIT_BYTE,
+             skip_autotest_log=False):
     """Throttle the files in summary by trimming file content.
 
     Stop throttling until all files are processed or the result file size is
@@ -146,9 +147,14 @@ def throttle(summary, max_result_size_KB,
     @param file_size_limit_byte: Limit each file's size in the summary to be
             under the given threshold, until all files are processed or the
             result size is under the given max_result_size_KB.
+    @param skip_autotest_log: True to skip shrink Autotest logs, default is
+            False.
     """
     file_infos, _ = throttler_lib.sort_result_files(summary)
-    file_infos = throttler_lib.get_throttleable_files(file_infos)
+    extra_patterns = ([throttler_lib.AUTOTEST_LOG_PATTERN] if skip_autotest_log
+                      else [])
+    file_infos = throttler_lib.get_throttleable_files(
+            file_infos, extra_patterns)
     file_infos = _get_shrinkable_files(file_infos, file_size_limit_byte)
     for info in file_infos:
         _trim_file(info, file_size_limit_byte)

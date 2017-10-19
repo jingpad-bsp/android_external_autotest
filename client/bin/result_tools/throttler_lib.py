@@ -52,6 +52,10 @@ RESULT_THROTTLE_PRIORITY = [
         '.*',
         ]
 
+# Regex of file names for Autotest debug logs. These files should be preserved
+# without throttling if possible.
+AUTOTEST_LOG_PATTERN ='.*\.(DEBUG|ERROR|INFO|WARNING)$'
+
 def _list_files(files, all_files=None):
     """Get all files in the given directories.
 
