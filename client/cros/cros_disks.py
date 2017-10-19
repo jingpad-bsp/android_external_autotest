@@ -216,14 +216,6 @@ class CrosDisksClient(DBusClient):
                            self.RENAME_COMPLETED_SIGNAL,
                            self.RENAME_COMPLETED_SIGNAL_ARGUMENTS)
 
-    def is_alive(self):
-        """Invokes the CrosDisks IsAlive method.
-
-        Returns:
-            True if the CrosDisks server is alive or False otherwise.
-        """
-        return self.interface.IsAlive()
-
     def enumerate_auto_mountable_devices(self):
         """Invokes the CrosDisks EnumerateAutoMountableDevices method.
 
