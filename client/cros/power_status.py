@@ -4,6 +4,7 @@
 
 import collections, ctypes, fcntl, glob, logging, math, numpy, os, re, struct
 import threading, time
+import contextlib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, enum
@@ -1332,6 +1333,14 @@ class MeasurementLogger(threading.Thread):
          mylogger = MeasurementLogger([Measurent1, Measurent2])
          mylogger.run()
          for testname in tests:
+             with my_logger.checkblock(testname):
+                #run the test method for testname
+         keyvals = mylogger.calc()
+
+    or
+         mylogger = MeasurementLogger([Measurent1, Measurent2])
+         mylogger.run()
+         for testname in tests:
              start_time = time.time()
              #run the test method for testname
              mlogger.checkpoint(testname, start_time)
@@ -1399,6 +1408,16 @@ class MeasurementLogger(threading.Thread):
             self.times.append(time.time())
             time.sleep(self.seconds_period)
 
+    @contextlib.contextmanager
+    def checkblock(self, tname=''):
+        """Check point for the following block with test tname.
+
+        Args:
+            tname: String of testname associated with this time interval
+        """
+        start_time = time.time()
+        yield
+        self.checkpoint(tname, start_time)
 
     def checkpoint(self, tname='', tstart=None, tend=None):
         """Check point the times in seconds associated with test tname.
@@ -1419,7 +1438,7 @@ class MeasurementLogger(threading.Thread):
                      tname, tstart, tend)
 
 
-    def calc(self, mtype=None):
+    def calc(self, mtype=None, statistics=True):
         """Calculate average measurement during each of the sub-tests.
 
         Method performs the following steps:
@@ -1433,7 +1452,8 @@ class MeasurementLogger(threading.Thread):
             mtype: string of measurement type.  For example:
                    pwr == power
                    temp == temperature
-
+            statistics: boolean for returning the statistics or not. If false,
+                        return the readings instead.
         Returns:
             dict of keyvals suitable for autotest results.
         """
@@ -1485,12 +1505,14 @@ class MeasurementLogger(threading.Thread):
                 results.append((prefix, meas_mean, meas_std,
                                 tend - tstart, tstart, tend))
 
-                keyvals[prefix + '_' + mtype] = meas_mean
-                keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
-                keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
-                keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
-                keyvals[prefix + '_' + mtype + '_std'] = meas_std
-
+                if statistics:
+                    keyvals[prefix + '_' + mtype] = meas_mean
+                    keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
+                    keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
+                    keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
+                    keyvals[prefix + '_' + mtype + '_std'] = meas_std
+                else:
+                    keyvals[prefix + '_' + mtype] = list(meas_array)
         self._results = results
         return keyvals
 
@@ -1521,8 +1543,8 @@ class PowerLogger(MeasurementLogger):
         super(PowerLogger, self).save_results(resultsdir, fname)
 
 
-    def calc(self, mtype='pwr'):
-        return super(PowerLogger, self).calc(mtype)
+    def calc(self, mtype='pwr', statistics=True):
+        return super(PowerLogger, self).calc(mtype, statistics)
 
 
 class TempMeasurement(object):
@@ -1577,8 +1599,8 @@ class TempLogger(MeasurementLogger):
         super(TempLogger, self).save_results(resultsdir, fname)
 
 
-    def calc(self, mtype='temp'):
-        return super(TempLogger, self).calc(mtype)
+    def calc(self, mtype='temp', statistics=True):
+        return super(TempLogger, self).calc(mtype, statistics)
 
 
 class DiskStateLogger(threading.Thread):
