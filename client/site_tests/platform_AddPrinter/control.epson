@@ -13,7 +13,7 @@ filter from Omaha server).
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-#ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-perbuild"
 
 DOC = """
 This is a test that emulates following user behavior:
@@ -30,4 +30,4 @@ correctness.
 job.run_test('platform_AddPrinter',
              ppd_file='Epson-WF-3620_Series-epson-escpr-en.ppd',
              golden_file='golden_printing_request_epson.bin',
-	     component='epson-inkjet-printer-escpr')
+             component='epson-inkjet-printer-escpr')
