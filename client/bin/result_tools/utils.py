@@ -258,8 +258,12 @@ def _throttle_results(summary, max_result_size_KB):
 
     args = {'summary': summary,
             'max_result_size_KB': max_result_size_KB}
+    args_skip_autotest_log = copy.copy(args)
+    args_skip_autotest_log['skip_autotest_log'] = True
     # Apply the throttlers in following order.
     throttlers = [
+            (shrink_file_throttler, copy.copy(args_skip_autotest_log)),
+            (zip_file_throttler, copy.copy(args_skip_autotest_log)),
             (shrink_file_throttler, copy.copy(args)),
             (dedupe_file_throttler, copy.copy(args)),
             (zip_file_throttler, copy.copy(args)),
