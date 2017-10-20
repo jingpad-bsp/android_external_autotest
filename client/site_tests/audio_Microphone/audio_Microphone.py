@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import tempfile
 
@@ -24,11 +25,12 @@ class audio_Microphone(test.test):
             raise error.TestFail('File size not correct: %d' % filesize)
 
 
-    def verify_alsa_capture(self, channels, rate, bits=16):
+    def verify_alsa_capture(self, channels, rate, cras_device_name, bits=16):
         recorded_file = tempfile.NamedTemporaryFile()
+        alsa_device_name = alsa_utils.convert_device_name(cras_device_name)
         alsa_utils.record(
                 recorded_file.name, duration=DURATION, channels=channels,
-                bits=bits, rate=rate)
+                bits=bits, rate=rate, device=alsa_device_name)
         self.check_recorded_filesize(
                 os.path.getsize(recorded_file.name),
                 DURATION, channels, rate, bits)
@@ -52,9 +54,12 @@ class audio_Microphone(test.test):
             if channels is None:
                 channels = [1, 2]
 
+            input_device_name = cras_utils.get_selected_input_device_name()
+            logging.debug("Selected input device name=%s", input_device_name)
+
             for c in channels:
-                self.verify_alsa_capture(c, 44100)
-                self.verify_alsa_capture(c, 48000)
+                self.verify_alsa_capture(c, 44100, input_device_name)
+                self.verify_alsa_capture(c, 48000, input_device_name)
 
             # Verify recording of CRAS.
             self.verify_cras_capture(1, 44100)
