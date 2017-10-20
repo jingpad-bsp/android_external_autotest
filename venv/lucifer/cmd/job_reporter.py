@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import argparse
 import logging
+import os
 import sys
 
 from lucifer import autotest
@@ -36,14 +37,19 @@ def main(args):
 
     parser = argparse.ArgumentParser(prog='job_reporter', description=__doc__)
     loglib.add_logging_options(parser)
+    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
+                        help='Path to lucifer_run_job binary')
+    parser.add_argument('--leasedir', default='/var/lib/lucifer/leases',
+                        help='''
+Path to lucifer_run_job binary.  This is used to construct the -leasefile
+argument to lucifer_run_job.
+''')
     parser.add_argument('--job-id', type=int, default=None,
                         help='Autotest Job ID')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
-    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
-                        help='Path to lucifer_run_job binary')
     parser.add_argument('run_job_args', nargs=argparse.REMAINDER,
                         help='Arguments passed to lucifer_run_job')
     args = parser.parse_args(args)
@@ -78,6 +84,7 @@ def _run_job(path, event_handler, args):
     @returns: exit status of lucifer_run_job
     """
     args = [path]
+    args.extend(['-leasefile', os.path.join(args.leasedir, args.job_id)])
     args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler, args=args)
 
