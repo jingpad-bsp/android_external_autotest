@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, datetime, glob, json, math, os, re, time
+import csv, datetime, glob, json, logging, math, os, re, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -567,6 +567,7 @@ class enterprise_CFM_Perf(test.test):
 
             self.upload_jmidata()
         except Exception as e:
+            logging.exception('Exception during test, raising TestFail')
             # Clear tpm to remove device ownership before exiting to ensure
             # device is not left in an enrolled state.
             tpm_utils.ClearTPMOwnerRequest(self.client)
