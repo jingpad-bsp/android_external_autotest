@@ -25,9 +25,13 @@ import tempfile
 import common
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import global_config, logging_manager, utils
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import logging_manager
+from autotest_lib.client.common_lib import utils
 from autotest_lib.utils import test_importer
 
+from chromite.lib import metrics
+from chromite.lib import ts_mon_config
 
 _ATTEMPTS = 3
 _GSUTIL_BIN = 'gsutil'
@@ -274,7 +278,7 @@ class MySqlArchiver(object):
         to_remove = ordered_listing[:-self._number_to_keep]
         rm_cmd = self._get_gs_command('rm')
         for artifact in to_remove:
-            cmd = ' '.join(rm_cmd + [self._gs_dir + '/' + artifact])
+            cmd = ' '.join(rm_cmd + [artifact])
             self._retry_run(cmd)
 
 
@@ -301,13 +305,28 @@ def main():
     options = parse_options()
     logging_manager.configure_logging(test_importer.TestImporterLoggingConfig(),
                                       verbose=options.verbose)
-    logging.debug('Start db backup: %s', options.type)
-    archiver = MySqlArchiver(options.type, options.keep, options.gs_bucket)
-    dump_file = archiver.dump()
-    logging.debug('Uploading backup: %s', options.type)
-    archiver.upload_to_google_storage(dump_file)
-    archiver.cleanup()
-    logging.debug('Db backup completed: %s', options.type)
+    backup_succeeded = False
+
+    with ts_mon_config.SetupTsMonGlobalState(service_name='mysql_db_backup',
+                                             indirect=True):
+        with metrics.SecondsTimer(
+                'chromeos/autotest/afe_db/backup/durations',
+                fields={'type': options.type}):
+             try:
+                 logging.debug('Start db backup: %s', options.type)
+                 archiver = MySqlArchiver(
+                         options.type, options.keep, options.gs_bucket)
+                 dump_file = archiver.dump()
+                 logging.debug('Uploading backup: %s', options.type)
+                 archiver.upload_to_google_storage(dump_file)
+                 archiver.cleanup()
+                 logging.debug('Db backup completed: %s', options.type)
+                 backup_succeeded = True
+             finally:
+                 metrics.Counter(
+                     'chromeos/autotest/db/db_backup/completed').increment(
+                         fields={'success': backup_succeeded,
+                                 'type': options.type})
 
 
 if __name__ == '__main__':
