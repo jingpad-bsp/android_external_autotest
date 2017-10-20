@@ -91,8 +91,8 @@ class _StubVerifier(hosts.Verifier):
         self._description = 'Testing verify() for "%s"' % tag
         self._log_record_map = {
             r[0]: r for r in [
-                ('GOOD', None, self._verify_tag, ''),
-                ('FAIL', None, self._verify_tag, self.message),
+                ('GOOD', None, self._record_tag, ''),
+                ('FAIL', None, self._record_tag, self.message),
             ]
         }
 
@@ -172,10 +172,10 @@ class _StubRepairAction(hosts.RepairAction):
         self._description = 'Testing repair for "%s"' % tag
         self._log_record_map = {
             r[0]: r for r in [
-                ('START', None, self._repair_tag, ''),
-                ('FAIL', None, self._repair_tag, self.message),
-                ('END FAIL', None, self._repair_tag, ''),
-                ('END GOOD', None, self._repair_tag, ''),
+                ('START', None, self._record_tag, ''),
+                ('FAIL', None, self._record_tag, self.message),
+                ('END FAIL', None, self._record_tag, ''),
+                ('END GOOD', None, self._record_tag, ''),
             ]
         }
 
