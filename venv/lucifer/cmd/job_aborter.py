@@ -65,8 +65,8 @@ def _main_loop_body(jobdir):
 
 
 def _process_expired_jobs(jobdir):
-    leases = leasing.get_expired_leases(jobdir)
-    job_ids = {job.id for job in leasing.get_expired_jobs(jobdir)}
+    leases = list(leasing.get_expired_leases(jobdir))
+    job_ids = {job.id for job in leases}
     _mark_aborted(job_ids)
     # Clean up files after marking them aborted in case we crash.
     for lease in leases:
