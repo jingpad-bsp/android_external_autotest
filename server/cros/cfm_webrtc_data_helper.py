@@ -168,6 +168,12 @@ class WebRTCDataHelper(cfm_jmidata_helper_base.JMIDataHelperBase):
     def GetRendererCpuPercentage(self):
         return self.GetCpuUsageList(CpuUsageType.RENDERER_CPU)
 
+    def GetNumOfProcessors(self):
+        # Special case, tests expect num of processors to be a scalar value.
+        # Since we don't have that info, return 1 to get unprocessed
+        # usage values.
+        return 1
+
 
 def IsFloat(value):
     """
