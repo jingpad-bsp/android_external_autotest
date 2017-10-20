@@ -19,7 +19,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.cros import tradefed_test
 
-_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.0_r1-4144450.zip'
+_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.0_r2-4389763.zip'
 
 
 class cheets_GTS(tradefed_test.TradefedTest):
