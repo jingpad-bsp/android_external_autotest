@@ -10,6 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
 from autotest_lib.client.cros.cellular import cell_tools
+from autotest_lib.client.cros.networking import shill_context
 
 
 # Default timeouts in seconds
@@ -110,7 +111,8 @@ class network_3GSmokeTest(test.test):
 
     def run_once(self, test_env, connect_count=5, sleep_kludge=5,
                  fetch_timeout=120):
-        with test_env:
+        with test_env, shill_context.ServiceAutoConnectContext(
+                test_env.shill.find_cellular_service_object, False):
             self.test_env = test_env
             self.connect_count = connect_count
             self.sleep_kludge = sleep_kludge
