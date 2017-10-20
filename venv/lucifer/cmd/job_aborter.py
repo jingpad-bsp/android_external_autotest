@@ -61,7 +61,7 @@ def _main_loop_body(jobdir):
     _abort_jobs_marked_aborting(jobdir)
     _abort_special_tasks_marked_aborted()
     # TODO(crbug.com/748234): abort_jobs_past_max_runtime goes into
-    # job_shepherd
+    # lucifer_run_job
 
 
 def _process_expired_jobs(jobdir):
