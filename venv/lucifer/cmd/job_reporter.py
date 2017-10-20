@@ -36,9 +36,12 @@ def main(args):
 
     parser = argparse.ArgumentParser(prog='job_reporter', description=__doc__)
     loglib.add_logging_options(parser)
-    parser.add_argument('--job-id', type=int, default=None)
-    parser.add_argument('--autoserv-exit', type=int, default=None,
-                        help='autoserv exit status')
+    parser.add_argument('--job-id', type=int, default=None,
+                        help='Autotest Job ID')
+    parser.add_argument('--autoserv-exit', type=int, default=None, help='''
+autoserv exit status.  If this is passed, then autoserv will not be run
+as the caller has presumably already run it.
+''')
     parser.add_argument('--job-shepherd', default='/usr/lib/job_shepherd',
                         help='Path to job_shepherd binary')
     parser.add_argument('job_shepherd_args', nargs=argparse.REMAINDER,
