@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package GtsSampleDynamicConfigTestCases of the '
-       'Android 5.0_r1 Google Test Suite (GTS), build 4144450,'
+       'Android 5.0_r2 Google Test Suite (GTS), build 4389763,'
        'in the ARC++ container.')
 
 def run_GTS(machine):
