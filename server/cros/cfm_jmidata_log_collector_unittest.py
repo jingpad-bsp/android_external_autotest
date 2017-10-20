@@ -55,7 +55,7 @@ class CfmJmidataLogCollectorTest(unittest.TestCase):
         self.assert_webrtc_data('video_packets_lost', [0])
         self.assert_webrtc_data('video_encode_cpu_usage', [0])
         self.assert_webrtc_data('num_active_vid_in_streams', [3, 3])
-        self.assert_webrtc_data('cpu_processors', [0])
+        self.assert_webrtc_data('cpu_processors', 1)
         self.assert_webrtc_data('cpu_percent', [887.0, 980.0])
         self.assert_webrtc_data('browser_cpu_percent', [30.0, 30.0])
         self.assert_webrtc_data('gpu_cpu_percent', [0.0, 0.0])
