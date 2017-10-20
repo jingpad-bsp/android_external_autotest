@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import Queue
+import collections
 import threading
 import time
 
@@ -25,6 +26,9 @@ _CONTAINER_CREATION_TIMEOUT = 600
 _MIN_MONITOR_PERIOD = 0.1
 # The default size of the container pool.
 _DEFAULT_POOL_SIZE = 20
+# The maximum number of errors per hour.  After this limit is reached, further
+# pool creation is throttled.
+_MAX_ERRORS_PER_HOUR = 200
 
 _logger = multi_logger.create('pool')
 
@@ -127,6 +131,17 @@ class Pool(object):
         return self._monitor.errors;
 
 
+    @property
+    def worker_count(self):
+        """Returns the number of currently active workers.
+
+        Note that this isn't quite the same as the number of currently alive
+        worker threads.  Worker threads that have timed out or been cancelled
+        may be technically alive, but they are not included in this count.
+        """
+        return len(self._monitor._workers)
+
+
 class _Monitor(threading.Thread):
     """A thread that manages the creation of containers for the pool.
 
@@ -149,6 +164,7 @@ class _Monitor(threading.Thread):
         self._pool = pool
 
         # List of worker threads.  Access this only from the monitor thread.
+        self._worker_max = _MAX_CONCURRENT_WORKERS
         self._workers = []
 
         # A flag for stopping the monitor.
@@ -157,11 +173,15 @@ class _Monitor(threading.Thread):
         # Stores errors from worker threads.
         self.errors = Queue.Queue()
 
+        # Throttle on errors, to avoid log spam and CPU spinning.
+        self._error_timestamps = collections.deque()
+
 
     def run(self):
         """Supplies the container pool with containers."""
         _logger.debug('Start event loop.')
         while not self._stop:
+            self._clear_old_errors()
             self._create_workers()
             self._poll_workers()
             time.sleep(_MIN_MONITOR_PERIOD)
@@ -206,6 +226,17 @@ class _Monitor(threading.Thread):
         if self._pool.full():
             return
 
+        # Do not exceed the worker limit.
+        if len(self._workers) >= self._worker_max:
+            return
+
+        # Throttle if too many errors occur.
+        if len(self._error_timestamps) >= _MAX_ERRORS_PER_HOUR:
+            _logger.warning('Error throttled (until %d)',
+                            self._error_timestamps[0] + 3600)
+            return
+
+        _logger.debug('create workers')
         # Create workers to refill the pool.
         qsize = self._pool.qsize()
         shortfall = self._pool.maxsize - qsize
@@ -215,8 +246,8 @@ class _Monitor(threading.Thread):
         # this before creating worker threads, because we are counting live
         # threads and want to avoid race conditions w.r.t. threads actually
         # starting.
-        if old_worker_count != shortfall:
-            new_workers = shortfall - old_worker_count
+        if (old_worker_count < shortfall and
+                old_worker_count < self._worker_max):
             # This can include workers that aren't currently in the self._worker
             # list, e.g. workers that were dropped from the list because they
             # timed out.
@@ -226,14 +257,14 @@ class _Monitor(threading.Thread):
             # shortfall: Number of empty slots currently in the pool.
             # workers  : m+n, where m is the current number of active worker
             #            threads and n is the number of new threads created.
-            _logger.debug('qsize:%d shortfall:%d workers:%d+%d',
-                          qsize, shortfall, active_workers, new_workers)
-
-        while len(self._workers) < shortfall:
-            worker = _Worker(self._factory)
+            _logger.debug('qsize:%d shortfall:%d workers:%d',
+                          qsize, shortfall, active_workers)
+        if len(self._workers) < shortfall:
+            worker = _Worker(self._factory,
+                             self._on_worker_result,
+                             self._on_worker_error)
             worker.start()
             self._workers.append(worker)
-
 
 
     def _poll_workers(self):
@@ -255,24 +286,37 @@ class _Monitor(threading.Thread):
 
         self._workers = incomplete
 
-        for worker in completed:
-            try:
-                container = worker.get_result()
-            except Exception as e:
-                self.errors.put(e)
-                _logger.error('Error: %s', e)
-            else:
-                # A worker might yield no container if it was cancelled.
-                if container is not None:
-                    self._pool.put(container)
-                    _logger.debug('Pool size: %d/%d', self._pool.qsize(),
-                                  self._pool.maxsize)
-                else:
-                    # Workers can return None results if they are cancelled.
-                    # But -- workers aren't cancelled until the monitor exits
-                    # its event loop, and this method is only called from within
-                    # the monitor event loop.  So this should never happen.
-                    _logger.warn('Worker yielded no container.')
+
+    def _on_worker_result(self, result):
+        """Receives results from completed worker threads.
+
+        Pass this as the result callback for worker threads.  Worker threads
+        should call this when they produce a container.
+        """
+        _logger.debug('Worker result: %r' % result)
+        self._pool.put(result)
+
+
+    def _on_worker_error(self, worker, err):
+        """Receives errors from worker threads.
+
+        Pass this as the error callback for worker threads.  Worker threads
+        should call this if errors occur.
+        """
+        timestamp = time.time()
+        self._error_timestamps.append(timestamp)
+        self.errors.put(err)
+        _logger.error('[%d] Worker error: %s', worker.ident, err)
+
+
+    def _clear_old_errors(self):
+        """Clears errors more than an hour old out of the log."""
+        one_hour_ago = time.time() - 3600
+        while (self._error_timestamps and
+               self._error_timestamps[0] < one_hour_ago):
+            self._error_timestamps.popleft()
+            # Avoid logspam - log only when some action was taken.
+            _logger.error('Worker error count: %d', len(self._error_timestamps))
 
 
 class _Worker(threading.Thread):
@@ -284,14 +328,7 @@ class _Worker(threading.Thread):
     parent thread to impose timeouts on container creation.
     """
 
-    # Throttles the number of concurrent running workers.  Workers attempt to
-    # acquire the semaphore at the start of their run() method.  Throttled
-    # workers are thus alive, but waiting.  Workers release the semaphore when
-    # they are done running, or when they are cancelled.
-    _throttle = threading.BoundedSemaphore(value=_MAX_CONCURRENT_WORKERS)
-
-
-    def __init__(self, factory):
+    def __init__(self, factory, result_cb, error_cb):
         """Creates a new Worker.
 
         @param factory: A factory object that will be called upon to create
@@ -303,31 +340,26 @@ class _Worker(threading.Thread):
 
         self._factory = factory
 
-        # Use a single-entry Queue to ensure atomicity when retrieving results.
-        # This ensures that the output container has only one owner, and it
-        # cannot (for example) accidentally be destroyed by calling
-        # Worker.cancel on a Worker whose result has already been retrieved.
-        self._result = Queue.Queue(1)
-        self._error = None
+        self._result_cb = result_cb
+        self._error_cb = error_cb
 
         self._cancelled = False
         self._start_time = None
 
-        # A lock for breaking race conditions in worker cancellation.
-        self._completion_lock = threading.Lock()
+        # A lock for breaking race conditions in worker cancellation.  Use a
+        # recursive lock because _check_health requires it.
+        self._completion_lock = threading.RLock()
         self._completed = False
 
 
     def run(self):
         """Creates a single container."""
-        self._throttle.acquire()
         self._start_time = time.time()
         container = None
         try:
             container = self._factory.create_container()
         except Exception as e:
-            _logger.error('Error: %s', e)
-            self._error = e
+            self._error_cb(self, e)
         finally:
             # All this has to happen atomically, otherwise race conditions can
             # arise w.r.t. cancellation.
@@ -343,8 +375,9 @@ class _Worker(threading.Thread):
                 else:
                     # Put the container in the result field.  Release the
                     # throttle so another task can be picked up.
-                    self._result.put(container)
-                    self._throttle.release()
+                    # Container may be None if errors occurred.
+                    if container is not None:
+                        self._result_cb(container)
 
 
     def cancel(self):
@@ -354,25 +387,11 @@ class _Worker(threading.Thread):
         the container pool.
         """
         with self._completion_lock:
-            try:
-                container = self._result.get(block=False)
-            except Queue.Empty:
-                if self._completed:
-                    # The thread completed, but the result was already
-                    # retrieved.  There is nothing to do in this case.
-                    pass
-                else:
-                    # The thread is not yet done - set the cancellation flag -
-                    # when completion occurs, the container will be destroyed.
-                    # Since a worker is being cancelled, release the throttle so
-                    # another worker can proceed.
-                    self._cancelled = True
-                    self._throttle.release()
+            if self._completed:
+                return False
             else:
-                # If completion occurred, destroy the resulting container.
-                # TODO(kenobi): Spawn a thread for this, so that we don't block
-                # Monitor._check_health when a worker times out.
-                container.destroy()
+                self._cancelled = True
+                return True
 
 
     def check_health(self):
@@ -384,37 +403,21 @@ class _Worker(threading.Thread):
         @return: True if the worker is alive and has not timed out, False
                  otherwise.
         """
-        if not self.is_alive() or self._cancelled:
-            return False
+        # Acquire the completion lock so as to avoid race conditions if the
+        # factory happens to return just as we are timing out.
+        with self._completion_lock:
+            if not self.is_alive() or self._cancelled or self._completed:
+                return False
 
-        # If alive, check the timeout and cancel if necessary.  Check for
-        # _start_time being None because it is not actually set until the thread
-        # acquires a grant from the throttle.
-        if (self._start_time is not None and
-                time.time() - self._start_time > _CONTAINER_CREATION_TIMEOUT):
-            # Set the error first before cancelling, to avoid race conditions
-            # where cancelled threads yield no error.
-            self._error = error.WorkerTimeoutError()
-            self.cancel()
-            return False
+            # Thread hasn't started yet - count this as healthy.
+            if self._start_time is None:
+                return True
+
+            # If alive, check the timeout and cancel if necessary.
+            runtime = time.time() - self._start_time
+            if runtime > _CONTAINER_CREATION_TIMEOUT:
+                if self.cancel():
+                    self._error_cb(self, error.WorkerTimeoutError())
+                    return False
 
         return True
-
-
-    def get_result(self):
-        """Returns a container if one is available.
-
-        Note that calling this transfers ownership of the container from the
-        Worker to the caller.  Calling this more than once will result in an
-        error.
-
-        @raises Exception: If some error occurred during container creation, it
-                           is raised at this point.
-        """
-        if self._error:
-            # If an error occurred during the operation, raise it here.
-            raise self._error
-        else:
-            # get_result should not be called before the worker has finished, or
-            # if it is cancelled.  In that case, this will raise Queue.Empty.
-            return self._result.get(block=False)

@@ -138,6 +138,10 @@ class telemetry_AFDOGenerate(test.test):
         latest_compressed = self._get_compressed_name(latest_data)
         self._gs_upload(compressed, latest_compressed)
 
+        # So that they are not uploaded along with the logs.
+        os.remove(compressed)
+        os.remove(perf_data)
+
 
     def _parse_args(self, args):
         """Parses input arguments to this autotest.

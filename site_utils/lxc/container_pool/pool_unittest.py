@@ -3,10 +3,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import Queue
+import logging
 import threading
 import time
 import unittest
+from contextlib import contextmanager
 
 import common
 from autotest_lib.client.common_lib import error
@@ -285,12 +288,112 @@ class PoolTests(unittest.TestCase):
             pool._CONTAINER_CREATION_TIMEOUT = old_timeout
 
 
+
+class ThrottleTests(unittest.TestCase):
+    """Tests the various throttles in place on the pool class.
+
+    This is a separate TestCase because throttle tests require different setup
+    than general pool tests (i.e. we generally want to set up the factory and
+    pool within each test case, not in a generalized setup function).
+    """
+
+    def setUp(self):
+        # Throttling tests change the constants in the pool module, for testing
+        # purposes.  Record the original values so that they can be restored.
+        self.old_errors_per_hour = pool._MAX_ERRORS_PER_HOUR
+        self.old_max_workers = pool._MAX_CONCURRENT_WORKERS
+
+
+    def tearDown(self):
+        # Restore pool constants to their original values.
+        pool._MAX_ERRORS_PER_HOUR = self.old_errors_per_hour
+        pool._MAX_CONCURRENT_WORKERS = self.old_max_workers
+
+
+    def testWorkerThrottle(self):
+        """Verifies that workers are properly throttled."""
+        max_workers = pool._MAX_CONCURRENT_WORKERS
+        test_factory = TestFactory()
+        test_factory.pause(max_workers*2)
+        test_pool = pool.Pool(test_factory)
+
+        try:
+            # The factory should receive max_workers calls.
+            test_factory.wait(max_workers)
+
+            # There should be no results.  Allow a generous timeout.
+            self.assertIsNone(
+                test_pool.get(timeout=pool._MIN_MONITOR_PERIOD * 10))
+
+            # Verify that the worker count is as expected.
+            self.assertEquals(max_workers, test_pool.worker_count)
+
+            # Unblock one worker.
+            test_factory.resume(1)
+            # Check for a single result.
+            self.assertEqual(TestContainer,
+                             type(test_pool.get(timeout=TEST_TIMEOUT)))
+            # Verify (again) that no more results are being produced.
+            self.assertIsNone(
+                test_pool.get(timeout=pool._MIN_MONITOR_PERIOD * 10))
+
+            # Verify that the worker count is as expected.
+            self.assertEquals(max_workers, test_pool.worker_count)
+
+        finally:
+            test_factory.resume()
+            test_pool.cleanup()
+
+
+    def testErrorThrottle(self):
+        """Verifies that the error throttle works properly."""
+        test_error_max = 3
+        pool._MAX_ERRORS_PER_HOUR = test_error_max
+        try:
+            with mock_time() as mocktime:
+                # Create a test factory that will crash each time it is called.
+                # Passing the mocktime object into the factory makes it such
+                # that each crash occurs with a unique timestamp.
+                test_factory = TestFactory(mocktime)
+                test_factory.crash_on_create = True
+
+                # Start the pool, and wait for <test_error_max> factory calls.
+                test_pool = pool.Pool(test_factory)
+                logging.debug('wait for %d factory calls.', test_error_max)
+                test_factory.wait(test_error_max)
+                logging.debug('received %d factory calls.', test_error_max)
+
+                # Verify that the error queue contains <test_error_max> errors.
+                for _ in range(test_error_max):
+                    self.assertEqual(TestException,
+                                     type(test_pool.errors.get_nowait()))
+                with self.assertRaises(Queue.Empty):
+                    test_pool.errors.get_nowait()
+
+                # Bump the mock time.  The first error will have a timestamp of
+                # 1 - pick a time that is more than an hour after that.  This
+                # should cause one thread to unblock.
+                mocktime.current_time = 3602
+                logging.debug('wait for 1 factory call.')
+                test_factory.wait(test_error_max + 1)
+                logging.debug('received 1 factory call.')
+                # Verify that one (and only one) error was raised.
+                self.assertEqual(TestException,
+                                 type(test_pool.errors.get_nowait()))
+                with self.assertRaises(Queue.Empty):
+                    test_pool.errors.get_nowait()
+        finally:
+            test_pool.cleanup()
+
+
 class WorkerTests(unittest.TestCase):
     """Tests for the _Worker class."""
 
     def setUp(self):
         """Starts tests with a fully populated container pool."""
         self.factory = TestFactory()
+        self.worker_results = Queue.Queue()
+        self.worker_errors = Queue.Queue()
 
 
     def tearDown(self):
@@ -299,104 +402,76 @@ class WorkerTests(unittest.TestCase):
 
     def testGetResult(self):
         """Verifies that get_result transfers container ownership."""
-        worker = pool._Worker(self.factory)
+        worker = self.createWorker()
         worker.start()
         worker.join(TEST_TIMEOUT)
 
-        container = worker.get_result()
-        self.assertIsNotNone(container)
-
-        # Calling get again should raise an error.
+        # Verify that one result was returned.
+        self.assertIsNotNone(self.worker_results.get_nowait())
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
 
-
-    def testThrottle(self):
-        """Verifies that workers are properly throttled."""
-        worker_max = pool._MAX_CONCURRENT_WORKERS
-        workers = []
-        self.factory.pause(worker_max * 2)
-        # Create workers.  Check that the factory is getting called.
-        for i in range(worker_max):
-            worker = pool._Worker(self.factory)
-            worker.start()
-            self.factory.wait(i+1)
-            workers.append(worker)
-
-        # Hack: verify that the throttle semaphore is fully depleted.  This
-        # relies on implementation details, but there isn't really a way to test
-        # that subsequent workers are halted.
-        self.assertFalse(pool._Worker._throttle.acquire(False))
-
-        # Create more workers (above the max).  Verify that the factory isn't
-        # getting more create calls.
-        for _ in range(worker_max):
-            worker = pool._Worker(self.factory)
-            worker.start()
-            while not worker.is_alive():
-                time.sleep(0.1)
-            self.assertEquals(worker_max, self.factory.create_count)
-
-        for i in range(len(workers)):
-            # Unblock one factory call.  Verify that another worker proceeds.
-            self.factory.resume(1)
-            self.factory.wait(worker_max + i)
+        self.assertNoWorkerErrors()
 
 
     def testCancel_running(self):
         """Tests cancelling a worker while it's running."""
-        worker = pool._Worker(self.factory)
+        worker = self.createWorker()
+
         self.factory.pause()
         worker.start()
         # Wait for the worker to call the factory.
         self.factory.wait(1)
 
+        # Cancel the worker, then allow the factory call to proceed, then wait
+        # for the worker to finish.
         worker.cancel()
         self.factory.resume()
-
         worker.join(TEST_TIMEOUT)
+
+        # Verify that the container was destroyed.
         self.assertEqual(1, self.factory.destroy_count)
 
+        # Verify that no results were received.
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
+
+        self.assertNoWorkerErrors()
 
 
     def testCancel_completed(self):
         """Tests cancelling a worker after it's done."""
-        worker = pool._Worker(self.factory)
-        # Start the worker and let it finish, then cancel it.
+        worker = self.createWorker()
+
+        # Start the worker and let it finish.
         worker.start()
         worker.join(TEST_TIMEOUT)
-        worker.cancel()
 
-        # Verify create and destroy counts.  The container should have been
-        # created, and then destroyed by the cancel call.
-        self.assertEqual(1, self.factory.create_count)
-        self.assertEqual(1, self.factory.destroy_count)
+        # Cancel the worker after it completes.  Verify that this returns False.
+        self.assertFalse(worker.cancel())
 
-        # get_result should fail because the worker was cancelled.
+        # Verify that one result was delivered.
+        self.assertIsNotNone(self.worker_results.get_nowait())
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            self.worker_results.get_nowait()
+
+        self.assertNoWorkerErrors()
 
 
-    def testCancel_completed_retrieved(self):
-        """Tests cancelling a worker after the result has been retrieved."""
-        worker = pool._Worker(self.factory)
-        # Start the worker, let it finish, retrieve the container, then cancel.
-        worker.start()
-        worker.join(TEST_TIMEOUT)
-        container = worker.get_result()
-        self.assertIsNotNone(container)
-        worker.cancel()
+    def createWorker(self):
+        """Creates a new pool worker for testing."""
+        return pool._Worker(self.factory,
+                            self.worker_results.put,
+                            self.worker_errors.put)
 
-        # Verify the create count.
-        self.assertEqual(1, self.factory.create_count)
-        # Verify the destroy count.  Cancellation should not have triggered a
-        # container destruction.
-        self.assertEqual(0, self.factory.destroy_count)
 
+    def assertNoWorkerErrors(self):
+        """Fails if the error queue contains errors."""
         with self.assertRaises(Queue.Empty):
-            worker.get_result()
+            e = self.worker_errors.get_nowait()
+            logging.error('Unexpected worker error: %r', e)
+
+
 
 
 class TestFactory(object):
@@ -406,13 +481,24 @@ class TestFactory(object):
     synchronization so clients can wait for containers to be created.  Hangs and
     crashes on demand.
     """
-    def __init__(self):
+
+    def __init__(self, mocktime=None):
+        """Creates a new TestFactory.
+
+        @param mocktime: If handed an instance of a _MockTime, the test factory
+                         will increment the current (fake) time each time
+                         create_container is called.  This ensures that each
+                         container (and/or error) produced by the factory has a
+                         unique timestamp, which is necessary when testing
+                         time-sensitive operations like throttling.
+        """
         self.create_cv = threading.Condition()
         self.create_count = 0
         self.lock_destroy_count = threading.Lock()
         self.destroy_count = 0
         self.crash_on_create = False
         self.hanging_ids = []
+        self.mocktime = mocktime
 
 
     def create_container(self):
@@ -422,17 +508,18 @@ class TestFactory(object):
 
         @raises Exception: if crash_on_create is set to True on this factory.
         """
-        if self.crash_on_create:
-            raise TestException()
         with self.create_cv:
             next_id = self.create_count
             self.create_count += 1
+            if self.mocktime:
+                self.mocktime.current_time = self.create_count
             self.create_cv.notify()
-        # Notify the condition variable before hanging, so that other
+        # Notify the condition variable before hanging/crashing, so that other
         # create_container calls are not affected.
+        if self.crash_on_create:
+            raise TestException()
         while next_id in self.hanging_ids or -1 in self.hanging_ids:
             time.sleep(0.1)
-
         return TestContainer(self)
 
 
@@ -496,6 +583,49 @@ class TestException(Exception):
     """An exception class for the TestFactory to raise."""
     def __init__(self):
         super(TestException, self).__init__('test error')
+
+
+class _MockTime(object):
+    """A mock for time.time.
+
+    Do not instantiate this directly; use the mock_time context manager.
+    """
+    def __init__(self):
+        self._current_time = 0
+
+    @property
+    def current_time(self):
+        """The current mock time, which is returned by the .time method."""
+        return self._current_time
+
+    @current_time.setter
+    def current_time(self, value):
+        """Sets the time that is returned by the .time method."""
+        logging.debug('time: %d', value)
+        self._current_time = value
+
+    def time(self):
+        """Mocks the time.time method.
+
+        @return: The value of current_time.
+        """
+        return self.current_time
+
+
+@contextmanager
+def mock_time():
+    """Creates a _MockTime context object that replaces time.time.
+
+    Setting current_time on the returned object will change the value returned
+    by time.time calls, within the scope of this context.
+    """
+    mock = _MockTime()
+    orig_time = time.time
+    try:
+        time.time = mock.time
+        yield mock
+    finally:
+        time.time = orig_time
 
 
 if __name__ == '__main__':

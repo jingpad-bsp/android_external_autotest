@@ -16,6 +16,7 @@ import unittest
 import common
 from autotest_lib.client.bin.result_tools import result_info
 from autotest_lib.client.bin.result_tools import shrink_file_throttler
+from autotest_lib.client.bin.result_tools import throttler_lib
 from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.bin.result_tools import utils_lib
 from autotest_lib.client.bin.result_tools import view as result_view
@@ -477,10 +478,17 @@ class ThrottleTest(unittest.TestCase):
 
     def testThrottleResults_Dedupe(self):
         """Test _throttle_results method with dedupe triggered."""
-        summary = result_info.ResultInfo.build_from_path(self.test_dir)
-        result_utils._throttle_results(
-                summary, (2*LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE) / 1024)
-        self.assertEqual(EXPECTED_THROTTLED_SUMMARY_WITH_DEDUPE, summary)
+        # Change AUTOTEST_LOG_PATTERN to protect file.xml from being compressed
+        # before deduping kicks in.
+        old_pattern = throttler_lib.AUTOTEST_LOG_PATTERN
+        throttler_lib.AUTOTEST_LOG_PATTERN = '.*/file.xml'
+        try:
+            summary = result_info.ResultInfo.build_from_path(self.test_dir)
+            result_utils._throttle_results(
+                    summary, (2*LARGE_SIZE + 3*SMALL_SIZE + SHRINK_SIZE) / 1024)
+            self.assertEqual(EXPECTED_THROTTLED_SUMMARY_WITH_DEDUPE, summary)
+        finally:
+            throttler_lib.AUTOTEST_LOG_PATTERN = old_pattern
 
     def testThrottleResults_Zip(self):
         """Test _throttle_results method with dedupe triggered."""
