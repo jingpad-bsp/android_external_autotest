@@ -9,7 +9,7 @@ import urlparse
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
-from autotest_lib.client.cros.cellular import cell_tools, mm
+from autotest_lib.client.cros.cellular import cell_tools
 
 
 # Default timeouts in seconds
@@ -56,34 +56,12 @@ class network_3GSmokeTest(test.test):
             raise error.TestFail('Could not disconnect: %s.' % status)
 
 
-    def GetModemInfo(self):
-        """Find all modems attached and return an dictionary of information.
-
-        This returns a bunch of information for each modem attached to
-        the system.  In practice collecting all this information
-        sometimes fails if a modem is left in an odd state, so we
-        collect as many things as we can to ensure that the modem is
-        responding correctly.
-
-        @return A dictionary of information for each modem path.
-        """
-        results = {}
-
-        devices = mm.EnumerateDevices()
-        print 'Devices: %s' % ', '.join([p for _, p in devices])
-        for manager, path in devices:
-            modem = manager.GetModem(path)
-            results[path] = modem.GetModemProperties()
-        return results
-
-
     def run_once_internal(self):
         """
         Executes the test.
 
         """
-        # Get information about all the modems
-        old_modem_info = self.GetModemInfo()
+        old_modem_info = self.test_env.modem.GetModemProperties()
 
         for _ in xrange(self.connect_count):
             service, state = cell_tools.ConnectToCellular(self.test_env.flim,
@@ -117,9 +95,9 @@ class network_3GSmokeTest(test.test):
 
             self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
 
-            # Verify that we can still get information for all the modems
+            # Verify that we can still get information about the modem
             logging.info('Old modem info: %s', ', '.join(old_modem_info))
-            new_modem_info = self.GetModemInfo()
+            new_modem_info = self.test_env.modem.GetModemProperties()
             if len(new_modem_info) != len(old_modem_info):
                 logging.info('New modem info: %s', ', '.join(new_modem_info))
                 raise error.TestFail('Test shutdown: '
