@@ -36,7 +36,7 @@ class Event(enum.Enum):
     itself on a line to signal the event.
 
     This should be backward compatible with all versions of
-    job_shepherd, which lives in the infra/lucifer repository.
+    lucifer_run_job, which lives in the infra/lucifer repository.
 
     https://chromium.googlesource.com/chromiumos/infra/lucifer
     """
