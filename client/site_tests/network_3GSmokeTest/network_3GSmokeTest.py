@@ -9,15 +9,13 @@ import urlparse
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import network
-from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.networking import shill_context
+from autotest_lib.client.cros.networking import shill_proxy
 
 
 # Default timeouts in seconds
 CONNECT_TIMEOUT = 120
 DISCONNECT_TIMEOUT = 60
-
-SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
 class network_3GSmokeTest(test.test):
     """
@@ -31,31 +29,6 @@ class network_3GSmokeTest(test.test):
     """
     version = 1
 
-    # TODO(benchan): Migrate to use ShillProxy when ShillProxy provides a
-    # similar method.
-    def DisconnectFrom3GNetwork(self, disconnect_timeout):
-        """Attempts to disconnect from a 3G network.
-
-        @param disconnect_timeout: Timeout in seconds for disconnecting from
-                                   the network.
-
-        @raises error.TestFail if it fails to disconnect from the network before
-                timeout.
-        @raises error.TestError If no cellular service is available.
-
-        """
-        logging.info('DisconnectFrom3GNetwork')
-
-        service = self.test_env.flim.FindCellularService()
-        if not service:
-            raise error.TestError('Could not find cellular service.')
-
-        success, status = self.test_env.flim.DisconnectService(
-            service=service,
-            wait_timeout=disconnect_timeout)
-        if not success:
-            raise error.TestFail('Could not disconnect: %s.' % status)
-
 
     def run_once_internal(self):
         """
@@ -65,8 +38,21 @@ class network_3GSmokeTest(test.test):
         old_modem_info = self.test_env.modem.GetModemProperties()
 
         for _ in xrange(self.connect_count):
-            service, state = cell_tools.ConnectToCellular(self.test_env.flim,
-                                                          CONNECT_TIMEOUT)
+            device = self.test_env.shill.find_cellular_device_object()
+            if not device:
+                raise error.TestError('No cellular device found.')
+
+            service = self.test_env.shill.wait_for_cellular_service_object()
+            if not service:
+                raise error.TestError('No cellular service found.')
+
+            logging.info('Connecting to service %s', service.object_path)
+            self.test_env.shill.connect_service_synchronous(
+                    service, CONNECT_TIMEOUT)
+
+            properties = service.GetProperties(utf8_strings=True)
+            state = properties[shill_proxy.ShillProxy.SERVICE_PROPERTY_STATE]
+            logging.info('Service state = %s', state)
 
             if state == 'portal':
                 url_pattern = ('https://quickaccess.verizonwireless.com/'
@@ -77,9 +63,9 @@ class network_3GSmokeTest(test.test):
                 url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
                 bytes_to_fetch = 64 * 1024
 
-            device = self.test_env.flim.GetObjectInterface(
-                'Device', service.GetProperties()['Device'])
-            interface = device.GetProperties()['Interface']
+            properties = device.GetProperties(utf8_strings=True)
+            interface = \
+                    properties[shill_proxy.ShillProxy.DEVICE_PROPERTY_INTERFACE]
             logging.info('Expected interface for %s: %s',
                          service.object_path, interface)
             network.CheckInterfaceForDestination(
@@ -94,7 +80,8 @@ class network_3GSmokeTest(test.test):
                 'bits_second_3G_speed': 8 * bytes_to_fetch / fetch_time
             })
 
-            self.DisconnectFrom3GNetwork(disconnect_timeout=DISCONNECT_TIMEOUT)
+            self.test_env.shill.disconnect_service_synchronous(
+                    service, DISCONNECT_TIMEOUT)
 
             # Verify that we can still get information about the modem
             logging.info('Old modem info: %s', ', '.join(old_modem_info))
