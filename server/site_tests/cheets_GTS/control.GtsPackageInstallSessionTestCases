@@ -5,14 +5,14 @@
 # This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
-NAME = 'cheets_GTS.GtsRlzTestCases'
+NAME = 'cheets_GTS.GtsPackageInstallSessionTestCases'
 ATTRIBUTES = 'suite:gts'
 DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
-DOC = ('Run package GtsRlzTestCases of the '
+DOC = ('Run package GtsPackageInstallSessionTestCases of the '
        'Android 5.0_r2 Google Test Suite (GTS), build 4389763,'
        'in the ARC++ container.')
 
@@ -22,8 +22,8 @@ def run_GTS(machine):
         'cheets_GTS',
         host=host,
         iterations=1,
-        tag='GtsRlzTestCases',
-        target_package='GtsRlzTestCases',
+        tag='GtsPackageInstallSessionTestCases',
+        target_package='GtsPackageInstallSessionTestCases',
         timeout=3600)
 
 parallel_simple(run_GTS, machines)
