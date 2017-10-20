@@ -100,6 +100,16 @@ def verify_repo_clean():
         raise DirtyTreeException(out)
 
 
+def _clean_externals():
+    """Clean untracked files within ExternalSource and site-packages/
+
+    @raises subprocess.CalledProcessError on a git command failure.
+    """
+    dirs_to_clean = ['site-packages/', 'ExternalSource/']
+    cmd = ['git', 'clean', '-fxd'] + dirs_to_clean
+    subprocess.check_output(cmd)
+
+
 def repo_versions():
     """This function collects the versions of all git repos in the general repo.
 
@@ -433,6 +443,11 @@ def parse_arguments(args):
     parser.add_argument('--update_push_servers', action='store_true',
                         help='Indicate to update test_push server. If not '
                              'specify, then update server to production.')
+    parser.add_argument('--force-clean-externals', action='store_true',
+                        default=False,
+                        help='Force a cleanup of all untracked files within '
+                             'site-packages/ and ExternalSource/, so that '
+                             'build_externals will build from scratch.')
     parser.add_argument('--force_update', action='store_true',
                         help='Force to run the update commands for afe, tko '
                              'and build_externals')
@@ -448,6 +463,7 @@ def parse_arguments(args):
     if results.dryrun:
         results.verify = False
         results.update = False
+        results.force_clean_externals = False
 
     return results
 
@@ -489,6 +505,11 @@ def main(args):
         print('Checking tree status:')
         verify_repo_clean()
         print('Tree status: clean')
+
+    if behaviors.force_clean_externals:
+       print('Cleaning all external packages and their cache...')
+       _clean_externals()
+       print('...done.')
 
     versions_before = repo_versions()
     versions_after = set()
