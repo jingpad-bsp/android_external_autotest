@@ -6,10 +6,10 @@
 
 See http://goto.google.com/monitor_db_per_job_refactor
 
-See also job_shepherd in
+See also lucifer_run_job in
 https://chromium.googlesource.com/chromiumos/infra/lucifer
 
-job_reporter is a thin wrapper around job_shepherd and only updates the
+job_reporter is a thin wrapper around lucifer_run_job and only updates the
 Autotest database according to status events.
 """
 
@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import argparse
 import logging
+import os
 import sys
 
 from lucifer import autotest
@@ -36,13 +37,21 @@ def main(args):
 
     parser = argparse.ArgumentParser(prog='job_reporter', description=__doc__)
     loglib.add_logging_options(parser)
-    parser.add_argument('--job-id', type=int, default=None)
-    parser.add_argument('--autoserv-exit', type=int, default=None,
-                        help='autoserv exit status')
-    parser.add_argument('--job-shepherd', default='/usr/lib/job_shepherd',
-                        help='Path to job_shepherd binary')
-    parser.add_argument('job_shepherd_args', nargs=argparse.REMAINDER,
-                        help='Arguments passed to job_shepherd')
+    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
+                        help='Path to lucifer_run_job binary')
+    parser.add_argument('--leasedir', default='/var/lib/lucifer/leases',
+                        help='''
+Path to lucifer_run_job binary.  This is used to construct the -leasefile
+argument to lucifer_run_job.
+''')
+    parser.add_argument('--job-id', type=int, default=None,
+                        help='Autotest Job ID')
+    parser.add_argument('--autoserv-exit', type=int, default=None, help='''
+autoserv exit status.  If this is passed, then autoserv will not be run
+as the caller has presumably already run it.
+''')
+    parser.add_argument('run_job_args', nargs=argparse.REMAINDER,
+                        help='Arguments passed to lucifer_run_job')
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
 
@@ -61,21 +70,22 @@ def main(args):
         # TODO(crbug.com/748234): Full jobs not implemented yet.
         raise NotImplementedError('not implemented yet')
     handler = _EventHandler(job, hqes, autoserv_exit=args.autoserv_exit)
-    return _run_shepherd(args.job_shepherd, handler, args)
+    return _run_job(args.run_job_path, handler, args)
 
 
-def _run_shepherd(path, event_handler, args):
-    """Run job_shepherd.
+def _run_job(path, event_handler, args):
+    """Run lucifer_run_job.
 
-    Events issues by the job_shepherd will be handled by event_handler.
+    Issued events will be handled by event_handler.
 
-    @param path: path to job_shepherd binary
+    @param path: path to lucifer_run_job binary
     @param event_handler: callable that takes an Event
     @param args: parsed arguments
-    @returns: exit status of job_shepherd
+    @returns: exit status of lucifer_run_job
     """
     args = [path]
-    args.extend(args.job_shepherd_args)
+    args.extend(['-leasefile', os.path.join(args.leasedir, args.job_id)])
+    args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler, args=args)
 
 

@@ -19,7 +19,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.cros import tradefed_test
 
-_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.0_r1-4144450.zip'
+_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.0_r2-4389763.zip'
 
 
 class cheets_GTS(tradefed_test.TradefedTest):
@@ -40,7 +40,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
             self._android_gts = self._install_bundle(_PARTNER_GTS_LOCATION)
 
         self.waivers = self._get_expected_failures('expectations')
-        self._notest_modules = self._get_expected_failures('notest_modules')
+
 
     def _get_gts_test_args(self):
         """ This is the command to run GTS tests."""
@@ -88,15 +88,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # warnings, errors and failures can be raised here.
         tests, passed, failed, not_executed, waived = self._parse_result_v2(
             output, waivers=self.waivers)
-        # TODO(kinaba): Fix the logic below when GTS is updated.
-        # The condition below is dangerous, because |tests == not_executed| can
-        # also happen when all the tests repeatedly crashed the device.
-        # Unfortunately, GTS5.0r1 implements and reports the skips in this way,
-        # hence we have no choice.
-        if (tests == not_executed and
-                self._target_package in self._notest_modules):
-            logging.info('Package has no tests as expected.')
-            return
         passed += waived
         failed -= waived
         if tests != passed or failed > 0 or not_executed > 0:
