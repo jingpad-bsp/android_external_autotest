@@ -22,11 +22,35 @@ import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_utils
 from numpy import uint32
 
 
-# TODO(tbroch): dram domain since Ivy Bridge-E microarchitecture
-VALID_DOMAINS = ['pkg', 'pp0', 'pp1']
+VALID_DOMAINS = ['pkg', 'pp0', 'gfx', 'dram']
+
+
+def get_rapl_measurement(tname, exe_function=time.sleep, statistics=True,
+                         exe_args=(10,), exe_kwargs={}):
+    """Get rapl measurement.
+
+    @param name: String of test name.
+    @param exe_function: function that should be executed during measuring
+                         rapl readings.
+    @param statistics: If true, rapl measurement statistics will be reported
+                       instead of list of scalars. (mean, std, cnt, ... etc.)
+    @param exe_args: tuple of args to be passed into exe_function.
+    @param exe_kwargs: dict of args to be passed into exe_function.
+    """
+    logging.info('Now measuring rapl power consumption.')
+    measurement = []
+    if power_utils.has_rapl_support():
+        measurement += create_rapl()
+    power_logger = power_status.PowerLogger(measurement)
+    power_logger.start()
+    with power_logger.checkblock(tname):
+        exe_function(*exe_args, **exe_kwargs)
+    keyval = power_logger.calc(statistics=statistics)
+    return keyval
 
 
 def create_rapl(domains=None):
@@ -73,7 +97,7 @@ class Rapl(power_status.PowerMeasurement):
                             'energy_status':  0x639,
                             'policy':         0x63a,
                             'perf_status':    0x63b},
-                    'pp1': {'power_limit':    0x640,
+                    'gfx': {'power_limit':    0x640,
                             'energy_status':  0x641,
                             'policy':         0x642},
                     'dram': {'power_limit':   0x618,
