@@ -23,14 +23,14 @@ def run_CTS(machine):
         'cheets_CTS_N',
         host=host,
         iterations=1,
-        max_retry=3,
+        max_retry=10,
         needs_push_media=False,
         tag='CtsSecurityHostTestCases',
         target_module='CtsSecurityHostTestCases',
         bundle='x86',
         warn_on_test_retry=False,
         retry_manual_tests=True,
-        pre_condition_commands=['echo 3 > /proc/sys/kernel/perf_event_paranoid'],
+        precondition_commands=['echo 3 > /proc/sys/kernel/perf_event_paranoid'],
         timeout=5400)
 
 parallel_simple(run_CTS, machines)

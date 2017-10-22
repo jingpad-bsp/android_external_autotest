@@ -23,7 +23,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
-from autotest_lib.client.cros import power_status, power_utils
+from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 
 # Minimum battery charge percentage to run the test
@@ -149,12 +149,30 @@ class graphics_WebGLAquarium(graphics_utils.GraphicsTest):
         logging.info('%d fish(es): Average FPS = %f, '
                      'average render time = %f', num_fishes, avg_fps,
                      avg_render_time)
+
         if perf_log:
+            # Report frames per second to chromeperf/ dashboard.
             self.output_perf_value(
                 description='avg_fps_%04d_fishes' % num_fishes,
                 value=avg_fps,
                 units='fps',
                 higher_is_better=True)
+
+            # Intel only: Record the power consumption for the next few seconds.
+            rapl_rate = power_rapl.get_rapl_measurement(
+                'rapl_%04d_fishes' % num_fishes, statistics=False)
+            # Remove entries that we don't care about.
+            rapl_rate = {key: rapl_rate[key]
+                         for key in rapl_rate.keys() if key.endswith('pwr')}
+            # Report to chromeperf/ dashboard.
+            for key, values in rapl_rate.iteritems():
+                self.output_perf_value(
+                    description=key,
+                    value=values,
+                    units='W',
+                    higher_is_better=False,
+                    graph='rapl_power_consumption'
+                )
 
     def run_power_test(self, browser, test_url, ac_ok):
         """Runs the webgl power consumption test and reports the perf results.
