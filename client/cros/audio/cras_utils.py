@@ -337,6 +337,18 @@ def get_selected_node_types():
     return get_filtered_node_types(is_selected)
 
 
+def get_selected_input_device_name():
+    """Returns the device name of the active input node.
+
+    @returns: device name string. E.g. kbl_r5514_5663_max: :0,1
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active'] and node['IsInput']:
+            return node['DeviceName']
+    return None
+
+
 def get_plugged_node_types():
     """Returns the pair of plugged output node types and input node types.
 
