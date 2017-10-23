@@ -90,6 +90,16 @@ def get_zygote_type():
     return _android_shell('getprop ro.zygote')
 
 
+def get_sdk_version():
+    """Return the SDK level version for Android."""
+    return _android_shell('getprop ro.build.version.sdk')
+
+
+def get_product():
+    """Return the product string used for the Android build."""
+    return _android_shell('getprop ro.build.product')
+
+
 def _wait_for_data_mounted(timeout=_WAIT_FOR_DATA_MOUNTED_SECONDS):
     utils.poll_for_condition(
             condition=_is_android_data_mounted,
