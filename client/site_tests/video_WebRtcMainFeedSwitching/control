@@ -8,7 +8,7 @@ PURPOSE = "Stress WebRTC and Chrome by frequent switches of the source video"
 CRITERIA = "Fails if Chrome crashes"
 ATTRIBUTES = ("suite:hotrod, suite:bluestreak, suite:bluestreak-release, "
         "suite:bluestreak-perbuild, suite:bluestreak-pre-cq")
-TIME = "MEDIUM"
+TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
