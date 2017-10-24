@@ -56,7 +56,7 @@ def power_cycle_usb_gpio(dut, gpio_idx, pause=1):
     if gpio_idx is None:
         return
     export_flag = False
-    if not os.path.exists('/sys/class/gpio/gpio{}'.format(gpio_idx)):
+    if not dut.path_exists('/sys/class/gpio/gpio{}'.format(gpio_idx)):
         export_flag = True
         cmd = 'echo {} > /sys/class/gpio/export'.format(gpio_idx)
         dut.run(cmd)
