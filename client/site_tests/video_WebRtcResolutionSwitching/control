@@ -8,7 +8,7 @@ PURPOSE = "Stress WebRTC by frequently switching between different resolutions"
 CRITERIA = "Fails if any video element gets a lower resolution than requested"
 ATTRIBUTES = ("suite:hotrod, suite:bluestreak, suite:bluestreak-release, "
         "suite:bluestreak-perbuild")
-TIME = "MEDIUM"
+TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
