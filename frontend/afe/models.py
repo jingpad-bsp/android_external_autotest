@@ -20,7 +20,6 @@ from autotest_lib.client.common_lib import enum, error, host_protections
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server import utils as server_utils
 
 # job options and user preferences
@@ -1507,6 +1506,16 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
     def __unicode__(self):
         return u'%s (%s-%s)' % (self.name, self.id, self.owner)
+
+
+class JobHandoff(dbmodels.Model, model_logic.ModelExtensions):
+    """Jobs that have been handed off to lucifer."""
+
+    job = dbmodels.ForeignKey(Job, on_delete=dbmodels.CASCADE, null=False)
+
+    class Meta:
+        """Metadata for class Job."""
+        db_table = 'afe_job_handoffs'
 
 
 class JobKeyval(dbmodels.Model, model_logic.ModelExtensions):
