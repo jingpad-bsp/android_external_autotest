@@ -121,9 +121,25 @@ class RemoteFacadeProxy(object):
             """Call the RPC with log."""
             value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
             process_log()
-            if type(value) is str and value.startswith('Traceback'):
-                raise Exception('RPC error: %s\n%s' % (name, value))
+
+            # For debug, print the return value.
             logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
+
+            # Raise some well-known client exceptions, like TestFail.
+            if type(value) is str and value.startswith('Traceback'):
+                # The last line contains the exception type, like:
+                #   "TestFail: Not able to start session."
+                last_line = value.strip().rsplit('\n', 1)[-1]
+                if ':' in last_line:
+                    key, message = last_line.split(':', 1)
+                    if key == 'TestFail':
+                        raise error.TestFail(message)
+                    elif key == 'TestError':
+                        raise error.TestError(message)
+
+                # Raise the default exception.
+                raise Exception('RPC error: %s\n%s' % (name, value))
+
             return value
 
         try:
