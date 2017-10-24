@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shutil
 import zipfile
 
 from autotest_lib.client.bin import test
@@ -19,6 +20,7 @@ class CrosDisksArchiveTester(CrosDisksTester):
     """
     def __init__(self, test, archive_types):
         super(CrosDisksArchiveTester, self).__init__(test)
+        self._data_dir = os.path.join(test.bindir, 'data')
         self._archive_types = archive_types
 
     def _find_all_files(self, root_dir):
@@ -62,6 +64,22 @@ class CrosDisksArchiveTester(CrosDisksTester):
             archive.write(os.path.join(root_dir, path), path)
         archive.close()
 
+    def _make_rar_archive(self, archive_path, root_dir):
+        """Archives a specified directory into a RAR file.
+
+           The created RAR file contains all files and sub-directories
+           under the specified root directory, but not the root directory
+           itself.
+
+        Args:
+            archive_path: Path of the output archive.
+            root_dir: The root directory to archive.
+        """
+        # DESPICABLE HACK: app-arch/rar provides only pre-compiled rar binaries
+        # for x86/amd64. As a workaround, we pretend the RAR creation here
+        # using a precanned RAR file.
+        shutil.copyfile(os.path.join(self._data_dir, 'test.rar'), archive_path)
+
     def _make_archive(self, archive_type, archive_path, root_dir):
         """Archives a specified directory into an archive of specified type.
 
@@ -76,6 +94,8 @@ class CrosDisksArchiveTester(CrosDisksTester):
         """
         if archive_type in ['zip']:
             self._make_zip_archive(archive_path, root_dir)
+        elif archive_type in ['rar']:
+            self._make_rar_archive(archive_path, root_dir)
         else:
             raise error.TestFail("Unsupported archive type " + archive_type)
 
