@@ -4,9 +4,9 @@
 
 """Kludges to support legacy Autotest code.
 
-Autotest imports should be done by calling monkeypatch() first and then
-calling load().  monkeypatch() should only be called once from a
-script's main function.
+Autotest imports should be done by calling patch() first and then
+calling load().  patch() should only be called once from a script's main
+function.
 """
 
 from __future__ import absolute_import
@@ -30,8 +30,36 @@ _setup_done = False
 logger = logging.getLogger(__name__)
 
 
+def patch():
+    """Monkeypatch everything needed to get Autotest working.
+
+    This should be called before any calls to load().  Only the main
+    function in scripts should call this function.
+
+    Unlike monkeypatch() which is more low-level, this patches not just
+    imports, but also other things in Autotest what would generally be
+    needed to use it.
+    """
+    monkeypatch()
+
+    # Needed to set up Django environment variables.
+    load('frontend.setup_django_environment')
+
+    # Monkey patch package paths that Django uses to be absolute.
+    settings = load('frontend.settings')
+    settings.INSTALLED_APPS = (
+            'autotest_lib.frontend.afe',
+            'autotest_lib.frontend.tko',
+            'django.contrib.admin',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.sites',
+    )
+
+
 def monkeypatch():
-    """Do necessary Autotest monkeypatching.
+    """Monkeypatch Autotest imports.
 
     This should be called before any calls to load().  Only the main
     function in scripts should call this function.
@@ -72,7 +100,7 @@ class _CommonRemovingFinder(object):
 
     def load_module(self, fullname):
         """Load module."""
-        if fullname in sys.modules:
+        if fullname in sys.modules:  # pragma: no cover
             return sys.modules[fullname]
         mod = imp.new_module(fullname)
         mod.__file__ = '<removed>'
