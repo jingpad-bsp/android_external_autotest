@@ -25,7 +25,7 @@ def main(args):
     del args
     loglib.configure_logging(name='autotest_monkeypatcher')
 
-    lucifer.autotest.monkeypatch()
+    lucifer.autotest.patch()
     from autotest_lib import common
 
     print(common.__file__)
