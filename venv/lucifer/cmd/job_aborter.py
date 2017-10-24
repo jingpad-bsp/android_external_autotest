@@ -43,8 +43,7 @@ def main(args):
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
 
-    autotest.monkeypatch()
-    autotest.load('frontend.setup_django_environment')
+    autotest.patch()
     _main_loop(jobdir=args.jobdir)
     return 0
 

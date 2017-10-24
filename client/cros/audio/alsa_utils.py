@@ -348,3 +348,13 @@ def get_num_seq_clients():
         if match:
             num_clients += 1
     return num_clients
+
+def convert_device_name(cras_device_name):
+    '''Converts cras device name to alsa device name.
+
+    @returns: alsa device name that can be passed to aplay -D or arecord -D.
+              For example, if cras_device_name is "kbl_r5514_5663_max: :0,1",
+              this function will return "plughw:0,1".
+    '''
+    tokens = cras_device_name.split(":")
+    return "plughw:%s" % tokens[2]
