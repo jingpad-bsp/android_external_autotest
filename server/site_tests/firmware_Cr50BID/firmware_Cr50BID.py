@@ -89,10 +89,6 @@ class firmware_Cr50BID(Cr50Test):
         # All 1s in the board id flags should be acceptable no matter the
         # actual image flags
         [None, MAX_BID, SUCCESS],
-
-        # All 0s or All 1s will fail
-        ['0x000', None, BID_ERROR],
-        [hex(MAX_BID), None, BID_ERROR],
     ]
 
     # Settings to test all of the cr50 BID responses. The dictionary conatins
