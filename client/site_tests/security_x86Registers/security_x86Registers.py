@@ -57,8 +57,8 @@ RCBA_POSITIVE = {
         '0x3410': [('0', 1)],
         },
     'Stoney': {
-        # Skipping this test pending further investigation by AMD
-        # https://issuetracker.google.com/issues/65539771
+        # Skipping this test as there is no register to change
+        # reset vector on Stoney. NA for Stoney.
         },
     }
 
