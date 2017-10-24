@@ -8,11 +8,12 @@ import tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.audio import alsa_utils, cras_utils
+from autotest_lib.client.cros.audio import audio_spec
+from autotest_lib.client.cros.audio import alsa_utils
+from autotest_lib.client.cros.audio import cras_utils
 
 DURATION = 3
 TOLERANT_RATIO = 0.1
-EXCLUSION_BOARDS = ['veyron_mickey']
 
 class audio_Microphone(test.test):
     version = 1
@@ -47,22 +48,29 @@ class audio_Microphone(test.test):
 
 
     def run_once(self):
+        input_device_name = cras_utils.get_selected_input_device_name()
+        logging.debug("Selected input device name=%s", input_device_name)
+
+        if input_device_name is None:
+            board_type = utils.get_board_type()
+            if not audio_spec.has_internal_microphone(board_type):
+                logging.debug("No internal mic. Skipping the test.")
+                return
+            raise error.TestFail("Fail to get selected input device.")
+
         # Mono and stereo capturing should work fine @ 44.1KHz and 48KHz.
-        if utils.get_board().lower() not in EXCLUSION_BOARDS:
-            # Verify recording using ALSA utils.
-            channels = alsa_utils.get_card_preferred_record_channels()
-            if channels is None:
-                channels = [1, 2]
 
-            input_device_name = cras_utils.get_selected_input_device_name()
-            logging.debug("Selected input device name=%s", input_device_name)
+        # Verify recording using ALSA utils.
+        channels = alsa_utils.get_card_preferred_record_channels()
+        if channels is None:
+            channels = [1, 2]
 
-            for c in channels:
-                self.verify_alsa_capture(c, 44100, input_device_name)
-                self.verify_alsa_capture(c, 48000, input_device_name)
+        for c in channels:
+            self.verify_alsa_capture(c, 44100, input_device_name)
+            self.verify_alsa_capture(c, 48000, input_device_name)
 
-            # Verify recording of CRAS.
-            self.verify_cras_capture(1, 44100)
-            self.verify_cras_capture(1, 48000)
-            self.verify_cras_capture(2, 48000)
-            self.verify_cras_capture(2, 44100)
+        # Verify recording of CRAS.
+        self.verify_cras_capture(1, 44100)
+        self.verify_cras_capture(1, 48000)
+        self.verify_cras_capture(2, 48000)
+        self.verify_cras_capture(2, 44100)
