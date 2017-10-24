@@ -1,7 +1,12 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import glob, logging, os, re, shutil, time
+import glob
+import logging
+import os
+import re
+import shutil
+import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import upstart
@@ -61,9 +66,8 @@ def has_rapl_support():
     Returns:
         Boolean, True if RAPL supported, False otherwise.
     """
-    rapl_set = set(["Sandy Bridge", "Ivy Bridge", "Ivy Bridge-E",
-        "Haswell", "Haswell-E", "Broadwell", "Skylake", "Goldmont",
-        "Kaby Lake"])
+    rapl_set = set(["Haswell", "Haswell-E", "Broadwell", "Skylake", "Goldmont",
+                    "Kaby Lake"])
     cpu_uarch = utils.get_intel_cpu_uarch()
     if (cpu_uarch in rapl_set):
         return True
@@ -86,7 +90,7 @@ def _call_dbus_method(destination, path, interface, method_name, args):
     """Performs a generic dbus method call."""
     command = ('dbus-send --type=method_call --system '
                '--dest=%s %s %s.%s %s') % (destination, path, interface,
-               method_name, args)
+                                           method_name, args)
     utils.system_output(command)
 
 
@@ -102,6 +106,7 @@ def call_powerd_dbus_method(method_name, args=''):
                       path='/org/chromium/PowerManager',
                       interface='org.chromium.PowerManager',
                       method_name=method_name, args=args)
+
 
 def get_power_supply():
     """
@@ -130,6 +135,7 @@ def get_power_supply():
 
     return 'power:%s' % psu_str
 
+
 def get_sleep_state():
     """
     Returns the current powerd configuration of the sleep state.
@@ -138,6 +144,7 @@ def get_sleep_state():
     cmd = 'check_powerd_config --suspend_to_idle'
     result = utils.run(cmd, ignore_status=True)
     return 'freeze' if result.exit_status == 0 else 'mem'
+
 
 def has_battery():
     """Determine if DUT has a battery.
@@ -199,6 +206,7 @@ class Backlight(object):
     # Default brightness is based on expected average use case.
     # See http://www.chromium.org/chromium-os/testing/power-testing for more
     # details.
+
     def __init__(self, default_brightness_percent=0):
         """Constructor.
 
@@ -230,7 +238,6 @@ class Backlight(object):
                                 "brightness percent.  Setting to %f",
                                 self.default_brightness_percent)
 
-
     def _try_bl_cmd(self, arg_str):
         """Perform backlight command.
 
@@ -252,7 +259,6 @@ class Backlight(object):
         except error.CmdError:
             raise error.TestFail(cmd)
 
-
     def set_level(self, level):
         """Set backlight level to the given brightness.
 
@@ -260,7 +266,6 @@ class Backlight(object):
           level: integer of brightness to set
         """
         self._try_bl_cmd('--set_brightness=%d' % (level))
-
 
     def set_percent(self, percent):
         """Set backlight level to the given brightness percent.
@@ -270,7 +275,6 @@ class Backlight(object):
         """
         self._try_bl_cmd('--set_brightness_percent=%f' % (percent))
 
-
     def set_resume_level(self, level):
         """Set backlight level on resume to the given brightness.
 
@@ -278,7 +282,6 @@ class Backlight(object):
           level: integer of brightness to set
         """
         self._try_bl_cmd('--set_resume_brightness=%d' % (level))
-
 
     def set_resume_percent(self, percent):
         """Set backlight level on resume to the given brightness percent.
@@ -288,12 +291,10 @@ class Backlight(object):
         """
         self._try_bl_cmd('--set_resume_brightness_percent=%f' % (percent))
 
-
     def set_default(self):
         """Set backlight to CrOS default.
         """
         self.set_percent(self.default_brightness_percent)
-
 
     def get_level(self):
         """Get backlight level currently.
@@ -303,7 +304,6 @@ class Backlight(object):
         """
         return int(self._try_bl_cmd('--get_brightness'))
 
-
     def get_max_level(self):
         """Get maximum backight level.
 
@@ -312,7 +312,6 @@ class Backlight(object):
         """
         return int(self._try_bl_cmd('--get_max_brightness'))
 
-
     def get_percent(self):
         """Get backlight percent currently.
 
@@ -320,7 +319,6 @@ class Backlight(object):
         exists
         """
         return float(self._try_bl_cmd('--get_brightness_percent'))
-
 
     def restore(self):
         """Restore backlight to initial level when instance created."""
@@ -366,7 +364,6 @@ class KbdBacklight(object):
         except Exception:
             raise KbdBacklightException('Keyboard backlight is malfunctioning')
 
-
     def get_percent(self):
         """Get current keyboard brightness setting percentage.
 
@@ -375,7 +372,6 @@ class KbdBacklight(object):
         """
         cmd = 'backlight_tool --keyboard --get_brightness_percent'
         return float(utils.system_output(cmd).strip())
-
 
     def get_default_level(self):
         """
@@ -386,7 +382,6 @@ class KbdBacklight(object):
         """
         return self._default_backlight_level
 
-
     def set_percent(self, percent):
         """Set keyboard backlight percent.
 
@@ -395,9 +390,8 @@ class KbdBacklight(object):
                         to set keyboard backlight to.
         """
         cmd = ('backlight_tool --keyboard --set_brightness_percent=' +
-              str(percent))
+               str(percent))
         utils.system(cmd)
-
 
     def set_level(self, level):
         """
@@ -428,7 +422,6 @@ class BacklightController(object):
     def __init__(self):
         self._max_num_steps = 16
 
-
     def decrease_brightness(self, allow_off=False):
         """
         Decrease brightness by one step, as if the user pressed the brightness
@@ -441,9 +434,8 @@ class BacklightController(object):
                      set to false to simulate Chrome UI brightness down button.
         """
         call_powerd_dbus_method('DecreaseScreenBrightness',
-                                'boolean:%s' % \
-                                    ('true' if allow_off else 'false'))
-
+                                'boolean:%s' %
+                                ('true' if allow_off else 'false'))
 
     def increase_brightness(self):
         """
@@ -451,7 +443,6 @@ class BacklightController(object):
         up key or button.
         """
         call_powerd_dbus_method('IncreaseScreenBrightness')
-
 
     def set_brightness_to_max(self):
         """
@@ -463,7 +454,6 @@ class BacklightController(object):
         while num_steps_taken < self._max_num_steps:
             self.increase_brightness()
             num_steps_taken += 1
-
 
     def set_brightness_to_min(self, allow_off=False):
         """
@@ -523,14 +513,12 @@ class PowerPrefChanger(object):
         utils.system('mount --bind %s %s' % (self._TEMPDIR, self._PREFDIR))
         upstart.restart_job('powerd')
 
-
     def finalize(self):
         """finalize"""
         if os.path.exists(self._TEMPDIR):
             utils.system('umount %s' % self._PREFDIR, ignore_status=True)
             shutil.rmtree(self._TEMPDIR)
             upstart.restart_job('powerd')
-
 
     def __del__(self):
         self.finalize()
@@ -675,12 +663,12 @@ class USBDevicePower(object):
     TODO(tbroch): consider converting to use of pyusb although not clear its
     beneficial if it doesn't parse power/control
     """
+
     def __init__(self, vid, pid, whitelisted, path):
         self.vid = vid
         self.pid = pid
         self.whitelisted = whitelisted
         self._path = path
-
 
     def autosuspend(self):
         """Determine current value of USB autosuspend for device."""
@@ -722,13 +710,13 @@ class USBPower(object):
         _whitelisted: list of USB device vid:pid that are whitelisted.
                         May be regular expressions.  See LMT for details.
     """
+
     def __init__(self):
         self._wlist_file = \
             '/etc/laptop-mode/conf.d/board-specific/usb-autosuspend.conf'
         self._wlist_vname = '$AUTOSUSPEND_USBID_WHITELIST'
         self._whitelisted = None
         self.devices = []
-
 
     def _load_whitelist(self):
         """Load USB device whitelist for enabling USB autosuspend
@@ -741,7 +729,6 @@ class USBPower(object):
         out = utils.system_output(cmd, ignore_status=True)
         logging.debug('USB whitelist = %s', out)
         self._whitelisted = out.split()
-
 
     def _is_whitelisted(self, vid, pid):
         """Check to see if USB device vid:pid is whitelisted.
@@ -761,7 +748,6 @@ class USBPower(object):
             if re.match(re_str, match_str):
                 return True
         return False
-
 
     def query_devices(self):
         """."""
