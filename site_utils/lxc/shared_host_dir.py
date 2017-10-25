@@ -6,9 +6,17 @@ import logging
 import os
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import utils as lxc_utils
+
+
+# Cleaning up the bind mount can sometimes be blocked if a process is active in
+# the directory.  Give cleanup operations about 10 seconds to complete.  This is
+# only an approximate measure.
+_RETRY_MAX_SECONDS = 10
 
 
 class SharedHostDir(object):
@@ -45,12 +53,23 @@ class SharedHostDir(object):
                   {'path': self.path})
 
 
-    def cleanup(self):
+    def cleanup(self, timeout=_RETRY_MAX_SECONDS):
         """Removes the shared host directory.
 
         This should only be called after all containers have been destroyed
         (i.e. all host mounts have been disconnected and removed, so the shared
         host directory should be empty).
+
+        @param timeout: Unmounting and deleting the mount point can run into
+                        race conditions vs the kernel sometimes.  This parameter
+                        specifies the number of seconds for which to keep
+                        waiting and retrying the umount/rm commands before
+                        raising a CmdError.  The default of _RETRY_MAX_SECONDS
+                        should work; this parameter is for tests to substitute a
+                        different time out.
+
+        @raises CmdError: If any of the commands involved in unmounting or
+                          deleting the mount point fail even after retries.
         """
         if not os.path.exists(self.path):
             return
@@ -62,11 +81,48 @@ class SharedHostDir(object):
 
         # It's possible that the directory is no longer mounted (e.g. if the
         # system was rebooted), so check before unmounting.
-        utils.run('if findmnt "%(path)s" > /dev/null;'
-                  '  then sudo umount "%(path)s";'
-                  'fi' %
-                  {'path': self.path})
-        utils.run('sudo rm -r "%s"' % self.path)
+        if utils.run('findmnt %s > /dev/null' % self.path,
+                     ignore_status=True).exit_status == 0:
+            self._try_umount(timeout)
+        self._try_rm(timeout)
+
+
+    def _try_umount(self, timeout):
+        """Tries to unmount the shared host dir.
+
+        If the unmount fails, it is retried approximately once a second, for
+        <timeout> seconds.  If the command still fails, a CmdError is raised.
+
+        @param timeout: A timeout in seconds for which to retry the command.
+
+        @raises CmdError: If the command has not succeeded after
+                          _RETRY_MAX_SECONDS.
+        """
+        @retry.retry(error.CmdError, timeout_min=timeout/60.0,
+                     delay_sec=1)
+        def run_with_retry():
+            """Actually unmounts the shared host dir.  Internal function."""
+            utils.run('sudo umount %s' % self.path)
+        run_with_retry()
+
+
+    def _try_rm(self, timeout):
+        """Tries to remove the shared host dir.
+
+        If the rm command fails, it is retried approximately once a second, for
+        <timeout> seconds.  If the command still fails, a CmdError is raised.
+
+        @param timeout: A timeout in seconds for which to retry the command.
+
+        @raises CmdError: If the command has not succeeded after
+                          _RETRY_MAX_SECONDS.
+        """
+        @retry.retry(error.CmdError, timeout_min=timeout/60.0,
+                     delay_sec=1)
+        def run_with_retry():
+            """Actually removes the shared host dir.  Internal function."""
+            utils.run('sudo rm -r "%s"' % self.path)
+        run_with_retry()
 
 
     def _host_dir_is_valid(self):
