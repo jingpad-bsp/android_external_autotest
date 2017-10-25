@@ -19,6 +19,8 @@ import common
 
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config
+# infra_libs comes from chromite's third_party modules.
+from infra_libs import ts_mon
 
 from autotest_lib.site_utils.stats import log_daemon_common
 
