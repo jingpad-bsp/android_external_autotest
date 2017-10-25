@@ -22,15 +22,19 @@ struct TestProfile {
   bool check_1280x960 = false;
   bool check_1600x1200 = false;
   bool support_constant_framerate = false;
-  bool check_first_jpeg_frame_valid = false;
   bool check_minimum_resolution = false;
   uint32_t skip_frames = 0;
   uint32_t lens_facing;
 };
 
-/* Test lists */
+/* Test lists:
+ * default: for devices without ARC++, and devices with ARC++ which use
+ *          camera HAL v1.
+ * halv3: for devices with ARC++ which use camera HAL v3.
+ * external-camera: for third-party labs to verify new camera modules.
+ */
 static const char kDefaultTestList[] = "default";
-static const char kConstantFramerateTestList[] = "constant-framerate";
+static const char kHalv3TestList[] = "halv3";
 static const char kExternalCameraTestList[] = "external-camera";
 
 /* Camera Facing */
@@ -45,8 +49,8 @@ static void PrintUsage(int argc, char** argv) {
          "--usb-info=VID:PID   Device vendor id and product id\n"
          "--test-list=TEST     Select different test list\n"
          "                     [%s | %s | %s]\n",
-         argv[0], kDefaultTestList, kConstantFramerateTestList,
-         kExternalCameraTestList, kExternalCameraTestList);
+         argv[0], kDefaultTestList, kHalv3TestList,
+         kExternalCameraTestList);
 }
 
 static const char short_options[] = "?d:u:t:";
@@ -526,14 +530,14 @@ const TestProfile GetTestProfile(const std::string& dev_name,
     profile.support_constant_framerate =
         !device_infos[0].constant_framerate_unsupported;
     profile.skip_frames = device_infos[0].frames_to_skip_after_streamon;
-    profile.check_first_jpeg_frame_valid = true;
     profile.check_minimum_resolution = true;
     profile.lens_facing = device_infos[0].lens_facing;
   }
 
   bool check_constant_framerate = false;
-  if (test_list == kConstantFramerateTestList) {
-    check_constant_framerate = profile.support_constant_framerate;
+  if (test_list == kHalv3TestList) {
+    profile.skip_frames = 0;
+    check_constant_framerate = true;
   }
 
   if (test_list == kExternalCameraTestList) {
@@ -541,8 +545,7 @@ const TestProfile GetTestProfile(const std::string& dev_name,
     profile.check_1600x1200 = true;
     profile.support_constant_framerate = true;
     profile.skip_frames = 0;
-    profile.check_first_jpeg_frame_valid = true;
-    profile.check_minimum_resolution = true;
+    profile.check_minimum_resolution = false;
     check_constant_framerate = true;
   }
 
@@ -564,10 +567,6 @@ bool RunDefaultTestList(const TestProfile& profile) {
                        profile.check_1600x1200, false)) {
     pass = false;
   }
-  if (profile.check_first_jpeg_frame_valid &&
-      !TestFirstFrameAfterStreamOn(profile.dev_name, profile.skip_frames)) {
-    pass = false;
-  }
   if (profile.check_minimum_resolution &&
       !TestMinimumResolution(profile.dev_name, profile.lens_facing)) {
     pass = false;
@@ -575,13 +574,26 @@ bool RunDefaultTestList(const TestProfile& profile) {
   return pass;
 }
 
-bool RunConstantFramerateTestList(const TestProfile& profile) {
+bool RunHalv3TestList(const TestProfile& profile) {
   bool pass = true;
+  if (!TestIO(profile.dev_name)) {
+    pass = false;
+  }
   if (profile.support_constant_framerate) {
     if (!TestResolutions(profile.dev_name, profile.check_1280x960,
                          profile.check_1600x1200, true)) {
       pass = false;
     }
+  } else {
+    printf("[Error] Hal v3 should support constant framerate.\n");
+    pass = false;
+  }
+  if (!TestFirstFrameAfterStreamOn(profile.dev_name, profile.skip_frames)) {
+    pass = false;
+  }
+  if (profile.check_minimum_resolution &&
+      !TestMinimumResolution(profile.dev_name, profile.lens_facing)) {
+    pass = false;
   }
   return pass;
 }
@@ -637,8 +649,8 @@ int main(int argc, char** argv) {
   TestProfile profile = GetTestProfile(dev_name, usb_info, test_list);
   if (test_list == kDefaultTestList) {
     ret = RunDefaultTestList(profile);
-  } else if (test_list == kConstantFramerateTestList) {
-    ret = RunConstantFramerateTestList(profile);
+  } else if (test_list == kHalv3TestList) {
+    ret = RunHalv3TestList(profile);
   } else if (test_list == kExternalCameraTestList) {
     ret = RunExternalCameraTestList(profile);
   } else {
