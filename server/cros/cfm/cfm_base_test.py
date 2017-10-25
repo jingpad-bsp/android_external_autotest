@@ -30,9 +30,9 @@ class CfmBaseTest(test.test):
         """
         super(CfmBaseTest, self).initialize()
         self._host = host
-        factory = remote_facade_factory.RemoteFacadeFactory(self._host,
-                                                            no_chrome = True)
-        self.cfm_facade = factory.create_cfm_facade()
+        self._facade_factory = remote_facade_factory.RemoteFacadeFactory(
+            self._host, no_chrome = True)
+        self.cfm_facade = self._facade_factory.create_cfm_facade()
 
     def setup(self):
         """

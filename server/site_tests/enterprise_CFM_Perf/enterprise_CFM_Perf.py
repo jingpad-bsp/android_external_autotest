@@ -2,14 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, datetime, glob, json, logging, math, os, re, time
+import csv, datetime, glob, json, math, os, re, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test
 from autotest_lib.server.cros import cfm_jmidata_log_collector
-from autotest_lib.server.cros.multimedia import remote_facade_factory
+from autotest_lib.server.cros.cfm import cfm_base_test
 
 _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
@@ -23,7 +21,7 @@ _JMI_DIR = '/0*/File\ System/000/t/00/*'
 _JMI_SOURCE_DIR = _BASE_DIR + _EXT_ID + _JMI_DIR
 
 
-class enterprise_CFM_Perf(test.test):
+class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     """This is a server test which clears device TPM and runs
     enterprise_RemoraRequisition client test to enroll the device in to hotrod
     mode. After enrollment is successful, it collects and logs cpu, memory and
@@ -49,7 +47,7 @@ class enterprise_CFM_Perf(test.test):
 
     def _temperature_data(self):
         """Returns temperature sensor data in fahrenheit."""
-        ectool = self.client.run('ectool version', ignore_status=True)
+        ectool = self._host.run('ectool version', ignore_status=True)
         if not ectool.exit_status:
             ec_temp = self.system_facade.get_ec_temperatures()
             return ec_temp[1]
@@ -60,7 +58,7 @@ class enterprise_CFM_Perf(test.test):
             MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
             values = {}
             cmd = 'mosys -k sensor print thermal %s' % temp_sensor_name
-            for kv in MOSYS_OUTPUT_RE.finditer(self.client.run_output(cmd)):
+            for kv in MOSYS_OUTPUT_RE.finditer(self._host.run_output(cmd)):
                 key, value = kv.groups()
                 if key == 'reading':
                     value = int(value)
@@ -68,22 +66,16 @@ class enterprise_CFM_Perf(test.test):
             return values['reading']
 
 
-    def enroll_device_and_start_hangout(self):
-        """Enroll device into CFM and start hangout session."""
+    def start_hangout(self):
+        """Waits for the landing page and starts a hangout session."""
+        self.cfm_facade.wait_for_hangouts_telemetry_commands()
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         hangout_name = current_date + '-cfm-perf'
-
-        self.cfm_facade.enroll_device()
-        self.cfm_facade.skip_oobe_after_enrollment()
-        self.cfm_facade.wait_for_hangouts_telemetry_commands()
         self.cfm_facade.start_new_hangout_session(hangout_name)
 
 
-    def enroll_device_and_join_meeting(self):
-        """Enroll device into CFM and join a meeting session."""
-        self.cfm_facade.enroll_device()
-        self.cfm_facade.skip_oobe_after_enrollment()
-
+    def join_meeting(self):
+        """Waits for the landing page and joins a meeting session."""
         self.cfm_facade.wait_for_meetings_landing_page()
         # Daily meeting for perf testing with 9 remote participants.
         meeting_code = 'nis-rhmz-dyh'
@@ -257,7 +249,7 @@ class enterprise_CFM_Perf(test.test):
 
         @return The newest jmi log file.
         """
-        self.client.get_file(_JMI_SOURCE_DIR, self.resultsdir)
+        self._host.get_file(_JMI_SOURCE_DIR, self.resultsdir)
         source_jmi_files = self.resultsdir + '/0*'
         if not source_jmi_files:
             raise error.TestNAError('JMI data file not found.')
@@ -534,43 +526,28 @@ class enterprise_CFM_Perf(test.test):
                 value=self._get_std_dev('num_active_vid_in_streams', jmidata),
                 units='count', higher_is_better=True)
 
+    def initialize(self, host):
+        """
+        Initializes common test properties.
 
-    def run_once(self, host=None, is_meeting=False):
-        self.client = host
+        @param host: a host object representing the DUT.
+        """
+        super(enterprise_CFM_Perf, self).initialize(host)
+        self.system_facade = self._facade_factory.create_system_facade()
 
-        factory = remote_facade_factory.RemoteFacadeFactory(
-                host, no_chrome=True)
-        self.system_facade = factory.create_system_facade()
-        self.cfm_facade = factory.create_cfm_facade()
+    def run_once(self, is_meeting=False):
+        """Stays in a meeting/hangout and collects perf data."""
+        if is_meeting:
+            self.join_meeting()
+        else:
+            self.start_hangout()
 
-        tpm_utils.ClearTPMOwnerRequest(self.client)
+        self.collect_perf_data()
 
-        if self.client.servo:
-            self.client.servo.switch_usbkey('dut')
-            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-            time.sleep(_SHORT_TIMEOUT)
-            self.client.servo.set('dut_hub1_rst1', 'off')
-            time.sleep(_SHORT_TIMEOUT)
+        if is_meeting:
+            self.cfm_facade.end_meeting_session()
+        else:
+            self.cfm_facade.end_hangout_session()
 
-        try:
-            if is_meeting:
-                self.enroll_device_and_join_meeting()
-            else:
-                self.enroll_device_and_start_hangout()
+        self.upload_jmidata()
 
-            self.collect_perf_data()
-
-            if is_meeting:
-                self.cfm_facade.end_meeting_session()
-            else:
-                self.cfm_facade.end_hangout_session()
-
-            self.upload_jmidata()
-        except Exception as e:
-            logging.exception('Exception during test, raising TestFail')
-            # Clear tpm to remove device ownership before exiting to ensure
-            # device is not left in an enrolled state.
-            tpm_utils.ClearTPMOwnerRequest(self.client)
-            raise error.TestFail(str(e))
-        finally:
-            tpm_utils.ClearTPMOwnerRequest(self.client)
