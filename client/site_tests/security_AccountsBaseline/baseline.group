@@ -84,7 +84,7 @@ biod:!:282:
 devicejail:!:283:
 arc-camera:!:603:chronos
 ntfs-3g:!:300:
-avfs:!:301:
+avfs:!:301:cros-disks
 fuse-exfat:!:302:
 daemon-store:!:400:chaps,biod
 logs-access:!:401:debugd-logs

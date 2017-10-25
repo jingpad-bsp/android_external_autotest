@@ -637,16 +637,20 @@ class DisplayFacadeNative(object):
 
         @param tab_descriptor: Indicate which tab to be closed.
         """
-        # set_fullscreen(False) is necessary here because currently there
-        # is a bug in tabs.Close(). If the current state is fullscreen and
-        # we call close_tab() without setting state back to normal, it will
-        # cancel fullscreen mode without changing system configuration, and
-        # so that the next time someone calls set_fullscreen(True), the
-        # function will find that current state is already 'fullscreen'
-        # (though it is not) and do nothing, which will break all the
-        # following tests.
-        self.set_fullscreen(False)
-        self._resource.close_tab(tab_descriptor)
+        if tab_descriptor:
+            # set_fullscreen(False) is necessary here because currently there
+            # is a bug in tabs.Close(). If the current state is fullscreen and
+            # we call close_tab() without setting state back to normal, it will
+            # cancel fullscreen mode without changing system configuration, and
+            # so that the next time someone calls set_fullscreen(True), the
+            # function will find that current state is already 'fullscreen'
+            # (though it is not) and do nothing, which will break all the
+            # following tests.
+            self.set_fullscreen(False)
+            self._resource.close_tab(tab_descriptor)
+        else:
+            logging.error('close_tab: not a valid tab_descriptor')
+
         return True
 
 

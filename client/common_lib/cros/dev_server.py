@@ -2068,9 +2068,9 @@ class ImageServer(ImageServerBase):
         return board, build_type, milestone
 
 
-    def _emit_auto_update_metrics(self, error_list, is_au_success, board,
-                                  build_type, milestone, dut_host_name,
-                                  is_aue2etest):
+    def _emit_auto_update_metrics(self, error_list, duration_list,
+                                  is_au_success, board, build_type, milestone,
+                                  dut_host_name, is_aue2etest):
         """Send metrics for auto_update.
 
         Please note: to avoid reaching or exceeding the monarch field
@@ -2080,6 +2080,8 @@ class ImageServer(ImageServerBase):
         @param error_list: a list of errors happened in provision. Usually it
             contains 1 ~ AU_RETRY_LIMIT errors since we only retry provision
             for several times.
+        @param duration_list: a list of provision duration time, counted by
+            seconds.
         @param is_au_success: a field in metrics, representing whether this
             auto_update succeeds or not.
         @param board: a field in metrics representing which board this
@@ -2119,6 +2121,18 @@ class ImageServer(ImageServerBase):
               'milestone': milestone,
               'error': '',
               'is_aue2etest': is_aue2etest}
+        # Per auto_update duration metric.
+        c4 = metrics.Counter(
+                'chromeos/autotest/provision/auto_update_duration_by_devserver')
+        c5 = metrics.Counter(
+                'chromeos/autotest/provision/provision_duration_by_devserver')
+        f_duration = {'dev_server': self.resolved_hostname,
+                      'success': is_au_success,
+                      'board': board,
+                      'build_type': build_type,
+                      'milestone': milestone,
+                      'duration_seconds': 0,
+                      'is_aue2etest': is_aue2etest}
 
         # Add a field |error| here. Current error's pattern is manually
         # specified in _EXCEPTION_PATTERNS.
@@ -2141,6 +2155,14 @@ class ImageServer(ImageServerBase):
                 f3['error'] = str(self._classify_exceptions(err))
                 c3.increment(fields=f3)
 
+        total_provision_duration = 0
+        for per_au_duration in duration_list:
+            total_provision_duration += per_au_duration
+            f_duration['duration_seconds'] = per_au_duration
+            c4.increment(fields=f_duration)
+
+        f_duration['duration_seconds'] = total_provision_duration
+        c5.increment(fields=f_duration)
 
     def _parse_buildname_from_gs_uri(self, uri):
         """Get parameters needed for AU metrics when build_name is not known.
@@ -2229,6 +2251,7 @@ class ImageServer(ImageServerBase):
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
         error_list = []
         retry_with_another_devserver = False
+        duration_list = []
 
         if is_aue2etest:
             board, build_type, milestone = self._parse_buildname_from_gs_uri(
@@ -2240,6 +2263,7 @@ class ImageServer(ImageServerBase):
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
+            start_time = time.time()
             # No matter _trigger_auto_update succeeds or fails, the auto-update
             # track_status_file should be cleaned, and the auto-update execute
             # log should be collected to directory sysinfo. Also, the error
@@ -2319,6 +2343,7 @@ class ImageServer(ImageServerBase):
                             force_original = True
 
             finally:
+                duration_list.append(int(time.time() - start_time))
                 if retry_with_another_devserver:
                     break
 
@@ -2331,8 +2356,8 @@ class ImageServer(ImageServerBase):
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
 
-        self._emit_auto_update_metrics(error_list, is_au_success, board,
-                                       build_type, milestone, host_name,
+        self._emit_auto_update_metrics(error_list, duration_list, is_au_success,
+                                       board, build_type, milestone, host_name,
                                        is_aue2etest)
 
         if is_au_success:

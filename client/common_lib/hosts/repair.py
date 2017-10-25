@@ -28,6 +28,11 @@ import logging
 import common
 from autotest_lib.client.common_lib import error
 
+try:
+    from chromite.lib import metrics
+except ImportError:
+    from autotest_lib.client.bin.utils import metrics_mock as metrics
+
 
 class AutoservVerifyError(error.AutoservError):
     """
@@ -449,8 +454,9 @@ class RepairAction(_DependencyNode):
                             value.
         """
         self._record(host, silent, 'END GOOD')
+        self.status = 'repaired'
 
-    def _record_end_fail(self, host, silent, *args):
+    def _record_end_fail(self, host, silent, status, *args):
         """Log an 'END FAIL' status line.
 
         @param host         Host which will record the status record.
@@ -459,6 +465,7 @@ class RepairAction(_DependencyNode):
         @param args         Extra arguments to `self._record()`
         """
         self._record(host, silent, 'END FAIL', *args)
+        self.status = status
 
     def _repair_host(self, host, silent):
         """
@@ -476,7 +483,17 @@ class RepairAction(_DependencyNode):
         @param host     The host to be repaired.
         @param silent   If true, don't log host status records.
         """
+        # Note:  Every exit path from the method must set `self.status`.
+        # There's a lot of exit paths, so be careful.
+        #
+        # If we're blocked by a failed dependency, we exit with an
+        # exception.  So set status to 'blocked' first.
+        self.status = 'blocked'
         self._verify_dependencies(host, silent)
+        # This is a defensive action.  Every path below should overwrite
+        # this setting, but if it doesn't, we want our status to reflect
+        # a coding error.
+        self.status = 'unknown'
         try:
             self._verify_list(host, self._trigger_list, silent)
         except AutoservVerifyDependencyError as e:
@@ -489,7 +506,7 @@ class RepairAction(_DependencyNode):
             except Exception as e:
                 logging.exception('Repair failed: %s', self.description)
                 self._record_fail(host, silent, e)
-                self._record_end_fail(host, silent)
+                self._record_end_fail(host, silent, 'failed-action')
                 raise
             try:
                 for v in self._trigger_list:
@@ -500,17 +517,18 @@ class RepairAction(_DependencyNode):
                 e.log_dependencies(
                         'This repair action reported success',
                         'However, these triggers still fail')
-                self._record_end_fail(host, silent)
+                self._record_end_fail(host, silent, 'failed-trigger')
                 raise AutoservRepairError(
                         'Some verification checks still fail')
             except Exception:
                 # The specification for `self._verify_list()` says
                 # that this can't happen; this is a defensive
                 # precaution.
-                self._record_end_fail(host, silent,
+                self._record_end_fail(host, silent, 'unknown',
                                       'Internal error in repair')
                 raise
         else:
+            self.status = 'untriggered'
             logging.info('No failed triggers, skipping repair:  %s',
                          self.description)
 
@@ -684,6 +702,13 @@ class RepairStrategy(object):
                               elements of the repair action list, and
                               their dependencies and triggers.
         """
+        # Metrics - we report on 'actions' for every repair action
+        # we execute; we report on 'completions' for every complete
+        # repair operation.
+        self._completions_counter = metrics.Counter(
+                'chromeos/autotest/repair/completions')
+        self._actions_counter = metrics.Counter(
+                'chromeos/autotest/repair/actions')
         # We use the `all_verifiers` list to guarantee that our root
         # verifier will execute its dependencies in the order provided
         # to us by our caller.
@@ -705,6 +730,20 @@ class RepairStrategy(object):
                             [verifier_map[d] for d in deps],
                             [verifier_map[t] for t in triggers])
             self._repair_actions.append(r)
+
+    def _count_completions(self, host, success):
+        try:
+            board = host.host_info_store.board or ''
+        except Exception:
+            board = ''
+        fields = {'success': success, 'board': board}
+        self._completions_counter.increment(fields=fields)
+        for ra in self._repair_actions:
+            fields = {'tag': ra.tag,
+                      'status': ra.status,
+                      'success': success,
+                      'board': board}
+            self._actions_counter.increment(fields=fields)
 
     def verify(self, host, silent=False):
         """
@@ -731,4 +770,9 @@ class RepairStrategy(object):
                 # all logging and exception handling was done at
                 # lower levels
                 pass
-        self._verify_root._verify_host(host, silent)
+        try:
+            self._verify_root._verify_host(host, silent)
+        except:
+            self._count_completions(host, False)
+            raise
+        self._count_completions(host, True)

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team, chromeos-video@google.com"
-NAME = "video_VDAPerf"
+NAME = "video_VDAPerf.h264"
 PURPOSE = "Monitor the performance of the Chromium hardware VDA."
 CRITERIA = """
 The test fails if the video_decode_accelerator_unittest fails or crashes.

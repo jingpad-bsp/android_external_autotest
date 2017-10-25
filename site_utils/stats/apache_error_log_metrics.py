@@ -19,6 +19,8 @@ import common
 
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config
+# infra_libs comes from chromite's third_party modules.
+from infra_libs import ts_mon
 
 from autotest_lib.site_utils.stats import log_daemon_common
 
@@ -32,7 +34,7 @@ STOP_METRIC = '/chromeos/autotest/apache/stop_count'
 
 ERROR_LOG_MATCHER = re.compile(
     r'^\[[^]]+\] ' # The timestamp. We don't need this.
-    r'\[:(?P<log_level>\S+)\] '
+    r'\[(mpm_event|core)?:(?P<log_level>\S+)\] '
     r'\[pid \d+[^]]+\] ' # The PID, possibly followed by a task id.
     # There may be other sections, such as [remote <ip>]
     r'(?P<sections>\[[^]]+\] )*'

@@ -40,6 +40,11 @@ class ApacheErrorTest(unittest.TestCase):
         self.assertEqual(None, match.group('mod_wsgi'))
 
         match = apache_error_log_metrics.ERROR_LOG_MATCHER.match(
+            "[foo] [mpm_event:bar] [pid 123] WARNING")
+        self.assertEqual('bar', match.group('log_level'))
+        self.assertEqual(None, match.group('mod_wsgi'))
+
+        match = apache_error_log_metrics.ERROR_LOG_MATCHER.match(
             "[foo] [:bar] [pid 123] mod_wsgi (pid=123)")
         self.assertEqual('bar', match.group('log_level'))
         self.assertEqual('od_wsgi', match.group('mod_wsgi'))
