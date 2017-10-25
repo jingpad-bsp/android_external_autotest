@@ -112,18 +112,10 @@ CHROMEOS_RELEASE_BOARD=pyro
 class BoardLabelTests(unittest.TestCase):
     """Unit tests for BoardLabel"""
 
-    def test_non_unified_build(self):
-        cmd = 'cat /etc/lsb-release'
-        host = MockHost([], MockCmd(cmd, 0, NON_UNI_LSB_RELEASE_OUTPUT))
-        self.assertEqual(BoardLabel().generate_labels(host), ['pyro'])
-
-    def test_unified_build(self):
+    def test_new_label(self):
         cat_cmd = 'cat /etc/lsb-release'
-        host = MockHost(
-            [],
-            MockCmd(cat_cmd, 0, UNI_LSB_RELEASE_OUTPUT),
-            MockCmd('mosys platform model', 0, 'blue\n'))
-        self.assertEqual(BoardLabel().generate_labels(host), ['blue'])
+        host = MockHost([], MockCmd(cat_cmd, 0, NON_UNI_LSB_RELEASE_OUTPUT))
+        self.assertEqual(BoardLabel().generate_labels(host), ['pyro'])
 
     def test_existing_label(self):
         host = MockHost(['board:existing'])
