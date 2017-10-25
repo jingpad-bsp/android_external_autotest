@@ -105,7 +105,7 @@ drm_tests = {
         DrmTest('drm_cursor_test'),
         DrmTest('gamma_test'),
         DrmTest('linear_bo_test'),
-        DrmTest('mmap_test'),
+        DrmTest('mmap_test', timeout=300),
         DrmTest('null_platform_test'),
         DrmTest('swrast_test', display_required=False),
         DrmTest('vgem_test', display_required=False),
