@@ -12,7 +12,7 @@
 
 /* Test lists */
 static const char kDefaultTestList[] = "default";
-static const char kConstantFramerateTestList[] = "constant-framerate";
+static const char kHalv3TestList[] = "halv3";
 static const char kExternalCameraTestList[] = "external-camera";
 
 bool ExerciseControl(V4L2Device* v4l2_dev, uint32_t id, const char* control) {
@@ -298,7 +298,7 @@ static void PrintUsage(int argc, char** argv) {
          "--usb-info=VID:PID   Device vendor id and product id\n"
          "--test-list=TEST     Select different test list\n"
          "                     [%s | %s | %s]\n",
-         argv[0], kDefaultTestList, kConstantFramerateTestList,
+         argv[0], kDefaultTestList, kHalv3TestList,
          kExternalCameraTestList);
 }
 
@@ -354,7 +354,7 @@ int main(int argc, char** argv) {
   }
 
   bool constant_framerate = false;
-  if (test_list != kExternalCameraTestList) {
+  if (test_list == kDefaultTestList) {
     if (device_infos.size() == 1) {
       constant_framerate = !device_infos[0].constant_framerate_unsupported;
     }
