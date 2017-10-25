@@ -3,8 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -15,8 +17,6 @@ from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
 
 
-# TODO (crbug/774595): Fix this flakey test.
-@unittest.skip('Flakey (http://crbug/774595)')
 class SharedHostDirTests(unittest.TestCase):
     """Unit tests for the ContainerBucket class."""
 
@@ -92,6 +92,48 @@ class SharedHostDirTests(unittest.TestCase):
                       error.format_error())
         finally:
             host_dir.cleanup()
+
+
+class TimeoutTests(unittest.TestCase):
+    """Test the timeouts on the shared host dir class."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.shared_host_path = os.path.join(self.tmpdir, 'host')
+
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+
+    def testTimeout(self):
+        """Verifies that cleanup code correctly times out.
+
+        Cleanup can fail because of I/O caches and other similar things keeping
+        the mount active.  Test that the cleanup code properly times out in
+        these scenarios.
+        """
+        host_dir = lxc.SharedHostDir(self.shared_host_path)
+
+        # Create a process in the shared dir to force unmounting to fail.
+        p = subprocess.Popen(['sleep', '2'], cwd=self.shared_host_path)
+
+        # Cleanup should time out.
+        with self.assertRaises(error.CmdError):
+            logging.debug('attempting cleanup (should fail)')
+            # Use a short timeout so the test doesn't take forever.
+            host_dir.cleanup(timeout=1)
+            logging.debug('cleanup did not fail')
+
+        # Kill the process occupying the mount.
+        p.terminate()
+
+        # Cleanup should succeed.
+        try:
+            # Use the default timeout so this doesn't raise false errors.
+            host_dir.cleanup()
+        except error.CmdError as e:
+            self.fail('Unexpected cleanup error: %r' % e)
 
 
 if __name__ == '__main__':
