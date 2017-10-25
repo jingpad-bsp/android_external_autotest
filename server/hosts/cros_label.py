@@ -52,22 +52,7 @@ class BoardLabel(base_label.StringPrefixLabel):
             if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
 
-        # Board is used as the primary scheduling criteria for all autotest
-        # runs.  Pre-unified builds, the board and build names matched.
-        #
-        # With unified builds, this is now the name of the builder
-        # and no longer the name of the board that's being targeted for testing.
-        #
-        # Until cbuildbot is migrated to begin using the model label for
-        # scheduling, we need compatibility with the board label so that it
-        # will work with unified builds in the meantime.
-        lsb_output = _parse_lsb_output(host)
-        if lsb_output.unibuild:
-            cmd = 'mosys platform model'
-            result = host.run(command=cmd, ignore_status=True)
-            return [result.stdout.strip()]
-        else:
-            return [lsb_output.board]
+        return [_parse_lsb_output(host).board]
 
 
 class ModelLabel(base_label.StringPrefixLabel):
