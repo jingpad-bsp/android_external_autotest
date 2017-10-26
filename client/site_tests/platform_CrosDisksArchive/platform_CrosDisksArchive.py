@@ -4,7 +4,6 @@
 
 import logging
 import os
-import tarfile
 import zipfile
 
 from autotest_lib.client.bin import test
@@ -44,25 +43,6 @@ class CrosDisksArchiveTester(CrosDisksTester):
                 else:
                     yield relative_path
 
-    def _make_tar_archive(self, archive_path, root_dir, compression=None):
-        """Archives a specified directory into a tar file.
-
-           The created tar file contains all files and sub-directories
-           under the specified root directory, but not the root directory
-           itself.
-
-        Args:
-            archive_path: Path of the output archive.
-            root_dir: The root directory to archive.
-            compression: The compression method: None, 'gz', 'bz2'
-        """
-        mode = 'w:' + compression if compression else 'w'
-        # TarFile in Python 2.6 does not work with the 'with' statement.
-        archive = tarfile.open(archive_path, mode)
-        for path in self._find_all_files(root_dir):
-            archive.add(os.path.join(root_dir, path), path)
-        archive.close()
-
     def _make_zip_archive(self, archive_path, root_dir,
                          compression=zipfile.ZIP_DEFLATED):
         """Archives a specified directory into a ZIP file.
@@ -96,12 +76,6 @@ class CrosDisksArchiveTester(CrosDisksTester):
         """
         if archive_type in ['zip']:
             self._make_zip_archive(archive_path, root_dir)
-        elif archive_type in ['tar']:
-            self._make_tar_archive(archive_path, root_dir)
-        elif archive_type in ['tar.gz', 'tgz']:
-            self._make_tar_archive(archive_path, root_dir, 'gz')
-        elif archive_type in ['tar.bz2', 'tbz', 'tbz2']:
-            self._make_tar_archive(archive_path, root_dir, 'bz2')
         else:
             raise error.TestFail("Unsupported archive type " + archive_type)
 
