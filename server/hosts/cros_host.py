@@ -2035,7 +2035,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return (ds_constants.BOARD_PREFIX +
                 release_info['CHROMEOS_RELEASE_BOARD'])
 
+    def get_channel(self):
+        """Determine the correct channel label for this host.
 
+        @returns: a string represeting this host's build channel.
+                  (stable, dev, beta). None on fail.
+        """
+        return lsbrelease_utils.get_chromeos_channel(
+                lsb_release_content=self._get_lsb_release_content())
 
     def has_lightsensor(self):
         """Determine the correct board label for this host.
