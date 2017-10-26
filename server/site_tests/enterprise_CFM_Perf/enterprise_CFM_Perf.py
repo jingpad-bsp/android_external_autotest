@@ -66,6 +66,11 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             return values['reading']
 
 
+    def _participant_count(self):
+        """Gets the current participant count."""
+        return self.cfm_facade.get_participant_count()
+
+
     def start_hangout(self):
         """Waits for the landing page and starts a hangout session."""
         self.cfm_facade.wait_for_hangouts_telemetry_commands()
@@ -83,35 +88,38 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
 
     def collect_perf_data(self):
-        """Use system facade to collect performance data from the DUT using
-        xmlrpc and save it to csv file in results directory. Data collected
-        includes:
+        """Collect run time data from the DUT using xmlrpc and save it to csv
+        file in results directory. Data collected includes:
                 1. CPU usage
                 2. Memory usage
                 3. Thermal temperature
-                4. Timestamp
-                5. Board name
-                6. Build id
+                4. Participant count in the session
+                5. Timestamp
+                6. Board name
+                7. Build id
         """
         start_time = time.time()
         perf_keyval = {}
         cpu_usage_list = list()
         memory_usage_list = list()
         temperature_list = list()
+        participant_count_list = list()
         board_name = self.system_facade.get_current_board()
         build_id = self.system_facade.get_chromeos_release_version()
         perf_file = open(os.path.join(self.resultsdir, _PERF_RESULT_FILE), 'w')
         writer = csv.writer(perf_file)
-        writer.writerow(['cpu', 'memory', 'temperature', 'timestamp', 'board',
-                         'build'])
+        writer.writerow(['cpu', 'memory', 'temperature', 'participant_count',
+                         'timestamp', 'board','build'])
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
             # Note: No sleep in this loop, self._cpu_usage() sleeps.
             perf_keyval['cpu_usage'] = self._cpu_usage()
             perf_keyval['memory_usage'] = self._memory_usage()
             perf_keyval['temperature'] = self._temperature_data()
+            perf_keyval['participant_count'] = self._participant_count()
             writer.writerow([perf_keyval['cpu_usage'],
                              perf_keyval['memory_usage'],
                              perf_keyval['temperature'],
+                             perf_keyval['participant_count'],
                              time.strftime('%Y/%m/%d %H:%M:%S'),
                              board_name,
                              build_id])
@@ -119,43 +127,39 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             cpu_usage_list.append(perf_keyval['cpu_usage'])
             memory_usage_list.append(perf_keyval['memory_usage'])
             temperature_list.append(perf_keyval['temperature'])
+            participant_count_list.append(perf_keyval['participant_count'])
         perf_file.close()
         utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
                            {'perf_csv_folder': self.resultsdir})
         self.upload_perf_data(cpu_usage_list,
                               memory_usage_list,
-                              temperature_list)
+                              temperature_list,
+                              participant_count_list)
 
 
-    def upload_perf_data(self, cpu_usage, memory_usage, temperature):
+    def upload_perf_data(self, cpu_usage, memory_usage, temperature,
+                         participant_count):
         """Write perf results to results-chart.json file for Perf Dashboard.
 
         @param cpu_usage: list of cpu usage values
         @param memory_usage: list of memory usage values
         @param temperature: list of temperature values
+        @param participant_count: list of participant_count values
         """
-        avg_cpu_usage = sum(cpu_usage)/len(cpu_usage)
-        avg_memory_usage = sum(memory_usage)/len(memory_usage)
-        avg_temp = sum(temperature)/len(temperature)
-
-        peak_cpu_usage = max(cpu_usage)
-        peak_memory_usage = max(memory_usage)
-        peak_temp = max(temperature)
-
-        self.output_perf_value(description='average_cpu_usage',
-                value=avg_cpu_usage, units='percent', higher_is_better=False)
-        self.output_perf_value(description='average_memory_usage',
-                value=avg_memory_usage, units='percent', higher_is_better=False)
-        self.output_perf_value(description='average_temperature',
-                value=avg_temp, units='Celsius', higher_is_better=False)
-
         self.output_perf_value(description='cpu_usage',
                 value=cpu_usage, units='percent', higher_is_better=False)
         self.output_perf_value(description='memory_usage',
                 value=memory_usage, units='percent', higher_is_better=False)
         self.output_perf_value(description='temperature',
                 value=temperature, units='Celsius', higher_is_better=False)
+        self.output_perf_value(description='participant_count',
+                value=participant_count, units='participants',
+                higher_is_better=True)
 
+        # Report peak values to catch any outliers.
+        peak_cpu_usage = max(cpu_usage)
+        peak_memory_usage = max(memory_usage)
+        peak_temp = max(temperature)
         self.output_perf_value(description='peak_cpu_usage',
                 value=peak_cpu_usage, units='percent', higher_is_better=False)
         self.output_perf_value(description='peak_memory_usage',
@@ -163,7 +167,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                 higher_is_better=False)
         self.output_perf_value(description='peak_temperature',
                 value=peak_temp, units='Celsius', higher_is_better=False)
-
 
     def _get_average(self, data_type, jmidata):
         """Computes mean of a list of numbers.
