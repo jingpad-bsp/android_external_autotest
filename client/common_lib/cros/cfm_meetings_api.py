@@ -111,6 +111,10 @@ class CfmMeetingsAPI(object):
         """Check if device is ready to start a new hangout session."""
         raise NotImplementedError
 
+    def get_participant_count(self):
+        """Returns the total number of participants in a meeting."""
+        return self._evaluate_telemetry_command('getParticipantCount()')
+
     # Diagnostics commands/functions
     def is_diagnostic_run_in_progress(self):
         """Check if hotrod diagnostics is running."""
