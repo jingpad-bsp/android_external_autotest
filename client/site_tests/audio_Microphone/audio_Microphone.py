@@ -26,12 +26,11 @@ class audio_Microphone(test.test):
             raise error.TestFail('File size not correct: %d' % filesize)
 
 
-    def verify_alsa_capture(self, channels, rate, cras_device_name, bits=16):
+    def verify_alsa_capture(self, channels, rate, device, bits=16):
         recorded_file = tempfile.NamedTemporaryFile()
-        alsa_device_name = alsa_utils.convert_device_name(cras_device_name)
         alsa_utils.record(
                 recorded_file.name, duration=DURATION, channels=channels,
-                bits=bits, rate=rate, device=alsa_device_name)
+                bits=bits, rate=rate, device=device)
         self.check_recorded_filesize(
                 os.path.getsize(recorded_file.name),
                 DURATION, channels, rate, bits)
@@ -48,10 +47,10 @@ class audio_Microphone(test.test):
 
 
     def run_once(self):
-        input_device_name = cras_utils.get_selected_input_device_name()
-        logging.debug("Selected input device name=%s", input_device_name)
+        cras_device_name = cras_utils.get_selected_input_device_name()
+        logging.debug("Selected input device name=%s", cras_device_name)
 
-        if input_device_name is None:
+        if cras_device_name is None:
             board_type = utils.get_board_type()
             if not audio_spec.has_internal_microphone(board_type):
                 logging.debug("No internal mic. Skipping the test.")
@@ -61,13 +60,16 @@ class audio_Microphone(test.test):
         # Mono and stereo capturing should work fine @ 44.1KHz and 48KHz.
 
         # Verify recording using ALSA utils.
-        channels = alsa_utils.get_card_preferred_record_channels()
+        alsa_device_name = alsa_utils.convert_device_name(cras_device_name)
+        channels = alsa_utils.get_record_device_supported_channels(
+                alsa_device_name)
         if channels is None:
-            channels = [1, 2]
+            raise error.TestFail("Fail to get supported channels for %s",
+                                alsa_device_name)
 
         for c in channels:
-            self.verify_alsa_capture(c, 44100, input_device_name)
-            self.verify_alsa_capture(c, 48000, input_device_name)
+            self.verify_alsa_capture(c, 44100, alsa_device_name)
+            self.verify_alsa_capture(c, 48000, alsa_device_name)
 
         # Verify recording of CRAS.
         self.verify_cras_capture(1, 44100)
