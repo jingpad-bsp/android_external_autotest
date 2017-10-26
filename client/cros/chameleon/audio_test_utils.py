@@ -582,17 +582,26 @@ def check_recorded_frequency(
                         '(%f Hz, %f)' % (test_channel, freq, coeff))
 
         # Filter out the frequencies to be ignored.
-        spectral = [x for x in spectral if not should_be_ignored(x[0])]
+        spectral_post_ignore = [
+                x for x in spectral if not should_be_ignored(x[0])]
 
-        if len(spectral) > 1:
-            first_coeff = spectral[0][1]
-            second_coeff = spectral[1][1]
+        if len(spectral_post_ignore) > 1:
+            first_coeff = spectral_post_ignore[0][1]
+            second_coeff = spectral_post_ignore[1][1]
             if second_coeff > first_coeff * second_peak_ratio:
                 errors.append(
                         'Channel %d: Found large second dominant frequencies: '
-                        '%s' % (test_channel, spectral))
+                        '%s' % (test_channel, spectral_post_ignore))
 
-        dominant_spectrals.append(spectral[0])
+        if not spectral_post_ignore:
+            errors.append(
+                    'Channel %d: No frequency left after removing unwanted '
+                    'frequencies. Spectral: %s; After removing unwanted '
+                    'frequencies: %s' %
+                    (test_channel, spectral, spectral_post_ignore))
+
+        else:
+            dominant_spectrals.append(spectral_post_ignore[0])
 
     if errors:
         raise error.TestFail(', '.join(errors))
