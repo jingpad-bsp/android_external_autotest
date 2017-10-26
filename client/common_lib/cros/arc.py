@@ -572,7 +572,49 @@ class ArcTest(test.test):
                 if self._chrome is not None:
                     self._chrome.close()
 
-    def arc_setup(self, dep_package=None, apks=None, full_pkg_names=None,
+    def _install_apks(self, dep_package, apks, full_pkg_names):
+        """"Install apks fetched from the specified package folder.
+
+        @param dep_package: A dependent package directory
+        @param apks: List of apk names to be installed
+        @param full_pkg_names: List of packages to be uninstalled at teardown
+        """
+        apk_path = os.path.join(self.autodir, 'deps', dep_package)
+        if apks:
+            for apk in apks:
+                logging.info('Installing %s', apk)
+                adb_install('%s/%s' % (apk_path, apk))
+            # Verify if package(s) are installed correctly
+            if not full_pkg_names:
+                raise error.TestError('Package names of apks expected')
+            for pkg in full_pkg_names:
+                logging.info('Check if %s is installed', pkg)
+                if not is_package_installed(pkg):
+                    raise error.TestError('Package %s not found' % pkg)
+                # Make sure full_pkg_names contains installed packages only
+                # so arc_teardown() knows what packages to uninstall.
+                self.full_pkg_names.append(pkg)
+
+    def _count_nested_array_level(self, array):
+        """Count the level of a nested array."""
+        if isinstance(array, list):
+            return 1 + self._count_nested_array_level(array[0])
+        return 0
+
+    def _fix_nested_array_level(self, var_name, expected_level, array):
+        """Enclose array one level deeper if needed."""
+        level = self._count_nested_array_level(array)
+        if level == expected_level:
+            return array
+        if level == expected_level - 1:
+            return [array]
+
+        logging.error("Variable %s nested level is not fixable: "
+                      "Expecting %d, seeing %d",
+                      var_name, expected_level, level);
+        raise error.TestError('Format error with variable %s' % var_name)
+
+    def arc_setup(self, dep_packages=None, apks=None, full_pkg_names=None,
                   uiautomator=False, block_outbound=False,
                   disable_play_store=False):
         """ARC test setup: Setup dependencies and install apks.
@@ -581,9 +623,10 @@ class ArcTest(test.test):
         APK installation. Then, it installs specified APK(s) and uiautomator
         package and path if required in a test.
 
-        @param dep_package: Package name of autotest_deps APK package.
-        @param apks: Array of APK names to be installed in dep_package.
-        @param full_pkg_names: Array of full package names to be removed
+        @param dep_packages: Array of package names of autotest_deps APK
+                             packages.
+        @param apks: Array of APK name arrays to be installed in dep_package.
+        @param full_pkg_names: Array of full package name arrays to be removed
                                in teardown.
         @param uiautomator: uiautomator python package is required or not.
         @param block_outbound: block outbound network traffic during a test.
@@ -594,13 +637,34 @@ class ArcTest(test.test):
             logging.info('Skipping ARC setup: not initialized')
             return
         logging.info('Starting ARC setup')
-        self.dep_package = dep_package
+
+        # Sample parameters for multi-deps setup after fixup (if needed):
+        # dep_packages: ['Dep1-apk', 'Dep2-apk']
+        # apks: [['com.dep1.arch1.apk', 'com.dep2.arch2.apk'], ['com.dep2.apk']
+        # full_pkg_nmes: [['com.dep1.app'], ['com.dep2.app']]
+        # TODO(crbug/777787): once the parameters of all callers of arc_setup
+        # are refactored, we can delete the safety net here.
+        if dep_packages:
+            dep_packages = self._fix_nested_array_level(
+                'dep_packages', 1, dep_packages)
+            apks = self._fix_nested_array_level('apks', 2, apks)
+            full_pkg_names = self._fix_nested_array_level(
+                'full_pkg_names', 2, full_pkg_names)
+            if (len(dep_packages) != len(apks) or
+                len(apks) != len(full_pkg_names)):
+                logging.info('dep_packages length is %d', len(dep_packages))
+                logging.info('apks length is %d', len(apks))
+                logging.info('full_pkg_names length is %d', len(full_pkg_names))
+                raise error.TestFail(
+                    'dep_packages/apks/full_pkg_names format error')
+
+        self.dep_packages = dep_packages
         self.apks = apks
         self.uiautomator = uiautomator or disable_play_store
         # Setup dependent packages if required
         packages = []
-        if dep_package:
-            packages.append(dep_package)
+        if dep_packages:
+            packages = dep_packages[:]
         if self.uiautomator:
             packages.append(self._PKG_UIAUTOMATOR)
         if packages:
@@ -624,22 +688,10 @@ class ArcTest(test.test):
         adb_shell('settings put global package_verifier_enable 0')
         adb_shell('settings put secure install_non_market_apps 1')
 
-        if self.dep_package:
-            apk_path = os.path.join(self.autodir, 'deps', self.dep_package)
-            if self.apks:
-                for apk in self.apks:
-                    logging.info('Installing %s', apk)
-                    adb_install('%s/%s' % (apk_path, apk))
-                # Verify if package(s) are installed correctly
-                if not full_pkg_names:
-                    raise error.TestError('Package names of apks expected')
-                for pkg in full_pkg_names:
-                    logging.info('Check if %s is installed', pkg)
-                    if not is_package_installed(pkg):
-                        raise error.TestError('Package %s not found' % pkg)
-                    # Make sure full_pkg_names contains installed packages only
-                    # so arc_teardown() knows what packages to uninstall.
-                    self.full_pkg_names.append(pkg)
+        # Install apks based on dep_packages/apks/full_pkg_names tuples
+        if dep_packages:
+            for i in xrange(len(dep_packages)):
+                self._install_apks(dep_packages[i], apks[i], full_pkg_names[i])
 
         if self.uiautomator:
             path = os.path.join(self.autodir, 'deps', self._PKG_UIAUTOMATOR)
