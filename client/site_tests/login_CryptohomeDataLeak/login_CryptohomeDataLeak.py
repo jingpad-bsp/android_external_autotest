@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
 
 
-class platform_CryptohomeDataLeak(test.test):
+class login_CryptohomeDataLeak(test.test):
     """Verify decrypted user data is cleared after end of session.
     """
     version = 1
