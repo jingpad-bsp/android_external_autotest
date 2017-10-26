@@ -970,25 +970,30 @@ class TradefedTest(test.test):
 
     def _get_release_channel(self, host):
         """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
-        # TODO(ihf): check CHROMEOS_RELEASE_DESCRIPTION and return channel.
-        return 'dev'
+        channel = host.get_channel()
+        return channel if channel else 'dev'
 
     def _get_board_name(self, host):
         """Return target DUT board name."""
         return host.get_board().split(':')[1]
 
-    def _get_max_retry(self, host):
-        """Return the maximum number of retries."""
-        board_retry = self._get_board_retry(host)
-        if board_retry is not None:
-            return board_retry
-        channel_retry = self._get_channel_retry(host)
-        return channel_retry
+    def _get_max_retry(self, max_retry, host):
+        """Return the maximum number of retries.
+
+        @param max_retry: max_retry specified in the control file.
+        @param host: target DUT for retry adjustment.
+        @return: number of retries for this specific host.
+        """
+        candidate = [max_retry]
+        candidate.append(self._get_board_retry(host))
+        candidate.append(self._get_channel_retry(host))
+        return min(x for x in candidate if x is not None)
 
     def _get_board_retry(self, host):
-        """Return the maxium number of retries for DUT board name.
+        """Return the maximum number of retries for DUT board name.
+
         @param host: target DUT for retry adjustment.
-        @return number of max_retry for this specific board or None.
+        @return: number of max_retry for this specific board or None.
         """
         board = self._get_board_name(host)
         if board in self._BOARD_RETRY:
