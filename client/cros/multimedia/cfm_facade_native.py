@@ -283,6 +283,11 @@ class CFMFacadeNative(object):
         self._cfmApi.end_meeting_session()
 
 
+    def get_participant_count(self):
+        """Gets the total participant count in a call."""
+        return self._cfmApi.get_participant_count()
+
+
     # Diagnostics commands/functions
     def is_diagnostic_run_in_progress(self):
         """Check if hotrod diagnostics is running.
