@@ -462,7 +462,6 @@ def run_provision_suite(**dargs):
             devserver=spec.devserver,
             num=spec.num,
             num_required=spec.num_required,
-            count=1,
             afe=afe,
             tko=tko,
             pool=spec.pool,

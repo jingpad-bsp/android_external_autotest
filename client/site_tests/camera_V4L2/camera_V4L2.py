@@ -25,8 +25,13 @@ class camera_V4L2(test.test):
         utils.make('clean')
         utils.make()
 
-    def run_once(self, test_list=""):
+    def run_once(self, test_list=None):
         self.test_list = test_list
+        if self.test_list is None:
+            if os.path.exists('/usr/bin/arc_camera3_service'):
+                self.test_list = "halv3"
+            else:
+                self.test_list = "default"
         self.find_video_capture_devices()
 
         for device in self.v4l2_devices:
