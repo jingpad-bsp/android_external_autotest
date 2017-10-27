@@ -64,14 +64,18 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # Run GTS via tradefed and obtain stdout, sterr as output.
         with tradefed_test.adb_keepalive(self._get_adb_target(),
                                          self._install_paths):
-            output = self._run(
-                    gts_tradefed,
-                    args=gts_tradefed_args,
-                    verbose=True,
-                    # Make sure to tee tradefed stdout/stderr to autotest logs
-                    # already during the test run.
-                    stdout_tee=utils.TEE_TO_LOGS,
-                    stderr_tee=utils.TEE_TO_LOGS)
+            try:
+                output = self._run(
+                        gts_tradefed,
+                        args=gts_tradefed_args,
+                        verbose=True,
+                        # Make sure to tee tradefed stdout/stderr to autotest
+                        # logs already during the test run.
+                        stdout_tee=utils.TEE_TO_LOGS,
+                        stderr_tee=utils.TEE_TO_LOGS)
+            except Exception:
+                self.log_java_version()
+                raise
         result_destination = os.path.join(self.resultsdir, 'android-gts')
 
         # Gather the global log first. Datetime parsing below can abort the test
