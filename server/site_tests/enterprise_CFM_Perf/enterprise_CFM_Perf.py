@@ -46,15 +46,13 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
 
     def _temperature_data(self):
-        """Returns temperature sensor data in fahrenheit."""
+        """Returns temperature sensor data in degrees Celsius."""
         ectool = self._host.run('ectool version', ignore_status=True)
         if not ectool.exit_status:
             ec_temp = self.system_facade.get_ec_temperatures()
             return ec_temp[1]
         else:
             temp_sensor_name = 'temp0'
-            if not temp_sensor_name:
-                return 0
             MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
             values = {}
             cmd = 'mosys -k sensor print thermal %s' % temp_sensor_name
@@ -212,7 +210,8 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
         @param data_type: Type of data to be retrieved from jmi data log.
         @param jmidata: Raw jmi data log to parse.
-        @return Mean computed from the list of numbers.
+        @return The last value in the jmidata for the specified data_type. 0 if
+                there are no values in the jmidata for this data_type.
         """
         data = self._get_data_from_jmifile(data_type, jmidata)
         if not data:
