@@ -1227,35 +1227,35 @@ def _get_image_for_job(job, hostless):
     return image
 
 
-def get_host_queue_entries_by_insert_time(
-    insert_time_after=None, insert_time_before=None, **filter_data):
+
+def get_host_queue_entries_by_start_time(
+        insert_time_after=None, insert_time_before=None,
+        started_on__gte=None, started_on__lte=None, **filter_data):
     """Like get_host_queue_entries, but using the insert index table.
 
-    @param insert_time_after: A lower bound on insert_time
-    @param insert_time_before: An upper bound on insert_time
+    TODO(phobbs) remove these dead arguments after the API change has finished
+    rolling out:
+
+    @param insert_time_after: (ignored)
+    @param insert_time_before: (ignored)
+    @param started_on__gte: (optional) A datetime string lower bound for the
+        hqe's started_on column.
+    @param started_on__lte: (optional) A datetime string upper bound for the
+        hqe's started_on column.
     @returns A sequence of nested dictionaries of host and job information.
     """
-    assert insert_time_after is not None or insert_time_before is not None, \
-      ('Caller to get_host_queue_entries_by_insert_time must provide either'
-       ' insert_time_after or insert_time_before.')
-    # Get insert bounds on the index of the host queue entries.
-    if insert_time_after:
-        query = models.HostQueueEntryStartTimes.objects.filter(
-            # Note: '-insert_time' means descending. We want the largest
-            # insert time smaller than the insert time.
-            insert_time__lte=insert_time_after).order_by('-insert_time')
-        try:
-            constraint = query[0].highest_hqe_id
-            if 'id__gte' in filter_data:
-                constraint = max(constraint, filter_data['id__gte'])
-            filter_data['id__gte'] = constraint
-        except IndexError:
-            pass
+    assert started_on__gte is not None or started_on__lte is not None, \
+      ('Caller to get_host_queue_entries_by_start_time must provide '
+       ' either started_on__gte or started_on__lte.')
 
-    # Get end bounds.
-    if insert_time_before:
+    # We know a upper bound on when the job was started, started_on__lte.
+    # We know insert_time < started_on.
+    # If the started_on < t, then insert_time < t by transitivity.
+    if started_on__lte:
+        # The HQE start times table is inserted periodically, so to be safe
+        # we need to get the next HQE-start-time row after our constraint.
         query = models.HostQueueEntryStartTimes.objects.filter(
-            insert_time__gte=insert_time_before).order_by('insert_time')
+            insert_time__gte=started_on__lte).order_by('-insert_time')
         try:
             constraint = query[0].highest_hqe_id
             if 'id__lte' in filter_data:
@@ -1264,9 +1264,23 @@ def get_host_queue_entries_by_insert_time(
         except IndexError:
             pass
 
+    # We can't provide a lower bound on the when the job was inserted because
+    # there may be an arbitrarily large gap between insert and start time (even
+    # days long).
+
+    # We still need to provide the started_on constraints - the id constraint
+    # from insert time isn't sufficient because the index table is approximate.
+    if started_on__gte:
+        filter_data['started_on__gte'] = started_on__gte
+    if started_on__lte:
+        filter_data['started_on__lte'] = started_on__lte
     return rpc_utils.prepare_rows_as_nested_dicts(
             models.HostQueueEntry.query_objects(filter_data),
             ('host', 'job'))
+
+
+# TODO(phobbs) remove the below once this has finished rolling out.
+get_host_queue_entries_by_insert_time = get_host_queue_entries_by_start_time
 
 
 def get_host_queue_entries(start_time=None, end_time=None, **filter_data):
