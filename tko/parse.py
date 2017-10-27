@@ -412,8 +412,9 @@ def parse_one(db, jobname, path, parse_options):
     for test in job.tests:
         if not test.subdir:
             continue
-        tko_utils.dprint("* testname, status, reason: %s %s %s"
-                         % (test.subdir, test.status, test.reason))
+        tko_utils.dprint("* testname, subdir, status, reason: %s %s %s %s"
+                         % (test.testname, test.subdir, test.status,
+                            test.reason))
         if test.status != 'GOOD':
             job_successful = False
             message_lines.append(format_failure_message(
