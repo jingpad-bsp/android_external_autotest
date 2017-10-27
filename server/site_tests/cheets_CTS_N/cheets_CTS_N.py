@@ -268,6 +268,19 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 return True
         return False
 
+    def _should_reboot(self, steps):
+        """Oracle to decide if DUT should reboot or just restart Chrome.
+
+        For now we will not reboot after the first two iterations, but on all
+        iterations afterward as before. In particular this means that most CTS
+        tests will now not get a "clean" machine, but one on which tests ran
+        before. But we will still reboot after persistent failures, hopefully
+        not causing too many flakes down the line.
+        """
+        if steps < 3:
+            return False
+        return True
+
     def run_once(self,
                  target_module=None,
                  target_plan=None,
@@ -358,7 +371,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             self._run_precondition_scripts(
                 self._host, login_precondition_commands, steps)
-            with self._login_chrome(dont_override_profile=pushed_media):
+            with self._login_chrome(reboot=self._should_reboot(steps),
+                                    dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
@@ -425,7 +439,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             self._run_precondition_scripts(
                 self._host, login_precondition_commands, steps)
-            with self._login_chrome(dont_override_profile=pushed_media):
+            with self._login_chrome(reboot=self._should_reboot(steps),
+                                    dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
