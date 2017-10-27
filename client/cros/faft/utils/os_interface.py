@@ -289,9 +289,7 @@ class OSInterface(object):
 
     def join_part(self, dev, part):
         """Return a concatenated string of device and partition number"""
-        if 'mmcblk' in dev:
-            return dev + 'p' + part
-        if 'nvme' in dev:
+        if dev.endswith(tuple(str(i) for i in range(0, 10))):
             return dev + 'p' + part
         else:
             return dev + part
