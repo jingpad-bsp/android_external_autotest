@@ -65,11 +65,8 @@ from autotest_lib.site_utils.suite_scheduler import constants
 from chromite.lib import metrics
 from chromite.lib import parallel
 
-try:
-  from infra_libs import ts_mon
-except (ImportError, RuntimeError):
-  import mock
-  ts_mon = mock.Mock()
+#This must be imported after chromite.lib.metrics
+from infra_libs import ts_mon
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
 # This is the ratio of all boards we should calculate the default max number of
@@ -533,6 +530,9 @@ def _parse_command(argv):
                              'Before doing this, please investigate whether '
                              'there is a bug that is bricking devices in the '
                              'lab.')
+    parser.add_argument('--production', action='store_true',
+                        help='Treat this as a production run. This '
+                             'will collect metrics.')
 
     parser.add_argument('--all-boards', action='store_true',
                         help='Rebalance all managed boards.  This will do a '
@@ -611,6 +611,7 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
 
     """
+
     def balancer(board, pool):
       """Balance the specified board.
 
@@ -620,12 +621,20 @@ def main(argv):
       _balance_board(arguments, afe, board, pool, start_time, end_time)
       _log_message('')
 
-    with site_utils.SetupTsMonGlobalState('balance_pools',
-                                          short_lived=True,
-                                          auto_flush=False):
-        arguments = _parse_command(argv)
-        end_time = time.time()
-        start_time = end_time - 24 * 60 * 60
+    end_time = time.time()
+    start_time = end_time - 24 * 60 * 60
+
+    arguments = _parse_command(argv)
+    if arguments.production:
+        metrics_manager = site_utils.SetupTsMonGlobalState(
+            'balance_pools',
+            short_lived=True,
+            auto_flush=False)
+    else:
+        #suppress metrics
+        metrics_manager = site_utils.TrivialContextManager()
+
+    with metrics_manager:
         afe = frontend.AFE(server=None)
         pools = (lab_inventory.CRITICAL_POOLS
                  if arguments.pool == _ALL_CRITICAL_POOLS
