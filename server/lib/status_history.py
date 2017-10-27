@@ -375,8 +375,6 @@ class _TestJobEvent(_JobEvent):
         query_end = time_utils.epoch_time_to_date_string(end_time)
         hqelist = afe.get_host_queue_entries_by_insert_time(
                 host_id=host_id,
-                insert_time_after=query_start,
-                insert_time_before=query_end,
                 started_on__gte=query_start,
                 started_on__lte=query_end,
                 complete=1)
