@@ -164,7 +164,8 @@ class kernel_ConfigVerify(test.test):
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == 'BINFMT_':
                     entry['builtin'].append('BINFMT_MISC')
-
+                if entry['regex'] == '.*_FS$':
+                    entry['module'].append('NFS_FS')
 
         if utils.compare_versions(kernel_ver, "3.18") >= 0:
             for entry in self.IS_EXCLUSIVE:
