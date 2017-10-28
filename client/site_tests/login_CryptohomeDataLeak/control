@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_CryptohomeDataLeak"
+NAME = "login_CryptohomeDataLeak"
 PURPOSE = "Verify decrypted user data is cleared once the session is over"
 CRITERIA = """
 This test will fail if user data is still visible after end of session.
@@ -19,4 +19,4 @@ This test checks whether a user data file created during a session is
 visible once the session is logged out.
 """
 
-job.run_test('platform_CryptohomeDataLeak')
+job.run_test('login_CryptohomeDataLeak')
