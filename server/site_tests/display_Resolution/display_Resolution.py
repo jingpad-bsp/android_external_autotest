@@ -73,7 +73,7 @@ class display_Resolution(test.test):
         chameleon_supported = True
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
-                    chameleon_port, display_facade, self.outputdir)
+                    host, chameleon_port, display_facade, self.outputdir)
             chameleon_port_name = chameleon_port.get_connector_type()
             logging.info('Detected %s chameleon port.', chameleon_port_name)
             for label, width, height in resolution_list:
