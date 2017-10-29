@@ -36,4 +36,3 @@ dEQP-VK.api.info.device.properties
 dEQP-VK.api.info.device.queue_family_properties
 dEQP-VK.api.info.device.memory_properties
 dEQP-VK.api.info.device.layers
-dEQP-VK.api.info.device.extensions
