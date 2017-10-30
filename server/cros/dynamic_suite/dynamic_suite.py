@@ -240,7 +240,8 @@ class _SuiteSpec(object):
             run_prod_code=False,
             delay_minutes=0,
             job_keyvals=None,
-            test_args = None,
+            test_args=None,
+            child_dependencies=(),
             **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
@@ -301,6 +302,8 @@ class _SuiteSpec(object):
         @param job_keyvals: General job keyvals to be inserted into keyval file
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
+        @param child_dependencies: (optional) list of dependency strings
+                to be added as dependencies to child jobs.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -334,6 +337,7 @@ class _SuiteSpec(object):
         self.delay_minutes = delay_minutes
         self.job_keyvals = job_keyvals
         self.test_args = test_args
+        self.child_dependencies = child_dependencies
 
         self._init_predicate(predicate)
         self._init_suite_dependencies(suite_dependencies)
@@ -479,7 +483,9 @@ def run_provision_suite(**dargs):
             test_source_build=spec.test_source_build,
             run_prod_code=spec.run_prod_code,
             job_keyvals=spec.job_keyvals,
-            test_args=spec.test_args)
+            test_args=spec.test_args,
+            child_dependencies=spec.child_dependencies,
+    )
 
     _run_suite_with_spec(suite, spec)
 
@@ -552,7 +558,9 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             test_source_build=spec.test_source_build,
             run_prod_code=spec.run_prod_code,
             job_keyvals=spec.job_keyvals,
-            test_args=spec.test_args)
+            test_args=spec.test_args,
+            child_dependencies=spec.child_dependencies,
+    )
     _run_suite_with_spec(suite, spec)
 
 
