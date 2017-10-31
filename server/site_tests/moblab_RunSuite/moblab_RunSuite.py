@@ -61,8 +61,8 @@ class moblab_RunSuite(moblab_test.MoblabTest):
         except error.AutoservRunError as e:
             if _is_run_suite_error_critical(e.result_obj.exit_status):
                 raise
-
-        logging.debug('Suite Run Output:\n%s', result.stdout)
+        else:
+            logging.debug('Suite Run Output:\n%s', result.stdout)
 
 
 def _is_run_suite_error_critical(return_code):
