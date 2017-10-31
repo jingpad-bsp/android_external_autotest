@@ -4,7 +4,9 @@
 
 """Facade to access the CFM functionality."""
 
+import glob
 import logging
+import os
 import time
 import urlparse
 
@@ -32,6 +34,11 @@ class CFMFacadeNative(object):
     _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
     _ENROLLMENT_DELAY = 15
     _DEFAULT_TIMEOUT = 30
+
+    # Log file locations
+    _BASE_DIR = '/home/chronos/user/Storage/ext/'
+    _CALLGROK_LOGS_PATTERN = _BASE_DIR + _EXT_ID + '/0*/File System/000/t/00/0*'
+    _PA_LOGS_PATTERN = _BASE_DIR + _EXT_ID + '/def/File System/primary/p/00/0*'
 
 
     def __init__(self, resource, screen):
@@ -99,6 +106,29 @@ class CFMFacadeNative(object):
             return graphics_utils.take_screenshot('/tmp', screenshot_name)
         except Exception as e:
             logging.warning('Taking screenshot failed', exc_info = e)
+            return None
+
+
+    def get_latest_callgrok_file_path(self):
+        """
+        @return The path to the lastest callgrok log file, if any.
+        """
+        try:
+            return max(glob.iglob(self._CALLGROK_LOGS_PATTERN),
+                       key=os.path.getctime)
+        except ValueError as e:
+            logging.exception('Error while searching for callgrok logs.')
+            return None
+
+
+    def get_latest_pa_logs_file_path(self):
+        """
+        @return The path to the lastest packaged app log file, if any.
+        """
+        try:
+            return max(glob.iglob(self._PA_LOGS_PATTERN), key=os.path.getctime)
+        except ValueError as e:
+            logging.exception('Error while searching for packaged app logs.')
             return None
 
 
