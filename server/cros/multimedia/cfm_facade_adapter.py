@@ -133,6 +133,20 @@ class CFMFacadeRemoteAdapter(object):
             basename = os.path.basename(f.name)
             return self._cfm_proxy.take_screenshot(basename)
 
+    def get_latest_callgrok_file_path(self):
+        """
+        @return The path to the lastest callgrok log file, if any.
+        """
+        return self._cfm_proxy.get_latest_callgrok_file_path()
+
+
+    def get_latest_pa_logs_file_path(self):
+        """
+        @return The path to the lastest packaged app log file, if any.
+        """
+        return self._cfm_proxy.get_latest_pa_logs_file_path()
+
+
     def is_in_hangout_session(self):
         """Check if device is in hangout session.
 
