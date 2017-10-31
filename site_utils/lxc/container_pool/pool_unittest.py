@@ -175,7 +175,8 @@ class PoolTests(unittest.TestCase):
             pass
         self.assertGreater(error_count, 0)
 
-
+    # TODO(crbug.com/720219) This test is flakey and killing CQ runs.
+    @unittest.expectedFailure
     def testCleanup_timeout(self):
         """Verifies that timed out containers are still destroyed."""
         # Simulate the factory hanging.
