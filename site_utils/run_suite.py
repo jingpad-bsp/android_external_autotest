@@ -236,6 +236,13 @@ def make_parser():
     parser = argparse.ArgumentParser(
         usage="%(prog)s [options]")
     parser.add_argument("-b", "--board", dest="board")
+    parser.add_argument(
+            "--model",
+            help="The device model to run tests against. For non-unified "
+                 "builds, model and board are synonymous, but board is more "
+                 "accurate in some cases. Only pass this option if your build "
+                 "is a unified build.",
+    )
     parser.add_argument("-i", "--build", dest="build")
     parser.add_argument(
         "-w", "--web", dest="web", default=None,
@@ -1632,6 +1639,19 @@ def _make_builds_from_options(options):
     return builds
 
 
+def _make_child_deps_from_options(options):
+    """Creates a list of extra dependencies for child jobs.
+
+    @param options: Parsed arguments to run_suite.
+
+    @returns: A list of label strings if any dependencies should be added. None
+            otherwise.
+    """
+    if not options.model:
+        return ()
+    return ['model:%s' % options.model]
+
+
 @retry.retry(error.StageControlFileFailure, timeout_min=10)
 def create_suite(afe, options):
     """Create a suite with retries.
@@ -1679,6 +1699,7 @@ def create_suite(afe, options):
         delay_minutes=options.delay_minutes,
         job_keyvals=options.job_keyvals,
         test_args=options.test_args,
+        child_dependencies=_make_child_deps_from_options(options),
     )
 
 
