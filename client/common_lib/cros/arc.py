@@ -179,7 +179,7 @@ def adb_install(apk):
 
     @param apk: Package to install.
     """
-    return adb_cmd('install -r %s' % apk)
+    return adb_cmd('install -r %s' % apk, timeout=60*5)
 
 
 def adb_uninstall(apk):
