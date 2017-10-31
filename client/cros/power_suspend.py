@@ -151,6 +151,7 @@ class Suspender(object):
 
         self._configure_suspend_state()
 
+
     def _configure_suspend_state(self):
         """Configure the suspend state as requested."""
         if self._suspend_state:
@@ -165,6 +166,7 @@ class Suspender(object):
             should_freeze = '1' if self._suspend_state == 'freeze' else '0'
             new_prefs = {self._SUSPEND_STATE_PREF_FILE: should_freeze}
             self._power_pref_changer = power_utils.PowerPrefChanger(new_prefs)
+
 
     def _set_pm_print_times(self, on):
         """Enable/disable extra suspend timing output from powerd to syslog."""
@@ -311,6 +313,7 @@ class Suspender(object):
 
         raise error.TestError('Failed to find device resume time in syslog.')
 
+
     def _get_phase_times(self):
         phase_times = []
         regex = re.compile(r'PM: (\w+ )?(resume|suspend) of devices complete')
@@ -324,6 +327,7 @@ class Suspender(object):
             phase_times.append((phase.upper(), ts))
         return sorted(phase_times, key = lambda entry: entry[1])
 
+
     def _get_phase(self, ts, phase_table, dev):
       for entry in phase_table:
         #checking if timestamp was before that phase's cutoff
@@ -331,6 +335,7 @@ class Suspender(object):
           return entry[0]
       raise error.TestError('Device %s has a timestamp after all devices %s',
                             dev, 'had already resumed')
+
 
     def _individual_device_times(self, start_resume):
         """Return dict of individual device suspend and resume times."""
@@ -368,6 +373,7 @@ class Suspender(object):
               continue
             report += ', %f %s' % (dev[phase], phase)
           logging.debug(report)
+
 
     def _identify_driver(self, device):
         """Return the driver name of a device (or "unknown")."""
@@ -450,7 +456,39 @@ class Suspender(object):
             raise sys_power.SuspendFailure('Unidentified problem.')
         return False
 
-    def suspend(self, duration=10, ignore_kernel_warns=False):
+
+    def _arc_resume_ts(self, retries=3):
+        """Parse arc logcat for arc resume timestamp.
+
+        @param retries: retry if the expected log cannot be found in logcat.
+
+        @returns: a float representing arc resume timestamp in  CPU seconds
+                  starting from the last boot if arc logcat resume log is parsed
+                  correctly; otherwise 'unknown'.
+
+        """
+        command = 'android-sh -c "logcat -v monotonic -t 300 *:silent' \
+                  ' ArcPowerManagerService:D"'
+        regex_resume = re.compile(r'^\s*(\d+\.\d+).*ArcPowerManagerService: '
+                                  'Suspend is over; resuming all apps$')
+        for retry in xrange(retries + 1):
+            arc_logcat = utils.system_output(command, ignore_status=False)
+            arc_logcat = arc_logcat.splitlines()
+            resume_ts = 0
+            for line in arc_logcat:
+                match_resume = regex_resume.search(line)
+                # ARC logcat is cleared before suspend so the first ARC resume
+                # timestamp is the one we are looking for.
+                if match_resume:
+                    return float(match_resume.group(1))
+            time.sleep(0.005 * 2**retry)
+        else:
+            logging.error('ARC did not resume correctly.')
+            return 'unknown'
+
+
+    def suspend(self, duration=10, ignore_kernel_warns=False,
+                measure_arc=False):
         """
         Do a single suspend for 'duration' seconds. Estimates the amount of time
         it takes to suspend for a board (see _SUSPEND_DELAY), so the actual RTC
@@ -474,6 +512,10 @@ class Suspender(object):
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(self._get_board(),
                         self._DEFAULT_SUSPEND_DELAY)
+                # Clear the ARC logcat to make parsing easier.
+                if measure_arc:
+                    command = 'android-sh -c "logcat -c"'
+                    utils.system(command, ignore_status=False)
                 try:
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.SpuriousWakeupError:
@@ -535,7 +577,7 @@ class Suspender(object):
                         'S0ix residency did not change.')
                 logging.info('S0ix residency : %d secs.', s0ix_residency_secs)
 
-            self.successes.append({
+            successful_suspend = {
                 'seconds_system_suspend': kernel_down,
                 'seconds_system_resume': total_up,
                 'seconds_system_resume_firmware': firmware_up + board_up,
@@ -544,7 +586,13 @@ class Suspender(object):
                 'seconds_system_resume_kernel': kernel_up,
                 'seconds_system_resume_kernel_cpu': cpu_up,
                 'seconds_system_resume_kernel_dev': devices_up,
-                })
+                }
+
+            if measure_arc:
+                successful_suspend['seconds_system_resume_arc'] = \
+                        self._arc_resume_ts() - start_resume
+
+            self.successes.append(successful_suspend)
 
             if hasattr(self, 'device_times'):
                 self._individual_device_times(start_resume)
