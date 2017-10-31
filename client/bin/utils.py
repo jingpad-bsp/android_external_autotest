@@ -910,6 +910,20 @@ def is_disk_harddisk(disk_name):
     # For harddisk rtt > 0
     return rtt and int(rtt) > 0
 
+def concat_partition(disk_name, partition_number):
+    """
+    Return the name of a partition:
+    sda, 3 --> sda3
+    mmcblk0, 3 --> mmcblk0p3
+
+    @param disk_name: diskname string
+    @param partition_number: integer
+    """
+    if disk_name.endswith(tuple(str(i) for i in range(0, 10))):
+        sep = 'p'
+    else:
+        sep = ''
+    return disk_name + sep + str(partition_number)
 
 def verify_hdparm_feature(disk_name, feature):
     """
