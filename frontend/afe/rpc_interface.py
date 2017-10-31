@@ -1776,6 +1776,7 @@ def create_suite_job(
         name='',
         board='',
         pool='',
+        child_dependencies=(),
         control_file='',
         check_hosts=True,
         num=None,
@@ -1797,8 +1798,7 @@ def create_suite_job(
         is_cloning=False,
         job_keyvals=None,
         test_args=None,
-        **kwargs
-):
+        **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -1816,6 +1816,8 @@ def create_suite_job(
     @param test_source_build: Build that contains the server-side test code.
     @param pool: Specify the pool of machines to use for scheduling
             purposes.
+    @param child_dependencies: (optional) list of additional dependency labels
+            (strings) that will be added as dependency labels to child jobs.
     @param control_file: the control file of the job.
     @param check_hosts: require appropriate live hosts to exist in the lab.
     @param num: Specify the number of machines to schedule across (integer).
@@ -1945,6 +1947,7 @@ def create_suite_job(
         'builds': builds,
         'check_hosts': check_hosts,
         'pool': pool,
+        'child_dependencies': child_dependencies,
         'num': num,
         'file_bugs': file_bugs,
         'timeout': timeout,
