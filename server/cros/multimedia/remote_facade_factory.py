@@ -132,13 +132,18 @@ class RemoteFacadeProxy(object):
                 last_line = value.strip().rsplit('\n', 1)[-1]
                 if ':' in last_line:
                     key, message = last_line.split(':', 1)
+                    message = message + ' (RPC: %s)' % name
                     if key == 'TestFail':
                         raise error.TestFail(message)
                     elif key == 'TestError':
                         raise error.TestError(message)
 
-                # Raise the default exception.
-                raise Exception('RPC error: %s\n%s' % (name, value))
+                    # Raise the exception with the original exception type.
+                    raise Exception('%s: %s' % (key, message))
+
+                # Raise the default exception with the original message.
+                raise Exception('Exception from client (RPC: %s)\n%s' %
+                                (name, value))
 
             return value
 
