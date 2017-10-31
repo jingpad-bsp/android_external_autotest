@@ -160,7 +160,7 @@ class graphics_WebGLAquarium(graphics_utils.GraphicsTest):
 
             # Intel only: Record the power consumption for the next few seconds.
             rapl_rate = power_rapl.get_rapl_measurement(
-                'rapl_%04d_fishes' % num_fishes, statistics=False)
+                'rapl_%04d_fishes' % num_fishes)
             # Remove entries that we don't care about.
             rapl_rate = {key: rapl_rate[key]
                          for key in rapl_rate.keys() if key.endswith('pwr')}
