@@ -179,16 +179,20 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             # Assume only last command actually runs tests and has interesting
             # output (results, logs) for collection.
             logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
-            output = self._run(
-                self._cts_tradefed,
-                args=tuple(command),
-                timeout=self._timeout * self._get_timeout_factor(),
-                verbose=True,
-                ignore_status=False,
-                # Make sure to tee tradefed stdout/stderr to autotest logs
-                # continuously during the test run.
-                stdout_tee=utils.TEE_TO_LOGS,
-                stderr_tee=utils.TEE_TO_LOGS)
+            try:
+                output = self._run(
+                    self._cts_tradefed,
+                    args=tuple(command),
+                    timeout=self._timeout * self._get_timeout_factor(),
+                    verbose=True,
+                    ignore_status=False,
+                    # Make sure to tee tradefed stdout/stderr to autotest logs
+                    # continuously during the test run.
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
+            except Exception:
+                self.log_java_version()
+                raise
             logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
         if not collect_results:
             return None
