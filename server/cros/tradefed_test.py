@@ -31,6 +31,7 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
@@ -79,15 +80,41 @@ class _ChromeLogin(object):
         self._host = host
         self._cts_helper_kwargs = cts_helper_kwargs
 
+    def _cmd_builder(self, verbose=False):
+      """Gets remote command to start browser with ARC enabled."""
+      cmd = '/usr/local/autotest/bin/autologin.py --arc'
+      if ('dont_override_profile' in self._cts_helper_kwargs and
+          self._cts_helper_kwargs['dont_override_profile'] == True):
+          logging.info('Using --dont_override_profile to start Chrome.')
+          cmd += ' --dont_override_profile'
+      else:
+          logging.info('Not using --dont_override_profile to start Chrome.')
+      if not verbose:
+          cmd += ' > /dev/null 2>&1'
+      return cmd
+
     def __enter__(self):
-        """Logs in to the Chrome."""
+        """Logs in to the browser with ARC enabled."""
         logging.info('Ensure Android is running...')
         # If we can't login to Chrome and launch Android we want this job to
-        # die roughly after 5 minutes instead of hanging for the duration.
-        autotest.Autotest(self._host).run_timed_test('cheets_StartAndroid',
-                                                     timeout=300,
-                                                     check_client_result=True,
-                                                     **self._cts_helper_kwargs)
+        # die roughly after 6 minutes instead of hanging for the duration.
+        retry = False
+        try:
+            # We used to call cheets_StartAndroid, but it is a little faster to
+            # call a script on the DUT. This also saves CPU time on the server.
+            self._host.run(self._cmd_builder(), ignore_status=False,
+                           verbose=False, timeout=120)
+        except Exception:
+            retry = True
+
+        if retry:
+            logging.info('Loging into Chrome failed, trying again soon.')
+            # Give it some time to calm down.
+            time.sleep(20)
+            # Spew output to logs this time and raise failures.
+            self._host.run(self._cmd_builder(verbose=True), ignore_status=False,
+                           verbose=True, timeout=240)
+
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit, to wipe out all the login state, reboot the machine.
@@ -374,7 +401,8 @@ class TradefedTest(test.test):
     def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
 
-        Please see also cheets_StartAndroid for details about how this works.
+        Please see also cheets_StartAndroid and autologin.py for details on
+        how this works.
         """
         return _ChromeLogin(self._host, cts_helper_kwargs)
 
