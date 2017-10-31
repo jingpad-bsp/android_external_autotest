@@ -349,6 +349,11 @@ class TradefedTest(test.test):
     _BOARD_RETRY = {}
     _CHANNEL_RETRY = {'dev': 5}
 
+    def log_java_version(self):
+        # Quick sanity check and spew of java version installed on the server.
+        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
+                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
+
     def initialize(self, host=None):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -367,9 +372,6 @@ class TradefedTest(test.test):
         # Try to save server memory (crbug.com/717413).
         # select_32bit_java()
 
-        # Quick sanity check and spew of java version installed on the server.
-        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
-                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
         # The content of the cache survives across jobs.
         self._safe_makedirs(cache_root)
         self._tradefed_cache = os.path.join(cache_root, 'cache')
