@@ -76,15 +76,14 @@ _TRADEFED_CACHE_MAX_SIZE = (10 * 1024 * 1024 * 1024)
 class _ChromeLogin(object):
     """Context manager to handle Chrome login state."""
 
-    def __init__(self, host, cts_helper_kwargs):
+    def __init__(self, host, kwargs):
         self._host = host
-        self._cts_helper_kwargs = cts_helper_kwargs
+        self._kwargs = kwargs
 
     def _cmd_builder(self, verbose=False):
       """Gets remote command to start browser with ARC enabled."""
       cmd = '/usr/local/autotest/bin/autologin.py --arc'
-      if ('dont_override_profile' in self._cts_helper_kwargs and
-          self._cts_helper_kwargs['dont_override_profile'] == True):
+      if self._kwargs.get('dont_override_profile') == True:
           logging.info('Using --dont_override_profile to start Chrome.')
           cmd += ' --dont_override_profile'
       else:
@@ -117,7 +116,32 @@ class _ChromeLogin(object):
 
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """On exit, to wipe out all the login state, reboot the machine.
+        """On exit restart the browser or reboot the machine.
+
+        @param exc_type: Exception type if an exception is raised from the
+                         with-block.
+        @param exc_value: Exception instance if an exception is raised from
+                          the with-block.
+        @param traceback: Stack trace info if an exception is raised from
+                          the with-block.
+        @return None, indicating not to ignore an exception from the with-block
+                if raised.
+        """
+        reboot = True
+        if self._kwargs.get('reboot') != True:
+            logging.info('Skipping reboot, restarting browser.')
+            reboot = False
+            try:
+                self._host.run('restart ui', ignore_status=False, verbose=False,
+                               timeout=120)
+            except Exception:
+                logging.error('Restarting browser has failed.')
+                reboot = True
+        if reboot:
+            self._reboot(exc_type, exc_value, traceback)
+
+    def _reboot(self, exc_type, exc_value, traceback):
+        """Reboot the machine.
 
         @param exc_type: Exception type if an exception is raised from the
                          with-block.
