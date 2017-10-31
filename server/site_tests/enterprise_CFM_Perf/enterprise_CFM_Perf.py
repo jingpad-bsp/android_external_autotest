@@ -389,25 +389,13 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         self.output_perf_value(description='lost_packet_percentage',
                 value=lost_packet_percentage, units='percent',
                 higher_is_better=False)
-
-        num_processors = self._get_data_from_jmifile('cpu_processors', jmidata)
-        total_cpu = self._get_data_from_jmifile('cpu_percent', jmidata)
-        render_cpu = self._get_data_from_jmifile(
-                'renderer_cpu_percent', jmidata)
-
-        cpu_usage = ([value / num_processors for value in total_cpu]
-                     if num_processors else 0)
-        render_cpu_usage = ([value / num_processors for value in render_cpu]
-                            if num_processors else 0)
-
         self.output_perf_value(description='cpu_usage_jmi',
-                value=cpu_usage,
+                value=self._get_data_from_jmifile('cpu_percent', jmidata),
                 units='percent', higher_is_better=False)
-
         self.output_perf_value(description='renderer_cpu_usage',
-                value=render_cpu_usage,
+                value=self._get_data_from_jmifile(
+                    'renderer_cpu_percent', jmidata),
                 units='percent', higher_is_better=False)
-
         self.output_perf_value(description='browser_cpu_usage',
                 value=self._get_data_from_jmifile(
                         'browser_cpu_percent', jmidata),
