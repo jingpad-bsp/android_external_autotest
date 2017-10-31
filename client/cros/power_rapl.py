@@ -29,15 +29,13 @@ from numpy import uint32
 VALID_DOMAINS = ['pkg', 'pp0', 'gfx', 'dram']
 
 
-def get_rapl_measurement(tname, exe_function=time.sleep, statistics=True,
-                         exe_args=(10,), exe_kwargs={}):
+def get_rapl_measurement(tname, exe_function=time.sleep, exe_args=(10,),
+                         exe_kwargs={}):
     """Get rapl measurement.
 
     @param name: String of test name.
     @param exe_function: function that should be executed during measuring
                          rapl readings.
-    @param statistics: If true, rapl measurement statistics will be reported
-                       instead of list of scalars. (mean, std, cnt, ... etc.)
     @param exe_args: tuple of args to be passed into exe_function.
     @param exe_kwargs: dict of args to be passed into exe_function.
     """
@@ -49,7 +47,7 @@ def get_rapl_measurement(tname, exe_function=time.sleep, statistics=True,
     power_logger.start()
     with power_logger.checkblock(tname):
         exe_function(*exe_args, **exe_kwargs)
-    keyval = power_logger.calc(statistics=statistics)
+    keyval = power_logger.calc()
     return keyval
 
 
