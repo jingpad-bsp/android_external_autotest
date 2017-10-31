@@ -1109,14 +1109,15 @@ def main():
     service_name = 'gs_offloader(%s)' % offloader_type
     with ts_mon_config.SetupTsMonGlobalState(service_name, indirect=True,
                                              short_lived=False):
-        offloader = Offloader(options)
-        if not options.delete_only:
-            wait_for_gs_write_access(offloader.gs_uri)
-        while True:
-            offloader.offload_once()
-            if options.offload_once:
-                break
-            time.sleep(SLEEP_TIME_SECS)
+        with metrics.SuccessCounter('chromeos/autotest/gs_offloader/exit'):
+            offloader = Offloader(options)
+            if not options.delete_only:
+                wait_for_gs_write_access(offloader.gs_uri)
+            while True:
+                offloader.offload_once()
+                if options.offload_once:
+                    break
+                time.sleep(SLEEP_TIME_SECS)
 
 
 _LOG_LOCATION = '/usr/local/autotest/logs/'
