@@ -176,10 +176,10 @@ def kick_off_deploy():
     print 'Start deploying changes to all lab servers...'
     with infra.chdir(AUTOTEST_DIR):
         # Then kick off the deploy script.
-        deploy_cmd = ('runlocalssh ./site_utils/deploy_server.py --afe=%s' %
+        deploy_cmd = ('runlocalssh ./site_utils/deploy_server.py -x --afe=%s' %
                       MASTER_AFE)
         infra.local_runner(deploy_cmd, stream_output=True)
-        print 'Successfully deploy changes to all lab servers.!'
+        print 'Successfully deployed changes to all lab servers.'
 
 
 def main(args):
