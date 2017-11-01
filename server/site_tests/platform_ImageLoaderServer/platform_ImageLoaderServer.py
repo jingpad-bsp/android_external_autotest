@@ -25,7 +25,7 @@ class platform_ImageLoaderServer(test.test):
                 check_client_result=True)
             logging.info('platform_ImageLoader succeeded')
         except:
-            raise error.TestError('Failed platform_ImageLoader')
+            raise error.TestFail('Failed: platform_ImageLoader')
 
     def run_once(self, host):
         """Runs platform ImageLoader tests."""
