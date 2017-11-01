@@ -148,15 +148,12 @@ a1598f7
         expect_cmds = [mock.call(['git', 'checkout', 'cros/master'], stderr=-2)]
         run_cmd.assert_has_calls(expect_cmds)
 
-    def test_discover_commands_and_services(self):
+    def test_discover_commands(self):
         """Test deploy_server_local.discover_update_commands and
         discover_restart_services."""
         # It should always be a list, and should always be callable in
         # any local environment, though the result will vary.
         result = dsl.discover_update_commands()
-        self.assertIsInstance(result, list)
-
-        result = dsl.discover_restart_services()
         self.assertIsInstance(result, list)
 
     @mock.patch('subprocess.check_output', autospec=True)

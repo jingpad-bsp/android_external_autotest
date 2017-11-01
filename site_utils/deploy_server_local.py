@@ -36,8 +36,9 @@ SERVICE_STABILITY_TIMER = 60
 COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
                           'tko': 'tko/'}
 BUILD_EXTERNALS_COMMAND = 'build_externals'
-# Services present on all hosts.
-UNIVERSAL_SERVICES = ['sysmon']
+
+_RESTART_SERVICES_FILE = os.path.join(os.environ['HOME'],
+                                      'push_restart_services')
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
@@ -201,22 +202,16 @@ def discover_update_commands():
         return []
 
 
-def discover_restart_services():
+def get_restart_services():
     """Find the services that need restarting on the current server.
 
     These commonly come from shadow_config.ini, since they vary by server type.
 
-    @returns List of service names in string format.
+    @returns Iterable of service names in string format.
     """
-    services = list(UNIVERSAL_SERVICES)
-    try:
-        # Look up services from shadow_config.ini.
-        extra_services = global_config.global_config.get_config_value(
-                'UPDATE', 'services', type=list)
-        services.extend(extra_services)
-    except (ConfigParser.NoSectionError, global_config.ConfigError):
-        pass
-    return services
+    with open(_RESTART_SERVICES_FILE) as f:
+        for line in f:
+            yield line.rstrip()
 
 
 def update_command(cmd_tag, dryrun=False, use_chromite_master=False):
@@ -363,7 +358,7 @@ def run_deploy_actions(cmds_skip=set(), dryrun=False,
             update_command(cmd, dryrun=dryrun,
                            use_chromite_master=use_chromite_master)
 
-    services = discover_restart_services()
+    services = list(get_restart_services())
     if services:
         print('Restarting Services:', ', '.join(services))
         restart_services(services, dryrun=dryrun,
