@@ -165,8 +165,9 @@ class MoblabHost(cros_host.CrosHost):
         try:
             self.wait_afe_up()
         except Exception as e:
-            logging.error('DUT has rebooted but AFE has failed to load.: %s',
-                          e)
+            logging.error(
+                    'DUT has rebooted but AFE has failed to load: %s', e)
+            logging.error('Ignoring this error condition')
 
 
     def wait_afe_up(self, timeout_min=5):
@@ -322,8 +323,10 @@ class MoblabHost(cros_host.CrosHost):
         """
         try:
             self.afe.get_hosts()
-        except:
-            logging.debug('AFE is not responding')
+        except error.TimeoutException:
+            raise error.AutoservError('Moblab AFE is not responding')
+        except Exception as e:
+            logging.error('Unknown exception when checking moblab AFE: %s', e)
             raise
 
         return True
