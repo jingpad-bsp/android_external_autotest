@@ -10,6 +10,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "moblab"
 TEST_TYPE = "server"
+MAX_RESULT_SIZE_KB = 5000 * 1024
 
 DOC = """
 Kicks off the smoke suite on a Moblab host against the DUTs on its subnet

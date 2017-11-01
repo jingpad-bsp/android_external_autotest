@@ -31,6 +31,7 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
@@ -75,22 +76,72 @@ _TRADEFED_CACHE_MAX_SIZE = (10 * 1024 * 1024 * 1024)
 class _ChromeLogin(object):
     """Context manager to handle Chrome login state."""
 
-    def __init__(self, host, cts_helper_kwargs):
+    def __init__(self, host, kwargs):
         self._host = host
-        self._cts_helper_kwargs = cts_helper_kwargs
+        self._kwargs = kwargs
+
+    def _cmd_builder(self, verbose=False):
+      """Gets remote command to start browser with ARC enabled."""
+      cmd = '/usr/local/autotest/bin/autologin.py --arc'
+      if self._kwargs.get('dont_override_profile') == True:
+          logging.info('Using --dont_override_profile to start Chrome.')
+          cmd += ' --dont_override_profile'
+      else:
+          logging.info('Not using --dont_override_profile to start Chrome.')
+      if not verbose:
+          cmd += ' > /dev/null 2>&1'
+      return cmd
 
     def __enter__(self):
-        """Logs in to the Chrome."""
+        """Logs in to the browser with ARC enabled."""
         logging.info('Ensure Android is running...')
         # If we can't login to Chrome and launch Android we want this job to
-        # die roughly after 5 minutes instead of hanging for the duration.
-        autotest.Autotest(self._host).run_timed_test('cheets_StartAndroid',
-                                                     timeout=300,
-                                                     check_client_result=True,
-                                                     **self._cts_helper_kwargs)
+        # die roughly after 6 minutes instead of hanging for the duration.
+        retry = False
+        try:
+            # We used to call cheets_StartAndroid, but it is a little faster to
+            # call a script on the DUT. This also saves CPU time on the server.
+            self._host.run(self._cmd_builder(), ignore_status=False,
+                           verbose=False, timeout=120)
+        except Exception:
+            retry = True
+
+        if retry:
+            logging.info('Loging into Chrome failed, trying again soon.')
+            # Give it some time to calm down.
+            time.sleep(20)
+            # Spew output to logs this time and raise failures.
+            self._host.run(self._cmd_builder(verbose=True), ignore_status=False,
+                           verbose=True, timeout=240)
+
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """On exit, to wipe out all the login state, reboot the machine.
+        """On exit restart the browser or reboot the machine.
+
+        @param exc_type: Exception type if an exception is raised from the
+                         with-block.
+        @param exc_value: Exception instance if an exception is raised from
+                          the with-block.
+        @param traceback: Stack trace info if an exception is raised from
+                          the with-block.
+        @return None, indicating not to ignore an exception from the with-block
+                if raised.
+        """
+        reboot = True
+        if self._kwargs.get('reboot') != True:
+            logging.info('Skipping reboot, restarting browser.')
+            reboot = False
+            try:
+                self._host.run('restart ui', ignore_status=False, verbose=False,
+                               timeout=120)
+            except Exception:
+                logging.error('Restarting browser has failed.')
+                reboot = True
+        if reboot:
+            self._reboot(exc_type, exc_value, traceback)
+
+    def _reboot(self, exc_type, exc_value, traceback):
+        """Reboot the machine.
 
         @param exc_type: Exception type if an exception is raised from the
                          with-block.
@@ -322,6 +373,11 @@ class TradefedTest(test.test):
     _BOARD_RETRY = {}
     _CHANNEL_RETRY = {'dev': 5}
 
+    def log_java_version(self):
+        # Quick sanity check and spew of java version installed on the server.
+        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
+                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
+
     def initialize(self, host=None):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -340,9 +396,6 @@ class TradefedTest(test.test):
         # Try to save server memory (crbug.com/717413).
         # select_32bit_java()
 
-        # Quick sanity check and spew of java version installed on the server.
-        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
-                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
         # The content of the cache survives across jobs.
         self._safe_makedirs(cache_root)
         self._tradefed_cache = os.path.join(cache_root, 'cache')
@@ -374,7 +427,8 @@ class TradefedTest(test.test):
     def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
 
-        Please see also cheets_StartAndroid for details about how this works.
+        Please see also cheets_StartAndroid and autologin.py for details on
+        how this works.
         """
         return _ChromeLogin(self._host, cts_helper_kwargs)
 

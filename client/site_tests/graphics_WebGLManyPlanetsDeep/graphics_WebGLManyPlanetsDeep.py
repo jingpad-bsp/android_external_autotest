@@ -68,7 +68,7 @@ class graphics_WebGLManyPlanetsDeep(graphics_utils.GraphicsTest):
 
         # Intel only: Record the power consumption for the next few seconds.
         self.rapl_rate = power_rapl.get_rapl_measurement(
-            'rapl_many_planets_deep', statistics=False)
+            'rapl_many_planets_deep')
         tab.Close()
 
     def calculate_perf_values(self):

@@ -179,16 +179,20 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             # Assume only last command actually runs tests and has interesting
             # output (results, logs) for collection.
             logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
-            output = self._run(
-                self._cts_tradefed,
-                args=tuple(command),
-                timeout=self._timeout * self._get_timeout_factor(),
-                verbose=True,
-                ignore_status=False,
-                # Make sure to tee tradefed stdout/stderr to autotest logs
-                # continuously during the test run.
-                stdout_tee=utils.TEE_TO_LOGS,
-                stderr_tee=utils.TEE_TO_LOGS)
+            try:
+                output = self._run(
+                    self._cts_tradefed,
+                    args=tuple(command),
+                    timeout=self._timeout * self._get_timeout_factor(),
+                    verbose=True,
+                    ignore_status=False,
+                    # Make sure to tee tradefed stdout/stderr to autotest logs
+                    # continuously during the test run.
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
+            except Exception:
+                self.log_java_version()
+                raise
             logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
         if not collect_results:
             return None
@@ -263,6 +267,19 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             if self._abi == 'arm':
                 return True
         return False
+
+    def _should_reboot(self, steps):
+        """Oracle to decide if DUT should reboot or just restart Chrome.
+
+        For now we will not reboot after the first two iterations, but on all
+        iterations afterward as before. In particular this means that most CTS
+        tests will now not get a "clean" machine, but one on which tests ran
+        before. But we will still reboot after persistent failures, hopefully
+        not causing too many flakes down the line.
+        """
+        if steps < 3:
+            return False
+        return True
 
     def run_once(self,
                  target_module=None,
@@ -354,7 +371,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             self._run_precondition_scripts(
                 self._host, login_precondition_commands, steps)
-            with self._login_chrome(dont_override_profile=pushed_media):
+            with self._login_chrome(reboot=self._should_reboot(steps),
+                                    dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,
@@ -421,7 +439,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             steps += 1
             self._run_precondition_scripts(
                 self._host, login_precondition_commands, steps)
-            with self._login_chrome(dont_override_profile=pushed_media):
+            with self._login_chrome(reboot=self._should_reboot(steps),
+                                    dont_override_profile=pushed_media):
                 self._ready_arc()
                 self._run_precondition_scripts(
                     self._host,

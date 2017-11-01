@@ -5,6 +5,7 @@
 """Wrapper class to store size related information of test results.
 """
 
+import contextlib
 import copy
 import json
 import os
@@ -213,6 +214,20 @@ class ResultInfo(dict):
                 dirs = [{dir_name: dirs[dir_name]} for dir_name in dirs]
             for sub_file in dirs:
                 self.add_file(None, sub_file)
+
+    @contextlib.contextmanager
+    def disable_updating_parent_size_info(self):
+        """Disable recursive calls to update parent result_info's sizes.
+
+        This context manager allows removing sub-directories to run faster
+        without triggering recursive calls to update parent result_info's sizes.
+        """
+        old_value = self._initialized
+        self._initialized = False
+        try:
+            yield
+        finally:
+            self._initialized = old_value
 
     def update_dir_original_size(self):
         """Update all directories' original size information.

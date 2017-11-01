@@ -1,12 +1,12 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_UiResume"
+NAME = "power_UiResume.resume_constraint"
 PURPOSE = "Measure the amount of time it takes to resume from suspend."
 CRITERIA = "This test is a benchmark."
-ATTRIBUTES = "suite:crosbolt_perf_perbuild"
+ATTRIBUTES = "suite:hwqual"
 TIME = "SHORT"
 TEST_CATEGORY = "Logging"
 TEST_CLASS = "power"
@@ -21,4 +21,4 @@ how many seconds it took for ARC to suspend and then resume. As a precaution it
 will ensure your network interface is UP after it has resumed.
 """
 
-job.run_test('power_UiResume', ignore_kernel_warns=True)
+job.run_test('power_UiResume', constraints=['seconds_system_resume <= 1.0'])

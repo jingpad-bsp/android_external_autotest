@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from threading import Thread
 
 from autotest_lib.client.bin import test, utils
@@ -18,6 +19,7 @@ from fake_printer import FakePrinter
 
 _FAKE_SERVER_JOIN_TIMEOUT = 10
 _FAKE_PRINTER_ID = 'FakePrinterID'
+_PAUSE_BEFORE_VALIDITY_CHECK = 2
 
 # Values are from platform/system_api/dbus/debugd/dbus-constants.h.
 _CUPS_SUCCESS = 0
@@ -111,6 +113,7 @@ class platform_AddPrinter(test.test):
         logging.info('add printer from ppd:' + ppd_path);
 
         ppd_contents = self.load_ppd(ppd_path)
+        time.sleep(_PAUSE_BEFORE_VALIDITY_CHECK)
         result = debugd_util.iface().CupsAddManuallyConfiguredPrinter(
                                      _FAKE_PRINTER_ID, 'socket://127.0.0.1/',
                                                       ppd_contents)

@@ -269,7 +269,8 @@ class _SuiteChildJobCreator(object):
             priority=priorities.Priority.DEFAULT,
             offload_failures_only=False,
             test_source_build=None,
-            job_keyvals=None):
+            job_keyvals=None,
+    ):
         """
         Constructor
 
@@ -985,6 +986,7 @@ class _BaseSuite(object):
             offload_failures_only=False,
             test_source_build=None,
             job_keyvals=None,
+            child_dependencies=(),
             result_reporter=None,
     ):
         """Initialize instance.
@@ -1027,6 +1029,8 @@ class _BaseSuite(object):
         @param test_source_build: Build that contains the server-side test code.
         @param job_keyvals: General job keyvals to be inserted into keyval file,
                             which will be used by tko/parse later.
+        @param child_dependencies: (optional) list of dependency strings
+                to be added as dependencies to child jobs.
         @param result_reporter: A _ResultReporter instance to report results. If
                 None, an _EmailReporter will be created.
         """
@@ -1062,6 +1066,8 @@ class _BaseSuite(object):
         extra_deps.append(board)
         if pool:
             extra_deps.append(pool)
+        extra_deps.extend(child_dependencies)
+
         self._job_creator = _SuiteChildJobCreator(
             tag=tag,
             builds=builds,
@@ -1522,6 +1528,7 @@ class Suite(_BaseSuite):
             test_source_build=None,
             job_keyvals=None,
             test_args=None,
+            child_dependencies=(),
             result_reporter=None,
     ):
         """
@@ -1574,6 +1581,8 @@ class Suite(_BaseSuite):
                             which will be used by tko/parse later.
         @param test_args: A dict of args passed all the way to each individual
                           test that will be actually ran.
+        @param child_dependencies: (optional) list of dependency strings
+                to be added as dependencies to child jobs.
         @param result_reporter: A _ResultReporter instance to report results. If
                 None, an _EmailReporter will be created.
         """
@@ -1607,6 +1616,7 @@ class Suite(_BaseSuite):
                 offload_failures_only=offload_failures_only,
                 test_source_build=test_source_build,
                 job_keyvals=job_keyvals,
+                child_dependencies=child_dependencies,
                 result_reporter=result_reporter,
         )
 

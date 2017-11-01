@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemControl.fibocom-lg850gl"
+NAME = "network_3GModemControl.fibocom-l850gl"
 PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:fibocom-lg850gl"
+DEPENDENCIES = "modem:fibocom-l850gl"
 
 DOC = """
   Tests that commands sent to ModemManager or cromo are reflected in flimflam.
@@ -27,6 +27,6 @@ from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
-             tag='no-autoconnect-fibocom-lg850gl')
+             tag='no-autoconnect-fibocom-l850gl')
 job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
-             tag='autoconnect-fibocom-lg850gl')
+             tag='autoconnect-fibocom-l850gl')
