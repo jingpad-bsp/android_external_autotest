@@ -46,6 +46,18 @@ MOBLAB_TMP_DIR = '/mnt/moblab/tmp'
 MOBLAB_PORT = 80
 
 
+class UpstartServiceNotRunning(error.AutoservError):
+    """An expected upstart service was not in the expected state."""
+
+    def __init__(self, service_name):
+        """Create us.
+        @param service_name: Name of the service_name that was in the worng
+                state.
+        """
+        super(UpstartServiceNotRunning, self).__init__(
+                'Upstart service %s not in running state.' % service_name)
+
+
 class MoblabHost(cros_host.CrosHost):
     """Moblab specific host class."""
 
@@ -252,7 +264,8 @@ class MoblabHost(cros_host.CrosHost):
 
         @return True if this service is started and running, otherwise False.
         """
-        return self.upstart_status(service)
+        if not self.upstart_status(service):
+            raise UpstartServiceNotRunning(service)
 
 
     @retry.retry(error.AutoservError, timeout_min=5, delay_sec=10)
@@ -266,7 +279,8 @@ class MoblabHost(cros_host.CrosHost):
 
         @return True if this service is started and running, otherwise False.
         """
-        return self.upstart_status(service)
+        if not self.upstart_status(service):
+            raise UpstartServiceNotRunning(service)
 
 
     def verify_moblab_services(self):
@@ -278,14 +292,16 @@ class MoblabHost(cros_host.CrosHost):
             return
 
         service = MOBLAB_SERVICES[0]
-        if not self._verify_upstart_service_long_wait(service):
-            raise error.AutoservError('Moblab service: %s is not running.' %
-                                      service)
+        try:
+            self._verify_upstart_service_long_wait(service)
+        except error.TimeoutException:
+            raise error.UpstartServiceNotRunning(service)
 
         for service in MOBLAB_SERVICES[1:]:
-            if not self._verify_upstart_service(service):
-                raise error.AutoservError('Moblab service: %s is not running.'
-                                          % service)
+            try:
+                self._verify_upstart_service(service)
+            except error.TimeoutException:
+                raise error.UpstartServiceNotRunning(service)
 
         for process in MOBLAB_PROCESSES:
             try:
@@ -323,7 +339,7 @@ class MoblabHost(cros_host.CrosHost):
 
 
     def verify_special_tasks_complete(self):
-        # Wait till all pending special tasks are completed.
+        """Wait till the special tasks on the moblab host are complete."""
         total_time = 0
         while (self.afe.get_special_tasks(is_complete=False) and
                total_time < DUT_VERIFY_TIMEOUT):
