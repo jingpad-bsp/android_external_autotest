@@ -22,7 +22,7 @@ class component_UpdateFlash(test.test):
                                           tag=CU_action,
                                           check_client_result=True)
         except:
-            raise error.TestError('Failed: %s.' % CU_action)
+            raise error.TestFail('Failed: %s.' % CU_action)
 
     def _run_flash_sanity(self):
         """Verify that simple Flash site runs."""
