@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import dbus
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -16,6 +17,7 @@ _CUPS_SUCCESS = 0
 _CUPS_INVALID_PPD_ERROR = 2
 _CUPS_LPADMIN_ERROR = 3
 _CUPS_AUTOCONF_FAILURE = 4
+_PAUSE_BEFORE_VALIDITY_CHECK = 2
 
 
 class platform_DebugDaemonCupsAddPrinters(test.test):
@@ -136,7 +138,8 @@ class platform_DebugDaemonCupsAddPrinters(test.test):
         # Exits test if platform does not have CUPS
         cups.has_cups_or_die()
 
-        self.test_valid_config()
         self.test_lpadmin()
         self.test_ppd_error()
         self.test_autoconf()
+        time.sleep(_PAUSE_BEFORE_VALIDITY_CHECK)
+        self.test_valid_config()
