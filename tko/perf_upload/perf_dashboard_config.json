@@ -644,11 +644,6 @@
     "dashboard_test_name": "speedometer"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.startup.cold.blank_page",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "startup.cold.blank_page"
-  },
-  {
     "autotest_name": "telemetry_Benchmarks.sunspider",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "sunspider"
