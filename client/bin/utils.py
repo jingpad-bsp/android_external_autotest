@@ -1558,7 +1558,7 @@ def get_cpu_usage():
             'idle': 2859878,
         }
     """
-    proc_stat = open('/proc/stat')
+    proc_stat = _open_file('/proc/stat')
     cpu_usage_str = proc_stat.readline().split()
     proc_stat.close()
     return {
@@ -1682,13 +1682,21 @@ _KERNEL_MAX = '/sys/devices/system/cpu/kernel_max'
 _MEMINFO = '/proc/meminfo'
 _TEMP_SENSOR_RE = 'Reading temperature...([0-9]*)'
 
+def _open_file(path):
+    """
+    Opens a file and returns the file object.
+
+    This method is intended to be mocked by tests.
+    @return The open file object.
+    """
+    return open(path)
 
 def _get_line_from_file(path, line):
     """
     line can be an integer or
     line can be a string that matches the beginning of the line
     """
-    with open(path) as f:
+    with _open_file(path) as f:
         if isinstance(line, int):
             l = f.readline()
             for _ in range(0, line):
