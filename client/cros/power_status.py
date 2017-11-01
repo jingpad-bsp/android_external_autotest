@@ -1438,7 +1438,7 @@ class MeasurementLogger(threading.Thread):
                      tname, tstart, tend)
 
 
-    def calc(self, mtype=None, statistics=True):
+    def calc(self, mtype=None):
         """Calculate average measurement during each of the sub-tests.
 
         Method performs the following steps:
@@ -1504,15 +1504,12 @@ class MeasurementLogger(threading.Thread):
                 # Results list can be used for pretty printing and saving as csv
                 results.append((prefix, meas_mean, meas_std,
                                 tend - tstart, tstart, tend))
-
-                if statistics:
-                    keyvals[prefix + '_' + mtype] = meas_mean
-                    keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
-                    keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
-                    keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
-                    keyvals[prefix + '_' + mtype + '_std'] = meas_std
-                else:
-                    keyvals[prefix + '_' + mtype] = list(meas_array)
+                keyvals[prefix + '_' + mtype] = list(meas_array)
+                keyvals[prefix + '_' + mtype + '_avg'] = meas_mean
+                keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
+                keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
+                keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
+                keyvals[prefix + '_' + mtype + '_std'] = meas_std
         self._results = results
         return keyvals
 
@@ -1543,8 +1540,8 @@ class PowerLogger(MeasurementLogger):
         super(PowerLogger, self).save_results(resultsdir, fname)
 
 
-    def calc(self, mtype='pwr', statistics=True):
-        return super(PowerLogger, self).calc(mtype, statistics)
+    def calc(self, mtype='pwr'):
+        return super(PowerLogger, self).calc(mtype)
 
 
 class TempMeasurement(object):
