@@ -63,6 +63,8 @@ class CfmBaseTest(test.test):
     def cleanup(self):
         """Takes a screenshot and clears the TPM."""
         self.take_screenshot('%s' % self.tagged_testname)
+        self.save_callgrok_logs()
+        self.save_packaged_app_logs()
         tpm_utils.ClearTPMOwnerRequest(self._host)
         super(CfmBaseTest, self).cleanup()
 
@@ -79,11 +81,47 @@ class CfmBaseTest(test.test):
             remote_path = self.cfm_facade.take_screenshot()
             if remote_path:
                 # Copy the screenshot from the DUT.
-                self._host.get_file(
+                self._safe_copy_file(
                     remote_path,
                     os.path.join(target_dir, screenshot_name + '.png'))
             else:
                 logging.warning('Taking screenshot failed')
         except Exception as e:
-            logging.warning('Exception while taking a screenshot', exc_info = e)
+            logging.exception('Exception while taking a screenshot.')
+
+    def save_callgrok_logs(self):
+        """
+        Copies the callgrok logs from the client to test's debug directory.
+        """
+        callgrok_log_path = self.cfm_facade.get_latest_callgrok_file_path()
+        if callgrok_log_path:
+            self._safe_copy_file(
+                callgrok_log_path,
+                os.path.join(self.debugdir, 'callgrok_logs.txt'))
+        else:
+            logging.warning('No callgrok logs found on DUT.')
+
+    def save_packaged_app_logs(self):
+        """
+        Copies the packaged app logs from the client to test's debug directory.
+        """
+        pa_log_path = self.cfm_facade.get_latest_pa_logs_file_path()
+        if pa_log_path:
+            self._safe_copy_file(
+                pa_log_path,
+                os.path.join(self.debugdir, 'packaged_app_logs.txt'))
+        else:
+            logging.warning('No packaged app logs found on DUT.')
+
+    def _safe_copy_file(self, remote_path, local_path):
+        """
+        Copies the packaged app log file from CFM to test's debug directory.
+        """
+        try:
+            logging.info('Copying file "%s" from client to "%s"...',
+                         remote_path, local_path)
+            self._host.get_file(remote_path, local_path)
+        except Exception as e:
+            logging.exception(
+                'Exception while copying file "%s"', remote_path)
 
