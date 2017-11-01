@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume.fibocom-lg850gl"
+NAME = "network_MobileSuspendResume.fibocom-l850gl"
 PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify
@@ -16,7 +16,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:fibocom-lg850gl"
+DEPENDENCIES = "modem:fibocom-l850gl"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
@@ -24,6 +24,6 @@ DOC = """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_MobileSuspendResume',
-             autoconnect=False, tag='autoconnect_off-fibocom-lg850gl')
+             autoconnect=False, tag='autoconnect_off-fibocom-l850gl')
 job.run_test('network_MobileSuspendResume',
-             autoconnect=True, tag='autoconnect_on-fibocom-lg850gl')
+             autoconnect=True, tag='autoconnect_on-fibocom-l850gl')
