@@ -22,6 +22,8 @@ def _filter_servers(servers):
     for s in servers:
         if s['status'] == 'repair_required':
             continue
+        if s['status'] == 'backup':
+            continue
         if set(s['roles']) & non_push_roles:
             continue
         yield s
