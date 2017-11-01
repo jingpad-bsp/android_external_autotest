@@ -126,7 +126,8 @@ def _delete_missing_entries(summary_old, summary_new):
         if name not in new_files:
             if old_file.is_dir:
                 # Trim sub-directories.
-                _delete_missing_entries(old_file, result_info.EMPTY)
+                with old_file.disable_updating_parent_size_info():
+                    _delete_missing_entries(old_file, result_info.EMPTY)
                 old_file.update_sizes()
             elif name in FILES_TO_IGNORE:
                 # Remove the file from the summary as it can be ignored.
