@@ -61,7 +61,7 @@ class CfmBaseTest(test.test):
         time.sleep(SHORT_TIMEOUT)
 
     def cleanup(self):
-        """Takes a screenshot and clears the TPM."""
+        """Takes a screenshot, saves log files and clears the TPM."""
         self.take_screenshot('%s' % self.tagged_testname)
         self.save_callgrok_logs()
         self.save_packaged_app_logs()
