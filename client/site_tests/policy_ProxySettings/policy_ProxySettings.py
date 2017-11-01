@@ -104,6 +104,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
     version = 1
 
     def initialize(self, **kwargs):
+        """Initialize this test."""
         self._initialize_test_constants()
         super(policy_ProxySettings, self).initialize(**kwargs)
         self._proxy_server = ProxyListener(('', self.PROXY_PORT))
@@ -138,6 +139,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
 
 
     def cleanup(self):
+        """Stop proxy server and cleanup."""
         self._proxy_server.stop()
         super(policy_ProxySettings, self).cleanup()
 
@@ -173,11 +175,11 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
             raise error.TestFail('Unrecognized Policy Value %s', policy_value)
 
 
-    def run_test_case(self, case):
+    def run_once(self, case):
         """Setup and run the test configured for the specified test case.
 
         @param case: Name of the test case to run.
         """
         case_value = self.TEST_CASES[case]
-        self.setup_case(self.POLICY_NAME, case_value)
+        self.setup_case(user_policies={self.POLICY_NAME: case_value})
         self._test_proxy_configuration(case_value)
