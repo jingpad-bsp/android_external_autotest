@@ -9,6 +9,7 @@ import collections
 ACK = 'ack'
 ECHO = 'echo'
 SHUTDOWN = 'shutdown'
+STATUS = 'status'
 
 # Message type for container pool communication.
 Message = collections.namedtuple('Message', ['type', 'args'])
@@ -40,3 +41,12 @@ def shutdown():
     SHUTDOWN messages cause the service to shut down.  See Service.stop().
     """
     return Message(SHUTDOWN, {})
+
+
+def status():
+    """Creates a status request message.
+
+    STATUS messages cause the service to return a dictionary describing the
+    current state of the container pool.
+    """
+    return Message(STATUS, {})
