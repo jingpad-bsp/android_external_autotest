@@ -101,7 +101,8 @@ class DrmTest(object):
 drm_tests = {
     test.name: test
     for test in (
-        DrmTest('atomictest', 'atomictest -t all', min_kernel_version='4.4'),
+        DrmTest('atomictest', 'atomictest -t all', min_kernel_version='4.4',
+                timeout=300),
         DrmTest('drm_cursor_test'),
         DrmTest('gamma_test'),
         DrmTest('linear_bo_test'),
