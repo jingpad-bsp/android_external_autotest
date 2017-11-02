@@ -13,8 +13,8 @@ class Values(object):
 
     confirm_screen = 4
 
-    has_lid = False
+    has_lid = True
     has_keyboard = False
 
     chrome_ec = True
-    ec_capability = ['x86', 'battery', 'charging']
+    ec_capability = ['x86', 'battery', 'charging', 'lid']
