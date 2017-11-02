@@ -8,10 +8,9 @@
 # 3. Extract defined peripheral devices based on CAMERA_LIST, SPEAKER_LIST.
 # 4. As of now only one type touch panel is defined here, which is Mimo.
 # 5. Check usb devices's interface.
-# 6. Retrieve usb device based on product and manufacture.
+# 6. Retrieve usb device based on product and manufacturer.
 
 import cStringIO
-import logging, re
 import textfsm
 
 USB_DEVICES_TPLT = (
@@ -75,14 +74,14 @@ def _extract_usb_data(rawdata):
     """
     usbdata = []
     rawdata += '\n'
-    re_table = textfsm.TextFSM(USB_DEVICES_TPLT)
+    re_table = textfsm.TextFSM(cStringIO.StringIO(USB_DEVICES_TPLT))
     fsm_results = re_table.ParseText(rawdata)
     usbdata = [dict(zip(re_table.header, row)) for row in fsm_results]
     return usbdata
 
 
 def _extract_peri_device(usbdata, vid_pid):
-    """retrive the list of dictionary for certain types of VID_PID
+    """retrieve the list of dictionary for certain types of VID_PID
     @param usbdata:  list of dictionary for usb devices
     @param vid_pid: list of vid_pid combination
     @returns the list of dictionary for certain types of VID_PID
@@ -98,7 +97,7 @@ def _extract_peri_device(usbdata, vid_pid):
 
 
 def _get_list_audio_device(usbdata):
-    """retrive the list of dictionary for all audio devices
+    """retrieve the list of dictionary for all audio devices
     @param usbdata:  list of dictionary for usb devices
     @returns the list of dictionary for all audio devices
     """
@@ -110,7 +109,7 @@ def _get_list_audio_device(usbdata):
 
 
 def _get_list_video_device(usbdata):
-    """retrive the list of dictionary for all video devices
+    """retrieve the list of dictionary for all video devices
     @param usbdata:  list of dictionary for usb devices
     @returns the list of dictionary for all video devices
     """
@@ -122,7 +121,7 @@ def _get_list_video_device(usbdata):
 
 
 def _get_list_mimo_device(usbdata):
-    """retrive the list of dictionary for all touch panel devices
+    """retrieve the list of dictionary for all touch panel devices
     @param usbdata:  list of dictionary for usb devices
     @returns the lists of dictionary
              one for displaylink, the other for touch controller
@@ -138,7 +137,7 @@ def _get_list_mimo_device(usbdata):
 
 
 def _get_list_by_product(usbdata, product_name):
-    """retrive the list of dictionary based on product_name
+    """retrieve the list of dictionary based on product_name
     @param usbdata:  list of dictionary for usb devices
     @returns the list of dictionary
     """
@@ -150,7 +149,7 @@ def _get_list_by_product(usbdata, product_name):
 
 
 def _get_list_by_manufacturer(usbdata, manufacturer_name):
-    """retrive the list of dictionary based on manufacturer_name
+    """retrieve the list of dictionary based on manufacturer_name
     @param usbdata:  list of dictionary for usb devices
     @returns the list of dictionary
     """
