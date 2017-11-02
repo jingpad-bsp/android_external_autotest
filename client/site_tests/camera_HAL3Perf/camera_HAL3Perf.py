@@ -13,6 +13,7 @@ A test which monitors the camera HAL3 performance metrics:
 import os, logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import service_stopper
 
 class camera_HAL3Perf(test.test):
     """
@@ -26,6 +27,7 @@ class camera_HAL3Perf(test.test):
     timeout = 60
     test_name = 'camera_HAL3Perf'
     test_log_suffix = 'test.log'
+    adapter_service = 'camera-halv3-adapter'
 
     def _logperf(self, name, key, value, units, higher_is_better=False):
         description = '%s.%s' % (name, key)
@@ -77,18 +79,19 @@ class camera_HAL3Perf(test.test):
         """
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
-        test_log_file = os.path.join(self.resultsdir,
-                                     '%s_%s' % (self.test_name,
-                                                self.test_log_suffix))
-        args = [
-            '--gtest_filter=Camera3StillCaptureTest/'
-            'Camera3SimpleStillCaptureTest.PerformanceTest/*',
-            '--output_log=%s' % test_log_file]
-        ret = utils.system(' '.join([binary_path, ' '.join(args)]),
-                           timeout=self.timeout)
-        self._analyze_log(test_log_file)
-        if ret != 0:
-            msg = 'Failed to execute command: ' + ' '.join([binary_path,
-                                                           ' '.join(args)])
-            raise error.TestFail(msg)
+        with service_stopper.ServiceStopper([self.adapter_service]):
+            binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
+            test_log_file = os.path.join(self.resultsdir,
+                                         '%s_%s' % (self.test_name,
+                                                    self.test_log_suffix))
+            args = [
+                '--gtest_filter=Camera3StillCaptureTest/'
+                'Camera3SimpleStillCaptureTest.PerformanceTest/*',
+                '--output_log=%s' % test_log_file]
+            ret = utils.system(' '.join([binary_path, ' '.join(args)]),
+                               timeout=self.timeout)
+            self._analyze_log(test_log_file)
+            if ret != 0:
+                msg = 'Failed to execute command: ' + ' '.join([binary_path,
+                                                               ' '.join(args)])
+                raise error.TestFail(msg)

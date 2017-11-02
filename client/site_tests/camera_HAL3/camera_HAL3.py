@@ -6,6 +6,7 @@
 
 import os, logging
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros import service_stopper
 
 class camera_HAL3(test.test):
     """
@@ -14,23 +15,24 @@ class camera_HAL3(test.test):
 
     version = 1
     test_binary = 'arc_camera3_test'
-    service_binary = os.path.join(os.path.sep, 'usr', 'bin',
-                                  'arc_camera3_service')
     dep = 'camera_hal3'
+    adapter_service = 'camera-halv3-adapter'
     timeout = 600
 
     def setup(self):
+        """
+        Run common setup steps.
+        """
         self.dep_dir = os.path.join(self.autodir, 'deps', self.dep)
         self.job.setup_dep([self.dep])
         logging.debug('mydep is at %s' % self.dep_dir)
 
     def run_once(self):
+        """
+        Entry point of this test.
+        """
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        if not os.path.exists(self.service_binary):
-            logging.debug('Skip test because %s does not exist' %
-                          self.service_binary)
-            return
-
-        binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
-        utils.system(binary_path, timeout=self.timeout)
+        with service_stopper.ServiceStopper([self.adapter_service]):
+            binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
+            utils.system(binary_path, timeout=self.timeout)
