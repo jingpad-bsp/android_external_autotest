@@ -414,8 +414,7 @@ class EnterprisePolicyTest(test.test):
 
         """
         value_shown = self._get_policy_value_from_new_tab(policy_name)
-        self._verify_single_policy_value(policy_name, expected_value,
-                                         value_shown)
+        self._compare_values(policy_name, expected_value, value_shown)
 
 
     def verify_policy_stats(self, user_policies={}, suggested_user_policies={},
