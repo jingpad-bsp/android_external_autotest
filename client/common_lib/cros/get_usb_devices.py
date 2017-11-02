@@ -5,7 +5,7 @@
 # """extract data from output of use-devices on linux box"""
 # The parser takes output of "usb-devices" as rawdata, and has capablities to
 # 1. Populate usb data into dictionary
-# 3. Extract defined peripheral devices based on CAMERA_LIST, SPEAKER_LIST.
+# 3. Extract defined peripheral devices based on CAMERA_MAP, SPEAKER_MAP.
 # 4. As of now only one type touch panel is defined here, which is Mimo.
 # 5. Check usb devices's interface.
 # 6. Retrieve usb device based on product and manufacturer.
@@ -35,13 +35,14 @@ USB_DEVICES_TPLT = (
 
 
 # As of now there are certain types of cameras, speakers and touch-panel.
-# New devices can be added to these global variables.
-CAMERA_LIST = ['2bd9:0011', '046d:0843', '046d:082d', '046d:0853']
-CAMERA_MAP = {'2bd9:0011':'Huddly GO', '046d:0843':'Logitech Webcam C930e',
-              '046d:082d':'HD Pro Webcam C920', '046d:0853':'PTZ Pro Camera'}
+# New devices should be added to these global variables.
+CAMERA_MAP = {'2bd9:0011': 'Huddly GO',
+              '046d:0843': 'Logitech Webcam C930e',
+              '046d:082d': 'HD Pro Webcam C920',
+              '046d:0853': 'PTZ Pro Camera'}
 
-SPEAKER_LIST = ['18d1:8001', '0b0e:0412']
-SPEAKER_MAP = {'18d1:8001':'Hangouts Meet speakermic', '0b0e:0412':'Jabra SPEAK 410'}
+SPEAKER_MAP = {'18d1:8001': 'Hangouts Meet speakermic',
+               '0b0e:0412': 'Jabra SPEAK 410'}
 
 TOUCH_DISPLAY_LIST = ['17e9:016b']
 TOUCH_CONTROLLER_LIST = ['266e:0110']
@@ -91,7 +92,7 @@ def _extract_peri_device(usbdata, vid_pid):
         vid = _vid_pid.split(':')[0]
         pid = _vid_pid.split(':')[1]
         for _data in usbdata:
-            if vid == _data['Vendor']  and pid ==  _data['ProdID']:
+            if vid == _data['Vendor'] and pid ==  _data['ProdID']:
                 vid_pid_usb_list.append(_data)
     return  vid_pid_usb_list
 
@@ -173,7 +174,7 @@ def _is_usb_device_ok(usbdata, vid_pid):
     vid = vid_pid[0:4]
     pid = vid_pid[-4:]
     for _data in usbdata:
-        if vid == _data['Vendor']  and pid ==  _data['ProdID']:
+        if vid == _data['Vendor'] and pid == _data['ProdID']:
             number_of_device += 1
             compare_list = _data['intdriver'][0:len(INTERFACES_LIST[vid_pid])]
             if  cmp(compare_list, INTERFACES_LIST[vid_pid]) == 0:
@@ -189,7 +190,7 @@ def _get_speakers(usbdata):
     @returns: list of dictionary, key is VID_PID, value is number of speakers
     """
     number_speaker = {}
-    for _speaker in SPEAKER_LIST:
+    for _speaker in SPEAKER_MAP:
         vid =  _speaker.split(':')[0]
         pid =  _speaker.split(':')[1]
         _number = 0
@@ -220,12 +221,12 @@ def _get_cameras(usbdata):
     @returns: list of dictionary, key is VID_PID, value is number of cameras
     """
     number_camera = {}
-    for _camera in CAMERA_LIST:
+    for _camera in CAMERA_MAP:
         vid =  _camera.split(':')[0]
         pid =  _camera.split(':')[1]
         _number = 0
         for _data in usbdata:
-            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
+            if _data['Vendor'] == vid and _data['ProdID'] == pid:
                 _number += 1
         number_camera[_camera] = _number
     return number_camera
@@ -264,35 +265,34 @@ def _get_controller_mimo(usbdata):
         number_controller[_controller] = _number
     return number_controller
 
+
 def _get_preferred_speaker(peripheral):
     """get string for the 1st speakers in the device list
-     @param peripheral:  of dictionary for usb devices
-     @returns: string for name of preferred speake
+     @param peripheral: dictionary for usb devices
+     @returns: name of preferred speaker
     """
     for _key in peripheral:
-        if _key in SPEAKER_LIST:
-            speaker_name = SPEAKER_MAP[_key]+' ('+_key+')'
-            return speaker_name
+        if _key in SPEAKER_MAP:
+          return '%s (%s)' % (SPEAKER_MAP[_key], _key)
+
 
 def _get_preferred_camera(peripheral):
-    """get string for the 1st cameras in the device list
-    @param peripheral:  of dictionary for usb devices
-    @returns: string for name of preferred camera
+    """get string for the 1st camera in the device list
+    @param peripheral: dictionary for usb devices
+    @returns: name of preferred camera
     """
     for _key in peripheral:
-        if _key in CAMERA_LIST:
-            camera_name = CAMERA_MAP[_key]+' ('+_key+')'
-            return camera_name
+        if _key in CAMERA_MAP:
+            return '%s (%s)' % (CAMERA_MAP[_key], _key)
+
 
 def _get_device_prod(vid_pid):
     """get product for vid_pid
     @param vid_pid: vid and pid combo for device
     @returns: product
     """
-    for _key in SPEAKER_MAP.keys():
-        if _key == vid_pid:
-            return SPEAKER_MAP[_key]
-    for _key in CAMERA_MAP.keys():
-        if _key == vid_pid:
-          return CAMERA_MAP[_key]
+    if vid_pid in SPEAKER_MAP:
+      return SPEAKER_MAP[vid_pid]
+    if vid_pid in CAMERA_MAP:
+      return CAMERA_MAP[vid_pid]
     return None
