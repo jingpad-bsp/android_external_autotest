@@ -51,6 +51,14 @@ class firmware_ECWakeSource(FirmwareTest):
         self.servo.set('lid_open', 'yes')
         self.switcher.wait_for_client()
 
+        logging.info("Close lid to suspend and wake by lid switch.")
+        self.servo.set('lid_open', 'no')
+        # Expect going to suspend, not pingable
+        self.switcher.wait_for_client_offline()
+        time.sleep(self.LID_DELAY)
+        self.servo.set('lid_open', 'yes')
+        self.switcher.wait_for_client()
+
         logging.info("EC hibernate and wake by power button.")
         self.hibernate_and_wake_by_power_button()
         self.switcher.wait_for_client()
