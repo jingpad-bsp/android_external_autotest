@@ -27,6 +27,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import test as test_utils
 from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import gbm
+from autotest_lib.client.cros.input_playback import input_playback
 from functools import wraps
 
 
@@ -55,6 +56,7 @@ class GraphicsTest(test.test):
         """Initialize flag setting."""
         super(GraphicsTest, self).__init__(*args, **kwargs)
         self._failures = []
+        self._player = None
 
     def initialize(self, raise_error_on_hang=False, *args, **kwargs):
         """Initial state checker and report initial value to perf dashboard."""
@@ -68,6 +70,11 @@ class GraphicsTest(test.test):
             units='count',
             higher_is_better=False
         )
+
+        # Enable the graphics tests to use keyboard interaction.
+        self._player = input_playback.InputPlayback()
+        self._player.emulate(input_type='keyboard')
+        self._player.find_connected_inputs()
 
         if hasattr(super(GraphicsTest, self), "initialize"):
             test_utils._cherry_pick_call(super(GraphicsTest, self).initialize,
@@ -94,6 +101,8 @@ class GraphicsTest(test.test):
                 units='count',
                 higher_is_better=False
             )
+
+        self._player.close()
 
         if hasattr(super(GraphicsTest, self), "cleanup"):
             test_utils._cherry_pick_call(super(GraphicsTest, self).cleanup,
@@ -184,6 +193,26 @@ class GraphicsTest(test.test):
         Get currently recorded failures list.
         """
         return list(self._failures)
+
+    def open_vt1(self):
+        """Switch to VT1 with keyboard."""
+        self._player.blocking_playback_of_default_file(
+            input_type='keyboard', filename='keyboard_ctrl+alt+f1')
+        time.sleep(5)
+
+    def open_vt2(self):
+        """Switch to VT2 with keyboard."""
+        self._player.blocking_playback_of_default_file(
+            input_type='keyboard', filename='keyboard_ctrl+alt+f2')
+        time.sleep(5)
+
+    def wake_screen_with_keyboard(self):
+        """Use the vt1 keyboard shortcut to bring the devices screen back on.
+
+        This is useful if you want to take screenshots of the UI. If you try
+        to take them while the screen is off, it will fail.
+        """
+        self.open_vt1()
 
 
 def screen_disable_blanking():
