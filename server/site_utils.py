@@ -949,6 +949,8 @@ def _report_result_size_metrics(result_size_info):
                                    fields=fields)
 
 
+@metrics.SecondsTimerDecorator(
+        'chromeos/autotest/result_collection/collect_result_sizes_duration')
 def collect_result_sizes(path, log=logging.debug):
     """Collect the result sizes information and build result summary.
 
