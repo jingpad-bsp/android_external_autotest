@@ -270,26 +270,6 @@ class platform_FilePerms(test.test):
     testmode_modded_fses = set(
         ['/home', '/tmp', '/usr/local', '/var/db/pkg', '/var/lib/portage'])
 
-    # TODO(yusukes): Remove shared_fonts_ variables once we switch to overlayfs.
-    shared_fonts_patterns = [(r'/opt/google/containers/android/rootfs/root/'
-                              r'system/fonts/.*\.tt[cf]'),
-                             (r'/run/containers/android/root/system/fonts/'
-                              r'.*\.tt[cf]')]
-    shared_fonts_expected_mount_options = {
-        'device': root_device,
-        # The fonts are bind-mounted versions of fonts in /usr/share/fonts. Use
-        # the same type and options for '/'.
-        'type': ['ext2'],
-        'options': ['ro'],
-    }
-
-
-    def _is_shared_font(self, fs):
-        for shared_fonts_pattern in self.shared_fonts_patterns:
-            if re.match(shared_fonts_pattern, fs):
-                return True
-        return False
-
 
     def checkid(self, fs, userid):
         """
@@ -475,9 +455,7 @@ class platform_FilePerms(test.test):
                     logging.warning('Ignoring filesystem "%s" with type "%s"',
                                  fs, fs_type)
                     continue
-                if self._is_shared_font(fs):
-                    mount_options = self.shared_fonts_expected_mount_options
-                elif fs in self.expected_mount_options:
+                if fs in self.expected_mount_options:
                     mount_options = self.expected_mount_options[fs]
                 else:
                     logging.error(
