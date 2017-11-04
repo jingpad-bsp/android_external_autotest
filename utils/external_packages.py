@@ -805,10 +805,11 @@ class PyMoxPackage(ExternalPackage):
     """
     module_name = 'mox'
     version = '0.5.3'
-    url_filename = 'mox-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('http://pypi.python.org/packages/source/m/mox/%s' % (
-        url_filename),)
+    # Note: url_filename does not match local_filename, because of
+    # an uncontrolled fork at some point in time of mox versions.
+    url_filename = 'mox-%s-autotest.tar.gz' % version
+    local_filename = 'mox-%s.tar.gz' % version
+    urls = (_CHROMEOS_MIRROR + url_filename,)
     hex_sum = '1c502d2c0a8aefbba2c7f385a83d33e7d822452a'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
