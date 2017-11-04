@@ -61,23 +61,23 @@ class ModelLabel(base_label.StringPrefixLabel):
     _NAME = ds_constants.MODEL_LABEL
 
     def generate_labels(self, host):
-        # Return the existing label if set to defend against any bad image
-        # pushes to the host.  See comment in BoardLabel for more details.
-        for label in host._afe_host.labels:
-            if label.startswith(self._NAME + ':'):
-                return [label.split(':')[-1]]
+        # TODO - Return the existing label once model labels become more stable.
 
-        cmd = 'mosys platform model'
-        result = host.run(command=cmd, ignore_status=True)
-        if result.exit_status == 0:
-            return [result.stdout.strip()]
-        else:
-            # We need some sort of backwards compatibility for boards that
-            # are not yet supported with mosys and unified builds.
-            # This is necessary so that we can begin changing cbuildbot to take
-            # advantage of the model/board label differentiations for
-            # scheduling, while still retaining backwards compatibility.
-            return [_parse_lsb_output(host).board]
+        lsb_output = _parse_lsb_output(host)
+        model = None
+
+        if lsb_output.unibuild:
+            cmd = 'mosys platform model'
+            result = host.run(command=cmd, ignore_status=True)
+            if result.exit_status == 0:
+                model = result.stdout.strip()
+
+        # We need some sort of backwards compatibility for boards that
+        # are not yet supported with mosys and unified builds.
+        # This is necessary so that we can begin changing cbuildbot to take
+        # advantage of the model/board label differentiations for
+        # scheduling, while still retaining backwards compatibility.
+        return [model or lsb_output.board]
 
 
 class LightSensorLabel(base_label.BaseLabel):
