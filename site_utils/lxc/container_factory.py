@@ -8,7 +8,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc import constants
-from autotest_lib.site_utils.lxc.container import Container
+from autotest_lib.site_utils.lxc import container
 
 try:
     from chromite.lib import metrics
@@ -17,11 +17,11 @@ except ImportError:
 
 
 class ContainerFactory(object):
-    """A factory class for creating LXC container objects.
-    """
+    """A factory class for creating LXC container objects."""
 
-    def __init__(self, base_container, container_class=Container, snapshot=True,
-                 force_cleanup=False):
+    def __init__(self, base_container, container_class=container.Container,
+                 snapshot=True, force_cleanup=False,
+                 lxc_path=constants.DEFAULT_CONTAINER_PATH):
         """Initializes a ContainerFactory.
 
         @param base_container: The base container from which other containers
@@ -36,35 +36,54 @@ class ContainerFactory(object):
                               and the new container created in its place. By
                               default, existing containers are not destroyed and
                               a ContainerError is raised.
+        @param lxc_path: (optional) The default LXC path that will be used for
+                         new containers.  If one is not provided, the
+                         DEFAULT_CONTAINER_PATH from lxc.constants will be used.
+                         Note that even if a path is provided here, it can still
+                         be overridden when create_container is called.
         """
         self._container_class = container_class
         self._base_container = base_container
         self._snapshot = snapshot
         self._force_cleanup = force_cleanup
+        self._lxc_path = lxc_path
 
 
-    def create_container(self, cid, path):
+    def create_container(self, cid=None, lxc_path=None):
         """Creates a new container.
 
-        @param cid: A ContainerId for the new container.
-        @param path: The LXC path for the new container.
+        @param cid: (optional) A ContainerId for the new container.  If an ID is
+                    provided, it determines both the name and the ID of the
+                    container.  If no ID is provided, a random name is generated
+                    for the container, and it is not assigned an ID.
+        @param lxc_path: (optional) The LXC path for the new container.  If one
+                         is not provided, the factory's default lxc_path
+                         (specified when the factory was constructed) is used.
         """
-        # Legacy: use the string representation of the ContainerId as its name.
-        name = str(cid)
-        container = self._create_from_base(name, path)
-        container.id = cid
-        return container
+        if lxc_path is None:
+            lxc_path = self._lxc_path
+        # If an ID is provided, use it as the container name.
+        new_container = self._create_from_base(name=str(cid) if cid else None,
+                                               lxc_path=lxc_path)
+        # If an ID is provided, assign it to the container.  When the container
+        # is created just-in-time by the container bucket, this ensures that the
+        # resulting container is correctly registered with the autoserv system.
+        # If the container is being created by a container pool, the ID will be
+        # assigned later, when the continer is bound to an actual test process.
+        if cid:
+            new_container.id = cid
+        return new_container
 
 
     # create_from_base_duration is the original name of the metric.  Keep this
     # so we have history.
     @metrics.SecondsTimerDecorator(
             '%s/create_from_base_duration' % constants.STATS_KEY)
-    def _create_from_base(self, name, container_path):
+    def _create_from_base(self, name, lxc_path):
         """Creates a container from the base container.
 
         @param name: Name of the container.
-        @param container_path: The LXC path of the new container.
+        @param lxc_path: The LXC path of the new container.
 
         @return: A Container object for the created container.
 
@@ -76,7 +95,7 @@ class ContainerFactory(object):
         try:
             return self._container_class.clone(src=self._base_container,
                                                new_name=name,
-                                               new_path=container_path,
+                                               new_path=lxc_path,
                                                snapshot=use_snapshot,
                                                cleanup=self._force_cleanup)
         except error.CmdError:
@@ -86,10 +105,8 @@ class ContainerFactory(object):
                 raise
             else:
                 # Snapshot clone failed, retry clone without snapshot.
-                container = self._container_class.clone(
-                        src=self._base_container,
-                        new_name=name,
-                        new_path=container_path,
-                        snapshot=False,
-                        cleanup=self._force_cleanup)
-                return container
+                return self._container_class.clone(src=self._base_container,
+                                                   new_name=name,
+                                                   new_path=lxc_path,
+                                                   snapshot=False,
+                                                   cleanup=self._force_cleanup)
