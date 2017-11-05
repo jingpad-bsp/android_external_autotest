@@ -72,8 +72,7 @@ def get_bluetooth_emulated_device(host, device_type):
 
     """
 
-    # TODO(josephsih): Make legal_falsy_values=[] by default.
-    def _retry_device_method(method_name, legal_falsy_values=[0]):
+    def _retry_device_method(method_name, legal_falsy_values=[]):
         """retry the emulated device's method.
 
         The method is invoked as device.xxxx() e.g., device.GetAdvertisedName().
@@ -233,8 +232,7 @@ def _reboot_chameleon(host, device):
     return True
 
 
-# TODO(josephsih): Make legal_falsy_values=[] by default.
-def _is_successful(result, legal_falsy_values=[0]):
+def _is_successful(result, legal_falsy_values=[]):
     """Is the method result considered successful?
 
     Some method results, for example that of class_of_service, may be 0 which is
