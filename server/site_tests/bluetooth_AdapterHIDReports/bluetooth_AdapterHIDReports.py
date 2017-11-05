@@ -53,6 +53,7 @@ class bluetooth_AdapterHIDReports(
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         self.bluetooth_facade = factory.create_bluetooth_hid_facade()
         self.input_facade = factory.create_input_facade()
+        self.check_chameleon()
 
         pass_count = 0
         self.total_fails = {}

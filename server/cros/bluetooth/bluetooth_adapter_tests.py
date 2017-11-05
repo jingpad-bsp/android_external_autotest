@@ -2066,6 +2066,19 @@ class BluetoothAdapterTests(test.test):
         # The count of registered advertisements.
         self.count_advertisements = 0
 
+
+    def check_chameleon(self):
+        """Check the existence of chameleon_host.
+
+        The chameleon_host is specified in --args as follows
+
+        (cr) $ test_that --args "chameleon_host=$CHAMELEON_IP" "$DUT_IP" <test>
+
+        """
+        if self.host.chameleon is None:
+            raise error.TestError('Have to specify chameleon_host IP.')
+
+
     def run_once(self, *args, **kwargs):
         """This method should be implemented by children classes.
 
