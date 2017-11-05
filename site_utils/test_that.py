@@ -117,6 +117,9 @@ def _parse_arguments_internal(argv):
                         action='store',
                         help='Board for which the test will run. Default: %s' %
                              (default_board or 'Not configured'))
+    parser.add_argument('-m', '--model', metavar='MODEL', default='',
+                        help='Specific model the test will run against. '
+                             'Matches the model:FAKE_MODEL label for the host.')
     parser.add_argument('-i', '--build', metavar='BUILD',
                         default=test_runner_utils.NO_BUILD,
                         help='Build to test. Device will be reimaged if '
@@ -314,6 +317,7 @@ def _main_for_lab_run(argv, arguments):
                             'run_suite.py'),
                '--board=%s' % (arguments.board,),
                '--build=%s' % (arguments.build,),
+               '--model=%s' % (arguments.model,),
                '--suite_name=%s' % 'test_that_wrapper',
                '--pool=%s' % (arguments.pool,),
                '--max_runtime_mins=%s' % str(arguments.max_runtime_mins),

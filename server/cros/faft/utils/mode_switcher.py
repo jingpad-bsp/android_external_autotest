@@ -612,7 +612,7 @@ class _BaseModeSwitcher(object):
             self.faft_framework._stop_service('update-engine')
         else:
             logging.error('wait_for_client() timed out.')
-            raise ConnectionError()
+            raise ConnectionError('DUT is still down unexpectedly')
         logging.info("-[FAFT]-[ end wait_for_client ]-----")
 
 
@@ -634,7 +634,7 @@ class _BaseModeSwitcher(object):
             if orig_boot_id and self.client_host.get_boot_id() != orig_boot_id:
                 logging.warn('Reboot done very quickly.')
                 return
-            raise ConnectionError()
+            raise ConnectionError('DUT is still up unexpectedly')
 
 
 class _PhysicalButtonSwitcher(_BaseModeSwitcher):
@@ -756,7 +756,7 @@ class _RyuSwitcher(_BaseModeSwitcher):
         @raise ConnectionError: Failed to connect DUT.
         """
         if not self.faft_client.system.wait_for_client(timeout):
-            raise ConnectionError()
+            raise ConnectionError('DUT is still down unexpectedly')
 
         # there's a conflict between fwtool and crossystem trying to access
         # the nvram after the OS boots up.  Temporarily put a hard wait of
@@ -773,7 +773,7 @@ class _RyuSwitcher(_BaseModeSwitcher):
         """
         # TODO: Add a way to check orig_boot_id
         if not self.faft_client.system.wait_for_client_offline(timeout):
-            raise ConnectionError()
+            raise ConnectionError('DUT is still up unexpectedly')
 
     def print_recovery_warning(self):
         """Print recovery warning"""

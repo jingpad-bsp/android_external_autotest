@@ -159,52 +159,53 @@ class Container(object):
     # container.  The ID is the actual key that is used to identify the
     # container to the autoserv system.  In the case of a JIT-created container,
     # we have the ID at the container's creation time so we use that to name the
-    # container.  This may not be the case for other types of containers.  The
-    # new_id parameter is temporarily added here while the code is being
-    # transitioned from being name-based to id-based.
-    # TODO(kenobi): Complete transition to id-based container identification.
+    # container.  This may not be the case for other types of containers.
     @classmethod
-    def clone(cls, src, new_name, new_path=None, snapshot=False, cleanup=False,
-              new_id=None):
+    def clone(cls, src, new_name=None, new_path=None, snapshot=False,
+              cleanup=False):
         """Creates a clone of this container.
 
         @param src: The original container.
-        @param new_name: Name for the cloned container.
+        @param new_name: Name for the cloned container.  If this is not
+                         provided, a random unique container name will be
+                         generated.
         @param new_path: LXC path for the cloned container (optional; if not
-                specified, the new container is created in the same directory as
-                the source container).
+                         specified, the new container is created in the same
+                         directory as the source container).
         @param snapshot: Whether to snapshot, or create a full clone.  Note that
                          snapshot cloning is not supported on all platforms.  If
                          this code is running on a platform that does not
                          support snapshot clones, this flag is ignored.
         @param cleanup: If a container with the given name and path already
-                exist, clean it up first.
-        @param new_id: An optional ContainerId to assign to the new container.
+                        exist, clean it up first.
         """
         if new_path is None:
             new_path = src.container_path
 
-        # If a container exists at this location, clean it up first
-        container_folder = os.path.join(new_path, new_name)
-        if lxc_utils.path_exists(container_folder):
-            if not cleanup:
-                raise error.ContainerError('Container %s already exists.' %
-                                           new_name)
-            container = Container.create_from_existing_dir(new_path, new_name)
-            try:
-                container.destroy()
-            except error.CmdError as e:
-                # The container could be created in a incompleted state. Delete
-                # the container folder instead.
-                logging.warn('Failed to destroy container %s, error: %s',
-                             new_name, e)
-                utils.run('sudo rm -rf "%s"' % container_folder)
+        if new_name is None:
+            _, new_name = os.path.split(
+                tempfile.mkdtemp(dir=new_path, prefix='container.'))
+            logging.debug('Generating new name for container: %s', new_name)
+        else:
+            # If a container exists at this location, clean it up first
+            container_folder = os.path.join(new_path, new_name)
+            if lxc_utils.path_exists(container_folder):
+                if not cleanup:
+                    raise error.ContainerError('Container %s already exists.' %
+                                               new_name)
+                container = Container.create_from_existing_dir(new_path,
+                                                               new_name)
+                try:
+                    container.destroy()
+                except error.CmdError as e:
+                    # The container could be created in a incompleted
+                    # state. Delete the container folder instead.
+                    logging.warn('Failed to destroy container %s, error: %s',
+                                 new_name, e)
+                    utils.run('sudo rm -rf "%s"' % container_folder)
 
         # Create and return the new container.
         new_container = cls(new_path, new_name, {}, src, snapshot)
-        # Set the container ID.
-        if new_id is not None:
-            new_container.id = new_id
 
         return new_container
 

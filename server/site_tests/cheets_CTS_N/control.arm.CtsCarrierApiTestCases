@@ -14,7 +14,7 @@ TIME = 'LENGTHY'
 MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsCarrierApiTestCases of the '
-       'Android 7.1_r10 Compatibility Test Suite (CTS), build 4372030,'
+       'Android 7.1_r11 Compatibility Test Suite (CTS), build 4401468,'
        'using arm ABI in the ARC++ container.')
 
 def run_CTS(machine):

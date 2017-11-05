@@ -6,13 +6,11 @@ import logging
 import os
 import time
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.image_comparison import pdiff_image_comparer
-from autotest_lib.client.cros.input_playback import input_playback
 
 def get_percent_difference(file1, file2):
     """
@@ -42,24 +40,6 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
     _WAIT = 5
     # TODO(crosbug.com/36417): Need to handle more than one display screen.
 
-    def initialize(self):
-        super(graphics_VTSwitch, self).initialize()
-        self._player = input_playback.InputPlayback()
-        self._player.emulate(input_type='keyboard')
-        self._player.find_connected_inputs()
-
-    def _open_vt2(self):
-        """Use keyboard shortcut to open VT2."""
-        self._player.blocking_playback_of_default_file(
-            input_type='keyboard', filename='keyboard_ctrl+alt+f2')
-        time.sleep(self._WAIT)
-
-    def _open_vt1(self):
-        """Use keyboard shortcut to close VT2."""
-        self._player.blocking_playback_of_default_file(
-            input_type='keyboard', filename='keyboard_ctrl+alt+f1')
-        time.sleep(self._WAIT)
-
     @graphics_utils.GraphicsTest.failure_report_decorator('graphics_VTSwitch')
     def run_once(self,
                  num_iterations=2,
@@ -74,7 +54,7 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
         keyvals = {}
 
         # Make sure we start in VT1.
-        self._open_vt1()
+        self.open_vt1()
 
         with chrome.Chrome():
 
@@ -84,7 +64,7 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
             keyvals['num_iterations'] = num_iterations
 
             # Go to VT2 and take a screenshot.
-            self._open_vt2()
+            self.open_vt2()
             vt2_screenshot = self._take_current_vt_screenshot(2)
 
             # Make sure VT1 and VT2 are sufficiently different.
@@ -106,7 +86,7 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
                 logging.info('Iteration #%d', iteration)
 
                 # Go to VT1 and take a screenshot.
-                self._open_vt1()
+                self.open_vt1()
                 current_vt1_screenshot = self._take_current_vt_screenshot(1)
 
                 # Make sure the current VT1 screenshot is the same as (or similar
@@ -124,7 +104,7 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
                     num_identical_vt1_screenshots += 1
 
                 # Go to VT2 and take a screenshot.
-                self._open_vt2()
+                self.open_vt2()
                 current_vt2_screenshot = self._take_current_vt_screenshot(2)
 
                 # Make sure the current VT2 screenshot is the same as (or
@@ -141,7 +121,7 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
                 else:
                     num_identical_vt2_screenshots += 1
 
-        self._open_vt1()
+        self.open_vt1()
 
         keyvals['percent_VT1_screenshot_max_difference'] = \
             max_vt1_difference_percent
@@ -201,6 +181,5 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
     def cleanup(self):
         # Return to VT1 when done.  Ideally, the screen should already be in VT1
         # but the test might fail and terminate while in VT2.
-        self._open_vt1()
-        self._player.close()
+        self.open_vt1()
         super(graphics_VTSwitch, self).cleanup()

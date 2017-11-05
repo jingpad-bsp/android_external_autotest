@@ -14,6 +14,7 @@ filter from Omaha server).
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 ATTRIBUTES = "suite:bvt-perbuild"
+JOB_RETRIES = 2
 
 DOC = """
 This is a test that emulates following user behavior:

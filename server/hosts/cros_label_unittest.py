@@ -91,12 +91,20 @@ class ModelLabelTests(unittest.TestCase):
     """Unit tests for ModelLabel"""
 
     def test_mosys_succeeds(self):
-        host = MockHost([], MockCmd('mosys platform model', 0, 'coral\n'))
+        cat_lsb_release_output = '''
+CHROMEOS_RELEASE_BOARD=pyro
+CHROMEOS_RELEASE_UNIBUILD=1
+'''
+        host = MockHost(
+            [],
+            MockCmd('mosys platform model', 0, 'coral\n'),
+            MockCmd('cat /etc/lsb-release', 0, cat_lsb_release_output))
         self.assertEqual(ModelLabel().generate_labels(host), ['coral'])
 
     def test_mosys_fails(self):
         cat_lsb_release_output = '''
 CHROMEOS_RELEASE_BOARD=pyro
+CHROMEOS_RELEASE_UNIBUILD=1
 '''
         host = MockHost(
             [],
@@ -104,9 +112,23 @@ CHROMEOS_RELEASE_BOARD=pyro
             MockCmd('cat /etc/lsb-release', 0, cat_lsb_release_output))
         self.assertEqual(ModelLabel().generate_labels(host), ['pyro'])
 
-    def test_existing_label(self):
-        host = MockHost(['model:existing'])
-        self.assertEqual(ModelLabel().generate_labels(host), ['existing'])
+    def test_mosys_only_used_for_unibuilds(self):
+        cat_lsb_release_output = '''
+CHROMEOS_RELEASE_BOARD=pyro
+'''
+        host = MockHost(
+            [],
+            MockCmd('cat /etc/lsb-release', 0, cat_lsb_release_output))
+        self.assertEqual(ModelLabel().generate_labels(host), ['pyro'])
+
+    def test_existing_label_ignored(self):
+        cat_lsb_release_output = '''
+CHROMEOS_RELEASE_BOARD=coral
+'''
+        host = MockHost(
+            [],
+            MockCmd('cat /etc/lsb-release', 0, cat_lsb_release_output))
+        self.assertEqual(ModelLabel().generate_labels(host), ['coral'])
 
 
 class BoardLabelTests(unittest.TestCase):

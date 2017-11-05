@@ -109,7 +109,7 @@ def loopback_latency_check(**args):
     """
     noise_threshold = str(args['n']) if args.has_key('n') else '400'
 
-    cmd = '%s -n %s' % (LOOPBACK_LATENCY_PATH, noise_threshold)
+    cmd = '%s -n %s -c' % (LOOPBACK_LATENCY_PATH, noise_threshold)
 
     output = utils.system_output(cmd, retain_output=True)
 
