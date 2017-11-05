@@ -17,6 +17,9 @@ from autotest_lib.server import test
 from autotest_lib.client.bin.input.linux_input import (
         BTN_LEFT, BTN_RIGHT, EV_KEY, EV_REL, REL_X, REL_Y, REL_WHEEL)
 
+
+REBOOTING_CHAMELEON = False
+
 Event = recorder.Event
 
 
@@ -206,6 +209,10 @@ def recreate_serial_device(device):
 
 def _reboot_chameleon(host, device):
     REBOOT_SLEEP_SECS = 40
+
+    if not REBOOTING_CHAMELEON:
+        logging.info('Skip rebooting chameleon.')
+        return False
 
     # Close the bluetooth peripheral device and reboot the chameleon board.
     device.Close()
