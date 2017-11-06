@@ -1974,6 +1974,22 @@ def get_mem_free():
     mem_free = _get_float_from_file(_MEMINFO, 'MemFree:', 'MemFree:', ' kB')
     return mem_free / 1024
 
+def get_mem_free_plus_buffers_and_cached():
+    """
+    Returns the free memory in MBytes, counting buffers and cached as free.
+
+    This is most often the most interesting number since buffers and cached
+    memory can be reclaimed on demand. Note however, that there are cases
+    where this as misleading as well, for example used tmpfs space
+    count as Cached but can not be reclaimed on demand.
+    See https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt.
+    """
+    free_mb = get_mem_free()
+    cached_mb = (_get_float_from_file(
+        _MEMINFO, 'Cached:', 'Cached:', ' kB') / 1024)
+    buffers_mb = (_get_float_from_file(
+        _MEMINFO, 'Buffers:', 'Buffers:', ' kB') / 1024)
+    return free_mb + buffers_mb + cached_mb
 
 def get_kernel_max():
     """
