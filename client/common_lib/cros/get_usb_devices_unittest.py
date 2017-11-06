@@ -30,6 +30,11 @@ class GetDevicesTest(unittest.TestCase):
 
     self.assertIsNone(get_usb_devices._get_device_prod('invalid'))
 
+  def test_get_vid_pid(self):
+    vid, pid = get_usb_devices._get_vid_and_pid('123:456')
+    self.assertEquals(vid, '123')
+    self.assertEquals(pid, '456')
+
 
 if __name__ == "__main__":
     unittest.main()
