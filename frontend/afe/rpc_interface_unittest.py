@@ -332,67 +332,83 @@ class RpcInterfaceTest(unittest.TestCase,
         job = self._create_job(shard=shard, control_file='foo')
         HqeStatus = models.HostQueueEntry.Status
 
-        for i, day in enumerate(['2017-01-01', '2017-01-02', '2017-01-03']):
-            models.HostQueueEntryStartTimes(
-                insert_time=day, highest_hqe_id=i*2).save()
-            models.HostQueueEntry(
-                id=i*2, job=job, started_on=day,
-                status=HqeStatus.QUEUED).save()
-            models.HostQueueEntry(
-                id=i*2 + 1, job=job, started_on=day + ' 12:00:00',
-                status=HqeStatus.QUEUED).save()
+        models.HostQueueEntry(
+            id=1, job=job, started_on='2017-01-01',
+            status=HqeStatus.QUEUED).save()
+        models.HostQueueEntry(
+            id=2, job=job, started_on='2017-01-02',
+            status=HqeStatus.QUEUED).save()
+        models.HostQueueEntry(
+            id=3, job=job, started_on='2017-01-03',
+            status=HqeStatus.QUEUED).save()
 
-    def test_get_hqe_by_insert_time_lower_bounds(self):
-        """Check the started_on__gte constraints."""
+        models.HostQueueEntryStartTimes(
+            insert_time='2017-01-03', highest_hqe_id=3).save()
+        models.HostQueueEntryStartTimes(
+            insert_time='2017-01-02', highest_hqe_id=2).save()
+        models.HostQueueEntryStartTimes(
+            insert_time='2017-01-01', highest_hqe_id=1).save()
+
+    def test_get_host_queue_entries_by_insert_time(self):
+        """Check the insert_time_after and insert_time_before constraints."""
         self._create_hqes_and_start_time_index_entries()
         hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__gte='2017-01-01')
-        self.assertEquals(len(hqes), 6)
-
-        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__gte='2017-01-02')
-        self.assertEquals(len(hqes), 4)
-
-        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__gte='2017-01-03')
-        self.assertEquals(len(hqes), 2)
-
-    def test_get_hqe_by_insert_time_upper_bounds(self):
-        """Check the started_on__lte constraints."""
-        self._create_hqes_and_start_time_index_entries()
-        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-01')
-        self.assertEquals(len(hqes), 1)
-
-        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-02')
+            insert_time_after='2017-01-01')
         self.assertEquals(len(hqes), 3)
 
         hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-03')
-        self.assertEquals(len(hqes), 5)
+            insert_time_after='2017-01-02')
+        self.assertEquals(len(hqes), 2)
+
+        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
+            insert_time_after='2017-01-03')
+        self.assertEquals(len(hqes), 1)
+
+        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
+            insert_time_before='2017-01-01')
+        self.assertEquals(len(hqes), 1)
+
+        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
+            insert_time_before='2017-01-02')
+        self.assertEquals(len(hqes), 2)
+
+        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
+            insert_time_before='2017-01-03')
+        self.assertEquals(len(hqes), 3)
+
+
+    def test_get_host_queue_entries_by_insert_time_with_missing_index_row(self):
+        """Shows that the constraints are approximate.
+
+        The query may return rows which are actually outside of the bounds
+        given, if the index table does not have an entry for the specific time.
+        """
+        self._create_hqes_and_start_time_index_entries()
+        hqes = rpc_interface.get_host_queue_entries_by_insert_time(
+            insert_time_before='2016-12-01')
+        self.assertEquals(len(hqes), 1)
 
     def test_get_hqe_by_insert_time_with_before_and_after(self):
         self._create_hqes_and_start_time_index_entries()
         hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-02 13:00:00',
-            started_on__gte='2017-01-02')
-        self.assertEquals(len(hqes), 2)
+            insert_time_before='2017-01-02',
+            insert_time_after='2017-01-02')
+        self.assertEquals(len(hqes), 1)
 
     def test_get_hqe_by_insert_time_and_id_constraint(self):
         self._create_hqes_and_start_time_index_entries()
-        # The time constraint is looser than the id constraint, so the id
+        # The time constraint is looser than the id constraint, so the time
         # constraint should take precedence.
         hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-02',
+            insert_time_before='2017-01-02',
             id__lte=1)
-        self.assertEquals(len(hqes), 2)
+        self.assertEquals(len(hqes), 1)
 
         # Now make the time constraint tighter than the id constraint.
         hqes = rpc_interface.get_host_queue_entries_by_insert_time(
-            started_on__lte='2017-01-02',
+            insert_time_before='2017-01-01',
             id__lte=42)
-        self.assertEquals(len(hqes), 3)
+        self.assertEquals(len(hqes), 1)
 
     def test_view_invalid_host(self):
         # RPCs used by View Host page should work for invalid hosts
