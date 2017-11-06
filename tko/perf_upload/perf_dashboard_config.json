@@ -704,6 +704,10 @@
     "master_name": "ChromeOSVideo"
   },
   {
+    "autotest_name": "video_YouTubeHTML5",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "video_WebRtcMainFeedSwitching.perf",
     "master_name": "ChromeOSWebRtcVideo"
   },
