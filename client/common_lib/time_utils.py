@@ -9,10 +9,12 @@ import time
 
 from autotest_lib.client.common_lib import decorators
 
+
 try:
     import pytz
 except ImportError:
     pytz = None
+
 
 try:
     import tzlocal
