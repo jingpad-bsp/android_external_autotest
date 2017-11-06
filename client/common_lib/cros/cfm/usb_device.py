@@ -7,13 +7,13 @@ class UsbDevice(object):
   """Utility class representing a CfM USB device."""
 
   def __init__(self, vid, pid, name, interfaces):
-    """Constructor.
+    """
+    Constructor.
 
-    Args:
-      vid: Vendor ID. String.
-      pid: Product ID. String.
-      name: Human readable name. String.
-      interfaces: List of strings
+    @param vid: Vendor ID. String.
+    @param pid: Product ID. String.
+    @param name: Human readable name. String.
+    @param interfaces: List of strings
     """
     self._vid = vid
     self._pid = pid
@@ -37,7 +37,7 @@ class UsbDevice(object):
 
   @property
   def name(self):
-    """Returns the human friendly name for thsi USB device."""
+    """Returns the human friendly name for this USB device."""
     return self._name
 
   @property
