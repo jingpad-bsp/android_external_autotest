@@ -74,18 +74,25 @@ class TestUtils(unittest.TestCase):
         self.assert_is_close(usage, 0)
 
     def test_get_mem_total(self):
-        self.fake_file_text = ('MemTotal:  2048000\n'
-                               'MemFree:  307200\n'
-                               'Buffers:  102400\n'
-                               'Cached:   204800\n')
-        self.assertEqual(utils.get_mem_total(), 2000)
+        self.fake_file_text = ('MemTotal:  2048000 kB\n'
+                               'MemFree:  307200 kB\n'
+                               'Buffers:  102400 kB\n'
+                               'Cached:   204800 kB\n')
+        self.assert_is_close(utils.get_mem_total(), 2000)
 
     def test_get_mem_free(self):
-        self.fake_file_text = ('MemTotal:  2048000\n'
-                               'MemFree:  307200\n'
-                               'Buffers:  102400\n'
-                               'Cached:   204800\n')
-        self.assertEqual(utils.get_mem_free(), 300)
+        self.fake_file_text = ('MemTotal:  2048000 kB\n'
+                               'MemFree:  307200 kB\n'
+                               'Buffers:  102400 kB\n'
+                               'Cached:   204800 kB\n')
+        self.assert_is_close(utils.get_mem_free(), 300)
+
+    def test_get_mem_free_plus_buffers_and_cached(self):
+        self.fake_file_text = ('MemTotal:  2048000 kB\n'
+                               'MemFree:  307200 kB\n'
+                               'Buffers:  102400 kB\n'
+                               'Cached:   204800 kB\n')
+        self.assert_is_close(utils.get_mem_free_plus_buffers_and_cached(), 600)
 
     def assert_is_close(self, a, b, allowed_delta = 0.0000001):
         """
