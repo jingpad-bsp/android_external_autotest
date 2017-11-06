@@ -932,10 +932,19 @@ class FirmwareTest(FAFTBase):
             self.faft_client.system.run_shell_command('mmc status get %s' %
                                                       device)
         elif 'nvme' in device:
-            # For NVMe devices, use `nvme flush` command to commit data
-            # and metadata to non-volatile media.
-            self.faft_client.system.run_shell_command('nvme flush %s' %
-                                                      device)
+            # Get a list of NVMe namespace and flush them individually
+            # Assumes the output format from nvme list-ns command will
+            # be something like follows:
+            # [ 0]:0x1
+            # [ 1]:0x2
+            available_ns = self.faft_client.system.run_shell_command_get_output(
+                                                  'nvme list-ns %s -a' % device)
+            for ns in available_ns:
+                ns = ns.split(':')[-1]
+                # For NVMe devices, use `nvme flush` command to commit data
+                # and metadata to non-volatile media.
+                self.faft_client.system.run_shell_command(
+                                 'nvme flush %s -n %s' % (device, ns))
         else:
             # For other devices, hdparm sends TUR to check if
             # a device is ready for transfer operation.
