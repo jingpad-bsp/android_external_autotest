@@ -133,11 +133,12 @@ def _delete_missing_entries(summary_old, summary_new):
                 # Remove the file from the summary as it can be ignored.
                 summary_old.remove_file(name)
             else:
-                # Before setting the trimmed size to 0, update the collected
-                # size if it's not set yet.
-                if not old_file.is_collected_size_recorded:
-                    old_file.collected_size = old_file.trimmed_size
-                old_file.trimmed_size = 0
+                with old_file.disable_updating_parent_size_info():
+                    # Before setting the trimmed size to 0, update the collected
+                    # size if it's not set yet.
+                    if not old_file.is_collected_size_recorded:
+                        old_file.collected_size = old_file.trimmed_size
+                    old_file.trimmed_size = 0
         elif old_file.is_dir:
             # If `name` is a directory in the old summary, but a file in the new
             # summary, delete the entry in the old summary.
