@@ -41,8 +41,9 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     def _memory_usage(self):
         """Returns total used memory in %."""
         total_memory = self.system_facade.get_mem_total()
-        return ((total_memory - self.system_facade.get_mem_free())
-                * 100 / total_memory)
+        free_memory = self.system_facade.get_mem_free_plus_buffers_and_cached()
+        used_memory = total_memory - free_memory
+        return (used_memory * 100) / total_memory
 
 
     def _temperature_data(self):
