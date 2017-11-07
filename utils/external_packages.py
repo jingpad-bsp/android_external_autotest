@@ -740,8 +740,7 @@ class GwtPackage(ExternalPackage):
 
     version = '2.3.0'
     local_filename = 'gwt-%s.zip' % version
-    urls = ('https://storage.googleapis.com/google-code-archive-downloads/'
-            'v2/code.google.com/google-web-toolkit/' + local_filename,)
+    urls = (_CHROMEOS_MIRROR + local_filename,)
     hex_sum = 'd51fce9166e6b31349659ffca89baf93e39bc84b'
     name = 'gwt'
     about_filename = 'about.txt'
