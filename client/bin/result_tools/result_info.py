@@ -6,7 +6,6 @@
 """
 
 import contextlib
-import copy
 import json
 import os
 
@@ -565,17 +564,19 @@ class ResultInfo(dict):
         self.update_trimmed_size()
         self.update_collected_size()
 
-    def set_parent_result_info(self, parent_result_info):
+    def set_parent_result_info(self, parent_result_info, update_sizes=True):
         """Set the parent result info.
 
         It's used when a ResultInfo object is moved to a different file
         structure.
 
         @param parent_result_info: A ResultInfo object for the parent directory.
+        @param update_sizes: True to update the parent's size information. Set
+                it to False to delay the update for better performance.
         """
         self._parent_result_info = parent_result_info
         # As the parent reference changed, update all sizes of the parent.
-        if parent_result_info:
+        if parent_result_info and update_sizes:
             self._parent_result_info.update_sizes()
 
     def merge(self, new_info, is_final=False):
@@ -628,14 +629,19 @@ class ResultInfo(dict):
         """
         new_files = new_info.get_file_names()
         old_files = self.get_file_names()
+        # A flag to indicate if the sizes need to be updated. It's required when
+        # child result_info is added to `self`.
+        update_sizes_pending = False
         for name in new_files:
             new_file = new_info.get_file(name)
             if not name in old_files:
                 # A file/dir exists in new client dir, but not in the old one,
                 # which means that the file or a directory is newly collected.
-                copy_file = copy.deepcopy(new_file)
-                self.files.append(copy_file)
-                copy_file.set_parent_result_info(self)
+                self.files.append(new_file)
+                # Once parent_result_info is changed, new_file object will no
+                # longer associated with `new_info` object.
+                new_file.set_parent_result_info(self, update_sizes=False)
+                update_sizes_pending = True
             elif new_file.is_dir:
                 # `name` is a directory in the new ResultInfo, try to merge it
                 # with the current ResultInfo.
@@ -707,6 +713,9 @@ class ResultInfo(dict):
                     new_size != new_trimmed_size):
                     old_file.trimmed_size = new_file.trimmed_size
                 old_file.original_size = new_size
+
+        if update_sizes_pending:
+            self.update_sizes()
 
 
 # An empty directory, used to compare with a ResultInfo.
