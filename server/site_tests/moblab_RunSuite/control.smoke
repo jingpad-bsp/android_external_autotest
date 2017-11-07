@@ -34,8 +34,7 @@ Values pertaining to the test case include:
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import utils
 
-MOBLAB_AUTOTEST_FOLDERS = ['/usr/local/autotest/results',
-                           '/usr/local/autotest/logs']
+MOBLAB_AUTOTEST_FOLDERS = ['/usr/local/autotest/logs']
 
 
 def run(machine):

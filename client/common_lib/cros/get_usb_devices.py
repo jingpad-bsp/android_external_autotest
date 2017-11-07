@@ -65,7 +65,7 @@ INTERFACES_LIST = {'2bd9:0011':['uvcvideo', 'uvcvideo',
 
 def _extract_usb_data(rawdata):
     """populate usb data into list dictionary
-    @param rawdata: The output of "usb-devices" on CfM.
+    @param rawdata The output of "usb-devices" on CfM.
     @returns list of dictionary, examples:
     {'Manufacturer': 'USBest Technology', 'Product': 'SiS HID Touch Controller',
      'Vendor': '266e', 'intindex': ['0'], 'tport': '00', 'tcnt': '01',
@@ -83,8 +83,8 @@ def _extract_usb_data(rawdata):
 
 def _extract_peri_device(usbdata, vid_pid):
     """retrieve the list of dictionary for certain types of VID_PID
-    @param usbdata:  list of dictionary for usb devices
-    @param vid_pid: list of vid_pid combination
+    @param usbdata  list of dictionary for usb devices
+    @param vid_pid list of vid_pid combination
     @returns the list of dictionary for certain types of VID_PID
     """
     vid_pid_usb_list = []
@@ -99,7 +99,7 @@ def _extract_peri_device(usbdata, vid_pid):
 
 def _get_list_audio_device(usbdata):
     """retrieve the list of dictionary for all audio devices
-    @param usbdata:  list of dictionary for usb devices
+    @param usbdata list of dictionary for usb devices
     @returns the list of dictionary for all audio devices
     """
     audio_device_list = []
@@ -111,7 +111,7 @@ def _get_list_audio_device(usbdata):
 
 def _get_list_video_device(usbdata):
     """retrieve the list of dictionary for all video devices
-    @param usbdata:  list of dictionary for usb devices
+    @param usbdata list of dictionary for usb devices
     @returns the list of dictionary for all video devices
     """
     video_device_list = []
@@ -123,7 +123,7 @@ def _get_list_video_device(usbdata):
 
 def _get_list_mimo_device(usbdata):
     """retrieve the list of dictionary for all touch panel devices
-    @param usbdata:  list of dictionary for usb devices
+    @param usbdata list of dictionary for usb devices
     @returns the lists of dictionary
              one for displaylink, the other for touch controller
     """
@@ -139,7 +139,7 @@ def _get_list_mimo_device(usbdata):
 
 def _get_list_by_product(usbdata, product_name):
     """retrieve the list of dictionary based on product_name
-    @param usbdata:  list of dictionary for usb devices
+    @param usbdata list of dictionary for usb devices
     @returns the list of dictionary
     """
     usb_list_by_product = []
@@ -151,7 +151,7 @@ def _get_list_by_product(usbdata, product_name):
 
 def _get_list_by_manufacturer(usbdata, manufacturer_name):
     """retrieve the list of dictionary based on manufacturer_name
-    @param usbdata:  list of dictionary for usb devices
+    @param usbdata list of dictionary for usb devices
     @returns the list of dictionary
     """
     usb_list_by_manufacturer = []
@@ -161,18 +161,27 @@ def _get_list_by_manufacturer(usbdata, manufacturer_name):
     return usb_list_by_manufacturer
 
 
+def _get_vid_and_pid(vid_pid):
+  """Parses out Vendor ID and Product ID from vid:pid string.
+
+  @param vid_pid String on format vid:pid.
+  @returns (vid,pid) tuple
+  """
+  assert ':' in vid_pid
+  return vid_pid.split(':')
+
+
 def _is_usb_device_ok(usbdata, vid_pid):
     """check usb device has expected usb interface
-    @param usbdata:  list of dictionary for usb devices
-    @vid_pid: VID, PID combination for each type of USB device
-    @returns:
+    @param usbdata list of dictionary for usb devices
+    @vid_pid VID, PID combination for each type of USB device
+    @returns
               int: number of device
               boolean: usb interfaces expected or not?
     """
     number_of_device = 0
     device_health = []
-    vid = vid_pid[0:4]
-    pid = vid_pid[-4:]
+    vid, pid = _get_vid_and_pid(vid_pid)
     for _data in usbdata:
         if vid == _data['Vendor'] and pid == _data['ProdID']:
             number_of_device += 1
@@ -186,29 +195,28 @@ def _is_usb_device_ok(usbdata, vid_pid):
 
 def _get_speakers(usbdata):
     """get number of speaker for each type
-    @param usbdata:  list of dictionary for usb devices
-    @returns: list of dictionary, key is VID_PID, value is number of speakers
+    @param usbdata  list of dictionary for usb devices
+    @returns list of dictionary, key is VID_PID, value is number of speakers
     """
     number_speaker = {}
     for _speaker in SPEAKER_MAP:
-        vid =  _speaker.split(':')[0]
-        pid =  _speaker.split(':')[1]
-        _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and _data['ProdID'] == pid:
-                _number += 1
+      vid, pid = _get_vid_and_pid(_speaker)
+      _number = 0
+      for _data in usbdata:
+        if _data['Vendor'] == vid and _data['ProdID'] == pid:
+          _number += 1
         number_speaker[_speaker] = _number
     return number_speaker
 
 
 def _get_dual_speaker(usbdata):
     """check whether dual speakers are present
-    @param usbdata:  list of dictionary for usb devices
-    @returns: True or False
+    @param usbdata  list of dictionary for usb devices
+    @returns True or False
     """
     dual_speaker = None
     speaker_dict = _get_speakers(usbdata)
-    for _key in speaker_dict.keys():
+    for _key in speaker_dict:
         if speaker_dict[_key] == 2:
             dual_speaker = _key
             break
@@ -217,59 +225,56 @@ def _get_dual_speaker(usbdata):
 
 def _get_cameras(usbdata):
     """get number of camera for each type
-    @param usbdata:  list of dictionary for usb devices
-    @returns: list of dictionary, key is VID_PID, value is number of cameras
+    @param usbdata  list of dictionary for usb devices
+    @returns list of dictionary, key is VID_PID, value is number of cameras
     """
     number_camera = {}
     for _camera in CAMERA_MAP:
-        vid =  _camera.split(':')[0]
-        pid =  _camera.split(':')[1]
-        _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and _data['ProdID'] == pid:
-                _number += 1
-        number_camera[_camera] = _number
+      vid, pid = _get_vid_and_pid(_camera)
+      _number = 0
+      for _data in usbdata:
+        if _data['Vendor'] == vid and _data['ProdID'] == pid:
+          _number += 1
+      number_camera[_camera] = _number
     return number_camera
 
 def _get_display_mimo(usbdata):
     """get number of displaylink in Mimo for each type
-    @param usbdata:  list of dictionary for usb devices
-    @returns: list of dictionary, key is VID_PID, value
+    @param usbdata list of dictionary for usb devices
+    @returns list of dictionary, key is VID_PID, value
               is number of displaylink
     """
     number_display = {}
     for _display in TOUCH_DISPLAY_LIST:
-        vid =  _display.split(':')[0]
-        pid =  _display.split(':')[1]
-        _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-                _number += 1
-        number_display[_display] = _number
+      vid, pid = _get_vid_and_pid(_display)
+      _number = 0
+      for _data in usbdata:
+        if _data['Vendor'] == vid and  _data['ProdID'] == pid:
+          _number += 1
+      number_display[_display] = _number
     return number_display
 
 def _get_controller_mimo(usbdata):
     """get number of touch controller Mimo for each type
-    @param usbdata:  list of dictionary for usb devices
-    @returns: list of dictionary, key is VID_PID, value
-              is number of touch controller
+    @param usbdata list of dictionary for usb devices
+    @returns list of dictionary, key is VID_PID, value
+             is number of touch controller
     """
     number_controller = {}
     for _controller in TOUCH_CONTROLLER_LIST:
-        vid =  _controller.split(':')[0]
-        pid =  _controller.split(':')[1]
-        _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-                _number += 1
-        number_controller[_controller] = _number
+      vid, pid = _get_vid_and_pid(_controller)
+      _number = 0
+      for _data in usbdata:
+        if _data['Vendor'] == vid and  _data['ProdID'] == pid:
+          _number += 1
+      number_controller[_controller] = _number
     return number_controller
 
 
 def _get_preferred_speaker(peripheral):
     """get string for the 1st speakers in the device list
-     @param peripheral: dictionary for usb devices
-     @returns: name of preferred speaker
+     @param peripheral dictionary for usb devices
+     @returns name of preferred speaker
     """
     for _key in peripheral:
         if _key in SPEAKER_MAP:
@@ -278,8 +283,8 @@ def _get_preferred_speaker(peripheral):
 
 def _get_preferred_camera(peripheral):
     """get string for the 1st camera in the device list
-    @param peripheral: dictionary for usb devices
-    @returns: name of preferred camera
+    @param peripheral dictionary for usb devices
+    @returns name of preferred camera
     """
     for _key in peripheral:
         if _key in CAMERA_MAP:
@@ -288,8 +293,8 @@ def _get_preferred_camera(peripheral):
 
 def _get_device_prod(vid_pid):
     """get product for vid_pid
-    @param vid_pid: vid and pid combo for device
-    @returns: product
+    @param vid_pid vid and pid combo for device
+    @returns product
     """
     if vid_pid in SPEAKER_MAP:
       return SPEAKER_MAP[vid_pid]
