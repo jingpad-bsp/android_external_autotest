@@ -56,17 +56,18 @@ class MemUsageMetric(Metric):
     """
     Metric that collects memory usage in percent.
 
-    Memory usage is collected in percent. Usage includes buffers and cachces.
+    Memory usage is collected in percent. Buffers and cached are calculated
+    as free memory.
     """
     def __init__(self):
         super(MemUsageMetric, self).__init__('memory_usage', units='percent')
 
     def collect_metric(self):
-        # TODO(kerl), used memory includes caches and buffers,
-        # account for that or provide separate metric for that.
         total_memory = utils.get_mem_total()
-        used = ((total_memory - utils.get_mem_free()) / total_memory) * 100
-        self.values.append(used)
+        free_memory = utils.get_mem_free_plus_buffers_and_cached()
+        used_memory = total_memory - free_memory
+        usage_percent = (used_memory * 100) / total_memory
+        self.values.append(usage_percent)
 
 class CpuUsageMetric(Metric):
     """

@@ -82,12 +82,22 @@ class SystemFacadeRemoteAdapter(object):
         """Returns the currently free memory in the system in MBytes."""
         return self._system_proxy.get_mem_free()
 
+    def get_mem_free_plus_buffers_and_cached(self):
+        """
+        Returns the free memory in MBytes, counting buffers and cached as free.
+
+        This is most often the most interesting number since buffers and cached
+        memory can be reclaimed on demand. Note however, that there are cases
+        where this as misleading as well, for example used tmpfs space
+        count as Cached but can not be reclaimed on demand.
+        See https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt.
+        """
+        return self._system_proxy.get_mem_free_plus_buffers_and_cached()
 
     def get_ec_temperatures(self):
         """Uses ectool to return a list of all sensor temperatures in Celsius.
         """
         return self._system_proxy.get_ec_temperatures()
-
 
     def get_current_board(self):
         """Returns the current device board name."""
