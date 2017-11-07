@@ -10,6 +10,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 import traceback
 
 import common
@@ -400,8 +401,11 @@ def parse_one(db, jobname, path, parse_options):
     _throttle_result_size(path)
 
     # Record test result size to job_keyvals
+    start_time = time.time()
     result_size_info = site_utils.collect_result_sizes(
             path, log=tko_utils.dprint)
+    tko_utils.dprint('Finished collecting result sizes after %s seconds' %
+                     (time.time()-start_time))
     job.keyval_dict.update(result_size_info.__dict__)
 
     # TODO(dshi): Update sizes with sponge_invocation.xml and throttle it.
