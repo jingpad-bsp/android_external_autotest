@@ -5,7 +5,9 @@ class SystemMetricsCollector(object):
     Collects system metrics.
     """
     def __init__(self):
-        self.metrics = [MemUsageMetric(), CpuUsageMetric()]
+        self.metrics = [MemUsageMetric(),
+                        CpuUsageMetric(),
+                        AllocatedFileHandlesMetric()]
 
     def collect_snapshot(self):
         """
@@ -91,4 +93,15 @@ class CpuUsageMetric(Metric):
                     self.last_usage, current_usage)
             self.values.append(usage_percent)
         self.last_usage = current_usage
+
+class AllocatedFileHandlesMetric(Metric):
+    """
+    Metric that collects the number of allocated file handles.
+    """
+    def __init__(self):
+        super(AllocatedFileHandlesMetric, self).__init__(
+                'allocated_file_handles', units='handles')
+
+    def collect_metric(self):
+        self.values.append(utils.get_num_allocated_file_handles())
 
