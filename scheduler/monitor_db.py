@@ -27,6 +27,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task, drone_manager
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
+from autotest_lib.scheduler import luciferlib
 from autotest_lib.scheduler import monitor_db_cleanup, prejob_task
 from autotest_lib.scheduler import postjob_task
 from autotest_lib.scheduler import query_managers
@@ -345,6 +346,9 @@ class Dispatcher(object):
             with breakdown_timer.Step('trigger_refresh'):
                 self._log_tick_msg('Starting _drone_manager.trigger_refresh')
                 _drone_manager.trigger_refresh()
+            if luciferlib.is_lucifer_enabled():
+                with breakdown_timer.Step('send_to_lucifer'):
+                    self._send_to_lucifer()
             with breakdown_timer.Step('schedule_running_host_queue_entries'):
                 self._schedule_running_host_queue_entries()
             with breakdown_timer.Step('schedule_special_tasks'):
@@ -514,12 +518,18 @@ class Dispatcher(object):
 
         @return: A list of AgentTasks.
         """
-        # host queue entry statuses handled directly by AgentTasks (Verifying is
-        # handled through SpecialTasks, so is not listed here)
-        statuses = (models.HostQueueEntry.Status.STARTING,
-                    models.HostQueueEntry.Status.RUNNING,
-                    models.HostQueueEntry.Status.GATHERING,
-                    models.HostQueueEntry.Status.PARSING)
+        if luciferlib.is_lucifer_enabled():
+            statuses = (models.HostQueueEntry.Status.STARTING,
+                        models.HostQueueEntry.Status.RUNNING,
+                        models.HostQueueEntry.Status.GATHERING)
+        else:
+            # host queue entry statuses handled directly by AgentTasks
+            # (Verifying is handled through SpecialTasks, so is not
+            # listed here)
+            statuses = (models.HostQueueEntry.Status.STARTING,
+                        models.HostQueueEntry.Status.RUNNING,
+                        models.HostQueueEntry.Status.GATHERING,
+                        models.HostQueueEntry.Status.PARSING)
         status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = scheduler_models.HostQueueEntry.fetch(
                 where='status IN (%s)' % status_list)
@@ -896,6 +906,35 @@ class Dispatcher(object):
         metrics.Counter(
             'chromeos/autotest/scheduler/scheduled_jobs_with_hosts'
         ).increment_by(new_jobs_with_hosts)
+
+
+    @_calls_log_tick_msg
+    def _send_to_lucifer(self):
+        """
+        Hand off ownership of a job to lucifer component.
+        """
+        Status = models.HostQueueEntry.Status
+        queue_entries_qs = (scheduler_models.HostQueueEntry.objects
+                            .filter(status=Status.PARSING))
+        for queue_entry in queue_entries_qs:
+            # If this HQE already has an agent, let monitor_db continue
+            # owning it.
+            if self.get_agents_for_entry(queue_entry):
+                continue
+
+            job = queue_entry.job
+            if luciferlib.is_lucifer_owned(job):
+                continue
+            task = postjob_task.PostJobTask(
+                    [queue_entry], log_file_name='/dev/null')
+            pidfile_id = task._autoserv_monitor.pidfile_id
+            autoserv_exit = task._autoserv_monitor.exit_code()
+            luciferlib.spawn_job_handler(
+                    manager=_drone_manager,
+                    job=job,
+                    autoserv_exit=autoserv_exit,
+                    pidfile_id=pidfile_id)
+            models.JobHandoff.objects.create(job=job)
 
 
     @_calls_log_tick_msg
