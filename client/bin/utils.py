@@ -582,6 +582,19 @@ def where_art_thy_filehandles():
     os.system("ls -l /proc/%d/fd >> /dev/tty" % os.getpid())
 
 
+def get_num_allocated_file_handles():
+    """
+    Returns the currently number of allocated file handles.
+
+    Gets this information by parsing /proc/sys/fs/file-nr.
+    See https://www.kernel.org/doc/Documentation/sysctl/fs.txt
+    for details on this file.
+    """
+    with _open_file('/proc/sys/fs/file-nr') as f:
+        line = f.readline()
+    allocated_handles = int(line.split()[0])
+    return allocated_handles
+
 def print_to_tty(string):
     """Output string straight to the tty"""
     open('/dev/tty', 'w').write(string + '\n')
