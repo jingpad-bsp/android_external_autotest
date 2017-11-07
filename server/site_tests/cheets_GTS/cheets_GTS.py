@@ -25,20 +25,12 @@ class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
 
+    def _get_default_bundle_url(self, bundle):
+        return _PARTNER_GTS_LOCATION
 
-    def setup(self, uri=None):
-        """Set up GTS bundle from Google Storage.
 
-        @param uri: The location to pull the GTS bundle from.
-        """
-        if uri:
-            self._android_gts = self._install_bundle(uri)
-        else:
-            self._android_gts = self._install_bundle(_PARTNER_GTS_LOCATION)
-
-        self._repository = os.path.join(self._android_gts, 'android-gts')
-        self.waivers = self._get_expected_failures('expectations')
-        self.notest_modules = self._get_expected_failures('notest_modules')
+    def _get_tradefed_base_dir(self):
+        return 'android-gts'
 
 
     def _tradefed_run_command(self, target_module=None, plan=None,
@@ -57,53 +49,26 @@ class cheets_GTS(tradefed_test.TradefedTest):
         return args
 
 
-    def _run_tradefed(self, commands, datetime_id=None, collect_results=True):
-        """Kick off GTS."""
-        return self._run_gts_tradefed(commands, datetime_id, collect_results)
-
-
-    def _run_gts_tradefed(self, commands, datetime_id=None,
-                          collect_results=True):
-        """This tests runs the GTS tradefed binary and collects results.
+    def _run_tradefed(self, commands):
+        """Kick off GTS.
 
         @param commands: the command(s) to pass to GTS.
-        @param datetime_id: For 'continue' datetime of previous run is known.
-        @collect_results: skip result collection if false.
-        @raise TestFail: when a test failure is detected.
+        @return: The result object from utils.run.
         """
         gts_tradefed = os.path.join(self._repository, 'tools', 'gts-tradefed')
-        logging.info('GTS-tradefed path: %s', gts_tradefed)
-        # Run GTS via tradefed and obtain stdout, sterr as output.
         with tradefed_test.adb_keepalive(self._get_adb_target(),
                                          self._install_paths):
-            try:
-                for command in commands:
-                    output = self._run(gts_tradefed,
-                                       args=command,
-                                       verbose=True,
-                                       # Tee tradefed stdout/stderr to logs
-                                       # continuously during the test run.
-                                       stdout_tee=utils.TEE_TO_LOGS,
-                                       stderr_tee=utils.TEE_TO_LOGS)
-            except Exception:
-                self.log_java_version()
-                raise
-            if not collect_results:
-                return None
-        result_destination = os.path.join(self.resultsdir, 'android-gts')
-
-        # Gather the global log first. Datetime parsing below can abort the test
-        # if tradefed startup had failed. Even then the global log is useful.
-        self._collect_tradefed_global_log(output, result_destination)
-
-        # Parse stdout to obtain datetime IDs of directories into which tradefed
-        # wrote result xml files and logs.
-        datetime_id = self._parse_tradefed_datetime_v2(output)
-        self._collect_logs(datetime_id, result_destination)
-
-        # Result parsing must come after all other essential operations as test
-        # warnings, errors and failures can be raised here.
-        return self._parse_result_v2(output, waivers=self.waivers)
+            for command in commands:
+                logging.info('RUN: ./gts-tradefed %s', ' '.join(command))
+                output = self._run(gts_tradefed,
+                                   args=command,
+                                   verbose=True,
+                                   # Tee tradefed stdout/stderr to logs
+                                   # continuously during the test run.
+                                   stdout_tee=utils.TEE_TO_LOGS,
+                                   stderr_tee=utils.TEE_TO_LOGS)
+                logging.info('END: ./gts-tradefed %s\n', ' '.join(command))
+        return output
 
 
     def run_once(self, target_package=None, gts_tradefed_args=None):
