@@ -353,14 +353,6 @@ class DroneManager(object):
         return self._get_drone_for_process(pidfile_contents.process)
 
 
-    def get_drone_for_pidfile_id(self, pidfile_id):
-        """Public API for luciferlib.
-
-        @param pidfile_id: PidfileId instance.
-        """
-        return self._get_drone_for_pidfile_id(pidfile_id)
-
-
     def _drop_old_pidfiles(self):
         # use items() since the dict is modified in unregister_pidfile()
         for pidfile_id, info in self._registered_pidfile_info.items():
@@ -634,30 +626,6 @@ class DroneManager(object):
 
     def _least_loaded_drone(self, drones):
         return min(drones, key=lambda d: d.used_capacity())
-
-
-    def pick_drone_to_use(self, num_processes=1, prefer_ssp=False):
-        """Return a drone to use.
-
-        Various options can be passed to optimize drone selection.
-
-        num_processes is the number of processes the drone is intended
-        to run.
-
-        prefer_ssp indicates whether drones supporting server-side
-        packaging should be preferred.  The returned drone is not
-        guaranteed to support it.
-
-        This public API is exposed for luciferlib to wrap.
-
-        Returns a drone instance (see drones.py).
-        """
-        return self._choose_drone_for_execution(
-                num_processes=num_processes,
-                username=None,  # Always allow all drones
-                drone_hostnames_allowed=None,  # Always allow all drones
-                require_ssp=prefer_ssp,
-        )
 
 
     def _choose_drone_for_execution(self, num_processes, username,
