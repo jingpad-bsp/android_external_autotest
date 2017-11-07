@@ -5,8 +5,10 @@
 
 import unittest
 import mock
+
 import common
 from autotest_lib.site_utils import diagnosis_utils
+from autotest_lib.frontend.afe import models
 
 
 class DiagnosisUtilsTest(unittest.TestCase):
@@ -26,14 +28,14 @@ class DiagnosisUtilsTest(unittest.TestCase):
 
     def _mockTwoAvailableHosts(self):
         """Mock method to return two available hosts"""
-        host_a = mock.MagicMock(status='Ready', locked=False)
-        host_b = mock.MagicMock(status='Ready', locked=False)
+        host_a = _StubHost(status='Ready', locked=False)
+        host_b = _StubHost(status='Ready', locked=False)
         return (host_a, host_b)
 
     def _mockTwoFailedHosts(self):
         """Mock method to return two unavailable hosts"""
-        host_a = mock.MagicMock(status='Repair Failed', locked=False)
-        host_b = mock.MagicMock(status='Repairing', locked=False)
+        host_a = _StubHost(status='Repair Failed', locked=False)
+        host_b = _StubHost(status='Repairing', locked=False)
         return (host_a, host_b)
 
     def testCheckDutAvailable(self):
@@ -95,6 +97,16 @@ class DiagnosisUtilsTest(unittest.TestCase):
             rpc_helper.check_dut_availability(board, pool,
                                               minimum_duts=minimum_duts,
                                               skip_duts_check=skip_duts_check)
+
+
+class _StubHost(object):
+
+    def __init__(self, status, locked):
+        self.status = status
+        self.locked = locked
+
+    is_available = models.Host.is_available.im_func
+
 
 if __name__ == '__main__':
     unittest.main()
