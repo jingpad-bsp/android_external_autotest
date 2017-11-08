@@ -8,7 +8,8 @@ import threading
 import time
 
 import common
-from autotest_lib.site_utils.lxc.container_pool import error
+from autotest_lib.client.common_lib import error
+from autotest_lib.site_utils.lxc.container_pool import error as lxc_error
 from autotest_lib.site_utils.lxc.container_pool import multi_logger
 
 
@@ -122,6 +123,24 @@ class Pool(object):
 
 
     @property
+    def size(self):
+        """Returns the current size of the pool.
+
+        Note that the pool is asynchronous.  Returning a size greater than zero
+        does not guarantee that a subsequent call to Pool.get will not block.
+        Conversely, returning a size of zero does not guarantee that a
+        subsequent call to Pool.get will block.
+        """
+        return self._pool.qsize()
+
+
+    @property
+    def capacity(self):
+        """Returns the max size of the pool."""
+        return self._pool.maxsize
+
+
+    @property
     def errors(self):
         """Returns worker errors.
 
@@ -214,7 +233,7 @@ class _Monitor(threading.Thread):
             for worker in self._workers:
                 worker.join(timeout)
                 if worker.is_alive():
-                    raise error.WorkerTimeoutError()
+                    raise lxc_error.WorkerTimeoutError()
 
 
     def _create_workers(self):
@@ -359,6 +378,7 @@ class _Worker(threading.Thread):
         try:
             container = self._factory.create_container()
         except Exception as e:
+            _logger.error('Worker error: %s', error.format_error())
             self._error_cb(self, e)
         finally:
             # All this has to happen atomically, otherwise race conditions can
@@ -417,7 +437,7 @@ class _Worker(threading.Thread):
             runtime = time.time() - self._start_time
             if runtime > _CONTAINER_CREATION_TIMEOUT:
                 if self.cancel():
-                    self._error_cb(self, error.WorkerTimeoutError())
+                    self._error_cb(self, lxc_error.WorkerTimeoutError())
                     return False
 
         return True
