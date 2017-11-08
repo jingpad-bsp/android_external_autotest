@@ -489,7 +489,7 @@ class HostJobHistory(object):
 
     @classmethod
     def get_multiple_histories(cls, afe, start_time, end_time,
-                               board=None, pool=None):
+                               board=None, pool=None, extra_labels=None):
         """Create `HostJobHistory` instances for a set of hosts.
 
         The set of hosts can be specified as "all hosts of a given
@@ -504,6 +504,8 @@ class HostJobHistory(object):
                            `None`, all boards are allowed.
         @param pool        All hosts must be in this pool; if
                            `None`, all pools are allowed.
+        @param extra_labels Optional list of strings. All hosts must
+                            have these labels.
 
         @return A list of new `HostJobHistory` instances.
 
@@ -518,6 +520,8 @@ class HostJobHistory(object):
             labels.append(constants.Labels.BOARD_PREFIX + board)
         if pool is not None:
             labels.append(constants.Labels.POOL_PREFIX + pool)
+        if extra_labels is not None:
+            labels.extend(extra_labels)
         kwargs = {'multiple_labels': labels}
         hosts = afe.get_hosts(**kwargs)
         return [cls(afe, h, start_time, end_time) for h in hosts]
