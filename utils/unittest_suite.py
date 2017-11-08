@@ -113,6 +113,7 @@ SKIP = set((
     'container_factory_unittest.py',
     'container_unittest.py',
     'lxc_functional_test.py',
+    'service_unittest.py',
     'zygote_unittest.py',
     # Require sponge utils installed in site-packages
     'sponge_utils_functional_test.py',
