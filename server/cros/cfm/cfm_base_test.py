@@ -22,14 +22,19 @@ class CfmBaseTest(test.test):
     for both flavors.
     """
 
-    def initialize(self, host):
+    def initialize(self, host, run_test_only=False):
         """
         Initializes common test properties.
 
         @param host: a host object representing the DUT.
+        @param run_test_only: Wheter to run only the test or to also perform
+            deprovisioning, enrollment and system reboot. If set to 'True',
+            the DUT must already be enrolled and past the OOB screen to be able
+            to execute the test.
         """
         super(CfmBaseTest, self).initialize()
         self._host = host
+        self._run_test_only = run_test_only
         self._facade_factory = remote_facade_factory.RemoteFacadeFactory(
             self._host, no_chrome = True)
         self.cfm_facade = self._facade_factory.create_cfm_facade()
@@ -43,11 +48,17 @@ class CfmBaseTest(test.test):
           - skips OOBE
         """
         super(CfmBaseTest, self).setup()
-        tpm_utils.ClearTPMOwnerRequest(self._host)
         if self._host.servo:
             self._setup_servo()
-        self.cfm_facade.enroll_device()
-        self.cfm_facade.skip_oobe_after_enrollment()
+
+        if self._run_test_only:
+            # We need to restart the browser to obtain the handle for it when
+            # running in test_only mode.
+            self.cfm_facade.restart_chrome_for_cfm()
+        else:
+            tpm_utils.ClearTPMOwnerRequest(self._host)
+            self.cfm_facade.enroll_device()
+            self.cfm_facade.skip_oobe_after_enrollment()
 
     def _setup_servo(self):
         """
@@ -60,12 +71,13 @@ class CfmBaseTest(test.test):
         self._host.servo.set('dut_hub1_rst1', 'off')
         time.sleep(SHORT_TIMEOUT)
 
-    def cleanup(self):
+    def cleanup(self, run_test_only=False):
         """Takes a screenshot, saves log files and clears the TPM."""
         self.take_screenshot('%s' % self.tagged_testname)
         self.save_callgrok_logs()
         self.save_packaged_app_logs()
-        tpm_utils.ClearTPMOwnerRequest(self._host)
+        if not self._run_test_only:
+            tpm_utils.ClearTPMOwnerRequest(self._host)
         super(CfmBaseTest, self).cleanup()
 
     def take_screenshot(self, screenshot_name):
