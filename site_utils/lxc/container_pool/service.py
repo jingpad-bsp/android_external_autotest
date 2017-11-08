@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import threading
 import time
@@ -14,7 +15,6 @@ from autotest_lib.site_utils.lxc import zygote
 from autotest_lib.site_utils.lxc.container_pool import async_listener
 from autotest_lib.site_utils.lxc.container_pool import error
 from autotest_lib.site_utils.lxc.container_pool import message
-from autotest_lib.site_utils.lxc.container_pool import multi_logger
 from autotest_lib.site_utils.lxc.container_pool import pool
 
 try:
@@ -25,7 +25,6 @@ except:
 
 # The minimum period between polling for new connections, in seconds.
 _MIN_POLLING_PERIOD = 0.1
-_logger = multi_logger.create('container_pool_service')
 
 
 class Service(object):
@@ -80,14 +79,14 @@ class Service(object):
         self._connection_listener.start()
 
         # Poll for incoming connections, and spawn threads to handle them.
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         while self._stop_event is None:
             self._handle_incoming_connections()
             self._cleanup_closed_connections()
             # TODO(kenobi): Poll for and log errors from pool.
             time.sleep(_MIN_POLLING_PERIOD)
 
-        _logger.debug('Exit event loop.')
+        logging.debug('Exit event loop.')
 
         # Stopped - stop all the client threads, stop listening, then signal
         # that shutdown is complete.
@@ -96,7 +95,7 @@ class Service(object):
         try:
             self._connection_listener.close()
         except Exception as e:
-            _logger.error('Error stopping pool service: %r', e)
+            logging.error('Error stopping pool service: %r', e)
             raise
         finally:
             # Clean up the container pool.
@@ -105,7 +104,7 @@ class Service(object):
             self._stop_event.set()
             self._stop_event = None
             self._running = False
-            _logger.debug('Container pool stopped.')
+            logging.debug('Container pool stopped.')
 
 
     def stop(self):
@@ -140,7 +139,7 @@ class Service(object):
             thread = _ClientThread(self, connection)
             thread.start()
             self._client_threads.append(thread)
-            _logger.debug('Client thread count: %d', len(self._client_threads))
+            logging.debug('Client thread count: %d', len(self._client_threads))
 
 
     def _cleanup_closed_connections(self):
@@ -178,7 +177,7 @@ class _ClientThread(threading.Thread):
 
         Any kind of error will exit the event loop and close the connection.
         """
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         try:
             self._running = True
             while self._running:
@@ -192,23 +191,23 @@ class _ClientThread(threading.Thread):
 
         except EOFError:
             # The client closed the connection.
-            _logger.debug('Connection closed.')
+            logging.debug('Connection closed.')
 
         except (AttributeError,
                 ImportError,
                 IndexError,
                 pickle.UnpicklingError) as e:
             # Some kind of pickle error occurred.
-            _logger.error('Error while unpickling message: %s', e)
+            logging.error('Error while unpickling message: %s', e)
 
         except error.UnknownMessageTypeError as e:
             # The message received was a valid python object, but not a valid
             # Message.
-            _logger.error('Message error: %s', e)
+            logging.error('Message error: %s', e)
 
         finally:
             # Always close the connection.
-            _logger.debug('Exit event loop.')
+            logging.debug('Exit event loop.')
             self._connection.close()
 
 
@@ -241,21 +240,21 @@ class _ClientThread(threading.Thread):
         @param msg: A string that will be echoed back to the client.
         """
         # Just echo the message back, for testing aliveness.
-        _logger.debug('Echo: %r', msg.args)
+        logging.debug('Echo: %r', msg.args)
         return msg
 
 
     def _shutdown(self):
         """Handles SHUTDOWN messages."""
-        _logger.debug('Received shutdown request.')
+        logging.debug('Received shutdown request.')
         # Request shutdown.  Wait for the service to actually stop before
         # sending the response.
         self._service.stop().wait()
-        _logger.debug('Service shutdown complete.')
+        logging.debug('Service shutdown complete.')
         return message.ack()
 
 
     def _status(self):
         """Handles STATUS messages."""
-        _logger.debug('Received status request.')
+        logging.debug('Received status request.')
         return self._service.get_status()
