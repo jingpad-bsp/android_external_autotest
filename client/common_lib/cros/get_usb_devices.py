@@ -13,6 +13,8 @@
 import cStringIO
 import textfsm
 
+from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
+
 USB_DEVICES_TPLT = (
     'Value Required Vendor ([0-9a-fA-F]+)\n'
     'Value Required ProdID ([0-9A-Fa-f]+)\n'
@@ -36,13 +38,18 @@ USB_DEVICES_TPLT = (
 
 # As of now there are certain types of cameras, speakers and touch-panel.
 # New devices should be added to these global variables.
-CAMERA_MAP = {'2bd9:0011': 'Huddly GO',
-              '046d:0843': 'Logitech Webcam C930e',
-              '046d:082d': 'HD Pro Webcam C920',
-              '046d:0853': 'PTZ Pro Camera'}
+CAMERAS = [
+    cfm_usb_devices.HUDDLY_GO,
+    cfm_usb_devices.LOGITECH_WEBCAM_C930E,
+    cfm_usb_devices.HD_PRO_WEBCAM_C920,
+    cfm_usb_devices.PTZ_PRO_CAMERA,
+]
 
-SPEAKER_MAP = {'18d1:8001': 'Hangouts Meet speakermic',
-               '0b0e:0412': 'Jabra SPEAK 410'}
+
+SPEAKERS = [
+    cfm_usb_devices.ATRUS,
+    cfm_usb_devices.JABRA_SPEAK_410,
+    ]
 
 TOUCH_DISPLAY_LIST = ['17e9:016b']
 TOUCH_CONTROLLER_LIST = ['266e:0110']
@@ -89,8 +96,7 @@ def _extract_peri_device(usbdata, vid_pid):
     """
     vid_pid_usb_list = []
     for _vid_pid in vid_pid:
-        vid = _vid_pid.split(':')[0]
-        pid = _vid_pid.split(':')[1]
+        vid, pid = _get_vid_and_pid(vid_pid)
         for _data in usbdata:
             if vid == _data['Vendor'] and pid ==  _data['ProdID']:
                 vid_pid_usb_list.append(_data)
@@ -105,7 +111,7 @@ def _get_list_audio_device(usbdata):
     audio_device_list = []
     for _data in usbdata:
         if "snd-usb-audio" in _data['intdriver']:
-           audio_device_list.append(_data)
+            audio_device_list.append(_data)
     return audio_device_list
 
 
@@ -117,7 +123,7 @@ def _get_list_video_device(usbdata):
     video_device_list = []
     for _data in usbdata:
         if "uvcvideo" in _data['intdriver']:
-             video_device_list.append(_data)
+            video_device_list.append(_data)
     return video_device_list
 
 
@@ -199,13 +205,14 @@ def _get_speakers(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of speakers
     """
     number_speaker = {}
-    for _speaker in SPEAKER_MAP:
-      vid, pid = _get_vid_and_pid(_speaker)
-      _number = 0
-      for _data in usbdata:
-        if _data['Vendor'] == vid and _data['ProdID'] == pid:
-          _number += 1
-        number_speaker[_speaker] = _number
+    for speaker in SPEAKERS:
+        vid = speaker.vid
+        pid = speaker.pid
+        _number = 0
+        for _data in usbdata:
+            if _data['Vendor'] == vid and _data['ProdID'] == pid:
+                _number += 1
+        number_speaker[speaker.vid_pid] = _number
     return number_speaker
 
 
@@ -229,13 +236,14 @@ def _get_cameras(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of cameras
     """
     number_camera = {}
-    for _camera in CAMERA_MAP:
-      vid, pid = _get_vid_and_pid(_camera)
-      _number = 0
-      for _data in usbdata:
-        if _data['Vendor'] == vid and _data['ProdID'] == pid:
-          _number += 1
-      number_camera[_camera] = _number
+    for camera in CAMERAS:
+        vid = camera.vid
+        pid = camera.pid
+        _number = 0
+        for _data in usbdata:
+            if _data['Vendor'] == vid and _data['ProdID'] == pid:
+                _number += 1
+        number_camera[camera.vid_pid] = _number
     return number_camera
 
 def _get_display_mimo(usbdata):
@@ -246,12 +254,12 @@ def _get_display_mimo(usbdata):
     """
     number_display = {}
     for _display in TOUCH_DISPLAY_LIST:
-      vid, pid = _get_vid_and_pid(_display)
-      _number = 0
-      for _data in usbdata:
-        if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-          _number += 1
-      number_display[_display] = _number
+        vid, pid = _get_vid_and_pid(_display)
+        _number = 0
+        for _data in usbdata:
+            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
+                _number += 1
+        number_display[_display] = _number
     return number_display
 
 def _get_controller_mimo(usbdata):
@@ -262,42 +270,46 @@ def _get_controller_mimo(usbdata):
     """
     number_controller = {}
     for _controller in TOUCH_CONTROLLER_LIST:
-      vid, pid = _get_vid_and_pid(_controller)
-      _number = 0
-      for _data in usbdata:
-        if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-          _number += 1
-      number_controller[_controller] = _number
+        vid, pid = _get_vid_and_pid(_controller)
+        _number = 0
+        for _data in usbdata:
+            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
+                _number += 1
+        number_controller[_controller] = _number
     return number_controller
 
 
-def _get_preferred_speaker(peripheral):
-    """get string for the 1st speakers in the device list
-     @param peripheral dictionary for usb devices
-     @returns name of preferred speaker
+def _get_preferred_speaker(peripherals):
     """
-    for _key in peripheral:
-        if _key in SPEAKER_MAP:
-          return '%s (%s)' % (SPEAKER_MAP[_key], _key)
+    Get string for the 1st speakers in the device list
+
+    @param peripheral dictionary for usb devices
+    @returns name of preferred speaker
+    """
+    for vid_pid in peripherals:
+      return next((s.full_name for s in SPEAKERS if s.vid_pid == vid_pid), None)
 
 
-def _get_preferred_camera(peripheral):
-    """get string for the 1st camera in the device list
+def _get_preferred_camera(peripherals):
+    """
+    Get string for the 1st camera in the device list
+
     @param peripheral dictionary for usb devices
     @returns name of preferred camera
     """
-    for _key in peripheral:
-        if _key in CAMERA_MAP:
-            return '%s (%s)' % (CAMERA_MAP[_key], _key)
+    for vid_pid in peripherals:
+      return next((c.full_name for c in CAMERAS if c.vid_pid == vid_pid), None)
 
 
 def _get_device_prod(vid_pid):
-    """get product for vid_pid
+    """
+    Get product for vid_pid
+
     @param vid_pid vid and pid combo for device
     @returns product
     """
-    if vid_pid in SPEAKER_MAP:
-      return SPEAKER_MAP[vid_pid]
-    if vid_pid in CAMERA_MAP:
-      return CAMERA_MAP[vid_pid]
-    return None
+    device = next((s for s in SPEAKERS if s.vid_pid == vid_pid), None)
+    if device:
+      return device
+    return next((c for c in CAMERAS if c.vid_pid == vid_pid), None)
+

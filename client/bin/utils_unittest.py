@@ -94,6 +94,10 @@ class TestUtils(unittest.TestCase):
                                'Cached:   204800 kB\n')
         self.assert_is_close(utils.get_mem_free_plus_buffers_and_cached(), 600)
 
+    def test_get_num_allocated_file_handles(self):
+        self.fake_file_text = '123 0 456\n'
+        self.assertEqual(utils.get_num_allocated_file_handles(), 123)
+
     def assert_is_close(self, a, b, allowed_delta = 0.0000001):
         """
         Asserts that two floats are within the allowed delta of each other.

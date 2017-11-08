@@ -182,6 +182,9 @@ class platform_FilePerms(test.test):
         '/run/containers/android/root/var/run/arc/apkcache': {
             'type': ['ext4'],
             'options': standard_rw_options},
+        '/run/containers/android/root/var/run/arc/dalvik-cache': {
+            'type': ['ext4'],
+            'options': standard_rw_options},
         '/run/containers/android/root/var/run/arc/bugreport': {
             'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=755']},

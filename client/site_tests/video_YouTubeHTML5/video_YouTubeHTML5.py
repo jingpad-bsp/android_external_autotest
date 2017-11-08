@@ -35,7 +35,7 @@ class video_YouTubeHTML5(test.test):
             self._testServer.stop()
 
         # Report rapl readings to chromeperf/ dashboard.
-        if hasattr(self, 'rapl_rate'):
+        if hasattr(self, 'rapl_rate') and self.rapl_rate:
             logging.info(self.rapl_rate)
             # Remove entries that we don't care about, eg. sample count.
             self.rapl_rate = {key: self.rapl_rate[key]
