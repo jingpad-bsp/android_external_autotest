@@ -151,6 +151,10 @@ class _DUTPool(object):
     which must always be assigned to pool:suites.  These DUTs are
     always marked with pool:chameleon to prevent their reassignment.
 
+    |extra_labels| may be used to restrict DUTPool down to a subset
+    of a given board+pool, by specifying additonal labels that all
+    DUTs are required to possess.
+
     TODO(jrbarnette):  The use of `pool:chamelon` (instead of just
     the `chameleon` label is a hack that should be eliminated.
 
@@ -173,12 +177,14 @@ class _DUTPool(object):
 
     """
 
-    def __init__(self, afe, board, pool, start_time, end_time):
+    def __init__(self, afe, board, pool, start_time, end_time,
+                 extra_labels=None):
         self.board = board
         self.pool = pool
         self.working_hosts = []
         self.broken_hosts = []
         self.ineligible_hosts = []
+        self._extra_labels = extra_labels or []
         self.total_hosts = self._get_hosts(afe, start_time, end_time)
         self._labels = [_POOL_PREFIX + self.pool]
 
@@ -187,7 +193,8 @@ class _DUTPool(object):
         all_histories = (
             status_history.HostJobHistory.get_multiple_histories(
                     afe, start_time, end_time,
-                    board=self.board, pool=self.pool))
+                    board=self.board, pool=self.pool,
+                    extra_labels=self._extra_labels))
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
