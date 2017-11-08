@@ -36,6 +36,13 @@ DEFAULT_SHARED_HOST_PATH = global_config.get_config_value(
         'AUTOSERV',
         'container_shared_host_path')
 
+# The name of the linux domain socket used by the container pool.  Just one
+# exists, so this is just a hard-coded string.
+DEFAULT_CONTAINER_POOL_SOCKET = 'container_pool_socket'
+
+# Default size for the lxc container pool.
+DEFAULT_CONTAINER_POOL_SIZE = 20
+
 # Location of the host mount point in the container.
 CONTAINER_HOST_DIR = '/host'
 

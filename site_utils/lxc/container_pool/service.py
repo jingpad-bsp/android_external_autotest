@@ -8,6 +8,7 @@ import time
 
 import common
 from autotest_lib.site_utils.lxc import base_image
+from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import container_factory
 from autotest_lib.site_utils.lxc import zygote
 from autotest_lib.site_utils.lxc.container_pool import async_listener
@@ -22,9 +23,6 @@ except:
     import pickle
 
 
-# The name of the linux domain socket used by the container pool.  Just one
-# exists, so this is just a hard-coded string.
-_SOCKET_NAME = 'container_pool_socket'
 # The minimum period between polling for new connections, in seconds.
 _MIN_POLLING_PERIOD = 0.1
 _logger = multi_logger.create('container_pool_service')
@@ -38,34 +36,45 @@ class Service(object):
     deal with communication with each client.
     """
 
-    def __init__(self, host_dir):
+    def __init__(self, host_dir, pool=None):
         """Sets up a new container pool service.
 
         @param host_dir: A SharedHostDir.  This will be used for Zygote
                          configuration as well as for general pool operation
                          (e.g. opening linux domain sockets for communication).
+        @param pool: (for testing) A container pool that the service will
+                     maintain.  This parameter exists for DI, for testing.
+                     Under normal circumstances the service instantiates the
+                     container pool internally.
         """
         # Create socket for receiving container pool requests.  This also acts
         # as a mutex, preventing multiple container pools from being
         # instantiated.
-        self._socket_path = os.path.join(host_dir.path, _SOCKET_NAME)
+        self._socket_path = os.path.join(
+                host_dir.path, constants.DEFAULT_CONTAINER_POOL_SOCKET)
         self._connection_listener = async_listener.AsyncListener(
                 self._socket_path)
         self._client_threads = []
         self._stop_event = None
         self._running = False
-        self._pool = None
+        self._pool = pool
 
 
-    def start(self):
-        """Starts the service."""
+    def start(self, pool_size=constants.DEFAULT_CONTAINER_POOL_SIZE):
+        """Starts the service.
+
+        @param pool_size: The desired size of the container pool.  This
+                          parameter has no effect if a pre-created pool was DI'd
+                          into the Service constructor.
+        """
         self._running = True
 
         # Start the container pool.
-        self._pool = pool.Pool(
-                factory=container_factory.ContainerFactory(
-                        base_container=base_image.BaseImage().get(),
-                        container_class=zygote.Zygote))
+        if self._pool is None:
+            factory = container_factory.ContainerFactory(
+                    base_container=base_image.BaseImage().get(),
+                    container_class=zygote.Zygote)
+            self._pool = pool.Pool(factory=factory, size=pool_size)
 
         # Start listening asynchronously for incoming connections.
         self._connection_listener.start()

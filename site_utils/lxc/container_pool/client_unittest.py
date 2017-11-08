@@ -10,10 +10,10 @@ import tempfile
 import unittest
 
 import common
+from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc.container_pool import async_listener
 from autotest_lib.site_utils.lxc.container_pool import client
-from autotest_lib.site_utils.lxc.container_pool import service
 
 
 # Timeout for tests.
@@ -21,7 +21,7 @@ TIMEOUT = 30
 
 
 class ClientTests(unittest.TestCase):
-    """Unit tests for the Service class."""
+    """Unit tests for the Client class."""
 
     @classmethod
     def setUpClass(cls):
@@ -42,7 +42,8 @@ class ClientTests(unittest.TestCase):
         """Per-test setup."""
         # Put each test in its own test dir, so it's hermetic.
         self.test_dir = tempfile.mkdtemp(dir=ClientTests.test_dir)
-        self.address = os.path.join(self.test_dir, service._SOCKET_NAME)
+        self.address = os.path.join(self.test_dir,
+                                    lxc.DEFAULT_CONTAINER_POOL_SOCKET)
         self.listener = async_listener.AsyncListener(self.address)
         self.listener.start()
 
@@ -52,7 +53,7 @@ class ClientTests(unittest.TestCase):
 
 
     def testConnection(self):
-        """Tests a simple connection to the pool service."""
+        """Tests a basic client connection."""
         # Verify that no connections are pending.
         self.assertIsNone(self.listener.get_connection())
 

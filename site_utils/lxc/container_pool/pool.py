@@ -25,8 +25,6 @@ _CONTAINER_CREATION_TIMEOUT = 600
 # event loop.  This drives a number of other factors, e.g. how long to wait for
 # the thread to respond to shutdown requests.
 _MIN_MONITOR_PERIOD = 0.1
-# The default size of the container pool.
-_DEFAULT_POOL_SIZE = 20
 # The maximum number of errors per hour.  After this limit is reached, further
 # pool creation is throttled.
 _MAX_ERRORS_PER_HOUR = 200
@@ -51,7 +49,7 @@ class Pool(object):
     empty out the error queue.
     """
 
-    def __init__(self, factory, size=_DEFAULT_POOL_SIZE):
+    def __init__(self, factory, size):
         """Creates a new Pool instance.
 
         @param factory: A factory object that will be called upon to create new
@@ -255,7 +253,6 @@ class _Monitor(threading.Thread):
                             self._error_timestamps[0] + 3600)
             return
 
-        _logger.debug('create workers')
         # Create workers to refill the pool.
         qsize = self._pool.qsize()
         shortfall = self._pool.maxsize - qsize
