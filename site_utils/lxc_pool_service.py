@@ -9,13 +9,20 @@ import argparse
 import logging
 import os
 import signal
+import time
 from contextlib import contextmanager
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import logging_config
+from autotest_lib.server import server_logging_config
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import container_pool
+
+
+# Location and base name of log files.
+_LOG_LOCATION = '/usr/local/autotest/logs'
+_LOG_NAME = 'lxc_pool.%d' % time.time()
 
 
 def _start(args):
@@ -108,8 +115,11 @@ def main():
     args = parse_args()
 
     # Configure logging.
-    config = logging_config.LoggingConfig()
+    config = server_logging_config.ServerLoggingConfig()
     config.configure_logging(verbose=args.verbose)
+    config.add_debug_file_handlers(log_dir=_LOG_LOCATION, log_name=_LOG_NAME)
+    # Pool code is heavily multi-threaded.  This will help debugging.
+    logging_config.add_threadname_in_log()
 
     # Dispatch control to the appropriate helper.
     args.func(args)
