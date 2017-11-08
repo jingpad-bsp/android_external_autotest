@@ -518,7 +518,7 @@ class power_Consumption(test.test):
             logging.info("energy_full_design = %0.3f Wh", whrs)
 
             # Calculate expected battery life time with ChromeVer power draw
-            idle_name = 'ChromeVer_system_pwr'
+            idle_name = 'ChromeVer_system_pwr_avg'
             if idle_name in keyvals:
                 hours_life = whrs / keyvals[idle_name]
                 keyvals['hours_battery_ChromeVer'] = hours_life
@@ -527,15 +527,15 @@ class power_Consumption(test.test):
             # are intended to represent "typical" usage. Some video, some Flash
             # ... and most of the time idle. see,
             # http://www.chromium.org/chromium-os/testing/power-testing
-            weights = {'vid400p_h264_system_pwr':0.1,
-                       'BallsFlex_system_pwr':0.1,
-                       'BallsDHTML_system_pwr':0.3,
+            weights = {'vid400p_h264_system_pwr_avg':0.1,
+                       'BallsFlex_system_pwr_avg':0.1,
+                       'BallsDHTML_system_pwr_avg':0.3,
                       }
             weights[idle_name] = 1 - sum(weights.values())
 
             if set(weights).issubset(set(keyvals)):
                 p = sum(w * keyvals[k] for (k, w) in weights.items())
-                keyvals['w_Weighted_system_pwr'] = p
+                keyvals['w_Weighted_system_pwr_avg'] = p
                 keyvals['hours_battery_Weighted'] = whrs / p
 
         self.write_perf_keyval(keyvals)
