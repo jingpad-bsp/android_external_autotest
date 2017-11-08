@@ -24,6 +24,7 @@ class platform_ImageLoader(test.test):
     BUS_INTERFACE = 'org.chromium.ImageLoaderInterface'
     GET_COMPONENT_VERSION = 'GetComponentVersion'
     REGISTER_COMPONENT = 'RegisterComponent'
+    REMOVE_COMPONENT = 'RemoveComponent'
     LOAD_COMPONENT = 'LoadComponent'
     LOAD_COMPONENT_AT_PATH = 'LoadComponentAtPath'
     BAD_RESULT = ''
@@ -51,6 +52,17 @@ class platform_ImageLoader(test.test):
             self.BUS_INTERFACE,
             self.BUS_PATH,
             self.REGISTER_COMPONENT,
+            timeout_seconds=20,
+            user=self.USER,
+            args=args).response
+
+    def _remove_component(self, name):
+        args = [dbus.String(name)]
+        return dbus_send.dbus_send(
+            self.BUS_NAME,
+            self.BUS_INTERFACE,
+            self.BUS_PATH,
+            self.REMOVE_COMPONENT,
             timeout_seconds=20,
             user=self.USER,
             args=args).response
@@ -112,13 +124,25 @@ class platform_ImageLoader(test.test):
                 '/usr/sbin/imageloader', '--dry_run', '--unmount_all',
         ]).splitlines()
 
+    def _test_remove_component(self, component):
+        if not self._register_component("cros-termina", "10042.0.0",
+                                    component):
+            raise error.TestError('Failed to register a valid component')
+
+        if not self._remove_component("cros-termina"):
+            self._components_to_delete.append("cros-termina")
+            raise error.TestError('Failed to remove a removable component')
+
     def initialize(self):
         """Initialize the test variables."""
         self._paths_to_unmount = []
         self._components_to_delete = []
 
-    def run_once(self, component1=None, component2=None):
+    def run_once(self, component1=None, component2=None, component3=None):
         """Executes the test cases."""
+
+        if component3 != None:
+            self._test_remove_component(component3)
 
         if component1 == None or component2 == None:
             raise error.TestError('Must supply two versions of '
