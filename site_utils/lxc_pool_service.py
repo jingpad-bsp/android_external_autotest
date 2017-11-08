@@ -18,7 +18,7 @@ from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import container_pool
 
 
-def _start(_args):
+def _start(args):
     """Starts up the container pool service.
 
     This function instantiates and starts up the pool service on the current
@@ -38,7 +38,7 @@ def _start(_args):
     signal.signal(signal.SIGINT, lambda s, f: service.stop())
     # Start the service.  This blocks and does not return till the service shuts
     # down.
-    service.start()
+    service.start(pool_size=args.size)
 
 
 def _status(_args):
@@ -62,9 +62,8 @@ def _stop(_args):
 # TODO(kenobi): Don't hard-code the timeout.
 def _create_client(timeout=3):
     logging.debug('Creating client...')
-    # TODO(kenobi): Don't hard-code the address
     address = os.path.join(lxc.SharedHostDir().path,
-                           'container_pool_socket')
+                           lxc.DEFAULT_CONTAINER_POOL_SOCKET)
     with container_pool.Client.connect(address, timeout) as connection:
         yield connection
 
@@ -75,16 +74,29 @@ def parse_args():
     @raise argparse.ArgumentError: If command line arguments are invalid.
     """
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
 
-    parser_start = subparsers.add_parser('start')
-    parser_start.set_defaults(func = _start)
+    parser.add_argument('-v', '--verbose',
+                        help='Enable verbose output.',
+                        action='store_true')
 
-    parser_stop = subparsers.add_parser('stop')
-    parser_stop.set_defaults(func = _stop)
+    subparsers = parser.add_subparsers(title='Commands')
 
-    parser_status = subparsers.add_parser('status')
-    parser_status.set_defaults(func = _status)
+    parser_start = subparsers.add_parser('start',
+                                         help='Start the LXC container pool.')
+    parser_start.set_defaults(func=_start)
+    parser_start.add_argument('--size',
+                              type=int,
+                              default=lxc.DEFAULT_CONTAINER_POOL_SIZE,
+                              help='Pool size (default=%d)' %
+                                      lxc.DEFAULT_CONTAINER_POOL_SIZE)
+
+    parser_stop = subparsers.add_parser('stop',
+                                        help='Stop the container pool.')
+    parser_stop.set_defaults(func=_stop)
+
+    parser_status = subparsers.add_parser('status',
+                                          help='Query pool status.')
+    parser_status.set_defaults(func=_status)
 
     options = parser.parse_args()
     return options
@@ -92,12 +104,14 @@ def parse_args():
 
 def main():
     """Main function."""
+    # Parse args
+    args = parse_args()
+
     # Configure logging.
     config = logging_config.LoggingConfig()
-    config.configure_logging()
+    config.configure_logging(verbose=args.verbose)
 
-    # Parse args, then dispatch control to the appropriate helper.
-    args = parse_args()
+    # Dispatch control to the appropriate helper.
     args.func(args)
 
 
