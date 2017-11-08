@@ -37,27 +37,11 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     _BOARD_RETRY = {'betty': 0}
     _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
 
-    def setup(self, bundle=None, uri=None):
-        """Download and install a zipfile bundle from Google Storage.
+    def _get_default_bundle_url(self, bundle):
+        return _CTS_URI[bundle]
 
-        @param bundle: bundle name, which needs to be key of the _CTS_URI
-                       dictionary. Can be 'arm', 'x86' and undefined.
-        @param uri: URI of CTS bundle. Required if |abi| is undefined.
-        """
-        if uri:
-            self._android_cts = self._install_bundle(uri)
-        elif bundle in _CTS_URI:
-            self._android_cts = self._install_bundle(_CTS_URI[bundle])
-
-        self._repository = os.path.join(self._android_cts, 'android-cts')
-        self._cts_tradefed = os.path.join(self._repository, 'tools',
-                                          'cts-tradefed')
-        logging.info('CTS-tradefed path: %s', self._cts_tradefed)
-        # Load waivers and manual tests so TF doesn't re-run them.
-        self._waivers = self._get_expected_failures('expectations')
-        self._manual_tests = self._get_expected_failures('manual_tests')
-        # Load modules with no tests.
-        self.notest_modules = self._get_expected_failures('notest_modules')
+    def _get_tradefed_base_dir(self):
+        return 'android-cts'
 
     def _tradefed_run_command(self,
                               module=None,
@@ -138,58 +122,28 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 sum(1 for abi in abilist if abi.startswith(prefix)))
         return self._timeoutfactor
 
-    def _run_tradefed(self, commands, datetime_id=None, collect_results=True):
-        """Kick off CTS."""
-        return self._run_cts_tradefed(commands, datetime_id, collect_results)
+    def _run_tradefed(self, commands):
+        """Kick off CTS.
 
-    def _run_cts_tradefed(self,
-                          commands,
-                          datetime_id=None,
-                          collect_results=True):
-        """Runs tradefed, collects logs and returns the result counts.
-
-        Assumes that only last entry of |commands| actually runs tests and has
-        interesting output (results, logs) for collection. Ignores all other
-        commands for this purpose.
-
-        @param commands: List of lists of command tokens.
+        @param commands: the command(s) to pass to CTS.
         @param datetime_id: For 'continue' datetime of previous run is known.
-                            Knowing it makes collecting logs more robust.
-        @param collect_results: Skip result collection if False.
-        @return: tuple of (tests, pass, fail, notexecuted) counts.
+        @return: The result object from utils.run.
         """
+        cts_tradefed = os.path.join(self._repository, 'tools', 'cts-tradefed')
         for command in commands:
-            # Assume only last command actually runs tests and has interesting
-            # output (results, logs) for collection.
             logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
-            try:
-                output = self._run(
-                    self._cts_tradefed,
-                    args=tuple(command),
-                    timeout=self._timeout * self._get_timeout_factor(),
-                    verbose=True,
-                    ignore_status=False,
-                    # Make sure to tee tradefed stdout/stderr to autotest logs
-                    # continuously during the test run.
-                    stdout_tee=utils.TEE_TO_LOGS,
-                    stderr_tee=utils.TEE_TO_LOGS)
-            except Exception:
-                self.log_java_version()
-                raise
+            output = self._run(
+                cts_tradefed,
+                args=tuple(command),
+                timeout=self._timeout * self._get_timeout_factor(),
+                verbose=True,
+                ignore_status=False,
+                # Make sure to tee tradefed stdout/stderr to autotest logs
+                # continuously during the test run.
+                stdout_tee=utils.TEE_TO_LOGS,
+                stderr_tee=utils.TEE_TO_LOGS)
             logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
-        if not collect_results:
-            return None
-        result_destination = os.path.join(self.resultsdir, 'android-cts')
-        # Gather the global log first. Datetime parsing below can abort the test
-        # if tradefed startup had failed. Even then the global log is useful.
-        self._collect_tradefed_global_log(output, result_destination)
-        if not datetime_id:
-            # Parse stdout to obtain datetime of the session. This is needed to
-            # locate result xml files and logs.
-            datetime_id = self._parse_tradefed_datetime_v2(output, self.summary)
-        # Collect tradefed logs for autotest.
-        self._collect_logs(datetime_id, result_destination)
-        return self._parse_result_v2(output, waivers=self._waivers)
+        return output
 
     def _should_skip_test(self):
         """Some tests are expected to fail and are skipped."""
@@ -284,6 +238,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # Retries depend on channel.
         self._timeoutfactor = None
 
+        # TODO(kinaba): Move this logic to tradefed_test so that cheets_GTS can
+        # deal with manual tests.
         if not retry_manual_tests:
             self._waivers.update(self._manual_tests)
 
