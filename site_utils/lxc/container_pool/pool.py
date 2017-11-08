@@ -4,13 +4,13 @@
 
 import Queue
 import collections
+import logging
 import threading
 import time
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc.container_pool import error as lxc_error
-from autotest_lib.site_utils.lxc.container_pool import multi_logger
 
 
 # The maximum number of concurrent workers.  Each worker is responsible for
@@ -28,8 +28,6 @@ _MIN_MONITOR_PERIOD = 0.1
 # The maximum number of errors per hour.  After this limit is reached, further
 # pool creation is throttled.
 _MAX_ERRORS_PER_HOUR = 200
-
-_logger = multi_logger.create('pool')
 
 
 class Pool(object):
@@ -63,7 +61,7 @@ class Pool(object):
         if size < 2:
             raise ValueError('Invalid pool size.')
 
-        _logger.debug('Pool.__init__ called.  Size: %d', size)
+        logging.debug('Pool.__init__ called.  Size: %d', size)
         self._pool = Queue.Queue(size)
         self._monitor = _Monitor(factory, self._pool)
         self._monitor.start()
@@ -85,7 +83,7 @@ class Pool(object):
         """
         try:
             # Block only if timeout is not zero.
-            _logger.info('Pool.get called.')
+            logging.info('Pool.get called.')
             return self._pool.get(block=(timeout != 0),
                                   timeout=timeout)
         except Queue.Empty:
@@ -103,13 +101,13 @@ class Pool(object):
                         If zero (the default), don't wait for worker threads to
                         shut down, just return immediately.
         """
-        _logger.info('Pool.cleanup called.')
+        logging.info('Pool.cleanup called.')
         # Stop the monitor thread, then drain the pool.
         self._monitor.stop(timeout)
 
         try:
             dcount = 0
-            _logger.debug('Emptying container pool')
+            logging.debug('Emptying container pool')
             while True:
                 container = self._pool.get(block=False)
                 dcount += 1
@@ -117,7 +115,7 @@ class Pool(object):
         except Queue.Empty:
             pass
         finally:
-            _logger.debug('Done.  Destroyed %d containers', dcount)
+            logging.debug('Done.  Destroyed %d containers', dcount)
 
 
     @property
@@ -196,13 +194,13 @@ class _Monitor(threading.Thread):
 
     def run(self):
         """Supplies the container pool with containers."""
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         while not self._stop:
             self._clear_old_errors()
             self._create_workers()
             self._poll_workers()
             time.sleep(_MIN_MONITOR_PERIOD)
-        _logger.debug('Exit event loop.')
+        logging.debug('Exit event loop.')
 
         # Clean up - stop all workers.
         for worker in self._workers:
@@ -221,13 +219,13 @@ class _Monitor(threading.Thread):
         @raise WorkerTimeoutError: If a worker thread does not exit within the
                                    specified timeout.
         """
-        _logger.info('Stop requested.')
+        logging.info('Stop requested.')
         self._stop = True
         self.join()
-        _logger.info('Stopped.')
+        logging.info('Stopped.')
         # Wait for workers if timeout was requested.
         if timeout > 0:
-            _logger.debug('Waiting for workers to terminate...')
+            logging.debug('Waiting for workers to terminate...')
             for worker in self._workers:
                 worker.join(timeout)
                 if worker.is_alive():
@@ -249,7 +247,7 @@ class _Monitor(threading.Thread):
 
         # Throttle if too many errors occur.
         if len(self._error_timestamps) >= _MAX_ERRORS_PER_HOUR:
-            _logger.warning('Error throttled (until %d)',
+            logging.warning('Error throttled (until %d)',
                             self._error_timestamps[0] + 3600)
             return
 
@@ -273,7 +271,7 @@ class _Monitor(threading.Thread):
             # shortfall: Number of empty slots currently in the pool.
             # workers  : m+n, where m is the current number of active worker
             #            threads and n is the number of new threads created.
-            _logger.debug('qsize:%d shortfall:%d workers:%d',
+            logging.debug('qsize:%d shortfall:%d workers:%d',
                           qsize, shortfall, active_workers)
         if len(self._workers) < shortfall:
             worker = _Worker(self._factory,
@@ -309,7 +307,7 @@ class _Monitor(threading.Thread):
         Pass this as the result callback for worker threads.  Worker threads
         should call this when they produce a container.
         """
-        _logger.debug('Worker result: %r' % result)
+        logging.debug('Worker result: %r', result)
         self._pool.put(result)
 
 
@@ -322,7 +320,7 @@ class _Monitor(threading.Thread):
         timestamp = time.time()
         self._error_timestamps.append(timestamp)
         self.errors.put(err)
-        _logger.error('[%d] Worker error: %s', worker.ident, err)
+        logging.error('[%d] Worker error: %s', worker.ident, err)
 
 
     def _clear_old_errors(self):
@@ -332,7 +330,7 @@ class _Monitor(threading.Thread):
                self._error_timestamps[0] < one_hour_ago):
             self._error_timestamps.popleft()
             # Avoid logspam - log only when some action was taken.
-            _logger.error('Worker error count: %d', len(self._error_timestamps))
+            logging.error('Worker error count: %d', len(self._error_timestamps))
 
 
 class _Worker(threading.Thread):
@@ -375,7 +373,7 @@ class _Worker(threading.Thread):
         try:
             container = self._factory.create_container()
         except Exception as e:
-            _logger.error('Worker error: %s', error.format_error())
+            logging.error('Worker error: %s', error.format_error())
             self._error_cb(self, e)
         finally:
             # All this has to happen atomically, otherwise race conditions can

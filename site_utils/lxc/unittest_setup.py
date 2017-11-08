@@ -16,11 +16,15 @@ def setup_logging(log_level):
 
     @param log_level: Level of logging to redirect to stdout, default to INFO.
     """
+    # Lifted from client.common_lib.logging_config.
+    FORMAT = ('%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
+              '%(lineno)4.4d| %(threadName)16.16s| %(message)s')
+
     logger = logging.getLogger()
     logger.setLevel(log_level)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
-    formatter = logging.Formatter('%(asctime)s %(message)s')
+    formatter = logging.Formatter(FORMAT)
     handler.setFormatter(formatter)
     logger.handlers = []
     logger.addHandler(handler)
