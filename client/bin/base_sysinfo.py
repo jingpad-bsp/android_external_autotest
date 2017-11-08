@@ -121,6 +121,7 @@ class logfile(loggable):
             else:
                 dst = os.path.join(logdir, self.logf)
                 shutil.copyfile(self.path, dst)
+            logging.debug('Loggable saves logs to %s', dst)
 
 
 class command(loggable):
@@ -171,6 +172,7 @@ class command(loggable):
         stderr = open(os.devnull, "w")
         stdout = open(logf_path, "w")
         try:
+            logging.debug('Loggable runs cmd: %s', self.cmd)
             subprocess.call(self.cmd,
                             stdin=stdin,
                             stdout=stdout,
