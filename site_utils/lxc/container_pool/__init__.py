@@ -3,3 +3,6 @@
 # found in the LICENSE file.
 
 """This module provides code and classes related to container pooling."""
+
+from client import Client
+from service import Service

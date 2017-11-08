@@ -39,8 +39,12 @@ class SharedHostDir(object):
 
         # If the host dir exists and is valid and force_delete is not set, there
         # is nothing to do.  Otherwise, clear the host dir if it exists, then
-        # recreate it.
-        if lxc_utils.path_exists(self.path):
+        # recreate it.  Do not use lxc_utils.path_exists as that forces a sudo
+        # call - the SharedHostDir is used all over the place, and
+        # instantiatinng one should not cause the user to have to enter their
+        # password if the host dir already exists.  The host dir is created with
+        # open permissions so it should be accessible without sudo.
+        if os.path.isdir(self.path):
             if not force_delete and self._host_dir_is_valid():
                 return
             else:

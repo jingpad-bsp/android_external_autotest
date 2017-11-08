@@ -33,14 +33,20 @@ class ServiceTests(unittest.TestCase):
         # the chroot are set to a path that causes the socket address to exceed
         # the maximum allowable length.
         cls.test_dir = tempfile.mkdtemp(prefix='service_unittest_', dir='/tmp')
-        cls.host_dir = FakeHostDir(cls.test_dir)
-        cls.address = os.path.join(cls.test_dir, service._SOCKET_NAME)
 
 
     @classmethod
     def tearDownClass(cls):
         """Deletes the test directory. """
         shutil.rmtree(cls.test_dir)
+
+
+    def setUp(self):
+        """Per-test setup."""
+        # Put each test in its own test dir, so it's hermetic.
+        self.test_dir = tempfile.mkdtemp(dir=ServiceTests.test_dir)
+        self.host_dir = FakeHostDir(self.test_dir)
+        self.address = os.path.join(self.test_dir, service._SOCKET_NAME)
 
 
     def testConnection(self):
