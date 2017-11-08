@@ -624,7 +624,7 @@ class power_LoadTest(test.test):
         loop = 0
         while True:
             duration_key = 'loop%d_system_duration' % loop
-            avg_power_key = 'loop%d_system_pwr' % loop
+            avg_power_key = 'loop%d_system_pwr_avg' % loop
             if duration_key not in keyval or avg_power_key not in keyval:
                 break
             energy_wh += keyval[duration_key] * keyval[avg_power_key] / 3600
