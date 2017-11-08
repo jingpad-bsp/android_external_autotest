@@ -1452,8 +1452,6 @@ class MeasurementLogger(threading.Thread):
             mtype: string of measurement type.  For example:
                    pwr == power
                    temp == temperature
-            statistics: boolean for returning the statistics or not. If false,
-                        return the readings instead.
         Returns:
             dict of keyvals suitable for autotest results.
         """
@@ -1596,8 +1594,8 @@ class TempLogger(MeasurementLogger):
         super(TempLogger, self).save_results(resultsdir, fname)
 
 
-    def calc(self, mtype='temp', statistics=True):
-        return super(TempLogger, self).calc(mtype, statistics)
+    def calc(self, mtype='temp'):
+        return super(TempLogger, self).calc(mtype)
 
 
 class DiskStateLogger(threading.Thread):
