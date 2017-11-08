@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
@@ -1579,9 +1580,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     'SERVER', 'gb_encrypted_diskspace_required', type=float,
                     default=0.1))
 
-        if not self.upstart_status('system-services'):
-            raise error.AutoservError('Chrome failed to reach login. '
-                                      'System services not running.')
+        self.wait_for_system_services()
 
         # Factory images don't run update engine,
         # goofy controls dbus on these DUTs.
@@ -1589,6 +1588,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.run('update_engine_client --status')
 
         self.verify_cros_version_label()
+
+
+    @retry.retry(error.AutoservError, timeout_min=5, delay_sec=10)
+    def wait_for_system_services(self):
+        """Waits for system-services to be running.
+
+        Sometimes, update_engine will take a while to update firmware, so we
+        should give this some time to finish. See crbug.com/765686#c38 for
+        details.
+        """
+        if not self.upstart_status('system-services'):
+            raise error.AutoservError('Chrome failed to reach login. '
+                                      'System services not running.')
 
 
     def verify(self):
