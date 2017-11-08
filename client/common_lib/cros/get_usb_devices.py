@@ -160,24 +160,24 @@ def _get_vid_and_pid(vid_pid):
   return vid_pid.split(':')
 
 
-def _is_usb_device_ok(usbdata, vid_pid):
-    """check usb device has expected usb interface
-    @param usbdata list of dictionary for usb devices
-    @vid_pid VID, PID combination for each type of USB device
-    @returns
-              int: number of device
-              boolean: usb interfaces expected or not?
+def _verify_usb_device_ok(usbdata, vid_pid):
     """
-    number_of_device = 0
-    device_health = []
+    Verifies that usb device has expected usb interfaces.
+
+    @param usbdata list of dictionary for usb devices
+    @param vid_pid VID, PID combination for the USB device to check.
+    """
+    device_found = False
+    length = len(INTERFACES_LIST[vid_pid])
+    interface_set = set(INTERFACES_LIST[vid_pid])
     for _data in _filter_by_vid_pid(usbdata, vid_pid):
-        number_of_device += 1
-        compare_list = _data['intdriver'][0:len(INTERFACES_LIST[vid_pid])]
-        if  cmp(compare_list, INTERFACES_LIST[vid_pid]) == 0:
-            device_health.append('1')
-        else:
-            device_health.append('0')
-    return number_of_device, device_health
+        device_found = True
+        compare_set = set(_data['intdriver'][0:length])
+        if compare_set != interface_set:
+            raise RuntimeError(
+                'Device %s has unexpected interfaces.' % vid_pid)
+    if not device_found:
+        raise RuntimeError('Expected at least one %s connected.' % vid_pid)
 
 
 def _get_speakers(usbdata):
