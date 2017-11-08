@@ -5,6 +5,7 @@
 import httplib
 import logging
 import os
+import re
 import socket
 import xmlrpclib
 import pprint
@@ -117,6 +118,20 @@ class RemoteFacadeProxy(object):
                 self._log_saving_job.process_output(
                         stdout=False, final_read=True)
 
+        def parse_exception(message):
+            """Parse the given message and extract the exception line.
+
+            @return: A tuple of (keyword, reason); or None if not found.
+            """
+            EXCEPTION_PATTERN = r'(\w+): (.+)'
+            # Search the line containing the exception keyword, like:
+            #   "TestFail: Not able to start session."
+            for line in reversed(message.split('\n')):
+                m = re.match(EXCEPTION_PATTERN, line)
+                if m:
+                    return (m.group(1), m.group(2))
+            return None
+
         def call_rpc_with_log():
             """Call the RPC with log."""
             value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
@@ -127,19 +142,17 @@ class RemoteFacadeProxy(object):
 
             # Raise some well-known client exceptions, like TestFail.
             if type(value) is str and value.startswith('Traceback'):
-                # The last line contains the exception type, like:
-                #   "TestFail: Not able to start session."
-                last_line = value.strip().rsplit('\n', 1)[-1]
-                if ':' in last_line:
-                    key, message = last_line.split(':', 1)
-                    message = message + ' (RPC: %s)' % name
-                    if key == 'TestFail':
-                        raise error.TestFail(message)
-                    elif key == 'TestError':
-                        raise error.TestError(message)
+                exception_tuple = parse_exception(value)
+                if exception_tuple:
+                    keyword, reason = exception_tuple
+                    reason = reason + ' (RPC: %s)' % name
+                    if keyword == 'TestFail':
+                        raise error.TestFail(reason)
+                    elif keyword == 'TestError':
+                        raise error.TestError(reason)
 
-                    # Raise the exception with the original exception type.
-                    raise Exception('%s: %s' % (key, message))
+                    # Raise the exception with the original exception keyword.
+                    raise Exception('%s: %s' % (keyword, reason))
 
                 # Raise the default exception with the original message.
                 raise Exception('Exception from client (RPC: %s)\n%s' %
