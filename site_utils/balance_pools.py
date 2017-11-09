@@ -474,7 +474,7 @@ def _too_many_broken_boards(inventory, pool, arguments):
                   '%s pool',
                   max_broken_boards, pool)
 
-    broken_boards = [board for board, counts in inventory.items()
+    broken_boards = [board for board, counts in inventory.by_board.iteritems()
                      if counts.get_broken(pool) != 0]
     broken_boards.sort()
     num_of_broken_boards = len(broken_boards)
