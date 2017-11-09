@@ -31,6 +31,13 @@ PTZ_PRO_CAMERA = usb_device.UsbDevice(
     interfaces=['uvcvideo', 'uvcvideo','usbhid'],
 )
 
+CAMERAS = [
+    HD_PRO_WEBCAM_C920,
+    HUDDLY_GO,
+    LOGITECH_WEBCAM_C930E,
+    PTZ_PRO_CAMERA,
+]
+
 # Speakers
 
 ATRUS = usb_device.UsbDevice(
@@ -46,6 +53,11 @@ JABRA_SPEAK_410 = usb_device.UsbDevice(
     name='Jabra SPEAK 410',
     interfaces=['snd-usb-audio', 'snd-usb-audio', 'snd-usb-audio'],
 )
+
+SPEAKERS = [
+    ATRUS,
+    JABRA_SPEAK_410,
+]
 
 # MiMOs
 
@@ -64,3 +76,39 @@ MIMO_VUE_HDMI = usb_device.UsbDevice(
     name='MIMO Vue HDMI (aka Plankton)',
     interfaces=['usbhid'],
 )
+
+
+# Utility methods
+
+def get_cameras():
+  """
+  Returns the list of known CfM cameras.
+  @return list of UsbDevices
+  """
+  return CAMERAS
+
+
+def get_camera(vid_pid):
+  """
+  Return camera with the given vid_pid.
+  @param vid_pid VendorId:ProductId
+  @return UsbDevice with matching vid_pid or None if no match if found.
+  """
+  return next((c for c in CAMERAS if c.vid_pid == vid_pid), None)
+
+
+def get_speakers():
+  """
+  Returns the list of known CfM speakers.
+  @return list of UsbDevices
+  """
+  return SPEAKERS
+
+
+def get_speaker(vid_pid):
+  """
+  Return speaker with the given vid_pid.
+  @param vid_pid VendorId:ProductId
+  @return UsbDevice with matching vid_pid or None if no match is found.
+  """
+  return next((s for s in SPEAKERS if s.vid_pid == vid_pid), None)
