@@ -36,21 +36,6 @@ USB_DEVICES_TPLT = (
 )
 
 
-# As of now there are certain types of cameras, speakers and touch-panel.
-# New devices should be added to these global variables.
-CAMERAS = [
-    cfm_usb_devices.HUDDLY_GO,
-    cfm_usb_devices.LOGITECH_WEBCAM_C930E,
-    cfm_usb_devices.HD_PRO_WEBCAM_C920,
-    cfm_usb_devices.PTZ_PRO_CAMERA,
-]
-
-
-SPEAKERS = [
-    cfm_usb_devices.ATRUS,
-    cfm_usb_devices.JABRA_SPEAK_410,
-    ]
-
 TOUCH_DISPLAY_LIST = ['17e9:016b']
 TOUCH_CONTROLLER_LIST = ['266e:0110']
 
@@ -201,7 +186,7 @@ def _get_speakers(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of speakers
     """
     number_speaker = {}
-    for speaker in SPEAKERS:
+    for speaker in cfm_usb_devices.get_speakers():
         _number = 0
         for _data in _filter_by_vid_pid(usbdata, speaker.vid_pid):
             _number += 1
@@ -229,7 +214,7 @@ def _get_cameras(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of cameras
     """
     number_camera = {}
-    for camera in CAMERAS:
+    for camera in cfm_usb_devices.get_cameras():
         _number = 0
         for _data in _filter_by_vid_pid(usbdata, camera.vid_pid):
             _number += 1
@@ -273,7 +258,8 @@ def _get_preferred_speaker(peripherals):
     @returns name of preferred speaker
     """
     for vid_pid in peripherals:
-      return next((s.full_name for s in SPEAKERS if s.vid_pid == vid_pid), None)
+      return next((s.full_name for s in cfm_usb_devices.get_speakers()
+                   if s.vid_pid == vid_pid), None)
 
 
 def _get_preferred_camera(peripherals):
@@ -284,7 +270,8 @@ def _get_preferred_camera(peripherals):
     @returns name of preferred camera
     """
     for vid_pid in peripherals:
-      return next((c.full_name for c in CAMERAS if c.vid_pid == vid_pid), None)
+      return next((c.full_name for c in cfm_usb_devices.get_cameras()
+                   if c.vid_pid == vid_pid), None)
 
 
 def _get_device_prod(vid_pid):
@@ -294,10 +281,12 @@ def _get_device_prod(vid_pid):
     @param vid_pid vid and pid combo for device
     @returns product
     """
-    device = next((s for s in SPEAKERS if s.vid_pid == vid_pid), None)
+    device = next((s for s in cfm_usb_devices.get_speakers()
+                   if s.vid_pid == vid_pid), None)
     if device:
       return device
-    return next((c for c in CAMERAS if c.vid_pid == vid_pid), None)
+    return next((c for c in cfm_usb_devices.get_cameras()
+                 if c.vid_pid == vid_pid), None)
 
 
 def _filter_by_vid_pid(usbdata, vid_pid):
