@@ -92,8 +92,8 @@ _BROKEN = _NON_WORKING_STATUS_LIST[1]
 _UNKNOWN = _NON_WORKING_STATUS_LIST[2]
 
 
-class PoolCountTests(unittest.TestCase):
-    """Unit tests for class `_PoolCounts`.
+class CachedHostJobHistoriesTestCase(unittest.TestCase):
+    """Unit tests for class `_CachedHostJobHistories`.
 
     Coverage is quite basic:  mostly just enough to make sure every
     function gets called, and to make sure that the counting knows
@@ -105,14 +105,14 @@ class PoolCountTests(unittest.TestCase):
     """
 
     def setUp(self):
-        super(PoolCountTests, self).setUp()
-        self._pool_counts = lab_inventory._PoolCounts()
+        super(CachedHostJobHistoriesTestCase, self).setUp()
+        self.histories = lab_inventory._CachedHostJobHistories()
 
 
     def _add_host(self, status):
         fake = _FakeHostHistory(
                 None, lab_inventory.SPARE_POOL, status)
-        self._pool_counts.record_host(fake)
+        self.histories.record_host(fake)
 
 
     def _check_counts(self, working, broken, idle):
@@ -126,10 +126,10 @@ class PoolCountTests(unittest.TestCase):
         @param broken  The expected total of broken devices.
 
         """
-        self.assertEqual(self._pool_counts.get_working(), working)
-        self.assertEqual(self._pool_counts.get_broken(), broken)
-        self.assertEqual(self._pool_counts.get_idle(), idle)
-        self.assertEqual(self._pool_counts.get_total(),
+        self.assertEqual(self.histories.get_working(), working)
+        self.assertEqual(self.histories.get_broken(), broken)
+        self.assertEqual(self.histories.get_idle(), idle)
+        self.assertEqual(self.histories.get_total(),
                          working + broken + idle)
 
 
@@ -168,8 +168,8 @@ class PoolCountTests(unittest.TestCase):
         self._check_counts(1, 1, 0)
 
 
-class BoardCountTests(unittest.TestCase):
-    """Unit tests for class `_BoardCounts`.
+class ManagedPoolsHostJobHistoriesTestCase(unittest.TestCase):
+    """Unit tests for class `_ManagedPoolsHostJobHistories`.
 
     Coverage is quite basic:  just enough to make sure every
     function gets called, and to make sure that the counting
@@ -181,8 +181,8 @@ class BoardCountTests(unittest.TestCase):
     """
 
     def setUp(self):
-        super(BoardCountTests, self).setUp()
-        self._board_counts = lab_inventory._BoardCounts()
+        super(ManagedPoolsHostJobHistoriesTestCase, self).setUp()
+        self._board_counts = lab_inventory._ManagedPoolsHostJobHistories()
 
 
     def _add_host(self, pool, status):
