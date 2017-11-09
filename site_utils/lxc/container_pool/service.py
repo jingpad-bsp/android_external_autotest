@@ -2,15 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import threading
 import time
 
 import common
+from autotest_lib.site_utils.lxc import base_image
+from autotest_lib.site_utils.lxc import constants
+from autotest_lib.site_utils.lxc import container_factory
+from autotest_lib.site_utils.lxc import zygote
 from autotest_lib.site_utils.lxc.container_pool import async_listener
 from autotest_lib.site_utils.lxc.container_pool import error
 from autotest_lib.site_utils.lxc.container_pool import message
-from autotest_lib.site_utils.lxc.container_pool import multi_logger
+from autotest_lib.site_utils.lxc.container_pool import pool
 
 try:
     import cPickle as pickle
@@ -18,12 +23,8 @@ except:
     import pickle
 
 
-# The name of the linux domain socket used by the container pool.  Just one
-# exists, so this is just a hard-coded string.
-_SOCKET_NAME = 'container_pool_socket'
 # The minimum period between polling for new connections, in seconds.
 _MIN_POLLING_PERIOD = 0.1
-_logger = multi_logger.create('container_pool_service')
 
 
 class Service(object):
@@ -34,38 +35,58 @@ class Service(object):
     deal with communication with each client.
     """
 
-    def __init__(self, host_dir):
+    def __init__(self, host_dir, pool=None):
         """Sets up a new container pool service.
 
         @param host_dir: A SharedHostDir.  This will be used for Zygote
                          configuration as well as for general pool operation
                          (e.g. opening linux domain sockets for communication).
+        @param pool: (for testing) A container pool that the service will
+                     maintain.  This parameter exists for DI, for testing.
+                     Under normal circumstances the service instantiates the
+                     container pool internally.
         """
         # Create socket for receiving container pool requests.  This also acts
         # as a mutex, preventing multiple container pools from being
         # instantiated.
-        socket_path = os.path.join(host_dir.path, _SOCKET_NAME)
-        self._connection_listener = async_listener.AsyncListener(socket_path)
+        self._socket_path = os.path.join(
+                host_dir.path, constants.DEFAULT_CONTAINER_POOL_SOCKET)
+        self._connection_listener = async_listener.AsyncListener(
+                self._socket_path)
         self._client_threads = []
         self._stop_event = None
         self._running = False
+        self._pool = pool
 
 
-    def start(self):
-        """Starts the service."""
+    def start(self, pool_size=constants.DEFAULT_CONTAINER_POOL_SIZE):
+        """Starts the service.
+
+        @param pool_size: The desired size of the container pool.  This
+                          parameter has no effect if a pre-created pool was DI'd
+                          into the Service constructor.
+        """
         self._running = True
+
+        # Start the container pool.
+        if self._pool is None:
+            factory = container_factory.ContainerFactory(
+                    base_container=base_image.BaseImage().get(),
+                    container_class=zygote.Zygote)
+            self._pool = pool.Pool(factory=factory, size=pool_size)
 
         # Start listening asynchronously for incoming connections.
         self._connection_listener.start()
 
         # Poll for incoming connections, and spawn threads to handle them.
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         while self._stop_event is None:
             self._handle_incoming_connections()
             self._cleanup_closed_connections()
+            # TODO(kenobi): Poll for and log errors from pool.
             time.sleep(_MIN_POLLING_PERIOD)
 
-        _logger.debug('Exit event loop.')
+        logging.debug('Exit event loop.')
 
         # Stopped - stop all the client threads, stop listening, then signal
         # that shutdown is complete.
@@ -74,14 +95,16 @@ class Service(object):
         try:
             self._connection_listener.close()
         except Exception as e:
-            _logger.error('Error stopping pool service: %r', e)
+            logging.error('Error stopping pool service: %r', e)
             raise
         finally:
+            # Clean up the container pool.
+            self._pool.cleanup()
             # Make sure state is consistent.
             self._stop_event.set()
             self._stop_event = None
             self._running = False
-            _logger.debug('Container pool stopped.')
+            logging.debug('Container pool stopped.')
 
 
     def stop(self):
@@ -95,6 +118,19 @@ class Service(object):
         return self._running
 
 
+    def get_status(self):
+        """Returns a dictionary of values describing the current status."""
+        status = {}
+        status['running'] = self._running
+        status['socket_path'] = self._socket_path
+        if self._running:
+            status['pool capacity'] = self._pool.capacity
+            status['pool size'] = self._pool.size
+            status['pool worker count'] = self._pool.worker_count
+            status['pool errors'] = self._pool.errors.qsize()
+        return status
+
+
     def _handle_incoming_connections(self):
         """Checks for connections, and spawn sub-threads to handle requests."""
         connection = self._connection_listener.get_connection()
@@ -103,7 +139,7 @@ class Service(object):
             thread = _ClientThread(self, connection)
             thread.start()
             self._client_threads.append(thread)
-            _logger.debug('Client thread count: %d', len(self._client_threads))
+            logging.debug('Client thread count: %d', len(self._client_threads))
 
 
     def _cleanup_closed_connections(self):
@@ -141,7 +177,7 @@ class _ClientThread(threading.Thread):
 
         Any kind of error will exit the event loop and close the connection.
         """
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         try:
             self._running = True
             while self._running:
@@ -155,23 +191,23 @@ class _ClientThread(threading.Thread):
 
         except EOFError:
             # The client closed the connection.
-            _logger.debug('Connection closed.')
+            logging.debug('Connection closed.')
 
         except (AttributeError,
                 ImportError,
                 IndexError,
                 pickle.UnpicklingError) as e:
             # Some kind of pickle error occurred.
-            _logger.error('Error while unpickling message: %s', e)
+            logging.error('Error while unpickling message: %s', e)
 
         except error.UnknownMessageTypeError as e:
             # The message received was a valid python object, but not a valid
             # Message.
-            _logger.error('Message error: %s', e)
+            logging.error('Message error: %s', e)
 
         finally:
             # Always close the connection.
-            _logger.debug('Exit event loop.')
+            logging.debug('Exit event loop.')
             self._connection.close()
 
 
@@ -187,20 +223,38 @@ class _ClientThread(threading.Thread):
             raise error.UnknownMessageTypeError(
                     'Invalid message class %s' % type(msg))
 
-        response = None
         if msg.type == message.ECHO:
-            # Just echo the message back, for testing aliveness.
-            _logger.debug('Echo: %r', msg.args)
-            response = msg
-
+            return self._echo(msg)
         elif msg.type == message.SHUTDOWN:
-            _logger.debug('Received shutdown request.')
-            self._service.stop().wait()
-            _logger.debug('Service shutdown complete.')
-            response = message.ack()
-
+            return self._shutdown()
+        elif msg.type == message.STATUS:
+            return self._status()
         else:
             raise error.UnknownMessageTypeError(
                     'Invalid message type %s' % msg.type)
 
-        return response
+
+    def _echo(self, msg):
+        """Handles ECHO messages.
+
+        @param msg: A string that will be echoed back to the client.
+        """
+        # Just echo the message back, for testing aliveness.
+        logging.debug('Echo: %r', msg.args)
+        return msg
+
+
+    def _shutdown(self):
+        """Handles SHUTDOWN messages."""
+        logging.debug('Received shutdown request.')
+        # Request shutdown.  Wait for the service to actually stop before
+        # sending the response.
+        self._service.stop().wait()
+        logging.debug('Service shutdown complete.')
+        return message.ack()
+
+
+    def _status(self):
+        """Handles STATUS messages."""
+        logging.debug('Received status request.')
+        return self._service.get_status()

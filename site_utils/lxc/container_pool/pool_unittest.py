@@ -27,6 +27,9 @@ from autotest_lib.site_utils.lxc.container_pool import pool
 # PoolTests._forceWorkerTimeouts for an example).
 TEST_TIMEOUT = 30
 
+# Use an explicit pool size for testing.
+POOL_SIZE = 5
+
 
 class PoolLifecycleTests(unittest.TestCase):
     """Unit tests for Pool lifecycle."""
@@ -91,15 +94,12 @@ class PoolLifecycleTests(unittest.TestCase):
 class PoolTests(unittest.TestCase):
     """Unit tests for the Pool class."""
 
-    # Use an explicit pool size for testing.
-    POOL_SIZE = 5
-
     def setUp(self):
         """Starts tests with a fully populated container pool."""
         self.factory = TestFactory()
-        self.pool = pool.Pool(self.factory, size=self.POOL_SIZE)
+        self.pool = pool.Pool(self.factory, size=POOL_SIZE)
         # Wait for the pool to be fully populated.
-        self.factory.wait(self.POOL_SIZE)
+        self.factory.wait(POOL_SIZE)
 
 
     def tearDown(self):
@@ -114,7 +114,7 @@ class PoolTests(unittest.TestCase):
         """Tests requesting a container from the pool."""
         # Retrieve more containers than the pool can hold, to exercise the pool
         # creation.
-        self._getAndVerifyContainers(self.POOL_SIZE + 10)
+        self._getAndVerifyContainers(POOL_SIZE + 10)
 
 
     def testRequestContainer_factoryPaused(self):
@@ -138,7 +138,7 @@ class PoolTests(unittest.TestCase):
         # Simulate the factory hanging on all but 1 of the workers.
         self.factory.pause(pool._MAX_CONCURRENT_WORKERS - 1)
         # Pool should still be able to service requests
-        self._getAndVerifyContainers(self.POOL_SIZE + 10)
+        self._getAndVerifyContainers(POOL_SIZE + 10)
 
 
     def testRequestContainer_factoryHung_timeout(self):
@@ -162,7 +162,7 @@ class PoolTests(unittest.TestCase):
         self._forceWorkerTimeouts()
 
         # We should start getting containers again.
-        self._getAndVerifyContainers(self.POOL_SIZE + 10)
+        self._getAndVerifyContainers(POOL_SIZE + 10)
 
         # Check for expected timeout errors in the error log.
         error_count = 0
@@ -184,7 +184,7 @@ class PoolTests(unittest.TestCase):
 
         # Get all created containers.  Destroy them because we are checking
         # destruction counts later.
-        original_create_count = self.POOL_SIZE
+        original_create_count = POOL_SIZE
         for _ in range(original_create_count):
             self.pool.get(timeout=TEST_TIMEOUT).destroy()
 
@@ -314,7 +314,7 @@ class ThrottleTests(unittest.TestCase):
         max_workers = pool._MAX_CONCURRENT_WORKERS
         test_factory = TestFactory()
         test_factory.pause(max_workers*2)
-        test_pool = pool.Pool(test_factory)
+        test_pool = pool.Pool(test_factory, size=max_workers*2)
 
         try:
             # The factory should receive max_workers calls.
@@ -357,7 +357,7 @@ class ThrottleTests(unittest.TestCase):
                 test_factory.crash_on_create = True
 
                 # Start the pool, and wait for <test_error_max> factory calls.
-                test_pool = pool.Pool(test_factory)
+                test_pool = pool.Pool(test_factory, POOL_SIZE)
                 logging.debug('wait for %d factory calls.', test_error_max)
                 test_factory.wait(test_error_max)
                 logging.debug('received %d factory calls.', test_error_max)

@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import Queue
 import array
 import collections
 import os
@@ -14,6 +15,7 @@ from contextlib import contextmanager
 from multiprocessing import connection
 
 import common
+from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc.container_pool import message
 from autotest_lib.site_utils.lxc.container_pool import service
@@ -33,14 +35,21 @@ class ServiceTests(unittest.TestCase):
         # the chroot are set to a path that causes the socket address to exceed
         # the maximum allowable length.
         cls.test_dir = tempfile.mkdtemp(prefix='service_unittest_', dir='/tmp')
-        cls.host_dir = FakeHostDir(cls.test_dir)
-        cls.address = os.path.join(cls.test_dir, service._SOCKET_NAME)
 
 
     @classmethod
     def tearDownClass(cls):
         """Deletes the test directory. """
         shutil.rmtree(cls.test_dir)
+
+
+    def setUp(self):
+        """Per-test setup."""
+        # Put each test in its own test dir, so it's hermetic.
+        self.test_dir = tempfile.mkdtemp(dir=ServiceTests.test_dir)
+        self.host_dir = FakeHostDir(self.test_dir)
+        self.address = os.path.join(self.test_dir,
+                                    lxc.DEFAULT_CONTAINER_POOL_SOCKET)
 
 
     def testConnection(self):
@@ -95,11 +104,41 @@ class ServiceTests(unittest.TestCase):
 
     def testStop(self):
         """Tests stopping the service."""
-        with self.run_service() as service, self.create_client() as client:
-            self.assertTrue(service.is_running())
+        with self.run_service() as svc, self.create_client() as client:
+            self.assertTrue(svc.is_running())
             client.send(message.shutdown())
             client.recv()  # wait for ack
-            self.assertFalse(service.is_running())
+            self.assertFalse(svc.is_running())
+
+
+    def testStatus(self):
+        """Tests querying service status."""
+        pool = MockPool()
+        with self.run_service(pool) as svc, self.create_client() as client:
+            client.send(message.status())
+            status = client.recv()
+            self.assertTrue(status['running'])
+            self.assertEqual(self.address, status['socket_path'])
+            self.assertEqual(pool.capacity, status['pool capacity'])
+            self.assertEqual(pool.size, status['pool size'])
+            self.assertEqual(pool.worker_count, status['pool worker count'])
+            self.assertEqual(pool.errors.qsize(), status['pool errors'])
+
+            # Change some values, ensure the changes are reflected.
+            pool.capacity = 42
+            pool.size = 19
+            pool.worker_count = 3
+            error_count = 8
+            for e in range(error_count):
+                pool.errors.put(e)
+            client.send(message.status())
+            status = client.recv()
+            self.assertTrue(status['running'])
+            self.assertEqual(self.address, status['socket_path'])
+            self.assertEqual(pool.capacity, status['pool capacity'])
+            self.assertEqual(pool.size, status['pool size'])
+            self.assertEqual(pool.worker_count, status['pool worker count'])
+            self.assertEqual(pool.errors.qsize(), status['pool errors'])
 
 
     def testMultipleClients(self):
@@ -138,9 +177,11 @@ class ServiceTests(unittest.TestCase):
 
 
     @contextmanager
-    def run_service(self):
+    def run_service(self, pool=None):
         """Creates and cleans up a Service instance."""
-        svc = service.Service(self.host_dir)
+        if pool is None:
+            pool = MockPool()
+        svc = service.Service(self.host_dir, pool)
         thread = threading.Thread(name='service', target=svc.start)
         thread.start()
         try:
@@ -160,6 +201,21 @@ class ServiceTests(unittest.TestCase):
             client.close()
 
 
+class MockPool(object):
+    """A mock pool class for testing the service."""
+
+    def __init__(self):
+        """Initializes a mock empty pool."""
+        self.capacity = 0
+        self.size = 0
+        self.worker_count = 0
+        self.errors = Queue.Queue()
+
+    def cleanup(self):
+        """Required by pool interface.  Does nothing."""
+        pass
+
+
 if __name__ == '__main__':
-    unittest_setup.setup()
+    unittest_setup.setup(require_sudo=False)
     unittest.main()

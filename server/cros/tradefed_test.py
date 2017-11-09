@@ -372,18 +372,18 @@ class TradefedTest(test.test):
     _BOARD_RETRY = {}
     _CHANNEL_RETRY = {'dev': 5}
 
-    def log_java_version(self):
+    def _log_java_version(self):
         """Quick sanity and spew of java version installed on the server."""
         utils.run('java', args=('-version',), ignore_status=False, verbose=True,
                   stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
 
-    def initialize(self, host=None, max_retry=None, warn_on_test_retry=True):
+    def initialize(self, bundle=None, uri=None, host=None, max_retry=None,
+                   warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
         self._host = host
         self._max_retry = self._get_max_retry(max_retry, self._host)
         self._install_paths = []
-        self.result_history = {}
         self._warn_on_test_retry = warn_on_test_retry
         # Tests in the lab run within individual lxc container instances.
         if utils.is_in_container():
@@ -418,6 +418,17 @@ class TradefedTest(test.test):
                 | stat.S_IXOTH)
         self._install_files(_ADB_DIR, _ADB_FILES, permission)
         self._install_files(_SDK_TOOLS_DIR, _SDK_TOOLS_FILES, permission)
+
+        # Install the tradefed bundle.
+        bundle_install_path = self._install_bundle(
+            uri or self._get_default_bundle_url(bundle))
+        self._repository = os.path.join(bundle_install_path,
+                                        self._get_tradefed_base_dir())
+        # Load waivers and manual tests so TF doesn't re-run them.
+        self._waivers = self._get_expected_failures('expectations')
+        self._manual_tests = self._get_expected_failures('manual_tests')
+        # Load modules with no tests.
+        self._notest_modules = self._get_expected_failures('notest_modules')
 
     def cleanup(self):
         """Cleans up any dirtied state."""
@@ -1073,6 +1084,37 @@ class TradefedTest(test.test):
             output = host.run(formatted_command, ignore_status=True)
             logging.info('END: %s\n', output)
 
+    def _run_and_parse_tradefed(self, commands):
+        """Kick off the tradefed command.
+
+        Assumes that only last entry of |commands| actually runs tests and has
+        interesting output (results, logs) for collection. Ignores all other
+        commands for this purpose.
+
+        @param commands: List of lists of command tokens.
+        @raise TestFail: when a test failure is detected.
+        @return: tuple of (tests, pass, fail, notexecuted) counts.
+        """
+        try:
+            output = self._run_tradefed(commands)
+        except:
+            self._log_java_version()
+            raise
+
+        result_destination = os.path.join(self.resultsdir,
+                                          self._get_tradefed_base_dir())
+        # Gather the global log first. Datetime parsing below can abort the test
+        # if tradefed startup had failed. Even then the global log is useful.
+        self._collect_tradefed_global_log(output, result_destination)
+        # Parse stdout to obtain datetime of the session. This is needed to
+        # locate result xml files and logs.
+        datetime_id = self._parse_tradefed_datetime_v2(output, self.summary)
+        # Collect tradefed logs for autotest.
+        self._collect_logs(datetime_id, result_destination)
+        # Result parsing must come after all other essential operations as test
+        # warnings, errors and failures can be raised here.
+        return self._parse_result_v2(output, waivers=self._waivers)
+
     def _clean_repository(self):
         """Ensures all old logs, results and plans are deleted.
 
@@ -1138,7 +1180,7 @@ class TradefedTest(test.test):
         # new session_id might be more reliable. For now just assume simple
         # increment. This works if only one tradefed instance is active and
         # only a single run command is executing at any moment.
-        return session_id + 1, self._run_tradefed(commands)
+        return session_id + 1, self._run_and_parse_tradefed(commands)
 
     def _classify_results(self, total_tests, passed, failed, notexecuted,
                           waived, steps, retry_inconsistency_error):
@@ -1219,16 +1261,15 @@ class TradefedTest(test.test):
                 # The list command is not required. It allows the reader to
                 # inspect the tradefed state when examining the autotest logs.
                 commands = [['list', 'results'], test_command]
-                counts = self._run_tradefed(commands)
+                counts = self._run_and_parse_tradefed(commands)
                 tests, passed, failed, notexecuted, waived = counts
-                self.result_history[steps] = counts
                 msg = 'run(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
                 logging.info('RESULT: %s', msg)
                 self.summary += msg
-                if tests == 0 and target_module in self.notest_modules:
+                if tests == 0 and target_module in self._notest_modules:
                     logging.info('Package has no tests as expected.')
                     return
-                if tests > 0 and target_module in self.notest_modules:
+                if tests > 0 and target_module in self._notest_modules:
                     # We expected no tests, but the new bundle drop must have
                     # added some for us. Alert us to the situation.
                     raise error.TestFail('Failed: Remove module %s from '
@@ -1239,13 +1280,12 @@ class TradefedTest(test.test):
                     notexecuted += 1
                     waived += 1
                     logging.warning('Skipped test %s', ' '.join(test_command))
-                elif tests == 0 and target_module not in self.notest_modules:
+                elif tests == 0 and target_module not in self._notest_modules:
                     logging.error('Did not find any tests in module. Hoping '
                                   'this is transient. Retry after reboot.')
                 if not self._consistent(tests, passed, failed, notexecuted):
                     # Try to figure out what happened. Example: b/35605415.
-                    self._run_tradefed([['list', 'results']],
-                                       collect_results=False)
+                    self._run_tradefed([['list', 'results']])
                     logging.warning('Test count inconsistent. %s',
                                     self.summary)
                 # Keep track of global count, we can't trust continue/retry.
@@ -1276,7 +1316,6 @@ class TradefedTest(test.test):
                 session_id, counts = self._tradefed_retry(test_name,
                                                           session_id)
                 tests, passed, failed, notexecuted, waived = counts
-                self.result_history[steps] = counts
                 # Consistency check, did we really run as many as we thought
                 # initially?
                 if expected_tests != tests:
@@ -1299,7 +1338,6 @@ class TradefedTest(test.test):
                     session_id, counts = self._tradefed_retry(test_name,
                                                               session_id)
                     tests, passed, failed, notexecuted, waived = counts
-                    self.result_history[steps] = counts
                 msg = 'retry(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
                 logging.info('RESULT: %s', msg)
                 self.summary += ' ' + msg

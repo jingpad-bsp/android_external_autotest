@@ -151,6 +151,10 @@ class _DUTPool(object):
     which must always be assigned to pool:suites.  These DUTs are
     always marked with pool:chameleon to prevent their reassignment.
 
+    |extra_labels| may be used to restrict DUTPool down to a subset
+    of a given board+pool, by specifying additonal labels that all
+    DUTs are required to possess.
+
     TODO(jrbarnette):  The use of `pool:chamelon` (instead of just
     the `chameleon` label is a hack that should be eliminated.
 
@@ -173,12 +177,14 @@ class _DUTPool(object):
 
     """
 
-    def __init__(self, afe, board, pool, start_time, end_time):
+    def __init__(self, afe, board, pool, start_time, end_time,
+                 extra_labels=None):
         self.board = board
         self.pool = pool
         self.working_hosts = []
         self.broken_hosts = []
         self.ineligible_hosts = []
+        self._extra_labels = extra_labels or []
         self.total_hosts = self._get_hosts(afe, start_time, end_time)
         self._labels = [_POOL_PREFIX + self.pool]
 
@@ -187,7 +193,8 @@ class _DUTPool(object):
         all_histories = (
             status_history.HostJobHistory.get_multiple_histories(
                     afe, start_time, end_time,
-                    board=self.board, pool=self.pool))
+                    board=self.board, pool=self.pool,
+                    extra_labels=self._extra_labels))
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
@@ -332,7 +339,8 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
                          host.hostname, ' '.join(additions))
 
 
-def _balance_board(arguments, afe, board, pool, start_time, end_time):
+def _balance_board(arguments, afe, board, pool, start_time, end_time,
+                   extra_labels=None):
     """Balance one board as requested by command line arguments.
 
     @param arguments     Parsed command line arguments.
@@ -345,12 +353,13 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time):
                          the DUT pools.
     @param end_time      End time for HostJobHistory objects in the
                          DUT pools.
+    @param extra_labels  Optional extra labels that all DUTs must possess.
 
     """
     spare_pool = _DUTPool(afe, board, arguments.spare,
-                          start_time, end_time)
+                          start_time, end_time, extra_labels)
     main_pool = _DUTPool(afe, board, pool,
-                         start_time, end_time)
+                         start_time, end_time, extra_labels)
 
     target_total = main_pool.total_hosts
     if arguments.total is not None:
@@ -375,6 +384,8 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time):
         _log_message('')
 
         _log_info(dry_run, 'Balancing %s %s pool:', board, main_pool.pool)
+        if extra_labels:
+            _log_info(dry_run, 'Restricting to extra labels: %s', extra_labels)
         _log_info(dry_run,
                   'Total %d DUTs, %d working, %d broken, %d reserved.',
                   main_pool.total_hosts, len(main_pool.working_hosts),
@@ -553,6 +564,9 @@ def _parse_command(argv):
                         metavar='BOARD',
                         help='Names of boards to balance.')
 
+    parser.add_argument('--model', type=str, action='store', metavar='MODEL',
+                        help='Optional name of model to restrict to.')
+
     arguments = parser.parse_args(argv[1:])
 
     # Error-check arguments.
@@ -576,11 +590,15 @@ def specify_balance_args(afe, arguments, pools):
     @param arguments     Parsed command line arguments.
     @param pools         The list of pools to balance.
 
-    @returns    a list of (board, pool) pairs to be balanced
+    @returns    a list of (board, pool, extra_labels) tuples to be balanced
 
     """
     board_info = []
     boards = arguments.boards
+    extra_labels = []
+    if arguments.model:
+        extra_labels = ['model:' + arguments.model]
+
     if arguments.all_boards:
         inventory = lab_inventory.get_inventory(afe)
         for pool in pools:
@@ -592,7 +610,8 @@ def specify_balance_args(afe, arguments, pools):
             else:
                 boards_in_pool = inventory.get_managed_boards(pool=pool)
                 current_len_board_info = len(board_info)
-                board_info.extend([(board, pool) for board in boards_in_pool])
+                board_info.extend([(board, pool, extra_labels)
+                                   for board in boards_in_pool])
             metrics.Boolean(
                 'chromeos/autotest/balance_pools/unchanged_pools').set(
                     quarantine, fields={'pool': pool})
@@ -601,7 +620,7 @@ def specify_balance_args(afe, arguments, pools):
         # the balancer properly.
         for pool in pools:
             current_len_board_info = len(board_info)
-            board_info.extend([(board, pool) for board in boards])
+            board_info.extend([(board, pool, extra_labels) for board in boards])
     return board_info
 
 
@@ -612,13 +631,15 @@ def main(argv):
 
     """
 
-    def balancer(board, pool):
+    def balancer(board, pool, extra_labels):
       """Balance the specified board.
 
       @param board The board name.
       @param pool The pool to rebalance for the board.
+      @param extra_labels extra labels to restrict to
       """
-      _balance_board(arguments, afe, board, pool, start_time, end_time)
+      _balance_board(arguments, afe, board, pool, start_time, end_time,
+                     extra_labels)
       _log_message('')
 
     end_time = time.time()

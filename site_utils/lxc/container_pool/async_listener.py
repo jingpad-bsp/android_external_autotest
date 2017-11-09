@@ -9,10 +9,6 @@ import threading
 from multiprocessing import connection
 
 import common
-from autotest_lib.site_utils.lxc.container_pool import multi_logger
-
-
-_logger = multi_logger.create('async_listener')
 
 
 class AsyncListener(object):
@@ -76,7 +72,7 @@ class AsyncListener(object):
         if not self._running:
             return False
 
-        _logger.debug('Stopping connection listener.')
+        logging.debug('Stopping connection listener.')
         # Setting this to false causes the thread's event loop to exit on the
         # next iteration.
         self._running = False
@@ -89,10 +85,10 @@ class AsyncListener(object):
             fake_connection.connect(self._address)
             fake_connection.close()
         except socket.timeout:
-            _logger.error('Timeout while attempting to close socket listener.')
+            logging.error('Timeout while attempting to close socket listener.')
             return False
 
-        _logger.debug('Socket closed. Waiting for thread to terminate.')
+        logging.debug('Socket closed. Waiting for thread to terminate.')
         self._thread.join(1)
         return not self._thread.isAlive()
 
@@ -102,7 +98,7 @@ class AsyncListener(object):
 
         If the listener thread is running, it is first stopped.
         """
-        _logger.debug('AsyncListener.close called.')
+        logging.debug('AsyncListener.close called.')
         if self._running:
             self.stop()
         self._socket.close()
@@ -134,14 +130,14 @@ class AsyncListener(object):
         This function is intended to be run on the listener thread.  It accepts
         incoming socket connections, and queues them up to be handled.
         """
-        _logger.debug('Start event loop.')
+        logging.debug('Start event loop.')
         while self._running:
             try:
                 self._queue.put(self._socket.accept())
-                _logger.debug('Received incoming connection.')
+                logging.debug('Received incoming connection.')
             except IOError:
                 # The stop method uses a fake connection to unblock the polling
                 # thread.  This results in an IOError but this is an expected
                 # outcome.
-                _logger.debug('Connection aborted.')
-        _logger.debug('Exit event loop.')
+                logging.debug('Connection aborted.')
+        logging.debug('Exit event loop.')
