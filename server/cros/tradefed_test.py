@@ -244,8 +244,8 @@ def pushd(d):
         os.chdir(current)
 
 
-def parse_tradefed_v2_result(result, waivers=None):
-    """Check the result from the tradefed-v2 output.
+def parse_tradefed_result(result, waivers=None):
+    """Check the result from the tradefed output.
 
     @param result: The result stdout string from the tradefed command.
     @param waivers: a set() of tests which are permitted to fail.
@@ -856,41 +856,6 @@ class TradefedTest(test.test):
                              Example: '2016.07.14_00.34.50'.
         """
         # This string is show for both 'run' and 'continue' after all tests.
-        match = re.search(r': XML test result file generated at (\S+). Passed',
-                result.stdout)
-        if not (match and match.group(1)):
-            # TODO(ihf): Find out if we ever recover something interesting in
-            # this case. Otherwise delete it.
-            # Try harder to find the remains. This string shows before all
-            # tests but only with 'run', not 'continue'.
-            logging.warning('XML test result file incomplete?')
-            match = re.search(r': Created result dir (\S+)', result.stdout)
-            if not (match and match.group(1)):
-                error_msg = 'Test did not complete due to Chrome or ARC crash.'
-                if summary:
-                    error_msg += (' Test summary from previous runs: %s'
-                            % summary)
-                raise error.TestFail(error_msg)
-        datetime_id = match.group(1)
-        logging.info('Tradefed identified results and logs with %s.',
-                     datetime_id)
-        return datetime_id
-
-    def _parse_tradefed_datetime_v2(self, result, summary=None):
-        """Get the tradefed provided result ID consisting of a datetime stamp.
-
-        Unfortunately we are unable to tell tradefed where to store the results.
-        In the lab we have multiple instances of tradefed running in parallel
-        writing results and logs to the same base directory. This function
-        finds the identifier which tradefed used during the current run and
-        returns it for further processing of result files.
-
-        @param result: The result object from utils.run.
-        @param summary: Test result summary from runs so far.
-        @return datetime_id: The result ID chosen by tradefed.
-                             Example: '2016.07.14_00.34.50'.
-        """
-        # This string is show for both 'run' and 'continue' after all tests.
         match = re.search(r'(\d\d\d\d.\d\d.\d\d_\d\d.\d\d.\d\d)', result.stdout)
         if not (match and match.group(1)):
             error_msg = 'Error: Test did not complete. (Chrome or ARC crash?)'
@@ -912,60 +877,7 @@ class TradefedTest(test.test):
         @param result: The result object from utils.run.
         @param waivers: a set() of tests which are permitted to fail.
         """
-        # Parse the stdout to extract test status. In particular step over
-        # similar output for each ABI and just look at the final summary.
-        match = re.search(r'(XML test result file generated at (\S+). '
-                 r'Passed (\d+), Failed (\d+), Not Executed (\d+))',
-                 result.stdout)
-        if not match:
-            raise error.Test('Test log does not contain a summary.')
-
-        passed = int(match.group(3))
-        failed = int(match.group(4))
-        not_executed = int(match.group(5))
-        match = re.search(r'(Start test run of (\d+) packages, containing '
-                          r'(\d+(?:,\d+)?) tests)', result.stdout)
-        if match and match.group(3):
-            tests = int(match.group(3).replace(',', ''))
-        else:
-            # Unfortunately this happens. Assume it made no other mistakes.
-            logging.warning('Tradefed forgot to print number of tests.')
-            tests = passed + failed + not_executed
-        # TODO(rohitbm): make failure parsing more robust by extracting the list
-        # of failing tests instead of searching in the result blob. As well as
-        # only parse for waivers for the running ABI.
-        waived = 0
-        if waivers:
-            for testname in waivers:
-                # TODO(dhaddock): Find a more robust way to apply waivers.
-                fail_count = result.stdout.count(testname + ' FAIL')
-                if fail_count:
-                    if fail_count > 2:
-                        raise error.TestFail('Error: There are too many '
-                                             'failures found in the output to '
-                                             'be valid for applying waivers. '
-                                             'Please check output.')
-                    waived += fail_count
-                    logging.info('Waived failure for %s %d time(s)',
-                                 testname, fail_count)
-        logging.info(
-            'tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d',
-            tests, passed, failed, not_executed, waived)
-        if failed < waived:
-            raise error.TestFail('Error: Internal waiver book keeping has '
-                                 'become inconsistent.')
-        return (tests, passed, failed, not_executed, waived)
-
-    def _parse_result_v2(self, result, waivers=None):
-        """Check the result from the tradefed-v2 output.
-
-        This extracts the test pass/fail/executed list from the output of
-        tradefed. It is up to the caller to handle inconsistencies.
-
-        @param result: The result object from utils.run.
-        @param waivers: a set() of tests which are permitted to fail.
-        """
-        return parse_tradefed_v2_result(result.stdout, waivers)
+        return parse_tradefed_result(result.stdout, waivers)
 
     def _collect_logs(self, datetime, destination):
         """Collects the tradefed logs.
@@ -1108,12 +1020,12 @@ class TradefedTest(test.test):
         self._collect_tradefed_global_log(output, result_destination)
         # Parse stdout to obtain datetime of the session. This is needed to
         # locate result xml files and logs.
-        datetime_id = self._parse_tradefed_datetime_v2(output, self.summary)
+        datetime_id = self._parse_tradefed_datetime(output, self.summary)
         # Collect tradefed logs for autotest.
         self._collect_logs(datetime_id, result_destination)
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
-        return self._parse_result_v2(output, waivers=self._waivers)
+        return self._parse_result(output, waivers=self._waivers)
 
     def _clean_repository(self):
         """Ensures all old logs, results and plans are deleted.
