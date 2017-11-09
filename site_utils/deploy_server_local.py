@@ -287,7 +287,7 @@ def service_status(service_name):
 
     @raises subprocess.CalledProcessError on a command failure.
     """
-    return subprocess.check_output(['sudo', 'status', service_name])
+    return subprocess.check_output(['sudo', 'service', service_name, 'status'])
 
 
 def restart_services(service_names, dryrun=False, skip_service_status=False):
