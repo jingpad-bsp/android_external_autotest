@@ -1,6 +1,6 @@
 TIME="LONG"
 AUTHOR = "Cleber Rosa <cleber@redhat.com>"
-NAME = 'xfsFilesystemTestSuiteExt4Crypto'
+NAME = 'xfsFilesystemTestSuiteExt4Plain'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'client'
@@ -19,7 +19,7 @@ reimplement the class parsing in python.
 from autotest_lib.client.bin import xfstest_util
 
 xfs_env = xfstest_util.xfstests_env()
-xfs_env.setup_partitions(job, fs_types=['ext4'], crypto=True)
+xfs_env.setup_partitions(job, fs_types=['ext4'])
 
 #
 # Adapt to the list of tests you want to run
