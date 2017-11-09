@@ -58,6 +58,9 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
 
         with chrome.Chrome():
 
+            # wait for Chrome to start before taking screenshot
+            time.sleep(10)
+
             # Take screenshot of browser.
             vt1_screenshot = self._take_current_vt_screenshot(1)
 
