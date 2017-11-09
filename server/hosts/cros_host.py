@@ -191,8 +191,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 lsb_release_content = host.run(
                     'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release',
                     timeout=timeout).stdout
-                return not lsbrelease_utils.is_jetstream(
-                    lsb_release_content=lsb_release_content)
+                return not (
+                    lsbrelease_utils.is_jetstream(
+                        lsb_release_content=lsb_release_content) or
+                    lsbrelease_utils.is_gce_board(
+                        lsb_release_content=lsb_release_content))
+
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
 
@@ -1453,6 +1457,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def cleanup(self):
+        """Cleanup state on device."""
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
             self.cleanup_services()
@@ -1604,6 +1609,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def verify(self):
+        """Verify Chrome OS system is in good state."""
         self._repair_strategy.verify(self)
 
 
