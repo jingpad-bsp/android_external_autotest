@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import system_metrics_collector
 from autotest_lib.client.common_lib.cros import webrtc_utils
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.multimedia import system_facade_native
 from autotest_lib.client.cros.video import helper_logger
 from telemetry.core import exceptions
 from telemetry.util import image_util
@@ -290,7 +291,8 @@ class WebRtcPeerConnectionPerformanceTest(WebRtcPeerConnectionTest):
                   num_peer_connections,
                   iteration_delay_millis,
                   perf_before_start_hook)
-          self.collector = system_metrics_collector.SystemMetricsCollector()
+          self.collector = system_metrics_collector.SystemMetricsCollector(
+                system_facade_native.SystemFacadeNative())
 
     def do_in_wait_loop(self):
         self.collector.collect_snapshot()
