@@ -557,8 +557,7 @@ class LabInventoryTests(_InventoryTests):
         broken_total = 0
         idle_total = 0
         managed_boards = set()
-        for b in self.inventory:
-            c = self.inventory[b]
+        for b, c in self.inventory.by_board.iteritems():
             calculated_counts = (
                 (c.get_working(self._CRITICAL_POOL),
                  c.get_broken(self._CRITICAL_POOL),
@@ -582,7 +581,7 @@ class LabInventoryTests(_InventoryTests):
                 managed_boards.add(b)
         self.assertEqual(self.inventory.get_managed_boards(),
                          managed_boards)
-        board_list = self.inventory.keys()
+        board_list = self.inventory.by_board.keys()
         self.assertEqual(set(board_list), set(data.keys()))
         self.assertEqual(self.inventory.get_num_duts(),
                          self.num_duts)
