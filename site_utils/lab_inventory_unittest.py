@@ -16,8 +16,9 @@ from autotest_lib.site_utils import lab_inventory
 class _FakeHost(object):
     """Class to mock `Host` in _FakeHostHistory for testing."""
 
-    def __init__(self, hostname):
+    def __init__(self, hostname, board, pool):
         self.hostname = hostname
+        self.labels = ['board:%s' % board, 'pool:%s' % pool]
 
 
 class _FakeHostHistory(object):
@@ -27,7 +28,7 @@ class _FakeHostHistory(object):
         self._board = board
         self._pool = pool
         self._status = status
-        self._host = _FakeHost(hostname)
+        self._host = _FakeHost(hostname, board, pool)
 
 
     @property
