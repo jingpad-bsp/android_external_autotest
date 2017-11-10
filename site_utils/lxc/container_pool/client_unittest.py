@@ -59,8 +59,8 @@ class ClientTests(unittest.TestCase):
 
         # Connect a client, then verify that the host connection is established.
         host = None
-        with client.Client.connect(self.address, 0):
-            host = self.listener.get_connection()
+        with client.Client.connect(self.address, TIMEOUT):
+            host = self.listener.get_connection(TIMEOUT)
             self.assertIsNotNone(host)
 
         # Client closed - check that the host connection also closed.
