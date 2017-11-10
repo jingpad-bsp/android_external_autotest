@@ -8,19 +8,19 @@ class GetDevicesTest(unittest.TestCase):
   """Unit test for file get_usb_devices."""
 
   def test_extract_usb_data_empty(self):
-    self.assertEqual(get_usb_devices._extract_usb_data(""), [])
+      self.assertEqual(get_usb_devices._extract_usb_data(""), [])
 
   def test_get_list_audio_device_empty(self):
-    audio_device_list = get_usb_devices._get_list_audio_device([])
-    self.assertEqual(audio_device_list, [])
+      audio_device_list = get_usb_devices._get_list_audio_device([])
+      self.assertEqual(audio_device_list, [])
 
   def test_get_list_audio_device_non_empty(self):
-    usbdata = [
-        {'intdriver': ['snd-usb-audio']},
-        {'intdriver': ['uvcvideo']},
-    ]
-    audio_device_list = get_usb_devices._get_list_audio_device(usbdata)
-    self.assertEqual(len(audio_device_list), 1)
+      usbdata = [
+          {'intdriver': ['snd-usb-audio']},
+          {'intdriver': ['uvcvideo']},
+      ]
+      audio_device_list = get_usb_devices._get_list_audio_device(usbdata)
+      self.assertEqual(len(audio_device_list), 1)
 
   def test_get_device_prod(self):
     for speaker in cfm_usb_devices.get_speakers():
@@ -34,10 +34,27 @@ class GetDevicesTest(unittest.TestCase):
     self.assertIsNone(get_usb_devices._get_device_prod('invalid'))
 
   def test_get_vid_pid(self):
-    vid, pid = get_usb_devices._get_vid_and_pid('123:456')
-    self.assertEquals(vid, '123')
-    self.assertEquals(pid, '456')
+      vid, pid = get_usb_devices._get_vid_and_pid('123:456')
+      self.assertEquals(vid, '123')
+      self.assertEquals(pid, '456')
 
+  def test_verify_usb_device_ok(self):
+      vid_pid = '17e9:016b'
+      usbdata = [
+          {
+              'Vendor': '17e9',
+              'ProdID': '016b',
+              'intdriver': ['udl']
+          },
+       ]
+      get_usb_devices._verify_usb_device_ok(usbdata, vid_pid)
+
+      usbdata[0]['intdriver'] = []
+      try:
+        get_usb_devices._verify_usb_device_ok(usbdata, vid_pid)
+        self.fail('Expected check to trigger RuntimeError')
+      except RuntimeError:
+        pass
 
 if __name__ == "__main__":
     unittest.main()
