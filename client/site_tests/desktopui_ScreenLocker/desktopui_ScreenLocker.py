@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import gobject
 import logging
-from datetime import datetime
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib.cros import chrome, session_manager
 from autotest_lib.client.cros import asan
 from autotest_lib.client.cros.input_playback import input_playback
 
-import gobject
+from datetime import datetime
 from dbus.mainloop.glib import DBusGMainLoop
 
 class desktopui_ScreenLocker(test.test):
@@ -26,6 +26,7 @@ class desktopui_ScreenLocker(test.test):
 
 
     def initialize(self):
+        """Init method"""
         super(desktopui_ScreenLocker, self).initialize()
         DBusGMainLoop(set_as_default=True)
         self.player = input_playback.InputPlayback()
@@ -161,15 +162,25 @@ class desktopui_ScreenLocker(test.test):
         then unlocks with the right password.
 
         """
-        with chrome.Chrome(autotest_ext=True) as self._chrome:
-            perf_values = {}
-            self.lock_screen(perf_values)
-            self.attempt_unlock_bad_password()
-            self.unlock_screen()
-            self.lock_screen_through_keyboard()
-            self.unlock_screen()
-            self.output_perf_value(
-                    description='time_to_lock_screen',
-                    value=perf_values['lock_seconds'],
-                    units='s',
-                    higher_is_better=False)
+        # TODO(crbug.com/781998): This test needs to support views-based lock
+        # (ie, remove --show-webui-lock). Doing this requires replacing the
+        # oobe.EvaluateJavaScript with autotestPrivate calls.
+        with chrome.Chrome(
+                autotest_ext=True,
+                extra_browser_args=['--show-webui-lock']) as self._chrome:
+            try:
+                # Give performance data some initial state that will be reported
+                # if the test times out.
+                perf_values = { 'lock_seconds': self._SCREEN_IS_LOCKED_TIMEOUT }
+
+                self.lock_screen(perf_values)
+                self.attempt_unlock_bad_password()
+                self.unlock_screen()
+                self.lock_screen_through_keyboard()
+                self.unlock_screen()
+            finally:
+                self.output_perf_value(
+                        description='time_to_lock_screen',
+                        value=perf_values['lock_seconds'],
+                        units='s',
+                        higher_is_better=False)
