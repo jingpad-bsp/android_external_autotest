@@ -584,7 +584,7 @@ def where_art_thy_filehandles():
 
 def get_num_allocated_file_handles():
     """
-    Returns the currently number of allocated file handles.
+    Returns the number of currently allocated file handles.
 
     Gets this information by parsing /proc/sys/fs/file-nr.
     See https://www.kernel.org/doc/Documentation/sysctl/fs.txt
