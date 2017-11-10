@@ -70,10 +70,10 @@ from chromite.lib import parallel
 from infra_libs import ts_mon
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
-# This is the ratio of all boards we should calculate the default max number of
-# broken boards against.  It seemed like the best choice that was neither too
-# strict nor lax.
-_MAX_BROKEN_BOARDS_DEFAULT_RATIO = 3.0 / 8.0
+# This is the ratio of all boards/models we should calculate the default max
+# number of broken boards against.  It seemed like the best choice that was
+# neither too strict nor lax.
+_MAX_BROKEN_DEFAULT_RATIO = 3.0 / 8.0
 
 _ALL_CRITICAL_POOLS = 'all_critical_pools'
 _SPARE_DEFAULT = lab_inventory.SPARE_POOL
@@ -138,23 +138,19 @@ def _log_error(message, *args):
 
 
 class _DUTPool(object):
-    """Information about a pool of DUTs for a given board.
+    """Information about a pool of DUTs matching given labels.
 
-    This class collects information about all DUTs for a given
-    board and pool pair, and divides them into three categories:
+    This class collects information about all DUTs for a given pool and matching
+    the given labels, and divides them into three categories:
       + Working - the DUT is working for testing, and not locked.
       + Broken - the DUT is unable to run tests, or it is locked.
-      + Ineligible - the DUT is not available to be removed from
-          this pool.  The DUT may be either working or broken.
+      + Ineligible - the DUT is not available to be removed from this pool.  The
+            DUT may be either working or broken.
 
     DUTs with more than one pool: label are ineligible for exchange
     during balancing.  This is done for the sake of chameleon hosts,
     which must always be assigned to pool:suites.  These DUTs are
     always marked with pool:chameleon to prevent their reassignment.
-
-    |extra_labels| may be used to restrict DUTPool down to a subset
-    of a given board+pool, by specifying additonal labels that all
-    DUTs are required to possess.
 
     TODO(jrbarnette):  The use of `pool:chamelon` (instead of just
     the `chameleon` label is a hack that should be eliminated.
@@ -163,39 +159,35 @@ class _DUTPool(object):
     to be resupplied with working DUTs and spare pools that supply
     those DUTs.
 
-    @property board               Name of the board associated with
-                                  this pool of DUTs.
     @property pool                Name of the pool associated with
                                   this pool of DUTs.
-    @property working_hosts       The list of this pool's working
-                                  DUTs.
-    @property broken_hosts        The list of this pool's broken
-                                  DUTs.
+    @property labels              Labels that constrain the DUTs to consider.
+                                  Currently, this is one of the following:
+                                  ['model:XXX'] or ['board:YYY']
+    @property working_hosts       The list of this pool's working DUTs.
+    @property broken_hosts        The list of this pool's broken DUTs.
     @property ineligible_hosts    The list of this pool's ineligible DUTs.
-    @property labels              A list of labels that identify a DUT
-                                  as part of this pool.
+    @property pool_labels         A list of labels that identify a DUT as part
+                                  of this pool.
     @property total_hosts         The total number of hosts in pool.
 
     """
 
-    def __init__(self, afe, board, pool, start_time, end_time,
-                 extra_labels=None):
-        self.board = board
+    def __init__(self, afe, pool, labels, start_time, end_time):
         self.pool = pool
+        self.labels = labellib.LabelsMapping(labels)
+        self.labels['pool'] = pool
+        self._pool_labels = [_POOL_PREFIX + self.pool]
+
         self.working_hosts = []
         self.broken_hosts = []
         self.ineligible_hosts = []
-        self._extra_labels = extra_labels or []
         self.total_hosts = self._get_hosts(afe, start_time, end_time)
-        self._labels = [_POOL_PREFIX + self.pool]
 
 
     def _get_hosts(self, afe, start_time, end_time):
-        labels = labellib.LabelsMapping(self._extra_labels)
-        labels['board'] = self.board
-        labels['pool'] = self.pool
         all_histories = status_history.HostJobHistory.get_multiple_histories(
-                afe, start_time, end_time, labels.getlabels())
+                afe, start_time, end_time, self.labels.getlabels())
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
@@ -223,7 +215,7 @@ class _DUTPool(object):
                 or AFE.remove_labels().
 
         """
-        return self._labels
+        return self._pool_labels
 
     def calculate_spares_needed(self, target_total):
         """Calculate and log the spares needed to achieve a target.
@@ -252,20 +244,27 @@ class _DUTPool(object):
             'chromeos/autotest/balance_pools/exhausted_pools',
             "True for each pool/board which requests more DUTs than supplied",
             field_spec=[
-                ts_mon.StringField('pool'), ts_mon.StringField('board')]
-        ).set(
-            not spares_needed, fields={'pool': self.pool, 'board': self.board}
+                    ts_mon.StringField('pool'),
+                    ts_mon.StringField('board'),
+                    ts_mon.StringField('model'),
+            ]).set(
+                    not spares_needed,
+                    fields={
+                            'pool': self.pool,
+                            'board': self.labels.get('board', ''),
+                            'model': self.labels.get('model', ''),
+                    },
         )
         if not spares_needed:
-            _log_error('%s %s pool: Target of %d is below '
-                       'minimum of %d DUTs.',
-                       self.board, self.pool,
-                       target_total, num_ineligible)
+            _log_error(
+                    '%s pool (%s): Target of %d is below minimum of %d DUTs.',
+                    self.pool, self.labels, target_total, num_ineligible,
+            )
             _log_error('Adjusting target to %d DUTs.', num_ineligible)
             target_total = num_ineligible
         else:
             _log_message('%s %s pool: Target of %d is above minimum.',
-                         self.board, self.pool, target_total)
+                         self.labels.get('board', ''), self.pool, target_total)
         adjustment = target_total - self.total_hosts
         return len(self.broken_hosts) + adjustment
 
@@ -320,15 +319,24 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
     metrics.Counter(
         'chromeos/autotest/balance_pools/duts_moved',
         "DUTs transferred between pools",
-        field_spec=[ts_mon.StringField('board'),
-                    ts_mon.StringField('source_pool'),
-                    ts_mon.StringField('target_pool')]
-    ).increment_by(len(hosts),
-                   fields={'board': target_pool.board,
-                           'source_pool': spare_pool.pool,
-                           'target_pool': target_pool.pool})
+        field_spec=[
+                ts_mon.StringField('board'),
+                ts_mon.StringField('model'),
+                ts_mon.StringField('source_pool'),
+                ts_mon.StringField('target_pool'),
+        ]
+    ).increment_by(
+            len(hosts),
+            fields={
+                    'board': target_pool.labels.get('board', ''),
+                    'model': target_pool.labels.get('model', ''),
+                    'source_pool': spare_pool.pool,
+                    'target_pool': target_pool.pool,
+            },
+    )
     if not hosts:
         return
+
     additions = target_pool.pool_labels
     removals = spare_pool.pool_labels
     for host in hosts:
@@ -343,27 +351,22 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
                          host.hostname, ' '.join(additions))
 
 
-def _balance_board(arguments, afe, board, pool, start_time, end_time,
-                   extra_labels=None):
-    """Balance one board as requested by command line arguments.
+def _balance_board_or_model(arguments, afe, pool, labels, start_time, end_time):
+    """Balance one board/model as requested by command line arguments.
 
     @param arguments     Parsed command line arguments.
-    @param dry_run       Whether the logging is for a dry run or
-                         for actual execution.
     @param afe           AFE object to be used for the changes.
-    @param board         Board to be balanced.
     @param pool          Pool of the board to be balanced.
+    @param labels        Restrict the balancing operation within DUTs that have
+                         these labels.
     @param start_time    Start time for HostJobHistory objects in
                          the DUT pools.
     @param end_time      End time for HostJobHistory objects in the
                          DUT pools.
-    @param extra_labels  Optional extra labels that all DUTs must possess.
 
     """
-    spare_pool = _DUTPool(afe, board, arguments.spare,
-                          start_time, end_time, extra_labels)
-    main_pool = _DUTPool(afe, board, pool,
-                         start_time, end_time, extra_labels)
+    spare_pool = _DUTPool(afe, arguments.spare, labels, start_time, end_time)
+    main_pool = _DUTPool(afe, pool, labels, start_time, end_time)
 
     target_total = main_pool.total_hosts
     if arguments.total is not None:
@@ -387,9 +390,7 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time,
         dry_run = arguments.dry_run
         _log_message('')
 
-        _log_info(dry_run, 'Balancing %s %s pool:', board, main_pool.pool)
-        if extra_labels:
-            _log_info(dry_run, 'Restricting to extra labels: %s', extra_labels)
+        _log_info(dry_run, 'Balancing %s %s pool:', labels, main_pool.pool)
         _log_info(dry_run,
                   'Total %d DUTs, %d working, %d broken, %d reserved.',
                   main_pool.total_hosts, len(main_pool.working_hosts),
@@ -406,7 +407,7 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time,
 
         _log_info(dry_run,
                   '%s %s pool has %d spares available.',
-                  board, main_pool.pool, len(spare_pool.working_hosts))
+                  labels, main_pool.pool, len(spare_pool.working_hosts))
 
         if spares_needed > len(spare_duts):
             _log_error('Not enough spares: need %d, only have %d.',
@@ -415,22 +416,22 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time,
             _log_info(dry_run,
                       '%s %s pool will return %d broken DUTs, '
                       'leaving %d still in the pool.',
-                      board, main_pool.pool,
+                      labels, main_pool.pool,
                       len(surplus_duts),
                       len(main_pool.broken_hosts) - len(surplus_duts))
         else:
             _log_info(dry_run,
                       '%s %s pool will return %d surplus DUTs, '
                       'including %d working DUTs.',
-                      board, main_pool.pool,
+                      labels, main_pool.pool,
                       len(main_pool.broken_hosts) - shortfall,
                       -shortfall)
 
     if (len(main_pool.broken_hosts) > arguments.max_broken and
         not arguments.force_rebalance):
         _log_error('%s %s pool: Refusing to act on pool with %d broken DUTs.',
-                   board, main_pool.pool, len(main_pool.broken_hosts))
-        _log_error('Please investigate this board to see if there is a bug ')
+                   labels, main_pool.pool, len(main_pool.broken_hosts))
+        _log_error('Please investigate this board/model to for a bug ')
         _log_error('that is bricking devices. Once you have finished your ')
         _log_error('investigation, you can force a rebalance with ')
         _log_error('--force-rebalance')
@@ -447,49 +448,49 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time,
                      main_pool, spare_pool)
 
 
-def _too_many_broken_boards(inventory, pool, arguments):
+def _too_many_broken(inventory, pool, args):
     """
-    Get the inventory of boards and check if too many boards are broken.
+    Get the inventory of boards/models and check if too many are broken.
 
-    @param inventory: inventory object to determine board status inventory.
-    @param pool: The pool to check on for the board.
-    @param arguments     Parsed command line arguments.
+    @param inventory: _LabInventory object.
+    @param pool: The pool to check.
+    @param args: Parsed command line arguments.
 
-    @return True if the number of boards with 1 or more broken duts exceed
-    max_broken_boards, False otherwise.
+    @return True if the number of boards/models with 1 or more broken duts
+            exceed max_broken_boards/max_broken_models, False otherwise.
     """
-    # Let's check if we even need to check for this max_broken_boards.
-    if arguments.force_rebalance or arguments.max_broken_boards == 0:
+    # Were we asked to skip this check?
+    if (args.force_rebalance or
+        (args.all_boards and args.max_broken_boards == 0) or
+        (args.all_models and args.max_broken_models == 0)):
         return False
 
-    # Let's get the number of broken duts for the specified pool and
-    # check that it's less than arguments.max_broken_boards.  Or if
-    # it's not specified, calculate the default number of max broken
-    # boards based on the total number of boards per pool.
-    # TODO(kevcheng): Revisit to see if there's a better way to
-    # calculate the default max_broken_boards.
-    max_broken_boards = arguments.max_broken_boards
-    if max_broken_boards is None:
-        total_num_boards = len(inventory.get_managed_boards(pool=pool))
-        max_broken_boards = int(_MAX_BROKEN_BOARDS_DEFAULT_RATIO *
-                                total_num_boards)
-        _log_info(arguments.dry_run,
-                  'Default max broken boards calculated to be %d for '
-                  '%s pool',
-                  max_broken_boards, pool)
+    if args.all_boards:
+        max_broken = args.max_broken_boards
+        if max_broken is None:
+            total_num = len(inventory.get_managed_boards(pool=pool))
+            max_broken = int(_MAX_BROKEN_DEFAULT_RATIO * total_num)
+    else:  # args.all_models
+        max_broken = args.max_broken_models
+        if max_broken is None:
+            total_num = len(inventory.get_managed_models(pool=pool))
+            max_broken = int(_MAX_BROKEN_DEFAULT_RATIO * total_num)
+    _log_info(args.dry_run,
+              'Max broken boards/models for pool %s: %d',
+              pool, max_broken)
 
-    broken_boards = [board for board, counts in inventory.by_board.iteritems()
-                     if counts.get_broken(pool) != 0]
-    broken_boards.sort()
-    num_of_broken_boards = len(broken_boards)
-    # TODO(kevcheng): Track which boards have broken duts, we can limit the
-    # number of boards we go through in the main loop with this knowledge.
-    _log_message('There are %d boards in the %s pool with at least 1 '
-                 'broken DUT (max threshold %d)', num_of_broken_boards,
-                 pool, max_broken_boards)
-    for broken_board in broken_boards:
-        _log_message(broken_board)
-    return num_of_broken_boards > max_broken_boards
+    if args.all_boards:
+        broken = [board for board, counts in inventory.by_board.iteritems() if
+                  counts.get_broken(pool) != 0]
+    else:  # args.all_models:
+        broken = [board for board, counts in inventory.by_model.iteritems() if
+                  counts.get_broken(pool) != 0]
+    _log_message('There are %d boards/models in the %s pool with at least 1 '
+                 'broken DUT (max threshold %d)',
+                 len(broken), pool, max_broken)
+    for b in sorted(broken):
+        _log_message(b)
+    return len(broken) > max_broken
 
 
 def _parse_command(argv):
@@ -518,15 +519,15 @@ def _parse_command(argv):
                              metavar='COUNT', default=None,
                              help='Set the number of DUTs in the '
                                   'pool to the specified count for '
-                                  'every BOARD')
+                                  'every BOARD_OR_MODEL')
     count_group.add_argument('-a', '--grow', type=int,
                              metavar='COUNT', default=None,
                              help='Add the specified number of DUTs '
-                                  'to the pool for every BOARD')
+                                  'to the pool for every BOARD_OR_MODEL')
     count_group.add_argument('-d', '--shrink', type=int,
                              metavar='COUNT', default=None,
                              help='Remove the specified number of DUTs '
-                                  'from the pool for every BOARD')
+                                  'from the pool for every BOARD_OR_MODEL')
 
     parser.add_argument('-s', '--spare', default=_SPARE_DEFAULT,
                         metavar='POOL',
@@ -553,44 +554,72 @@ def _parse_command(argv):
                         help='Treat this as a production run. This will '
                              'collect metrics.')
 
-    parser.add_argument('--all-boards', action='store_true',
-                        help='Rebalance all managed boards.  This will do a '
-                             'very expensive check to see how many boards have '
-                             'at least one broken DUT.  To bypass that check, '
-                             'set --max-broken-boards to 0.')
-    parser.add_argument('--max-broken-boards',
-                        default=None, type=int,
-                        help='Only rebalance all boards if number of boards '
-                             'with broken DUTs in the specified pool '
-                             'is less than COUNT.')
+    parser.add_argument(
+            '--all-boards',
+            action='store_true',
+            help='[DEPRECATED: Use --all-models] '
+                 'Rebalance all managed boards.  This will do a very expensive '
+                 'check to see how many boards have at least one broken DUT. '
+                 'To bypass that check, set --max-broken-boards to 0.',
+    )
+    parser.add_argument(
+            '--max-broken-boards',
+            default=None,
+            type=int,
+            help='[DEPRECATED: Use --max-broken-models] Only rebalance all '
+                 'boards if number of boards with broken DUTs in the specified '
+                 'pool is less than COUNT.',
+    )
+    parser.add_argument(
+            '--all-models',
+            action='store_true',
+            help='Rebalance all managed models.  This will do a very expensive '
+                 'check to see how many models have at least one broken DUT. '
+                 'To bypass that check, set --max-broken-models to 0.',
+    )
+    parser.add_argument(
+            '--max-broken-models',
+            default=None,
+            type=int,
+            help='Only rebalance all models if number of models with broken '
+                 'DUTs in the specified pool is less than COUNT.',
+    )
+
+    parser.add_argument(
+            '--as-model',
+            action='store_true',
+            default=False,
+            help='If True, list of BOARD_OR_MODEL positional arguments are '
+                 'interpreted as models. If False (default), they are treated '
+                 'as boards',
+    )
 
     parser.add_argument('pool',
                         metavar='POOL',
                         help='Name of the pool to balance.  Use %s to balance '
                              'all critical pools' % _ALL_CRITICAL_POOLS)
-    parser.add_argument('boards', nargs='*',
-                        metavar='BOARD',
-                        help='Names of boards to balance.')
-
-    parser.add_argument('--model', type=str, action='store', metavar='MODEL',
-                        help='Optional name of model to restrict to.')
+    parser.add_argument(
+        'boards_or_models', nargs='*',
+        metavar='BOARD_OR_MODEL',
+        help='Names of boards or models to balance. (See also: --as-model)',
+    )
 
     arguments = parser.parse_args(argv[1:])
 
     # Error-check arguments.
-    if not arguments.boards and not arguments.all_boards:
-        parser.error('No boards specified. To balance all boards, use '
-                     '--all-boards')
-    if arguments.boards and arguments.all_boards:
-        parser.error('Cannot specify boards with --all-boards.')
+    many = arguments.all_boards or arguments.all_models
+    if (not any((arguments.boards_or_models, many)) or
+        all((arguments.boards_or_models, many))):
+        parser.error('Exactly one of --all-boards, --all-models, or list of '
+                     'models should be supplied.')
     if (arguments.pool == _ALL_CRITICAL_POOLS and
-            arguments.spare != _SPARE_DEFAULT):
+        arguments.spare != _SPARE_DEFAULT):
         parser.error('Cannot specify --spare pool to be %s when balancing all '
                      'critical pools.' % _SPARE_DEFAULT)
     return arguments
 
 
-def specify_balance_args(afe, arguments, pools):
+def infer_balancer_targets(afe, arguments, pools):
     """Take some arguments and translate them to a list of boards to balance
 
     Args:
@@ -598,37 +627,43 @@ def specify_balance_args(afe, arguments, pools):
     @param arguments     Parsed command line arguments.
     @param pools         The list of pools to balance.
 
-    @returns    a list of (board, pool, extra_labels) tuples to be balanced
+    @returns    a list of (board, labels) tuples to be balanced
 
     """
-    board_info = []
-    boards = arguments.boards
-    extra_labels = []
-    if arguments.model:
-        extra_labels = ['model:' + arguments.model]
+    balancer_targets = []
 
-    if arguments.all_boards:
-        inventory = lab_inventory.get_inventory(afe)
-        for pool in pools:
-            quarantine = _too_many_broken_boards(inventory, pool, arguments)
+    for pool in pools:
+        if arguments.all_boards or arguments.all_models:
+            inventory = lab_inventory.get_inventory(afe)
+            quarantine = _too_many_broken(inventory, pool, arguments)
             if quarantine:
-                _log_error('Refusing to balance all boards for %s pool, '
-                           'too many boards with at least 1 broken DUT '
-                           'detected.', pool)
+                _log_error('Refusing to balance all boards/models for %s pool, '
+                        'too many boards/models with at least 1 broken DUT '
+                        'detected.', pool)
             else:
-                boards_in_pool = inventory.get_managed_boards(pool=pool)
-                board_info.extend([(board, pool, extra_labels)
-                                   for board in boards_in_pool])
+                if arguments.all_boards:
+                    for board in inventory.get_managed_boards(pool=pool):
+                        labels = labellib.LabelsMapping()
+                        labels['board'] = board
+                        balancer_targets.append((pool, labels.getlabels()))
+                else:  # arguments.all_models
+                    for model in inventory.get_managed_models(pool=pool):
+                        labels = labellib.LabelsMapping()
+                        labels['model'] = model
+                        balancer_targets.append((pool, labels.getlabels()))
             metrics.Boolean(
                 'chromeos/autotest/balance_pools/unchanged_pools').set(
                     quarantine, fields={'pool': pool})
-            _log_message('Pool %s quarantine status: %b', pool, quarantine)
-    else:
-        # We have specified boards with a specified pool, setup the args to
-        # the balancer properly.
-        for pool in pools:
-            board_info.extend([(board, pool, extra_labels) for board in boards])
-    return board_info
+            _log_message('Pool %s quarantine status: %s', pool, quarantine)
+        else:
+            for board_or_model in arguments.boards_or_models:
+                labels = labellib.LabelsMapping()
+                if arguments.as_model:
+                    labels['model'] = board_or_model
+                else:
+                    labels['board'] = board_or_model
+            balancer_targets.append((pool, labels.getlabels()))
+    return balancer_targets
 
 
 def main(argv):
@@ -637,21 +672,6 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
 
     """
-
-    def balancer(board, pool, extra_labels):
-      """Balance the specified board.
-
-      @param board The board name.
-      @param pool The pool to rebalance for the board.
-      @param extra_labels extra labels to restrict to
-      """
-      _balance_board(arguments, afe, board, pool, start_time, end_time,
-                     extra_labels)
-      _log_message('')
-
-    end_time = time.time()
-    start_time = end_time - 24 * 60 * 60
-
     arguments = _parse_command(argv)
     if arguments.production:
         metrics_manager = site_utils.SetupTsMonGlobalState(
@@ -663,16 +683,33 @@ def main(argv):
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-      afe = frontend.AFE(server=arguments.web)
-      pools = (lab_inventory.CRITICAL_POOLS
-               if arguments.pool == _ALL_CRITICAL_POOLS
-               else [arguments.pool])
-      board_info = specify_balance_args(afe, arguments, pools)
-      try:
-          parallel.RunTasksInProcessPool(
-              balancer, board_info, processes=8)
-      except KeyboardInterrupt:
-          pass
+        end_time = time.time()
+        start_time = end_time - 24 * 60 * 60
+        afe = frontend.AFE(server=arguments.web)
+
+        def balancer(pool, labels):
+            """Balance the specified board.
+
+            @param pool: The pool to rebalance for the board.
+            @param labels: labels to restrict to balancing operations
+                    within.
+            """
+            _balance_board_or_model(arguments, afe, pool, labels,
+                                    start_time, end_time)
+            _log_message('')
+
+        pools = (lab_inventory.CRITICAL_POOLS
+                if arguments.pool == _ALL_CRITICAL_POOLS
+                else [arguments.pool])
+        balancer_targets = infer_balancer_targets(afe, arguments, pools)
+        try:
+            parallel.RunTasksInProcessPool(
+                    balancer,
+                    balancer_targets,
+                    processes=8,
+            )
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == '__main__':
