@@ -505,9 +505,7 @@ class LabInventoryTests(unittest.TestCase):
 
     """
 
-    # _BOARD_LIST - A list of sample board names for use in testing.
-
-    _BOARD_LIST = [
+    _BOARD_OR_MODEL_LIST = [
         'lion',
         'tiger',
         'bear',
@@ -519,7 +517,8 @@ class LabInventoryTests(unittest.TestCase):
     ]
 
 
-    def _check_inventory_details(self, inventory, data, by_board=True):
+    def _check_inventory_details(self, inventory, data, by_board=True,
+                                 msg=None):
         """Some common detailed inventory checks.
 
         The checks here are common to many tests below. At the same time, thsese
@@ -552,14 +551,17 @@ class LabInventoryTests(unittest.TestCase):
                             histories.get_idle(SPARE_POOL),
                     ),
             )
-            self.assertEqual(data[key], calculated_counts)
+            self.assertEqual(data[key], calculated_counts, msg)
 
             self.assertEqual(len(histories.get_working_list()),
-                             sum([p.good for p in data[key]]))
+                             sum([p.good for p in data[key]]),
+                             msg)
             self.assertEqual(len(histories.get_broken_list()),
-                             sum([p.bad for p in data[key]]))
+                             sum([p.bad for p in data[key]]),
+                             msg)
             self.assertEqual(len(histories.get_idle_list()),
-                             sum([p.unused for p in data[key]]))
+                             sum([p.unused for p in data[key]]),
+                             msg)
 
 
     def test_empty(self):
@@ -568,7 +570,10 @@ class LabInventoryTests(unittest.TestCase):
         self.assertEqual(inventory.get_num_duts(), 0)
         self.assertEqual(inventory.get_num_boards(), 0)
         self.assertEqual(inventory.get_managed_boards(), set())
-        self._check_inventory_details(inventory, {})
+        self._check_inventory_details(inventory, {}, by_board=True)
+        self.assertEqual(inventory.get_num_models(), 0)
+        self.assertEqual(inventory.get_managed_models(), set())
+        self._check_inventory_details(inventory, {}, by_board=False)
 
 
     def test_missing_board(self):
@@ -582,20 +587,23 @@ class LabInventoryTests(unittest.TestCase):
         self.assertEqual(inventory.get_num_duts(), 0)
         self.assertEqual(inventory.get_num_boards(), 0)
         self.assertEqual(inventory.get_managed_boards(), set())
-        self._check_inventory_details(inventory, {})
+        self._check_inventory_details(inventory, {}, by_board=True)
+        self.assertEqual(inventory.get_num_models(), 0)
+        self.assertEqual(inventory.get_managed_models(), set())
+        self._check_inventory_details(inventory, {}, by_board=False)
 
 
     def test_board_counts(self):
         """Test counts for various numbers of boards."""
-        for board_count in [1, 2, len(self._BOARD_LIST)]:
+        for board_count in [1, 2, len(self._BOARD_OR_MODEL_LIST)]:
             self.parameterized_test_board_count(board_count)
 
 
     def parameterized_test_board_count(self, board_count):
         """Parameterized test for testing a specific number of boards."""
         self.longMessage = True
-        msg = '[board_count: %s]' % (board_count,)
-        boards = self._BOARD_LIST[:board_count]
+        msg = '[board_count: %s]' % (board_count)
+        boards = self._BOARD_OR_MODEL_LIST[:board_count]
         data = {
                 b: PoolStatusCounts(
                         StatusCounts(1, 1, 1),
@@ -603,12 +611,40 @@ class LabInventoryTests(unittest.TestCase):
                 )
                 for b in boards
         }
-        inventory = create_inventory(data)
+        inventory = create_inventory(data, by_board=True)
         self.assertEqual(inventory.get_num_duts(), 6 * board_count, msg)
         self.assertEqual(inventory.get_num_boards(), board_count, msg)
         self.assertEqual(inventory.get_managed_boards(), set(boards), msg)
-        self._check_inventory_details(inventory, data, msg)
+        self._check_inventory_details(inventory, data, by_board=True, msg=msg)
+        self.assertEqual(inventory.get_num_models(), 1, msg)
+        self.assertEqual(inventory.get_managed_models(), {'dummy_model'}, msg)
 
+
+    def test_model_counts(self):
+        """Test counts for various numbers of models."""
+        for model_count in [1, 2, len(self._BOARD_OR_MODEL_LIST)]:
+            self.parameterized_test_model_count(model_count)
+
+
+    def parameterized_test_model_count(self, model_count):
+        """Parameterized test for testing a specific number of models."""
+        self.longMessage = True
+        msg = '[model: %s]' % (model_count)
+        models = self._BOARD_OR_MODEL_LIST[:model_count]
+        data = {
+                m: PoolStatusCounts(
+                        StatusCounts(1, 1, 1),
+                        StatusCounts(1, 1, 1),
+                )
+                for m in models
+        }
+        inventory = create_inventory(data, by_board=False)
+        self.assertEqual(inventory.get_num_duts(), 6 * model_count, msg)
+        self.assertEqual(inventory.get_num_models(), model_count, msg)
+        self.assertEqual(inventory.get_managed_models(), set(models), msg)
+        self._check_inventory_details(inventory, data, by_board=False, msg=msg)
+        self.assertEqual(inventory.get_num_boards(), 1, msg)
+        self.assertEqual(inventory.get_managed_boards(), {'dummy_board'}, msg)
 
 
     def test_single_dut_counts(self):
@@ -626,14 +662,14 @@ class LabInventoryTests(unittest.TestCase):
     def parameterized_test_single_dut_counts(self, counts):
         """Parmeterized test for single dut counts."""
         self.longMessage = True
-        board = self._BOARD_LIST[0]
+        board = self._BOARD_OR_MODEL_LIST[0]
         data = {board: counts}
         msg = '[data: %s]' % (data,)
         inventory = create_inventory(data)
         self.assertEqual(inventory.get_num_duts(), 1, msg)
         self.assertEqual(inventory.get_num_boards(), 1, msg)
         self.assertEqual(inventory.get_managed_boards(), set(), msg)
-        self._check_inventory_details(inventory, data, msg)
+        self._check_inventory_details(inventory, data, by_board=True, msg=msg)
 
 
 # BOARD_MESSAGE_TEMPLATE -
