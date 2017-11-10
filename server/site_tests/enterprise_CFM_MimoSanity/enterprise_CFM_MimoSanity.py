@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, time, random
+import logging
+import time
+import random
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
@@ -128,17 +129,7 @@ class enterprise_CFM_MimoSanity(test.test):
         expected usb interfaces."""
         self.usb_data = self._cmd_usb_devices()
         for _key in self.usb_device_list:
-            state = []
-            number, state =  get_usb_devices._is_usb_device_ok(
-                               self.usb_data, _key)
-            if number < 1:
-                raise error.TestFail(
-                      'Expect at least one device %s connected,'
-                      'actual number of device = %d'
-                      % (_key, number))
-            if '0' in state:
-                raise error.TestFail(
-                    'Device %s have unexpected interfaces.' %(_key))
+            get_usb_devices._verify_usb_device_ok(self.usb_data, _key):
 
 
     def _run_reboot_test(self):
