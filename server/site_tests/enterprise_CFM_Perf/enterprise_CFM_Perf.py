@@ -2,9 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, datetime, glob, json, os, re, time
+import datetime
+import glob
+import os
+import re
+import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import cfm_jmidata_log_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
@@ -12,8 +15,6 @@ from autotest_lib.server.cros.cfm import cfm_base_test
 _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 900
-_PERF_RESULT_FILE = 'perf.csv'
-_JMI_RESULT_FILE = 'jmidata.json'
 
 _BASE_DIR = '/home/chronos/user/Storage/ext/'
 _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
@@ -103,33 +104,16 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         memory_usage_list = list()
         temperature_list = list()
         participant_count_list = list()
-        board_name = self.system_facade.get_current_board()
-        build_id = self.system_facade.get_chromeos_release_version()
-        perf_file = open(os.path.join(self.resultsdir, _PERF_RESULT_FILE), 'w')
-        writer = csv.writer(perf_file)
-        writer.writerow(['cpu', 'memory', 'temperature', 'participant_count',
-                         'timestamp', 'board','build'])
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
             # Note: No sleep in this loop, self._cpu_usage() sleeps.
             perf_keyval['cpu_usage'] = self._cpu_usage()
             perf_keyval['memory_usage'] = self._memory_usage()
             perf_keyval['temperature'] = self._temperature_data()
             perf_keyval['participant_count'] = self._participant_count()
-            writer.writerow([perf_keyval['cpu_usage'],
-                             perf_keyval['memory_usage'],
-                             perf_keyval['temperature'],
-                             perf_keyval['participant_count'],
-                             time.strftime('%Y/%m/%d %H:%M:%S'),
-                             board_name,
-                             build_id])
-            self.write_perf_keyval(perf_keyval)
             cpu_usage_list.append(perf_keyval['cpu_usage'])
             memory_usage_list.append(perf_keyval['memory_usage'])
             temperature_list.append(perf_keyval['temperature'])
             participant_count_list.append(perf_keyval['participant_count'])
-        perf_file.close()
-        utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
-                           {'perf_csv_folder': self.resultsdir})
         self.upload_perf_data(cpu_usage_list,
                               memory_usage_list,
                               temperature_list,
@@ -243,63 +227,13 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         newest_file = max(glob.iglob(source_jmi_files), key=os.path.getctime)
         return newest_file
 
-
-    def _dump_raw_jmi_data(self, jmidata):
-        """
-        Write the raw JMI data into the _JMI_RESULT_FILE for later processing.
-        """
-        data_types = [
-            'frames_decoded',
-            'frames_encoded',
-            'adaptation_changes',
-            'average_encode_time',
-            'bandwidth_adaptation',
-            'cpu_adaptation',
-            'video_received_frame_height',
-            'video_sent_frame_height',
-            'framerate_decoded',
-            'framerate_outgoing',
-            'framerate_to_renderer',
-            'framerate_received',
-            'framerate_sent',
-            'video_received_frame_width',
-            'video_sent_frame_width',
-            'video_encode_cpu_usage',
-            'video_packets_sent',
-            'video_packets_lost',
-            'cpu_processors',
-            'cpu_percent',
-            'renderer_cpu_percent',
-            'browser_cpu_percent',
-            'gpu_cpu_percent',
-            'num_active_vid_in_streams',
-        ]
-
-        # Collect all the raw JMI values into a dictionary.
-        results = {}
-        for data_type in data_types:
-            data = self._get_data_from_jmifile(data_type, jmidata)
-            if not data:
-                data = -1
-            results[data_type] = data
-
-        # Dump the dictionary as json into a log file.
-        result_file_path = os.path.join(self.resultsdir, _JMI_RESULT_FILE)
-        with open(result_file_path, 'w') as fp:
-            fp.write(json.dumps(results, indent=2))
-
-
     def upload_jmidata(self):
         """
-        Write jmidata results to results-chart.json file for Perf Dashboard
-        and also save the raw data.
+        Write jmidata results to results-chart.json file for Perf Dashboard.
         """
         jmi_file = self._get_file_to_parse()
         jmifile_to_parse = open(jmi_file, 'r')
         jmidata = jmifile_to_parse.read()
-
-        # Start by saving the jmi data separately as raw values in a json file.
-        self._dump_raw_jmi_data(jmidata)
 
         # Compute and save aggregated stats from JMI.
         self.output_perf_value(description='sum_vid_in_frames_decoded',
