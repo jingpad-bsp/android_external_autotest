@@ -429,7 +429,6 @@ class _ProvisionSuiteSpec(_SuiteSpec):
         super(_ProvisionSuiteSpec, self).__init__(**kwargs)
 
 
-
 def run_provision_suite(**dargs):
     """
     Run a provision suite.
@@ -464,7 +463,6 @@ def run_provision_suite(**dargs):
             builds=spec.builds,
             board=spec.board,
             devserver=spec.devserver,
-            num=spec.num,
             num_required=spec.num_required,
             afe=afe,
             tko=tko,
