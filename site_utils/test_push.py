@@ -125,10 +125,12 @@ IGNORE_MISSING_TESTS = [
     # TODO(dshi): Remove following lines after R41 is stable.
     'login_LoginSuccess']
 
-# Save all run_suite command output.
-manager = multiprocessing.Manager()
-run_suite_output = manager.list()
-all_suite_ids = manager.list()
+# Multiprocessing proxy objects that are used to share data between background
+# suite-running processes and main process. The multiprocessing-compatible
+# versions are initialized in _main.
+_run_suite_output = []
+_all_suite_ids = []
+
 # A dict maps the name of the updated repos and the path of them.
 UPDATED_REPOS = {'autotest': AUTOTEST_DIR,
                  'chromite': '%s/site-packages/chromite/' % AUTOTEST_DIR}
@@ -342,13 +344,13 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         if not line and proc.poll() != None:
             break
         print line.rstrip()
-        run_suite_output.append(line.rstrip())
+        _run_suite_output.append(line.rstrip())
 
         if not suite_job_id:
             m = re.match(SUITE_JOB_START_INFO_REGEX, line)
             if m and m.group(1):
                 suite_job_id = int(m.group(1))
-                all_suite_ids.append(suite_job_id)
+                _all_suite_ids.append(suite_job_id)
 
     if not suite_job_id:
         raise TestPushException('Failed to retrieve suite job ID.')
@@ -593,6 +595,14 @@ def _main(arguments):
 
     @param arguments: command line arguments.
     """
+
+    # TODO Use chromite.lib.parallel.Manager instead, to workaround the
+    # too-long-tmp-path problem.
+    mpmanager = multiprocessing.Manager()
+
+    _run_suite_output = mpmanager.list()
+    _all_suite_ids = mpmanager.list()
+
     updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
     updated_repo_msg = '\n'.join(
         ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
@@ -640,7 +650,7 @@ def _main(arguments):
         print str(e)
         # Abort running jobs when choose not to continue when there is failure.
         if not arguments.continue_on_failure:
-            for suite_id in all_suite_ids:
+            for suite_id in _all_suite_ids:
                 if AFE.get_jobs(id=suite_id, finished=False):
                     AFE.run('abort_host_queue_entries', job=suite_id)
         # Send out email about the test failure.
@@ -656,7 +666,7 @@ def _main(arguments):
                      'Stats on recent success rate can be found at '
                      'go/test-push-stats . Detailed '
                      'debugging info can be found at go/push-to-prod' %
-                     (updated_repo_msg, str(e)) + '\n'.join(run_suite_output)))
+                     (updated_repo_msg, str(e)) + '\n'.join(_run_suite_output)))
         raise
     finally:
         metrics.Counter('chromeos/autotest/test_push/completed').increment(
