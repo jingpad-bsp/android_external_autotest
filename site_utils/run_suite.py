@@ -94,6 +94,8 @@ _MIN_RPC_TIMEOUT = 600
 # Number of days back to search for existing job.
 _SEARCH_JOB_MAX_DAYS = 14
 
+_PROVISION_SUITE = 'provision'
+
 
 @functools.total_ordering
 class _ReturnResult(object):
@@ -1874,7 +1876,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     # suite to pass if only a few tests fail.  Otherwise, a single
     # failing test will be reported as failure even if the suite reports
     # success.
-    if options.name == 'provision':
+    if options.name == _PROVISION_SUITE:
         # TODO(crbug.com/672348): Creating the suite job requires that
         # suite_args contains num_required.
         return_code_function = _ProvisionReturnCodeComputer(
