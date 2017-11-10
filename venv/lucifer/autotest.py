@@ -7,6 +7,12 @@
 Autotest imports should be done by calling patch() first and then
 calling load().  patch() should only be called once from a script's main
 function.
+
+chromite imports should be done with chromite_load(), and any third
+party packages should be imported with deps_load().  The reason for this
+is to present a clear API for these unsafe imports, making it easier to
+identify which imports are currently unsafe.  Eventually, everything
+should be moved to virtualenv, but that will not be in the near future.
 """
 
 from __future__ import absolute_import
@@ -124,7 +130,38 @@ def load(name):
 
     @param name: name of module as string, e.g., 'frontend.afe.models'
     """
+    return _load('autotest_lib.%s' % name)
+
+
+def chromite_load(name):
+    """Import module from chromite.lib.
+
+    This enforces that monkeypatch() is called first.
+
+    @param name: name of module as string, e.g., 'metrics'
+    """
+    return _load('chromite.lib.%s' % name)
+
+
+def deps_load(name):
+    """Import module from chromite.lib.
+
+    This enforces that monkeypatch() is called first.
+
+    @param name: name of module as string, e.g., 'metrics'
+    """
+    assert not name.startswith('autotest_lib')
+    assert not name.startswith('chromite.lib')
+    return _load(name)
+
+
+def _load(name):
+    """Import a module.
+
+    This enforces that monkeypatch() is called first.
+
+    @param name: name of module as string
+    """
     if not _setup_done:
-        raise ImportError('cannot load Autotest modules before monkeypatching')
-    relpath = name.lstrip('.')
-    return importlib.import_module('.%s' % relpath, package='autotest_lib')
+        raise ImportError('cannot load chromite modules before monkeypatching')
+    return importlib.import_module(name)
