@@ -257,55 +257,6 @@ SIMPLE_FREQUENCY_TEST_1330_FILE = AudioTestData(
 
 """
 This test data contains fixed frequency sine wave in two channels.
-Left and right channel are both 660Hz. The duration is 60 seconds.
-The file format is two-channel wav data with each sample being a signed
-16-bit integer in little-endian with sampling rate 48000 samples/sec.
-The volume is 1.0.
-"""
-SIMPLE_FREQUENCY_LOUD_WAVE_FILE = AudioTestDataGenerateOnDemand(
-        path=os.path.join(AUDIO_PATH, 'fix_660_16.wav'),
-        data_format=dict(file_type='wav',
-                         sample_format='S16_LE',
-                         channel=2,
-                         rate=48000),
-        duration_secs=60,
-        frequencies=[660, 660])
-
-
-"""
-This test data contains fixed frequency sine wave in one channel.
-Left channel is 440Hz. The duration is 10 seconds.
-The file format is two-channel raw data with each sample being a signed
-16-bit integer in little-endian with sampling rate 48000 samples/sec.
-The volume is 0.5.
-"""
-LEFT_CHANNEL_TEST_FILE = AudioTestDataGenerateOnDemand(
-        path=os.path.join(AUDIO_PATH, 'left_440_half.raw'),
-        data_format=dict(file_type='raw',
-                         sample_format='S16_LE',
-                         channel=2,
-                         rate=48000),
-        duration_secs=10,
-        frequencies=[440, 0])
-
-"""
-This test data contains fixed frequency sine wave in one channel.
-Right channel is 440Hz. The duration is 10 seconds.
-The file format is two-channel raw data with each sample being a signed
-16-bit integer in little-endian with sampling rate 48000 samples/sec.
-The volume is 0.5.
-"""
-RIGHT_CHANNEL_TEST_FILE = AudioTestDataGenerateOnDemand(
-        path=os.path.join(AUDIO_PATH, 'right_440_half.raw'),
-        data_format=dict(file_type='raw',
-                         sample_format='S16_LE',
-                         channel=2,
-                         rate=48000),
-        duration_secs=10,
-        frequencies=[0, 440])
-
-"""
-This test data contains fixed frequency sine wave in two channels.
 Left and right channel are both 440Hz. The duration is 10 seconds.
 The file format is two-channel raw data with each sample being a signed
 16-bit integer in little-endian with sampling rate 48000 samples/sec.
