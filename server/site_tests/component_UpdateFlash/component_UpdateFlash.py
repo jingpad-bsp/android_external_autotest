@@ -58,7 +58,7 @@ class component_UpdateFlash(test.test):
             self.autotest_client.run_test('platform_CleanShutdown',
                                           check_client_result=True)
         except:
-            raise error.TestError('Failed: platform_CleanShutdown')
+            raise error.TestFail('Failed: platform_CleanShutdown')
 
     def _reboot(self):
         """Reboot the DUT."""
