@@ -192,10 +192,17 @@ class firmware_Cr50BID(Cr50Test):
             test_bid = bid_int ^ (1 << zero_index)
             self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
-        # Flip a bit we care about to make sure it is rejected
+
         if one_index != -1:
+            # Flip a bit we care about to make sure it is rejected
             test_bid = bid_int ^ (1 << one_index)
             self.add_test(hex(test_bid), self.test_flags, self.BID_ERROR)
+        else:
+            # If there is not a 1 in the board id mask, then we don't care about
+            # the board id at all. Flip all the bits and make sure setting the
+            # board id still succeeds.
+            test_bid = bid_int ^ self.MAX_BID
+            self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
 
     def add_flag_tests(self):
