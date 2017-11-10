@@ -11,6 +11,7 @@ import time
 
 import common
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import logging_config
 
 _ADB_POLLING_INTERVAL_SECONDS = 10
 _ADB_CONNECT_INTERVAL_SECONDS = 1
@@ -34,7 +35,7 @@ def _ensure_adb_connected(target):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging_config.LoggingConfig().configure_logging(verbose=True)
     parser = argparse.ArgumentParser(description='ensure adb is connected')
     parser.add_argument('target', help='Device to connect to')
     args = parser.parse_args()
