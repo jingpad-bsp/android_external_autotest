@@ -505,6 +505,10 @@ def _parse_command(argv):
             prog=argv[0],
             description='Balance pool shortages from spares on reserve')
 
+    parser.add_argument(
+        '-w', '--web', type=str, default=None,
+        help='AFE host to use. Default comes from shadow_config.',
+    )
     count_group = parser.add_mutually_exclusive_group()
     count_group.add_argument('-t', '--total', type=int,
                              metavar='COUNT', default=None,
@@ -656,7 +660,7 @@ def main(argv):
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-        afe = frontend.AFE(server=None)
+        afe = frontend.AFE(server=arguments.web)
         pools = (lab_inventory.CRITICAL_POOLS
                  if arguments.pool == _ALL_CRITICAL_POOLS
                  else [arguments.pool])
