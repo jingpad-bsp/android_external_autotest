@@ -1,6 +1,7 @@
 import unittest
 
 from autotest_lib.client.common_lib.cros import get_usb_devices
+from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 
 
 class GetDevicesTest(unittest.TestCase):
@@ -22,11 +23,11 @@ class GetDevicesTest(unittest.TestCase):
     self.assertEqual(len(audio_device_list), 1)
 
   def test_get_device_prod(self):
-    for speaker in get_usb_devices.SPEAKERS:
+    for speaker in cfm_usb_devices.get_speakers():
       self.assertEqual(
           get_usb_devices._get_device_prod(speaker.vid_pid), speaker)
 
-    for camera in get_usb_devices.CAMERAS:
+    for camera in cfm_usb_devices.get_cameras():
       self.assertEquals(
           get_usb_devices._get_device_prod(camera.vid_pid), camera)
 
