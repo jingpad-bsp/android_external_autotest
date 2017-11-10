@@ -17,6 +17,7 @@ from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.frontend.afe import rdb_model_extensions
 from autotest_lib.frontend import settings, thread_local
 from autotest_lib.client.common_lib import enum, error, host_protections
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
@@ -711,6 +712,16 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         @returns: The attribute model of Host.
         """
         return HostAttribute
+
+
+    def is_available(self):
+        """Check whether DUT host is available.
+
+        @param host: The Host instance for the DUT.
+        @return: bool
+        """
+        return not (self.locked
+                    or self.status in host_states.UNAVAILABLE_STATES)
 
 
     class Meta:
