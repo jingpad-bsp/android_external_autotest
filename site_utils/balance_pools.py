@@ -546,8 +546,8 @@ def _parse_command(argv):
                              'there is a bug that is bricking devices in the '
                              'lab.')
     parser.add_argument('--production', action='store_true',
-                        help='Treat this as a production run. This '
-                             'will collect metrics.')
+                        help='Treat this as a production run. This will '
+                             'collect metrics.')
 
     parser.add_argument('--all-boards', action='store_true',
                         help='Rebalance all managed boards.  This will do a '
@@ -652,24 +652,27 @@ def main(argv):
     arguments = _parse_command(argv)
     if arguments.production:
         metrics_manager = site_utils.SetupTsMonGlobalState(
-            'balance_pools',
-            short_lived=True,
-            auto_flush=False)
+                'balance_pools',
+                short_lived=True,
+                auto_flush=False,
+        )
     else:
-        #suppress metrics
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-        afe = frontend.AFE(server=arguments.web)
-        pools = (lab_inventory.CRITICAL_POOLS
-                 if arguments.pool == _ALL_CRITICAL_POOLS
-                 else [arguments.pool])
-        board_info = specify_balance_args(afe, arguments, pools)
         try:
-            parallel.RunTasksInProcessPool(balancer, board_info, processes=8)
-        except KeyboardInterrupt:
-            pass
-        metrics.Flush()
+            afe = frontend.AFE(server=arguments.web)
+            pools = (lab_inventory.CRITICAL_POOLS
+                    if arguments.pool == _ALL_CRITICAL_POOLS
+                    else [arguments.pool])
+            board_info = specify_balance_args(afe, arguments, pools)
+            try:
+                parallel.RunTasksInProcessPool(balancer, board_info,
+                                               processes=8)
+            except KeyboardInterrupt:
+                pass
+        finally:
+            metrics.Flush()
 
 
 if __name__ == '__main__':
