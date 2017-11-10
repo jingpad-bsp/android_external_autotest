@@ -114,7 +114,7 @@ import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import frontend
 from autotest_lib.server.lib import status_history
-from autotest_lib.site_utils import lab_inventory
+from autotest_lib.site_utils.suite_scheduler import constants
 
 # The fully qualified name makes for lines that are too long, so
 # shorten it locally.
@@ -427,8 +427,8 @@ def _parse_command(argv):
                         help='Display history for all DUTs '
                              'in the given pool. You might '
                              'be interested in the following pools: '
-                             + ', '.join(lab_inventory.MANAGED_POOLS[:-1])
-                             +', or '+ lab_inventory.MANAGED_POOLS[-1] +'.')
+                             + ', '.join(constants.Pools.MANAGED_POOLS[:-1])
+                             +', or '+ constants.Pools.MANAGED_POOLS[-1] +'.')
     parser.add_argument('hostnames',
                         nargs='*',
                         help='Host names of DUTs to report on')
