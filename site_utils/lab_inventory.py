@@ -47,6 +47,7 @@ Options:
 
 
 import argparse
+import collections
 import logging
 import logging.handlers
 import os
@@ -62,6 +63,7 @@ from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 
 
 CRITICAL_POOLS = constants.Pools.CRITICAL_POOLS
@@ -479,17 +481,21 @@ class _LabInventory(object):
         self.histories = histories
         self._dut_count = len(histories)
         self._managed_boards = {}
-        self.by_board = self._classify_by_board()
+        self.by_board = self._classify_by_label_type('board')
 
 
-    def _classify_by_board(self):
-        """Classifies given histories by the board label."""
-        boards = set([h.host_board for h in self.histories])
-        by_board = {
-                board: _ManagedPoolsHostJobHistories() for board in boards }
+    def _classify_by_label_type(self, label_key):
+        """Classify histories by labels with the given key.
+
+        @returns a dict mapping labels with the given key to
+        _ManagedPoolsHostJobHistories for DUTs with that label.
+        """
+        classified = collections.defaultdict(_ManagedPoolsHostJobHistories)
         for h in self.histories:
-            by_board[h.host_board].record_host(h)
-        return by_board
+            labels = labellib.LabelsMapping(h.host.labels)
+            if label_key in labels:
+                classified[labels[label_key]].record_host(h)
+        return dict(classified)
 
 
     def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
