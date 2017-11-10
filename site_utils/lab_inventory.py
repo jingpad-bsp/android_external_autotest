@@ -402,14 +402,11 @@ class _ManagedPoolsHostJobHistories(object):
         return self._count_pool(_CachedHostJobHistories.get_total, pool)
 
 
-class _LabInventory(dict):
+class _LabInventory(object):
     """Collection of `HostJobHistory` objects for the Lab's inventory.
 
-    The collection is indexed by board.  Indexing returns the
-    _ManagedPoolsHostJobHistories object associated with the board.
-
-    The collection is also iterable.  The iterator returns all the
-    boards in the inventory, in unspecified order.
+    Important attributes:
+      by_board: A dict mapping board to ManagedPoolsHostJobHistories
 
     """
 
@@ -479,13 +476,20 @@ class _LabInventory(dict):
         # those here.
         histories = [h for h in histories
                      if h.host_board is not None]
-        boards = set([h.host_board for h in histories])
-        initval = { board: _ManagedPoolsHostJobHistories() for board in boards }
-        super(_LabInventory, self).__init__(initval)
+        self.histories = histories
         self._dut_count = len(histories)
         self._managed_boards = {}
-        for h in histories:
-            self[h.host_board].record_host(h)
+        self.by_board = self._classify_by_board()
+
+
+    def _classify_by_board(self):
+        """Classifies given histories by the board label."""
+        boards = set([h.host_board for h in self.histories])
+        by_board = {
+                board: _ManagedPoolsHostJobHistories() for board in boards }
+        for h in self.histories:
+            by_board[h.host_board].record_host(h)
+        return by_board
 
 
     def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
@@ -508,7 +512,7 @@ class _LabInventory(dict):
         """
         if self._managed_boards.get(pool, None) is None:
             self._managed_boards[pool] = set()
-            for board, counts in self.items():
+            for board, counts in self.by_board.iteritems():
                 # Get the counts for all pools, otherwise get it for the
                 # specified pool.
                 if pool == _MANAGED_POOL_DEFAULT:
@@ -529,7 +533,7 @@ class _LabInventory(dict):
 
     def get_num_boards(self):
         """Return the total number of boards in the inventory."""
-        return len(self)
+        return len(self.by_board)
 
 
 def _sort_by_location(inventory_list):
@@ -602,8 +606,8 @@ def _score_repair_set(buffer_counts, repair_list):
     repair_inventory = _LabInventory(repair_list)
     new_counts = []
     for b, c in buffer_counts.items():
-        if b in repair_inventory:
-            newcount = repair_inventory[b].get_total()
+        if b in repair_inventory.by_board:
+            newcount = repair_inventory.by_board[b].get_total()
         else:
             newcount = 0
         new_counts.append(c + newcount)
@@ -649,7 +653,7 @@ def _generate_repair_recommendation(inventory, num_recommend):
     broken_list = []
     for board in inventory.get_managed_boards():
         logging.debug('Listing failed DUTs for %s', board)
-        counts = inventory[board]
+        counts = inventory.by_board[board]
         if counts.get_broken() != 0:
             board_buffer_counts[board] = counts.get_spares_buffer()
             broken_list.extend(counts.get_broken_list())
@@ -725,7 +729,7 @@ def _generate_board_inventory_message(inventory):
     ntotal_boards = 0
     summaries = []
     for board in inventory.get_managed_boards():
-        counts = inventory[board]
+        counts = inventory.by_board[board]
         logging.debug('Counting %2d DUTS for board %s',
                       counts.get_total(), board)
         # Summary elements laid out in the same order as the text
@@ -806,7 +810,7 @@ def _generate_pool_inventory_message(inventory):
             '%-20s   %5s %5s %5s %5s' % (
                 'Board', 'Bad', 'Idle', 'Good', 'Total'))
         data_list = []
-        for board, counts in inventory.items():
+        for board, counts in inventory.by_board.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
                           counts.get_total(pool), board, pool)
             broken = counts.get_broken(pool)
@@ -855,7 +859,7 @@ def _generate_idle_inventory_message(inventory):
     message.append('%-30s %-20s %s' % ('Hostname', 'Board', 'Pool'))
     data_list = []
     for pool in MANAGED_POOLS:
-        for board, counts in inventory.items():
+        for board, counts in inventory.by_board.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
                           counts.get_total(pool), board, pool)
             data_list.extend([(dut.host.hostname, board, pool)
