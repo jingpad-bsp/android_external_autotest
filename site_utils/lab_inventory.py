@@ -481,7 +481,9 @@ class _LabInventory(object):
         self.histories = histories
         self._dut_count = len(histories)
         self._managed_boards = {}
+        self._managed_models = {}
         self.by_board = self._classify_by_label_type('board')
+        self.by_model = self._classify_by_label_type('model')
 
 
     def _classify_by_label_type(self, label_key):
@@ -501,6 +503,38 @@ class _LabInventory(object):
     def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
         """Return the set of "managed" boards.
 
+        @param pool: The specified pool for managed boards.
+        @return A set of all the boards that have both spare and
+                non-spare pools, unless the pool is specified,
+                then the set of boards in that pool.
+        """
+        if self._managed_boards.get(pool) is None:
+            self._managed_boards[pool] = set()
+            for board, counts in self.by_board.iteritems():
+                if self._is_managed(pool, counts):
+                    self._managed_boards[pool].add(board)
+        return self._managed_boards[pool]
+
+
+    def get_managed_models(self, pool=_MANAGED_POOL_DEFAULT):
+        """Return the set of "managed" models.
+
+        @param pool: The specified pool for managed models.
+        @return A set of all the models that have both spare and
+                non-spare pools, unless the pool is specified,
+                then the set of models in that pool.
+        """
+        if self._managed_models.get(pool) is None:
+            self._managed_models[pool] = set()
+            for board, counts in self.by_model.iteritems():
+                if self._is_managed(pool, counts):
+                    self._managed_models[pool].add(board)
+        return self._managed_models[pool]
+
+
+    def _is_managed(self, pool, histories):
+        """Deterime if the given histories contain DUTs to be managed for pool.
+
         Operationally, saying a board is "managed" means that the
         board will be included in the "board" and "repair
         recommendations" reports.  That is, if there are failures in
@@ -511,25 +545,15 @@ class _LabInventory(object):
         has DUTs in both the spare and a non-spare (i.e. critical)
         pool.
 
-        @param pool: The specified pool for managed boards.
-        @return A set of all the boards that have both spare and
-                non-spare pools, unless the pool is specified,
-                then the set of boards in that pool.
         """
-        if self._managed_boards.get(pool, None) is None:
-            self._managed_boards[pool] = set()
-            for board, counts in self.by_board.iteritems():
-                # Get the counts for all pools, otherwise get it for the
-                # specified pool.
-                if pool == _MANAGED_POOL_DEFAULT:
-                    spares = counts.get_total(SPARE_POOL)
-                    total = counts.get_total()
-                    if spares != 0 and spares != total:
-                        self._managed_boards[pool].add(board)
-                else:
-                    if counts.get_total(pool) != 0:
-                        self._managed_boards[pool].add(board)
-        return self._managed_boards[pool]
+        # Get the counts for all pools, otherwise get it for the
+        # specified pool.
+        if pool == _MANAGED_POOL_DEFAULT:
+            spares = histories.get_total(SPARE_POOL)
+            total = histories.get_total()
+            return spares != 0 and spares != total
+        else:
+            return histories.get_total(pool) != 0
 
 
     def get_num_duts(self):
@@ -540,6 +564,11 @@ class _LabInventory(object):
     def get_num_boards(self):
         """Return the total number of boards in the inventory."""
         return len(self.by_board)
+
+
+    def get_num_models(self):
+        """Return the total number of models in the inventory."""
+        return len(self.by_model)
 
 
 def _sort_by_location(inventory_list):
