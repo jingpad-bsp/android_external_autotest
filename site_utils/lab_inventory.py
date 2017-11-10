@@ -114,7 +114,7 @@ _HOSTNAME_PATTERN = re.compile(
 _MANAGED_POOL_DEFAULT = 'all_pools'
 
 
-class _PoolCounts(object):
+class _CachedHostJobHistories(object):
     """Maintains a set of `HostJobHistory` objects for a pool.
 
     The collected history objects are nominally all part of a single
@@ -240,27 +240,25 @@ class _PoolCounts(object):
         return len(self._histories)
 
 
-class _BoardCounts(object):
-    """Maintains a set of `HostJobHistory` objects for a board.
+class _ManagedPoolsHostJobHistories(object):
+    """Maintains a set of `HostJobHistory`s per managed pool.
 
-    The collected history objects are nominally all of the same
-    board.  The collection maintains a count of working DUTs, a
-    count of broken DUTs, and a total count.  The counts can be
-    obtained either for a single pool, or as a total across all
-    pools.
+    The collection maintains a count of working DUTs, a count of broken DUTs,
+    and a total count.  The counts can be obtained either for a single pool, or
+    as a total across all pools.
 
-    DUTs in the collection must be assigned to one of the pools
-    in `_MANAGED_POOLS`.
+    DUTs in the collection must be assigned to one of the pools in
+    `_MANAGED_POOLS`.
 
     The `get_working()` and `get_broken()` methods rely on the
-    methods of the same name in _PoolCounts, so the performance
-    note in _PoolCounts applies here as well.
+    methods of the same name in _CachedHostJobHistories, so the performance
+    note in _CachedHostJobHistories applies here as well.
 
     """
 
     def __init__(self):
-        self._pools = {
-            pool: _PoolCounts() for pool in MANAGED_POOLS
+        self._histories_by_pool = {
+            pool: _CachedHostJobHistories() for pool in MANAGED_POOLS
         }
 
     def record_host(self, host_history):
@@ -271,7 +269,7 @@ class _BoardCounts(object):
 
         """
         pool = host_history.host_pool
-        self._pools[pool].record_host(host_history)
+        self._histories_by_pool[pool].record_host(host_history)
 
 
     def _count_pool(self, get_pool_count, pool=None):
@@ -287,23 +285,23 @@ class _BoardCounts(object):
 
         """
         if pool is None:
-            return sum([get_pool_count(counts)
-                            for counts in self._pools.values()])
+            return sum([get_pool_count(cached_history) for cached_history in
+                        self._histories_by_pool.values()])
         else:
-            return get_pool_count(self._pools[pool])
+            return get_pool_count(self._histories_by_pool[pool])
 
 
     def get_working_list(self):
-        """Return a list of all working DUTs for the board.
+        """Return a list of all working DUTs (across all pools).
 
-        Go through all HostJobHistory objects in the board's pools,
-        selecting the ones where the last diagnosis is `WORKING`.
+        Go through all HostJobHistory objects across all pools, selecting the
+        ones where the last diagnosis is `WORKING`.
 
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for p in self._pools.values():
+        for p in self._histories_by_pool.values():
             l.extend(p.get_working_list())
         return l
 
@@ -317,20 +315,20 @@ class _BoardCounts(object):
         @return The total number of working DUTs in the selected
                 pool(s).
         """
-        return self._count_pool(_PoolCounts.get_working, pool)
+        return self._count_pool(_CachedHostJobHistories.get_working, pool)
 
 
     def get_broken_list(self):
-        """Return a list of all broken DUTs for the board.
+        """Return a list of all broken DUTs (across all pools).
 
-        Go through all HostJobHistory objects in the board's pools,
+        Go through all HostJobHistory objects in the across all pools,
         selecting the ones where the last diagnosis is `BROKEN`.
 
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for p in self._pools.values():
+        for p in self._histories_by_pool.values():
             l.extend(p.get_broken_list())
         return l
 
@@ -343,14 +341,14 @@ class _BoardCounts(object):
 
         @return The total number of broken DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_broken, pool)
+        return self._count_pool(_CachedHostJobHistories.get_broken, pool)
 
 
     def get_idle_list(self, pool=None):
-        """Return a list of all idle DUTs for the board.
+        """Return a list of all idle DUTs in the given pool.
 
-        Go through all HostJobHistory objects in the board's pools,
-        selecting the ones where the last diagnosis is `UNUSED` or `UNKNOWN`.
+        Go through all HostJobHistory objects in the given pool, selecting the
+        ones where the last diagnosis is `UNUSED` or `UNKNOWN`.
 
         @param pool: The pool to be counted. If `None`, return the total list
                      across all pools.
@@ -360,11 +358,12 @@ class _BoardCounts(object):
         """
         if pool is None:
             l = []
-            for p in self._pools.values():
+            for p in self._histories_by_pool.values():
                 l.extend(p.get_idle_list())
             return l
         else:
-            return _PoolCounts.get_idle_list(self._pools[pool])
+            return _CachedHostJobHistories.get_idle_list(
+                    self._histories_by_pool[pool])
 
 
     def get_idle(self, pool=None):
@@ -375,7 +374,7 @@ class _BoardCounts(object):
 
         @return The total number of idle DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_idle, pool)
+        return self._count_pool(_CachedHostJobHistories.get_idle, pool)
 
 
     def get_spares_buffer(self):
@@ -400,14 +399,14 @@ class _BoardCounts(object):
 
         @return The total number of DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_total, pool)
+        return self._count_pool(_CachedHostJobHistories.get_total, pool)
 
 
 class _LabInventory(dict):
     """Collection of `HostJobHistory` objects for the Lab's inventory.
 
     The collection is indexed by board.  Indexing returns the
-    _BoardCounts object associated with the board.
+    _ManagedPoolsHostJobHistories object associated with the board.
 
     The collection is also iterable.  The iterator returns all the
     boards in the inventory, in unspecified order.
@@ -481,7 +480,7 @@ class _LabInventory(dict):
         histories = [h for h in histories
                      if h.host_board is not None]
         boards = set([h.host_board for h in histories])
-        initval = { board: _BoardCounts() for board in boards }
+        initval = { board: _ManagedPoolsHostJobHistories() for board in boards }
         super(_LabInventory, self).__init__(initval)
         self._dut_count = len(histories)
         self._managed_boards = {}
