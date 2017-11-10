@@ -35,19 +35,8 @@ def main(args):
     @param args: list of command line args
     """
     args = _parse_args_and_configure_logging(args)
-
     autotest.patch()
-    models = autotest.load('frontend.afe.models')
-
-    if args.job_id is not None:
-        if args.autoserv_exit is None:
-            # TODO(crbug.com/748234): autoserv not implemented yet.
-            raise NotImplementedError('not implemented yet (crbug.com/748234)')
-        job = models.Job.objects.get(id=args.job_id)
-    else:
-        # TODO(crbug.com/748234): Full jobs not implemented yet.
-        raise NotImplementedError('not implemented yet')
-    handler = _EventHandler(models, job, autoserv_exit=args.autoserv_exit)
+    handler = _make_handler(args)
     return _run_job(args.run_job_path, handler, args)
 
 
@@ -71,6 +60,20 @@ as the caller has presumably already run it.
     args.run_job_args = extra_args
     loglib.configure_logging_with_args(parser, args)
     return args
+
+
+def _make_handler(args):
+    """Make event handler for lucifer_run_job."""
+    models = autotest.load('frontend.afe.models')
+    if args.job_id is not None:
+        if args.autoserv_exit is None:
+            # TODO(crbug.com/748234): autoserv not implemented yet.
+            raise NotImplementedError('not implemented yet (crbug.com/748234)')
+        job = models.Job.objects.get(id=args.job_id)
+    else:
+        # TODO(crbug.com/748234): Full jobs not implemented yet.
+        raise NotImplementedError('not implemented yet')
+    return _EventHandler(models, job, autoserv_exit=args.autoserv_exit)
 
 
 def _run_job(path, event_handler, args):
