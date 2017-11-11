@@ -807,11 +807,15 @@ class Label(RpcObject):
 
 
     def add_hosts(self, hosts):
-        return self.afe.run('label_add_hosts', id=self.id, hosts=hosts)
+        # We must use the label's name instead of the id because label ids are
+        # not consistent across master-shard.
+        return self.afe.run('label_add_hosts', id=self.name, hosts=hosts)
 
 
     def remove_hosts(self, hosts):
-        return self.afe.run('label_remove_hosts', id=self.id, hosts=hosts)
+        # We must use the label's name instead of the id because label ids are
+        # not consistent across master-shard.
+        return self.afe.run('label_remove_hosts', id=self.name, hosts=hosts)
 
 
 class Acl(RpcObject):
