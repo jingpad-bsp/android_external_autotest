@@ -488,40 +488,24 @@ class HostJobHistory(object):
 
 
     @classmethod
-    def get_multiple_histories(cls, afe, start_time, end_time,
-                               board=None, pool=None, extra_labels=None):
+    def get_multiple_histories(cls, afe, start_time, end_time, labels=()):
         """Create `HostJobHistory` instances for a set of hosts.
-
-        The set of hosts can be specified as "all hosts of a given
-        board type", "all hosts in a given pool", or "all hosts
-        of a given board and pool".
 
         @param afe         Autotest frontend
         @param start_time  Start time for the history's time
                            interval.
         @param end_time    End time for the history's time interval.
-        @param board       All hosts must have this board type; if
-                           `None`, all boards are allowed.
-        @param pool        All hosts must be in this pool; if
-                           `None`, all pools are allowed.
-        @param extra_labels Optional list of strings. All hosts must
-                            have these labels.
+        @param labels      type: [str]. AFE labels to constrain the host query.
+                           This option must be non-empty. An unconstrained
+                           search of the DB is too costly.
 
         @return A list of new `HostJobHistory` instances.
 
         """
-        # If `board` or `pool` are both `None`, we could search the
-        # entire database, which is more expensive than we want.
-        # Our caller currently won't (can't) do this, but assert to
-        # be safe.
-        assert board is not None or pool is not None
-        labels = []
-        if board is not None:
-            labels.append(constants.Labels.BOARD_PREFIX + board)
-        if pool is not None:
-            labels.append(constants.Labels.POOL_PREFIX + pool)
-        if extra_labels is not None:
-            labels.extend(extra_labels)
+        assert labels, (
+            'Must specify labels for get_multiple_histories. '
+            'Unconstrainted search of the database is prohibitively costly.')
+
         kwargs = {'multiple_labels': labels}
         hosts = afe.get_hosts(**kwargs)
         return [cls(afe, h, start_time, end_time) for h in hosts]

@@ -52,7 +52,7 @@ class LabelsMapping(collections.MutableMapping):
     string labels.
     """
 
-    def __init__(self, str_labels):
+    def __init__(self, str_labels=()):
         self._plain_labels = []
         self._keyval_map = collections.OrderedDict()
         for str_label in str_labels:
