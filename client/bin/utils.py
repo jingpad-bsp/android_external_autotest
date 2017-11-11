@@ -1832,13 +1832,18 @@ def get_thermal_zone_temperatures():
 def get_ec_temperatures():
     """
     Uses ectool to return a list of all sensor temperatures in Celsius.
+
+    Output from ectool is either '0: 300' or '0: 300 K' (newer ectool
+    includes the unit).
     """
     temperatures = []
     try:
         full_cmd = 'ectool temps all'
         lines = utils.run(full_cmd, verbose=False).stdout.splitlines()
+        pattern = re.compile('.*: (\d+)')
         for line in lines:
-            temperature = int(line.split(': ')[1]) - 273
+            matched = pattern.match(line)
+            temperature = int(matched.group(1)) - 273
             temperatures.append(temperature)
     except Exception:
         logging.warning('Unable to read temperature sensors using ectool.')
