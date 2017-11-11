@@ -62,6 +62,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 from chromite.lib import metrics
 from chromite.lib import parallel
 
@@ -190,11 +191,11 @@ class _DUTPool(object):
 
 
     def _get_hosts(self, afe, start_time, end_time):
-        all_histories = (
-            status_history.HostJobHistory.get_multiple_histories(
-                    afe, start_time, end_time,
-                    board=self.board, pool=self.pool,
-                    extra_labels=self._extra_labels))
+        labels = labellib.LabelsMapping(self._extra_labels)
+        labels['board'] = self.board
+        labels['pool'] = self.pool
+        all_histories = status_history.HostJobHistory.get_multiple_histories(
+                afe, start_time, end_time, labels.getlabels())
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
