@@ -9,6 +9,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cros_disks import CrosDisksTester
 
 class CrosDisksAPITester(CrosDisksTester):
+
+    # See MountErrorType defined in system_api/dbus/cros-disks/dbus-constants.h
+    MOUNT_ERROR_INVALID_DEVICE_PATH = 100
+
     def __init__(self, test):
         super(CrosDisksAPITester, self).__init__(test)
 
@@ -21,6 +25,7 @@ class CrosDisksAPITester(CrosDisksTester):
             self.test_enumerate_auto_mountable_devices_are_not_on_boot_device,
             self.test_enumerate_auto_mountable_devices_are_not_virtual,
             self.test_mount_nonexistent_device,
+            self.test_mount_boot_device_rejected,
             self.test_unmount_nonexistent_device,
         ]
 
@@ -148,6 +153,22 @@ class CrosDisksAPITester(CrosDisksTester):
             'source_path': '/dev/nonexistent',
             'mount_path':  '',
         })
+
+    def test_mount_boot_device_rejected(self):
+        # Check if EnumerateDevices method returns a list of devices.
+        devices = self.cros_disks.enumerate_devices()
+        for device in devices:
+            properties = self.cros_disks.get_device_properties(device)
+            self.validate_disk_properties(properties)
+            if not properties['DeviceIsOnBootDevice']:
+                continue
+
+            self.cros_disks.mount(device, '', [])
+            self.cros_disks.expect_mount_completion({
+                'source_path': device,
+                'mount_path': '',
+                'status': self.MOUNT_ERROR_INVALID_DEVICE_PATH
+            })
 
     def test_unmount_nonexistent_device(self):
         try:
