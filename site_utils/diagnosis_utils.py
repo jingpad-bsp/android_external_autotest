@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.lib import status_history
+from autotest_lib.utils import labellib
 
 CONFIG = global_config.global_config
 
@@ -233,12 +234,15 @@ class RPCHelper(object):
         """
         end_time = datetime.now()
         start_time = end_time - time_delta_hours
-        get_histories = status_history.HostJobHistory.get_multiple_histories
-        host_histories = get_histories(
+        labels = labellib.LabelsMapping()
+        labels['board'] = board
+        labels['pool'] = pool
+        host_histories = status_history.HostJobHistory.get_multiple_histories(
                 self.rpc_interface,
                 time_utils.to_epoch_time(start_time),
                 time_utils.to_epoch_time(end_time),
-                board=board, pool=pool)
+                labels.getlabels(),
+        )
         if not host_histories:
             logging.error('No hosts found for board:%s in pool:%s',
                             board, pool)
