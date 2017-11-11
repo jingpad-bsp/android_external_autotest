@@ -248,6 +248,14 @@ class _DUTPool(object):
         """
         num_ineligible = len(self.ineligible_hosts)
         spares_needed = target_total >= num_ineligible
+        metrics.Boolean(
+            'chromeos/autotest/balance_pools/exhausted_pools',
+            "True for each pool/board which requests more DUTs than supplied",
+            field_spec=[
+                ts_mon.StringField('pool'), ts_mon.StringField('board')]
+        ).set(
+            not spares_needed, fields={'pool': self.pool, 'board': self.board}
+        )
         if not spares_needed:
             _log_error('%s %s pool: Target of %d is below '
                        'minimum of %d DUTs.',
@@ -255,15 +263,10 @@ class _DUTPool(object):
                        target_total, num_ineligible)
             _log_error('Adjusting target to %d DUTs.', num_ineligible)
             target_total = num_ineligible
+        else:
+            _log_message('%s %s pool: Target of %d is above minimum.',
+                         self.board, self.pool, target_total)
         adjustment = target_total - self.total_hosts
-        metrics.Boolean(
-            'chromeos/autotest/balance_pools/exhausted_pools',
-            "True for each pool/board which requests more DUTs than supplied",
-            field_spec=[
-                ts_mon.StringField('pool'), ts_mon.StringField('board')]).set(
-                    not spares_needed,
-                    fields={'pool': self.pool, 'board': self.board}
-                )
         return len(self.broken_hosts) + adjustment
 
     def allocate_surplus(self, num_broken):
@@ -312,8 +315,6 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
                          will be added.
 
     """
-    if not hosts:
-        return
     _log_info(dry_run, 'Transferring %d DUTs from %s to %s.',
               len(hosts), spare_pool.pool, target_pool.pool)
     metrics.Counter(
@@ -326,6 +327,8 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
                    fields={'board': target_pool.board,
                            'source_pool': spare_pool.pool,
                            'target_pool': target_pool.pool})
+    if not hosts:
+        return
     additions = target_pool.pool_labels
     removals = spare_pool.pool_labels
     for host in hosts:
@@ -431,12 +434,12 @@ def _balance_board(arguments, afe, board, pool, start_time, end_time,
         _log_error('that is bricking devices. Once you have finished your ')
         _log_error('investigation, you can force a rebalance with ')
         _log_error('--force-rebalance')
-        return
+        spare_duts = []
+        surplus_duts = []
 
     if not spare_duts and not surplus_duts:
         if arguments.verbose:
             _log_info(arguments.dry_run, 'No exchange required.')
-        return
 
     _exchange_labels(arguments.dry_run, surplus_duts,
                      spare_pool, main_pool)
@@ -614,17 +617,16 @@ def specify_balance_args(afe, arguments, pools):
                            'detected.', pool)
             else:
                 boards_in_pool = inventory.get_managed_boards(pool=pool)
-                current_len_board_info = len(board_info)
                 board_info.extend([(board, pool, extra_labels)
                                    for board in boards_in_pool])
             metrics.Boolean(
                 'chromeos/autotest/balance_pools/unchanged_pools').set(
                     quarantine, fields={'pool': pool})
+            _log_message('Pool %s quarantine status: %b', pool, quarantine)
     else:
         # We have specified boards with a specified pool, setup the args to
         # the balancer properly.
         for pool in pools:
-            current_len_board_info = len(board_info)
             board_info.extend([(board, pool, extra_labels) for board in boards])
     return board_info
 
@@ -654,26 +656,23 @@ def main(argv):
     if arguments.production:
         metrics_manager = site_utils.SetupTsMonGlobalState(
                 'balance_pools',
-                short_lived=True,
+                indirect=True,
                 auto_flush=False,
         )
     else:
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-        try:
-            afe = frontend.AFE(server=arguments.web)
-            pools = (lab_inventory.CRITICAL_POOLS
-                    if arguments.pool == _ALL_CRITICAL_POOLS
-                    else [arguments.pool])
-            board_info = specify_balance_args(afe, arguments, pools)
-            try:
-                parallel.RunTasksInProcessPool(balancer, board_info,
-                                               processes=8)
-            except KeyboardInterrupt:
-                pass
-        finally:
-            metrics.Flush()
+      afe = frontend.AFE(server=arguments.web)
+      pools = (lab_inventory.CRITICAL_POOLS
+               if arguments.pool == _ALL_CRITICAL_POOLS
+               else [arguments.pool])
+      board_info = specify_balance_args(afe, arguments, pools)
+      try:
+          parallel.RunTasksInProcessPool(
+              balancer, board_info, processes=8)
+      except KeyboardInterrupt:
+          pass
 
 
 if __name__ == '__main__':
