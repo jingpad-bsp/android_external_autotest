@@ -1,7 +1,6 @@
 class Metric(object):
     """Abstract base class for metrics."""
     def __init__(self,
-                 system_facade,
                  description,
                  units=None,
                  higher_is_better=False):
@@ -14,7 +13,6 @@ class Metric(object):
                 not.
         """
         self.values = []
-        self.system_facade = system_facade
         self.description = description
         self.units = units
         self.higher_is_better = higher_is_better
@@ -27,6 +25,25 @@ class Metric(object):
         """
         raise NotImplementedError('Subclasses should override')
 
+class PeakMetric(Metric):
+    """
+    Metric that collects the peak of another metric.
+    """
+    def __init__(self, metric):
+        """
+        Initializes with a Metric.
+
+        @param metric The Metric to get the peak from.
+        """
+        super(PeakMetric, self).__init__(
+                'peak_' + metric.description,
+                units = metric.units,
+                higher_is_better = metric.higher_is_better)
+        self.metric = metric
+
+    def collect_metric(self):
+        self.values = [max(self.metric.values)] if self.metric.values else []
+
 class MemUsageMetric(Metric):
     """
     Metric that collects memory usage in percent.
@@ -35,8 +52,8 @@ class MemUsageMetric(Metric):
     as free memory.
     """
     def __init__(self, system_facade):
-        super(MemUsageMetric, self).__init__(
-                system_facade, 'memory_usage', units='percent')
+        super(MemUsageMetric, self).__init__('memory_usage', units='percent')
+        self.system_facade = system_facade
 
     def collect_metric(self):
         total_memory = self.system_facade.get_mem_total()
@@ -50,10 +67,9 @@ class CpuUsageMetric(Metric):
     Metric that collects cpu usage in percent.
     """
     def __init__(self, system_facade):
-        super(CpuUsageMetric, self).__init__(
-                system_facade, 'cpu_usage', units='percent')
+        super(CpuUsageMetric, self).__init__('cpu_usage', units='percent')
         self.last_usage = None
-
+        self.system_facade = system_facade
 
     def collect_metric(self):
         """
@@ -78,29 +94,42 @@ class AllocatedFileHandlesMetric(Metric):
     """
     def __init__(self, system_facade):
         super(AllocatedFileHandlesMetric, self).__init__(
-                system_facade, 'allocated_file_handles', units='handles')
+                'allocated_file_handles', units='handles')
+        self.system_facade = system_facade
 
     def collect_metric(self):
         self.values.append(self.system_facade.get_num_allocated_file_handles())
+
+
+def create_default_metric_set(system_facade):
+    """
+    Creates the default set of metrics.
+
+    @param system_facade the system facade to initialize the metrics with.
+    @return a list with Metric instances.
+    """
+    cpu = CpuUsageMetric(system_facade)
+    mem = MemUsageMetric(system_facade)
+    file_handles = AllocatedFileHandlesMetric(system_facade)
+    peak_cpu = PeakMetric(cpu)
+    peak_mem = PeakMetric(mem)
+    return [cpu, mem, file_handles, peak_cpu, peak_mem]
 
 class SystemMetricsCollector(object):
     """
     Collects system metrics.
     """
-    def __init__(self,
-                 system_facade,
-                 metrics = [MemUsageMetric,
-                            CpuUsageMetric,
-                            AllocatedFileHandlesMetric]):
+    def __init__(self, system_facade, metrics = None):
         """
         Initialize with facade and metric classes.
 
         @param system_facade The system facade to use for querying the system,
                 e.g. system_facade_native.SystemFacadeNative for client tests.
-        @param metrics List of methods the collect metrics, e.g. constructors
-        for subclasses of Metric.
+        @param metrics List of metric instances. If None, the default set will
+                be created.
         """
-        self.metrics = [x(system_facade) for x in metrics]
+        self.metrics = (create_default_metric_set(system_facade)
+                        if metrics is None else metrics)
 
     def collect_snapshot(self):
         """
