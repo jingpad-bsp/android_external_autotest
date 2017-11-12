@@ -100,6 +100,16 @@ class AllocatedFileHandlesMetric(Metric):
     def collect_metric(self):
         self.values.append(self.system_facade.get_num_allocated_file_handles())
 
+class TemperatureMetric(Metric):
+    """
+    Metric that collects the max of the temperatures measured on all sensors.
+    """
+    def __init__(self, system_facade):
+        super(TemperatureMetric, self).__init__('temperature', units='Celsius')
+        self.system_facade = system_facade
+
+    def collect_metric(self):
+        self.values.append(self.system_facade.get_current_temperature_max())
 
 def create_default_metric_set(system_facade):
     """
@@ -111,9 +121,17 @@ def create_default_metric_set(system_facade):
     cpu = CpuUsageMetric(system_facade)
     mem = MemUsageMetric(system_facade)
     file_handles = AllocatedFileHandlesMetric(system_facade)
+    temperature = TemperatureMetric(system_facade)
     peak_cpu = PeakMetric(cpu)
     peak_mem = PeakMetric(mem)
-    return [cpu, mem, file_handles, peak_cpu, peak_mem]
+    peak_temperature = PeakMetric(temperature)
+    return [cpu,
+            mem,
+            file_handles,
+            temperature,
+            peak_cpu,
+            peak_mem,
+            peak_temperature]
 
 class SystemMetricsCollector(object):
     """

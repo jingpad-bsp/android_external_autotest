@@ -5,7 +5,6 @@
 import datetime
 import glob
 import os
-import re
 import time
 
 from autotest_lib.client.common_lib import error
@@ -52,26 +51,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     temperature data from the device under test."""
     version = 1
 
-
-    def _temperature_data(self):
-        """Returns temperature sensor data in degrees Celsius."""
-        ectool = self._host.run('ectool version', ignore_status=True)
-        if not ectool.exit_status:
-            ec_temp = self.system_facade.get_ec_temperatures()
-            return ec_temp[1]
-        else:
-            temp_sensor_name = 'temp0'
-            MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
-            values = {}
-            cmd = 'mosys -k sensor print thermal %s' % temp_sensor_name
-            for kv in MOSYS_OUTPUT_RE.finditer(self._host.run_output(cmd)):
-                key, value = kv.groups()
-                if key == 'reading':
-                    value = int(value)
-                values[key] = value
-            return values['reading']
-
-
     def start_hangout(self):
         """Waits for the landing page and starts a hangout session."""
         self.cfm_facade.wait_for_hangouts_telemetry_commands()
@@ -89,40 +68,15 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
 
     def collect_perf_data(self):
-        """Collect run time data from the DUT using xmlrpc and save it to csv
-        file in results directory. Data collected includes:
-                1. CPU usage
-                2. Memory usage
-                3. Thermal temperature
-                4. Participant count in the session
-                5. Timestamp
-                6. Board name
-                7. Build id
+        """
+        Collects run time data from the DUT using system_metrics_collector.
+        Writes the data to the chrome perf dashboard.
         """
         start_time = time.time()
-        # TODO(kerl): move the temperature collection to
-        # system_metrics_collector
-        temperature_list = list()
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
             time.sleep(_MEASUREMENT_DURATION_SECONDS)
             self.metrics_collector.collect_snapshot()
-            temperature_list.append(self._temperature_data())
-        self.upload_perf_data(temperature_list)
-
-
-    def upload_perf_data(self, temperature):
-        """Write perf results to results-chart.json file for Perf Dashboard.
-
-        @param temperature: list of temperature values
-        """
         self.metrics_collector.write_metrics(self.output_perf_value)
-        self.output_perf_value(description='temperature',
-                value=temperature, units='Celsius', higher_is_better=False)
-
-        # Report peak values to catch any outliers.
-        peak_temp = max(temperature)
-        self.output_perf_value(description='peak_temperature',
-                value=peak_temp, units='Celsius', higher_is_better=False)
 
     def _get_average(self, data_type, jmidata):
         """Computes mean of a list of numbers.
