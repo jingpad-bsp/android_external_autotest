@@ -26,6 +26,11 @@ class TestSystemMetricsCollector(unittest.TestCase):
         metric.collect_metric()
         self.assertAlmostEqual(40, metric.values[0])
 
+    def test_tempature_metric(self):
+        metric = system_metrics_collector.TemperatureMetric(FakeSystemFacade())
+        metric.collect_metric()
+        self.assertAlmostEqual(43, metric.values[0])
+
     def test_collector(self):
         collector = system_metrics_collector.SystemMetricsCollector(
                 FakeSystemFacade(), [TestMetric()])
@@ -77,6 +82,7 @@ class FakeSystemFacade(object):
         self.mem_free_mb = 400.0
         self.file_handles = 11
         self.active_cpu_time = 0.4
+        self.current_temperature_max = 43
 
     def get_mem_total(self):
         return self.mem_total_mb
@@ -92,6 +98,9 @@ class FakeSystemFacade(object):
 
     def compute_active_cpu_time(self, last_usage, current_usage):
         return self.active_cpu_time
+
+    def get_current_temperature_max(self):
+        return self.current_temperature_max
 
 class TestMetric(system_metrics_collector.Metric):
     def __init__(self):
