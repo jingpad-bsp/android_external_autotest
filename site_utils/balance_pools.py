@@ -62,6 +62,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 from chromite.lib import metrics
 from chromite.lib import parallel
 
@@ -190,11 +191,11 @@ class _DUTPool(object):
 
 
     def _get_hosts(self, afe, start_time, end_time):
-        all_histories = (
-            status_history.HostJobHistory.get_multiple_histories(
-                    afe, start_time, end_time,
-                    board=self.board, pool=self.pool,
-                    extra_labels=self._extra_labels))
+        labels = labellib.LabelsMapping(self._extra_labels)
+        labels['board'] = self.board
+        labels['pool'] = self.pool
+        all_histories = status_history.HostJobHistory.get_multiple_histories(
+                afe, start_time, end_time, labels.getlabels())
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
@@ -474,7 +475,7 @@ def _too_many_broken_boards(inventory, pool, arguments):
                   '%s pool',
                   max_broken_boards, pool)
 
-    broken_boards = [board for board, counts in inventory.items()
+    broken_boards = [board for board, counts in inventory.by_board.iteritems()
                      if counts.get_broken(pool) != 0]
     broken_boards.sort()
     num_of_broken_boards = len(broken_boards)
@@ -505,6 +506,10 @@ def _parse_command(argv):
             prog=argv[0],
             description='Balance pool shortages from spares on reserve')
 
+    parser.add_argument(
+        '-w', '--web', type=str, default=None,
+        help='AFE host to use. Default comes from shadow_config.',
+    )
     count_group = parser.add_mutually_exclusive_group()
     count_group.add_argument('-t', '--total', type=int,
                              metavar='COUNT', default=None,
@@ -542,8 +547,8 @@ def _parse_command(argv):
                              'there is a bug that is bricking devices in the '
                              'lab.')
     parser.add_argument('--production', action='store_true',
-                        help='Treat this as a production run. This '
-                             'will collect metrics.')
+                        help='Treat this as a production run. This will '
+                             'collect metrics.')
 
     parser.add_argument('--all-boards', action='store_true',
                         help='Rebalance all managed boards.  This will do a '
@@ -648,24 +653,27 @@ def main(argv):
     arguments = _parse_command(argv)
     if arguments.production:
         metrics_manager = site_utils.SetupTsMonGlobalState(
-            'balance_pools',
-            short_lived=True,
-            auto_flush=False)
+                'balance_pools',
+                short_lived=True,
+                auto_flush=False,
+        )
     else:
-        #suppress metrics
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-        afe = frontend.AFE(server=None)
-        pools = (lab_inventory.CRITICAL_POOLS
-                 if arguments.pool == _ALL_CRITICAL_POOLS
-                 else [arguments.pool])
-        board_info = specify_balance_args(afe, arguments, pools)
         try:
-            parallel.RunTasksInProcessPool(balancer, board_info, processes=8)
-        except KeyboardInterrupt:
-            pass
-        metrics.Flush()
+            afe = frontend.AFE(server=arguments.web)
+            pools = (lab_inventory.CRITICAL_POOLS
+                    if arguments.pool == _ALL_CRITICAL_POOLS
+                    else [arguments.pool])
+            board_info = specify_balance_args(afe, arguments, pools)
+            try:
+                parallel.RunTasksInProcessPool(balancer, board_info,
+                                               processes=8)
+            except KeyboardInterrupt:
+                pass
+        finally:
+            metrics.Flush()
 
 
 if __name__ == '__main__':

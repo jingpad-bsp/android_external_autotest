@@ -27,7 +27,6 @@ from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
-from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -269,7 +268,7 @@ class RDBClientHostWrapper(RDBHost):
         pool = ''
         if len(self.pools) == 1:
             pool = self.pools[0]
-        if pool in lab_inventory.MANAGED_POOLS:
+        if pool in constants.Pools.MANAGED_POOLS:
             pool = 'managed:' + pool
 
         metrics.String(self._HOST_POOL_METRIC,

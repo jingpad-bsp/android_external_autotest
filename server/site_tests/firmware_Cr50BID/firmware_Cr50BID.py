@@ -163,6 +163,9 @@ class firmware_Cr50BID(Cr50Test):
                 accepted by the board id locked image. BID_ERROR if it should be
                 rejected.
         """
+        logging.info('Test Case: image board id %s with chip board id %s:%x '
+                     'should %s', self.test_bid_str, board_id, flags,
+                     'fail' if expected_result else 'succeed')
         self.tests.append([board_id, flags, expected_result])
 
 
@@ -187,16 +190,19 @@ class firmware_Cr50BID(Cr50Test):
         # Flip a bit we don't care about to make sure it is accepted
         if zero_index != -1:
             test_bid = bid_int ^ (1 << zero_index)
-            logging.info('Test Case: image bid %x with test bid %x should '
-                         'pass', bid_int, test_bid)
             self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
-        # Flip a bit we care about to make sure it is rejected
+
         if one_index != -1:
+            # Flip a bit we care about to make sure it is rejected
             test_bid = bid_int ^ (1 << one_index)
-            logging.info('Test Case: image bid %x with test bid %x should '
-                         'fail', bid_int, test_bid)
             self.add_test(hex(test_bid), self.test_flags, self.BID_ERROR)
+        else:
+            # If there is not a 1 in the board id mask, then we don't care about
+            # the board id at all. Flip all the bits and make sure setting the
+            # board id still succeeds.
+            test_bid = bid_int ^ self.MAX_BID
+            self.add_test(hex(test_bid), self.test_flags, self.SUCCESS)
 
 
     def add_flag_tests(self):
@@ -220,15 +226,11 @@ class firmware_Cr50BID(Cr50Test):
         # Flip a 0 to 1 to make sure it is accepted.
         if zero_index != -1:
             test_flags = self.test_flags | (1 << zero_index)
-            logging.info('Test Case: image flags %x with test flags %x should '
-                         'pass', self.test_flags, test_flags)
             self.add_test(self.test_bid, test_flags, self.SUCCESS)
 
         # Flip a 1 to 0 to make sure it is rejected.
         if one_index != -1:
             test_flags = self.test_flags ^ (1 << one_index)
-            logging.info('Test Case: image flags %x with test flags %x should '
-                         'fail', self.test_flags, test_flags)
             self.add_test(self.test_bid, test_flags, self.BID_ERROR)
 
 
@@ -327,6 +329,7 @@ class firmware_Cr50BID(Cr50Test):
             raise error.TestError('Need board id locked image to run test')
         # Save the image board id info
         self.test_bid, self.test_mask, self.test_flags = image_bid_info
+        self.test_bid_str = cr50_utils.GetBoardIdInfoString(ver[2])
         logging.info('Running test with bid locked image %s', ver)
         self.image_versions[self.BID_LOCKED] = ver
 

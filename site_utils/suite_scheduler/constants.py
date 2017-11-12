@@ -11,9 +11,11 @@ class Labels:
     Constants related to label names.
 
     @var BOARD_PREFIX The string with which board labels are prefixed.
+    @var MODEL_PREFIX The string with which model labels are prefixed.
     @var POOL_PREFIX The stright with which pool labels are prefixed.
     """
     BOARD_PREFIX = 'board:'
+    MODEL_PREFIX = 'model:'
     POOL_PREFIX = 'pool:'
 
 

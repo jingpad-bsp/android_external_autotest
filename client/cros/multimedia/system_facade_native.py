@@ -118,3 +118,10 @@ class SystemFacadeNative(object):
         fail.
         """
         return utils.get_chromeos_release_version()
+
+    def get_num_allocated_file_handles(self):
+        """
+        Returns the number of currently allocated file handles.
+        """
+        return utils.get_num_allocated_file_handles()
+

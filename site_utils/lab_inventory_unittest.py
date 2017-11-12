@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import itertools
 import logging
 import os
@@ -16,41 +17,32 @@ from autotest_lib.site_utils import lab_inventory
 class _FakeHost(object):
     """Class to mock `Host` in _FakeHostHistory for testing."""
 
-    def __init__(self, hostname):
+    def __init__(self, hostname, labels):
         self.hostname = hostname
+        self.labels = labels
 
 
 class _FakeHostHistory(object):
     """Class to mock `HostJobHistory` for testing."""
 
-    def __init__(self, board, pool, status, hostname=''):
-        self._board = board
-        self._pool = pool
-        self._status = status
-        self._host = _FakeHost(hostname)
-
-
-    @property
-    def host(self):
-        """Return the recorded host."""
-        return self._host
-
-
-    @property
-    def host_board(self):
-        """Return the recorded board."""
-        return self._board
-
-
-    @property
-    def host_pool(self):
-        """Return the recorded host."""
-        return self._pool
+    def __init__(self, board=None, model=None, pool=None, status=None,
+                 hostname=''):
+        self.host_board = board
+        self.host_pool = pool
+        self.status = status
+        self.host = _FakeHost(
+                hostname,
+                labels=[
+                        'board:%s' % board,
+                        'model:%s' % model,
+                        'pool:%s' % pool,
+                ],
+        )
 
 
     def last_diagnosis(self):
         """Return the recorded diagnosis."""
-        return self._status, None
+        return self.status, None
 
 
 class _FakeHostLocation(object):
@@ -92,8 +84,8 @@ _BROKEN = _NON_WORKING_STATUS_LIST[1]
 _UNKNOWN = _NON_WORKING_STATUS_LIST[2]
 
 
-class PoolCountTests(unittest.TestCase):
-    """Unit tests for class `_PoolCounts`.
+class CachedHostJobHistoriesTestCase(unittest.TestCase):
+    """Unit tests for class `_CachedHostJobHistories`.
 
     Coverage is quite basic:  mostly just enough to make sure every
     function gets called, and to make sure that the counting knows
@@ -105,14 +97,13 @@ class PoolCountTests(unittest.TestCase):
     """
 
     def setUp(self):
-        super(PoolCountTests, self).setUp()
-        self._pool_counts = lab_inventory._PoolCounts()
+        super(CachedHostJobHistoriesTestCase, self).setUp()
+        self.histories = lab_inventory._CachedHostJobHistories()
 
 
     def _add_host(self, status):
-        fake = _FakeHostHistory(
-                None, lab_inventory.SPARE_POOL, status)
-        self._pool_counts.record_host(fake)
+        fake = _FakeHostHistory(pool=lab_inventory.SPARE_POOL, status=status)
+        self.histories.record_host(fake)
 
 
     def _check_counts(self, working, broken, idle):
@@ -126,10 +117,10 @@ class PoolCountTests(unittest.TestCase):
         @param broken  The expected total of broken devices.
 
         """
-        self.assertEqual(self._pool_counts.get_working(), working)
-        self.assertEqual(self._pool_counts.get_broken(), broken)
-        self.assertEqual(self._pool_counts.get_idle(), idle)
-        self.assertEqual(self._pool_counts.get_total(),
+        self.assertEqual(self.histories.get_working(), working)
+        self.assertEqual(self.histories.get_broken(), broken)
+        self.assertEqual(self.histories.get_idle(), idle)
+        self.assertEqual(self.histories.get_total(),
                          working + broken + idle)
 
 
@@ -168,8 +159,8 @@ class PoolCountTests(unittest.TestCase):
         self._check_counts(1, 1, 0)
 
 
-class BoardCountTests(unittest.TestCase):
-    """Unit tests for class `_BoardCounts`.
+class ManagedPoolsHostJobHistoriesTestCase(unittest.TestCase):
+    """Unit tests for class `_ManagedPoolsHostJobHistories`.
 
     Coverage is quite basic:  just enough to make sure every
     function gets called, and to make sure that the counting
@@ -181,12 +172,12 @@ class BoardCountTests(unittest.TestCase):
     """
 
     def setUp(self):
-        super(BoardCountTests, self).setUp()
-        self._board_counts = lab_inventory._BoardCounts()
+        super(ManagedPoolsHostJobHistoriesTestCase, self).setUp()
+        self._board_counts = lab_inventory._ManagedPoolsHostJobHistories()
 
 
     def _add_host(self, pool, status):
-        fake = _FakeHostHistory(None, pool, status)
+        fake = _FakeHostHistory(pool=pool, status=status)
         self._board_counts.record_host(fake)
 
 
@@ -376,7 +367,7 @@ class InventoryScoringTests(unittest.TestCase):
         for board, count in repair_counts:
             for i in range(0, count):
                 histories.append(
-                    _FakeHostHistory(board, pool, _BROKEN))
+                    _FakeHostHistory(board=board, pool=pool, status=_BROKEN))
         return histories
 
 
@@ -458,74 +449,63 @@ class InventoryScoringTests(unittest.TestCase):
         self._check_equal([('tiger', 1)], [('bear', 1)])
 
 
-class _InventoryTests(unittest.TestCase):
-    """Parent class for tests relating to full Lab inventory.
+# Each item is the number of DUTs in that status.
+STATUS_CHOICES = (_WORKING, _BROKEN, _UNUSED)
+StatusCounts = collections.namedtuple('StatusCounts', ['good', 'bad', 'unused'])
+# Each item is a StatusCounts tuple specifying the number of DUTs per status in
+# the that pool.
+CRITICAL_POOL = lab_inventory.CRITICAL_POOLS[0]
+SPARE_POOL = lab_inventory.SPARE_POOL
+POOL_CHOICES = (CRITICAL_POOL, SPARE_POOL)
+PoolStatusCounts = collections.namedtuple('PoolStatusCounts',
+                                          ['critical', 'spare'])
 
-    This class provides a `create_inventory()` method that allows
-    construction of a complete `_LabInventory` object from a
-    simplified input representation.  The input representation
-    is a dictionary mapping board names to tuples of this form:
-        `((critgood, critbad), (sparegood, sparebad))`
-    where:
-        `critgood` is a number of working DUTs in one critical pool.
-        `critbad` is a number of broken DUTs in one critical pool.
-        `sparegood` is a number of working DUTs in one critical pool.
-        `sparebad` is a number of broken DUTs in one critical pool.
+def create_inventory(data, by_board=True):
+    """Initialize a `_LabInventory` instance for testing.
+
+    This function allows the construction of a complete `_LabInventory` object
+    from a simplified input representation.
 
     A single 'critical pool' is arbitrarily chosen for purposes of
     testing; there's no coverage for testing arbitrary combinations
     in more than one critical pool.
 
+    @param data: dict {key: PoolStatusCounts}. key_type determines what key
+            represents.
+    @param by_board: Whether to create LabInventory based on board.  This
+            function can be used to create _LabInventory based on exactly one of
+            board or model. When creating by board, a dummy model is chosen and
+            vice-versa.
+
+    @returns: lab_inventory._LabInventory object.
+
     """
+    histories = []
+    for key, counts in data.iteritems():
+        for p, pool in enumerate(POOL_CHOICES):
+            for s, status in enumerate(STATUS_CHOICES):
+                if by_board:
+                    board = key
+                    model = 'dummy_model'
+                else:
+                    board = 'dummy_board'
+                    model = key
+                histories.extend(
+                        [_FakeHostHistory(board, model, pool, status)] *
+                        counts[p][s])
+    inventory = lab_inventory._LabInventory(histories)
+    return inventory
 
-    _CRITICAL_POOL = lab_inventory.CRITICAL_POOLS[0]
-    _SPARE_POOL = lab_inventory.SPARE_POOL
-
-    def setUp(self):
-        super(_InventoryTests, self).setUp()
-        self.num_duts = 0
-        self.inventory = None
-
-
-    def create_inventory(self, data):
-        """Initialize a `_LabInventory` instance for testing.
-
-        @param data  Representation of Lab inventory data, as
-                     described above.
-
-        """
-        histories = []
-        self.num_duts = 0
-        status_choices = (_WORKING, _BROKEN, _UNUSED)
-        pools = (self._CRITICAL_POOL, self._SPARE_POOL)
-        for board, counts in data.items():
-            for i in range(0, len(pools)):
-                for j in range(0, len(status_choices)):
-                    for x in range(0, counts[i][j]):
-                        history = _FakeHostHistory(board,
-                                                   pools[i],
-                                                   status_choices[j])
-                        histories.append(history)
-                        if board is not None:
-                            self.num_duts += 1
-        self.inventory = lab_inventory._LabInventory(histories)
-
-
-class LabInventoryTests(_InventoryTests):
+class LabInventoryTests(unittest.TestCase):
     """Tests for the basic functions of `_LabInventory`.
 
     Contains basic coverage to show that after an inventory is
     created and DUTs with known status are added, the inventory
     counts match the counts of the added DUTs.
 
-    Test inventory objects are created using the `create_inventory()`
-    method from the parent class.
-
     """
 
-    # _BOARD_LIST - A list of sample board names for use in testing.
-
-    _BOARD_LIST = [
+    _BOARD_OR_MODEL_LIST = [
         'lion',
         'tiger',
         'bear',
@@ -537,100 +517,162 @@ class LabInventoryTests(_InventoryTests):
     ]
 
 
-    def _check_inventory(self, data):
-        """Create a test inventory, and confirm that it's correct.
+    def _check_inventory_details(self, inventory, data, by_board=True,
+                                 msg=None):
+        """Some common detailed inventory checks.
 
-        Tests these assertions:
-          * The counts of working and broken devices for each
-            board match the numbers from `data`.
-          * That the set of returned boards in the inventory matches
-            the set from `data`.
-          * That the total number of DUTs matches the number from
-            `data`.
-          * That the total number of boards matches the number from
-            `data`.
+        The checks here are common to many tests below. At the same time, thsese
+        checks are intentionally dumb -- if you need complex logic to figure out
+        what to check, explicitly check for the final value instead of
+        duplicating logic in the test.
 
-        @param data Inventory data as for `self.create_inventory()`.
+        @param inventory: _LabInventory object to check.
+        @param data Inventory data to check against. Same type as
+                `create_inventory`.
+        @param by_board: Whether data is keyed by board (or by model). See
+                create_inventory.
 
         """
-        working_total = 0
-        broken_total = 0
-        idle_total = 0
-        managed_boards = set()
-        for b in self.inventory:
-            c = self.inventory[b]
-            calculated_counts = (
-                (c.get_working(self._CRITICAL_POOL),
-                 c.get_broken(self._CRITICAL_POOL),
-                 c.get_idle(self._CRITICAL_POOL)),
-                (c.get_working(self._SPARE_POOL),
-                 c.get_broken(self._SPARE_POOL),
-                 c.get_idle(self._SPARE_POOL)))
-            self.assertEqual(data[b], calculated_counts)
-            nworking = data[b][0][0] + data[b][1][0]
-            nbroken = data[b][0][1] + data[b][1][1]
-            nidle = data[b][0][2] + data[b][1][2]
-            self.assertEqual(nworking, len(c.get_working_list()))
-            self.assertEqual(nbroken, len(c.get_broken_list()))
-            self.assertEqual(nidle, len(c.get_idle_list()))
-            working_total += nworking
-            broken_total += nbroken
-            idle_total += nidle
-            ncritical = data[b][0][0] + data[b][0][1] + data[b][0][2]
-            nspare = data[b][1][0] + data[b][1][1] + data[b][1][2]
-            if ncritical != 0 and nspare != 0:
-                managed_boards.add(b)
-        self.assertEqual(self.inventory.get_managed_boards(),
-                         managed_boards)
-        board_list = self.inventory.keys()
-        self.assertEqual(set(board_list), set(data.keys()))
-        self.assertEqual(self.inventory.get_num_duts(),
-                         self.num_duts)
-        self.assertEqual(self.inventory.get_num_boards(),
-                         len(data))
+        if by_board:
+            inventory_summary = inventory.by_board
+        else:
+            inventory_summary = inventory.by_model
+        self.assertEqual(set(inventory_summary.keys()), set(data.keys()))
+        for key, histories in inventory_summary.iteritems():
+            calculated_counts = PoolStatusCounts(
+                    StatusCounts(
+                            histories.get_working(CRITICAL_POOL),
+                            histories.get_broken(CRITICAL_POOL),
+                            histories.get_idle(CRITICAL_POOL),
+                    ),
+                    StatusCounts(
+                            histories.get_working(SPARE_POOL),
+                            histories.get_broken(SPARE_POOL),
+                            histories.get_idle(SPARE_POOL),
+                    ),
+            )
+            self.assertEqual(data[key], calculated_counts, msg)
+
+            self.assertEqual(len(histories.get_working_list()),
+                             sum([p.good for p in data[key]]),
+                             msg)
+            self.assertEqual(len(histories.get_broken_list()),
+                             sum([p.bad for p in data[key]]),
+                             msg)
+            self.assertEqual(len(histories.get_idle_list()),
+                             sum([p.unused for p in data[key]]),
+                             msg)
 
 
     def test_empty(self):
         """Test counts when there are no DUTs recorded."""
-        self.create_inventory({})
-        self._check_inventory({})
+        inventory = create_inventory({})
+        self.assertEqual(inventory.get_num_duts(), 0)
+        self.assertEqual(inventory.get_num_boards(), 0)
+        self.assertEqual(inventory.get_managed_boards(), set())
+        self._check_inventory_details(inventory, {}, by_board=True)
+        self.assertEqual(inventory.get_num_models(), 0)
+        self.assertEqual(inventory.get_managed_models(), set())
+        self._check_inventory_details(inventory, {}, by_board=False)
 
 
     def test_missing_board(self):
         """Test handling when the board is `None`."""
-        self.create_inventory({None: ((1, 1, 1), (1, 1, 1))})
-        self._check_inventory({})
+        inventory = create_inventory({
+                None: PoolStatusCounts(
+                        StatusCounts(1, 1, 1),
+                        StatusCounts(1, 1, 1),
+                ),
+        })
+        self.assertEqual(inventory.get_num_duts(), 0)
+        self.assertEqual(inventory.get_num_boards(), 0)
+        self.assertEqual(inventory.get_managed_boards(), set())
+        self._check_inventory_details(inventory, {}, by_board=True)
+        self.assertEqual(inventory.get_num_models(), 0)
+        self.assertEqual(inventory.get_managed_models(), set())
+        self._check_inventory_details(inventory, {}, by_board=False)
 
 
     def test_board_counts(self):
         """Test counts for various numbers of boards."""
-        for nboards in [1, 2, len(self._BOARD_LIST)]:
-            counts = ((1, 1, 1), (1, 1, 1))
-            slice = self._BOARD_LIST[0 : nboards]
-            inventory_data = {
-                board: counts for board in slice
-            }
-            self.create_inventory(inventory_data)
-            self._check_inventory(inventory_data)
+        for board_count in [1, 2, len(self._BOARD_OR_MODEL_LIST)]:
+            self.parameterized_test_board_count(board_count)
+
+
+    def parameterized_test_board_count(self, board_count):
+        """Parameterized test for testing a specific number of boards."""
+        self.longMessage = True
+        msg = '[board_count: %s]' % (board_count)
+        boards = self._BOARD_OR_MODEL_LIST[:board_count]
+        data = {
+                b: PoolStatusCounts(
+                        StatusCounts(1, 1, 1),
+                        StatusCounts(1, 1, 1),
+                )
+                for b in boards
+        }
+        inventory = create_inventory(data, by_board=True)
+        self.assertEqual(inventory.get_num_duts(), 6 * board_count, msg)
+        self.assertEqual(inventory.get_num_boards(), board_count, msg)
+        self.assertEqual(inventory.get_managed_boards(), set(boards), msg)
+        self._check_inventory_details(inventory, data, by_board=True, msg=msg)
+        self.assertEqual(inventory.get_num_models(), 1, msg)
+        self.assertEqual(inventory.get_managed_models(), {'dummy_model'}, msg)
+
+
+    def test_model_counts(self):
+        """Test counts for various numbers of models."""
+        for model_count in [1, 2, len(self._BOARD_OR_MODEL_LIST)]:
+            self.parameterized_test_model_count(model_count)
+
+
+    def parameterized_test_model_count(self, model_count):
+        """Parameterized test for testing a specific number of models."""
+        self.longMessage = True
+        msg = '[model: %s]' % (model_count)
+        models = self._BOARD_OR_MODEL_LIST[:model_count]
+        data = {
+                m: PoolStatusCounts(
+                        StatusCounts(1, 1, 1),
+                        StatusCounts(1, 1, 1),
+                )
+                for m in models
+        }
+        inventory = create_inventory(data, by_board=False)
+        self.assertEqual(inventory.get_num_duts(), 6 * model_count, msg)
+        self.assertEqual(inventory.get_num_models(), model_count, msg)
+        self.assertEqual(inventory.get_managed_models(), set(models), msg)
+        self._check_inventory_details(inventory, data, by_board=False, msg=msg)
+        self.assertEqual(inventory.get_num_boards(), 1, msg)
+        self.assertEqual(inventory.get_managed_boards(), {'dummy_board'}, msg)
 
 
     def test_single_dut_counts(self):
-        """Test counts when there is a single DUT per board."""
-        testcounts = [
-            ((1, 0, 0), (0, 0, 0)),
-            ((0, 1, 0), (0, 0, 0)),
-            ((0, 0, 0), (1, 0, 0)),
-            ((0, 0, 0), (0, 1, 0)),
-            ((0, 0, 1), (0, 0, 0)),
-            ((0, 0, 0), (0, 0, 1)),
-        ]
-        for counts in testcounts:
-            inventory_data = { self._BOARD_LIST[0]: counts }
-            self.create_inventory(inventory_data)
-            self._check_inventory(inventory_data)
+        """Test counts when there is a single DUT per board, and it is good."""
+        for counts in [
+                PoolStatusCounts(StatusCounts(1, 0, 0), StatusCounts(0, 0, 0)),
+                PoolStatusCounts(StatusCounts(0, 1, 0), StatusCounts(0, 0, 0)),
+                PoolStatusCounts(StatusCounts(0, 0, 1), StatusCounts(0, 0, 0)),
+                PoolStatusCounts(StatusCounts(0, 0, 0), StatusCounts(1, 0, 0)),
+                PoolStatusCounts(StatusCounts(0, 0, 0), StatusCounts(0, 1, 0)),
+                PoolStatusCounts(StatusCounts(0, 0, 0), StatusCounts(0, 0, 1)),
+        ]:
+            self.parameterized_test_single_dut_counts(counts)
+
+    def parameterized_test_single_dut_counts(self, counts):
+        """Parmeterized test for single dut counts."""
+        self.longMessage = True
+        board = self._BOARD_OR_MODEL_LIST[0]
+        data = {board: counts}
+        msg = '[data: %s]' % (data,)
+        inventory = create_inventory(data)
+        self.assertEqual(inventory.get_num_duts(), 1, msg)
+        self.assertEqual(inventory.get_num_boards(), 1, msg)
+        self.assertEqual(inventory.get_managed_boards(), set(), msg)
+        self._check_inventory_details(inventory, data, by_board=True, msg=msg)
 
 
-# _BOARD_MESSAGE_TEMPLATE -
+# BOARD_MESSAGE_TEMPLATE -
 # This is a sample of the output text produced by
 # _generate_board_inventory_message().  This string is parsed by the
 # tests below to construct a sample inventory that should produce
@@ -656,7 +698,7 @@ aardvark                   7     2     2     6     9    10
 '''
 
 
-class BoardInventoryTests(_InventoryTests):
+class BoardInventoryTests(unittest.TestCase):
     """Tests for `_generate_board_inventory_message()`.
 
     The tests create various test inventories designed to match the
@@ -669,67 +711,64 @@ class BoardInventoryTests(_InventoryTests):
     """
 
     def setUp(self):
-        super(BoardInventoryTests, self).setUp()
-        # The template string has leading and trailing '\n' that
-        # won't be in the generated output; we strip them out here.
-        message_lines = _BOARD_MESSAGE_TEMPLATE.split('\n')
-        self._header = message_lines[1]
-        self._board_lines = message_lines[2:-1]
+        self.maxDiff = None
+        lines = [x.strip() for x in _BOARD_MESSAGE_TEMPLATE.split('\n') if
+                 x.strip()]
+        self._header, self._board_lines = lines[0], lines[1:]
         self._board_data = []
         for l in self._board_lines:
             items = l.split()
             board = items[0]
-            bad = int(items[2])
-            idle = int(items[3])
-            good = int(items[4])
-            spare = int(items[5])
+            bad, idle, good, spare = [int(x) for x in items[2:-1]]
             self._board_data.append((board, (good, bad, idle, spare)))
+
 
 
     def _make_minimum_spares(self, counts):
         """Create a counts tuple with as few spare DUTs as possible."""
         good, bad, idle, spares = counts
         if spares > bad + idle:
-            return ((good + bad +idle - spares, 0, 0),
-                    (spares - bad - idle, bad, idle))
+            return PoolStatusCounts(
+                    StatusCounts(good + bad +idle - spares, 0, 0),
+                    StatusCounts(spares - bad - idle, bad, idle),
+            )
         elif spares < bad:
-            return ((good, bad - spares, idle), (0, spares, 0))
+            return PoolStatusCounts(
+                    StatusCounts(good, bad - spares, idle),
+                    StatusCounts(0, spares, 0),
+            )
         else:
-            return ((good, 0, idle + bad - spares), (0, bad, spares - bad))
+            return PoolStatusCounts(
+                    StatusCounts(good, 0, idle + bad - spares),
+                    StatusCounts(0, bad, spares - bad),
+            )
 
 
     def _make_maximum_spares(self, counts):
         """Create a counts tuple with as many spare DUTs as possible."""
         good, bad, idle, spares = counts
         if good > spares:
-            return ((good - spares, bad, idle), (spares, 0, 0))
+            return PoolStatusCounts(
+                    StatusCounts(good - spares, bad, idle),
+                    StatusCounts(spares, 0, 0),
+            )
         elif good + bad > spares:
-            return ((0, good + bad - spares, idle),
-                    (good, spares - good, 0))
+            return PoolStatusCounts(
+                    StatusCounts(0, good + bad - spares, idle),
+                    StatusCounts(good, spares - good, 0),
+            )
         else:
-            return ((0, 0, good + bad + idle - spares),
-                    (good, bad, spares - good - bad))
+            return PoolStatusCounts(
+                    StatusCounts(0, 0, good + bad + idle - spares),
+                    StatusCounts(good, bad, spares - good - bad),
+            )
 
 
-    def _check_board_inventory(self, data):
-        """Test that a test inventory creates the correct message.
-
-        Create a test inventory from `data` using
-        `self.create_inventory()`.  Then generate the board inventory
-        output, and test that the output matches
-        `_BOARD_MESSAGE_TEMPLATE`.
-
-        The caller is required to produce data that matches the
-        values in `_BOARD_MESSAGE_TEMPLATE`.
-
-        @param data Inventory data as for `self.create_inventory()`.
-
-        """
-        self.create_inventory(data)
-        message = lab_inventory._generate_board_inventory_message(
-                self.inventory).split('\n')
+    def _check_message(self, message):
+        """Checks that message approximately matches expected string."""
+        message = [x.strip() for x in message.split('\n') if x.strip()]
         self.assertIn(self._header, message)
-        body = message[message.index(self._header) + 1 :]
+        body = message[message.index(self._header) + 1:]
         self.assertEqual(body, self._board_lines)
 
 
@@ -739,8 +778,9 @@ class BoardInventoryTests(_InventoryTests):
             board: self._make_minimum_spares(counts)
                 for board, counts in self._board_data
         }
-        self._check_board_inventory(data)
-
+        inventory = create_inventory(data)
+        message = lab_inventory._generate_board_inventory_message(inventory)
+        self._check_message(message)
 
     def test_maximum_spares(self):
         """Test message generation when the critical pool is low."""
@@ -748,7 +788,9 @@ class BoardInventoryTests(_InventoryTests):
             board: self._make_maximum_spares(counts)
                 for board, counts in self._board_data
         }
-        self._check_board_inventory(data)
+        inventory = create_inventory(data)
+        message = lab_inventory._generate_board_inventory_message(inventory)
+        self._check_message(message)
 
 
     def test_ignore_no_spares(self):
@@ -758,7 +800,9 @@ class BoardInventoryTests(_InventoryTests):
                 for board, counts in self._board_data
         }
         data['elephant'] = ((5, 4, 0), (0, 0, 0))
-        self._check_board_inventory(data)
+        inventory = create_inventory(data)
+        message = lab_inventory._generate_board_inventory_message(inventory)
+        self._check_message(message)
 
 
     def test_ignore_no_critical(self):
@@ -768,7 +812,9 @@ class BoardInventoryTests(_InventoryTests):
                 for board, counts in self._board_data
         }
         data['elephant'] = ((0, 0, 0), (1, 5, 1))
-        self._check_board_inventory(data)
+        inventory = create_inventory(data)
+        message = lab_inventory._generate_board_inventory_message(inventory)
+        self._check_message(message)
 
 
     def test_ignore_no_bad(self):
@@ -778,7 +824,9 @@ class BoardInventoryTests(_InventoryTests):
                 for board, counts in self._board_data
         }
         data['elephant'] = ((5, 0, 1), (5, 0, 1))
-        self._check_board_inventory(data)
+        inventory = create_inventory(data)
+        message = lab_inventory._generate_board_inventory_message(inventory)
+        self._check_message(message)
 
 
 class _PoolInventoryTestBase(unittest.TestCase):
@@ -919,7 +967,7 @@ class PoolInventoryTests(_PoolInventoryTestBase):
                 for status, count in zip(status_choices, counts):
                     for x in range(0, count):
                         histories.append(
-                            _FakeHostHistory(board, pool, status))
+                            _FakeHostHistory(board, None, pool, status))
         return histories
 
 
@@ -1071,14 +1119,15 @@ class IdleInventoryTests(_PoolInventoryTestBase):
             pool = items[2]
             self._host_data.append((hostname, board, pool))
         self._histories = []
-        self._histories.append(_FakeHostHistory('echidna', 'bvt', _BROKEN))
-        self._histories.append(_FakeHostHistory('lion', 'bvt', _WORKING))
+        self._histories.append(_FakeHostHistory('echidna', None, 'bvt',
+                                                _BROKEN))
+        self._histories.append(_FakeHostHistory('lion', None, 'bvt', _WORKING))
 
 
     def _add_idles(self):
         """Add idle duts from `_IDLE_MESSAGE_TEMPLATE`."""
         idle_histories = [_FakeHostHistory(
-                board, pool, _UNUSED, hostname=hostname)
+                board, None, pool, _UNUSED, hostname=hostname)
                         for hostname, board, pool in self._host_data]
         self._histories.extend(idle_histories)
 

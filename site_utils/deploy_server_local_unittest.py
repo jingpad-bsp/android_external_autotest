@@ -204,7 +204,7 @@ a1598f7
         """
         # Standard call.
         dsl.service_status('foobar')
-        run_cmd.assert_called_with(['sudo', 'status', 'foobar'])
+        run_cmd.assert_called_with(['sudo', 'service', 'foobar', 'status'])
 
     @mock.patch.object(dsl, 'restart_service', autospec=True)
     def _test_restart_services(self, service_results, _restart):

@@ -584,7 +584,7 @@ def where_art_thy_filehandles():
 
 def get_num_allocated_file_handles():
     """
-    Returns the currently number of allocated file handles.
+    Returns the number of currently allocated file handles.
 
     Gets this information by parsing /proc/sys/fs/file-nr.
     See https://www.kernel.org/doc/Documentation/sysctl/fs.txt
@@ -1562,40 +1562,52 @@ def get_cpu_usage():
 
     This function uses /proc/stat to identify CPU usage.
     Returns:
-        A dictionary with 'user', 'nice', 'system' and 'idle' values.
+        A dictionary with values for all columns in /proc/stat
         Sample dictionary:
         {
             'user': 254544,
             'nice': 9,
             'system': 254768,
             'idle': 2859878,
+            'iowait': 1,
+            'irq': 2,
+            'softirq': 3,
+            'steal': 4,
+            'guest': 5,
+            'guest_nice': 6
         }
+        If a column is missing or malformed in /proc/stat (typically on older
+        systems), the value for that column is set to 0.
     """
-    proc_stat = _open_file('/proc/stat')
-    cpu_usage_str = proc_stat.readline().split()
-    proc_stat.close()
-    return {
-        'user': int(cpu_usage_str[1]),
-        'nice': int(cpu_usage_str[2]),
-        'system': int(cpu_usage_str[3]),
-        'idle': int(cpu_usage_str[4])
-    }
-
+    with _open_file('/proc/stat') as proc_stat:
+        cpu_usage_str = proc_stat.readline().split()
+    columns = ('user', 'nice', 'system', 'idle', 'iowait', 'irq', 'softirq',
+               'steal', 'guest', 'guest_nice')
+    d = {}
+    for index, col in enumerate(columns, 1):
+        try:
+            d[col] = int(cpu_usage_str[index])
+        except:
+            d[col] = 0
+    return d
 
 def compute_active_cpu_time(cpu_usage_start, cpu_usage_end):
     """Computes the fraction of CPU time spent non-idling.
 
     This function should be invoked using before/after values from calls to
     get_cpu_usage().
+
+    See https://stackoverflow.com/a/23376195 and
+    https://unix.stackexchange.com/a/303224 for some more context how
+    to calculate usage given two /proc/stat snapshots.
     """
-    time_active_end = (
-        cpu_usage_end['user'] + cpu_usage_end['nice'] + cpu_usage_end['system'])
-    time_active_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
-                         cpu_usage_start['system'])
-    total_time_end = (cpu_usage_end['user'] + cpu_usage_end['nice'] +
-                      cpu_usage_end['system'] + cpu_usage_end['idle'])
-    total_time_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
-                        cpu_usage_start['system'] + cpu_usage_start['idle'])
+    idle_cols = ('idle', 'iowait')  # All other cols are calculated as active.
+    time_active_start = sum([x[1] for x in cpu_usage_start.iteritems()
+                             if x[0] not in idle_cols])
+    time_active_end = sum([x[1] for x in cpu_usage_end.iteritems()
+                           if x[0] not in idle_cols])
+    total_time_start = sum(cpu_usage_start.values())
+    total_time_end = sum(cpu_usage_end.values())
     return ((float(time_active_end) - time_active_start) /
             (total_time_end - total_time_start))
 
@@ -1820,13 +1832,18 @@ def get_thermal_zone_temperatures():
 def get_ec_temperatures():
     """
     Uses ectool to return a list of all sensor temperatures in Celsius.
+
+    Output from ectool is either '0: 300' or '0: 300 K' (newer ectool
+    includes the unit).
     """
     temperatures = []
     try:
         full_cmd = 'ectool temps all'
         lines = utils.run(full_cmd, verbose=False).stdout.splitlines()
+        pattern = re.compile('.*: (\d+)')
         for line in lines:
-            temperature = int(line.split(': ')[1]) - 273
+            matched = pattern.match(line)
+            temperature = int(matched.group(1)) - 273
             temperatures.append(temperature)
     except Exception:
         logging.warning('Unable to read temperature sensors using ectool.')

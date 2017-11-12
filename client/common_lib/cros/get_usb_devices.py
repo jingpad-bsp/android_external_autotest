@@ -36,21 +36,6 @@ USB_DEVICES_TPLT = (
 )
 
 
-# As of now there are certain types of cameras, speakers and touch-panel.
-# New devices should be added to these global variables.
-CAMERAS = [
-    cfm_usb_devices.HUDDLY_GO,
-    cfm_usb_devices.LOGITECH_WEBCAM_C930E,
-    cfm_usb_devices.HD_PRO_WEBCAM_C920,
-    cfm_usb_devices.PTZ_PRO_CAMERA,
-]
-
-
-SPEAKERS = [
-    cfm_usb_devices.ATRUS,
-    cfm_usb_devices.JABRA_SPEAK_410,
-    ]
-
 TOUCH_DISPLAY_LIST = ['17e9:016b']
 TOUCH_CONTROLLER_LIST = ['266e:0110']
 
@@ -88,19 +73,17 @@ def _extract_usb_data(rawdata):
     return usbdata
 
 
-def _extract_peri_device(usbdata, vid_pid):
+def _extract_peri_device(usbdata, vid_pids):
     """retrieve the list of dictionary for certain types of VID_PID
     @param usbdata  list of dictionary for usb devices
-    @param vid_pid list of vid_pid combination
+    @param vid_pids list of vid_pid combination
     @returns the list of dictionary for certain types of VID_PID
     """
     vid_pid_usb_list = []
-    for _vid_pid in vid_pid:
-        vid, pid = _get_vid_and_pid(vid_pid)
-        for _data in usbdata:
-            if vid == _data['Vendor'] and pid ==  _data['ProdID']:
-                vid_pid_usb_list.append(_data)
-    return  vid_pid_usb_list
+    for vid_pid in vid_pids:
+        for _data in _filter_by_vid_pid(usbdata, vid_pid):
+            vid_pid_usb_list.append(_data)
+    return vid_pid_usb_list
 
 
 def _get_list_audio_device(usbdata):
@@ -177,26 +160,24 @@ def _get_vid_and_pid(vid_pid):
   return vid_pid.split(':')
 
 
-def _is_usb_device_ok(usbdata, vid_pid):
-    """check usb device has expected usb interface
-    @param usbdata list of dictionary for usb devices
-    @vid_pid VID, PID combination for each type of USB device
-    @returns
-              int: number of device
-              boolean: usb interfaces expected or not?
+def _verify_usb_device_ok(usbdata, vid_pid):
     """
-    number_of_device = 0
-    device_health = []
-    vid, pid = _get_vid_and_pid(vid_pid)
-    for _data in usbdata:
-        if vid == _data['Vendor'] and pid == _data['ProdID']:
-            number_of_device += 1
-            compare_list = _data['intdriver'][0:len(INTERFACES_LIST[vid_pid])]
-            if  cmp(compare_list, INTERFACES_LIST[vid_pid]) == 0:
-                device_health.append('1')
-            else:
-                device_health.append('0')
-    return number_of_device, device_health
+    Verifies that usb device has expected usb interfaces.
+
+    @param usbdata list of dictionary for usb devices
+    @param vid_pid VID, PID combination for the USB device to check.
+    """
+    device_found = False
+    length = len(INTERFACES_LIST[vid_pid])
+    interface_set = set(INTERFACES_LIST[vid_pid])
+    for _data in _filter_by_vid_pid(usbdata, vid_pid):
+        device_found = True
+        compare_set = set(_data['intdriver'][0:length])
+        if compare_set != interface_set:
+            raise RuntimeError(
+                'Device %s has unexpected interfaces.' % vid_pid)
+    if not device_found:
+        raise RuntimeError('Expected at least one %s connected.' % vid_pid)
 
 
 def _get_speakers(usbdata):
@@ -205,13 +186,10 @@ def _get_speakers(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of speakers
     """
     number_speaker = {}
-    for speaker in SPEAKERS:
-        vid = speaker.vid
-        pid = speaker.pid
+    for speaker in cfm_usb_devices.get_speakers():
         _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and _data['ProdID'] == pid:
-                _number += 1
+        for _data in _filter_by_vid_pid(usbdata, speaker.vid_pid):
+            _number += 1
         number_speaker[speaker.vid_pid] = _number
     return number_speaker
 
@@ -236,13 +214,10 @@ def _get_cameras(usbdata):
     @returns list of dictionary, key is VID_PID, value is number of cameras
     """
     number_camera = {}
-    for camera in CAMERAS:
-        vid = camera.vid
-        pid = camera.pid
+    for camera in cfm_usb_devices.get_cameras():
         _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and _data['ProdID'] == pid:
-                _number += 1
+        for _data in _filter_by_vid_pid(usbdata, camera.vid_pid):
+            _number += 1
         number_camera[camera.vid_pid] = _number
     return number_camera
 
@@ -254,11 +229,9 @@ def _get_display_mimo(usbdata):
     """
     number_display = {}
     for _display in TOUCH_DISPLAY_LIST:
-        vid, pid = _get_vid_and_pid(_display)
         _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-                _number += 1
+        for _data in _filter_by_vid_pid(usbdata, _display):
+            _number += 1
         number_display[_display] = _number
     return number_display
 
@@ -270,11 +243,9 @@ def _get_controller_mimo(usbdata):
     """
     number_controller = {}
     for _controller in TOUCH_CONTROLLER_LIST:
-        vid, pid = _get_vid_and_pid(_controller)
         _number = 0
-        for _data in usbdata:
-            if _data['Vendor'] == vid and  _data['ProdID'] == pid:
-                _number += 1
+        for _data in _filter_by_vid_pid(usbdata, _controller):
+            _number += 1
         number_controller[_controller] = _number
     return number_controller
 
@@ -287,7 +258,8 @@ def _get_preferred_speaker(peripherals):
     @returns name of preferred speaker
     """
     for vid_pid in peripherals:
-      return next((s.full_name for s in SPEAKERS if s.vid_pid == vid_pid), None)
+      return next((s.full_name for s in cfm_usb_devices.get_speakers()
+                   if s.vid_pid == vid_pid), None)
 
 
 def _get_preferred_camera(peripherals):
@@ -298,7 +270,8 @@ def _get_preferred_camera(peripherals):
     @returns name of preferred camera
     """
     for vid_pid in peripherals:
-      return next((c.full_name for c in CAMERAS if c.vid_pid == vid_pid), None)
+      return next((c.full_name for c in cfm_usb_devices.get_cameras()
+                   if c.vid_pid == vid_pid), None)
 
 
 def _get_device_prod(vid_pid):
@@ -308,8 +281,23 @@ def _get_device_prod(vid_pid):
     @param vid_pid vid and pid combo for device
     @returns product
     """
-    device = next((s for s in SPEAKERS if s.vid_pid == vid_pid), None)
+    device = next((s for s in cfm_usb_devices.get_speakers()
+                   if s.vid_pid == vid_pid), None)
     if device:
       return device
-    return next((c for c in CAMERAS if c.vid_pid == vid_pid), None)
+    return next((c for c in cfm_usb_devices.get_cameras()
+                 if c.vid_pid == vid_pid), None)
 
+
+def _filter_by_vid_pid(usbdata, vid_pid):
+  """
+  Utility method for filter out items by vid and pid.
+
+  @param usbdata list of dictionaries with usb device data
+  @param vid_pid list of vid_pid combination
+  @return list of dictionaries with usb devices with the
+     the given vid and pid
+  """
+  vid, pid = _get_vid_and_pid(vid_pid)
+  return [u for u in usbdata if
+          vid == u['Vendor'] and pid ==  u['ProdID']]

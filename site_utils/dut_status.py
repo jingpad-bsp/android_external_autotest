@@ -114,7 +114,8 @@ import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import frontend
 from autotest_lib.server.lib import status_history
-from autotest_lib.site_utils import lab_inventory
+from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 
 # The fully qualified name makes for lines that are too long, so
 # shorten it locally.
@@ -316,9 +317,12 @@ def _validate_host_list(afe, arguments):
             print >>sys.stderr, ('FATAL: Hostname arguments provided '
                                  'with --board or --pool')
             sys.exit(1)
+
+        labels = labellib.LabelsMapping()
+        labels['board'] = arguments.board
+        labels['pool'] = arguments.pool
         histories = HostJobHistory.get_multiple_histories(
-                afe, arguments.since, arguments.until,
-                board=arguments.board, pool=arguments.pool)
+            afe, arguments.since, arguments.until, labels.getlabels())
     else:
         histories = _get_host_histories(afe, arguments)
     if not histories:
@@ -427,8 +431,8 @@ def _parse_command(argv):
                         help='Display history for all DUTs '
                              'in the given pool. You might '
                              'be interested in the following pools: '
-                             + ', '.join(lab_inventory.MANAGED_POOLS[:-1])
-                             +', or '+ lab_inventory.MANAGED_POOLS[-1] +'.')
+                             + ', '.join(constants.Pools.MANAGED_POOLS[:-1])
+                             +', or '+ constants.Pools.MANAGED_POOLS[-1] +'.')
     parser.add_argument('hostnames',
                         nargs='*',
                         help='Host names of DUTs to report on')

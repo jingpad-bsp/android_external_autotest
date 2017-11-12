@@ -47,6 +47,7 @@ Options:
 
 
 import argparse
+import collections
 import logging
 import logging.handlers
 import os
@@ -62,6 +63,7 @@ from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 
 
 CRITICAL_POOLS = constants.Pools.CRITICAL_POOLS
@@ -114,7 +116,7 @@ _HOSTNAME_PATTERN = re.compile(
 _MANAGED_POOL_DEFAULT = 'all_pools'
 
 
-class _PoolCounts(object):
+class _CachedHostJobHistories(object):
     """Maintains a set of `HostJobHistory` objects for a pool.
 
     The collected history objects are nominally all part of a single
@@ -240,27 +242,25 @@ class _PoolCounts(object):
         return len(self._histories)
 
 
-class _BoardCounts(object):
-    """Maintains a set of `HostJobHistory` objects for a board.
+class _ManagedPoolsHostJobHistories(object):
+    """Maintains a set of `HostJobHistory`s per managed pool.
 
-    The collected history objects are nominally all of the same
-    board.  The collection maintains a count of working DUTs, a
-    count of broken DUTs, and a total count.  The counts can be
-    obtained either for a single pool, or as a total across all
-    pools.
+    The collection maintains a count of working DUTs, a count of broken DUTs,
+    and a total count.  The counts can be obtained either for a single pool, or
+    as a total across all pools.
 
-    DUTs in the collection must be assigned to one of the pools
-    in `_MANAGED_POOLS`.
+    DUTs in the collection must be assigned to one of the pools in
+    `_MANAGED_POOLS`.
 
     The `get_working()` and `get_broken()` methods rely on the
-    methods of the same name in _PoolCounts, so the performance
-    note in _PoolCounts applies here as well.
+    methods of the same name in _CachedHostJobHistories, so the performance
+    note in _CachedHostJobHistories applies here as well.
 
     """
 
     def __init__(self):
-        self._pools = {
-            pool: _PoolCounts() for pool in MANAGED_POOLS
+        self._histories_by_pool = {
+            pool: _CachedHostJobHistories() for pool in MANAGED_POOLS
         }
 
     def record_host(self, host_history):
@@ -271,7 +271,7 @@ class _BoardCounts(object):
 
         """
         pool = host_history.host_pool
-        self._pools[pool].record_host(host_history)
+        self._histories_by_pool[pool].record_host(host_history)
 
 
     def _count_pool(self, get_pool_count, pool=None):
@@ -287,23 +287,23 @@ class _BoardCounts(object):
 
         """
         if pool is None:
-            return sum([get_pool_count(counts)
-                            for counts in self._pools.values()])
+            return sum([get_pool_count(cached_history) for cached_history in
+                        self._histories_by_pool.values()])
         else:
-            return get_pool_count(self._pools[pool])
+            return get_pool_count(self._histories_by_pool[pool])
 
 
     def get_working_list(self):
-        """Return a list of all working DUTs for the board.
+        """Return a list of all working DUTs (across all pools).
 
-        Go through all HostJobHistory objects in the board's pools,
-        selecting the ones where the last diagnosis is `WORKING`.
+        Go through all HostJobHistory objects across all pools, selecting the
+        ones where the last diagnosis is `WORKING`.
 
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for p in self._pools.values():
+        for p in self._histories_by_pool.values():
             l.extend(p.get_working_list())
         return l
 
@@ -317,20 +317,20 @@ class _BoardCounts(object):
         @return The total number of working DUTs in the selected
                 pool(s).
         """
-        return self._count_pool(_PoolCounts.get_working, pool)
+        return self._count_pool(_CachedHostJobHistories.get_working, pool)
 
 
     def get_broken_list(self):
-        """Return a list of all broken DUTs for the board.
+        """Return a list of all broken DUTs (across all pools).
 
-        Go through all HostJobHistory objects in the board's pools,
+        Go through all HostJobHistory objects in the across all pools,
         selecting the ones where the last diagnosis is `BROKEN`.
 
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for p in self._pools.values():
+        for p in self._histories_by_pool.values():
             l.extend(p.get_broken_list())
         return l
 
@@ -343,14 +343,14 @@ class _BoardCounts(object):
 
         @return The total number of broken DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_broken, pool)
+        return self._count_pool(_CachedHostJobHistories.get_broken, pool)
 
 
     def get_idle_list(self, pool=None):
-        """Return a list of all idle DUTs for the board.
+        """Return a list of all idle DUTs in the given pool.
 
-        Go through all HostJobHistory objects in the board's pools,
-        selecting the ones where the last diagnosis is `UNUSED` or `UNKNOWN`.
+        Go through all HostJobHistory objects in the given pool, selecting the
+        ones where the last diagnosis is `UNUSED` or `UNKNOWN`.
 
         @param pool: The pool to be counted. If `None`, return the total list
                      across all pools.
@@ -360,11 +360,12 @@ class _BoardCounts(object):
         """
         if pool is None:
             l = []
-            for p in self._pools.values():
+            for p in self._histories_by_pool.values():
                 l.extend(p.get_idle_list())
             return l
         else:
-            return _PoolCounts.get_idle_list(self._pools[pool])
+            return _CachedHostJobHistories.get_idle_list(
+                    self._histories_by_pool[pool])
 
 
     def get_idle(self, pool=None):
@@ -375,7 +376,7 @@ class _BoardCounts(object):
 
         @return The total number of idle DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_idle, pool)
+        return self._count_pool(_CachedHostJobHistories.get_idle, pool)
 
 
     def get_spares_buffer(self):
@@ -400,17 +401,14 @@ class _BoardCounts(object):
 
         @return The total number of DUTs in the selected pool(s).
         """
-        return self._count_pool(_PoolCounts.get_total, pool)
+        return self._count_pool(_CachedHostJobHistories.get_total, pool)
 
 
-class _LabInventory(dict):
+class _LabInventory(object):
     """Collection of `HostJobHistory` objects for the Lab's inventory.
 
-    The collection is indexed by board.  Indexing returns the
-    _BoardCounts object associated with the board.
-
-    The collection is also iterable.  The iterator returns all the
-    boards in the inventory, in unspecified order.
+    Important attributes:
+      by_board: A dict mapping board to ManagedPoolsHostJobHistories
 
     """
 
@@ -480,17 +478,62 @@ class _LabInventory(dict):
         # those here.
         histories = [h for h in histories
                      if h.host_board is not None]
-        boards = set([h.host_board for h in histories])
-        initval = { board: _BoardCounts() for board in boards }
-        super(_LabInventory, self).__init__(initval)
+        self.histories = histories
         self._dut_count = len(histories)
         self._managed_boards = {}
-        for h in histories:
-            self[h.host_board].record_host(h)
+        self._managed_models = {}
+        self.by_board = self._classify_by_label_type('board')
+        self.by_model = self._classify_by_label_type('model')
+
+
+    def _classify_by_label_type(self, label_key):
+        """Classify histories by labels with the given key.
+
+        @returns a dict mapping labels with the given key to
+        _ManagedPoolsHostJobHistories for DUTs with that label.
+        """
+        classified = collections.defaultdict(_ManagedPoolsHostJobHistories)
+        for h in self.histories:
+            labels = labellib.LabelsMapping(h.host.labels)
+            if label_key in labels:
+                classified[labels[label_key]].record_host(h)
+        return dict(classified)
 
 
     def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
         """Return the set of "managed" boards.
+
+        @param pool: The specified pool for managed boards.
+        @return A set of all the boards that have both spare and
+                non-spare pools, unless the pool is specified,
+                then the set of boards in that pool.
+        """
+        if self._managed_boards.get(pool) is None:
+            self._managed_boards[pool] = set()
+            for board, counts in self.by_board.iteritems():
+                if self._is_managed(pool, counts):
+                    self._managed_boards[pool].add(board)
+        return self._managed_boards[pool]
+
+
+    def get_managed_models(self, pool=_MANAGED_POOL_DEFAULT):
+        """Return the set of "managed" models.
+
+        @param pool: The specified pool for managed models.
+        @return A set of all the models that have both spare and
+                non-spare pools, unless the pool is specified,
+                then the set of models in that pool.
+        """
+        if self._managed_models.get(pool) is None:
+            self._managed_models[pool] = set()
+            for board, counts in self.by_model.iteritems():
+                if self._is_managed(pool, counts):
+                    self._managed_models[pool].add(board)
+        return self._managed_models[pool]
+
+
+    def _is_managed(self, pool, histories):
+        """Deterime if the given histories contain DUTs to be managed for pool.
 
         Operationally, saying a board is "managed" means that the
         board will be included in the "board" and "repair
@@ -502,25 +545,15 @@ class _LabInventory(dict):
         has DUTs in both the spare and a non-spare (i.e. critical)
         pool.
 
-        @param pool: The specified pool for managed boards.
-        @return A set of all the boards that have both spare and
-                non-spare pools, unless the pool is specified,
-                then the set of boards in that pool.
         """
-        if self._managed_boards.get(pool, None) is None:
-            self._managed_boards[pool] = set()
-            for board, counts in self.items():
-                # Get the counts for all pools, otherwise get it for the
-                # specified pool.
-                if pool == _MANAGED_POOL_DEFAULT:
-                    spares = counts.get_total(SPARE_POOL)
-                    total = counts.get_total()
-                    if spares != 0 and spares != total:
-                        self._managed_boards[pool].add(board)
-                else:
-                    if counts.get_total(pool) != 0:
-                        self._managed_boards[pool].add(board)
-        return self._managed_boards[pool]
+        # Get the counts for all pools, otherwise get it for the
+        # specified pool.
+        if pool == _MANAGED_POOL_DEFAULT:
+            spares = histories.get_total(SPARE_POOL)
+            total = histories.get_total()
+            return spares != 0 and spares != total
+        else:
+            return histories.get_total(pool) != 0
 
 
     def get_num_duts(self):
@@ -530,7 +563,12 @@ class _LabInventory(dict):
 
     def get_num_boards(self):
         """Return the total number of boards in the inventory."""
-        return len(self)
+        return len(self.by_board)
+
+
+    def get_num_models(self):
+        """Return the total number of models in the inventory."""
+        return len(self.by_model)
 
 
 def _sort_by_location(inventory_list):
@@ -603,8 +641,8 @@ def _score_repair_set(buffer_counts, repair_list):
     repair_inventory = _LabInventory(repair_list)
     new_counts = []
     for b, c in buffer_counts.items():
-        if b in repair_inventory:
-            newcount = repair_inventory[b].get_total()
+        if b in repair_inventory.by_board:
+            newcount = repair_inventory.by_board[b].get_total()
         else:
             newcount = 0
         new_counts.append(c + newcount)
@@ -650,7 +688,7 @@ def _generate_repair_recommendation(inventory, num_recommend):
     broken_list = []
     for board in inventory.get_managed_boards():
         logging.debug('Listing failed DUTs for %s', board)
-        counts = inventory[board]
+        counts = inventory.by_board[board]
         if counts.get_broken() != 0:
             board_buffer_counts[board] = counts.get_spares_buffer()
             broken_list.extend(counts.get_broken_list())
@@ -726,7 +764,7 @@ def _generate_board_inventory_message(inventory):
     ntotal_boards = 0
     summaries = []
     for board in inventory.get_managed_boards():
-        counts = inventory[board]
+        counts = inventory.by_board[board]
         logging.debug('Counting %2d DUTS for board %s',
                       counts.get_total(), board)
         # Summary elements laid out in the same order as the text
@@ -807,7 +845,7 @@ def _generate_pool_inventory_message(inventory):
             '%-20s   %5s %5s %5s %5s' % (
                 'Board', 'Bad', 'Idle', 'Good', 'Total'))
         data_list = []
-        for board, counts in inventory.items():
+        for board, counts in inventory.by_board.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
                           counts.get_total(pool), board, pool)
             broken = counts.get_broken(pool)
@@ -856,7 +894,7 @@ def _generate_idle_inventory_message(inventory):
     message.append('%-30s %-20s %s' % ('Hostname', 'Board', 'Pool'))
     data_list = []
     for pool in MANAGED_POOLS:
-        for board, counts in inventory.items():
+        for board, counts in inventory.by_board.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
                           counts.get_total(pool), board, pool)
             data_list.extend([(dut.host.hostname, board, pool)
