@@ -99,6 +99,12 @@ class SystemFacadeRemoteAdapter(object):
         """
         return self._system_proxy.get_ec_temperatures()
 
+    def get_current_temperature_max(self):
+        """
+        Returns the highest reported board temperature (all sensors) in Celsius.
+        """
+        return self._system_proxy.get_current_temperature_max()
+
     def get_current_board(self):
         """Returns the current device board name."""
         return self._system_proxy.get_current_board()
