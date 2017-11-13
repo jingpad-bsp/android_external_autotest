@@ -15,6 +15,6 @@ class CfmUsbDevicesTest(unittest.TestCase):
   def test_get_speakers(self):
       self.assertEqual(cfm_usb_devices.SPEAKERS, cfm_usb_devices.get_speakers())
 
-  def test_get_camera(self):
-      for s in cfm_usb_devices.SPEAKERS:
-          self.assertEqual(s, cfm_usb_devices.get_speaker(s.vid_pid))
+  def test_get_usb_device(self):
+      for s in cfm_usb_devices.get_speakers():
+          self.assertEqual(cfm_usb_devices.get_usb_device(s.vid_pid), s)
