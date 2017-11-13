@@ -36,24 +36,6 @@ USB_DEVICES_TPLT = (
 )
 
 
-TOUCH_DISPLAY_LIST = ['17e9:016b']
-TOUCH_CONTROLLER_LIST = ['266e:0110']
-
-INTERFACES_LIST = {'2bd9:0011':['uvcvideo', 'uvcvideo',
-                                'uvcvideo', 'uvcvideo'],
-                   '046d:0843':['uvcvideo', 'uvcvideo',
-                                'snd-usb-audio', 'snd-usb-audio'],
-                   '046d:082d':['uvcvideo', 'uvcvideo',
-                                'snd-usb-audio', 'snd-usb-audio'],
-                   '0b0e:0412':['snd-usb-audio', 'snd-usb-audio',
-                                'snd-usb-audio'],
-                   '18d1:8001':['snd-usb-audio', 'snd-usb-audio',
-                                'snd-usb-audio', 'usbhid'],
-                   '17e9:016b':['udl'],
-                   '266e:0110':['usbhid'],
-                   '046d:0853':['uvcvideo', 'uvcvideo','usbhid']
-                  }
-
 
 def _extract_usb_data(rawdata):
     """populate usb data into list dictionary
@@ -168,8 +150,9 @@ def _verify_usb_device_ok(usbdata, vid_pid):
     @param vid_pid VID, PID combination for the USB device to check.
     """
     device_found = False
-    length = len(INTERFACES_LIST[vid_pid])
-    interface_set = set(INTERFACES_LIST[vid_pid])
+    usb_device = cfm_usb_devices.get_usb_device(vid_pid)
+    interface_set = set(usb_device.interfaces)
+    length = len(interface_set)
     for _data in _filter_by_vid_pid(usbdata, vid_pid):
         device_found = True
         compare_set = set(_data['intdriver'][0:length])
@@ -221,6 +204,7 @@ def _get_cameras(usbdata):
         number_camera[camera.vid_pid] = _number
     return number_camera
 
+
 def _get_display_mimo(usbdata):
     """get number of displaylink in Mimo for each type
     @param usbdata list of dictionary for usb devices
@@ -228,12 +212,13 @@ def _get_display_mimo(usbdata):
               is number of displaylink
     """
     number_display = {}
-    for _display in TOUCH_DISPLAY_LIST:
+    for _display in cfm_usb_devices.get_mimo_displays():
         _number = 0
         for _data in _filter_by_vid_pid(usbdata, _display):
             _number += 1
         number_display[_display] = _number
     return number_display
+
 
 def _get_controller_mimo(usbdata):
     """get number of touch controller Mimo for each type
@@ -242,7 +227,7 @@ def _get_controller_mimo(usbdata):
              is number of touch controller
     """
     number_controller = {}
-    for _controller in TOUCH_CONTROLLER_LIST:
+    for _controller in cfm_usb_devices.get_mimo_controllers():
         _number = 0
         for _data in _filter_by_vid_pid(usbdata, _controller):
             _number += 1
