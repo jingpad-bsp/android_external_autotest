@@ -23,8 +23,8 @@ active for each connection, effectively flipping between different resolutions.
 
 The tests use a fake media stream - not a real camera.
 
-The test collects metrics and sends to Chrome Perf Dashboard
-(https://chromeperf.appspot.com/).
+The test collects system metrics during the run. See go/cfm-perf-metrics
+for details about the metrics.
 """
 
 job.run_test(
