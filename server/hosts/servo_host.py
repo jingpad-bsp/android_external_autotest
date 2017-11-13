@@ -231,11 +231,12 @@ class ServoHost(ssh_host.SSHHost):
         @returns: An ssh command with the requested settings.
 
         """
-        options = ' '.join([opts, '-o Protocol=2'])
-        return super(ServoHost, self).make_ssh_command(
-            user=user, port=port, opts=options, hosts_file='/dev/null',
-            connect_timeout=30, alive_interval=180, alive_count_max=3,
-            connection_attempts=4)
+        base_command = ('/usr/bin/ssh -a -x %s -o StrictHostKeyChecking=no'
+                        ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
+                        ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
+                        ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
+                        ' -o Protocol=2 -l %s -p %d')
+        return base_command % (opts, user, port)
 
 
     def _make_scp_cmd(self, sources, dest):
