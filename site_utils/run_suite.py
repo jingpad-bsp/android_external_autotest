@@ -1766,7 +1766,8 @@ def _run_suite(options):
             logging.exception('Error Message: %s', e)
             return SuiteResult(RETURN_CODES.INFRA_FAILURE,
                                {'return_message': str(e)})
-        except AttributeError:
+        except AttributeError as e:
+            logging.exception('Error Message: %s', e)
             return SuiteResult(RETURN_CODES.INVALID_OPTIONS)
 
     job_timer = diagnosis_utils.JobTimer(
