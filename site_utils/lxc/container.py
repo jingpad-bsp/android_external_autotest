@@ -70,6 +70,7 @@ class ContainerId(collections.namedtuple('ContainerId',
                  otherwise.
         """
         src = os.path.join(path, _CONTAINER_ID_FILENAME)
+
         if lxc_utils.path_exists(src):
             # Read as root because the container directory is owned by root.
             pickle_data = utils.run('sudo cat %s' % src).stdout
@@ -136,8 +137,22 @@ class Container(object):
             self._id = None
         else:
             # This may be an existing container.  Try to read the ID.
-            self._id = ContainerId.load(
-                    os.path.join(self.container_path, self.name))
+            try:
+                self._id = ContainerId.load(
+                        os.path.join(self.container_path, self.name))
+            except (pickle.PicklingError, EOFError):
+                # Ignore unpickling errors.  ContainerBucket currently queries
+                # every container quite frequently, and emitting exceptions here
+                # would cause any invalid containers on a server to block all
+                # ContainerBucket.get_all calls (see crbug/783865).
+                # TODO(kenobi): Containers with invalid ID files are probably
+                # the result of an aborted or failed operation.  There is a
+                # non-zero chance that such containers would contain leftover
+                # state, or themselves be corrupted or invalid.  Should we
+                # provide APIs for checking if a container is in this state?
+                logging.exception('Error unpickling ID for container %s:',
+                                  self.name)
+                self._id = None
 
 
     @classmethod
