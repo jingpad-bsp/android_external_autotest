@@ -11,7 +11,7 @@ CMD = "usb-devices | grep ^P:"
 FAILED_TEST_LIST = list()
 IDLE_TIME = 30
 LONG_TIMEOUT = 20
-MEETS_BETWEEN_REBOOT = 10
+MEETS_BETWEEN_REBOOT = 5
 
 
 class enterprise_CFM_USBPeripheralRebootStress(cfm_base_test.CfmBaseTest):
