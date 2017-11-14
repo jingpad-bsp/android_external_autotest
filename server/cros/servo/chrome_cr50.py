@@ -30,6 +30,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     provides many interfaces to set and get its behavior via console commands.
     This class is to abstract these interfaces.
     """
+    # The amount of time you need to show physical presence.
+    PP_SHORT = 15
+    PP_LONG = 300
     IDLE_COUNT = 'count: (\d+)'
     # The version has four groups: the partition, the header version, debug
     # descriptor and then version string.
@@ -342,6 +345,50 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return testlab_pp or open_pp
 
 
+    def ccd_set_testlab(self, state):
+        """Set the testlab mode
+
+        Args:
+            state: the desired testlab mode string: 'enable' or 'disable'
+
+        Raises:
+            TestFail if testlab mode was not changed
+        """
+        if self.using_ccd():
+            raise error.TestError('Cannot set testlab mode with CCD. Use flex '
+                    'cable instead.')
+
+        state = state.lower()
+        current_state = self._servo.get('cr50_testlab').lower()
+        if state in current_state:
+            logging.info('ccd testlab already set to %s', state)
+            return
+
+        original_level = self._servo.get('cr50_ccd_level').lower()
+
+        # We can only change the testlab mode when the device is open. If
+        # testlab mode is already enabled, we can go directly to open using 'ccd
+        # testlab open'. This will save 5 minutes, because we can skip the
+        # physical presence check.
+        if 'enable' in current_state:
+            self.send_command('ccd testlab open')
+        else:
+            self.ccd_set_level('open')
+
+        # Set testlab mode
+        rv = self.send_command_get_output('ccd testlab %s' % state, ['.*>'])[0]
+        if 'Access Denied' in rv:
+            raise error.TestFail("'ccd %s' %s" % (state, rv))
+
+        # Press the power button once a second for 15 seconds.
+        self.run_pp(self.PP_SHORT)
+
+        self.ccd_set_level(original_level)
+
+        if state not in self._servo.get('cr50_testlab'):
+            raise error.TestFail('Failed to set ccd testlab to %s' % state)
+
+
     def ccd_set_level(self, level):
         """Increase the console timeout and try disabling the lock."""
         # TODO(mruthven): add support for CCD password
@@ -368,31 +415,50 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError("Wont change privilege level without "
                 "physical presence or testlab mode enabled")
 
-        resp = ['(Access Denied|%sCCD %s)' % ('Starting ' if req_pp else '',
-                                              level)]
         # Start the unlock process.
-        rv = self.send_command_get_output('ccd %s' % level, resp)
-        if 'Access Denied' in rv[0][1]:
-            raise error.TestFail("'ccd %s' Access Denied" % level)
+        rv = self.send_command_get_output('ccd %s' % level, ['.*>'])[0]
+        logging.info(rv)
+        if 'Access Denied' in rv:
+            raise error.TestFail("'ccd %s' %s" % (level, rv))
 
+        # Press the power button once a second, if we need physical presence.
         if req_pp:
             # DBG images have shorter unlock processes
-            unlock_timeout = 15 if dbg_en else 300
-            end_time = time.time() + unlock_timeout
-
-            logging.info('Pressing power button for %ds to unlock the console.',
-                         unlock_timeout)
-            logging.info('The process should end at %s', time.ctime(end_time))
-
-            # Press the power button once a second to unlock the console.
-            while time.time() < end_time:
-                self._servo.power_short_press()
-                time.sleep(1)
+            self.run_pp(self.PP_SHORT if dbg_en else self.PP_LONG)
 
         if level not in self._servo.get('cr50_ccd_level').lower():
             raise error.TestFail('Could not set privilege level to %s' % level)
 
         logging.info('Successfully set CCD privelege level to %s', level)
+
+
+    def run_pp(self, unlock_timeout):
+        """Press the power button a for unlock_timeout seconds.
+
+        This will press the power button many more times than it needs to be
+        pressed. Cr50 doesn't care if you press it too often. It just cares that
+        you press the power button at least once within the detect interval.
+
+        For privilege level changes you need to press the power button 5 times
+        in the short interval and then 4 times within the long interval.
+        Short Interval
+        100msec < power button press < 5 seconds
+        Long Interval
+        60s < power button press < 300s
+
+        For testlab enable/disable you must press the power button 5 times
+        spaced between 100msec and 5 seconds apart.
+        """
+        end_time = time.time() + unlock_timeout
+
+        logging.info('Pressing power button for %ds to unlock the console.',
+                     unlock_timeout)
+        logging.info('The process should end at %s', time.ctime(end_time))
+
+        # Press the power button once a second to unlock the console.
+        while time.time() < end_time:
+            self._servo.power_short_press()
+            time.sleep(1)
 
 
     def gettime(self):
