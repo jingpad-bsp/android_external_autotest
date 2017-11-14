@@ -15,10 +15,9 @@ DEPENDENCIES = "dual_jabra"
 JOB_RETRIES = 1
 
 DOC = """
-This test clears the TPM if necessary, enrolls the device as a remora device
-and runs a series of test actions and performs verifications to make sure CFM
-enrolled devices behave as expected. It clears the TPM at the end of the test
-run. Every time the TPM is cleared, the system is rebooted.
+This test performs a set of sanity operations against a dual jabra setup.
+It verifies the volume levels and mixer/microphone mute states are in sync
+between the dual speakers as well as the CFM.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -26,7 +25,6 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('enterprise_CFM_DualSpeaker',
-                 host=host)
+    job.run_test('enterprise_CFM_DualSpeaker', host=host)
 
 parallel_simple(run_test, machines)
