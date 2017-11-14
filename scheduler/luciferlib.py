@@ -50,8 +50,8 @@ def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     args = [
             '--run-job-path', _get_run_job_path(),
             '--jobdir', _get_jobdir(),
-            '--job-id', job.id,
-            '--autoserv-exit', autoserv_exit,
+            '--job-id', str(job.id),
+            '--autoserv-exit', str(autoserv_exit),
     ]
     # lucifer_run_job arguments
     results_dir = _results_dir(manager, job)
@@ -143,7 +143,7 @@ def _results_dir(manager, job):
 
 
 def _working_directory(job):
-    return _get_consistent_execution_path(job.hostqueueentry_set)
+    return _get_consistent_execution_path(job.hostqueueentry_set.all())
 
 
 def _get_consistent_execution_path(execution_entries):
@@ -216,14 +216,14 @@ def _spawn(path, argv, output_file):
     The new process will have stdin opened to /dev/null and stdout,
     stderr opened to output_file.
     """
-    ppid = os.fork()
-    if not ppid:
+    assert all(isinstance(arg, basestring) for arg in argv)
+    if os.fork():
         return
     os.setsid()
     null_fd = os.open(os.devnull, os.O_RDONLY)
     os.dup2(null_fd, 0)
     os.close(null_fd)
-    out_fd = os.open(output_file, os.O_WRONLY)
+    out_fd = os.open(output_file, os.O_WRONLY | os.O_CREAT)
     os.dup2(out_fd, 1)
     os.dup2(out_fd, 2)
     os.close(out_fd)

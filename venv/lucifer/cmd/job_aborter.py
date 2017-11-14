@@ -69,7 +69,7 @@ def _process_expired_jobs(jobdir):
     _mark_aborted(job_ids)
     # Clean up files after marking them aborted in case we crash.
     for lease in leases:
-        lease.clean()
+        lease.cleanup()
 
 
 def _abort_timed_out_jobs(jobdir):
@@ -96,7 +96,7 @@ def _mark_aborted(job_ids):
     models = autotest.load('frontend.afe.models')
     jobs = (models.Job.objects
             .filter(id__in=job_ids)
-            .prefetch_related('hostqueueentry'))
+            .prefetch_related('hostqueueentry_set'))
     for job in jobs:
         job.abort()
 
