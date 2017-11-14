@@ -18,10 +18,6 @@ _SECTION = 'LUCIFER'
 # TODO(crbug.com/748234): Move these to shadow_config.ini
 # See also drones.AUTOTEST_INSTALL_DIR
 _AUTOTEST_DIR = '/usr/local/autotest'
-_RUN_JOB_PATH = '/opt/infra-tools/usr/bin/lucifer_run_job'
-_WATCHER_PATH = '/opt/infra-tools/usr/bin/lucifer_watcher'
-_LEASE_DIR = '/var/lib/lucifer/leases'
-
 _JOB_REPORTER_PATH = os.path.join(_AUTOTEST_DIR, 'bin' 'job_reporter')
 
 
@@ -52,8 +48,8 @@ def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     else:
         drone = manager.get_drone_for_pidfile(pidfile_id)
     args = [
-            '--run-job-path', _RUN_JOB_PATH,
-            '--leasedir', _LEASE_DIR,
+            '--run-job-path', _get_run_job_path(),
+            '--jobdir', _get_jobdir(),
             '--job-id', job.id,
             '--autoserv-exit', autoserv_exit,
     ]
@@ -62,10 +58,27 @@ def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     args.extend([
             '-resultsdir', results_dir,
             '-autotestdir', _AUTOTEST_DIR,
-            '-watcherpath', _WATCHER_PATH,
+            '-watcherpath', _get_watcher_path(),
     ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+
+
+def _get_jobdir():
+    return _config.get_config_value(_SECTION, 'jobdir', type=str)
+
+
+def _get_run_job_path():
+    return os.path.join(_get_binaries_path(), 'lucifer_run_job')
+
+
+def _get_watcher_path():
+    return os.path.join(_get_binaries_path(), 'lucifer_watcher')
+
+
+def _get_binaries_path():
+    """Get binaries dir path from config.."""
+    return _config.get_config_value(_SECTION, 'binaries_path', type=str)
 
 
 class _DroneManager(object):
