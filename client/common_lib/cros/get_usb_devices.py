@@ -177,20 +177,6 @@ def _get_speakers(usbdata):
     return number_speaker
 
 
-def _get_dual_speaker(usbdata):
-    """check whether dual speakers are present
-    @param usbdata  list of dictionary for usb devices
-    @returns True or False
-    """
-    dual_speaker = None
-    speaker_dict = _get_speakers(usbdata)
-    for _key in speaker_dict:
-        if speaker_dict[_key] == 2:
-            dual_speaker = _key
-            break
-    return dual_speaker
-
-
 def _get_cameras(usbdata):
     """get number of camera for each type
     @param usbdata  list of dictionary for usb devices
