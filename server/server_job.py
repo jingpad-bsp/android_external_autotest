@@ -16,7 +16,6 @@ import fcntl
 import getpass
 import itertools
 import logging
-import multiprocessing
 import os
 import pickle
 import platform
@@ -371,9 +370,12 @@ class server_job(base_job.base_job):
         self.harness = None
 
         if control:
-            self.max_result_size_KB = control_data.parse_control(
-                    control, raise_warnings=False).max_result_size_KB
+            parsed_control = control_data.parse_control(
+                    control, raise_warnings=False)
+            self.fast = parsed_control.fast
+            self.max_result_size_KB = parsed_control.max_result_size_KB
         else:
+            self.fast = False
             # Set the maximum result size to be the default specified in
             # global config, if the job has no control file associated.
             self.max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
