@@ -39,9 +39,9 @@ def main(args):
     loglib.add_logging_options(parser)
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
                         help='Path to lucifer_run_job binary')
-    parser.add_argument('--leasedir', default='/var/lib/lucifer/leases',
+    parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='''
-Path to lucifer_run_job binary.  This is used to construct the -leasefile
+Path to job leases directory.  This is used to construct the -leasefile
 argument to lucifer_run_job.
 ''')
     parser.add_argument('--job-id', type=int, default=None,
