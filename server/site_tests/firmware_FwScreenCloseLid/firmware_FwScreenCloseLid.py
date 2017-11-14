@@ -71,7 +71,8 @@ class firmware_FwScreenCloseLid(FirmwareTest):
             logging.info('This test does nothing on devices without lid.')
             return
 
-        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+        if (self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser'
+          and self.faft_config.fw_bypasser_type != 'tablet_detachable_bypasser'):
             raise error.TestNAError("This test is only valid on devices with "
                                     "screens.")
 
