@@ -18,7 +18,7 @@ def setup_logging(log_level):
     """
     # Lifted from client.common_lib.logging_config.
     FORMAT = ('%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
-              '%(lineno)4.4d| %(threadName)16.16s| %(message)s')
+              '%(lineno)4.4d| %(threadName)16.16s(%(thread)d)| %(message)s')
 
     logger = logging.getLogger()
     logger.setLevel(log_level)
