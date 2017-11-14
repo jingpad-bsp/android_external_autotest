@@ -52,7 +52,7 @@ class Chrome(object):
     BROWSER_TYPE_GUEST = 'system-guest'
 
 
-    def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
+    def __init__(self, logged_in=True, extension_paths=None, autotest_ext=False,
                  num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, dont_override_profile=False,
                  disable_gaia_services=True, disable_default_apps = True,
@@ -97,6 +97,9 @@ class Chrome(object):
         if (utils.is_arc_available() and (arc_util.should_start_arc(arc_mode)
             or not disable_arc_opt_in)):
             autotest_ext = True
+
+        if extension_paths is None:
+            extension_paths = []
 
         if autotest_ext:
             self._autotest_ext_path = os.path.join(os.path.dirname(__file__),
