@@ -42,6 +42,9 @@ def patch():
     """
     monkeypatch()
 
+    # Add chromite's third-party to the import path.
+    import chromite
+
     # Needed to set up Django environment variables.
     load('frontend.setup_django_environment')
 
@@ -56,6 +59,10 @@ def patch():
             'django.contrib.sessions',
             'django.contrib.sites',
     )
+
+    # drone_utility uses this
+    common = load('scheduler.common')
+    common.autotest_dir = _AUTOTEST_DIR
 
 
 def monkeypatch():
