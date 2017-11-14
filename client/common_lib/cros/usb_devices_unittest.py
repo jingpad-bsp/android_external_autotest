@@ -22,6 +22,39 @@ class MockUsbDataCollector(object):
 class UsbDevicesTest(unittest.TestCase):
     """Unit test for the class UsbDevices."""
 
+
+    def test_get_dual_speakers_pass(self):
+        """Unit test for get_dual_speakers."""
+        usbdata = [
+            {
+                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
+                'ProdID': cfm_usb_devices.ATRUS.product_id
+            },
+            {
+                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
+                'ProdID': cfm_usb_devices.ATRUS.product_id
+            }
+        ]
+        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
+        self.assertEquals(cfm_usb_devices.ATRUS, devices.get_dual_speakers())
+
+    def test_get_speakers_counts(self):
+        """Unit test for get_speaker_counts."""
+        usbdata = [
+            {
+                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
+                'ProdID': cfm_usb_devices.ATRUS.product_id
+            }
+        ]
+        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
+
+        for speaker, count in devices.get_speaker_counts():
+            if speaker == cfm_usb_devices.ATRUS:
+                self.assertEquals(1, count)
+            else:
+                self.assertEquals(0, count)
+
+
     def test_get_camera_counts(self):
         """Unit test for get_camera_counts."""
         usbdata = [

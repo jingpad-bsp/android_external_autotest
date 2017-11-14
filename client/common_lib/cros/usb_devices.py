@@ -45,25 +45,29 @@ class UsbDevices(object):
         """
         return get_usb_devices._get_cameras(self.__collect_usb_data())
 
-    # TODO(malmnas): it probably makes more sense to let the key be
-    # an instance of cfm/UsbDevice instead of vid_pid.
+
     def get_speaker_counts(self):
         """
-        Returns the number of speakers for each type.
-        @returns a dictionary where the key is VID_PID and value
-        is the number of speakers of that type.
+        Get the number of speakers of each type.
+        @returns a list of (UsbDevice, int) tuples.
         """
-        return get_usb_devices._get_speakers(self.__collect_usb_data())
+        usbdata = self.__collect_usb_data()
+        number_speakers = []
+        for speaker in cfm_usb_devices.get_speakers():
+            count = len(get_usb_devices._filter_by_vid_pid(
+                usbdata, speaker.vid_pid))
+            number_speakers.append((speaker, count))
+        return number_speakers
+
 
     def get_dual_speakers(self):
         """
         @returns the UsbDevice constant representing the dual speakers that are
         connected. If no dual speakers are found, None is returned.
         """
-        usbdata = self.__collect_usb_data()
-        vid_pid = get_usb_devices._get_dual_speaker(usbdata)
-        if vid_pid:
-            return cfm_usb_devices.get_usb_device(vid_pid)
+        for speaker, count in self.get_speaker_counts():
+            if count == 2:
+                return speaker
         return None
 
     # TODO(malmnas): method should probably take a cfm/UsbDevice as
