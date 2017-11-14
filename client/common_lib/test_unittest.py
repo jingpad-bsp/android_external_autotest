@@ -29,6 +29,7 @@ class TestTestCase(unittest.TestCase):
             self.job.test_retry = 0
             self._new_keyval = False
             self.iteration = 0
+            self.tagged_testname = 'neutered_base_test'
             self.before_iteration_hooks = []
             self.after_iteration_hooks = []
 
