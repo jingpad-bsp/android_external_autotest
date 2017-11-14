@@ -8,7 +8,7 @@ import re
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import get_usb_devices
+from autotest_lib.client.common_lib.cros import usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
 from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 from autotest_lib.server.cros.cfm import cfm_base_test
@@ -194,26 +194,15 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
         return True
 
 
-    @property
-    def _usb_data(self):
-        """Gets the usb_data for currently connected USB devices."""
-        usb_devices = (self._host.run('usb-devices', ignore_status=True).
-            stdout.strip().split('\n\n'))
-        return get_usb_devices._extract_usb_data(
-            '\nUSusb_data-Device\n'+'\nUSB-Device\n'.join(usb_devices))
-
-
     def _find_dual_speakers(self):
         """
         Finds dual speakers connected to the DUT.
 
         @returns A UsbDevice representing the dual speaker or None if not found.
         """
-        vid_pid = get_usb_devices._get_dual_speaker(self._usb_data)
-        if vid_pid:
-            return get_usb_devices._get_device_prod(vid_pid)
-        else:
-            return None
+        devices = usb_devices.UsbDevices(
+            usb_devices.UsbDataCollector(self._host))
+        return devices.get_dual_speakers()
 
 
     def _set_preferred_speaker(self, speaker_name):
