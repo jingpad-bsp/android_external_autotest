@@ -23,6 +23,12 @@ import logging
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils as client_utils
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = client_utils.metrics_mock
 
 
 class base_test(object):
@@ -359,9 +365,12 @@ class base_test(object):
                        postprocess_profiled_run, args, dargs):
         self.drop_caches_between_iterations()
         # execute iteration hooks
-        logging.debug('starting before_iteration_hooks')
-        for hook in self.before_iteration_hooks:
-            hook(self)
+        logging.debug('Starting before_iteration_hooks for %s',
+                      self.tagged_testname)
+        with metrics.SecondsTimer(
+                'chromeos/autotest/job/before_iteration_hook_duration'):
+            for hook in self.before_iteration_hooks:
+                hook(self)
         logging.debug('before_iteration_hooks completed')
 
         try:
@@ -389,9 +398,12 @@ class base_test(object):
                           'after_iteration_hooks.', str(e))
             raise
         finally:
-            logging.debug('starting after_iteration_hooks')
-            for hook in reversed(self.after_iteration_hooks):
-                hook(self)
+            logging.debug('Starting after_iteration_hooks for %s',
+                          self.tagged_testname)
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/job/after_iteration_hook_duration'):
+                for hook in reversed(self.after_iteration_hooks):
+                    hook(self)
             logging.debug('after_iteration_hooks completed')
 
 
@@ -879,7 +891,11 @@ def runtest(job, url, tag, args, dargs,
         mytest = global_namespace['mytest']
         mytest.success = False
         if before_test_hook:
-            before_test_hook(mytest)
+            logging.info('Starting before_hook for %s', mytest.tagged_testname)
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/job/before_hook_duration'):
+                before_test_hook(mytest)
+            logging.info('before_hook completed')
 
         # we use the register iteration hooks methods to register the passed
         # in hooks
@@ -892,6 +908,10 @@ def runtest(job, url, tag, args, dargs,
     finally:
         os.chdir(pwd)
         if after_test_hook:
-            after_test_hook(mytest)
+            logging.info('Starting after_hook for %s', mytest.tagged_testname)
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/job/after_hook_duration'):
+                after_test_hook(mytest)
+            logging.info('after_hook completed')
         shutil.rmtree(mytest.tmpdir, ignore_errors=True)
 
