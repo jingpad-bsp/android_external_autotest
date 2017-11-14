@@ -1,6 +1,36 @@
-  brdprop        gpiocfg        i2cstpm       -powerbtn       taskinfo
- -ccd            gpioget       -i2cxfer       -reboot         timerinfo
- -chan          -gpioset        idle          -serialno      -usb
-  devices        help           lock           shmem          version
-  ecrst          history       -panicinfo      sysinfo        wp
-  gettime       -i2cscan        pinmux         sysrst         bid
+bid
+(-bitbang)?
+brdprop
+(-)?ccd
+(-ccdblock)?
+(-ccdstate)?
+-chan
+(devices)?
+ecrst
+gettime
+gpiocfg
+gpioget
+-gpioset
+help
+history
+-i2cscan
+i2cstpm
+-i2cxfer
+idle
+(lock)?
+-panicinfo
+pinmux
+-powerbtn
+(-rddkeepalive)?
+-reboot
+(recbtnforce)?
+(rma_auth)?
+-serialno
+shmem
+sysinfo
+sysrst
+taskinfo
+timerinfo
+-usb
+version
+wp
