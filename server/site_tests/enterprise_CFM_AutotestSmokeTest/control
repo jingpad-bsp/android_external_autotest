@@ -10,7 +10,7 @@ PURPOSE = ("Server-side smoke test used for tracking the stability of the "
            "Autotest framework on CFM platforms.")
 CRITERIA = "Fails if the Autotest framework doesn't work as expected."
 ATTRIBUTES = ("suite:hotrod, suite:bluestreak, suite:bluestreak-release, "
-              "suite:bluestreak-perbuild", "suite:bluestreak-pre-cq")
+              "suite:bluestreak-perbuild, suite:bluestreak-pre-cq")
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "server"
