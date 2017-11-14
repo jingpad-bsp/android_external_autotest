@@ -346,9 +346,6 @@ class Dispatcher(object):
             with breakdown_timer.Step('trigger_refresh'):
                 self._log_tick_msg('Starting _drone_manager.trigger_refresh')
                 _drone_manager.trigger_refresh()
-            if luciferlib.is_lucifer_enabled():
-                with breakdown_timer.Step('send_to_lucifer'):
-                    self._send_to_lucifer()
             with breakdown_timer.Step('schedule_running_host_queue_entries'):
                 self._schedule_running_host_queue_entries()
             with breakdown_timer.Step('schedule_special_tasks'):
@@ -360,6 +357,9 @@ class Dispatcher(object):
             with breakdown_timer.Step('sync_refresh'):
                 self._log_tick_msg('Starting _drone_manager.sync_refresh')
                 _drone_manager.sync_refresh()
+            if luciferlib.is_lucifer_enabled():
+                with breakdown_timer.Step('send_to_lucifer'):
+                    self._send_to_lucifer()
             # _run_cleanup must be called between drone_manager.sync_refresh,
             # and drone_manager.execute_actions, as sync_refresh will clear the
             # calls queued in drones. Therefore, any action that calls
@@ -506,7 +506,7 @@ class Dispatcher(object):
                 + self._get_special_task_agent_tasks(is_active=True))
 
 
-    def _get_queue_entry_agent_tasks(self):
+    def _get_queue_entry_agent_tasks(self, to_schedule=False):
         """
         Get agent tasks for all hqe in the specified states.
 
@@ -516,9 +516,10 @@ class Dispatcher(object):
         one agent task at a time, but there might be multiple queue entries in
         the group.
 
+        @param to_schedule: Whether to get agent tasks for scheduling
         @return: A list of AgentTasks.
         """
-        if luciferlib.is_lucifer_enabled():
+        if luciferlib.is_lucifer_enabled() and to_schedule:
             statuses = (models.HostQueueEntry.Status.STARTING,
                         models.HostQueueEntry.Status.RUNNING,
                         models.HostQueueEntry.Status.GATHERING)
@@ -914,7 +915,7 @@ class Dispatcher(object):
         Hand off ownership of a job to lucifer component.
         """
         Status = models.HostQueueEntry.Status
-        queue_entries_qs = (scheduler_models.HostQueueEntry.objects
+        queue_entries_qs = (models.HostQueueEntry.objects
                             .filter(status=Status.PARSING))
         for queue_entry in queue_entries_qs:
             # If this HQE already has an agent, let monitor_db continue
@@ -953,7 +954,7 @@ class Dispatcher(object):
         gathering, parsing) states, and adds it to the dispatcher so
         it is handled by _handle_agents.
         """
-        for agent_task in self._get_queue_entry_agent_tasks():
+        for agent_task in self._get_queue_entry_agent_tasks(to_schedule=True):
             self.add_agent_task(agent_task)
 
 
