@@ -174,7 +174,7 @@ class Cr50Test(FirmwareTest):
     def _rootfs_verification_is_disabled(self):
         """Returns true if rootfs verification is enabled"""
         # Clear the TPM owner before trying to check rootfs verification
-        tpm_utils.ClearTPMOwnerRequest(self.host)
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
         self.rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
         self.rootfs_tool.initialize(self.host)
         # rootfs_tool.is_enabled is True, that means rootfs verification is
