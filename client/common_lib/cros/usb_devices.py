@@ -1,4 +1,5 @@
 from autotest_lib.client.common_lib.cros import get_usb_devices
+from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 
 
 class UsbDataCollector(object):
@@ -54,14 +55,16 @@ class UsbDevices(object):
         """
         return get_usb_devices._get_speakers(self.__collect_usb_data())
 
-    # TODO(malmnas): it probably makes more sense to let the key be
-    # an instance of cfm/UsbDevice instead of vid_pid.
-    def get_dual_speakers_vid_pid(self):
+    def get_dual_speakers(self):
         """
-        @returns the vid_pid of dual speakers that are connected, if any.
-        Else, returns None.
+        @returns the UsbDevice constant representing the dual speakers that are
+        connected. If no dual speakers are found, None is returned.
         """
-        return get_usb_devices._get_dual_speaker(self.__collect_usb_data())
+        usbdata = self.__collect_usb_data()
+        vid_pid = get_usb_devices._get_dual_speaker(usbdata)
+        if vid_pid:
+            return cfm_usb_devices.get_usb_device(vid_pid)
+        return None
 
     # TODO(malmnas): method should probably take a cfm/UsbDevice as
     # parameter instead of vid_pid.
