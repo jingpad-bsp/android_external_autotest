@@ -5,22 +5,20 @@
 import logging
 import time
 import random
+
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test
-from autotest_lib.server.cros.multimedia import remote_facade_factory
+from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.client.common_lib.cros import get_usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
 
 
-DUT_BOARD = 'guado'
 LONG_TIMEOUT = 30
 SHORT_TIMEOUT = 5
 MIMO_VID = '17e9'
 MIMO_PID = '016b'
 
 
-class enterprise_CFM_MimoSanity(test.test):
+class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
     """Tests the following fuctionality works on CFM enrolled devices:
            1. Verify CfM has Camera, Speaker and Mimo connected.
            2. Verify all peripherals have expected usb interfaces.
@@ -35,7 +33,7 @@ class enterprise_CFM_MimoSanity(test.test):
         Run linux cmd usb-devices
         @returns the output of "usb-devices" as string
         """
-        usb_devices = (self.client.run('usb-devices', ignore_status=True).
+        usb_devices = (self._host.run('usb-devices', ignore_status=True).
                                          stdout.strip().split('\n\n'))
         usb_data = get_usb_devices._extract_usb_data(
                    '\nUSB-Device\n'+'\nUSB-Device\n'.join(usb_devices))
@@ -46,23 +44,21 @@ class enterprise_CFM_MimoSanity(test.test):
         """Power Cycle Mimo device"""
         logging.info('Plan to power cycle Mimo')
         try:
-            power_cycle_usb_util.power_cycle_usb_vidpid(self.client, self.board,
+            power_cycle_usb_util.power_cycle_usb_vidpid(self._host, self._board,
                  MIMO_VID, MIMO_PID)
         except KeyError:
            raise error.TestFail('Counld\'t find target device: '
                                 'vid:pid {}:{}'.format(MIMO_VID, MIMO_PID))
 
 
-    def _run_power_cycle_mimo_test(self):
+    def _run_power_cycle_mimo_test(self, repetitions):
         """Power Cycle Mimo device for multiple times"""
-        repeat = self.repeat
-        while repeat:
+        for _ in xrange(repetitions):
             self._power_cycle_mimo_device()
             logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
             time.sleep(LONG_TIMEOUT)
             self._kernel_usb_sanity_test()
-            self._run_hangout_test(True, 1)
-            repeat -= 1
+            self._run_hangout_test()
 
 
     def _check_peripherals(self):
@@ -125,66 +121,65 @@ class enterprise_CFM_MimoSanity(test.test):
 
 
     def _kernel_usb_sanity_test(self):
-        """Check connected camera, speaker and Mimo have
-        expected usb interfaces."""
+        """
+        Check connected camera, speaker and Mimo have expected usb interfaces.
+        """
         self.usb_data = self._cmd_usb_devices()
         for _key in self.usb_device_list:
-            get_usb_devices._verify_usb_device_ok(self.usb_data, _key):
+            logging.info('Looking for vid:pid (%s)', _key)
+            get_usb_devices._verify_usb_device_ok(self.usb_data, _key)
 
 
-    def _run_reboot_test(self):
-        """Reboot testing for Mimo."""
-        repeat = self.repeat
-        while repeat:
-           logging.info('Reboot CfM #: %d',self.rebootno)
-           self.rebootno += 1
-           self.client.reboot()
+    def _run_reboot_test(self, repetitions):
+        """
+        Reboot testing for Mimo.
+
+        @param repetitions: amount of reboot cycles to perform.
+        """
+        for i in xrange(repetitions):
+           logging.info('Reboot CfM #: %d', i)
+           self._host.reboot()
            time.sleep(LONG_TIMEOUT)
            self.cfm_facade.restart_chrome_for_cfm()
            time.sleep(SHORT_TIMEOUT)
-           if self.is_meeting:
+           if self._is_meeting:
                self.cfm_facade.wait_for_meetings_telemetry_commands()
            else:
                self.cfm_facade.wait_for_hangouts_telemetry_commands()
            self.usb_data = self._cmd_usb_devices()
            self._kernel_usb_sanity_test()
-           self._run_hangout_test(True, 1)
-           repeat -= 1
+           self._run_hangout_test()
 
 
-    def _run_hangout_test(self, checkusb, repeat) :
-        """Start a hangout session and end the session after random time.
+    def _run_hangout_test(self) :
+        """
+        Start a hangout session and end the session after random time.
+
         @raises error.TestFail if any of the checks fail.
         """
-        repeat = int(repeat)
-        while repeat:
-            self.meetno += 1
-            logging.info('Meet_No: %d', self.meetno)
-            if self.is_meeting:
-                self.cfm_facade.start_meeting_session()
-            else:
-                self.cfm_facade.start_new_hangout_session(self.hangout)
-            time.sleep(random.randrange(SHORT_TIMEOUT, LONG_TIMEOUT))
-            if checkusb:
-                self.usb_data = self._cmd_usb_devices()
-                self._kernel_usb_sanity_test()
-            if self.is_meeting:
-                self.cfm_facade.end_meeting_session()
-            else:
-                self.cfm_facade.end_hangout_session()
-            repeat -= 1
-            logging.info('Meeting is ended................')
+        logging.info('Joining meeting...')
+        if self._is_meeting:
+            self.cfm_facade.start_meeting_session()
+        else:
+            self.cfm_facade.start_new_hangout_session(self._session_name)
+        time.sleep(random.randrange(SHORT_TIMEOUT, LONG_TIMEOUT))
+
+        self.usb_data = self._cmd_usb_devices()
+        self._kernel_usb_sanity_test()
+
+        if self._is_meeting:
+            self.cfm_facade.end_meeting_session()
+        else:
+            self.cfm_facade.end_hangout_session()
+        logging.info('Session has ended.')
 
 
-    def run_once(self, host, hangout, repeat, is_meeting):
+    def run_once(self, hangout, repeat, is_meeting):
         """Runs the test."""
-        self.client = host
-        self.board = DUT_BOARD
-        self.repeat = repeat
-        self.hangout = hangout
-        self.is_meeting = is_meeting
-        self.meetno = 0
-        self.rebootno = 0
+        # Remove 'board:' prefix.
+        self._board = self._host.get_board().split(':')[1]
+        self._session_name = hangout
+        self._is_meeting = is_meeting
 
         self.usb_data = self._cmd_usb_devices()
         if not self.usb_data:
@@ -193,30 +188,10 @@ class enterprise_CFM_MimoSanity(test.test):
             self.usb_device_list = self._check_peripherals()
             self._kernel_usb_sanity_test()
 
-        factory = remote_facade_factory.RemoteFacadeFactory(
-                  host, no_chrome=True)
-        self.cfm_facade = factory.create_cfm_facade()
+        if self._is_meeting:
+            self.cfm_facade.wait_for_meetings_telemetry_commands()
+        else:
+            self.cfm_facade.wait_for_hangouts_telemetry_commands()
 
-        tpm_utils.ClearTPMOwnerRequest(self.client)
-
-        if self.client.servo:
-            self.client.servo.switch_usbkey('dut')
-            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-            time.sleep(SHORT_TIMEOUT)
-            self._set_hub_power(True)
-
-        try:
-            self.cfm_facade.enroll_device()
-            self.cfm_facade.skip_oobe_after_enrollment()
-            self.cfm_facade.restart_chrome_for_cfm()
-            if self.is_meeting:
-                self.cfm_facade.wait_for_meetings_telemetry_commands()
-            else:
-                self.cfm_facade.wait_for_hangouts_telemetry_commands()
-        except Exception as e:
-            raise error.TestFail(str(e))
-
-        self._run_reboot_test()
-        self._run_power_cycle_mimo_test()
-
-        tpm_utils.ClearTPMOwnerRequest(self.client)
+        self._run_reboot_test(repeat)
+        self._run_power_cycle_mimo_test(repeat)
