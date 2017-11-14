@@ -10,8 +10,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:bluestreak"
-DEPENDENCIES = "autozoom"
+ATTRIBUTES = "suite:bluestreak, suite:bluestreak-release"
+DEPENDENCIES = "huddly, mimo"
 JOB_RETRIES = 3
 
 DOC = """

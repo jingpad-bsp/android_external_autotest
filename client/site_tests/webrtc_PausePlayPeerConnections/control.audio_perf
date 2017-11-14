@@ -20,8 +20,8 @@ DOC = """
 This test starts 10 peer connections with audio streams.
 The tests randomly pauses and plays the streams.
 
-The test collects metrics and sends to Chrome Perf Dashboard
-(https://chromeperf.appspot.com/).
+The test collects system metrics during the run. See go/cfm-perf-metrics
+for details about the metrics.
 """
 
 job.run_test(

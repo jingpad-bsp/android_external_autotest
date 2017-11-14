@@ -77,7 +77,6 @@ MIMO_VUE_HDMI = usb_device.UsbDevice(
     interfaces=['usbhid'],
 )
 
-
 # Utility methods
 
 def get_cameras():
@@ -112,3 +111,29 @@ def get_speaker(vid_pid):
   @return UsbDevice with matching vid_pid or None if no match is found.
   """
   return next((s for s in SPEAKERS if s.vid_pid == vid_pid), None)
+
+
+# TODO(malmnas): is this the right name?
+def get_mimo_displays():
+  """
+  Return MiMO displays.
+  @return list of UsbDevices.
+  """
+  return [MIMO_VUE_HD]
+
+
+# TODO(malmnas): is this the right name?
+def get_mimo_controllers():
+  """
+  Return MiMO controllers.
+  @return list of UsbDevices.
+  """
+  return [MIMO_VUE_HDMI]
+
+
+def get_usb_device(vid_pid):
+  """
+  Look up UsbDevice based on vid_pid.
+  @return UsbDevice with matching vid_pid or None if no match.
+  """
+  return usb_device.UsbDevice.get_usb_device(vid_pid)
