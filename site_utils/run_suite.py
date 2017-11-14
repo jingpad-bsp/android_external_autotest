@@ -652,8 +652,8 @@ class LogLink(object):
         """
         return '%s %s' % (self.anchor, self.url)
 
-    def GenerateWmatrixRetryLink(self):
-        """Generate a link to the wmatrix retry dashboard.
+    def GenerateRetryLink(self):
+        """Generate a link to the retry dashboard.
 
         @return A link formatted for the buildbot log annotator.
         """
@@ -663,8 +663,8 @@ class LogLink(object):
             text='[Flake-Dashboard]: %s' % self.testname,
             url=reporting_utils.link_retry_url(self.testname))
 
-    def GenerateWmatrixHistoryLink(self):
-        """Generate a link to the wmatrix test history dashboard.
+    def GenerateHistoryLink(self):
+        """Generate a link to the test history dashboard.
 
         @return A link formatted for the buildbot log annotator.
         """
@@ -1126,12 +1126,12 @@ def log_buildbot_links(log_func, links):
     for link in links:
         for generated_link in link.GenerateBuildbotLinks():
             log_func(generated_link)
-        wmatrix_retry_link = link.GenerateWmatrixRetryLink()
-        if wmatrix_retry_link:
-            log_func(wmatrix_retry_link)
-        wmatrix_history_link = link.GenerateWmatrixHistoryLink()
-        if wmatrix_history_link:
-            log_func(wmatrix_history_link)
+        retry_link = link.GenerateRetryLink()
+        if retry_link:
+            log_func(retry_link)
+        history_link = link.GenerateHistoryLink()
+        if history_link:
+            log_func(history_link)
 
 
 class _ReturnCodeComputer(object):
@@ -1534,10 +1534,13 @@ class ResultCollector(object):
             if test_info:
                 test_info['link_to_logs'] = link.url
                 test_info['sponge_url'] = link.sponge_url
-                # Write the wmatrix link into the dict.
+                # Write the retry dashboard link into the dict.
                 if link in self.buildbot_links and link.testname:
-                    test_info['wmatrix_link'] \
+                    test_info['retry_dashboard_link'] \
                         = reporting_utils.link_retry_url(link.testname)
+                    # Always write the wmatrix link for compatibility.
+                    test_info['wmatrix_link'] \
+                        = reporting_utils.link_wmatrix_retry_url(link.testname)
                 # Write the bug url into the dict.
                 if link.bug_id:
                     test_info['bug_url'] = link.bug_url

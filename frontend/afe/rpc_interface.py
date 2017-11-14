@@ -1644,6 +1644,7 @@ def get_static_data():
                                    "Resetting": "Resetting hosts"}
 
     result['wmatrix_url'] = rpc_utils.get_wmatrix_url()
+    result['stainless_url'] = rpc_utils.get_stainless_url()
     result['is_moblab'] = bool(utils.is_moblab())
 
     return result
