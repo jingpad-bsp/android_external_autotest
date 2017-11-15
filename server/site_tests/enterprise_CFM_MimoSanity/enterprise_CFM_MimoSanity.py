@@ -60,62 +60,52 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
 
 
     def _check_peripherals(self):
-        """Check CfM has camera, speaker and Mimo connected."""
-        speaker_list = get_usb_devices._get_speakers(self.usb_data)
-        peripheral_list = []
-        not_found = True
-        for _key in speaker_list.keys():
-            logging.info('Detect Audio device %s = %s',
-                         _key, speaker_list[_key])
-            if speaker_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
+        """
+        Check CfM has camera, speaker and Mimo connected.
+        @returns list of peripherals found.
+        """
+        speakers = get_usb_devices._get_speakers(self.usb_data)
+        peripherals = []
+        for speaker, count in speakers.iteritems():
+            logging.info('Detect Audio device %s (%d)',
+                         speaker, count)
+            if count:
+                peripherals.append(speaker)
 
-        camera_list = get_usb_devices._get_cameras(self.usb_data)
-        not_found = True
-        for _key in camera_list.keys():
-            logging.info('Detect Video device %s = %s',
-                         _key, camera_list[_key])
-            if camera_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
+        cameras = get_usb_devices._get_cameras(self.usb_data)
+        for camera, count in cameras.iteritems():
+            logging.info('Detect Video device %s (%d)',
+                         camera, count)
+            if count:
+                peripherals.append(camera)
 
-        display_list = get_usb_devices._get_display_mimo(self.usb_data)
-        not_found = True
-        for _key in display_list.keys():
-            logging.info('Detect Mimo displaylink device %s = %s',
-                         _key, display_list[_key])
-            if display_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
-            if display_list[_key] != 0 and not not_found:
-                raise error.TestFail('Each Set of CfM should have only one type'
-                                     ' of Mimo Display connected')
-        if not_found:
-            raise error.TestFail('Each set of CfM should have at least one'
-                                 ' Mimo: Displaylink.')
+        displays = get_usb_devices._get_display_mimo(self.usb_data)
+        mimo_display_count = 0
+        for display, count in displays.iteritems():
+            logging.info('Detect Mimo displaylink device %s (%d)',
+                         display, count)
+            if count:
+                peripherals.append(display)
+                mimo_display_count += 1
 
-        controller_list = get_usb_devices._get_controller_mimo(self.usb_data)
-        not_found = True
-        for _key in controller_list.keys():
-            logging.info('Detect Mimo controller device %s = %s',
-                         _key, controller_list[_key])
+        if mimo_display_count != 1:
+          raise error.TestFail('Each Set of CfM should have exactly one type'
+                               ' of Mimo Display connected. Found %d' % (
+                                 mimo_display_count))
 
-            if controller_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
-            if controller_list[_key] != 0 and not not_found:
-                raise error.TestFail('Each Set of CfM should have only one type'
-                                     ' of Mimo Controller connected')
-        if not_found:
-            raise error.TestFail('Each set of CfM should have at least one'
-                                 ' Mimo: SiS Controller.')
-
-        return peripheral_list
+        controllers = get_usb_devices._get_controller_mimo(self.usb_data)
+        controller_count = 0
+        for controller, count in controllers.iteritems():
+            logging.info('Detect Mimo controller device %s (%d)',
+                         controller, count)
+            if count:
+                peripherals.append(controller)
+                controller_count += 1
+        if controller_count != 1:
+          raise error.TestFail('Each Set of CfM should have exactly one type'
+                               ' of Mimo Controller connected. Found %d' % (
+                                   controller_count))
+        return peripherals
 
 
     def _kernel_usb_sanity_test(self):
