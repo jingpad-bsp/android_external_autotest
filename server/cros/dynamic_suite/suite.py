@@ -1672,8 +1672,11 @@ class ProvisionSuite(_BaseSuite):
                 run_prod_code, test_args, test_source_build)
         hosts = self._afe.get_hosts(
                 invalid=False, multiple_labels=self._dependencies)
+        logging.debug('Looking for hosts matching %r', self._dependencies)
+        logging.debug('Found %d matching hosts for ProvisionSuite', len(hosts))
         available_hosts = [h for h in hosts if h.is_available()]
-        logging.debug('Found %d hosts for ProvisionSuite', len(available_hosts))
+        logging.debug('Found %d available hosts for ProvisionSuite',
+                      len(available_hosts))
         self.tests = [dummy_test] * min(len(available_hosts), num_max)
         logging.debug('Made %d tests for ProvisionSuite', len(self.tests))
         self._num_required = min(num_required, len(self.tests))
