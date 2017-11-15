@@ -374,14 +374,16 @@ class base_test(object):
                        postprocess_profiled_run, args, dargs):
         self.drop_caches_between_iterations()
         # execute iteration hooks
-        logging.debug('Starting before_iteration_hooks for %s',
-                      self.tagged_testname)
-        with metrics.SecondsTimer(
-                'chromeos/autotest/job/before_iteration_hook_duration'):
-            for hook in self.before_iteration_hooks:
-                hook(self)
-        logging.debug('before_iteration_hooks completed')
+        if not self.job.fast:
+            logging.debug('Starting before_iteration_hooks for %s',
+                          self.tagged_testname)
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/job/before_iteration_hook_duration'):
+                for hook in self.before_iteration_hooks:
+                    hook(self)
+            logging.debug('before_iteration_hooks completed')
 
+        finished = False
         try:
             if profile_only:
                 if not self.job.profilers.present():
@@ -401,19 +403,21 @@ class base_test(object):
 
             self.postprocess_iteration()
             self.analyze_perf_constraints(constraints)
+            finished = True
         # Catch and re-raise to let after_iteration_hooks see the exception.
         except Exception as e:
             logging.debug('Test failed due to %s. Exception log follows the '
                           'after_iteration_hooks.', str(e))
             raise
         finally:
-            logging.debug('Starting after_iteration_hooks for %s',
-                          self.tagged_testname)
-            with metrics.SecondsTimer(
-                    'chromeos/autotest/job/after_iteration_hook_duration'):
-                for hook in reversed(self.after_iteration_hooks):
-                    hook(self)
-            logging.debug('after_iteration_hooks completed')
+            if not finished or not self.job.fast:
+                logging.debug('Starting after_iteration_hooks for %s',
+                              self.tagged_testname)
+                with metrics.SecondsTimer(
+                        'chromeos/autotest/job/after_iteration_hook_duration'):
+                    for hook in reversed(self.after_iteration_hooks):
+                        hook(self)
+                logging.debug('after_iteration_hooks completed')
 
 
     def execute(self, iterations=None, test_length=None, profile_only=None,
