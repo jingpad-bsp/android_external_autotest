@@ -270,7 +270,8 @@ def runtest(job, url, tag, args, dargs):
         # 1) if job succeeds, no hook will be executed.
         # 2) if job failed, after_hook will be executed.
         logger = _sysinfo_logger(job)
-        logging_args = [None, logger.after_hook, None, None]
+        logging_args = [None, logger.after_hook, None,
+                        logger.after_iteration_hook]
     elif not disable_sysinfo:
         logger = _sysinfo_logger(job)
         logging_args = [
