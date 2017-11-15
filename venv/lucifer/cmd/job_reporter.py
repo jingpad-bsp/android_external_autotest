@@ -40,7 +40,7 @@ def main(args):
     args = _parse_args_and_configure_logging(args)
     lease_path = _lease_path(args.jobdir, args.job_id)
     with leasing.obtain_lease(lease_path):
-        autotest.patch()
+        autotest.monkeypatch()
         return _main(args)
 
 
