@@ -100,6 +100,14 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         for regexp in expected_output:
             match = re.search(regexp, output)
             if match:
+                match_dict = match.groupdict()
+                for k, v in match_dict.iteritems():
+                    if k not in self.state:
+                        continue
+                    old_val = self.state[k]
+                    if (not old_val) != (not v):
+                        raise error.TestFail('%s mismatch: %r %r', k, old_val,
+                                v)
                 self.state.update(match.groupdict())
 
             # Remove the matching string from the output.
