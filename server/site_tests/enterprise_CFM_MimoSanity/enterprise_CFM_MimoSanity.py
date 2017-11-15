@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib.cros import get_usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
 
 
-LONG_TIMEOUT = 30
+LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 5
 MIMO_VID = '17e9'
 MIMO_PID = '016b'
@@ -51,14 +51,12 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
                                 'vid:pid {}:{}'.format(MIMO_VID, MIMO_PID))
 
 
-    def _run_power_cycle_mimo_test(self, repetitions):
+    def _run_power_cycle_mimo_test(self):
         """Power Cycle Mimo device for multiple times"""
-        for _ in xrange(repetitions):
-            self._power_cycle_mimo_device()
-            logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
-            time.sleep(LONG_TIMEOUT)
-            self._kernel_usb_sanity_test()
-            self._run_hangout_test()
+        self._power_cycle_mimo_device()
+        logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
+        time.sleep(LONG_TIMEOUT)
+        self._kernel_usb_sanity_test()
 
 
     def _check_peripherals(self):
@@ -130,25 +128,20 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             get_usb_devices._verify_usb_device_ok(self.usb_data, _key)
 
 
-    def _run_reboot_test(self, repetitions):
-        """
-        Reboot testing for Mimo.
+    def _run_reboot_test(self):
+        """Reboot testing for Mimo."""
 
-        @param repetitions: amount of reboot cycles to perform.
-        """
-        for i in xrange(repetitions):
-           logging.info('Reboot CfM #: %d', i)
-           self._host.reboot()
-           time.sleep(LONG_TIMEOUT)
-           self.cfm_facade.restart_chrome_for_cfm()
-           time.sleep(SHORT_TIMEOUT)
-           if self._is_meeting:
-               self.cfm_facade.wait_for_meetings_telemetry_commands()
-           else:
-               self.cfm_facade.wait_for_hangouts_telemetry_commands()
-           self.usb_data = self._cmd_usb_devices()
-           self._kernel_usb_sanity_test()
-           self._run_hangout_test()
+        boot_id = self._host.get_boot_id()
+        self._host.reboot()
+        self._host.wait_for_restart(old_boot_id=boot_id)
+        self.cfm_facade.restart_chrome_for_cfm()
+        time.sleep(SHORT_TIMEOUT)
+        if self._is_meeting:
+            self.cfm_facade.wait_for_meetings_telemetry_commands()
+        else:
+            self.cfm_facade.wait_for_hangouts_telemetry_commands()
+        self.usb_data = self._cmd_usb_devices()
+        self._kernel_usb_sanity_test()
 
 
     def _run_hangout_test(self) :
@@ -161,9 +154,10 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         if self._is_meeting:
             self.cfm_facade.start_meeting_session()
         else:
-            self.cfm_facade.start_new_hangout_session(self._session_name)
+            self.cfm_facade.start_new_hangout_session('mimo-sanity-test')
         time.sleep(random.randrange(SHORT_TIMEOUT, LONG_TIMEOUT))
 
+        # Verify USB data in-call.
         self.usb_data = self._cmd_usb_devices()
         self._kernel_usb_sanity_test()
 
@@ -173,12 +167,20 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             self.cfm_facade.end_hangout_session()
         logging.info('Session has ended.')
 
+        # Verify USB after leaving the call.
+        self.usb_data = self._cmd_usb_devices()
+        self._kernel_usb_sanity_test()
+        time.sleep(SHORT_TIMEOUT)
 
-    def run_once(self, hangout, repeat, is_meeting):
-        """Runs the test."""
+
+    def run_once(self, repetitions, is_meeting):
+        """
+        Runs the test.
+
+        @param repetitions: amount of reboot cycles to perform.
+        """
         # Remove 'board:' prefix.
         self._board = self._host.get_board().split(':')[1]
-        self._session_name = hangout
         self._is_meeting = is_meeting
 
         self.usb_data = self._cmd_usb_devices()
@@ -193,5 +195,8 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         else:
             self.cfm_facade.wait_for_hangouts_telemetry_commands()
 
-        self._run_reboot_test(repeat)
-        self._run_power_cycle_mimo_test(repeat)
+        for i in xrange(1, repetitions + 1):
+            logging.info('Running test cycle %d/%d', i, repetitions)
+            self._run_reboot_test()
+            self._run_hangout_test()
+            self._run_power_cycle_mimo_test()
