@@ -63,8 +63,7 @@ def _extract_peri_device(usbdata, vid_pids):
     """
     vid_pid_usb_list = []
     for vid_pid in vid_pids:
-        for _data in _filter_by_vid_pid(usbdata, vid_pid):
-            vid_pid_usb_list.append(_data)
+        vid_pid_usb_list.extend(_filter_by_vid_pid(usbdata, vid_pid))
     return vid_pid_usb_list
 
 
@@ -170,25 +169,9 @@ def _get_speakers(usbdata):
     """
     number_speaker = {}
     for speaker in cfm_usb_devices.get_speakers():
-        _number = 0
-        for _data in _filter_by_vid_pid(usbdata, speaker.vid_pid):
-            _number += 1
+        _number = len(_filter_by_vid_pid(usbdata, speaker.vid_pid))
         number_speaker[speaker.vid_pid] = _number
     return number_speaker
-
-
-def _get_dual_speaker(usbdata):
-    """check whether dual speakers are present
-    @param usbdata  list of dictionary for usb devices
-    @returns True or False
-    """
-    dual_speaker = None
-    speaker_dict = _get_speakers(usbdata)
-    for _key in speaker_dict:
-        if speaker_dict[_key] == 2:
-            dual_speaker = _key
-            break
-    return dual_speaker
 
 
 def _get_cameras(usbdata):
@@ -198,9 +181,7 @@ def _get_cameras(usbdata):
     """
     number_camera = {}
     for camera in cfm_usb_devices.get_cameras():
-        _number = 0
-        for _data in _filter_by_vid_pid(usbdata, camera.vid_pid):
-            _number += 1
+        _number = len(_filter_by_vid_pid(usbdata, camera.vid_pid))
         number_camera[camera.vid_pid] = _number
     return number_camera
 
@@ -213,9 +194,7 @@ def _get_display_mimo(usbdata):
     """
     number_display = {}
     for _display in cfm_usb_devices.get_mimo_displays():
-        _number = 0
-        for _data in _filter_by_vid_pid(usbdata, _display):
-            _number += 1
+        _number = len(_filter_by_vid_pid(usbdata, _display.vid_pid))
         number_display[_display] = _number
     return number_display
 
@@ -228,9 +207,7 @@ def _get_controller_mimo(usbdata):
     """
     number_controller = {}
     for _controller in cfm_usb_devices.get_mimo_controllers():
-        _number = 0
-        for _data in _filter_by_vid_pid(usbdata, _controller):
-            _number += 1
+        _number = len(_filter_by_vid_pid(usbdata, _controller.vid_pid))
         number_controller[_controller] = _number
     return number_controller
 
@@ -285,4 +262,4 @@ def _filter_by_vid_pid(usbdata, vid_pid):
   """
   vid, pid = _get_vid_and_pid(vid_pid)
   return [u for u in usbdata if
-          vid == u['Vendor'] and pid ==  u['ProdID']]
+          vid == u['Vendor'] and pid == u['ProdID']]

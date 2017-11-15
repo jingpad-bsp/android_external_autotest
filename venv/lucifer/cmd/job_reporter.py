@@ -39,9 +39,9 @@ def main(args):
     loglib.add_logging_options(parser)
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
                         help='Path to lucifer_run_job binary')
-    parser.add_argument('--leasedir', default='/var/lib/lucifer/leases',
+    parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='''
-Path to lucifer_run_job binary.  This is used to construct the -leasefile
+Path to job leases directory.  This is used to construct the -leasefile
 argument to lucifer_run_job.
 ''')
     parser.add_argument('--job-id', type=int, default=None,
@@ -50,26 +50,22 @@ argument to lucifer_run_job.
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
-    parser.add_argument('run_job_args', nargs=argparse.REMAINDER,
-                        help='Arguments passed to lucifer_run_job')
-    args = parser.parse_args(args)
+    args, extra_args = parser.parse_known_args(args)
+    args.run_job_args = extra_args
     loglib.configure_logging_with_args(parser, args)
 
-    autotest.monkeypatch()
-    autotest.load('frontend.setup_django_environment')
-    scheduler_models = autotest.load('scheduler.scheduler_models')
+    autotest.patch()
+    models = autotest.load('frontend.afe.models')
 
     if args.job_id is not None:
         if args.autoserv_exit is None:
             # TODO(crbug.com/748234): autoserv not implemented yet.
             raise NotImplementedError('not implemented yet (crbug.com/748234)')
-        job = scheduler_models.Job.objects.get(id=args.job_id)
-        hqes = list(scheduler_models.HostQueueEntry.objects
-                    .filter(job_id=args.job_id))
+        job = models.Job.objects.get(id=args.job_id)
     else:
         # TODO(crbug.com/748234): Full jobs not implemented yet.
         raise NotImplementedError('not implemented yet')
-    handler = _EventHandler(job, hqes, autoserv_exit=args.autoserv_exit)
+    handler = _EventHandler(models, job, autoserv_exit=args.autoserv_exit)
     return _run_job(args.run_job_path, handler, args)
 
 
@@ -83,10 +79,12 @@ def _run_job(path, event_handler, args):
     @param args: parsed arguments
     @returns: exit status of lucifer_run_job
     """
-    args = [path]
-    args.extend(['-leasefile', os.path.join(args.leasedir, args.job_id)])
-    args.extend(args.run_job_args)
-    return eventlib.run_event_command(event_handler=event_handler, args=args)
+    command_args = [path]
+    command_args.extend(
+            ['-leasefile', os.path.join(args.jobdir, str(args.job_id))])
+    command_args.extend(args.run_job_args)
+    return eventlib.run_event_command(event_handler=event_handler,
+                                      args=command_args)
 
 
 class _EventHandler(object):
@@ -98,15 +96,16 @@ class _EventHandler(object):
     exception escapes, the job dies on the spot.
     """
 
-    def __init__(self, job, hqes, autoserv_exit):
+    def __init__(self, models, job, autoserv_exit):
         """Initialize instance.
 
+        @param models: reference to frontend.afe.models
         @param job: Job instance to own
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
         """
+        self._models = models
         self._job = job
-        self._hqes = hqes
         # TODO(crbug.com/748234): autoserv not implemented yet.
         self._autoserv_exit = autoserv_exit
 
@@ -120,16 +119,16 @@ class _EventHandler(object):
                                       method_name, event.name)
         handler(event)
 
-    def _handle_starting(self):
+    def _handle_starting(self, event):
         # TODO(crbug.com/748234): No event update needed yet.
         pass
 
-    def _handle_parsing(self):
+    def _handle_parsing(self, event):
         # TODO(crbug.com/748234): monitor_db leaves the HQEs in parsing
         # for now
         pass
 
-    def _handle_completed(self):
+    def _handle_completed(self, _event):
         final_status = self._final_status()
         for hqe in self._hqes:
             hqe.set_status(final_status)
@@ -143,9 +142,12 @@ class _EventHandler(object):
             return Status.COMPLETED
         return Status.FAILED
 
+    @property
+    def _hqes(self):
+        return self._models.HostQueueEntry.objects.filter(job_id=self._job.id)
+
     def _job_was_aborted(self):
         for hqe in self._hqes:
-            hqe.update_from_database()
             if hqe.aborted:
                 return True
         return False

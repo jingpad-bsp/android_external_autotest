@@ -103,6 +103,8 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         if not self.cr50.has_command('ccdstate'):
             raise error.TestNAError('Cannot test on Cr50 with old CCD version')
 
+        self._original_testlab_state = self.servo.get('cr50_testlab')
+        self.cr50.set_testlab('enable')
         if self.servo.get('cr50_testlab') != 'enabled':
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
 
@@ -122,6 +124,8 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
 
     def cleanup(self):
         """Disable CCD and reenable the EC uart"""
+        if hasattr(self, '_orignal_testlab_state'):
+            self.cr50.set_testlab(self._original_testlab_state)
         if (hasattr(self, '_orignal_ccdstate') and
             self._orignal_ccdstate != self.get_ccdstate()):
             self.reset_ccd()
