@@ -262,7 +262,7 @@ def playback_cmd(
     @param channels: The number of channels of the input audio.
     @param bits: The number of bits of each audio sample.
     @param rate: The sampling rate.
-    @param device: The device to play the audio on.
+    @param device: The device to play the audio on. E.g. hw:0,1
     @raise RuntimeError: If no playback device is available.
     '''
     args = [APLAY_PATH]
@@ -273,6 +273,8 @@ def playback_cmd(
         device = get_default_playback_device()
         if device is None:
             raise RuntimeError('no playback device')
+    else:
+        device = "plug%s" % device
     args += ['-D', device]
     args += [input]
     return args
