@@ -9,7 +9,7 @@ cd $SCRIPT_DIR/..
 
 # Let's balance out the pools for the deputies before sending the eMail.
 BALANCE_POOL_LOG=balance_pool.log.$(date +%Y-%m-%d)
-ARGS=( --production --all-boards all_critical_pools )
+ARGS=( --production --all-models all_critical_pools )
 site_utils/balance_pools.py "${ARGS[@]}" &> logs/dut-data/$BALANCE_POOL_LOG
 
 site_utils/lab_inventory.py $OPTIONS "${BOARD_NOTIFY[@]}" "${POOL_NOTIFY[@]}"
