@@ -18,8 +18,17 @@
 
 #pylint: disable=C0111
 
-import fcntl, json, os, re, sys, shutil, stat, tempfile, time, traceback
+import fcntl
+import json
 import logging
+import os
+import re
+import shutil
+import stat
+import sys
+import tempfile
+import time
+import traceback
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -890,7 +899,7 @@ def runtest(job, url, tag, args, dargs,
     try:
         mytest = global_namespace['mytest']
         mytest.success = False
-        if before_test_hook:
+        if not job.fast and before_test_hook:
             logging.info('Starting before_hook for %s', mytest.tagged_testname)
             with metrics.SecondsTimer(
                     'chromeos/autotest/job/before_hook_duration'):
@@ -907,11 +916,11 @@ def runtest(job, url, tag, args, dargs,
         mytest.success = True
     finally:
         os.chdir(pwd)
-        if after_test_hook:
+        if after_test_hook and (not mytest.success or not job.fast):
             logging.info('Starting after_hook for %s', mytest.tagged_testname)
             with metrics.SecondsTimer(
                     'chromeos/autotest/job/after_hook_duration'):
                 after_test_hook(mytest)
             logging.info('after_hook completed')
-        shutil.rmtree(mytest.tmpdir, ignore_errors=True)
 
+        shutil.rmtree(mytest.tmpdir, ignore_errors=True)
