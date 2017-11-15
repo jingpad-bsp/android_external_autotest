@@ -4,9 +4,13 @@
 #
 # pylint: disable=missing-docstring
 
-import os, tempfile, logging
+import logging
+import os
+import tempfile
 
-from autotest_lib.client.common_lib import log, utils, test as common_test
+from autotest_lib.client.common_lib import log
+from autotest_lib.client.common_lib import test as common_test
+from autotest_lib.client.common_lib import utils
 
 
 class test(common_test.base_test):
@@ -260,7 +264,14 @@ def runtest(job, url, tag, args, dargs):
     disable_after_iteration_hook = dargs.pop(
             'disable_after_iteration_sysinfo', False)
 
-    if not dargs.pop('disable_sysinfo', False):
+    disable_sysinfo = dargs.pop('disable_sysinfo', False)
+    if job.fast and not disable_sysinfo:
+        # Server job will be executed in fast mode, which means
+        # 1) if job succeeds, no hook will be executed.
+        # 2) if job failed, after_hook will be executed.
+        logger = _sysinfo_logger(job)
+        logging_args = [None, logger.after_hook, None, None]
+    elif not disable_sysinfo:
         logger = _sysinfo_logger(job)
         logging_args = [
             logger.before_hook if not disable_before_test_hook else None,
