@@ -59,20 +59,25 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         self.setup_ssh()
 
 
-    def ssh_command(self, connect_timeout=30, options='', alive_interval=300):
+    def ssh_command(self, connect_timeout=30, options='', alive_interval=300,
+                    alive_count_max=3, connection_attempts=1):
         """
         Construct an ssh command with proper args for this host.
 
         @param connect_timeout: connection timeout (in seconds)
         @param options: SSH options
         @param alive_interval: SSH Alive interval.
+        @param alive_count_max: SSH AliveCountMax.
+        @param connection_attempts: SSH ConnectionAttempts
         """
-        options = "%s %s" % (options, self._master_ssh.ssh_option)
+        options = " ".join([options, self._master_ssh.ssh_option])
         base_cmd = self.make_ssh_command(user=self.user, port=self.port,
                                          opts=options,
                                          hosts_file=self.known_hosts_file,
                                          connect_timeout=connect_timeout,
-                                         alive_interval=alive_interval)
+                                         alive_interval=alive_interval,
+                                         alive_count_max=alive_count_max,
+                                         connection_attempts=connection_attempts)
         return "%s %s" % (base_cmd, self.hostname)
 
     def _get_server_stack_state(self, lowest_frames=0, highest_frames=None):
@@ -91,8 +96,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
 
     def _verbose_logger_command(self, command):
         """
-        Prepend the command for the client with information about the ssh command
-        to be executed and the server stack state.
+        Prepend the command for the client with information about the ssh
+        command to be executed and the server stack state.
 
         @param command: the ssh command to be executed.
         """
@@ -429,8 +434,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
 
     def setup_ssh_key(self):
         """Setup SSH Key"""
-        logging.debug('Performing SSH key setup on %s:%d as %s.',
-                      self.hostname, self.port, self.user)
+        logging.debug('Performing SSH key setup on %s as %s.',
+                      self.host_port, self.user)
 
         try:
             host = pxssh.pxssh()

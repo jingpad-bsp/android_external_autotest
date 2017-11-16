@@ -1614,7 +1614,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
-                         connect_timeout=None, alive_interval=None):
+                         connect_timeout=None, alive_interval=None,
+                         alive_count_max=None, connection_attempts=None):
         """Override default make_ssh_command to use options tuned for Chrome OS.
 
         Tuning changes:
@@ -1646,15 +1647,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param hosts_file Ignored.
         @param connect_timeout Ignored.
         @param alive_interval Ignored.
+        @param alive_count_max Ignored.
+        @param connection_attempts Ignored.
         """
-        base_command = ('/usr/bin/ssh -a -x %s %s %s'
-                        ' -o StrictHostKeyChecking=no'
-                        ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
-                        ' -o ConnectTimeout=30 -o ServerAliveInterval=900'
-                        ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
-                        ' -o Protocol=2 -l %s -p %d')
-        return base_command % (self._ssh_verbosity_flag, self._ssh_options,
-                               opts, user, port)
+        options = ' '.join([opts, '-o Protocol=2'])
+        return super(CrosHost, self).make_ssh_command(
+            user=user, port=port, opts=options, hosts_file='/dev/null',
+            connect_timeout=30, alive_interval=900, alive_count_max=3,
+            connection_attempts=4)
+
+
     def syslog(self, message, tag='autotest'):
         """Logs a message to syslog on host.
 
