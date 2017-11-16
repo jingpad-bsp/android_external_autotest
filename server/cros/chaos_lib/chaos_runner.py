@@ -125,7 +125,7 @@ class ChaosRunner(object):
             logging.info('Starting up VM %s', webdriver_instance)
             utils.power_on_VM(webdriver_master, webdriver_instance)
             logging.info('Allow VM time to power on before creating a tunnel.')
-            time.sleep(5)
+            time.sleep(30)
 
             if not client_utils.host_is_in_lab_zone(webdriver_instance.hostname):
                 self._ap_spec._webdriver_hostname = webdriver_instance.hostname
