@@ -108,7 +108,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         """
         if clear_tpm_owner:
             logging.info('Clearing TPM owner')
-            tpm_utils.ClearTPMOwnerRequest(self.host)
+            tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
 
         logging.info('setting flags to %s', flags)
         autotest.Autotest(self.host).run_test('firmware_SetFWMP', flags=flags,
