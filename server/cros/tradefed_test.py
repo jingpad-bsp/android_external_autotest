@@ -80,16 +80,16 @@ class _ChromeLogin(object):
         self._kwargs = kwargs
 
     def _cmd_builder(self, verbose=False):
-      """Gets remote command to start browser with ARC enabled."""
-      cmd = '/usr/local/autotest/bin/autologin.py --arc'
-      if self._kwargs.get('dont_override_profile') == True:
-          logging.info('Using --dont_override_profile to start Chrome.')
-          cmd += ' --dont_override_profile'
-      else:
-          logging.info('Not using --dont_override_profile to start Chrome.')
-      if not verbose:
-          cmd += ' > /dev/null 2>&1'
-      return cmd
+        """Gets remote command to start browser with ARC enabled."""
+        cmd = '/usr/local/autotest/bin/autologin.py --arc'
+        if self._kwargs.get('dont_override_profile') == True:
+            logging.info('Using --dont_override_profile to start Chrome.')
+            cmd += ' --dont_override_profile'
+        else:
+            logging.info('Not using --dont_override_profile to start Chrome.')
+        if not verbose:
+            cmd += ' > /dev/null 2>&1'
+        return cmd
 
     def __enter__(self):
         """Logs in to the browser with ARC enabled."""
@@ -100,8 +100,11 @@ class _ChromeLogin(object):
         try:
             # We used to call cheets_StartAndroid, but it is a little faster to
             # call a script on the DUT. This also saves CPU time on the server.
-            self._host.run(self._cmd_builder(), ignore_status=False,
-                           verbose=False, timeout=120)
+            self._host.run(
+                self._cmd_builder(),
+                ignore_status=False,
+                verbose=False,
+                timeout=120)
         except Exception:
             retry = True
 
@@ -110,9 +113,11 @@ class _ChromeLogin(object):
             # Give it some time to calm down.
             time.sleep(20)
             # Spew output to logs this time and raise failures.
-            self._host.run(self._cmd_builder(verbose=True), ignore_status=False,
-                           verbose=True, timeout=240)
-
+            self._host.run(
+                self._cmd_builder(verbose=True),
+                ignore_status=False,
+                verbose=True,
+                timeout=240)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit restart the browser or reboot the machine.
@@ -131,8 +136,11 @@ class _ChromeLogin(object):
             logging.info('Skipping reboot, restarting browser.')
             reboot = False
             try:
-                self._host.run('restart ui', ignore_status=False, verbose=False,
-                               timeout=120)
+                self._host.run(
+                    'restart ui',
+                    ignore_status=False,
+                    verbose=False,
+                    timeout=120)
             except Exception:
                 logging.error('Restarting browser has failed.')
                 reboot = True
@@ -217,11 +225,13 @@ def adb_keepalive(target, extra_paths):
     # module. We want to run the original .py file, so we need to change the
     # extension back.
     script_filename = module.__file__.replace('.pyc', '.py')
-    job = common_utils.BgJob([script_filename, target],
-                           nickname='adb_keepalive', stderr_level=logging.DEBUG,
-                           stdout_tee=common_utils.TEE_TO_LOGS,
-                           stderr_tee=common_utils.TEE_TO_LOGS,
-                           extra_paths=extra_paths)
+    job = common_utils.BgJob(
+        [script_filename, target],
+        nickname='adb_keepalive',
+        stderr_level=logging.DEBUG,
+        stdout_tee=common_utils.TEE_TO_LOGS,
+        stderr_tee=common_utils.TEE_TO_LOGS,
+        extra_paths=extra_paths)
 
     try:
         yield
@@ -258,8 +268,8 @@ def parse_tradefed_result(result, waivers=None):
     start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
                           r' (\d+(?:,\d+)?) test' % (abi_re, module_re))
     end_re = re.compile(r'(%s) %s (?:complet|fail)ed in .*\.'
-                        r' (\d+) passed, (\d+) failed, (\d+) not executed'
-                        % (abi_re, module_re))
+                        r' (\d+) passed, (\d+) failed, (\d+) not executed' %
+                        (abi_re, module_re))
 
     # Records the result per each ABI.
     total_test = dict()
@@ -276,48 +286,49 @@ def parse_tradefed_result(result, waivers=None):
         # Beginning of a chunk of tests.
         match = start_re.search(line)
         if match:
-           if abi:
-               raise error.TestFail('Error: Unexpected test start: ' + line)
-           abi = match.group(1)
-           ntest = int(match.group(2).replace(',',''))
-           prev_npass = prev_nfail = prev_nnotexec = None
+            if abi:
+                raise error.TestFail('Error: Unexpected test start: ' + line)
+            abi = match.group(1)
+            ntest = int(match.group(2).replace(',', ''))
+            prev_npass = prev_nfail = prev_nnotexec = None
         else:
-           # End of the current chunk.
-           match = end_re.search(line)
-           if not match:
-               continue
+            # End of the current chunk.
+            match = end_re.search(line)
+            if not match:
+                continue
 
-           npass, nfail, nnotexec = map(int, match.group(2,3,4))
-           if abi != match.group(1):
-               # When the last case crashed during teardown, tradefed emits two
-               # end-messages with possibly increased fail count. Ignore it.
-               if (prev_npass == npass and (prev_nfail == nfail or
-                   prev_nfail == nfail - 1) and prev_nnotexec == nnotexec):
-                   continue
-               raise error.TestFail('Error: Unexpected test end: ' + line)
-           prev_npass, prev_nfail, prev_nnotexec = npass, nfail, nnotexec
+            npass, nfail, nnotexec = map(int, match.group(2, 3, 4))
+            if abi != match.group(1):
+                # When the last case crashed during teardown, tradefed emits two
+                # end-messages with possibly increased fail count. Ignore it.
+                if (prev_npass == npass and
+                    (prev_nfail == nfail or prev_nfail == nfail - 1) and
+                        prev_nnotexec == nnotexec):
+                    continue
+                raise error.TestFail('Error: Unexpected test end: ' + line)
+            prev_npass, prev_nfail, prev_nnotexec = npass, nfail, nnotexec
 
-           # When the test crashes too ofen, tradefed seems to finish the
-           # iteration by running "0 tests, 0 passed, ...". Do not count
-           # that in.
-           if ntest > 0:
-               total_test[abi] = (total_test.get(abi, 0) + ntest -
-                   last_notexec.get(abi, 0))
-               total_pass[abi] = total_pass.get(abi, 0) + npass
-               total_fail[abi] = total_fail.get(abi, 0) + nfail
-               last_notexec[abi] = nnotexec
-           abi = None
+            # When the test crashes too ofen, tradefed seems to finish the
+            # iteration by running "0 tests, 0 passed, ...". Do not count
+            # that in.
+            if ntest > 0:
+                total_test[abi] = (
+                    total_test.get(abi, 0) + ntest - last_notexec.get(abi, 0))
+                total_pass[abi] = total_pass.get(abi, 0) + npass
+                total_fail[abi] = total_fail.get(abi, 0) + nfail
+                last_notexec[abi] = nnotexec
+            abi = None
 
     if abi:
         # When tradefed crashes badly, it may exit without printing the counts
         # from the last chunk. Regard them as not executed and retry (rather
         # than aborting the test cycle at this point.)
         if ntest > 0:
-            total_test[abi] = (total_test.get(abi, 0) + ntest -
-                last_notexec.get(abi, 0))
+            total_test[abi] = (
+                total_test.get(abi, 0) + ntest - last_notexec.get(abi, 0))
             last_notexec[abi] = ntest
         logging.warning('No result reported for the last chunk. ' +
-            'Assuming all not executed.')
+                        'Assuming all not executed.')
 
     # TODO(rohitbm): make failure parsing more robust by extracting the list
     # of failing tests instead of searching in the result blob. As well as
@@ -327,8 +338,9 @@ def parse_tradefed_result(result, waivers=None):
         abis = total_test.keys()
         for testname in waivers:
             # TODO(dhaddock): Find a more robust way to apply waivers.
-            fail_count = (result.count(testname + ' FAIL') +
-                          result.count(testname + ' fail'))
+            fail_count = (
+                result.count(testname + ' FAIL') +
+                result.count(testname + ' fail'))
             if fail_count:
                 if fail_count > len(abis):
                     # This should be an error.TestFail, but unfortunately
@@ -336,15 +348,17 @@ def parse_tradefed_result(result, waivers=None):
                     # test failed during teardown. It will anyway causes
                     # a test count inconsistency and visible on the dashboard.
                     logging.error('Found %d failures for %s '
-                                  'but there are only %d abis: %s',
-                                  fail_count, testname, len(abis), abis)
+                                  'but there are only %d abis: %s', fail_count,
+                                  testname, len(abis), abis)
                 waived += fail_count
-                logging.info('Waived failure for %s %d time(s)',
-                             testname, fail_count)
-    counts = tuple(sum(count_per_abi.values()) for count_per_abi in
-        (total_test, total_pass, total_fail, last_notexec)) + (waived,)
-    msg = ('tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' %
-           counts)
+                logging.info('Waived failure for %s %d time(s)', testname,
+                             fail_count)
+    counts = tuple(
+        sum(count_per_abi.values())
+        for count_per_abi in (total_test, total_pass, total_fail,
+                              last_notexec)) + (waived,)
+    msg = (
+        'tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' % counts)
     logging.info(msg)
     if counts[2] - waived < 0:
         raise error.TestFail('Error: Internal waiver bookkeeping has '
@@ -360,8 +374,8 @@ def select_32bit_java():
         if os.path.exists(java):
             logging.info('Found 32 bit java, switching to use it.')
             os.environ['JAVA_HOME'] = java
-            os.environ['PATH'] = (os.path.join(java, 'bin') + os.pathsep +
-                                  os.environ['PATH'])
+            os.environ['PATH'] = (
+                os.path.join(java, 'bin') + os.pathsep + os.environ['PATH'])
 
 
 class TradefedTest(test.test):
@@ -374,10 +388,19 @@ class TradefedTest(test.test):
 
     def _log_java_version(self):
         """Quick sanity and spew of java version installed on the server."""
-        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
-                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
+        utils.run(
+            'java',
+            args=('-version',),
+            ignore_status=False,
+            verbose=True,
+            stdout_tee=utils.TEE_TO_LOGS,
+            stderr_tee=utils.TEE_TO_LOGS)
 
-    def initialize(self, bundle=None, uri=None, host=None, max_retry=None,
+    def initialize(self,
+                   bundle=None,
+                   uri=None,
+                   host=None,
+                   max_retry=None,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -414,8 +437,9 @@ class TradefedTest(test.test):
         # If clearing the cache it must happen before all downloads.
         self._clear_download_cache_if_needed()
         # Set permissions (rwxr-xr-x) to the executable binaries.
-        permission = (stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
-                | stat.S_IXOTH)
+        permission = (
+            stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
+            | stat.S_IXOTH)
         self._install_files(_ADB_DIR, _ADB_FILES, permission)
         self._install_files(_SDK_TOOLS_DIR, _SDK_TOOLS_FILES, permission)
 
@@ -458,19 +482,15 @@ class TradefedTest(test.test):
         # immediately return success.
         hostport = self._get_adb_target()
         result = self._run(
-                'adb',
-                args=('connect', hostport),
-                verbose=True,
-                ignore_status=True)
+            'adb', args=('connect', hostport), verbose=True, ignore_status=True)
         logging.info('adb connect {}:\n{}'.format(hostport, result.stdout))
         if result.exit_status != 0:
             return False
 
         result = self._run('adb', args=('devices',))
         logging.info('adb devices:\n' + result.stdout)
-        if not re.search(
-                r'{}\s+(device|unauthorized)'.format(re.escape(hostport)),
-                result.stdout):
+        if not re.search(r'{}\s+(device|unauthorized)'.format(
+                re.escape(hostport)), result.stdout):
             return False
 
         # Actually test the connection with an adb command as there can be
@@ -521,11 +541,11 @@ class TradefedTest(test.test):
         self._android_shell('setprop persist.sys.usb.config mtp,adb')
 
         # adbd may take some time to come up. Repeatedly try to connect to adb.
-        utils.poll_for_condition(lambda: self._try_adb_connect(),
-                                 exception=error.TestFail(
-                                     'Error: Failed to set up adb connection'),
-                                 timeout=_ADB_READY_TIMEOUT_SECONDS,
-                                 sleep_interval=_ADB_POLLING_INTERVAL_SECONDS)
+        utils.poll_for_condition(
+            lambda: self._try_adb_connect(),
+            exception=error.TestFail('Error: Failed to set up adb connection'),
+            timeout=_ADB_READY_TIMEOUT_SECONDS,
+            sleep_interval=_ADB_POLLING_INTERVAL_SECONDS)
 
         logging.info('Successfully setup adb connection.')
 
@@ -535,10 +555,13 @@ class TradefedTest(test.test):
         Tests for the presence of the intent helper app to determine whether ARC
         has finished booting.
         """
+
         def _intent_helper_running():
-            result = self._run('adb', args=('shell', 'pgrep', '-f',
-                                            'org.chromium.arc.intent_helper'))
+            result = self._run(
+                'adb',
+                args=('shell', 'pgrep', '-f', 'org.chromium.arc.intent_helper'))
             return bool(result.stdout)
+
         utils.poll_for_condition(
             _intent_helper_running,
             exception=error.TestFail(
@@ -556,15 +579,10 @@ class TradefedTest(test.test):
         """
         logging.info('Disabling the adb install dialog.')
         result = self._run(
-                'adb',
-                verbose=True,
-                args=(
-                        'shell',
-                        'settings',
-                        'put',
-                        'global',
-                        'verifier_verify_adb_installs',
-                        '0'))
+            'adb',
+            verbose=True,
+            args=('shell', 'settings', 'put', 'global',
+                  'verifier_verify_adb_installs', '0'))
         logging.info('Disable adb dialog: %s', result.stdout)
 
     def _ready_arc(self):
@@ -606,8 +624,8 @@ class TradefedTest(test.test):
         """Compute recursive size in bytes of directory."""
         size = 0
         for root, _, files in os.walk(directory):
-            size += sum(os.path.getsize(os.path.join(root, name))
-                    for name in files)
+            size += sum(
+                os.path.getsize(os.path.join(root, name)) for name in files)
         return size
 
     def _clear_download_cache_if_needed(self):
@@ -618,13 +636,14 @@ class TradefedTest(test.test):
         with lock(self._tradefed_cache_lock):
             size = self._dir_size(self._tradefed_cache)
             if size > _TRADEFED_CACHE_MAX_SIZE:
-                logging.info('Current cache size=%d got too large. Clearing %s.'
-                        , size, self._tradefed_cache)
+                logging.info(
+                    'Current cache size=%d got too large. Clearing %s.', size,
+                    self._tradefed_cache)
                 shutil.rmtree(self._tradefed_cache)
                 self._safe_makedirs(self._tradefed_cache)
             else:
                 logging.info('Current cache size=%d of %s.', size,
-                        self._tradefed_cache)
+                             self._tradefed_cache)
 
     def _download_to_cache(self, uri):
         """Downloads the uri from the storage server.
@@ -653,18 +672,14 @@ class TradefedTest(test.test):
         self._safe_makedirs(output_dir)
 
         if parsed.scheme not in ['gs', 'http', 'https']:
-            raise error.TestFail('Error: Unknown download scheme %s' %
-                                 parsed.scheme)
+            raise error.TestFail(
+                'Error: Unknown download scheme %s' % parsed.scheme)
         if parsed.scheme in ['http', 'https']:
             logging.info('Using wget to download %s to %s.', uri, output_dir)
             # We are downloading 1 file at a time, hence using -O over -P.
             utils.run(
                 'wget',
-                args=(
-                    '--report-speed=bits',
-                    '-O',
-                    output,
-                    uri),
+                args=('--report-speed=bits', '-O', output, uri),
                 verbose=True)
             return output
 
@@ -672,7 +687,7 @@ class TradefedTest(test.test):
             # If the machine can access to the storage server directly,
             # defer to "gsutil" for downloading.
             logging.info('Host %s not in lab. Downloading %s directly to %s.',
-                    self._host.hostname, uri, output)
+                         self._host.hostname, uri, output)
             # b/17445576: gsutil rsync of individual files is not implemented.
             utils.run('gsutil', args=('cp', uri, output), verbose=True)
             return output
@@ -680,7 +695,7 @@ class TradefedTest(test.test):
         # We are in the moblab. Because the machine cannot access the storage
         # server directly, use dev server to proxy.
         logging.info('Host %s is in lab. Downloading %s by staging to %s.',
-                self._host.hostname, uri, output)
+                     self._host.hostname, uri, output)
 
         dirname = os.path.dirname(parsed.path)
         archive_url = '%s://%s%s' % (parsed.scheme, parsed.netloc, dirname)
@@ -690,8 +705,8 @@ class TradefedTest(test.test):
         # to shuffle files inside of tarballs.
         info = self._host.host_info_store.get()
         ds = dev_server.ImageServer.resolve(info.build)
-        ds.stage_artifacts(info.build, files=[filename],
-                           archive_url=archive_url)
+        ds.stage_artifacts(
+            info.build, files=[filename], archive_url=archive_url)
 
         # Then download files from the dev server.
         # TODO(ihf): use rsync instead of wget. Are there 3 machines involved?
@@ -700,13 +715,9 @@ class TradefedTest(test.test):
         logging.info('dev_server URL: %s', ds_src)
         # Calls into DUT to pull uri from dev_server.
         utils.run(
-                'wget',
-                args=(
-                        '--report-speed=bits',
-                        '-O',
-                        output,
-                        ds_src),
-                verbose=True)
+            'wget',
+            args=('--report-speed=bits', '-O', output, ds_src),
+            verbose=True)
         return output
 
     def _instance_copy(self, cache_path):
@@ -753,14 +764,22 @@ class TradefedTest(test.test):
         copy_media = os.path.join(media, 'copy_media.sh')
         with pushd(media):
             try:
-                self._run('file', args=('/bin/sh',), verbose=True,
-                          ignore_status=True, timeout=60,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS)
-                self._run('sh', args=('--version',), verbose=True,
-                          ignore_status=True, timeout=60,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS)
+                self._run(
+                    'file',
+                    args=('/bin/sh',),
+                    verbose=True,
+                    ignore_status=True,
+                    timeout=60,
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
+                self._run(
+                    'sh',
+                    args=('--version',),
+                    verbose=True,
+                    ignore_status=True,
+                    timeout=60,
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
             except:
                 logging.warning('Could not obtain sh version.')
             self._run(
@@ -779,17 +798,23 @@ class TradefedTest(test.test):
         # Find all files in the bbb_short and bbb_full directories, md5sum these
         # files and sort by filename, both on the DUT and on the local tree.
         logging.info('Computing md5 of remote media files.')
-        remote = self._run('adb', args=('shell',
-            'cd /sdcard/test; find ./bbb_short ./bbb_full -type f -print0 | '
-            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
+        remote = self._run(
+            'adb',
+            args=(
+                'shell',
+                'cd /sdcard/test; find ./bbb_short ./bbb_full -type f -print0 | '
+                'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
         logging.info('Computing md5 of local media files.')
-        local = self._run('/bin/sh', args=('-c',
-            ('cd %s; find ./bbb_short ./bbb_full -type f -print0 | '
-            'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2') % media))
+        local = self._run(
+            '/bin/sh',
+            args=('-c', (
+                'cd %s; find ./bbb_short ./bbb_full -type f -print0 | '
+                'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2') % media))
 
         # 'adb shell' terminates lines with CRLF. Normalize before comparing.
-        if remote.stdout.replace('\r\n','\n') != local.stdout:
-            logging.error('Some media files differ on DUT /sdcard/test vs. local.')
+        if remote.stdout.replace('\r\n', '\n') != local.stdout:
+            logging.error(
+                'Some media files differ on DUT /sdcard/test vs. local.')
             logging.info('media=%s', media)
             logging.error('remote=%s', remote)
             logging.error('local=%s', local)
@@ -805,8 +830,7 @@ class TradefedTest(test.test):
         cts_media = os.path.join(media, base)
         # TODO(ihf): this really should measure throughput in Bytes/s.
         m = 'chromeos/autotest/infra_benchmark/cheets/push_media/duration'
-        fields = {'success': False,
-                  'dut_host_name': self._host.hostname}
+        fields = {'success': False, 'dut_host_name': self._host.hostname}
         with metrics.SecondsTimer(m, fields=fields) as c:
             self._copy_media(cts_media)
             c['success'] = True
@@ -821,7 +845,7 @@ class TradefedTest(test.test):
         been called.
         """
         kwargs['extra_paths'] = (
-                kwargs.get('extra_paths', []) + self._install_paths)
+            kwargs.get('extra_paths', []) + self._install_paths)
         return utils.run(*args, **kwargs)
 
     def _collect_tradefed_global_log(self, result, destination):
@@ -860,8 +884,7 @@ class TradefedTest(test.test):
         if not (match and match.group(1)):
             error_msg = 'Error: Test did not complete. (Chrome or ARC crash?)'
             if summary:
-                error_msg += (' Test summary from previous runs: %s'
-                        % summary)
+                error_msg += (' Test summary from previous runs: %s' % summary)
             raise error.TestFail(error_msg)
         datetime_id = match.group(1)
         logging.info('Tradefed identified results and logs with %s.',
@@ -912,16 +935,15 @@ class TradefedTest(test.test):
         if os.path.exists(destination_logs_datetime):
             shutil.rmtree(destination_logs_datetime)
         shutil.copytree(
-                os.path.join(repository_results, datetime),
-                destination_results_datetime)
+            os.path.join(repository_results, datetime),
+            destination_results_datetime)
         # Copying the zip file has to happen after the tree so the destination
         # directory is available.
         shutil.copy(
-                os.path.join(repository_results, datetime) + '.zip',
-                destination_results_datetime_zip)
+            os.path.join(repository_results, datetime) + '.zip',
+            destination_results_datetime_zip)
         shutil.copytree(
-                os.path.join(repository_logs, datetime),
-                destination_logs_datetime)
+            os.path.join(repository_logs, datetime), destination_logs_datetime)
 
     def _get_expected_failures(self, directory):
         """Return a list of expected failures.
@@ -1041,8 +1063,7 @@ class TradefedTest(test.test):
 
     def _install_plan(self, plan):
         logging.info('Install plan: %s', plan)
-        plans_dir = os.path.join(self._repository, 'repository',
-                                 'plans')
+        plans_dir = os.path.join(self._repository, 'repository', 'plans')
         src_plan_file = os.path.join(self.bindir, 'plans', '%s.xml' % plan)
         shutil.copy(src_plan_file, plans_dir)
 
@@ -1076,18 +1097,16 @@ class TradefedTest(test.test):
         """
         # Creating new test plan for retry.
         derivedplan = 'retry.%s.%s' % (test_name, session_id)
-        logging.info('Retrying failures using derived plan %s.',
-                     derivedplan)
+        logging.info('Retrying failures using derived plan %s.', derivedplan)
         # The list commands are not required. It allows the reader to inspect
         # the tradefed state when examining the autotest logs.
-        commands = [
-            ['add', 'subplan', '--name', derivedplan,
-             '--session', '%d' % session_id,
-             '--result-type', 'failed', '--result-type', 'not_executed'],
-            ['list', 'subplans'],
-            ['list', 'results'],
-            self._tradefed_run_command(plan=derivedplan,
-                                       session_id=session_id)]
+        commands = [[
+            'add', 'subplan', '--name', derivedplan, '--session',
+            '%d' % session_id, '--result-type', 'failed', '--result-type',
+            'not_executed'
+        ], ['list', 'subplans'], ['list', 'results'],
+                    self._tradefed_run_command(
+                        plan=derivedplan, session_id=session_id)]
         # TODO(ihf): Consider if diffing/parsing output of "list results" for
         # new session_id might be more reliable. For now just assume simple
         # increment. This works if only one tradefed instance is active and
@@ -1101,11 +1120,10 @@ class TradefedTest(test.test):
             raise error.TestFail(
                 'Failed: after %d retries giving up. '
                 'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
-                (steps, passed, failed, notexecuted, waived,
-                 self.summary))
+                (steps, passed, failed, notexecuted, waived, self.summary))
         if not self._consistent(total_tests, passed, failed, notexecuted):
-            raise error.TestFail('Error: Test count inconsistent. %s' %
-                                 self.summary)
+            raise error.TestFail(
+                'Error: Test count inconsistent. %s' % self.summary)
         if retry_inconsistency_error:
             raise error.TestFail('Error: %s %s' % (retry_inconsistency_error,
                                                    self.summary))
@@ -1128,9 +1146,14 @@ class TradefedTest(test.test):
             return False
         return True
 
-    def _run_tradefed_with_retries(self, target_module, test_command, test_name,
-                                   target_plan=None, needs_push_media=False,
-                                   cts_uri=None, login_precondition_commands=[],
+    def _run_tradefed_with_retries(self,
+                                   target_module,
+                                   test_command,
+                                   test_name,
+                                   target_plan=None,
+                                   needs_push_media=False,
+                                   cts_uri=None,
+                                   login_precondition_commands=[],
                                    precondition_commands=[]):
         """Run CTS/GTS with retry logic.
 
@@ -1147,15 +1170,14 @@ class TradefedTest(test.test):
         # Unconditionally run CTS/GTS module until we see some tests executed.
         while total_tests == 0 and steps < self._max_retry:
             steps += 1
-            self._run_precondition_scripts(
-                self._host, login_precondition_commands, steps)
-            with self._login_chrome(reboot=self._should_reboot(steps),
-                                    dont_override_profile=pushed_media):
+            self._run_precondition_scripts(self._host,
+                                           login_precondition_commands, steps)
+            with self._login_chrome(
+                    reboot=self._should_reboot(steps),
+                    dont_override_profile=pushed_media):
                 self._ready_arc()
-                self._run_precondition_scripts(
-                    self._host,
-                    precondition_commands,
-                    steps)
+                self._run_precondition_scripts(self._host,
+                                               precondition_commands, steps)
 
                 # Only push media for tests that need it. b/29371037
                 if needs_push_media and not pushed_media:
@@ -1184,9 +1206,9 @@ class TradefedTest(test.test):
                 if tests > 0 and target_module in self._notest_modules:
                     # We expected no tests, but the new bundle drop must have
                     # added some for us. Alert us to the situation.
-                    raise error.TestFail('Failed: Remove module %s from '
-                                         'notest_modules directory!' %
-                                         target_module)
+                    raise error.TestFail(
+                        'Failed: Remove module %s from '
+                        'notest_modules directory!' % target_module)
                 if self._should_skip_test():
                     tests += 1
                     notexecuted += 1
@@ -1198,8 +1220,7 @@ class TradefedTest(test.test):
                 if not self._consistent(tests, passed, failed, notexecuted):
                     # Try to figure out what happened. Example: b/35605415.
                     self._run_tradefed([['list', 'results']])
-                    logging.warning('Test count inconsistent. %s',
-                                    self.summary)
+                    logging.warning('Test count inconsistent. %s', self.summary)
                 # Keep track of global count, we can't trust continue/retry.
                 if total_tests == 0:
                     total_tests = tests
@@ -1213,20 +1234,18 @@ class TradefedTest(test.test):
         # retry them iteratively MAX_RETRY times.
         while steps < self._max_retry and failed + notexecuted > waived:
             steps += 1
-            self._run_precondition_scripts(
-                self._host, login_precondition_commands, steps)
-            with self._login_chrome(reboot=self._should_reboot(steps),
-                                    dont_override_profile=pushed_media):
+            self._run_precondition_scripts(self._host,
+                                           login_precondition_commands, steps)
+            with self._login_chrome(
+                    reboot=self._should_reboot(steps),
+                    dont_override_profile=pushed_media):
                 self._ready_arc()
-                self._run_precondition_scripts(
-                    self._host,
-                    precondition_commands,
-                    steps)
+                self._run_precondition_scripts(self._host,
+                                               precondition_commands, steps)
                 logging.info('Retrying failures of %s with session_id %d:',
                              test_name, session_id)
                 expected_tests = failed + notexecuted
-                session_id, counts = self._tradefed_retry(test_name,
-                                                          session_id)
+                session_id, counts = self._tradefed_retry(test_name, session_id)
                 tests, passed, failed, notexecuted, waived = counts
                 # Consistency check, did we really run as many as we thought
                 # initially?
@@ -1247,8 +1266,8 @@ class TradefedTest(test.test):
                         retry_inconsistency_error = msg
                 if not self._consistent(tests, passed, failed, notexecuted):
                     logging.warning('Tradefed inconsistency - retrying.')
-                    session_id, counts = self._tradefed_retry(test_name,
-                                                              session_id)
+                    session_id, counts = self._tradefed_retry(
+                        test_name, session_id)
                     tests, passed, failed, notexecuted, waived = counts
                 msg = 'retry(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
                 logging.info('RESULT: %s', msg)
