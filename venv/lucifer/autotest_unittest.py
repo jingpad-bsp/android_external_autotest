@@ -40,8 +40,7 @@ def test__CommonRemovingFinder_find_module(fullname, expected):
 
 
 @pytest.mark.parametrize('name,expected', [
-        ('scheduler.models', '.scheduler.models'),
-        ('...scheduler.models', '.scheduler.models'),
+        ('scheduler.models', 'autotest_lib.scheduler.models'),
 ])
 def test_load(name, expected):
     """Test load()."""
@@ -49,7 +48,7 @@ def test_load(name, expected):
          as import_module, \
          mock.patch.object(autotest, '_setup_done', True):
         autotest.load(name)
-        import_module.assert_called_once_with(expected, package='autotest_lib')
+        import_module.assert_called_once_with(expected)
 
 
 def test_load_without_patch_fails():
@@ -57,3 +56,27 @@ def test_load_without_patch_fails():
     with mock.patch.object(autotest, '_setup_done', False):
         with pytest.raises(ImportError):
             autotest.load('asdf')
+
+
+@pytest.mark.parametrize('name,expected', [
+        ('constants', 'chromite.lib.constants'),
+])
+def test_chromite_load(name, expected):
+    """Test load()."""
+    with mock.patch('importlib.import_module', autospec=True) \
+         as import_module, \
+         mock.patch.object(autotest, '_setup_done', True):
+        autotest.chromite_load(name)
+        import_module.assert_called_once_with(expected)
+
+
+@pytest.mark.parametrize('name', [
+        'google.protobuf.internal.well_known_types',
+])
+def test_deps_load(name):
+    """Test load()."""
+    with mock.patch('importlib.import_module', autospec=True) \
+         as import_module, \
+         mock.patch.object(autotest, '_setup_done', True):
+        autotest.deps_load(name)
+        import_module.assert_called_once_with(name)
