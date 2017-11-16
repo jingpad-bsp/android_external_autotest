@@ -64,6 +64,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     FWMP_LOCKED_DBG = ['Ignoring FWMP unlock setting']
     MAX_RETRY_COUNT = 5
     START_STR = ['(.*Console is enabled;)']
+    REBOOT_DELAY_WITH_CCD = 60
+    REBOOT_DELAY_WITH_FLEX = 3
 
 
     def __init__(self, servo):
@@ -152,9 +154,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self._servo.set_nocheck('cr50_console_timeout', timeout)
         try:
             self.send_command_get_output('\n', self.START_STR)
-            logging.info('Detected cr50 reboot')
+            logging.debug('Detected cr50 reboot')
         except error.TestFail, e:
-            logging.info('Failed to detect cr50 reboot')
+            logging.debug('Failed to detect cr50 reboot')
         # Reset the timeout.
         self._servo.set_nocheck('cr50_console_timeout', original_timeout)
 
@@ -182,14 +184,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             chip_flags: the integer representation of chip board id flags or
                         None if the board id should be erased during rollback
         """
-        if not self.has_command('rw') or not self.has_command('eraseflashinfo'):
-            raise error.TestError("need image with 'rw' and 'eraseflashinfo'")
+        if (not self.has_command('rollback') or not
+            self.has_command('eraseflashinfo')):
+            raise error.TestError("need image with 'rollback' and "
+                "'eraseflashinfo'")
 
         inactive_partition = self.get_inactive_version_info()[0]
-        # Increase the reset count to above the rollback threshold
-        self.send_command('rw 0x40000128 1')
-        self.send_command('rw 0x4000012c %d' % (self.MAX_RETRY_COUNT + 2))
-
         # Set the board id if both the board id and flags have been given.
         set_bid = chip_bid and chip_flags
 
@@ -201,7 +201,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if set_bid:
             self.send_command('bid 0x%x 0x%x' % (chip_bid, chip_flags))
 
-        self.reboot()
+        self.send_command('rollback')
+
+        # If we aren't using ccd, we should be able to detect the reboot
+        # almost immediately
+        self.wait_for_reboot(self.REBOOT_DELAY_WITH_CCD if self.using_ccd() else
+                self.REBOOT_DELAY_WITH_FLEX)
 
         running_partition = self.get_active_version_info()[0]
         if inactive_partition != running_partition:
