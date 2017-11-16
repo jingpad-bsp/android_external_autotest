@@ -15,7 +15,6 @@ from autotest_lib.client.cros import constants
 
 JETSTREAM_BOARDS = frozenset(['arkham', 'gale', 'whirlwind'])
 
-
 def _lsbrelease_search(regex, group_id=0, lsb_release_content=None):
     """Searches /etc/lsb-release for a regex match.
 
@@ -125,6 +124,28 @@ def is_jetstream(lsb_release_content=None):
     board = get_current_board(lsb_release_content=lsb_release_content)
     return board in JETSTREAM_BOARDS
 
+def is_gce_board(lsb_release_content=None):
+    """Parses lsb_contents to determine if host is a GCE board.
+
+    @param lsb_release_content: The string contents of lsb-release.
+            If None, the local lsb-release is used.
+
+    @return True if the host is a GCE board otherwise False.
+    """
+    return is_lakitu(lsb_release_content=lsb_release_content)
+
+def is_lakitu(lsb_release_content=None):
+    """Parses lsb_contents to determine if host is lakitu.
+
+    @param lsb_release_content: The string contents of lsb-release.
+            If None, the local lsb-release is used.
+
+    @return True if the host is lakitu otherwise False.
+    """
+    board = get_current_board(lsb_release_content=lsb_release_content)
+    if board is not None:
+        return board.startswith('lakitu')
+    return False
 
 def get_chrome_milestone(lsb_release_content=None):
     """Get the value for the Chrome milestone.
