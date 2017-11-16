@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib.cros import get_usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
 
 
-LONG_TIMEOUT = 30
+LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 5
 MIMO_VID = '17e9'
 MIMO_PID = '016b'
@@ -51,73 +51,61 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
                                 'vid:pid {}:{}'.format(MIMO_VID, MIMO_PID))
 
 
-    def _run_power_cycle_mimo_test(self, repetitions):
+    def _run_power_cycle_mimo_test(self):
         """Power Cycle Mimo device for multiple times"""
-        for _ in xrange(repetitions):
-            self._power_cycle_mimo_device()
-            logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
-            time.sleep(LONG_TIMEOUT)
-            self._kernel_usb_sanity_test()
-            self._run_hangout_test()
+        self._power_cycle_mimo_device()
+        logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
+        time.sleep(LONG_TIMEOUT)
+        self._kernel_usb_sanity_test()
 
 
     def _check_peripherals(self):
-        """Check CfM has camera, speaker and Mimo connected."""
-        speaker_list = get_usb_devices._get_speakers(self.usb_data)
-        peripheral_list = []
-        not_found = True
-        for _key in speaker_list.keys():
-            logging.info('Detect Audio device %s = %s',
-                         _key, speaker_list[_key])
-            if speaker_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
+        """
+        Check CfM has camera, speaker and Mimo connected.
+        @returns list of peripherals found.
+        """
+        speakers = get_usb_devices._get_speakers(self.usb_data)
+        peripherals = []
+        for speaker, count in speakers.iteritems():
+            logging.info('Detect Audio device %s (%d)',
+                         speaker, count)
+            if count:
+                peripherals.append(speaker)
 
-        camera_list = get_usb_devices._get_cameras(self.usb_data)
-        not_found = True
-        for _key in camera_list.keys():
-            logging.info('Detect Video device %s = %s',
-                         _key, camera_list[_key])
-            if camera_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
+        cameras = get_usb_devices._get_cameras(self.usb_data)
+        for camera, count in cameras.iteritems():
+            logging.info('Detect Video device %s (%d)',
+                         camera, count)
+            if count:
+                peripherals.append(camera)
 
-        display_list = get_usb_devices._get_display_mimo(self.usb_data)
-        not_found = True
-        for _key in display_list.keys():
-            logging.info('Detect Mimo displaylink device %s = %s',
-                         _key, display_list[_key])
-            if display_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
-            if display_list[_key] != 0 and not not_found:
-                raise error.TestFail('Each Set of CfM should have only one type'
-                                     ' of Mimo Display connected')
-        if not_found:
-            raise error.TestFail('Each set of CfM should have at least one'
-                                 ' Mimo: Displaylink.')
+        displays = get_usb_devices._get_display_mimo(self.usb_data)
+        mimo_display_count = 0
+        for display, count in displays.iteritems():
+            logging.info('Detect Mimo displaylink device %s (%d)',
+                         display, count)
+            if count:
+                peripherals.append(display)
+                mimo_display_count += 1
 
-        controller_list = get_usb_devices._get_controller_mimo(self.usb_data)
-        not_found = True
-        for _key in controller_list.keys():
-            logging.info('Detect Mimo controller device %s = %s',
-                         _key, controller_list[_key])
+        if mimo_display_count != 1:
+          raise error.TestFail('Each Set of CfM should have exactly one type'
+                               ' of Mimo Display connected. Found %d' % (
+                                 mimo_display_count))
 
-            if controller_list[_key] != 0 and not_found:
-                not_found = False
-                peripheral_list.append(_key)
-                continue
-            if controller_list[_key] != 0 and not not_found:
-                raise error.TestFail('Each Set of CfM should have only one type'
-                                     ' of Mimo Controller connected')
-        if not_found:
-            raise error.TestFail('Each set of CfM should have at least one'
-                                 ' Mimo: SiS Controller.')
-
-        return peripheral_list
+        controllers = get_usb_devices._get_controller_mimo(self.usb_data)
+        controller_count = 0
+        for controller, count in controllers.iteritems():
+            logging.info('Detect Mimo controller device %s (%d)',
+                         controller, count)
+            if count:
+                peripherals.append(controller)
+                controller_count += 1
+        if controller_count != 1:
+          raise error.TestFail('Each Set of CfM should have exactly one type'
+                               ' of Mimo Controller connected. Found %d' % (
+                                   controller_count))
+        return peripherals
 
 
     def _kernel_usb_sanity_test(self):
@@ -130,25 +118,20 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             get_usb_devices._verify_usb_device_ok(self.usb_data, _key)
 
 
-    def _run_reboot_test(self, repetitions):
-        """
-        Reboot testing for Mimo.
+    def _run_reboot_test(self):
+        """Reboot testing for Mimo."""
 
-        @param repetitions: amount of reboot cycles to perform.
-        """
-        for i in xrange(repetitions):
-           logging.info('Reboot CfM #: %d', i)
-           self._host.reboot()
-           time.sleep(LONG_TIMEOUT)
-           self.cfm_facade.restart_chrome_for_cfm()
-           time.sleep(SHORT_TIMEOUT)
-           if self._is_meeting:
-               self.cfm_facade.wait_for_meetings_telemetry_commands()
-           else:
-               self.cfm_facade.wait_for_hangouts_telemetry_commands()
-           self.usb_data = self._cmd_usb_devices()
-           self._kernel_usb_sanity_test()
-           self._run_hangout_test()
+        boot_id = self._host.get_boot_id()
+        self._host.reboot()
+        self._host.wait_for_restart(old_boot_id=boot_id)
+        self.cfm_facade.restart_chrome_for_cfm()
+        time.sleep(SHORT_TIMEOUT)
+        if self._is_meeting:
+            self.cfm_facade.wait_for_meetings_telemetry_commands()
+        else:
+            self.cfm_facade.wait_for_hangouts_telemetry_commands()
+        self.usb_data = self._cmd_usb_devices()
+        self._kernel_usb_sanity_test()
 
 
     def _run_hangout_test(self) :
@@ -161,9 +144,10 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         if self._is_meeting:
             self.cfm_facade.start_meeting_session()
         else:
-            self.cfm_facade.start_new_hangout_session(self._session_name)
+            self.cfm_facade.start_new_hangout_session('mimo-sanity-test')
         time.sleep(random.randrange(SHORT_TIMEOUT, LONG_TIMEOUT))
 
+        # Verify USB data in-call.
         self.usb_data = self._cmd_usb_devices()
         self._kernel_usb_sanity_test()
 
@@ -173,12 +157,20 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             self.cfm_facade.end_hangout_session()
         logging.info('Session has ended.')
 
+        # Verify USB after leaving the call.
+        self.usb_data = self._cmd_usb_devices()
+        self._kernel_usb_sanity_test()
+        time.sleep(SHORT_TIMEOUT)
 
-    def run_once(self, hangout, repeat, is_meeting):
-        """Runs the test."""
+
+    def run_once(self, repetitions, is_meeting):
+        """
+        Runs the test.
+
+        @param repetitions: amount of reboot cycles to perform.
+        """
         # Remove 'board:' prefix.
         self._board = self._host.get_board().split(':')[1]
-        self._session_name = hangout
         self._is_meeting = is_meeting
 
         self.usb_data = self._cmd_usb_devices()
@@ -193,5 +185,8 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         else:
             self.cfm_facade.wait_for_hangouts_telemetry_commands()
 
-        self._run_reboot_test(repeat)
-        self._run_power_cycle_mimo_test(repeat)
+        for i in xrange(1, repetitions + 1):
+            logging.info('Running test cycle %d/%d', i, repetitions)
+            self._run_reboot_test()
+            self._run_hangout_test()
+            self._run_power_cycle_mimo_test()

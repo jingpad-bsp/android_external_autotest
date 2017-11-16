@@ -349,6 +349,18 @@ def get_selected_input_device_name():
     return None
 
 
+def get_selected_output_device_name():
+    """Returns the device name of the active output node.
+
+    @returns: device name string. E.g. mtk-rt5650: :0,0
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active'] and not node['IsInput']:
+            return node['DeviceName']
+    return None
+
+
 def get_plugged_node_types():
     """Returns the pair of plugged output node types and input node types.
 

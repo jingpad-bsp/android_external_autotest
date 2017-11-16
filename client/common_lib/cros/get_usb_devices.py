@@ -195,7 +195,7 @@ def _get_display_mimo(usbdata):
     number_display = {}
     for _display in cfm_usb_devices.get_mimo_displays():
         _number = len(_filter_by_vid_pid(usbdata, _display.vid_pid))
-        number_display[_display] = _number
+        number_display[_display.vid_pid] = _number
     return number_display
 
 
@@ -208,7 +208,7 @@ def _get_controller_mimo(usbdata):
     number_controller = {}
     for _controller in cfm_usb_devices.get_mimo_controllers():
         _number = len(_filter_by_vid_pid(usbdata, _controller.vid_pid))
-        number_controller[_controller] = _number
+        number_controller[_controller.vid_pid] = _number
     return number_controller
 
 
