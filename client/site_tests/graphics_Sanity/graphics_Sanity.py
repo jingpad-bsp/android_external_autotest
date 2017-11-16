@@ -22,6 +22,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 #        "/usr/local/autotest/bin/screenshot.py screenshot2_generated.png"
 # start ui
 
+
 class graphics_Sanity(graphics_utils.GraphicsTest):
     """
     This test is meant to be used as a quick sanity check for GL/GLES.
@@ -31,19 +32,16 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
     # None-init vars used by cleanup() here, in case setup() fails
     _services = None
 
-
     def setup(self):
         self.job.setup_dep(['glbench'])
         dep = 'glbench'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
 
-
     def cleanup(self):
         super(graphics_Sanity, self).cleanup()
         if self._services:
-          self._services.restore_services()
-
+            self._services.restore_services()
 
     def test_something_on_screen(self):
         """Check if something is drawn on screen: i.e. not a black screen.
@@ -60,32 +58,30 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
             """
             try:
                 graphics_utils.take_screenshot(self.resultsdir,
-                                               'temp screenshot',
-                                               '.png')
+                                               'temp screenshot', '.png')
                 return True
             except:
                 return False
 
-        utils.poll_for_condition(can_take_screenshot,
-                                 desc='Failed to take a screenshot. There may '
-                                      'be an issue with this ChromeOS image.',
-                                 sleep_interval=1)
+        utils.poll_for_condition(
+            can_take_screenshot,
+            sleep_interval=1,
+            desc='Failed to take a screenshot. There may be an issue with this '
+            'ChromeOS image.')
 
         w, h = graphics_utils.get_internal_resolution()
         megapixels = (w * h) / 1000000
         filesize_threshold = 25 * megapixels
         screenshot1 = graphics_utils.take_screenshot(self.resultsdir,
-                                                     'oobe or signin',
-                                                     '.png')
+                                                     'oobe or signin', '.png')
 
         with chrome.Chrome() as cr:
             tab = cr.browser.tabs[0]
             tab.Navigate('chrome://settings')
             tab.WaitForDocumentReadyStateToBeComplete()
 
-            screenshot2 = graphics_utils.take_screenshot(self.resultsdir,
-                                                        'settings page',
-                                                        '.png')
+            screenshot2 = graphics_utils.take_screenshot(
+                self.resultsdir, 'settings page', '.png')
 
         for screenshot in [screenshot1, screenshot2]:
             file_size_kb = os.path.getsize(screenshot) / 1000
@@ -95,10 +91,9 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
                 return
 
         raise error.TestFail(
-                'Screenshot filesize is very small. This indicates that '
-                'there is nothing on screen. This ChromeOS image could be '
-                'unusable. Check the screenshot in the results folder.')
-
+            'Screenshot filesize is very small. This indicates that '
+            'there is nothing on screen. This ChromeOS image could be '
+            'unusable. Check the screenshot in the results folder.')
 
     def test_generated_screenshots_match_expectation(self):
         """Draws a texture with a soft ellipse twice and captures each image.
@@ -108,17 +103,17 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
         self._services.stop_services()
 
         screenshot1_reference = os.path.join(self.bindir,
-                                             "screenshot1_reference.png")
+                                             'screenshot1_reference.png')
         screenshot1_generated = os.path.join(self.resultsdir,
-                                             "screenshot1_generated.png")
+                                             'screenshot1_generated.png')
         screenshot1_resized = os.path.join(self.resultsdir,
-                                           "screenshot1_generated_resized.png")
+                                           'screenshot1_generated_resized.png')
         screenshot2_reference = os.path.join(self.bindir,
-                                             "screenshot2_reference.png")
+                                             'screenshot2_reference.png')
         screenshot2_generated = os.path.join(self.resultsdir,
-                                             "screenshot2_generated.png")
+                                             'screenshot2_generated.png')
         screenshot2_resized = os.path.join(self.resultsdir,
-                                           "screenshot2_generated_resized.png")
+                                           'screenshot2_generated_resized.png')
 
         exefile = os.path.join(self.autodir, 'deps/glbench/windowmanagertest')
 
@@ -132,11 +127,10 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
         options += ' --screenshot2_cmd' + screenshot_cmd % screenshot2_generated
 
         cmd = exefile + ' ' + options
-        utils.run(cmd,
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+        utils.run(
+            cmd, stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
 
-        convert_cmd = ("convert -channel RGB -colorspace RGB -depth 8"
+        convert_cmd = ('convert -channel RGB -colorspace RGB -depth 8'
                        " -resize '100x100!' %s %s")
         utils.system(convert_cmd % (screenshot1_generated, screenshot1_resized))
         utils.system(convert_cmd % (screenshot2_generated, screenshot2_resized))
@@ -146,7 +140,6 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
         diff_cmd = 'perceptualdiff -verbose %s %s'
         utils.system(diff_cmd % (screenshot1_reference, screenshot1_resized))
         utils.system(diff_cmd % (screenshot2_reference, screenshot2_resized))
-
 
     def run_once(self):
         if graphics_utils.get_display_resolution() is None:
