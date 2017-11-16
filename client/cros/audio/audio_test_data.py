@@ -58,7 +58,7 @@ class AudioTestData(object):
             return f.read()
 
 
-    def convert(self, data_format, volume_scale):
+    def convert(self, data_format, volume_scale, path=None):
         """Converts the data format and returns a new AudioTestData object.
 
         Converts the source file at self.path to a new data format.
@@ -75,16 +75,23 @@ class AudioTestData(object):
         @param volume_scale: A float for volume scale used in sox command.
                               E.g. 1.0 is the same. 0.5 to scale volume by
                               half. -1.0 to invert the data.
+        @param path: The path to the file of new AudioTestData. If this is None,
+                     this function will add the suffix described above to the
+                     path of the source file.
 
         @returns: A new AudioTestData object with converted format and new path.
 
         """
-        original_path_without_ext, _ = os.path.splitext(self.path)
-        new_ext = '.' + data_format['file_type']
-        # New path will be the composition of original name, new data format,
-        # and new file type as extension.
-        new_path = (original_path_without_ext + '_' +
-                    '_'.join(str(x) for x in data_format.values()) + new_ext)
+        if path:
+            new_path = path
+        else:
+            original_path_without_ext, _ = os.path.splitext(self.path)
+            new_ext = '.' + data_format['file_type']
+            # New path will be the composition of original name, new data
+            # format, and new file type as extension.
+            new_path = (original_path_without_ext + '_' +
+                        '_'.join(str(x) for x in data_format.values()) +
+                        new_ext)
 
         logging.debug('src data_format: %s', self.data_format)
         logging.debug('dst data_format: %s', data_format)
@@ -150,7 +157,7 @@ class FakeTestData(object):
 
 
 def GenerateAudioTestData(data_format, path, frequencies=None,
-            duration_secs=None):
+            duration_secs=None, volume_scale=None):
     """Generates audio test data with specified format and frequencies.
 
     @param data_format: A dict containing data format including
@@ -164,14 +171,22 @@ def GenerateAudioTestData(data_format, path, frequencies=None,
     @param frequencies: A list containing the frequency of each channel in
                         this file. Only applicable to data of sine tone.
     @param duration_secs: Duration of test file in seconds.
+    @param volume_scale: A float for volume scale used in sox command.
+                         E.g. 0.5 to scale volume by half. -1.0 to invert.
 
     @returns an AudioTestData object.
     """
     sample_format = audio_data.SAMPLE_FORMATS[data_format['sample_format']]
     bits = sample_format['size_bytes'] * 8
 
+    if volume_scale:
+        path_without_ext, ext = os.path.splitext(path)
+        sox_file_path = os.path.join(path_without_ext + "_temp" + ext)
+    else:
+        sox_file_path = path
+
     command = sox_utils.generate_sine_tone_cmd(
-            filename=path,
+            filename=sox_file_path,
             channels=data_format['channel'],
             bits=bits,
             rate=data_format['rate'],
@@ -182,8 +197,15 @@ def GenerateAudioTestData(data_format, path, frequencies=None,
     logging.info(' '.join(command))
     subprocess.check_call(command)
 
-    return AudioTestData(path=path, data_format=data_format,
+    test_data = AudioTestData(data_format=data_format, path=sox_file_path,
             frequencies=frequencies, duration_secs=duration_secs)
+
+    if volume_scale:
+        converted_test_data = test_data.convert(data_format, volume_scale, path)
+        test_data.delete()
+        return converted_test_data
+    else:
+        return test_data
 
 
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
