@@ -59,15 +59,14 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
             logging.info('Skip the test because there is no headphone')
             return
 
-        golden_file = audio_test_data.AudioTestDataGenerateOnDemand(
-                path=os.path.join(self.bindir, 'fix_660_16.wav'),
+        golden_file = audio_test_data.GenerateAudioTestData(
                 data_format=dict(file_type='wav',
                                  sample_format='S16_LE',
                                  channel=2,
                                  rate=48000),
+                path=os.path.join(self.bindir, 'fix_660_16.wav'),
                 duration_secs=60,
                 frequencies=[660, 660])
-        golden_file.generate_file()
 
         chameleon_board = host.chameleon
 
