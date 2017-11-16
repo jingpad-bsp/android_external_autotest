@@ -120,9 +120,8 @@ class platform_ImageLoader(test.test):
         """Returns a set representing all the paths that would be unmounted by
         imageloader.
         """
-        return subprocess.check_output([
-                '/usr/sbin/imageloader', '--dry_run', '--unmount_all',
-        ]).splitlines()
+        return utils.system_output(
+                '/usr/sbin/imageloader --dry_run --unmount_all').splitlines()
 
     def _test_remove_component(self, component):
         if not self._register_component("cros-termina", "10042.0.0",
