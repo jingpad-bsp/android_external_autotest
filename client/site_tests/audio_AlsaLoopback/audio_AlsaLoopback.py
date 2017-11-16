@@ -6,6 +6,7 @@ import logging, os, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.audio import alsa_utils
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
@@ -20,14 +21,18 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
     def run_once(self):
         """Entry point of this test."""
 
-        # Multitone wav file lasts 10 seconds
-        wav_path = os.path.join(self.bindir, '10SEC.wav')
+        # Sine wav file lasts 5 seconds
+        wav_path = os.path.join(self.bindir, '5SEC.wav')
+        data_format = dict(file_type='wav', sample_format='S16_LE',
+                channel=2, rate=48000)
+        wav_file = audio_test_data.GenerateAudioTestData(
+            path=wav_path,
+            data_format=data_format,
+            duration_secs=5,
+            frequencies=[440, 440],
+            volume_scale=0.9)
 
-        noise_file = os.path.join(self.resultsdir, 'hw_noise.wav')
         recorded_file = os.path.join(self.resultsdir, 'hw_recorded.wav')
-
-        # Record a sample of "silence" to use as a noise profile.
-        alsa_utils.record(noise_file, duration=1)
 
         # Get selected input and output devices.
         cras_input = cras_utils.get_selected_input_device_name()
@@ -46,7 +51,7 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
         if 'HEADPHONE' not in output_type:
             raise error.TestFail("Wrong output type=%s", output_type)
 
-        p = cmd_utils.popen(alsa_utils.playback_cmd(wav_path, device=alsa_output))
+        p = cmd_utils.popen(alsa_utils.playback_cmd(wav_file.path, device=alsa_output))
         try:
             # Wait one second to make sure the playback has been started.
             time.sleep(1)
@@ -58,9 +63,9 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
                 raise error.TestError('playback stopped')
         finally:
             cmd_utils.kill_or_log_returncode(p)
+            wav_file.delete()
 
-        rms_value = audio_helper.reduce_noise_and_get_rms(
-            recorded_file, noise_file)[0]
+        rms_value = audio_helper.get_rms(recorded_file)[0]
 
         self.write_perf_keyval({'rms_value': rms_value})
 
