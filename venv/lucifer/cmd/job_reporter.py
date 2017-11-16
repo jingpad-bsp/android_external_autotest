@@ -34,7 +34,24 @@ def main(args):
 
     @param args: list of command line args
     """
+    args = _parse_args_and_configure_logging(args)
 
+    autotest.patch()
+    models = autotest.load('frontend.afe.models')
+
+    if args.job_id is not None:
+        if args.autoserv_exit is None:
+            # TODO(crbug.com/748234): autoserv not implemented yet.
+            raise NotImplementedError('not implemented yet (crbug.com/748234)')
+        job = models.Job.objects.get(id=args.job_id)
+    else:
+        # TODO(crbug.com/748234): Full jobs not implemented yet.
+        raise NotImplementedError('not implemented yet')
+    handler = _EventHandler(models, job, autoserv_exit=args.autoserv_exit)
+    return _run_job(args.run_job_path, handler, args)
+
+
+def _parse_args_and_configure_logging(args):
     parser = argparse.ArgumentParser(prog='job_reporter', description=__doc__)
     loglib.add_logging_options(parser)
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
@@ -53,20 +70,7 @@ as the caller has presumably already run it.
     args, extra_args = parser.parse_known_args(args)
     args.run_job_args = extra_args
     loglib.configure_logging_with_args(parser, args)
-
-    autotest.patch()
-    models = autotest.load('frontend.afe.models')
-
-    if args.job_id is not None:
-        if args.autoserv_exit is None:
-            # TODO(crbug.com/748234): autoserv not implemented yet.
-            raise NotImplementedError('not implemented yet (crbug.com/748234)')
-        job = models.Job.objects.get(id=args.job_id)
-    else:
-        # TODO(crbug.com/748234): Full jobs not implemented yet.
-        raise NotImplementedError('not implemented yet')
-    handler = _EventHandler(models, job, autoserv_exit=args.autoserv_exit)
-    return _run_job(args.run_job_path, handler, args)
+    return args
 
 
 def _run_job(path, event_handler, args):
