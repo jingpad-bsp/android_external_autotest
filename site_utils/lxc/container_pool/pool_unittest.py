@@ -175,8 +175,7 @@ class PoolTests(unittest.TestCase):
             pass
         self.assertGreater(error_count, 0)
 
-    # TODO(crbug.com/720219) This test is flakey and killing CQ runs.
-    @unittest.expectedFailure
+
     def testCleanup_timeout(self):
         """Verifies that timed out containers are still destroyed."""
         # Simulate the factory hanging.
@@ -204,12 +203,9 @@ class PoolTests(unittest.TestCase):
             else:
                 if type(e) is pool_error.WorkerTimeoutError:
                     timeout_count += 1
+        self.assertGreater(timeout_count, 0)
 
         self.factory.resume()
-
-        # Verify the number of containers that were created.
-        self.assertEquals(original_create_count + timeout_count,
-                          self.factory.create_count)
 
         # Allow a timeout so the worker threads that were just unpaused above
         # have a chance to complete.
@@ -264,25 +260,22 @@ class PoolTests(unittest.TestCase):
 
     def _forceWorkerTimeouts(self):
         """Forces worker thread timeouts. """
-        # Set the container creation timeout to 0, wait for an error to occur,
-        # then restore the old timeout.
+        # Wait for at least one worker in the pool.
+        start = time.time()
+        while ((time.time() - start) < TEST_TIMEOUT and
+               self.pool.worker_count == 0):
+            time.sleep(pool._MIN_MONITOR_PERIOD)
+
+        # Set the container creation timeout to 0, wait for worker count to drop
+        # to zero (this represents workers timing out), then restore the old
+        # timout.
         old_timeout = pool._CONTAINER_CREATION_TIMEOUT
+        start = time.time()
         try:
             pool._CONTAINER_CREATION_TIMEOUT = 0
-            while True:
+            while ((time.time() - start) < TEST_TIMEOUT and
+                   self.pool.worker_count > 0):
                 time.sleep(pool._MIN_MONITOR_PERIOD)
-                try:
-                    e = self.pool.errors.get_nowait()
-                except Queue.Empty:
-                    # While no errors, continue waiting.
-                    pass
-                else:
-                    # Continue once a WorkerTimeoutError occurs.
-                    if type(e) is pool_error.WorkerTimeoutError:
-                        # Put the error back on the queue so tests get an
-                        # accurate count of errors.
-                        self.pool.errors.put(e)
-                        break;
         finally:
             pool._CONTAINER_CREATION_TIMEOUT = old_timeout
 
