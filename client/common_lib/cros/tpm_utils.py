@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging, os
+import time
 
 from autotest_lib.client.common_lib import error
 
@@ -94,16 +95,26 @@ def ClearTPMServer(client, out_dir):
     CleanupAndReboot(client)
 
 
-def ClearTPMOwnerRequest(client):
+def ClearTPMOwnerRequest(client, wait_for_ready=False, timeout=60):
     """Clears the TPM using crossystem command.
 
     @param client: client object to run commands on.
+    @param wait_for_ready: wait until the TPM status is ready
+    @param timeout: number of seconds to wait for the TPM to become ready.
     """
     if not client.run('crossystem clear_tpm_owner_request=1',
                       ignore_status=True).exit_status == 0:
         raise error.TestFail('Unable to clear TPM.')
 
     CleanupAndReboot(client)
+
+    if wait_for_ready:
+        status = {}
+        end_time = time.time() + timeout
+        while not status.get('Ready', False) and time.time() < end_time:
+            status = TPMStatus(client)
+            logging.debug(status)
+            time.sleep(1)
 
 
 def CleanupAndReboot(client):
