@@ -123,12 +123,11 @@ class audio_LeftRightInternalSpeaker(audio_test.AudioTest):
                 frequencies = [440, 0]
             else:
                 frequencies = [0, 440]
-            sound_file = audio_test_data.AudioTestDataGenerateOnDemand(
-                    path=os.path.join(self.bindir, '440_half.raw'),
+            sound_file = audio_test_data.GenerateAudioTestData(
                     data_format=data_format,
+                    path=os.path.join(self.bindir, '440_half.raw'),
                     duration_secs=10,
                     frequencies=frequencies)
-            sound_file.generate_file()
 
             logging.info('Going to use cras_test_client on CrOS')
             logging.info('Playing the file %s', sound_file)
