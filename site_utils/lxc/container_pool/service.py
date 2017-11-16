@@ -184,26 +184,32 @@ class _ClientThread(threading.Thread):
                 # Poll and deal with messages every second.  The timeout enables
                 # the thread to exit cleanly when stop() is called.
                 if self._connection.poll(1):
-                    msg = self._connection.recv()
-                    response = self._handle_message(msg)
-                    if response is not None:
+                    try:
+                        msg = self._connection.recv()
+                    except (AttributeError,
+                            ImportError,
+                            IndexError,
+                            pickle.UnpicklingError) as e:
+                        # All of these can occur while unpickling data.
+                        logging.error('Error while receiving message: %r', e)
+                        # Exit if an error occurs
+                        break
+                    except EOFError:
+                        # EOFError means the client closed the connection.  This
+                        # is not an error - just exit.
+                        break
+
+                    try:
+                        response = self._handle_message(msg)
+                        # Always send the response, even if it's None.  This
+                        # provides more consistent client-side behaviour.
                         self._connection.send(response)
-
-        except EOFError:
-            # The client closed the connection.
-            logging.debug('Connection closed.')
-
-        except (AttributeError,
-                ImportError,
-                IndexError,
-                pickle.UnpicklingError) as e:
-            # Some kind of pickle error occurred.
-            logging.error('Error while unpickling message: %s', e)
-
-        except error.UnknownMessageTypeError as e:
-            # The message received was a valid python object, but not a valid
-            # Message.
-            logging.error('Message error: %s', e)
+                    except error.UnknownMessageTypeError as e:
+                        # The message received was a valid python object, but
+                        # not a valid Message.
+                        logging.error('Message error: %s', e)
+                        # Exit if an error occurs
+                        break
 
         finally:
             # Always close the connection.
