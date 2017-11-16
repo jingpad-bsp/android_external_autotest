@@ -6,8 +6,7 @@ import logging
 import os
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import cr50_utils, tpm_utils
-from autotest_lib.server.cros import debugd_dev_tools
+from autotest_lib.client.common_lib.cros import cr50_utils
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
@@ -50,13 +49,7 @@ class firmware_Cr50Update(Cr50Test):
         # Make sure ccd is disabled so it won't interfere with the update
         self.cr50.ccd_disable()
 
-        tpm_utils.ClearTPMOwnerRequest(host)
-        self.rootfs_tool = debugd_dev_tools.RootfsVerificationTool()
-        self.rootfs_tool.initialize(host)
-        if not self.rootfs_tool.is_enabled():
-            logging.debug('Removing rootfs verification.')
-            # 'enable' actually disables rootfs verification
-            self.rootfs_tool.enable()
+        self.rootfs_verification_disable()
 
         self.host = host
         self.erase_nvmem = test.lower() == self.ERASE_NVMEM
