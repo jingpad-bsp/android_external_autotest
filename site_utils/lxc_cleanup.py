@@ -49,13 +49,12 @@ def is_container_orphaned(container):
 
     """
     logging.debug('Checking if container is orphaned: %s', container.name)
-    container_id = container.get_id()
-    if container_id is None:
+    if container.id is None:
         logging.debug('Container %s is not created for test.', container.name)
         return False
 
-    job_id = container_id.job_id
-    pid = container_id.pid
+    job_id = container.id.job_id
+    pid = container.id.pid
 
     if pid and not utils.pid_is_alive(pid):
         logging.debug('Process with PID %s is not alive, container %s is '
@@ -77,7 +76,7 @@ def is_container_orphaned(container):
                           'not orphaned.', job_id, container.name)
             return False
         if (hqe.finished_on and
-            (time_utils.time_string_to_datetime(hqes.finished_on) >
+            (time_utils.time_string_to_datetime(hqe.finished_on) >
              FINISHED_JOB_CUTOFF_TIME)):
             logging.debug('Test job %s was completed less than an hour ago.',
                           job_id)
@@ -104,7 +103,7 @@ def cleanup(container, options):
     try:
         # cleanup is protected by is_container_orphaned.  At this point the
         # container may be assumed to have a valid ID.
-        pid = container.get_id().pid
+        pid = container.id.pid
         # Kill autoserv process
         if pid and utils.pid_is_alive(pid):
             logging.info('Stopping process %s...', pid)
