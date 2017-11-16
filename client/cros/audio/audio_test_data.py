@@ -149,47 +149,41 @@ class FakeTestData(object):
         self.duration_secs = duration_secs
 
 
-class AudioTestDataGenerateOnDemand(AudioTestData):
-    """AudioTestData that generates real data on demand."""
-    def __init__(self, data_format=None, path=None, frequencies=None,
-                 duration_secs=None):
-        """
-        Initializes an audio test file that generate file on demand.
+def GenerateAudioTestData(data_format, path, frequencies=None,
+            duration_secs=None):
+    """Generates audio test data with specified format and frequencies.
 
-        @param data_format: A dict containing data format including
-                            file_type, sample_format, channel, and rate.
-                            file_type: file type e.g. 'raw' or 'wav'.
-                            sample_format: One of the keys in
-                                           audio_data.SAMPLE_FORMAT.
-                            channel: number of channels.
-                            rate: sampling rate.
-        @param path: The path to the file.
-        @param frequencies: A list containing the frequency of each channel in
-                            this file. Only applicable to data of sine tone.
-        @param duration_secs: Duration of test file in seconds.
+    @param data_format: A dict containing data format including
+                        file_type, sample_format, channel, and rate.
+                        file_type: file type e.g. 'raw' or 'wav'.
+                        sample_format: One of the keys in
+                                       audio_data.SAMPLE_FORMAT.
+                        channel: number of channels.
+                        rate: sampling rate.
+    @param path: The path to the file.
+    @param frequencies: A list containing the frequency of each channel in
+                        this file. Only applicable to data of sine tone.
+    @param duration_secs: Duration of test file in seconds.
 
-        """
-        self.data_format = data_format
-        self.path = path
-        self.frequencies = frequencies
-        self.duration_secs = duration_secs
+    @returns an AudioTestData object.
+    """
+    sample_format = audio_data.SAMPLE_FORMATS[data_format['sample_format']]
+    bits = sample_format['size_bytes'] * 8
 
+    command = sox_utils.generate_sine_tone_cmd(
+            filename=path,
+            channels=data_format['channel'],
+            bits=bits,
+            rate=data_format['rate'],
+            duration=duration_secs,
+            frequencies=frequencies,
+            raw=(data_format['file_type'] == 'raw'))
 
-    def generate_file(self):
-        """Generates the data with specified format and frequencies."""
-        sample_format = audio_data.SAMPLE_FORMATS[self.data_format['sample_format']]
-        bits = sample_format['size_bytes'] * 8
+    logging.info(' '.join(command))
+    subprocess.check_call(command)
 
-        command = sox_utils.generate_sine_tone_cmd(
-                filename=self.path,
-                channels=self.data_format['channel'],
-                bits=bits,
-                rate=self.data_format['rate'],
-                duration=self.duration_secs,
-                frequencies=self.frequencies,
-                raw=(self.data_format['file_type'] == 'raw'))
-
-        subprocess.check_call(command)
+    return AudioTestData(path=path, data_format=data_format,
+            frequencies=frequencies, duration_secs=duration_secs)
 
 
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
