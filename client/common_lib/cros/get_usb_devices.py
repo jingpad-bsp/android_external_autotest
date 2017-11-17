@@ -149,13 +149,16 @@ def _verify_usb_device_ok(usbdata, vid_pid):
     @param vid_pid VID, PID combination for the USB device to check.
     """
     device_found = False
+    # Retrieve a spec for this vid:pid
     usb_device = cfm_usb_devices.get_usb_device(vid_pid)
-    interface_set = set(usb_device.interfaces)
-    length = len(interface_set)
+    # Set of expected interfaces. This might be a subset of the actual set of
+    # interfaces.
+    expected_interfaces = set(usb_device.interfaces)
+    # Find all actual UsbDevices matching the vid:pid
     for _data in _filter_by_vid_pid(usbdata, vid_pid):
         device_found = True
-        compare_set = set(_data['intdriver'][0:length])
-        if compare_set != interface_set:
+        actual_interfaces = set(_data['intdriver'])
+        if not expected_interfaces.issubset(actual_interfaces):
             raise RuntimeError(
                 'Device %s has unexpected interfaces.' % vid_pid)
     if not device_found:
