@@ -150,7 +150,7 @@ def _verify_usb_device_ok(usbdata, vid_pid):
     """
     device_found = False
     # Retrieve a spec for this vid:pid
-    usb_device = cfm_usb_devices.get_usb_device(vid_pid)
+    usb_device = cfm_usb_devices.get_usb_device_spec(vid_pid)
     # List of expected interfaces. This might be a sublist of the actual list of
     # interfaces. Note: we have to use lists and not sets since the list of
     # interfaces might contain duplicates.
