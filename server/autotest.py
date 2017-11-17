@@ -42,6 +42,12 @@ _CONFIG = global_config.global_config
 AUTOSERV_PREBUILD = _CONFIG.get_config_value(
         'AUTOSERV', 'enable_server_prebuild', type=bool, default=False)
 
+# Match on a line like this:
+# FAIL test_name  test_name timestamp=1 localtime=Nov 15 12:43:10 <fail_msg>
+_FAIL_STATUS_RE = re.compile(
+    r'\s*FAIL.*localtime=.*\s*.*\s*[0-9:]+\s*(?P<fail_msg>.*)')
+
+
 class AutodirNotFoundError(Exception):
     """No Autotest installation could be found."""
 
@@ -586,6 +592,24 @@ class Autotest(installable_object.InstallableObject):
                 client_disconnect_timeout=client_disconnect_timeout)
 
 
+    @staticmethod
+    def extract_test_failure_msg(failure_status_line):
+        """Extract the test failure message from the status line.
+
+        @param failure_status_line:  String of test failure status line, it will
+            look like:
+          FAIL <test name>  <test name> timestamp=<ts> localtime=<lt> <reason>
+
+        @returns String of the reason, return empty string if we can't regex out
+            reason.
+        """
+        fail_msg = ''
+        match = _FAIL_STATUS_RE.match(failure_status_line)
+        if match:
+            fail_msg = match.group('fail_msg')
+        return fail_msg
+
+
     @classmethod
     def _check_client_test_result(cls, host, test_name):
         """
@@ -600,7 +624,15 @@ class Autotest(installable_object.InstallableObject):
         status = host.run(command).stdout.strip()
         logging.info(status)
         if status[:8] != 'END GOOD':
-            raise error.TestFail('%s client test did not pass.' % test_name)
+            test_fail_status_line_cmd = ('tail -3 %s/status | head -1' %
+                                         client_result_dir)
+            test_fail_msg = cls.extract_test_failure_msg(
+                    host.run(test_fail_status_line_cmd).stdout.strip())
+            test_fail_msg_reason = ('' if not test_fail_msg
+                                    else ' (reason: %s)' % test_fail_msg)
+            test_fail_status = '%s client test did not pass%s.' % (
+                    test_name, test_fail_msg_reason)
+            raise error.TestFail(test_fail_status)
 
 
     def run_timed_test(self, test_name, results_dir='.', host=None,
