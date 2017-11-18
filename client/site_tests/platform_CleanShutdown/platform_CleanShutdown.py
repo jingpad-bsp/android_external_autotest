@@ -15,5 +15,8 @@ class platform_CleanShutdown(test.test):
 
     def run_once(self):
         if os.path.exists(SHUTDOWN_STATEFUL_UMOUNT_FAIL):
+            # Delete the file between each test run to see if the last reboot
+            # failed.
+            os.remove(SHUTDOWN_STATEFUL_UMOUNT_FAIL)
             raise error.TestFail(
                 '{} exists!'.format(SHUTDOWN_STATEFUL_UMOUNT_FAIL))
