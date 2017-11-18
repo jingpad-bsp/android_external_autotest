@@ -45,6 +45,7 @@ class DrmTest(object):
         """Indicate if the test should be run on current configuration."""
         supported_apis = graphics_utils.GraphicsApiHelper().get_supported_apis()
         num_displays = graphics_utils.get_num_outputs_on()
+        gpu_type = utils.get_gpu_family()
         if num_displays == 0 and self._opts['display_required']:
             # If a test needs a display and we don't have a display,
             # consider it a pass.
@@ -64,6 +65,10 @@ class DrmTest(object):
                                 'have version %s. Skipping test.'
                                 % (min_kernel_version, kernel_version))
                 return False
+        if self.name == 'atomictest' and gpu_type == 'baytrail':
+            logging.warning('Baytrail is on kernel v4.4, but there is no '
+                            'intention to enable atomic.')
+            return False
         return True
 
     def run(self):
