@@ -20,6 +20,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import errno
 import fcntl
 import logging
@@ -30,6 +31,20 @@ import time
 from scandir import scandir
 
 logger = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def obtain_lease(path):
+    """Return a context manager owning a lease file.
+
+    The process that obtains the lease will maintain an exclusive,
+    unlimited fcntl lock on the lock file.
+    """
+    with open(path, 'w') as f:
+        fcntl.lockf(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield path
+        # Only remove the lease file if there was no exception.
+        os.unlink(path)
 
 
 def get_expired_leases(jobdir):
