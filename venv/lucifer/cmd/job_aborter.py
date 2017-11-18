@@ -43,7 +43,7 @@ def main(args):
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
 
-    autotest.patch()
+    autotest.monkeypatch()
     _main_loop(jobdir=args.jobdir)
     return 0
 
