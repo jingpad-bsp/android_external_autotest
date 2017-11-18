@@ -147,13 +147,11 @@ class ServiceTests(unittest.TestCase):
             with self.create_client() as client0:
                 with self.create_client() as client1:
 
-                    msg0 = message.echo(
-                        msg='two driven jocks help fax my big quiz')
-                    msg1 = message.echo(
-                        msg='how quickly daft jumping zebras vex')
+                    msg0 = 'two driven jocks help fax my big quiz'
+                    msg1 = 'how quickly daft jumping zebras vex'
 
-                    client0.send(msg0)
-                    client1.send(msg1)
+                    client0.send(message.echo(msg0))
+                    client1.send(message.echo(msg1))
 
                     echo0 = client0.recv()
                     echo1 = client1.recv()
@@ -171,8 +169,8 @@ class ServiceTests(unittest.TestCase):
         cleanly.  Use Service.is_running to check that.
         """
         with self.create_client() as client:
-            msg = message.echo(msg='foobar')
-            client.send(msg)
+            msg = 'foobar'
+            client.send(message.echo(msg))
             return client.recv() == msg
 
 
