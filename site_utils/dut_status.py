@@ -312,7 +312,7 @@ def _validate_host_list(afe, arguments):
             on the command line.
 
     """
-    if arguments.board or arguments.pool:
+    if arguments.board or arguments.pool or arguments.model:
         if arguments.hostnames:
             print >>sys.stderr, ('FATAL: Hostname arguments provided '
                                  'with --board or --pool')
@@ -321,6 +321,7 @@ def _validate_host_list(afe, arguments):
         labels = labellib.LabelsMapping()
         labels['board'] = arguments.board
         labels['pool'] = arguments.pool
+        labels['model'] = arguments.model
         histories = HostJobHistory.get_multiple_histories(
             afe, arguments.since, arguments.until, labels.getlabels())
     else:
@@ -427,6 +428,8 @@ def _parse_command(argv):
     parser.add_argument('-b', '--board',
                         help='Display history for all DUTs '
                              'of the given board')
+    parser.add_argument('-m', '--model',
+                        help='Display history for all DUTs of the given model.')
     parser.add_argument('-p', '--pool',
                         help='Display history for all DUTs '
                              'in the given pool. You might '
