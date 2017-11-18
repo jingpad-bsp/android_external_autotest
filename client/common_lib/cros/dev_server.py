@@ -2371,7 +2371,8 @@ class ImageServer(ImageServerBase):
         if error_list:
             real_error = ''
             for i in range(len(error_list)):
-                real_error += '%d) %s, ' % (i, error_list[i])
+                real_error += '%d) %s, ' % (
+                        i, ' '.join(error_list[i].splitlines()))
             if retry_with_another_devserver:
                 raise RetryableProvisionException(
                         error_msg % (host_name, real_error))
