@@ -254,39 +254,25 @@ class MoblabHost(cros_host.CrosHost):
         super(MoblabHost, self).verify_software()
 
 
-    @retry.retry(error.AutoservError, timeout_min=0.5, delay_sec=10)
-    def _verify_upstart_service(self, service):
-        """Verify the required moblab service is up and running.
+    def _verify_upstart_service(self, service, timeout_m):
+        """Verify that the given moblab service is running.
 
-        upstart services depend on one another, so a small amount of delay is to
-        be expected between various services starting.
-
-        @param service: the moblab upstart service.
-
-        @return True if this service is started and running, otherwise False.
+        @param service: The upstart service to check for.
+        @timeout_m: Timeout (in minuts) before giving up.
+        @raises TimeoutException or UpstartServiceNotRunning if service isn't
+                running.
         """
-        if not self.upstart_status(service):
-            raise UpstartServiceNotRunning(service)
+        @retry.retry(error.AutoservError, timeout_min=timeout_m, delay_sec=10)
+        def _verify():
+            if not self.upstart_status(service):
+                raise UpstartServiceNotRunning(service)
+        _verify()
 
-
-    @retry.retry(error.AutoservError, timeout_min=5, delay_sec=10)
-    def _verify_upstart_service_long_wait(self, service):
-        """Verify that required moblab service is up, with a long retry.
-
-        The first moblab service can take a long time to start up. Especially on
-        first, boot lxc container setup can delay the services for ~5 minutes.
-
-        @param service: the moblab upstart service.
-
-        @return True if this service is started and running, otherwise False.
-        """
-        if not self.upstart_status(service):
-            raise UpstartServiceNotRunning(service)
-
-
-    def verify_moblab_services(self):
+    def verify_moblab_services(self, timeout_m):
         """Verify the required Moblab services are up and running.
 
+        @param timeout_m: Timeout (in minutes) for how long to wait for services
+                to start. Actual time taken may be slightly more than this.
         @raises AutoservError if any moblab service is not running.
         """
         if not MOBLAB_SERVICES:
@@ -294,13 +280,17 @@ class MoblabHost(cros_host.CrosHost):
 
         service = MOBLAB_SERVICES[0]
         try:
-            self._verify_upstart_service_long_wait(service)
+            # First service can take a long time to start, especially on first
+            # boot where container setup can take 5-10 minutes, depending on the
+            # device.
+            self._verify_upstart_service(service, timeout_m)
         except error.TimeoutException:
             raise error.UpstartServiceNotRunning(service)
 
         for service in MOBLAB_SERVICES[1:]:
             try:
-                self._verify_upstart_service(service)
+                # Follow up services should come up quickly.
+                self._verify_upstart_service(service, 0.5)
             except error.TimeoutException:
                 raise error.UpstartServiceNotRunning(service)
 
