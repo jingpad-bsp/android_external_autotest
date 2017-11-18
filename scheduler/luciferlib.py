@@ -5,6 +5,7 @@
 """Library providing an API to lucifer."""
 
 import os
+import logging
 import pipes
 
 import common
@@ -18,7 +19,9 @@ _SECTION = 'LUCIFER'
 # TODO(crbug.com/748234): Move these to shadow_config.ini
 # See also drones.AUTOTEST_INSTALL_DIR
 _AUTOTEST_DIR = '/usr/local/autotest'
-_JOB_REPORTER_PATH = os.path.join(_AUTOTEST_DIR, 'bin' 'job_reporter')
+_JOB_REPORTER_PATH = os.path.join(_AUTOTEST_DIR, 'bin', 'job_reporter')
+
+logger = logging.getLogger(__name__)
 
 
 def is_lucifer_enabled():
@@ -216,6 +219,7 @@ def _spawn(path, argv, output_file):
     The new process will have stdin opened to /dev/null and stdout,
     stderr opened to output_file.
     """
+    logger.info('Spawning %r, %r, %r', path, argv, output_file)
     assert all(isinstance(arg, basestring) for arg in argv)
     if os.fork():
         return
