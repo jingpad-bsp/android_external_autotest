@@ -24,6 +24,26 @@ class TestRunner(object):
         logging.info('RUNNING:\n%s', str(cfm_test))
         cfm_test.scenario.execute(self.context)
 
+class HostFileContentsCollector(object):
+    """
+    File contents collector that executes commands against the host.
+    """
+    def __init__(self, host):
+        """
+        Initializes with a host.
+
+        @param host a host object as available from CfmBaseTest.host
+        """
+        self.host = host
+
+    def collect_file_contents(self, path):
+        """
+        Returns the file contents of the file at the specified path.
+
+        @param path The path of the file.
+        @returns The contents of the file
+        """
+        return self.host.run_output('cat "%s"' % path)
 
 class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
     """
@@ -43,7 +63,8 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
         self.cfm_test = cfm_test
         # self.cfm_facade is inherited from CfmBaseTest.
         context = action_context.ActionContext(
-                cfm_facade=self.cfm_facade)
+                cfm_facade=self.cfm_facade,
+                file_contents_collector=HostFileContentsCollector(host))
         self.test_runner = TestRunner(context)
 
     def run_once(self):
