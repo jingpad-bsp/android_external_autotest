@@ -26,6 +26,7 @@ import sys
 
 from lucifer import autotest
 from lucifer import eventlib
+from lucifer import leasing
 from lucifer import loglib
 
 logger = logging.getLogger(__name__)
@@ -37,14 +38,10 @@ def main(args):
     @param args: list of command line args
     """
     args = _parse_args_and_configure_logging(args)
-    autotest.patch()
-    handler = _make_handler(args)
-    ts_mon_config = autotest.chromite_load('ts_mon_config')
-    ts_mon = autotest.deps_load('infra_libs.ts_mon')
-    with ts_mon_config.SetupTsMonGlobalState('autotest_scheduler',
-                                             auto_flush=False):
-        atexit.register(ts_mon.flush)
-        return _run_job(args.run_job_path, handler, args)
+    lease_path = _lease_path(args.jobdir, args.job_id)
+    with leasing.obtain_lease(lease_path):
+        autotest.patch()
+        return _main(args)
 
 
 def _parse_args_and_configure_logging(args):
@@ -53,10 +50,7 @@ def _parse_args_and_configure_logging(args):
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
                         help='Path to lucifer_run_job binary')
     parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
-                        help='''
-Path to job leases directory.  This is used to construct the -leasefile
-argument to lucifer_run_job.
-''')
+                        help='Path to job leases directory.')
     parser.add_argument('--job-id', type=int, default=None,
                         help='Autotest Job ID')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
@@ -114,10 +108,18 @@ def _run_job(path, event_handler, args):
     """
     command_args = [path]
     command_args.extend(
-            ['-leasefile', os.path.join(args.jobdir, str(args.job_id))])
+            ['-abortsock', _abort_sock_path(args.jobdir, args.job_id)])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler,
                                       args=command_args)
+
+
+def _abort_sock_path(jobdir, job_id):
+    return _lease_path(jobdir, job_id) + '.sock'
+
+
+def _lease_path(jobdir, job_id):
+    return os.path.join(jobdir, str(job_id))
 
 
 class _EventHandler(object):
