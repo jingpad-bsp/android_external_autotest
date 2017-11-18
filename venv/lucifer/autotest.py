@@ -4,9 +4,9 @@
 
 """Kludges to support legacy Autotest code.
 
-Autotest imports should be done by calling patch() first and then
-calling load().  patch() should only be called once from a script's main
-function.
+Autotest imports should be done by calling monkeypatch() first and then
+calling load().  monkeypatch() should only be called once from a
+script's main function.
 
 chromite imports should be done with chromite_load(), and any third
 party packages should be imported with deps_load().  The reason for this
@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import imp
 import importlib
 import logging
@@ -36,26 +37,49 @@ _setup_done = False
 logger = logging.getLogger(__name__)
 
 
-def patch():
-    """Monkeypatch everything needed to get Autotest working.
+def monkeypatch():
+    """Monkeypatch everything needed to import Autotest.
 
     This should be called before any calls to load().  Only the main
     function in scripts should call this function.
-
-    Unlike monkeypatch() which is more low-level, this patches not just
-    imports, but also other things in Autotest what would generally be
-    needed to use it.
     """
-    monkeypatch()
+    with _global_setup():
+        _monkeypatch_body()
 
-    # Add chromite's third-party to the import path.
-    import chromite
 
-    # Needed to set up Django environment variables.
-    load('frontend.setup_django_environment')
+@contextlib.contextmanager
+def _global_setup():
+    """Context manager for checking and setting global _setup_done variable."""
+    global _setup_done
+    assert not _setup_done
+    try:
+        yield
+    except Exception:  # pragma: no cover
+        # We cannot recover from this since we leave the interpreter in
+        # an unknown state.
+        logger.exception('Uncaught exception escaped Autotest setup')
+        sys.exit(1)
+    else:
+        _setup_done = True
 
-    # Monkey patch package paths that Django uses to be absolute.
-    settings = load('frontend.settings')
+
+def _monkeypatch_body():
+    """The body of monkeypatch() running within _global_setup() context."""
+    # Add Autotest's site-packages.
+    site.addsitedir(_SITEPKG_DIR)
+
+    # Dummy out common imports as they may cause problems.
+    sys.meta_path.insert(0, _CommonRemovingFinder())
+
+    # Add chromite's third-party to the import path (chromite does this
+    # on import).
+    importlib.import_module('chromite')
+
+    # Set up Django environment variables.
+    importlib.import_module('autotest_lib.frontend.setup_django_environment')
+
+    # Make Django app paths absolute.
+    settings = importlib.import_module('autotest_lib.frontend.settings')
     settings.INSTALLED_APPS = (
             'autotest_lib.frontend.afe',
             'autotest_lib.frontend.tko',
@@ -66,27 +90,9 @@ def patch():
             'django.contrib.sites',
     )
 
-    # drone_utility uses this
-    common = load('scheduler.common')
+    # drone_utility uses this.
+    common = importlib.import_module('autotest_lib.scheduler.common')
     common.autotest_dir = _AUTOTEST_DIR
-
-
-def monkeypatch():
-    """Monkeypatch Autotest imports.
-
-    This should be called before any calls to load().  Only the main
-    function in scripts should call this function.
-
-    This should be called no more than once.
-
-    This adds Autotest's site-packages to the import path and modifies
-    sys.meta_path so that all common.py imports are no-ops.
-    """
-    global _setup_done
-    assert not _setup_done
-    site.addsitedir(_SITEPKG_DIR)
-    sys.meta_path.insert(0, _CommonRemovingFinder())
-    _setup_done = True
 
 
 class _CommonRemovingFinder(object):
