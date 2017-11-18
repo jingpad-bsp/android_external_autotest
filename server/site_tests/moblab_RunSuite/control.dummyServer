@@ -30,6 +30,10 @@ Values pertaining to the test case include:
                                        fetch test images from. If not
                                        specified, the value will be fetched
                                        from global_config.
+  service_init_timeout_m=<int>         Timeout (in minutes) to wait for upstart
+                                       services to start on the moblab host.
+                                       This can take ~5 minutes on a physical
+                                       devices and ~10 minutes on a VM.
 """
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import utils
