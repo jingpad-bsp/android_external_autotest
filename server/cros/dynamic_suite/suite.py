@@ -1670,9 +1670,11 @@ class ProvisionSuite(_BaseSuite):
         dummy_test = _load_dummy_test(
                 builds, devserver, cf_getter,
                 run_prod_code, test_args, test_source_build)
+        static_deps = [dep for dep in self._dependencies
+                       if not provision.Provision.acts_on(dep)]
         hosts = self._afe.get_hosts(
-                invalid=False, multiple_labels=self._dependencies)
-        logging.debug('Looking for hosts matching %r', self._dependencies)
+                invalid=False, multiple_labels=static_deps)
+        logging.debug('Looking for hosts matching %r', static_deps)
         logging.debug('Found %d matching hosts for ProvisionSuite', len(hosts))
         available_hosts = [h for h in hosts if h.is_available()]
         logging.debug('Found %d available hosts for ProvisionSuite',
