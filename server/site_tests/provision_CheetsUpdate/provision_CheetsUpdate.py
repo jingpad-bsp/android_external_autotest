@@ -118,6 +118,10 @@ class provision_CheetsUpdate(test.test):
                self.android_build_path,
                '--simg2img',
                SIMG2IMG_PATH,
+               '--mksquashfs-path',
+               os.path.join(self.bindir, 'mksquashfs'),
+               '--shift-uid-py-path',
+               os.path.join(self.bindir, 'shift_uid.py'),
                host.hostname,
                '--loglevel',
                'DEBUG']

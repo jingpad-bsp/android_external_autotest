@@ -10,12 +10,12 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.client.common_lib.cros import get_usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
+from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 
 
 LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 5
-MIMO_VID = '17e9'
-MIMO_PID = '016b'
+MIMO = cfm_usb_devices.MIMO_VUE_HD
 
 
 class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
@@ -44,17 +44,19 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         """Power Cycle Mimo device"""
         logging.info('Plan to power cycle Mimo')
         try:
-            power_cycle_usb_util.power_cycle_usb_vidpid(self._host, self._board,
-                 MIMO_VID, MIMO_PID)
+            power_cycle_usb_util.power_cycle_usb_vidpid(
+                self._host, self._board,
+                MIMO.vendor_id, MIMO.product_id)
         except KeyError:
-           raise error.TestFail('Counld\'t find target device: '
-                                'vid:pid {}:{}'.format(MIMO_VID, MIMO_PID))
+           raise error.TestFail('Could not find target device: %s',
+                                MIMO.full_name)
 
 
-    def _run_power_cycle_mimo_test(self):
+    def _test_power_cycle_mimo(self):
         """Power Cycle Mimo device for multiple times"""
         self._power_cycle_mimo_device()
-        logging.info('Powercycle done for Mimo %s:%s', MIMO_VID, MIMO_PID)
+        logging.info('Powercycle done for Mimo %s %s',
+                     MIMO.full_name, MIMO.vid_pid)
         time.sleep(LONG_TIMEOUT)
         self._kernel_usb_sanity_test()
 
@@ -118,7 +120,7 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             get_usb_devices._verify_usb_device_ok(self.usb_data, _key)
 
 
-    def _run_reboot_test(self):
+    def _test_reboot(self):
         """Reboot testing for Mimo."""
 
         boot_id = self._host.get_boot_id()
@@ -134,7 +136,7 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         self._kernel_usb_sanity_test()
 
 
-    def _run_hangout_test(self) :
+    def _test_mimo_in_call(self) :
         """
         Start a hangout session and end the session after random time.
 
@@ -187,6 +189,6 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
 
         for i in xrange(1, repetitions + 1):
             logging.info('Running test cycle %d/%d', i, repetitions)
-            self._run_reboot_test()
-            self._run_hangout_test()
-            self._run_power_cycle_mimo_test()
+            self._test_reboot()
+            self._test_mimo_in_call()
+            self._test_power_cycle_mimo()

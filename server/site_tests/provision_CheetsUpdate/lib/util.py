@@ -30,8 +30,10 @@ def get_command_str(command):
   return ' '.join(shlex.quote(arg) for arg in command)
 
 
-def check_call(*subprocess_args, dryrun=False, **kwargs):
+def check_call(*subprocess_args, sudo=False, dryrun=False, **kwargs):
   """Runs a subprocess and returns its exit code."""
+  if sudo:
+    subprocess_args = ('/usr/bin/sudo',) + subprocess_args
   if logging.getLogger().isEnabledFor(logging.DEBUG):
     if kwargs:
       logging.debug('Calling: %s (kwargs %r)', get_command_str(subprocess_args),
@@ -48,9 +50,11 @@ def check_call(*subprocess_args, dryrun=False, **kwargs):
     raise
 
 
-def check_output(*subprocess_args, dryrun=False, universal_newlines=True,
-                 **kwargs):
+def check_output(*subprocess_args, sudo=False, dryrun=False,
+                 universal_newlines=True, **kwargs):
   """Runs a subprocess and returns its output."""
+  if sudo:
+    subprocess_args = ('/usr/bin/sudo',) + subprocess_args
   if logging.getLogger().isEnabledFor(logging.DEBUG):
     if kwargs:
       logging.debug('Calling: %s (kwargs %r)', get_command_str(subprocess_args),
@@ -70,6 +74,7 @@ def check_output(*subprocess_args, dryrun=False, universal_newlines=True,
     logging.error(e.output)
     raise
 
+
 def find_repo_root(path=None):
   """Locate the top level of this repo checkout starting at |path|."""
   if path is None:
@@ -81,6 +86,7 @@ def find_repo_root(path=None):
     if path == '/':
       raise ValueError('Could not locate .repo in %s' % orig_path)
   return path
+
 
 def makedirs(path):
   """Makes directories if necessary, like 'mkdir -p'"""
@@ -102,8 +108,29 @@ def helper_temp_path(*path, artifact_cache_root=_DEFAULT_ARTIFACT_CACHE_ROOT):
 def get_product_arch(product):
   """Returns the architecture of a given target |product|."""
   # The prefix can itself have other prefixes, like 'generic_' or 'aosp_'.
-  product_prefix = 'cheets_'
+  for product_prefix in ('bertha_', 'cheets_'):
+    idx = product.find(product_prefix)
+    if idx < 0:
+      continue
+    return product[idx + len(product_prefix):]
+  raise Exception('Unrecognized product: %s' % product)
 
-  idx = product.index(product_prefix)
-  assert idx >= 0, 'Unrecognized product name: %s' % product
-  return product[idx + len(product_prefix):]
+
+def get_product_name(product):
+  """Returns the name of a given target |product|."""
+  # The prefix can itself have other prefixes, like 'generic_' or 'aosp_'.
+  for product_prefix in ('bertha_', 'cheets_'):
+    idx = product.find(product_prefix)
+    if idx < 0:
+      continue
+    return product_prefix.rstrip('_')
+  raise Exception('Unrecognized product: %s' % product)
+
+
+def get_image_type(image_path):
+  """Returns the type of a given image |image_path|."""
+  if 'Squashfs' in subprocess.check_output(
+      ['/usr/bin/file', '--brief', image_path], universal_newlines=True):
+    return 'squashfs'
+  else:
+    return 'ext4'

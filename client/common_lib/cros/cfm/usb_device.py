@@ -1,14 +1,10 @@
 """Utility class representing a CfM USB device.
 
-The set of known USB devices are listed in cfm_usb_devices.py
+This class represents actual data found by running the usb-device command.
 """
 
 class UsbDevice(object):
   """Utility class representing a CfM USB device."""
-
-  # Dictionary of all UsbDevice instance that have been created.
-  # Mapping from vid_pid to UsbDevice instance.
-  _all_devices = {}
 
   def __init__(self, vid, pid, name, interfaces):
       """
@@ -23,12 +19,6 @@ class UsbDevice(object):
       self._pid = pid
       self._name = name
       self._interfaces = interfaces
-      self.__class__._all_devices[self.vid_pid] = self
-
-  @classmethod
-  def get_usb_device(cls, vid_pid):
-      """Looks up UsbDevice by vid_pid."""
-      return cls._all_devices.get(vid_pid)
 
   @property
   def vendor_id(self):

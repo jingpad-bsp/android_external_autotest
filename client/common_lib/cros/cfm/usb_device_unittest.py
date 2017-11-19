@@ -2,6 +2,8 @@ import unittest
 
 from autotest_lib.client.common_lib.cros.cfm import usb_device
 
+# pylint: disable=missing-docstring
+
 class UsbDeviceTest(unittest.TestCase):
   """Unit tests for UsbDevice."""
 
@@ -26,8 +28,3 @@ class UsbDeviceTest(unittest.TestCase):
 
   def test_full_name(self):
       self.assertEqual(self._usb_device.full_name, 'name (vid:pid)')
-
-  def test_usb_device(self):
-      self.assertEqual(usb_device.UsbDevice.get_usb_device('vid:pid'),
-                       self._usb_device)
-      self.assertIsNone(usb_device.UsbDevice.get_usb_device(''))

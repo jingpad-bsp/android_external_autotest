@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Grab fcntl lock on file.
+"""Obtain a lease file.
 
 This is used for testing leasing.
 """
@@ -11,30 +11,27 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import fcntl
 import logging
-import os
 import sys
-import time
 
 from lucifer import loglib
+from lucifer import leasing
 
 logger = logging.getLogger(__name__)
 
 
-def main(_args):
+def main(args):
     """Main function
 
     @param args: list of command line args
     """
-    loglib.configure_logging(name='fcntl_lock')
-    fd = os.open(sys.argv[1], os.O_WRONLY)
-    logger.debug('Opened %s', sys.argv[1])
-    fcntl.lockf(fd, fcntl.LOCK_EX)
-    logger.debug('Grabbed lock')
-    print('done')
-    while True:
-        time.sleep(10)
+    loglib.configure_logging(name='obtain_lease')
+    with leasing.obtain_lease(args[0]) as path:
+        logger.debug('Obtained lease %s', path)
+        print('done')
+        raw_input()
+        logger.debug('Finishing successfully')
+    print('finish')
 
 
 if __name__ == '__main__':

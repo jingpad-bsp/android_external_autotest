@@ -24,10 +24,11 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
     GENERAL_FORMAT = [ '\n(.*)>']
     COMPARE_LINES = '\n'
     COMPARE_WORDS = None
+    SORTED = True
     TESTS = [
-        ['pinmux', GENERAL_FORMAT, COMPARE_LINES],
-        ['help', HELP_FORMAT, COMPARE_WORDS],
-        ['gpiocfg', GENERAL_FORMAT, COMPARE_LINES],
+        ['pinmux', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
+        ['help', HELP_FORMAT, COMPARE_WORDS, SORTED],
+        ['gpiocfg', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
     ]
 
 
@@ -55,7 +56,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         return cleaned_output
 
 
-    def get_output(self, cmd, regexp, split_str):
+    def get_output(self, cmd, regexp, split_str, sort):
         """Return the cr50 console output"""
         output = self.cr50.send_command_get_output(cmd, regexp)[0][1].strip()
 
@@ -65,6 +66,9 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
             f.write(output)
 
         output = self.parse_output(output, split_str)
+        if sort:
+            # Sort the output ignoring any '-'s at the start of the command.
+            output.sort(key=lambda cmd: cmd.lstrip('-'))
         if not len(output):
             raise error.TestFail('Could not get %s output' % cmd)
         return '\n'.join(output) + '\n'
@@ -88,14 +92,22 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         return self.parse_output(contents, split_str)
 
 
-    def check_command(self, cmd, regexp, split_str):
+    def check_command(self, cmd, regexp, split_str, sort):
         """Compare the actual console command output to the expected output"""
         expected_output = self.get_expected_output(cmd, split_str)
-        output = self.get_output(cmd, regexp, split_str)
+        output = self.get_output(cmd, regexp, split_str, sort)
         missing = []
         for regexp in expected_output:
             match = re.search(regexp, output)
             if match:
+                match_dict = match.groupdict()
+                for k, v in match_dict.iteritems():
+                    if k not in self.state:
+                        continue
+                    old_val = self.state[k]
+                    if (not old_val) != (not v):
+                        raise error.TestFail('%s mismatch: %r %r', k, old_val,
+                                v)
                 self.state.update(match.groupdict())
 
             # Remove the matching string from the output.
@@ -125,8 +137,8 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         """Verify the Cr50 gpiocfg, pinmux, and help output."""
         err = []
         self.get_brdprop()
-        for command, regexp, split_str in self.TESTS:
-            self.check_command(command, regexp, split_str)
+        for command, regexp, split_str, sort in self.TESTS:
+            self.check_command(command, regexp, split_str, sort)
 
         if (not self.state.get('ccd_has_been_enabled', 0) and
             self.state.get('ccd_enabled', 0)):

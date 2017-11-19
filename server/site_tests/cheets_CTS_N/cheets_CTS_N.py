@@ -34,7 +34,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     """Sets up tradefed to run CTS tests."""
     version = 1
 
-    _BOARD_RETRY = {'betty': 0}
+    # TODO(bmgordon): Remove kahlee once the bulk of failing tests are fixed.
+    _BOARD_RETRY = {'betty': 0, 'kahlee': 0}
     _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
 
     def _get_default_bundle_url(self, bundle):

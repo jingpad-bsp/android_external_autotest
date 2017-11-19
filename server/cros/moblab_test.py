@@ -13,14 +13,20 @@ from autotest_lib.server.hosts import moblab_host
 DEFAULT_IMAGE_STORAGE_SERVER = global_config.global_config.get_config_value(
         'CROS', 'image_storage_server')
 STORAGE_SERVER_REGEX = 'gs://.*/'
+DEFAULT_SERVICES_INIT_TIMEOUT_M = 5
 
 
 class MoblabTest(test.test):
     """Base class for Moblab tests.
     """
 
-    def initialize(self, host, boto_path='',
-                   image_storage_server=DEFAULT_IMAGE_STORAGE_SERVER):
+    def initialize(
+            self,
+            host,
+            boto_path='',
+            image_storage_server=DEFAULT_IMAGE_STORAGE_SERVER,
+            services_init_timeout_m=DEFAULT_SERVICES_INIT_TIMEOUT_M,
+    ):
         """Initialize the Moblab Host.
 
         * Installs a boto file.
@@ -29,11 +35,13 @@ class MoblabTest(test.test):
 
         @param boto_path: Path to the boto file we want to install.
         @param image_storage_server: image storage server to use for grabbing
-                                     images from Google Storage.
+                images from Google Storage.
+        @param services_init_timeout_m: Timeout (in minuts) for moblab DUT's
+                upstart service initialzation after boot.
         """
         super(MoblabTest, self).initialize()
         self._host = host
-        self._host.verify_moblab_services()
+        self._host.verify_moblab_services(timeout_m=services_init_timeout_m)
         self._host.wait_afe_up()
         self._host.install_boto_file(boto_path)
         self._set_image_storage_server(image_storage_server)

@@ -681,12 +681,9 @@ class ArcTest(test.test):
 
         wait_for_adb_ready()
 
-        # package_verifier_user_consent == -1 means to reject Google's
-        # verification on the server side through Play Store.  This suppress a
-        # consent dialog from the system.
-        adb_shell('settings put secure package_verifier_user_consent -1')
-        adb_shell('settings put global package_verifier_enable 0')
-        adb_shell('settings put secure install_non_market_apps 1')
+        # Setting verifier_verify_adb_installs to zero suppresses a dialog box
+        # that can appear asking for the user to consent to the install.
+        adb_shell('settings put global verifier_verify_adb_installs 0')
 
         # Install apks based on dep_packages/apks/full_pkg_names tuples
         if dep_packages:

@@ -24,11 +24,42 @@ logger = logging.getLogger(__name__)
 _THE_END = 253370764800
 
 
+def test_obtain_lease(tmpdir):
+    """Test obtain_lease.
+
+    Provides basic test coverage metrics.  The slower subprocess tests
+    provide better functional coverage.
+    """
+    path = _make_lease(tmpdir, 124)
+    with leasing.obtain_lease(path):
+        pass
+    assert not os.path.exists(path)
+
+
+@pytest.mark.slow
+def test_obtain_lease_succesfully_removes_file(tmpdir):
+    """Test obtain_lease cleans up lease file if successful."""
+    path = _make_lease(tmpdir, 124)
+    with _obtain_lease(path) as finish:
+        finish()
+    assert not os.path.exists(path)
+
+
+@pytest.mark.slow
+def test_obtain_lease_with_error_leaves_files(tmpdir):
+    """Test obtain_lease leaves file if it errors."""
+    path = _make_lease(tmpdir, 124)
+    with _obtain_lease(path):
+        pass
+    assert os.path.exists(path)
+
+
 @pytest.mark.slow
 def test_get_expired_leases(tmpdir, end_time):
     """Test get_expired_leases()."""
     _make_lease(tmpdir, 123)
-    with _make_locked_lease(tmpdir, 124):
+    path = _make_lease(tmpdir, 124)
+    with _obtain_lease(path):
         got = list(leasing.get_expired_leases(str(tmpdir)))
 
     assert all(isinstance(job, leasing.Lease) for job in got)
@@ -149,35 +180,29 @@ def end_time():
 
 
 @contextlib.contextmanager
-def _make_locked_lease(tmpdir, job_id):
-    """Make a locked lease file.
-
-    As a context manager, returns the path to the lease file when
-    entering.
-
-    This uses a slow subprocess; any test that uses this should be
-    marked slow.
-    """
-    path = _make_lease(tmpdir, job_id)
-    with _lock_lease(path):
-        yield path
-
-
-@contextlib.contextmanager
-def _lock_lease(path):
+def _obtain_lease(path):
     """Lock a lease file.
+
+    Yields a function that can be called to finish the process normally.
 
     This uses a slow subprocess; any test that uses this should be
     marked slow.
     """
     with subprocess32.Popen(
             [sys.executable, '-um',
-             'lucifer.cmd.test.fcntl_lock', path],
+             'lucifer.cmd.test.obtain_lease', path],
+            stdin=subprocess32.PIPE,
             stdout=subprocess32.PIPE) as proc:
         # Wait for lock grab.
         proc.stdout.readline()
+
+        def finish():
+            """Finish lease process normally."""
+            proc.stdin.write('\n')
+            # Wait for lease release.
+            proc.stdout.readline()
         try:
-            yield
+            yield finish
         finally:
             proc.terminate()
 

@@ -6,13 +6,16 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <linux/dma-buf.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -28,6 +31,17 @@
 		return 0;\
 	}\
 } while(0)
+
+#define HANDLE_EINTR(x)                                                  \
+	({                                                               \
+		int eintr_wrapper_counter = 0;                           \
+		int eintr_wrapper_result;                                \
+		do {                                                     \
+			eintr_wrapper_result = (x);                      \
+		} while (eintr_wrapper_result == -1 && errno == EINTR && \
+			 eintr_wrapper_counter++ < 100);                 \
+		eintr_wrapper_result;                                    \
+	})
 
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(*(A)))
 
@@ -153,17 +167,27 @@ static const uint32_t usage_list[] = {
 	GBM_BO_USE_CURSOR_64X64,
 	GBM_BO_USE_RENDERING,
 	GBM_BO_USE_LINEAR,
+	GBM_BO_USE_SW_READ_OFTEN,
+	GBM_BO_USE_SW_READ_RARELY,
+	GBM_BO_USE_SW_WRITE_OFTEN,
+	GBM_BO_USE_SW_WRITE_RARELY,
 };
 
 static const uint32_t buffer_list[] = {
-	GBM_BO_USE_SCANOUT,
-	GBM_BO_USE_RENDERING,
-	GBM_BO_USE_LINEAR,
+	GBM_BO_USE_SCANOUT | GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY,
+	GBM_BO_USE_RENDERING | GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY,
+	GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY,
+	GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY | GBM_BO_USE_TEXTURING,
+	GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY | GBM_BO_USE_TEXTURING,
+
+	GBM_BO_USE_RENDERING | GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY |
 	GBM_BO_USE_TEXTURING,
-	GBM_BO_USE_RENDERING | GBM_BO_USE_TEXTURING,
-	GBM_BO_USE_LINEAR | GBM_BO_USE_TEXTURING,
-	GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING,
-	GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING | GBM_BO_USE_TEXTURING,
+
+	GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT | GBM_BO_USE_SW_READ_RARELY |
+	GBM_BO_USE_SW_WRITE_RARELY,
+
+	GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT | GBM_BO_USE_SW_READ_RARELY |
+	GBM_BO_USE_SW_WRITE_RARELY | GBM_BO_USE_TEXTURING,
 };
 
 static int check_bo(struct gbm_bo *bo)
@@ -694,7 +718,8 @@ static int test_gem_map()
 
 	addr = map_data = NULL;
 
-	bo = gbm_bo_create(gbm, width, height, GBM_FORMAT_ARGB8888, GBM_BO_USE_LINEAR);
+	bo = gbm_bo_create(gbm, width, height, GBM_FORMAT_ARGB8888,
+			   GBM_BO_USE_SW_READ_RARELY | GBM_BO_USE_SW_WRITE_RARELY);
 	CHECK(check_bo(bo));
 
 	addr = gbm_bo_map(bo, 0, 0, width, height, GBM_BO_TRANSFER_READ_WRITE, &stride,
@@ -723,6 +748,102 @@ static int test_gem_map()
 
 	pixel = (uint32_t *)addr;
 	CHECK(pixel[(height / 2) * (stride / pixel_size) + width / 2] == 0xABBAABBA);
+
+	gbm_bo_unmap(bo, map_data);
+	gbm_bo_destroy(bo);
+
+	return 1;
+}
+
+static int test_dmabuf_map()
+{
+	uint32_t *pixel;
+	struct gbm_bo *bo;
+	void *addr, *map_data;
+	const int width = 666;
+	const int height = 777;
+	int x, y, ret, prime_fd;
+	struct dma_buf_sync sync_end = { 0 };
+	struct dma_buf_sync sync_start = { 0 };
+	uint32_t pixel_size, stride, stride_pixels, length;
+
+	bo = gbm_bo_create(gbm, width, height, GBM_FORMAT_ARGB8888, GBM_BO_USE_LINEAR);
+	CHECK(check_bo(bo));
+
+	prime_fd = gbm_bo_get_fd(bo);
+	CHECK(prime_fd > 0);
+
+	stride = gbm_bo_get_stride(bo);
+	length = gbm_bo_get_plane_size(bo, 0);
+	CHECK(stride > 0);
+	CHECK(length > 0);
+
+	addr = mmap(NULL, length, (PROT_READ | PROT_WRITE), MAP_SHARED, prime_fd, 0);
+	CHECK(addr != MAP_FAILED);
+
+	pixel = (uint32_t *)addr;
+	pixel_size = sizeof(*pixel);
+	stride_pixels = stride / pixel_size;
+
+	sync_start.flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_WRITE;
+	ret = HANDLE_EINTR(ioctl(prime_fd, DMA_BUF_IOCTL_SYNC, &sync_start));
+	CHECK(ret == 0);
+
+	for (y = 0; y < height; ++y)
+		for (x = 0; x < width; ++x)
+			pixel[y * stride_pixels + x] = ((y << 16) | x);
+
+	sync_end.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_WRITE;
+	ret = HANDLE_EINTR(ioctl(prime_fd, DMA_BUF_IOCTL_SYNC, &sync_end));
+	CHECK(ret == 0);
+
+	ret = munmap(addr, length);
+	CHECK(ret == 0);
+
+	ret = close(prime_fd);
+	CHECK(ret == 0);
+
+	prime_fd = gbm_bo_get_fd(bo);
+	CHECK(prime_fd > 0);
+
+	addr = mmap(NULL, length, (PROT_READ | PROT_WRITE), MAP_SHARED, prime_fd, 0);
+	CHECK(addr != MAP_FAILED);
+
+	pixel = (uint32_t *)addr;
+
+	memset(&sync_start, 0, sizeof(sync_start));
+	memset(&sync_end, 0, sizeof(sync_end));
+
+	sync_start.flags = DMA_BUF_SYNC_START | DMA_BUF_SYNC_READ;
+	ret = HANDLE_EINTR(ioctl(prime_fd, DMA_BUF_IOCTL_SYNC, &sync_start));
+	CHECK(ret == 0);
+
+	for (y = 0; y < height; ++y)
+		for (x = 0; x < width; ++x)
+			CHECK(pixel[y * stride_pixels + x] == ((y << 16) | x));
+
+	sync_end.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_READ;
+	ret = HANDLE_EINTR(ioctl(prime_fd, DMA_BUF_IOCTL_SYNC, &sync_end));
+	CHECK(ret == 0);
+
+	ret = munmap(addr, length);
+	CHECK(ret == 0);
+
+	ret = close(prime_fd);
+	CHECK(ret == 0);
+
+	addr = gbm_bo_map(bo, 0, 0, width, height, GBM_BO_TRANSFER_READ, &stride,
+			  &map_data, 0);
+
+	CHECK(addr != MAP_FAILED);
+	CHECK(map_data);
+	CHECK(stride > 0);
+
+	pixel = (uint32_t *)addr;
+
+	for (y = 0; y < height; ++y)
+		for (x = 0; x < width; ++x)
+			CHECK(pixel[y * stride_pixels + x] == ((y << 16) | x));
 
 	gbm_bo_unmap(bo, map_data);
 	gbm_bo_destroy(bo);
@@ -889,6 +1010,7 @@ int main(int argc, char *argv[])
 	result &= test_import_dmabuf();
 	result &= test_import_planar();
 	result &= test_gem_map();
+	result &= test_dmabuf_map();
 
 	// TODO(crbug.com/752669)
 	if (strcmp(gbm_device_get_backend_name(gbm), "tegra")) {

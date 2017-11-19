@@ -90,8 +90,8 @@ class ResultInfo(dict):
 
         A ResultInfo object can be initialized in two ways:
         1. Create from a physical file, which reads the size from the file.
-           In this case, `name` value should be given, and `original_info` shoud
-           not be set.
+           In this case, `name` value should be given, and `original_info`
+           should not be set.
         2. Create from previously collected information, i.e., a dictionary
            deserialized from persisted json file. In this case, `original_info`
            should be given, and `name` should not be set.

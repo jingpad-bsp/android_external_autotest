@@ -3,6 +3,7 @@ import unittest
 from autotest_lib.client.common_lib.cros import get_usb_devices
 from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 
+# pylint:disable=missing-docstring
 
 class GetDevicesTest(unittest.TestCase):
   """Unit test for file get_usb_devices."""
@@ -39,14 +40,15 @@ class GetDevicesTest(unittest.TestCase):
       self.assertEquals(pid, '456')
 
   def test_verify_usb_device_ok(self):
-      vid_pid = '17e9:016b'
       usbdata = [
           {
-              'Vendor': '17e9',
-              'ProdID': '016b',
-              'intdriver': ['udl']
+              'Vendor': '18d1',
+              'ProdID': '8001',
+              'intdriver': ['snd-usb-audio', 'snd-usb-audio', 'snd-usb-audio',
+                            'usbhid'],
           },
        ]
+      vid_pid = '%s:%s' % (usbdata[0]['Vendor'], usbdata[0]['ProdID'])
       get_usb_devices._verify_usb_device_ok(usbdata, vid_pid)
 
       usbdata[0]['intdriver'] = []
