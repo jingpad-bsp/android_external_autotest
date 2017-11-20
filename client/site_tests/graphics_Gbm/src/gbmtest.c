@@ -1010,7 +1010,6 @@ int main(int argc, char *argv[])
 	result &= test_import_dmabuf();
 	result &= test_import_planar();
 	result &= test_gem_map();
-	result &= test_dmabuf_map();
 
 	// TODO(crbug.com/752669)
 	if (strcmp(gbm_device_get_backend_name(gbm), "tegra")) {
@@ -1019,6 +1018,8 @@ int main(int argc, char *argv[])
 			for (j = 0; j < ARRAY_SIZE(format_info_list); ++j)
 				result &= test_gem_map_format(j, buffer_list[i]);
 		}
+
+		result &= test_dmabuf_map();
 	}
 	result &= test_destroy();
 
