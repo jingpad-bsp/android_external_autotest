@@ -71,6 +71,11 @@ class kernel_ConfigVerify(test.test):
         'KALLSYMS_ALL',
         # bpf(2) syscall can be used to generate code patterns in kernel memory.
         'BPF_SYSCALL',
+        # This callback can be subverted to point to arbitrary programs.  We
+        # require firmware to be in the rootfs at normal locations which lets
+        # the kernel locate things itself.
+        'FW_LOADER_USER_HELPER',
+        'FW_LOADER_USER_HELPER_FALLBACK',
     ]
     IS_EXCLUSIVE = [
         # Security; no surprise binary formats.
