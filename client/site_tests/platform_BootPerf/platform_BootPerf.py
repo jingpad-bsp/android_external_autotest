@@ -109,7 +109,7 @@ class platform_BootPerf(test.test):
 
     # The name of this file has changed starting with linux-3.19.
     # Use a glob to snarf up all existing records.
-    _RAMOOPS_FILE_GLOB = "/dev/pstore/console-ramoops*"
+    _RAMOOPS_FILE_GLOB = "/sys/fs/pstore/console-ramoops*"
 
 
     def _copy_timestamp_files(self):
