@@ -297,9 +297,8 @@ class platform_ImageLoader(test.test):
         # Clean up each mount point created by the test to verify the
         # functionality of the --unmount flag.
         for path in expected_unmount:
-            if subprocess.call([
-                    '/usr/sbin/imageloader', '--unmount',
-                    '--mount_point=%s' % (path,)]) != 0:
+            if utils.system('/usr/sbin/imageloader --unmount --mount_point=%s'
+                            % (path,)) != 0:
                 raise error.TestError('Failed to unmount component')
 
         # Verify that the mount points were indeed cleaned up.
