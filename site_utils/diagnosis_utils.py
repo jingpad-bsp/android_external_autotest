@@ -11,7 +11,6 @@ from datetime import datetime
 import common
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
@@ -276,15 +275,6 @@ class RPCHelper(object):
                           job_info)
 
 
-    def _is_host_available(self, host):
-        """Check whether DUT host is available.
-
-        @param host: The Host instance for the DUT.
-        @return: bool
-        """
-        return not (host.locked or host.status in host_states.UNAVAILABLE_STATES)
-
-
     def check_dut_availability(self, board, pool, minimum_duts=0, skip_duts_check=False):
         """Check if DUT availability for a given board and pool is less than
         minimum.
@@ -327,7 +317,7 @@ class RPCHelper(object):
 
         available_hosts = 0
         for host in hosts:
-            if self._is_host_available(host):
+            if host.is_available():
                 available_hosts += 1
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
                       available_hosts, len(hosts), board, pool)
