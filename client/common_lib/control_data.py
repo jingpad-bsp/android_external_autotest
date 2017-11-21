@@ -27,7 +27,8 @@ CONFIG = global_config.global_config
 
 # Default maximum test result size in kB.
 DEFAULT_MAX_RESULT_SIZE_KB = CONFIG.get_config_value(
-        'AUTOSERV', 'default_max_result_size_KB', type=int)
+        'AUTOSERV', 'default_max_result_size_KB', type=int, default=20000)
+
 
 class ControlVariableException(Exception):
     pass
