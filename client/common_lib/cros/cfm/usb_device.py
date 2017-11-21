@@ -6,18 +6,18 @@ This class represents actual data found by running the usb-device command.
 class UsbDevice(object):
   """Utility class representing a CfM USB device."""
 
-  def __init__(self, vid, pid, name, interfaces):
+  def __init__(self, vid, pid, product, interfaces):
       """
       Constructor.
 
       @param vid: Vendor ID. String.
       @param pid: Product ID. String.
-      @param name: Human readable name. String.
+      @param product: Product description. String
       @param interfaces: List of strings
       """
       self._vid = vid
       self._pid = pid
-      self._name = name
+      self._product = product
       self._interfaces = interfaces
 
   @property
@@ -36,16 +36,14 @@ class UsbDevice(object):
       return '%s:%s' % (self._vid, self._pid)
 
   @property
-  def name(self):
-      """Returns the human friendly name for this USB device."""
-      return self._name
-
-  @property
-  def full_name(self):
-      """Returns the name of this device plus the vidpid."""
-      return "%s (%s)" % (self._name, self.vid_pid)
+  def product(self):
+      """Returns the product name."""
+      return self._product
 
   @property
   def interfaces(self):
       """Returns the list of interfaces."""
       return self._interfaces
+
+  def __str__(self):
+      return "%s (%s)" % (self._product, self.vid_pid)
