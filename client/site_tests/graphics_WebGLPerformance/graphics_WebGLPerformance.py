@@ -71,6 +71,7 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
             if result.get('url') in self._waived_tests or result.get('skip'):
                 sumOfWaived += 1
             elif 'error' in result:
+                self.add_failures(result.get('url'))
                 sumOfFailed += 1
             else:
                 sumOfLogResults += math.log(result['testResult'])
@@ -113,7 +114,6 @@ class graphics_WebGLPerformance(graphics_utils.GraphicsTest):
         tab.Close()
         return sumOfPassed, sumOfWaived, sumOfFailed
 
-    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_WebGLPerformance')
     def run_once(self, test_duration_secs=2700, fullscreen=True):
         """Finds a brower with telemetry, and run the test.
 
