@@ -11,7 +11,7 @@ class UsbDeviceTest(unittest.TestCase):
       self._usb_device = usb_device.UsbDevice(
           vid='vid',
           pid='pid',
-          name='name',
+          product='product',
           interfaces=['a', 'b'])
 
   def test_vendor_id(self):
@@ -20,11 +20,8 @@ class UsbDeviceTest(unittest.TestCase):
   def test_product_id(self):
       self.assertEqual(self._usb_device.product_id, 'pid')
 
-  def test_name(self):
-      self.assertEqual(self._usb_device.name, 'name')
+  def test_product(self):
+      self.assertEqual(self._usb_device.product, 'product')
 
   def test_vid_pid(self):
       self.assertEqual(self._usb_device.vid_pid, 'vid:pid')
-
-  def test_full_name(self):
-      self.assertEqual(self._usb_device.full_name, 'name (vid:pid)')

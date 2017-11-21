@@ -17,7 +17,8 @@ from autotest_lib.server.cros.cfm import cfm_base_test
 # is interpreted by the CFM as 0.
 CFM_VOLUME_LEVEL_LOWER_LIMIT = 2
 CFM_VOLUME_LEVEL_UPPER_LIMIT = 100
-DUAL_SPEAKER_DEVICE_NAME = cfm_usb_devices.JABRA_SPEAK_410.name
+JABRA = cfm_usb_devices.JABRA_SPEAK_410
+DUAL_SPEAKER_DEVICE_NAME = JABRA.product
 TIMEOUT_SECS  = 10
 
 
@@ -194,16 +195,16 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
         return True
 
 
-    def _find_dual_speakers(self):
+    def _has_dual_speakers(self):
         """
-        Finds dual speakers connected to the DUT.
+        Checks if there are dual speakers connected to the DUT.
 
-        @returns A UsbDevice representing the dual speaker or None if not found.
+        @returns True if there are dual speakers, false otherwise.
         """
-        devices = usb_devices.UsbDevices(
+        device_manager = usb_devices.UsbDevices(
             usb_devices.UsbDataCollector(self._host))
-        return devices.get_dual_speakers()
-
+        speakers = device_manager.get_devices_by_spec(JABRA)
+        return len(speakers) == 2
 
     def _set_preferred_speaker(self, speaker_name):
         """Set preferred speaker to Dual speaker."""
@@ -291,15 +292,14 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
     def run_once(self):
         """Runs the test."""
         logging.info('Sanity check and initilization:')
-        dual_speaker = self._find_dual_speakers()
-        if not dual_speaker:
+        if not self._has_dual_speakers():
             raise error.TestFail('No dual speakers found on DUT.')
 
         # Remove 'board:' prefix.
         board_name = self._host.get_board().split(':')[1]
         gpio_list = power_cycle_usb_util.get_target_all_gpio(
-            self._host, board_name, dual_speaker.vendor_id,
-            dual_speaker.product_id)
+            self._host, board_name, JABRA.vendor_id,
+            JABRA.product_id)
         if len(set(gpio_list)) == 1:
             raise error.TestFail('Speakers have to be tied to different GPIO.')
 
