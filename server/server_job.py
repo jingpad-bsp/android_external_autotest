@@ -56,6 +56,11 @@ from autotest_lib.tko import status_lib
 from autotest_lib.tko import parser_lib
 from autotest_lib.tko import utils as tko_utils
 
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 INCREMENTAL_TKO_PARSING = global_config.global_config.get_config_value(
         'autoserv', 'incremental_tko_parsing', type=bool, default=False)
@@ -829,8 +834,14 @@ class server_job(base_job.base_job):
         temp_control_file_dir = None
         try:
             try:
-                namespace['network_stats_label'] = 'at-start'
-                self._execute_code(GET_NETWORK_STATS_CONTROL_FILE, namespace)
+                if not self.fast:
+                    with metrics.SecondsTimer(
+                            'chromeos/autotest/job/get_network_stats',
+                            fields = {'stage': 'start'}):
+                        namespace['network_stats_label'] = 'at-start'
+                        self._execute_code(GET_NETWORK_STATS_CONTROL_FILE,
+                                           namespace)
+
                 if install_before and machines:
                     self._execute_code(INSTALL_CONTROL_FILE, namespace)
 
@@ -914,8 +925,14 @@ class server_job(base_job.base_job):
                 os.remove(self._uncollected_log_file)
             if install_after and machines:
                 self._execute_code(INSTALL_CONTROL_FILE, namespace)
-            namespace['network_stats_label'] = 'at-end'
-            self._execute_code(GET_NETWORK_STATS_CONTROL_FILE, namespace)
+
+            if not self.fast:
+                with metrics.SecondsTimer(
+                        'chromeos/autotest/job/get_network_stats',
+                        fields = {'stage': 'end'}):
+                    namespace['network_stats_label'] = 'at-end'
+                    self._execute_code(GET_NETWORK_STATS_CONTROL_FILE,
+                                       namespace)
 
 
     def run_test(self, url, *args, **dargs):
