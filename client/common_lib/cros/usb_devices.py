@@ -1,10 +1,32 @@
-from autotest_lib.client.common_lib.cros import get_usb_devices
+import cStringIO
+import textfsm
+
 from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 from autotest_lib.client.common_lib.cros.cfm import usb_device
 
 
 class UsbDataCollector(object):
     """Utility class for collecting USB data from the DUT."""
+
+    USB_DEVICES_TEMPLATE = (
+        'Value Required Vendor ([0-9a-fA-F]+)\n'
+        'Value Required ProdID ([0-9A-Fa-f]+)\n'
+        'Value Required prev ([0-9a-fA-Z.]+)\n'
+        'Value Manufacturer (.+)\n'
+        'Value Product (.+)\n'
+        'Value serialnumber ([0-9a-fA-Z\:\-]+)\n'
+        'Value cinterfaces (\d)\n'
+        'Value List intindex ([0-9])\n'
+        'Value List intdriver ([A-Za-z-\(\)]+)\n\n'
+        'Start\n'
+        '  ^USB-Device -> Continue.Record\n'
+        '  ^P:\s+Vendor=${Vendor}\s+ProdID=${ProdID}\sRev=${prev}\n'
+        '  ^S:\s+Manufacturer=${Manufacturer}\n'
+        '  ^S:\s+Product=${Product}\n'
+        '  ^S:\s+SerialNumber=${serialnumber}\n'
+        '  ^C:\s+\#Ifs=\s+${cinterfaces}\n'
+        '  ^I:\s+If\#=\s+${intindex}.*Driver=${intdriver}\n'
+    )
 
     def __init__(self, host):
         """
@@ -13,11 +35,40 @@ class UsbDataCollector(object):
         """
         self._host = host
 
+    def _extract_usb_data(self, rawdata):
+      """
+      Populate usb data into a list of dictionaries.
+      @param rawdata The output of "usb-devices" on CfM.
+      @returns list of dictionary, example dictionary:
+      {'Manufacturer': 'USBest Technology',
+      'Product': 'SiS HID Touch Controller',
+      'Vendor': '266e',
+      'intindex': ['0'],
+      'tport': '00',
+      'tcnt': '01',
+      'serialnumber': '',
+      'tlev': '03',
+      'tdev': '18',
+      'dver': '',
+      'intdriver': ['usbhid'],
+      'tbus': '01',
+      'prev': '03.00',
+      'cinterfaces': '1',
+      'ProdID': '0110',
+      'tprnt': '14'}
+      """
+      usbdata = []
+      rawdata += '\n'
+      re_table = textfsm.TextFSM(cStringIO.StringIO(self.USB_DEVICES_TEMPLATE))
+      fsm_results = re_table.ParseText(rawdata)
+      usbdata = [dict(zip(re_table.header, row)) for row in fsm_results]
+      return usbdata
+
     def collect(self):
         """Collecting usb device data."""
         usb_devices = (self._host.run('usb-devices', ignore_status=True).
                        stdout.strip().split('\n\n'))
-        return get_usb_devices._extract_usb_data(
+        return self._extract_usb_data(
             '\nUSB-Device\n'+'\nUSB-Device\n'.join(usb_devices))
 
 
