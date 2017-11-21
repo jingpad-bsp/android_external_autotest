@@ -2,7 +2,7 @@
 import unittest
 
 from autotest_lib.client.common_lib.cros import usb_devices
-from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
+from autotest_lib.client.common_lib.cros.cfm import usb_device
 
 
 class MockUsbDataCollector(object):
@@ -22,56 +22,6 @@ class MockUsbDataCollector(object):
 class UsbDevicesTest(unittest.TestCase):
     """Unit test for the class UsbDevices."""
 
-
-    def test_get_dual_speakers_pass(self):
-        """Unit test for get_dual_speakers."""
-        usbdata = [
-            {
-                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
-                'ProdID': cfm_usb_devices.ATRUS.product_id
-            },
-            {
-                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
-                'ProdID': cfm_usb_devices.ATRUS.product_id
-            }
-        ]
-        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-        self.assertEquals(cfm_usb_devices.ATRUS, devices.get_dual_speakers())
-
-    def test_get_speakers_counts(self):
-        """Unit test for get_speaker_counts."""
-        usbdata = [
-            {
-                'Vendor': cfm_usb_devices.ATRUS.vendor_id,
-                'ProdID': cfm_usb_devices.ATRUS.product_id
-            }
-        ]
-        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-
-        for speaker, count in devices.get_speaker_counts():
-            if speaker == cfm_usb_devices.ATRUS:
-                self.assertEquals(1, count)
-            else:
-                self.assertEquals(0, count)
-
-
-    def test_get_camera_counts(self):
-        """Unit test for get_camera_counts."""
-        usbdata = [
-            {
-                'Vendor': cfm_usb_devices.HUDDLY_GO.vendor_id,
-                'ProdID': cfm_usb_devices.HUDDLY_GO.product_id
-            }
-        ]
-        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-
-        camera_counts = devices.get_camera_counts()
-        for camera in cfm_usb_devices.get_cameras():
-            if camera == cfm_usb_devices.HUDDLY_GO:
-                self.assertEquals(1, camera_counts.get(camera.vid_pid))
-            else:
-                self.assertEquals(0, camera_counts.get(camera.vid_pid))
-
     def test_verify_usb_device_interfaces_ok_pass(self):
         """Unit test for verify_usb_device_interfaces_ok."""
         vid_pid = '17e9:016b'
@@ -82,8 +32,13 @@ class UsbDevicesTest(unittest.TestCase):
                 'intdriver': ['udl']
             },
         ]
-        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-        devices.verify_usb_device_interfaces_ok(vid_pid)
+        device = usb_device.UsbDevice(
+            vid=usbdata[0]['Vendor'],
+            pid=usbdata[0]['ProdID'],
+            product='dummy',
+            interfaces=usbdata[0]['intdriver'])
+        mgr = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
+        mgr.verify_usb_device_interfaces_ok(device)
 
     def test_verify_usb_device_interfaces_ok_fail(self):
         """Unit test for verify_usb_device_interfaces_ok."""
@@ -95,13 +50,14 @@ class UsbDevicesTest(unittest.TestCase):
                 'intdriver': []
             },
         ]
-
-        devices = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-        try:
-            devices.verify_usb_device_interfaces_ok(vid_pid)
-            self.fail('Expected check to trigger RuntimeError')
-        except RuntimeError:
-            pass
+        device = usb_device.UsbDevice(
+            vid=usbdata[0]['Vendor'],
+            pid=usbdata[0]['ProdID'],
+            product='dummy',
+            interfaces=usbdata[0]['intdriver'])
+        mgr = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
+        with self.assertRaises(RuntimeError):
+            mgr.verify_usb_device_interfaces_ok(device)
 
 
 if __name__ == "__main__":
