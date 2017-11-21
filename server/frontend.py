@@ -24,6 +24,7 @@ import common
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import utils
 from autotest_lib.tko import db
@@ -947,6 +948,15 @@ class Host(RpcObject):
     def remove_labels(self, labels):
         self.afe.log('Removing labels %s from host %s' % (labels,self.hostname))
         return self.afe.run('host_remove_labels', id=self.id, labels=labels)
+
+
+    def is_available(self):
+        """Check whether DUT host is available.
+
+        @return: bool
+        """
+        return not (self.locked
+                    or self.status in host_states.UNAVAILABLE_STATES)
 
 
 class User(RpcObject):
