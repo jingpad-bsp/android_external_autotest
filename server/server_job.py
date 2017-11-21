@@ -441,8 +441,15 @@ class server_job(base_job.base_job):
         the database connection and inserts the basic job object into
         the database if necessary.
         """
+        if self.fast and not self._using_parser:
+            self.parser = parser_lib.parser(self._STATUS_VERSION)
+            self.job_model = self.parser.make_job(self.resultdir)
+            self.parser.start(self.job_model)
+            return
+
         if not self._using_parser:
             return
+
         # redirect parser debugging to .parse.log
         parse_log = os.path.join(self.resultdir, '.parse.log')
         parse_log = open(parse_log, 'w', 0)
@@ -470,8 +477,16 @@ class server_job(base_job.base_job):
         to carry out any remaining cleanup (e.g. flushing any
         remaining test results to the results db)
         """
+        if self.fast and not self._using_parser:
+            final_tests = self.parser.end()
+            for test in final_tests:
+                if status_lib.is_worse_than_or_equal_to(test.status, 'FAIL'):
+                    self.num_tests_failed += 1
+            return
+
         if not self._using_parser:
             return
+
         final_tests = self.parser.end()
         for test in final_tests:
             self.__insert_test(test)
@@ -862,6 +877,9 @@ class server_job(base_job.base_job):
                 collect_crashinfo = self.failed_with_device_error
             except Exception as e:
                 try:
+                    # Add num_tests_failed if any extra exceptions are raised
+                    # outside _execute_code().
+                    self.num_tests_failed += 1
                     logging.exception(
                             'Exception escaped control file, job aborting:')
                     reason = re.sub(base_job.status_log_entry.BAD_CHAR_REGEX,
@@ -1360,8 +1378,16 @@ class server_job(base_job.base_job):
 
 
     def _parse_status(self, new_line):
+        if self.fast and not self._using_parser:
+            logging.info('Parsing lines in fast mode')
+            new_tests = self.parser.process_lines([new_line])
+            for test in new_tests:
+                if status_lib.is_worse_than_or_equal_to(test.status, 'FAIL'):
+                    self.num_tests_failed += 1
+
         if not self._using_parser:
             return
+
         new_tests = self.parser.process_lines([new_line])
         for test in new_tests:
             self.__insert_test(test)
