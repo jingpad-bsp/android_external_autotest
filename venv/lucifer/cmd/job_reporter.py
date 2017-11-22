@@ -72,7 +72,7 @@ def _main(args):
     metrics = autotest.chromite_load('metrics')
     with ts_mon_config.SetupTsMonGlobalState(
             'autotest_scheduler', short_lived=True):
-        atexit.register(metrics.flush)
+        atexit.register(metrics.Flush)
         handler = _make_handler(args)
         return _run_job(args.run_job_path, handler, args)
 
