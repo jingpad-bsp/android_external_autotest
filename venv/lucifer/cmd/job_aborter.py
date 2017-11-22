@@ -64,6 +64,12 @@ def _main_loop_body(jobdir):
 
 
 def _process_expired_jobs(jobdir):
+    """Clean up expired jobs.
+
+    Expired jobs are jobs that have crashed and left an expired lease
+    behind.  These jobs are marked aborted in the database and the stale
+    files are cleaned up.
+    """
     leases = list(leasing.get_expired_leases(jobdir))
     job_ids = {job.id for job in leases}
     _mark_aborted(job_ids)
@@ -98,6 +104,7 @@ def _mark_aborted(job_ids):
             .filter(id__in=job_ids)
             .prefetch_related('hostqueueentry_set'))
     for job in jobs:
+        logger.info('Aborting job %r', job)
         job.abort()
 
 
