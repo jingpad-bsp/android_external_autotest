@@ -66,24 +66,24 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         displays = self.device_manager.get_devices_by_spec(MIMO_VUE_HD)
         if not displays:
             raise error.TestFail('Expected a MiMO display to be connected.')
-        if not len(displays) == 1:
+        if len(displays) != 1:
             raise error.TestFail('Expected exactly one MiMO display to be '
-                                 'connected. Found %d', len(displays))
+                                 'connected. Found %d' % len(displays))
 
         controllers = self.device_manager.get_devices_by_spec(MIMO_VUE_HDMI)
         if not controllers:
-            raise errorTestFail('Expected a MiMO controller to be connected.')
-        if not len(controllers) == 1:
+            raise error.TestFail('Expected a MiMO controller to be connected.')
+        if len(controllers) != 1:
             raise error.TestFail('Expected exactly one MiMO controller to be '
-                                 'connected. Found %d', len(controllers))
+                                 'connected. Found %d' % len(controllers))
 
 
     def _get_usb_devices_to_check(self):
         """
         Returns the list of USB devices to check.
         There might be other USB devices connected to the CfM but those are
-        ignored (we might now know the interace spec for those).
-        @return list of UsbDevices.
+        ignored (we might now know the interface spec for those).
+        @returns list of UsbDevices.
         """
         speakers = self.device_manager.get_devices_by_spec(JABRA)
         cameras = self.device_manager.get_devices_by_spec(HUDDLY_GO)
