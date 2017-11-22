@@ -314,8 +314,9 @@ class TelemetryRunner(object):
         """
         scp_cmd = self._scp_telemetry_results_cmd(perf_results_dir)
         logging.debug('Retrieving Results: %s', scp_cmd)
-
-        self._run_cmd(scp_cmd)
+        _, _, exit_code = self._run_cmd(scp_cmd)
+        if exit_code != 0:
+            raise error.TestFail('Unable to retrieve results.')
 
 
     def _run_test(self, script, test, *args):
