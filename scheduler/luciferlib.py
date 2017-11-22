@@ -59,6 +59,7 @@ def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     # lucifer_run_job arguments
     results_dir = _results_dir(manager, job)
     args.extend([
+            '--',
             '-resultsdir', results_dir,
             '-autotestdir', _AUTOTEST_DIR,
             '-watcherpath', _get_watcher_path(),

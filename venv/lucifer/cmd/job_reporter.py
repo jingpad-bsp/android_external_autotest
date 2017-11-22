@@ -57,8 +57,9 @@ def _parse_args_and_configure_logging(args):
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
-    args, extra_args = parser.parse_known_args(args)
-    args.run_job_args = extra_args
+    parser.add_argument('run_job_args', nargs='*',
+                        help='Arguments to pass to lucifer_run_job')
+    args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
 
