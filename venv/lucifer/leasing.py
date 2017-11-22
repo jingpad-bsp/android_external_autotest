@@ -158,7 +158,9 @@ class Lease(object):
         try:
             os.unlink(self._sock_path)
         except OSError as e:
-            logger.warning('Error removing %s: %s', self._sock_path, e)
+            # This is fine; it means that job_reporter crashed, but
+            # lucifer_run_job was able to run its cleanup.
+            logger.debug('Error removing %s: %s', self._sock_path, e)
 
     def abort(self):
         """Abort the job.

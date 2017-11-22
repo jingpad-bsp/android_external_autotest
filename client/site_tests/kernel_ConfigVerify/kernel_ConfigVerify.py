@@ -207,16 +207,15 @@ class kernel_ConfigVerify(test.test):
                 config.has_builtin('X86_64')
 
         # Security; marks data segments as RO/NX, text as RO.
-        if (arch == 'armv7l' and
-            utils.compare_versions(kernel_ver, "3.8") < 0):
-            config.is_missing('DEBUG_RODATA')
-            config.is_missing('DEBUG_SET_MODULE_RONX')
-        else:
+        if utils.compare_versions(kernel_ver, "4.11") < 0:
             config.has_builtin('DEBUG_RODATA')
             config.has_builtin('DEBUG_SET_MODULE_RONX')
+        else:
+            config.has_builtin('STRICT_KERNEL_RWX')
+            config.has_builtin('STRICT_MODULE_RWX')
 
-            if arch == 'aarch64':
-                config.has_builtin('DEBUG_ALIGN_RODATA')
+        if arch == 'aarch64':
+            config.has_builtin('DEBUG_ALIGN_RODATA')
 
         # NaCl; allow mprotect+PROT_EXEC on noexec mapped files.
         config.has_value('MMAP_NOEXEC_TAINT', ['0'])
