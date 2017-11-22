@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# pylint: disable=missing-docstring
 
 import logging, os, signal, unittest
 import common
@@ -250,7 +251,7 @@ class MockDroneManager(NullMethodObject):
 
     def get_pidfile_contents(self, pidfile_id, use_second_read=False):
         if pidfile_id not in self._pidfiles:
-            logging.debug('Request for nonexistent pidfile %s' % pidfile_id)
+            logging.debug('Request for nonexistent pidfile %s', pidfile_id)
         return self._pidfiles.get(pidfile_id, drone_manager.PidfileContents())
 
 
@@ -693,6 +694,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self._finish_parsing()
         # The abort will cause gathering to launch a cleanup.
         self.mock_drone_manager.finish_process(_PidfileType.CLEANUP)
+        self._run_dispatcher()
+        self.mock_drone_manager.finish_process(_PidfileType.RESET)
         self._run_dispatcher()
 
 
