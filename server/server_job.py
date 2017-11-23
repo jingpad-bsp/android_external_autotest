@@ -910,16 +910,18 @@ class server_job(base_job.base_job):
                                  temp_control_file_dir, e)
 
             if machines and (collect_crashdumps or collect_crashinfo):
-                if skip_crash_collection:
+                if skip_crash_collection or self.fast:
                     logging.info('Skipping crash dump/info collection '
                                  'as requested.')
                 else:
-                    namespace['test_start_time'] = test_start_time
-                    # Remove crash files for passing tests.
-                    # TODO(ayatane): Tests that create crash files should be
-                    # reported.
-                    namespace['has_failed_tests'] = self._has_failed_tests()
-                    self._collect_crashes(namespace, collect_crashinfo)
+                    with metrics.SecondsTimer(
+                            'chromeos/autotest/job/collect_crashinfo'):
+                        namespace['test_start_time'] = test_start_time
+                        # Remove crash files for passing tests.
+                        # TODO(ayatane): Tests that create crash files should be
+                        # reported.
+                        namespace['has_failed_tests'] = self._has_failed_tests()
+                        self._collect_crashes(namespace, collect_crashinfo)
             self.disable_external_logging()
             if self._uncollected_log_file and created_uncollected_logs:
                 os.remove(self._uncollected_log_file)

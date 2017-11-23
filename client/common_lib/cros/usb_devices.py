@@ -121,7 +121,7 @@ class UsbDevices(object):
         usb_device_spec = cfm_usb_devices.get_usb_device_spec(
             usb_device.vid_pid)
         if not usb_device_spec:
-            raise RuntimeError('Unknown usb device: %s.', usb_device)
+            raise RuntimeError('Unknown usb device: %s.' % str(usb_device))
         # List of expected interfaces. This might be a sublist of the actual
         # list of interfaces. Note: we have to use lists and not sets since
         # the list of interfaces might contain duplicates.

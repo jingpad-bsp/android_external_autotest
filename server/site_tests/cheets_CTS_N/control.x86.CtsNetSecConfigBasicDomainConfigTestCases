@@ -14,7 +14,7 @@ TIME = 'LENGTHY'
 MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsNetSecConfigBasicDomainConfigTestCases of the '
-       'Android 7.1_r11 Compatibility Test Suite (CTS), build 4401468,'
+       'Android 7.1_r12 Compatibility Test Suite (CTS), build 4439252,'
        'using x86 ABI in the ARC++ container.')
 
 def run_CTS(machine):
