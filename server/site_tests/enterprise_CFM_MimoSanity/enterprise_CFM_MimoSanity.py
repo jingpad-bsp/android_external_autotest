@@ -17,8 +17,8 @@ LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 5
 JABRA = cfm_usb_devices.JABRA_SPEAK_410
 HUDDLY_GO = cfm_usb_devices.HUDDLY_GO
-MIMO_VUE_HD = cfm_usb_devices.MIMO_VUE_HD
-MIMO_VUE_HDMI = cfm_usb_devices.MIMO_VUE_HDMI
+MIMO_VUE_HD_DISPLAY = cfm_usb_devices.MIMO_VUE_HD_DISPLAY
+MIMO_VUE_HID_TOUCH_CONTROLLER = cfm_usb_devices.MIMO_VUE_HID_TOUCH_CONTROLLER
 
 
 class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
@@ -37,17 +37,17 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         try:
             power_cycle_usb_util.power_cycle_usb_vidpid(
                 self._host, self._board,
-                MIMO_VUE_HD.vendor_id, MIMO_VUE_HD.product_id)
+                MIMO_VUE_HD_DISPLAY.vendor_id, MIMO_VUE_HD_DISPLAY.product_id)
         except KeyError:
            raise error.TestFail('Could not find target device: %s',
-                                MIMO_VUE_HD.product)
+                                MIMO_VUE_HD_DISPLAY.product)
 
 
     def _test_power_cycle_mimo(self):
         """Power Cycle Mimo device for multiple times"""
         self._power_cycle_mimo_device()
-        logging.info('Powercycle done for Mimo %s %s',
-                     MIMO_VUE_HD.product, MIMO_VUE_HD.vid_pid)
+        logging.info('Powercycle done for %s (%s)',
+                     MIMO_VUE_HD_DISPLAY.product, MIMO_VUE_HD_DISPLAY.vid_pid)
         time.sleep(LONG_TIMEOUT)
         self._kernel_usb_sanity_test()
 
@@ -63,14 +63,15 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         if not self.device_manager.get_devices_by_spec(HUDDLY_GO):
             raise error.TestFail('Expected to find a connected camera.')
 
-        displays = self.device_manager.get_devices_by_spec(MIMO_VUE_HD)
+        displays = self.device_manager.get_devices_by_spec(MIMO_VUE_HD_DISPLAY)
         if not displays:
             raise error.TestFail('Expected a MiMO display to be connected.')
         if len(displays) != 1:
             raise error.TestFail('Expected exactly one MiMO display to be '
                                  'connected. Found %d' % len(displays))
 
-        controllers = self.device_manager.get_devices_by_spec(MIMO_VUE_HDMI)
+        controllers = self.device_manager.get_devices_by_spec(
+            MIMO_VUE_HID_TOUCH_CONTROLLER)
         if not controllers:
             raise error.TestFail('Expected a MiMO controller to be connected.')
         if len(controllers) != 1:
@@ -87,8 +88,9 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         """
         speakers = self.device_manager.get_devices_by_spec(JABRA)
         cameras = self.device_manager.get_devices_by_spec(HUDDLY_GO)
-        displays = self.device_manager.get_devices_by_spec(MIMO_VUE_HD)
-        controllers = self.device_manager.get_devices_by_spec(MIMO_VUE_HDMI)
+        displays = self.device_manager.get_devices_by_spec(MIMO_VUE_HD_DISPLAY)
+        controllers = self.device_manager.get_devices_by_spec(
+            MIMO_VUE_HID_TOUCH_CONTROLLER)
         return speakers + cameras + displays + controllers
 
     def _kernel_usb_sanity_test(self):
