@@ -1,22 +1,8 @@
-
+import mock
 import unittest
 
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device
-
-
-class MockUsbDataCollector(object):
-    """Mock UsbDataCollector used for unit tests."""
-
-    def __init__(self, usbdata):
-        """
-        Constructor.
-        """
-        self.usbdata = usbdata
-
-    def collect(self):
-        """Collect USB data from DUT."""
-        return self.usbdata
 
 
 class UsbDeviceCollectorTest(unittest.TestCase):
@@ -37,8 +23,10 @@ class UsbDeviceCollectorTest(unittest.TestCase):
             pid=usbdata[0]['ProdID'],
             product='dummy',
             interfaces=usbdata[0]['intdriver'])
-        collector = usb_device_collector.UsbDeviceCollector(
-            MockUsbDataCollector(usbdata))
+
+        mock_host = mock.Mock()
+        mock_host.run.return_value = usbdata
+        collector = usb_device_collector.UsbDeviceCollector(mock_host)
         collector.verify_usb_device_interfaces_ok(device)
 
     def test_verify_usb_device_interfaces_ok_fail(self):
@@ -56,8 +44,11 @@ class UsbDeviceCollectorTest(unittest.TestCase):
             pid=usbdata[0]['ProdID'],
             product='dummy',
             interfaces=usbdata[0]['intdriver'])
-        collector = usb_device_collector.UsbDeviceCollector(
-            MockUsbDataCollector(usbdata))
+
+        mock_host = mock.Mock()
+        mock_host.run.return_value = usbdata
+
+        collector = usb_device_collector.UsbDeviceCollector(mock_host)
         with self.assertRaises(RuntimeError):
             collector.verify_usb_device_interfaces_ok(device)
 

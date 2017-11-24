@@ -201,8 +201,7 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
 
         @returns True if there are dual speakers, false otherwise.
         """
-        collector = usb_device_collector.UsbDeviceCollector(
-            usb_device_collector.UsbDataCollector(self._host))
+        collector = usb_device_collector.UsbDeviceCollector(self._host)
         speakers = collector.get_devices_by_spec(JABRA)
         return len(speakers) == 2
 
