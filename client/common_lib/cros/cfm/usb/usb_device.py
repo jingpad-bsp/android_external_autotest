@@ -45,5 +45,21 @@ class UsbDevice(object):
       """Returns the list of interfaces."""
       return self._interfaces
 
+  def interfaces_match_spec(self, usb_device_spec):
+      """
+      Checks that the interfaces of this device matches those of the given spec.
+
+      @param usb_device_spec an instance of UsbDeviceSpec
+      @return True or False
+      """
+      # List of expected interfaces. This might be a sublist of the actual
+      # list of interfaces. Note: we have to use lists and not sets since
+      # the list of interfaces might contain duplicates.
+      expected_interfaces = sorted(usb_device_spec.interfaces)
+      length = len(expected_interfaces)
+      actual_interfaces = sorted(self.interfaces)
+      return actual_interfaces[0:length] == expected_interfaces
+
+
   def __str__(self):
       return "%s (%s)" % (self._product, self.vid_pid)
