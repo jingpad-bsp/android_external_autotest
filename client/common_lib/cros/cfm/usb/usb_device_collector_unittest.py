@@ -29,29 +29,6 @@ class UsbDeviceCollectorTest(unittest.TestCase):
         collector = usb_device_collector.UsbDeviceCollector(mock_host)
         collector.verify_usb_device_interfaces_ok(device)
 
-    def test_verify_usb_device_interfaces_ok_fail(self):
-        """Unit test for verify_usb_device_interfaces_ok."""
-        vid_pid = '17e9:016b'
-        usbdata = [
-            {
-                'Vendor': '17e9',
-                'ProdID': '016b',
-                'intdriver': []
-            },
-        ]
-        device = usb_device.UsbDevice(
-            vid=usbdata[0]['Vendor'],
-            pid=usbdata[0]['ProdID'],
-            product='dummy',
-            interfaces=usbdata[0]['intdriver'])
-
-        mock_host = mock.Mock()
-        mock_host.run.return_value = usbdata
-
-        collector = usb_device_collector.UsbDeviceCollector(mock_host)
-        with self.assertRaises(RuntimeError):
-            collector.verify_usb_device_interfaces_ok(device)
-
 
 if __name__ == "__main__":
     unittest.main()
