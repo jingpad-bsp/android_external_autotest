@@ -9,8 +9,8 @@ import random
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
-from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
-from autotest_lib.client.common_lib.cros.cfm import usb_device_collector
+from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 
 
 LONG_TIMEOUT = 20
