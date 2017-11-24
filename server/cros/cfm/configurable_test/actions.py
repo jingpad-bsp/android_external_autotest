@@ -18,7 +18,7 @@ class Action(object):
         """
         Executes the action.
 
-        @param context ActionContext instance provinding dependencies to the
+        @param context ActionContext instance providing dependencies to the
                 action.
         """
         logging.info('Executing action "%s"', self)
@@ -32,7 +32,7 @@ class Action(object):
 
         Subclasses must override this method.
 
-        @param context ActionContext instance provinding dependencies to the
+        @param context ActionContext instance providing dependencies to the
                 action.
         """
         pass
@@ -157,4 +157,37 @@ class AssertFileDoesNotContain(Action):
                 raise AssertionError(
                         'Regex "%s" matched "%s" in "%s"'
                         % (forbidden_regex, match.group(), self.path))
+
+class AssertUsbDevices(Action):
+    """
+    Asserts that USB devices with a given spec matches a predicate.
+    """
+    def __init__(
+            self,
+            usb_device_spec,
+            predicate=lambda usb_device_list: len(usb_device_list) == 1):
+        """
+        Initializes with a spec to assert and a predicate.
+
+        @param usb_device_spec an UsbDeviceSpec for the device to check.
+        @param predicate A function that accepts a list of UsbDevices
+                and returns true if the list is as expected or false otherwise.
+                If the method returns false an AssertionError is thrown.
+                The default predicate checks that there is exactly one item
+                in the list.
+        """
+        self._usb_device_spec = usb_device_spec
+        self._predicate = predicate
+
+    def do_execute(self, context):
+        usb_devices = context.usb_device_collector.get_devices_by_spec(
+                self._usb_device_spec)
+        if not self._predicate(usb_devices):
+            raise AssertionError(
+                    'Assertion failed for usb device spec %s. '
+                    'Usb devices were: %s'
+                    % (self._usb_device_spec, usb_devices))
+
+    def __str__(self):
+        return 'AssertUsbDevices for spec %s' % self._usb_device_spec
 
