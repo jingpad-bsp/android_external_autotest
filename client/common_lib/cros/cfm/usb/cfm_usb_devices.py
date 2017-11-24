@@ -15,7 +15,7 @@ UsbDeviceSpec (mapping is done using vid:pid), but due to bugs that might
 not be the case (list of interfaces might be different for example).
 """
 
-from autotest_lib.client.common_lib.cros.cfm import usb_device_spec
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 
 # Cameras
 HUDDLY_GO = usb_device_spec.UsbDeviceSpec(
