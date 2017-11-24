@@ -1,7 +1,7 @@
 
 import unittest
 
-from autotest_lib.client.common_lib.cros import usb_devices
+from autotest_lib.client.common_lib.cros.cfm import usb_device_collector
 from autotest_lib.client.common_lib.cros.cfm import usb_device
 
 
@@ -19,8 +19,8 @@ class MockUsbDataCollector(object):
         return self.usbdata
 
 
-class UsbDevicesTest(unittest.TestCase):
-    """Unit test for the class UsbDevices."""
+class UsbDeviceCollectorTest(unittest.TestCase):
+    """Unit test for the class UsbDeviceCollector."""
 
     def test_verify_usb_device_interfaces_ok_pass(self):
         """Unit test for verify_usb_device_interfaces_ok."""
@@ -37,8 +37,9 @@ class UsbDevicesTest(unittest.TestCase):
             pid=usbdata[0]['ProdID'],
             product='dummy',
             interfaces=usbdata[0]['intdriver'])
-        mgr = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
-        mgr.verify_usb_device_interfaces_ok(device)
+        collector = usb_device_collector.UsbDeviceCollector(
+            MockUsbDataCollector(usbdata))
+        collector.verify_usb_device_interfaces_ok(device)
 
     def test_verify_usb_device_interfaces_ok_fail(self):
         """Unit test for verify_usb_device_interfaces_ok."""
@@ -55,9 +56,10 @@ class UsbDevicesTest(unittest.TestCase):
             pid=usbdata[0]['ProdID'],
             product='dummy',
             interfaces=usbdata[0]['intdriver'])
-        mgr = usb_devices.UsbDevices(MockUsbDataCollector(usbdata))
+        collector = usb_device_collector.UsbDeviceCollector(
+            MockUsbDataCollector(usbdata))
         with self.assertRaises(RuntimeError):
-            mgr.verify_usb_device_interfaces_ok(device)
+            collector.verify_usb_device_interfaces_ok(device)
 
 
 if __name__ == "__main__":

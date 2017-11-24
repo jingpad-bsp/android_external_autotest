@@ -1,6 +1,6 @@
 import cStringIO
-import textfsm
 
+from autotest_lib.client.common_lib.cros import textfsm
 from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
 from autotest_lib.client.common_lib.cros.cfm import usb_device
 
@@ -72,7 +72,7 @@ class UsbDataCollector(object):
             '\nUSB-Device\n'+'\nUSB-Device\n'.join(usb_devices))
 
 
-class UsbDevices(object):
+class UsbDeviceCollector(object):
     """Utility class for obtaining info about connected USB devices."""
 
     def __init__(self, usb_data_collector):
