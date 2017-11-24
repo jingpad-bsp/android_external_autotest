@@ -81,32 +81,22 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
             raise error.TestFail('Expected exactly one MiMO controller to be '
                                  'connected. Found %d' % len(controllers))
 
-
-    def _get_usb_devices_to_check(self):
-        """
-        Returns the list of USB devices to check.
-        There might be other USB devices connected to the CfM but those are
-        ignored (we might now know the interface spec for those).
-        @returns list of UsbDevices.
-        """
-        speakers = self.device_collector.get_devices_by_spec(JABRA)
-        cameras = self.device_collector.get_devices_by_spec(HUDDLY_GO)
-        displays = self.device_collector.get_devices_by_spec(
-            MIMO_VUE_HD_DISPLAY)
-        controllers = self.device_collector.get_devices_by_spec(
-            MIMO_VUE_HID_TOUCH_CONTROLLER)
-        return speakers + cameras + displays + controllers
+    def _check_device_interfaces_match_spec(self, spec):
+        for device in self.device_collector.get_devices_by_spec(spec):
+            if not device.interfaces_matches_spec(spec):
+                raise error.TestFail(
+                    'Device %s has unexpected interfaces.'
+                    'Expected: %s. Actual: %s' % (device, spec.interfaces,
+                                                  spec.interfaces))
 
     def _kernel_usb_sanity_test(self):
         """
         Check connected camera, speaker and Mimo have expected usb interfaces.
         """
-        device_list = self._get_usb_devices_to_check()
-        if not device_list:
-            raise error.TestFail('Did not find any USB devices.')
-        for device in device_list:
-            self.device_collector.verify_usb_device_interfaces_ok(device)
-
+        self._check_device_interfaces_match_spec(JABRA)
+        self._check_device_interfaces_match_spec(HUDDLY_GO)
+        self._check_device_interfaces_match_spec(MIMO_VUE_HD_DISPLAY)
+        self._check_device_interfaces_match_spec(MIMO_VUE_HID_TOUCH_CONTROLLER)
 
     def _test_reboot(self):
         """Reboot testing for Mimo."""
