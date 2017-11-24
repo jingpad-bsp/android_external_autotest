@@ -1,6 +1,6 @@
 import unittest
 
-from autotest_lib.client.common_lib.cros.cfm import usb_device_spec
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 
 # pylint: disable=missing-docstring
 
