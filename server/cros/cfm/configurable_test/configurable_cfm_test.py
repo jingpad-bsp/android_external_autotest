@@ -64,7 +64,8 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
         # self.cfm_facade is inherited from CfmBaseTest.
         context = action_context.ActionContext(
                 cfm_facade=self.cfm_facade,
-                file_contents_collector=HostFileContentsCollector(host))
+                file_contents_collector=HostFileContentsCollector(host),
+                host=host)
         self.test_runner = TestRunner(context)
 
     def run_once(self):

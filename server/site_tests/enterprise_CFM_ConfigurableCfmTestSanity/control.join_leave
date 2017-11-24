@@ -20,6 +20,7 @@ Verifies that we can specify and run a configurable cfm test.
 
 cfm_test = CfmTest(
     scenario=Scenario(
+        RebootDut(restart_chrome_for_cfm=True),
         CreateMeeting(),
         RepeatTimes(5, Scenario(
             MuteMicrophone(),
