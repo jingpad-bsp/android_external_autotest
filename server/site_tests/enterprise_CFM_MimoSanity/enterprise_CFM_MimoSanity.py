@@ -161,7 +161,7 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         self._is_meeting = is_meeting
 
         self.device_collector = usb_device_collector.UsbDeviceCollector(
-            usb_device_collector.UsbDataCollector(self._host))
+            self._host)
         self._check_peripherals()
         self._kernel_usb_sanity_test()
 
