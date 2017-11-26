@@ -1,6 +1,7 @@
 import unittest
 
-from autotest_lib.client.common_lib.cros.cfm import usb_device
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 
 # pylint: disable=missing-docstring
 
@@ -25,3 +26,11 @@ class UsbDeviceTest(unittest.TestCase):
 
   def test_vid_pid(self):
       self.assertEqual(self._usb_device.vid_pid, 'vid:pid')
+
+  def test_interfaces_matches_spec(self):
+      device_spec = usb_device_spec.UsbDeviceSpec(
+          vid='vid',
+          pid='pid',
+          product='product',
+          interfaces=['a', 'b'])
+      self.assertTrue(self._usb_device.interfaces_match_spec(device_spec))

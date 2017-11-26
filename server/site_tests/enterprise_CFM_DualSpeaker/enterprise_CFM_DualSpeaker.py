@@ -8,9 +8,9 @@ import re
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import usb_devices
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
-from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
+from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
 
 # CFMs have a base volume level threshold. Setting the level below 2
@@ -201,9 +201,8 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
 
         @returns True if there are dual speakers, false otherwise.
         """
-        device_manager = usb_devices.UsbDevices(
-            usb_devices.UsbDataCollector(self._host))
-        speakers = device_manager.get_devices_by_spec(JABRA)
+        collector = usb_device_collector.UsbDeviceCollector(self._host)
+        speakers = collector.get_devices_by_spec(JABRA)
         return len(speakers) == 2
 
     def _set_preferred_speaker(self, speaker_name):

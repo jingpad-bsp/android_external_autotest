@@ -1,12 +1,12 @@
 import cStringIO
-import textfsm
 
-from autotest_lib.client.common_lib.cros.cfm import cfm_usb_devices
-from autotest_lib.client.common_lib.cros.cfm import usb_device
+from autotest_lib.client.common_lib.cros import textfsm
+from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device
 
 
-class UsbDataCollector(object):
-    """Utility class for collecting USB data from the DUT."""
+class UsbDeviceCollector(object):
+    """Utility class for obtaining info about connected USB devices."""
 
     USB_DEVICES_TEMPLATE = (
         'Value Required Vendor ([0-9a-fA-F]+)\n'
@@ -31,7 +31,7 @@ class UsbDataCollector(object):
     def __init__(self, host):
         """
         Constructor
-        @param host the device under test (CrOS).
+        @param host the DUT.
         """
         self._host = host
 
@@ -64,24 +64,13 @@ class UsbDataCollector(object):
       usbdata = [dict(zip(re_table.header, row)) for row in fsm_results]
       return usbdata
 
-    def collect(self):
+    def _collect_usb_device_data(self):
         """Collecting usb device data."""
         usb_devices = (self._host.run('usb-devices', ignore_status=True).
                        stdout.strip().split('\n\n'))
         return self._extract_usb_data(
             '\nUSB-Device\n'+'\nUSB-Device\n'.join(usb_devices))
 
-
-class UsbDevices(object):
-    """Utility class for obtaining info about connected USB devices."""
-
-    def __init__(self, usb_data_collector):
-        """
-        Constructor
-        @param usb_data_collector used for collecting USB data
-        from the device.
-        """
-        self._usb_data_collector = usb_data_collector
 
     def _create_usb_device(self, usbdata):
         return usb_device.UsbDevice(
@@ -95,7 +84,7 @@ class UsbDevices(object):
         Returns the list of UsbDevices connected to the DUT.
         @returns A list of UsbDevice instances.
         """
-        usbdata = self._usb_data_collector.collect()
+        usbdata = self._collect_usb_device_data()
         return [self._create_usb_device(d) for d in usbdata]
 
     def get_devices_by_spec(self, spec):
