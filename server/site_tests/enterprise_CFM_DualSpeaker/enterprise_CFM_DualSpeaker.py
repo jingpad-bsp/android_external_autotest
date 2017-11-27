@@ -9,9 +9,11 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import power_cycle_usb_util
+from autotest_lib.client.common_lib.cros.cfm import cras_node_collector
 from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
+
 
 # CFMs have a base volume level threshold. Setting the level below 2
 # is interpreted by the CFM as 0.
@@ -35,20 +37,15 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
     version = 1
 
 
-    def _get_cras_jabra_speaker_node_ids(self):
+    def _get_cras_jabra_speaker_nodes(self):
         """
-        Gets jabra speaker node IDs from the cras_test_client.
+        Gets jabra speaker nodes.
 
-        @returns A list of speaker node IDs or [] if no speaker is found.
+        @returns A list cras input nodes representing Jabra speakers.
         """
-        cmd = ("cras_test_client --dump_server_info"
-               " | awk '/Output Devices:/,/Output Nodes:/'"
-               " | grep \"%s\""
-               " | awk -v N=1 '{print $N}'" % DUAL_SPEAKER_DEVICE_NAME)
-        speaker_nodes = [s.strip().split(':')[0] for s in
-                         self._host.run_output(cmd).splitlines()]
-        return speaker_nodes
-
+        nodes = self.cras_collector.get_output_nodes()
+        return [n for n in nodes if
+                DUAL_SPEAKER_DEVICE_NAME in n.device_name]
 
     def _get_amixer_jabra_mic_node_ids(self):
         """
@@ -63,21 +60,14 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
                        self._host.run_output(cmd).splitlines()]
         return mixer_cards
 
-
     def _get_cras_default_speakers(self):
         """
         Gets the default speakers from cras_test_client.
 
-        @returns A list of speaker node IDs or [] if no speaker is found.
+        @returns A list of speaker nodes.
         """
-        cmd = ("cras_test_client --dump_server_info"
-               " | awk '/Output Nodes:/,/Input Devices:/'"
-               " | grep -E 'USB' | grep '*(default' "
-               " | awk -v N=2 '{print $N}'")
-        speakers = [s.strip().split(':')[0] for s in
-                    self._host.run_output(cmd).splitlines()]
-        return speakers
-
+        nodes = self.cras_collector.get_output_nodes()
+        return [n for n in nodes if '*(default)' in n.node_name]
 
     def _get_cras_default_mixers(self):
         """
@@ -85,14 +75,8 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
 
         @returns A list of speaker node IDs or [] if no device is found.
         """
-        cmd = ("cras_test_client --dump_server_info"
-               " | awk '/Input Nodes:/,/Attached Clients:/'"
-               " | grep '*' "
-               " | awk -v N=2 '{print $N}'")
-        nodes = [s.strip().split(':')[0] for s in
-                 self._host.run_output(cmd).splitlines()]
-        return nodes
-
+        nodes = self.cras_collector.get_input_nodes()
+        return [n for n in nodes if n.node_name.startswith('*')]
 
     def _get_cras_jabra_mixer_nodes(self):
         """
@@ -100,14 +84,8 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
 
         @returns A list of mixer node IDs or [] if no device is found.
         """
-        cmd = ("cras_test_client --dump_server_info"
-               " | awk '/Input Nodes:/,/Attached Clients:/'"
-               " | grep \"%s\""
-               " | awk -v N=2 '{print $N}'" % DUAL_SPEAKER_DEVICE_NAME)
-        nodes = [s.strip().split(':')[0] for s in
-                 self._host.run_output(cmd).splitlines()]
-        return nodes
-
+        nodes = self.cras_collector.get_input_nodes()
+        return [n for n in nodes if DUAL_SPEAKER_DEVICE_NAME in n.node_name]
 
     def _get_cras_speaker_volume(self, node_id):
         """
@@ -116,15 +94,9 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
         @param node_id: the node ID to query.
         @returns the volume of speaker.
         """
-        cmd = ("cras_test_client --dump_server_info"
-               " | awk '/Output Nodes:/,/Input Devices:/'"
-               " | grep -E 'USB'"
-               " | grep '*'"
-               " | grep %s:0 |  awk -v N=3 '{print $N}'" % node_id)
-        volume = [s.strip() for s in
-                  self._host.run_output(cmd).splitlines()][0]
-        return volume
-
+        for node in self.cras_collector.get_output_nodes():
+            if node.node_id == node_id:
+                return node.volume
 
     def _get_mixer_mute_state(self, node_id):
         """
@@ -161,14 +133,14 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
             logging.info('Volume returned from App is Null')
             return False
         nodes = self._get_cras_default_speakers()
-        for node_id in nodes:
-            cras_volume =  self._get_cras_speaker_volume(node_id)
+        for node in nodes:
+            cras_volume =  self._get_cras_speaker_volume(node.node_id)
             logging.info('Volume in CfM and cras are sync for '
                     'node %s? cfm: %s, cras: %s',
-                     node_id, cfm_volume, cras_volume)
-            if not int(cfm_volume) == int(cras_volume):
+                     str(node), cfm_volume, cras_volume)
+            if int(cfm_volume) != int(cras_volume):
                 logging.error('Test _test_volume_sync_for_dual_speakers fails'
-                              ' for node %s', node_id)
+                              ' for node %s', node.device_name)
                 return False
         return True
 
@@ -236,13 +208,20 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
         self._set_preferred_speaker(DUAL_SPEAKER_DEVICE_NAME)
         self._set_preferred_mixer(DUAL_SPEAKER_DEVICE_NAME)
         time.sleep(TIMEOUT_SECS)
-        default_speakers = self._get_cras_default_speakers()
-        cras_speakers = self._get_cras_jabra_speaker_node_ids()
-        if default_speakers != cras_speakers:
-            raise error.TestFail('Dual speakers not set to preferred speaker')
-        if (not self._get_cras_default_mixers() ==
-                self._get_cras_jabra_mixer_nodes()):
-            raise error.TestFail('Dual mixs is not set to preferred speaker')
+        default_speaker_ids = set([
+            n.node_id for n in self._get_cras_default_speakers()])
+        cras_speaker_ids = set([
+            n.node_id for n in self._get_cras_jabra_speaker_nodes()])
+        if default_speaker_ids != cras_speaker_ids:
+            raise error.TestFail('Dual speakers not set to preferred speaker '
+                                 'dual=%s; cras=%s' % (default_speaker_ids,
+                                                       cras_speaker_ids))
+        default_mixer_ids = set([
+            n.node_id for n in self._get_cras_default_mixers()])
+        jabra_mixer_ids = set([
+            n.node_id for n in self._get_cras_jabra_mixer_nodes()])
+        if default_mixer_ids != jabra_mixer_ids:
+            raise error.TestFail('Dual mixs is not set to preferred speaker.')
 
 
     def _test_dual_speaker_sanity(self):
@@ -293,6 +272,8 @@ class enterprise_CFM_DualSpeaker(cfm_base_test.CfmBaseTest):
         logging.info('Sanity check and initilization:')
         if not self._has_dual_speakers():
             raise error.TestFail('No dual speakers found on DUT.')
+
+        self.cras_collector = cras_node_collector.CrasNodeCollector(self._host)
 
         # Remove 'board:' prefix.
         board_name = self._host.get_board().split(':')[1]
