@@ -21,6 +21,7 @@ configurable CFM test.
 
 cfm_test = CfmTest(
     scenario=Scenario(
+        AssertUsbDevices(ATRUS, lambda devices: True),
         AssertFileDoesNotContain('/var/log/messages', ['FOOERRORBAR']),
         AssertFileDoesNotContain('/var/log/eventlog.txt', ['FOOERRORBAR']),
     ),
