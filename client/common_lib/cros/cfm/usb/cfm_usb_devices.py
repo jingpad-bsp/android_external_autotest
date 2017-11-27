@@ -46,7 +46,7 @@ PTZ_PRO_CAMERA = usb_device_spec.UsbDeviceSpec(
     interfaces=['uvcvideo', 'uvcvideo','usbhid'],
 )
 
-# Speakers
+# Audio peripherals
 ATRUS = usb_device_spec.UsbDeviceSpec(
     vid='18d1',
     pid='8001',
