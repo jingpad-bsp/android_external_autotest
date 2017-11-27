@@ -90,7 +90,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
 
         logging.info('reading %s', path)
         if not os.path.isfile(path):
-            raise error.TestFail('Could not find output file for %s', cmd)
+            raise error.TestFail('Could not find %s file %s' % (cmd, path))
 
         with open(path, 'r') as f:
             contents = f.read()
