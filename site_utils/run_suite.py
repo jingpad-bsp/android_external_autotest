@@ -52,6 +52,7 @@ import os
 import re
 import sys
 import time
+import warnings
 
 import common
 from chromite.lib import buildbot_annotations as annotations
@@ -292,7 +293,7 @@ def make_parser():
                         help="Create the suite and print the job id, then "
                         "finish immediately.")
     parser.add_argument("-u", "--num", dest="num", type=int, default=None,
-                        help="Run on at most NUM machines.")
+                        help="Deprecated, does nothing.")
     #  Same boolean flag issue applies here.
     parser.add_argument(
         "-f", "--file_bugs", dest="file_bugs", default=False, type=bool_str,
@@ -415,9 +416,9 @@ def verify_and_clean_options(options):
         if not options.name:
             print 'Need to specify suite name'
             return False
-    if options.num is not None and options.num < 1:
-        print 'Number of machines must be more than 0, if specified.'
-        return False
+    if options.num is not None:
+        warnings.warn('-u/--num option is deprecated; it does nothing.')
+    del options.num
     if not options.retry and options.max_retries is not None:
         print 'max_retries can only be used with --retry=True'
         return False
@@ -1681,7 +1682,6 @@ def create_suite(afe, options):
         test_source_build=options.test_source_build,
         check_hosts=not options.no_wait,
         pool=options.pool,
-        num=options.num,
         file_bugs=options.file_bugs,
         priority=options.priority,
         suite_args=options.suite_args,
