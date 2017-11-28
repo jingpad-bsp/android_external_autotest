@@ -8,6 +8,7 @@ import collections
 # Message types.
 ACK = 'ack'
 ECHO = 'echo'
+GET = 'get'
 SHUTDOWN = 'shutdown'
 STATUS = 'status'
 
@@ -50,3 +51,14 @@ def status():
     current state of the container pool.
     """
     return Message(STATUS, {})
+
+
+def get(id, timeout=0):
+    """Creates a get container message.
+
+    GET messages retrieve a running container from the container pool.
+
+    @param id: A ContainerId to be assigned to the container.
+    @param timeout: An optional timeout to wait for the container.
+    """
+    return Message(GET, {'id': id, 'timeout': timeout})
