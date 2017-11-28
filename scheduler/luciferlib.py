@@ -32,7 +32,7 @@ def is_lucifer_enabled():
 
 def is_lucifer_owned(job):
     """Return True if job is already sent to lucifer."""
-    return job.jobhandoff_set.exists()
+    return hasattr(job, 'jobhandoff')
 
 
 def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):

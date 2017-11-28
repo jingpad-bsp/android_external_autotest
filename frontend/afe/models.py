@@ -1522,7 +1522,10 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 class JobHandoff(dbmodels.Model, model_logic.ModelExtensions):
     """Jobs that have been handed off to lucifer."""
 
-    job = dbmodels.ForeignKey(Job, on_delete=dbmodels.CASCADE, null=False)
+    job = dbmodels.OneToOneField(Job, on_delete=dbmodels.CASCADE,
+                                 primary_key=True)
+    created = dbmodels.DateTimeField(auto_now_add=True)
+    completed = dbmodels.BooleanField(default=False)
 
     class Meta:
         """Metadata for class Job."""
