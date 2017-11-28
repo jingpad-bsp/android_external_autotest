@@ -85,6 +85,22 @@ class FirmwareUpdater(object):
             "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
         return fwid
 
+    def _retrieve_ecid(self):
+        """Retrieve shellball's ecid.
+
+        This method should be called after setup_firmwareupdate_temp_dir.
+
+        Returns:
+            Shellball's ecid.
+        """
+        self.os_if.run_shell_command('dump_fmap -x %s %s' %
+            (os.path.join(self._work_path, self._ec_path), 'RW_FWID'))
+
+        [ecid] = self.os_if.run_shell_command_get_output(
+                "cat RW_FWID | tr '\\0' '\\t' | cut -f1")
+
+        return ecid
+
     def resign_firmware(self, version):
         """Resign firmware with version.
 
@@ -130,6 +146,40 @@ class FirmwareUpdater(object):
                 if match:
                   self._ec_path = match.group(1).replace('"', '')
 
+    def _update_target_fwid(self):
+        """Update target fwid/ecid in the setvars.sh."""
+        model_result = self.os_if.run_shell_command_get_output(
+            'mosys platform model')
+        if model_result:
+            model = model_result[0]
+            setvars_path = os.path.join(
+                self._work_path, 'models', model, 'setvars.sh')
+            fwid = self.retrieve_fwid()
+            ecid = self._retrieve_ecid()
+            args = ['-i']
+            args.append(
+                '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
+                % fwid)
+            args.append(setvars_path)
+            cmd = 'sed %s' % ' '.join(args)
+            self.os_if.run_shell_command(cmd)
+
+            args = ['-i']
+            args.append(
+                '"s/TARGET_RO_FWID=\\".*\\"/TARGET_RO_FWID=\\"%s\\"/g"'
+                % fwid)
+            args.append(setvars_path)
+            cmd = 'sed %s' % ' '.join(args)
+            self.os_if.run_shell_command(cmd)
+
+            args = ['-i']
+            args.append(
+                '"s/TARGET_ECID=\\".*\\"/TARGET_ECID=\\"%s\\"/g"'
+                % ecid)
+            args.append(setvars_path)
+            cmd = 'sed %s' % ' '.join(args)
+            self.os_if.run_shell_command(cmd)
+
     def extract_shellball(self, append=None):
         """Extract the working shellball.
 
@@ -158,6 +208,8 @@ class FirmwareUpdater(object):
                 chromeos-firmwareupdate-[append]. Use 'chromeos-firmwareupdate'
                 if append is None.
         """
+        self._update_target_fwid();
+
         working_shellball = os.path.join(self._temp_path,
                                          'chromeos-firmwareupdate')
         if append:
