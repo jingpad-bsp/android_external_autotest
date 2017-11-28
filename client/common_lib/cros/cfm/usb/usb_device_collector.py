@@ -1,7 +1,6 @@
 import cStringIO
 
 from autotest_lib.client.common_lib.cros import textfsm
-from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device
 
 
@@ -95,30 +94,3 @@ class UsbDeviceCollector(object):
         """
         return [d for d in self.get_usb_devices()
                 if d.vid_pid == spec.vid_pid]
-
-    def verify_usb_device_interfaces_ok(self, usb_device):
-        """
-        Verify usb device interfaces.
-
-        If the interface check fails, a RuntimeError is raised.
-
-        @param usb_device Instance of UsbDevice.
-        @return None
-        """
-        device_found = False
-        # Retrieve the device spec for this vid:pid
-        usb_device_spec = cfm_usb_devices.get_usb_device_spec(
-            usb_device.vid_pid)
-        if not usb_device_spec:
-            raise RuntimeError('Unknown usb device: %s.' % str(usb_device))
-        # List of expected interfaces. This might be a sublist of the actual
-        # list of interfaces. Note: we have to use lists and not sets since
-        # the list of interfaces might contain duplicates.
-        expected_interfaces = sorted(usb_device_spec.interfaces)
-        length = len(expected_interfaces)
-        actual_interfaces = sorted(usb_device.interfaces)
-        if not actual_interfaces[0:length] == expected_interfaces:
-            raise RuntimeError(
-                'Device %s has unexpected interfaces.'
-                'Expected: %s. Actual: %s' % (
-                    usb_device, expected_interfaces, actual_interfaces))
