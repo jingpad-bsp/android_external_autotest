@@ -22,7 +22,11 @@ configurable CFM test.
 cfm_test = CfmTest(
     scenario=Scenario(
         AssertUsbDevices(ATRUS, lambda devices: True),
-        AssertFileDoesNotContain('/var/log/messages', ['FOOERRORBAR']),
+        RetryAssertAction(
+            AssertFileDoesNotContain('/var/log/messages', ['FOOERRORBAR']),
+            5,
+            0.1),
+        Sleep(0.1),
         AssertFileDoesNotContain('/var/log/eventlog.txt', ['FOOERRORBAR']),
         # Create some silly scenarios to be selected at random. The purpose
         # of this is only to test the SelectScenarioAtRandom action.
