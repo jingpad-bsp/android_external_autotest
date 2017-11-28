@@ -3,7 +3,9 @@ This module contains the actions that a configurable CFM test can execute.
 """
 import abc
 import logging
+import random
 import re
+import sys
 
 class Action(object):
     """
@@ -11,7 +13,7 @@ class Action(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __str__(self):
+    def __repr__(self):
         return self.__class__.__name__
 
     def execute(self, context):
@@ -64,7 +66,7 @@ class JoinMeeting(Action):
         super(JoinMeeting, self).__init__()
         self.meeting_code = meeting_code
 
-    def __str__(self):
+    def __repr__(self):
         return 'JoinMeeting "%s"' % self.meeting_code
 
     def do_execute(self, context):
@@ -122,7 +124,7 @@ class RepeatTimes(Action):
         self.scenario = scenario
 
     def __str__(self):
-        return 'Repeat %s %s times' % (self.scenario, self.times)
+        return 'Repeat[scenario=%s, times=%s]' % (self.scenario, self.times)
 
     def do_execute(self, context):
         for _ in xrange(self.times):
@@ -144,9 +146,9 @@ class AssertFileDoesNotContain(Action):
         self.path = path
         self.forbidden_regex_list = forbidden_regex_list
 
-    def __str__(self):
-        return 'Assert %s does not contain %s' % (self.path,
-                                                  self.forbidden_regex_list)
+    def __repr__(self):
+        return ('AssertFileDoesNotContain[path=%s, forbidden_regex_list=%s'
+                % (self.path, self.forbidden_regex_list))
 
     def do_execute(self, context):
         contents = context.file_contents_collector.collect_file_contents(
@@ -176,6 +178,7 @@ class AssertUsbDevices(Action):
                 The default predicate checks that there is exactly one item
                 in the list.
         """
+        super(AssertUsbDevices, self).__init__()
         self._usb_device_spec = usb_device_spec
         self._predicate = predicate
 
@@ -190,4 +193,41 @@ class AssertUsbDevices(Action):
 
     def __str__(self):
         return 'AssertUsbDevices for spec %s' % self._usb_device_spec
+
+class SelectScenarioAtRandom(Action):
+    """
+    Executes a randomly selected scenario a number of times.
+
+    Note that there is no validation performed - you have to take care
+    so that it makes sense to execute the supplied scenarios in any order
+    any number of times.
+    """
+    def __init__(
+            self,
+            scenarios,
+            run_times,
+            random_seed=random.randint(0, sys.maxsize)):
+        """
+        Initializes.
+
+        @param scenarios An iterable with scenarios to choose from.
+        @param run_times The number of scenarios to run. I.e. the number of
+            times a random scenario is selected.
+        @param random_seed The seed to use for the random generator. Providing
+            the same seed as an earlier run will execute the scenarios in the
+            same order. Optional, by default a random seed is used.
+        """
+        super(SelectScenarioAtRandom, self).__init__()
+        self._scenarios = scenarios
+        self._run_times = run_times
+        self._random_seed = random_seed
+        self._random = random.Random(random_seed)
+
+    def do_execute(self, context):
+        for _ in xrange(self._run_times):
+            self._random.choice(self._scenarios).execute(context)
+
+    def __repr__(self):
+        return ('SelectScenarioAtRandom [seed=%s, run_times=%s, scenarios=%s]'
+                % (self._random_seed, self._run_times, self._scenarios))
 
