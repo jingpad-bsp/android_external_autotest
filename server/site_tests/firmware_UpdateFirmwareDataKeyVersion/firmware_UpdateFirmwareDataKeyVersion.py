@@ -79,9 +79,12 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
 
 
     def cleanup(self):
-        self.faft_client.updater.cleanup()
-        self.restore_firmware()
-        self.invalidate_firmware_setup()
+        try:
+            self.faft_client.updater.cleanup()
+            self.restore_firmware()
+            self.invalidate_firmware_setup()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_UpdateFirmwareDataKeyVersion, self).cleanup()
 
 
