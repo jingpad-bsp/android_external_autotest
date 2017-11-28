@@ -707,6 +707,14 @@ class RPCFunctions(object):
     def _updater_cleanup(self):
         self._updater.cleanup_temp_dir()
 
+    def _updater_stop_daemon(self):
+        """Stop update-engine daemon."""
+        return self._updater.stop_daemon()
+
+    def _updater_start_daemon(self):
+        """Start update-engine daemon."""
+        return self._updater.start_daemon()
+
     def _updater_get_fwid(self):
         """Retrieve shellball's fwid.
 
