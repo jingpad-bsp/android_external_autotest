@@ -8,7 +8,7 @@ import mock
 
 import common
 from autotest_lib.site_utils import diagnosis_utils
-from autotest_lib.frontend.afe import models
+from autotest_lib.server import frontend
 
 
 class DiagnosisUtilsTest(unittest.TestCase):
@@ -105,7 +105,7 @@ class _StubHost(object):
         self.status = status
         self.locked = locked
 
-    is_available = models.Host.is_available.im_func
+    is_available = frontend.Host.is_available.im_func
 
 
 if __name__ == '__main__':
