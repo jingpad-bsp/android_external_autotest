@@ -131,6 +131,9 @@ class FirmwareTest(FAFTBase):
                                        % (host.POWER_CONTROL_VALID_ARGS,
                                        self.power_control))
 
+        if not self.faft_client.system.dev_tpm_present():
+            raise error.TestError('/dev/tpm0 does not exist on the client')
+
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self)
