@@ -264,6 +264,13 @@ class RPCFunctions(object):
             raise Exception('Failed getting platform name: ' + '\n'.join(lines))
         return lines[-1]
 
+    def _system_dev_tpm_present(self):
+        """Check if /dev/tpm0 is present.
+
+        @return: Boolean true or false.
+        """
+        return os.path.exists('/dev/tpm0')
+
     def _system_get_crossystem_value(self, key):
         """Get crossystem value of the requested key.
 
