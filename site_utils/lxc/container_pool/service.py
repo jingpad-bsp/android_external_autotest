@@ -136,7 +136,7 @@ class Service(object):
         connection = self._connection_listener.get_connection()
         if connection is not None:
             # Spawn a thread to deal with the new connection.
-            thread = _ClientThread(self, connection)
+            thread = _ClientThread(self, self._pool, connection)
             thread.start()
             self._client_threads.append(thread)
             logging.debug('Client thread count: %d', len(self._client_threads))
@@ -161,8 +161,9 @@ class _ClientThread(threading.Thread):
       communication threads or the main pool service.
     """
 
-    def __init__(self, service, connection):
+    def __init__(self, service, pool, connection):
         self._service = service
+        self._pool = pool
         self._connection = connection
         self._running = False
         super(_ClientThread, self).__init__(name='client_thread')
@@ -239,6 +240,7 @@ class _ClientThread(threading.Thread):
         # Use a dispatch table to simulate switch/case.
         handlers = {
             message.ECHO: self._echo,
+            message.GET: self._get,
             message.SHUTDOWN: self._shutdown,
             message.STATUS: self._status,
         }
@@ -282,3 +284,26 @@ class _ClientThread(threading.Thread):
         """
         logging.debug('Received status request.')
         return self._service.get_status()
+
+
+    def _get(self, id, timeout):
+        """Gets a container from the pool.
+
+        @param id: A ContainerId to assign to the new container.
+        @param timeout: A timeout (in seconds) to wait for the pool.  If a
+                        container is not available from the pool within the
+                        given period, None will be returned.
+
+        @return: A container from the pool.
+        """
+        logging.debug('Received get request (id=%s)', id)
+        container = self._pool.get(timeout)
+        # Assign an ID to the container as soon as it is removed from the pool.
+        # This associates the container with the process to which it will be
+        # handed off.
+        if container is not None:
+            container.id = id
+            logging.debug('Got container (name=%s, id=%s)', container.name, id)
+        else:
+            logging.debug('No container (id=%s)', id)
+        return container

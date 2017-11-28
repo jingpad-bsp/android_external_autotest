@@ -76,6 +76,26 @@ class Client(object):
         self._connection = None
 
 
+    def get_container(self, id, timeout):
+        """Retrieves a container from the pool service.
+
+        @param id: A ContainerId to assign to the container.  Containers require
+                   an ID when they are dissociated from the pool, so that they
+                   can be tracked.
+        @param timeout: A timeout (in seconds) to wait for the operation to
+                        complete.  A timeout of 0 will return immediately if no
+                        containers are available.
+
+        @return: A container from the pool, when one becomes available, or None
+                 if no containers were available within the specified timeout.
+        """
+        self._connection.send(message.get(id, timeout))
+        # Note: this blocks indefinitely.  The reason this works is that the
+        # service-side provides a guarantee that it always returns something
+        # (i.e. a Container, or None) within the specified timeout period.
+        return self._connection.recv()
+
+
     def get_status(self):
         """Gets the status of the connected Pool."""
         self._connection.send(message.status())
