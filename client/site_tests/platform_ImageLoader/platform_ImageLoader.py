@@ -198,19 +198,15 @@ class platform_ImageLoader(test.test):
 
         known_mount_path = '/run/imageloader/TestFlashComponent_testing'
         # Now test loading the component on the command line.
-        if subprocess.call([
-                '/usr/sbin/imageloader', '--mount',
-                '--mount_component=TestFlashComponent', '--mount_point=%s' %
-            (known_mount_path)
-        ]) != 0:
+        if utils.system('/usr/sbin/imageloader --mount ' +
+                        '--mount_component=TestFlashComponent ' +
+                        '--mount_point=%s' % (known_mount_path)) != 0:
             raise error.TestError('Failed to mount component')
 
         # If the component is already mounted, it should return the path again.
-        if subprocess.call([
-                '/usr/sbin/imageloader', '--mount',
-                '--mount_component=TestFlashComponent', '--mount_point=%s' %
-            (known_mount_path)
-        ]) != 0:
+        if utils.system('/usr/sbin/imageloader --mount ' +
+                        '--mount_component=TestFlashComponent ' +
+                        '--mount_point=%s' % (known_mount_path)) != 0:
             raise error.TestError('Failed to remount component')
 
         self._paths_to_unmount.append(known_mount_path)
