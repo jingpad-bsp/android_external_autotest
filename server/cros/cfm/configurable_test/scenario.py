@@ -15,6 +15,6 @@ class Scenario(object):
         for action in self.actions:
             action.execute(context)
 
-    def __str__(self):
-        return 'Scenario [%s]' % (', '.join([str(x) for x in self.actions]))
+    def __repr__(self):
+        return 'Scenario [actions=%s]' % str(self.actions)
 
