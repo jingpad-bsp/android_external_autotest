@@ -165,7 +165,7 @@ class FirmwareTest(FAFTBase):
                 logging.info('mainfw_act is B. rebooting to set it A')
                 self.switcher.mode_aware_reboot()
         self._setup_gbb_flags()
-        self._stop_service('update-engine')
+        self.faft_client.updater.stop_daemon()
         self._create_faft_lockfile()
         self._setup_ec_write_protect(ec_wp)
         # See chromium:239034 regarding needing this sync.
@@ -185,7 +185,7 @@ class FirmwareTest(FAFTBase):
         self.switcher.restore_mode()
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
-        self._start_service('update-engine')
+        self.faft_client.updater.start_daemon()
         self._remove_faft_lockfile()
         self._record_servo_log()
         self._record_faft_client_log()
@@ -456,24 +456,6 @@ class FirmwareTest(FAFTBase):
         """Removes the FAFT lockfile."""
         logging.info('Removing FAFT lockfile...')
         command = 'rm -f %s' % (self.lockfile)
-        self.faft_client.system.run_shell_command(command)
-
-    def _stop_service(self, service):
-        """Stops a upstart service on the client.
-
-        @param service: The name of the upstart service.
-        """
-        logging.info('Stopping %s...', service)
-        command = 'status %s | grep stop || stop %s' % (service, service)
-        self.faft_client.system.run_shell_command(command)
-
-    def _start_service(self, service):
-        """Starts a upstart service on the client.
-
-        @param service: The name of the upstart service.
-        """
-        logging.info('Starting %s...', service)
-        command = 'status %s | grep start || start %s' % (service, service)
         self.faft_client.system.run_shell_command(command)
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
