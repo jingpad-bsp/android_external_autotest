@@ -510,6 +510,8 @@ def usable_memtotal():
     # Reserved 5% for OS use
     return int(read_from_meminfo('MemFree') * 0.95)
 
+def swaptotal():
+    return read_from_meminfo('SwapTotal')
 
 def rounded_memtotal():
     # Get total of all physical mem, in kbytes
