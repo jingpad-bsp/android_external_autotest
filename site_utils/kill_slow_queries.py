@@ -127,6 +127,9 @@ def kill_slow_queries(user, password, timeout):
 
 def main():
     """Main entry."""
+    # Clear all loggers to make sure the following basicConfig take effect.
+    logging.shutdown()
+    reload(logging)
     logging.basicConfig(format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG)
 
