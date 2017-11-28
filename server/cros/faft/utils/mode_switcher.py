@@ -609,7 +609,7 @@ class _BaseModeSwitcher(object):
             # Check the FAFT client is avaiable.
             self.faft_client.system.is_available()
             # Stop update-engine as it may change firmware/kernel.
-            self.faft_framework._stop_service('update-engine')
+            self.faft_framework.faft_client.updater.stop_daemon()
         else:
             logging.error('wait_for_client() timed out.')
             raise ConnectionError('DUT is still down unexpectedly')

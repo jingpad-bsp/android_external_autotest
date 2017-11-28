@@ -22,6 +22,7 @@ class FirmwareUpdater(object):
     put shellball under /var/tmp/faft/autest with name chromeos-firmwareupdate.
     """
 
+    DAEMON = 'update-engine'
     CBFSTOOL = 'cbfstool'
     HEXDUMP = 'hexdump -v -e \'1/1 "0x%02x\\n"\''
     SIGNER = '/usr/share/vboot/bin/make_dev_firmware.sh'
@@ -69,6 +70,18 @@ class FirmwareUpdater(object):
         """Cleanup temporary directory."""
         if self.os_if.is_dir(self._temp_path):
             self.os_if.remove_dir(self._temp_path)
+
+    def stop_daemon(self):
+        """Stop update-engine daemon."""
+        self.os_if.log('Stopping %s...' % self.DAEMON)
+        cmd = 'status %s | grep stop || stop %s' % (self.DAEMON, self.DAEMON)
+        self.os_if.run_shell_command(cmd)
+
+    def start_daemon(self):
+        """Start update-engine daemon."""
+        self.os_if.log('Starting %s...' % self.DAEMON)
+        cmd = 'status %s | grep start || start %s' % (self.DAEMON, self.DAEMON)
+        self.os_if.run_shell_command(cmd)
 
     def retrieve_fwid(self):
         """Retrieve shellball's fwid.
