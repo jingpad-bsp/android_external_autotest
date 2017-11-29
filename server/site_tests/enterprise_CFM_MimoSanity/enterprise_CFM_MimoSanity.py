@@ -83,7 +83,7 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
 
     def _check_device_interfaces_match_spec(self, spec):
         for device in self.device_collector.get_devices_by_spec(spec):
-            if not device.interfaces_matches_spec(spec):
+            if not device.interfaces_match_spec(spec):
                 raise error.TestFail(
                     'Device %s has unexpected interfaces.'
                     'Expected: %s. Actual: %s' % (device, spec.interfaces,
