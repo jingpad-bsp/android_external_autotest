@@ -67,7 +67,7 @@ class TestActions(unittest.TestCase):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
         device = usb_device.UsbDevice(
-                'v', 'p', 'prod', ['if'])
+                'v', 'p', 'prod', ['if'], 1, 2)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[device])
         action = actions.AssertUsbDevices(
@@ -78,7 +78,7 @@ class TestActions(unittest.TestCase):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
         device = usb_device.UsbDevice(
-                'v', 'p', 'prod', ['if'])
+                'v', 'p', 'prod', ['if'], 1, 2)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[device])
         action = actions.AssertUsbDevices(
