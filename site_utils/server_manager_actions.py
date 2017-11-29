@@ -107,7 +107,7 @@ def apply(action):
 
 
 def try_execute(server, roles, enable, post_change,
-                prev_status=server_models.Server.STATUS.BACKUP,
+                prev_status=server_models.Server.STATUS.REPAIR_REQUIRED,
                 do_action=False):
     """Try to execute actions for given role changes of the server.
 
@@ -121,7 +121,7 @@ def try_execute(server, roles, enable, post_change,
                         is to help to decide if actions should be executed,
                         since actions should be applied if the server's status
                         is changed from primary to other status. Default to
-                        backup.
+                        repair_required.
     @param do_action: Set to True to execute actions, otherwise, post a warning.
     """
     if not server_manager_utils.use_server_db():
@@ -134,6 +134,7 @@ def try_execute(server, roles, enable, post_change,
         prev_status != server_models.Server.STATUS.PRIMARY):
         return
 
+    possible_actions = {}
     if enable:
         if post_change:
             possible_actions = ACTIONS_AFTER_ROLE_APPLIED
