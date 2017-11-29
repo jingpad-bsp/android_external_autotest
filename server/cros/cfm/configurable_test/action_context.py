@@ -6,7 +6,8 @@ class ActionContext(object):
                  cfm_facade=None,
                  file_contents_collector=None,
                  host=None,
-                 usb_device_collector=None):
+                 usb_device_collector=None,
+                 usb_port_manager=None):
         """
         Initializes.
 
@@ -20,6 +21,7 @@ class ActionContext(object):
                 from the specified file on the DUT.
         @param host an Host instance.
         @param usb_device_collecor a UsbDeviceCollector instance.
+        @param usb_port_manager a UsbPortManager instance.
         """
         self.cfm_facade = cfm_facade
         self.file_contents_collector = file_contents_collector
@@ -27,4 +29,5 @@ class ActionContext(object):
         # interface with what we need.
         self.host = host
         self.usb_device_collector = usb_device_collector
+        self.usb_port_manager = usb_port_manager
 
