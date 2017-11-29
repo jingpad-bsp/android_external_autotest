@@ -1,6 +1,7 @@
 import logging
 
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_port_manager
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.configurable_test import action_context
 
@@ -63,12 +64,14 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
             .initialize(host, cfm_test.configuration.run_test_only))
         self.cfm_test = cfm_test
         device_collector = usb_device_collector.UsbDeviceCollector(host)
+        port_manager = usb_port_manager.UsbPortManager(host)
         # self.cfm_facade is inherited from CfmBaseTest.
         context = action_context.ActionContext(
                 cfm_facade=self.cfm_facade,
                 file_contents_collector=HostFileContentsCollector(host),
                 host=host,
-                usb_device_collector=device_collector)
+                usb_device_collector=device_collector,
+                usb_port_manager=port_manager)
         self.test_runner = TestRunner(context)
 
     def run_once(self):
