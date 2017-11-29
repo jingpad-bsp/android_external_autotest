@@ -6,6 +6,7 @@ import logging
 import random
 import re
 import sys
+import time
 
 class Action(object):
     """
@@ -230,4 +231,159 @@ class SelectScenarioAtRandom(Action):
     def __repr__(self):
         return ('SelectScenarioAtRandom [seed=%s, run_times=%s, scenarios=%s]'
                 % (self._random_seed, self._run_times, self._scenarios))
+
+
+class PowerCycleUsbPort(Action):
+    """
+    Power cycle USB ports that a specific peripheral type is attached to.
+    """
+    def __init__(
+            self,
+            usb_device_spec,
+            wait_for_change_timeout=10,
+            filter_function=lambda x: x):
+        """
+        Initializes.
+
+        @param usb_device_spec UsbDeviceSpec for the device to power cycle
+            the port for.
+        @param wait_for_change_timeout The timeout in seconds for waiting
+            for devices to disappeard/appear after turning power off/on.
+            If the devices do not disappear/appear within the timeout an
+            error is raised.
+        @param filter_function Function accepting a list of UsbDevices and
+            returning a list of UsbDevices that should be power cycled. The
+            default is to return the original list, i.e. power cycle all
+            devices matching the usb_device_spec.
+
+        @raises TimeoutError if the devices do not turn off/on within
+            wait_for_change_timeout seconds.
+        """
+        self._usb_device_spec = usb_device_spec
+        self._filter_function = filter_function
+        self._wait_for_change_timeout = wait_for_change_timeout
+
+    def do_execute(self, context):
+        def _get_devices():
+            return context.usb_device_collector.get_devices_by_spec(
+                    self._usb_device_spec)
+        devices = _get_devices()
+        devices_to_cycle = self._filter_function(devices)
+        port_ids = [(d.bus, d.port) for d in devices_to_cycle]
+        context.usb_port_manager.set_port_power(port_ids, False)
+        # TODO(kerl): We should do a better check than counting devices.
+        # Possibly implementing __eq__() in UsbDevice and doing a proper
+        # intersection to see which devices are running or not.
+        expected_devices_after_power_off = len(devices) - len(devices_to_cycle)
+        _wait_for_condition(
+                lambda: len(_get_devices()) == expected_devices_after_power_off,
+                self._wait_for_change_timeout)
+        context.usb_port_manager.set_port_power(port_ids, True)
+        _wait_for_condition(
+                lambda: len(_get_devices()) == len(devices),
+                self._wait_for_change_timeout)
+
+    def __repr__(self):
+        return ('PowerCycleUsbPort[usb_device_spec=%s, '
+                'wait_for_change_timeout=%s]'
+                % (self._usb_device_spec, self._wait_for_change_timeout))
+
+
+class Sleep(Action):
+    """
+    Action that sleeps for a number of seconds.
+    """
+    def __init__(self, num_seconds):
+        """
+        Initializes.
+
+        @param num_seconds The number of seconds to sleep.
+        """
+        self._num_seconds = num_seconds
+
+    def do_execute(self, context):
+        time.sleep(self._num_seconds)
+
+    def __repr__(self):
+        return 'Sleep[num_seconds=%s]' % self._num_seconds
+
+
+class RetryAssertAction(Action):
+    """
+    Action that retries an assertion action a number of times if it fails.
+
+    An example use case for this action is to verify that a peripheral device
+    appears after power cycling. E.g.:
+        PowerCycleUsbPort(ATRUS),
+        RetryAssertAction(AssertUsbDevices(ATRUS), 10)
+    """
+    def __init__(self, action, num_tries, retry_delay_seconds=1):
+        """
+        Initializes.
+
+        @param action The action to execute.
+        @param num_tries The number of times to try the action before failing
+            for real. Must be more than 0.
+        @param retry_delay_seconds The number of seconds to sleep between
+            retries.
+
+        @raises ValueError if num_tries is below 1.
+        """
+        super(RetryAssertAction, self).__init__()
+        if num_tries < 1:
+            raise ValueError('num_tries must be > 0. Was %s' % num_tries)
+        self._action = action
+        self._num_tries = num_tries
+        self._retry_delay_seconds = retry_delay_seconds
+
+    def do_execute(self, context):
+        for attempt in xrange(self._num_tries):
+            try:
+                self._action.execute(context)
+                return
+            except AssertionError as e:
+                if attempt == self._num_tries - 1:
+                    raise e
+                else:
+                    logging.info(
+                            'Action %s failed, will retry %d more times',
+                             self._action,
+                             self._num_tries - attempt - 1,
+                             exc_info=True)
+                    time.sleep(self._retry_delay_seconds)
+
+    def __repr__(self):
+        return ('RetryAssertAction[action=%s, '
+                'num_tries=%s, retry_delay_seconds=%s]'
+                % (self._action, self._num_tries, self._retry_delay_seconds))
+
+
+
+class TimeoutError(RuntimeError):
+    """
+    Error raised when an operation times out.
+    """
+    pass
+
+
+def _wait_for_condition(condition, timeout_seconds=10):
+    """
+    Wait for a condition to become true.
+
+    Checks the condition every second.
+
+    @param condition The condition to check - a function returning a boolean.
+    @param timeout_seconds The timeout in seconds.
+
+    @raises TimeoutError in case the condition does not become true within
+        the timeout.
+    """
+    if condition():
+        return
+    for _ in xrange(timeout_seconds):
+        time.sleep(1)
+        if condition():
+            return
+    raise TimeoutError('Timeout after %s seconds waiting for condition %s'
+                       % (timeout_seconds, condition))
 
