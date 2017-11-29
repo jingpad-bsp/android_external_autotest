@@ -25,9 +25,9 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import test as test_utils
-from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros.graphics import gbm
 from autotest_lib.client.cros.input_playback import input_playback
+from autotest_lib.client.cros.power import power_utils
 from functools import wraps
 
 

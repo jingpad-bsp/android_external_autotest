@@ -6,8 +6,8 @@ import logging
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_status
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
+from autotest_lib.client.cros.power import power_status
 
 
 class policy_ChromeOsLockOnIdleSuspend(

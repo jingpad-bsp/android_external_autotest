@@ -4,7 +4,7 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_suspend
+from autotest_lib.client.cros.power import power_suspend
 
 
 # In cases like crosbug.com/p/26289, we want results, but also want

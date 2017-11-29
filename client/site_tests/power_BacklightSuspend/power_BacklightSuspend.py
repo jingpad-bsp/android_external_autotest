@@ -4,7 +4,7 @@
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils, sys_power
+from autotest_lib.client.cros.power import power_utils, sys_power
 
 
 class power_BacklightSuspend(test.test):

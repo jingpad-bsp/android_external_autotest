@@ -7,8 +7,8 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils, power_rapl, power_status
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.power import power_utils, power_rapl, power_status
 
 
 PLAYBACK_TEST_TIME_S = 10

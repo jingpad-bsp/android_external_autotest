@@ -11,8 +11,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import power_status
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
+from autotest_lib.client.cros.power import power_status
 
 
 class enterprise_PowerManagement(test.test):
