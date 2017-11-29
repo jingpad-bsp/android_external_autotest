@@ -5,6 +5,7 @@ from autotest_lib.client.common_lib.cros.cfm.usb import usb_device
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 from autotest_lib.server.cros.cfm.configurable_test import actions
 from autotest_lib.server.cros.cfm.configurable_test import action_context
+from autotest_lib.server.cros.cfm.configurable_test import scenario
 
 # Test, disable missing-docstring
 # pylint: disable=missing-docstring
@@ -88,13 +89,44 @@ class TestActions(unittest.TestCase):
     def test_assert_usb_device_collector_default_predicate(self):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
-        context = action_context.ActionContext(
-                usb_device_collector=self.usb_device_collector_mock)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[None])  # Default just checks list is of size 1
         action = actions.AssertUsbDevices(spec)
-        action.execute(context)
+        action.execute(self.context_with_mocks)
 
+    def test_select_scenario_at_random(self):
+        dummy_action1 = DummyAction()
+        dummy_action2 = DummyAction()
+        scenarios = [scenario.Scenario(dummy_action1),
+                     scenario.Scenario(dummy_action2)]
+        action = actions.SelectScenarioAtRandom(scenarios, 10)
+        action.execute(self.context_with_mocks)
+        # Assert that our actions were executed the expected number of times.
+        total_executes = (dummy_action1.executed_times
+                          + dummy_action2.executed_times)
+        self.assertEqual(10, total_executes)
+
+    def test_select_scenario_at_random_str_contains_seed(self):
+        action = actions.SelectScenarioAtRandom([], 10, 123)
+        self.assertTrue('seed=123' in str(action))
+
+    def test_select_scenario_at_random_same_seed_same_actions(self):
+        scenario1_action1 = DummyAction()
+        scenario1_action2 = DummyAction()
+        scenarios1 = [scenario.Scenario(scenario1_action1),
+                     scenario.Scenario(scenario1_action2)]
+        scenario2_action1 = DummyAction()
+        scenario2_action2 = DummyAction()
+        scenarios2 = [scenario.Scenario(scenario2_action1),
+                     scenario.Scenario(scenario2_action2)]
+        action1 = actions.SelectScenarioAtRandom(scenarios1, 100, 0)
+        action2 = actions.SelectScenarioAtRandom(scenarios2, 100, 0)
+        action1.execute(self.context_with_mocks)
+        action2.execute(self.context_with_mocks)
+        self.assertEqual(scenario1_action1.executed_times,
+                         scenario2_action1.executed_times)
+        self.assertEqual(scenario1_action2.executed_times,
+                         scenario2_action2.executed_times)
 
 class FakeCollector(object):
     def __init__(self, contents):
@@ -102,4 +134,11 @@ class FakeCollector(object):
 
     def collect_file_contents(self, path):
         return self.contents
+
+class DummyAction(actions.Action):
+    def __init__(self):
+        self.executed_times = 0
+
+    def do_execute(self, context):
+        self.executed_times += 1
 

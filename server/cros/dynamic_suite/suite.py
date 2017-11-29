@@ -24,6 +24,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
+from autotest_lib.frontend.afe import model_attributes
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -341,6 +342,9 @@ class _SuiteChildJobCreator(object):
         if utils.is_moblab():
             test_priority = max(self._priority, test.priority)
 
+        reboot_before = (model_attributes.RebootBefore.NEVER if test.fast
+                         else None)
+
         test_obj = self._afe.create_job(
             control_file=test.text,
             name=tools.create_job_name(
@@ -355,6 +359,8 @@ class _SuiteChildJobCreator(object):
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
             test_retry=test.retries,
+            reboot_before=reboot_before,
+            run_reset=not test.fast,
             priority=test_priority,
             synch_count=test.sync_count,
             require_ssp=test.require_ssp)

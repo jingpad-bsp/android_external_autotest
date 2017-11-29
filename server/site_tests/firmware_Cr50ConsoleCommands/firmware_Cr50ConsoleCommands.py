@@ -19,6 +19,12 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
     """
     version = 1
 
+    # The board properties that are actively being used. This also excludes all
+    # ccd board properties, because they might change based on whether ccd is
+    # enabled.
+    #
+    # This information is in ec/board/cr50/scratch_reg1.h
+    RELEVANT_PROPERTIES = 0x63
     BRDPROP_FORMAT = ['properties = (0x\d+)\s']
     HELP_FORMAT = [ 'Known commands:(.*)HELP LIST.*>']
     GENERAL_FORMAT = [ '\n(.*)>']
@@ -84,7 +90,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
 
         logging.info('reading %s', path)
         if not os.path.isfile(path):
-            raise error.TestFail('Could not find output file for %s', cmd)
+            raise error.TestFail('Could not find %s file %s' % (cmd, path))
 
         with open(path, 'r') as f:
             contents = f.read()
@@ -125,12 +131,12 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
     def get_brdprop(self):
         """Save the board properties
 
-        Cutoff the board property write protect bits. Those won't change the
-        gpio or pinmux settings.
+        The saved board property flags will not include oboslete flags or the wp
+        setting. These won't change the gpio or pinmux settings.
         """
         rv = self.cr50.send_command_get_output('brdprop', self.BRDPROP_FORMAT)
         brdprop = int(rv[0][1], 16)
-        self.brdprop = hex(brdprop & 0xff)
+        self.brdprop = hex(brdprop & self.RELEVANT_PROPERTIES)
 
 
     def run_once(self, host):
