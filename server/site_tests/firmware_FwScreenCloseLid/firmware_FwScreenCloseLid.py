@@ -56,11 +56,14 @@ class firmware_FwScreenCloseLid(FirmwareTest):
             self.corrupt_usb_kernel(usb_dev)
 
     def cleanup(self):
-        if self.faft_config.has_lid:
-            self.servo.switch_usbkey('host')
-            usb_dev = self.servo.probe_host_usb_dev()
-            # Restore kernel of USB stick which is corrupted on setup phase.
-            self.restore_usb_kernel(usb_dev)
+        try:
+            if self.faft_config.has_lid:
+                self.servo.switch_usbkey('host')
+                usb_dev = self.servo.probe_host_usb_dev()
+                # Restore kernel of USB stick which is corrupted on setup phase.
+                self.restore_usb_kernel(usb_dev)
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_FwScreenCloseLid, self).cleanup()
 
     def run_once(self):
