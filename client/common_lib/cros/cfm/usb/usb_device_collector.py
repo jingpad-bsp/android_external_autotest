@@ -11,6 +11,8 @@ class UsbDeviceCollector(object):
         'Value Required Vendor ([0-9a-fA-F]+)\n'
         'Value Required ProdID ([0-9A-Fa-f]+)\n'
         'Value Required prev ([0-9a-fA-Z.]+)\n'
+        'Value Required Bus ([0-9.]+)\n'
+        'Value Required Port ([0-9.]+)\n'
         'Value Manufacturer (.+)\n'
         'Value Product (.+)\n'
         'Value serialnumber ([0-9a-fA-Z\:\-]+)\n'
@@ -19,6 +21,7 @@ class UsbDeviceCollector(object):
         'Value List intdriver ([A-Za-z-\(\)]+)\n\n'
         'Start\n'
         '  ^USB-Device -> Continue.Record\n'
+        '  ^T:\s+Bus=${Bus}\s+.*Port=${Port}.*\n'
         '  ^P:\s+Vendor=${Vendor}\s+ProdID=${ProdID}\sRev=${prev}\n'
         '  ^S:\s+Manufacturer=${Manufacturer}\n'
         '  ^S:\s+Product=${Product}\n'
@@ -76,7 +79,12 @@ class UsbDeviceCollector(object):
             vid=usbdata['Vendor'],
             pid=usbdata['ProdID'],
             product=usbdata.get('Product', 'Not available'),
-            interfaces=usbdata['intdriver'])
+            interfaces=usbdata['intdriver'],
+            bus=int(usbdata['Bus']),
+            # We increment here by 1 because usb-devices reports 0-indexed port
+            # numbers where as lsusb reports 1-indexed. We opted to follow the
+            # the lsusb standard.
+            port=int(usbdata['Port']) + 1)
 
     def get_usb_devices(self):
         """
