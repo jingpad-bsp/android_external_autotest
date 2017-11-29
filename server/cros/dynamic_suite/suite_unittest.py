@@ -325,6 +325,8 @@ class SuiteTest(mox.MoxTestBase):
                 timeout_mins=1440,
                 parent_job_id=None,
                 test_retry=0,
+                reboot_before=mox.IgnoreArg(),
+                run_reset=mox.IgnoreArg(),
                 priority=priorities.Priority.DEFAULT,
                 synch_count=test.sync_count,
                 require_ssp=test.require_ssp
