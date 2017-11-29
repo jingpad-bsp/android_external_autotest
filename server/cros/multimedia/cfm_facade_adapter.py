@@ -350,3 +350,13 @@ class CFMFacadeRemoteAdapter(object):
     def unmute_camera(self):
         """Turned camera on."""
         self._cfm_proxy.unmute_camera()
+
+
+    def move_camera(self, camera_motion):
+        """
+        Move camera(PTZ commands).
+
+        @param camera_motion: Set of allowed commands
+            defined in cfmApi.move_camera.
+        """
+        self._cfm_proxy.move_camera(camera_motion)
