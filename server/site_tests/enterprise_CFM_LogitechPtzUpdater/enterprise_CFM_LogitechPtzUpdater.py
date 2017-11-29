@@ -15,7 +15,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
 POWER_CYCLE_WAIT_TIME = 1  # seconds
-UPDATER_WAIT_TIME = 30  # seconds
+UPDATER_WAIT_TIME = 100  # seconds
 
 
 class enterprise_CFM_LogitechPtzUpdater(test.test):
@@ -226,7 +226,7 @@ class enterprise_CFM_LogitechPtzUpdater(test.test):
         self.triger_updater()
 
         # Wait for fw updater to finish.
-        time.sleep(UPDATER_WAIT_TIME + 15)
+        time.sleep(UPDATER_WAIT_TIME)
 
         # Try flash the new firmware, should detect same fw version.
         expect_output = 'Firmware is up to date.'
