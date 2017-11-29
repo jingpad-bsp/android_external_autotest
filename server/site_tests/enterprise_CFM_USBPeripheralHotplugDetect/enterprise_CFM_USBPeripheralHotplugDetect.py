@@ -115,9 +115,8 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         @returns  A _Peripherals object
         """
         cros_peripherals = _Peripherals()
-        device_manager = usb_device_collector.UsbDeviceCollector(
-            usb_device_collector.UsbDataCollector(self.client))
-        for device in device_manager.get_usb_devices():
+        device_collector = usb_device_collector.UsbDeviceCollector(self.client)
+        for device in device_collector.get_usb_devices():
             vid_pid = device.vid_pid
             device_types = self._get_usb_device_types(vid_pid)
             device_spec = cfm_usb_devices.get_usb_device_spec(vid_pid)
