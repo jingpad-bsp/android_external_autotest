@@ -37,7 +37,10 @@ class firmware_UserRequestRecovery(FirmwareTest):
         self.setup_usbkey(usbkey=True, host=True)
 
     def cleanup(self):
-        self.ensure_normal_boot()
+        try:
+            self.ensure_normal_boot()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_UserRequestRecovery, self).cleanup()
 
     def run_once(self, dev_mode=False):

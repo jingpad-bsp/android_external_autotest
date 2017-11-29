@@ -37,7 +37,10 @@ class firmware_InvalidUSB(FirmwareTest):
         self.servo.switch_usbkey('dut')
 
     def cleanup(self):
-        self.restore_usb()
+        try:
+            self.restore_usb()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_InvalidUSB, self).cleanup()
 
     def run_once(self):

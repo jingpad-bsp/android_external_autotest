@@ -65,9 +65,12 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
         self.faft_client.updater.repack_shellball('test')
 
     def cleanup(self):
-        self.faft_client.updater.cleanup()
-        self.restore_firmware()
-        self.invalidate_firmware_setup()
+        try:
+            self.faft_client.updater.cleanup()
+            self.restore_firmware()
+            self.invalidate_firmware_setup()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_UpdateFirmwareVersion, self).cleanup()
 
     def run_once(self):
