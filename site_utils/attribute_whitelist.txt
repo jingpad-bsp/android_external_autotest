@@ -36,6 +36,7 @@ suite:arc-weekly
 suite:audio
 suite:av_webcam
 suite:bluestreak
+suite:bluestreak-partners
 suite:bluestreak-perbuild
 suite:bluestreak-pre-cq
 suite:bluestreak-release
