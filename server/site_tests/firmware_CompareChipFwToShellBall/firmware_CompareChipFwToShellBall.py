@@ -43,8 +43,11 @@ class firmware_CompareChipFwToShellBall(FirmwareTest):
         self.dut_bios_path = None
 
     def cleanup(self):
-        if self.cbfs_work_dir:
-            self.faft_client.system.remove_dir(self.cbfs_work_dir)
+        try:
+            if self.cbfs_work_dir:
+                self.faft_client.system.remove_dir(self.cbfs_work_dir)
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_CompareChipFwToShellBall, self).cleanup()
 
     def dut_get_chip(self, port):

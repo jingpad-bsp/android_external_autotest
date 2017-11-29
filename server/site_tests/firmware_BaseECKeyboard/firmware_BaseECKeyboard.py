@@ -39,7 +39,10 @@ class firmware_BaseECKeyboard(FirmwareTest):
 
     def cleanup(self):
         # Restart UI anyway, in case the test failed in the middle
-        self.faft_client.system.run_shell_command('start ui | true')
+        try:
+            self.faft_client.system.run_shell_command('start ui | true')
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_BaseECKeyboard, self).cleanup()
 
 

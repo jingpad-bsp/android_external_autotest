@@ -37,10 +37,13 @@ class firmware_SelfSignedBoot(FirmwareTest):
             raise error.TestError("Unable to find USB disk")
 
     def cleanup(self):
-        self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-        self.disable_crossystem_selfsigned()
-        self.ensure_internal_device_boot()
-        self.resignimage_recoverykeys()
+        try:
+            self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
+            self.disable_crossystem_selfsigned()
+            self.ensure_internal_device_boot()
+            self.resignimage_recoverykeys()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_SelfSignedBoot, self).cleanup()
 
     def ensure_internal_device_boot(self):
