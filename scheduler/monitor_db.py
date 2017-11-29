@@ -115,6 +115,13 @@ def main_without_exception_handling():
     parser.add_option('--test', help='Indicate that scheduler is under ' +
                       'test and should use dummy autoserv and no parsing',
                       action='store_true')
+    parser.add_option(
+            '--metrics-file',
+            help='If provided, drop metrics to this local file instead of '
+                 'reporting to ts_mon',
+            type=str,
+            default=None,
+    )
     parser.add_option('--production',
                       help=('Indicate that scheduler is running in production '
                             'environment and it can use database that is not '
@@ -160,7 +167,8 @@ def main_without_exception_handling():
     metadata_reporter.start()
 
     with ts_mon_config.SetupTsMonGlobalState('autotest_scheduler',
-                                             indirect=True):
+                                             indirect=True,
+                                             debug_file=options.metrics_file):
       try:
           initialize()
           dispatcher = Dispatcher()
