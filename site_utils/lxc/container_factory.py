@@ -60,11 +60,15 @@ class ContainerFactory(object):
                          is not provided, the factory's default lxc_path
                          (specified when the factory was constructed) is used.
         """
+        name = str(cid) if cid else None
         if lxc_path is None:
             lxc_path = self._lxc_path
+
+        logging.debug('Creating new container (name: %s, lxc_path: %s)',
+                      name, lxc_path)
+
         # If an ID is provided, use it as the container name.
-        new_container = self._create_from_base(name=str(cid) if cid else None,
-                                               lxc_path=lxc_path)
+        new_container = self._create_from_base(name, lxc_path)
         # If an ID is provided, assign it to the container.  When the container
         # is created just-in-time by the container bucket, this ensures that the
         # resulting container is correctly registered with the autoserv system.

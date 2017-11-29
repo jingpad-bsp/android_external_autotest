@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import socket
 import sys
 import threading
@@ -10,7 +11,12 @@ from contextlib import contextmanager
 from multiprocessing import connection
 
 import common
+from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc.container_pool import message
+
+
+# Timeout in seconds for client connections.
+_DEFAULT_TIMEOUT = 1
 
 
 class Client(object):
@@ -34,7 +40,7 @@ class Client(object):
         print(client.get_status())
     """
 
-    def __init__(self, address, timeout):
+    def __init__(self, address=None, timeout=_DEFAULT_TIMEOUT):
         """Initializes a new Client object.
 
         @param address: The address of the pool to connect to.
@@ -45,6 +51,10 @@ class Client(object):
         @raises socket.timeout: If the connection is not established before the
                                 given timeout expires.
         """
+        if address is None:
+            address = os.path.join(
+                constants.DEFAULT_SHARED_HOST_PATH,
+                constants.DEFAULT_CONTAINER_POOL_SOCKET)
         self._connection = _ConnectionHelper(address).connect(timeout)
 
 
@@ -131,7 +141,9 @@ class _ConnectionHelper(threading.Thread):
     def run(self):
         """Instantiates a connection.Client."""
         try:
+            logging.debug('Attempting connection to %s', self._address)
             self._client = connection.Client(self._address)
+            logging.debug('Connection to %s successful', self._address)
         except Exception:
             self._exc_info = sys.exc_info()
 
