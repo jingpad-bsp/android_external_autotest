@@ -36,7 +36,10 @@ class firmware_ConsecutiveLidSwitch(FirmwareTest):
 
     def cleanup(self):
         # Restore the lid_open switch in case the test failed in the middle.
-        self.servo.set('lid_open', 'yes')
+        try:
+            self.servo.set('lid_open', 'yes')
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_ConsecutiveLidSwitch, self).cleanup()
 
 

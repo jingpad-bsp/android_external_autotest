@@ -96,7 +96,10 @@ class firmware_EmmcWriteLoad(FirmwareTest):
             time.sleep(poll_seconds)
 
     def cleanup(self):
-        self.ensure_internal_device_boot()
+        try:
+            self.ensure_internal_device_boot()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_EmmcWriteLoad, self).cleanup()
 
     def ensure_internal_device_boot(self):
