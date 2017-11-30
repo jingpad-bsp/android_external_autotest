@@ -38,6 +38,7 @@ from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 
@@ -81,7 +82,8 @@ class _ChromeLogin(object):
 
     def _cmd_builder(self, verbose=False):
         """Gets remote command to start browser with ARC enabled."""
-        cmd = '/usr/local/autotest/bin/autologin.py --arc'
+        cmd = autotest.Autotest.get_installed_autodir(self._host)
+        cmd += '/bin/autologin.py --arc'
         if self._kwargs.get('dont_override_profile') == True:
             logging.info('Using --dont_override_profile to start Chrome.')
             cmd += ' --dont_override_profile'
