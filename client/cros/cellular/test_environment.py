@@ -19,11 +19,6 @@ from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 from autotest_lib.client.cros.networking import cellular_proxy
 from autotest_lib.client.cros.networking import shill_proxy
 
-# Import 'flimflam_test_path' first in order to import flimflam.
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path
-import flimflam
-
 class CellularTestEnvironment(object):
     """Setup and verify cellular test environment.
 
@@ -32,7 +27,7 @@ class CellularTestEnvironment(object):
         - Shuts down other devices except cellular.
         - Shill and MM logging is enabled appropriately for cellular.
         - Initializes members that tests should use to access test environment
-          (eg. |shill|, |flimflam|, |modem_manager|, |modem|).
+          (eg. |shill|, |modem_manager|, |modem|).
 
     Then it verifies the following is valid:
         - The backchannel is using an Ethernet device.
@@ -74,7 +69,6 @@ class CellularTestEnvironment(object):
         self.bus = dbus.SystemBus(mainloop=self.mainloop)
 
         self.shill = None
-        self.flim = None  # Only use this for legacy tests.
         self.modem_manager = None
         self.modem = None
         self.modem_path = None
@@ -142,7 +136,6 @@ class CellularTestEnvironment(object):
         if self._nested:
             return self._nested.__exit__(exception, value, traceback)
         self.shill = None
-        self.flim = None
         self.modem_manager = None
         self.modem = None
         self.modem_path = None
@@ -205,10 +198,6 @@ class CellularTestEnvironment(object):
         self.shill = cellular_proxy.CellularProxy.get_proxy(self.bus)
         if self.shill is None:
             raise error.TestError('Cannot connect to shill, is shill running?')
-
-        # Keep this around to support older tests that haven't migrated to
-        # cellular_proxy.
-        self.flim = flimflam.FlimFlam()
 
 
     def _initialize_modem_components(self):
