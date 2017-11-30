@@ -624,8 +624,9 @@ class Autotest(installable_object.InstallableObject):
         status = host.run(command).stdout.strip()
         logging.info(status)
         if status[:8] != 'END GOOD':
-            test_fail_status_line_cmd = ('tail -3 %s/status | head -1' %
-                                         client_result_dir)
+            test_fail_status_line_cmd = (
+                    'grep "^\s*FAIL\s*%s" %s/status | tail -n 1' %
+                    (test_name, client_result_dir))
             test_fail_msg = cls.extract_test_failure_msg(
                     host.run(test_fail_status_line_cmd).stdout.strip())
             test_fail_msg_reason = ('' if not test_fail_msg
