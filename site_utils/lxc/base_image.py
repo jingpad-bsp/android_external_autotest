@@ -48,8 +48,9 @@ class BaseImage(object):
                     container_path, base_name);
             base_container.refresh_status()
             self.base_container = base_container
-        except error.ContainerError:
+        except error.ContainerError as e:
             self.base_container = None
+            self.base_container_error = e
 
 
     def setup(self, name=None, force_delete=False):
@@ -130,7 +131,7 @@ class BaseImage(object):
         @raise ContainerError: If the base image is invalid or missing.
         """
         if self.base_container is None:
-            raise error.ContainerError('Invalid base container.')
+            raise self.base_container_error
         else:
             return self.base_container
 
