@@ -7,7 +7,8 @@ class ActionContext(object):
                  file_contents_collector=None,
                  host=None,
                  usb_device_collector=None,
-                 usb_port_manager=None):
+                 usb_port_manager=None,
+                 crash_detector=None):
         """
         Initializes.
 
@@ -22,6 +23,7 @@ class ActionContext(object):
         @param host an Host instance.
         @param usb_device_collecor a UsbDeviceCollector instance.
         @param usb_port_manager a UsbPortManager instance.
+        @param crash_detector a CrashDetector instance.
         """
         self.cfm_facade = cfm_facade
         self.file_contents_collector = file_contents_collector
@@ -30,4 +32,5 @@ class ActionContext(object):
         self.host = host
         self.usb_device_collector = usb_device_collector
         self.usb_port_manager = usb_port_manager
+        self.crash_detector = crash_detector
 

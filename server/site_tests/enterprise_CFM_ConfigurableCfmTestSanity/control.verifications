@@ -36,7 +36,8 @@ cfm_test = CfmTest(
                                              ['FOOERRORBAR'])),
                 Scenario(AssertUsbDevices(HUDDLY_GO, lambda devices: True)),
                 Scenario(AssertUsbDevices(ATRUS, lambda devices: True))],
-            run_times=3)
+            run_times=3),
+        AssertNoNewCrashes()
     ),
 
     configuration=Configuration(
