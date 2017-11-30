@@ -665,11 +665,11 @@ class FirmwareTest(FAFTBase):
         self.ec_uart_file = None
         self.usbpd_uart_file = None
         try:
+            # Check that the console works before declaring the cr50 console
+            # connection exists and enabling uart capture.
+            self.servo.get('cr50_version')
             self.servo.set('cr50_uart_capture', 'on')
             self.cr50_uart_file = os.path.join(self.resultsdir, 'cr50_uart.txt')
-            # Check that the console works before declaring the cr50 console
-            # connection exists.
-            self.servo.get('cr50_version')
             self.cr50 = chrome_cr50.ChromeCr50(self.servo)
         except error.TestFail as e:
             if 'No control named' in str(e):
