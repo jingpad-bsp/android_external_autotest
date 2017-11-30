@@ -41,7 +41,6 @@ except ImportError:
     pass
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
@@ -75,7 +74,11 @@ DEFAULT_EMAIL = CONFIG.get_config_value(
         'SCHEDULER', 'notify_email', type=list, default=[])
 # TODO(crbug.com/767302): Bump up tesbed requirement back to 1 when we
 # re-enable testbed tests.
-DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 0}"
+DEFAULT_NUM_DUTS = (
+        ('gandof', 4),
+        ('quawks', 2),
+        ('testbed', 0),
+)
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -139,32 +142,6 @@ PUSH_USER = 'chromeos-test-lab'
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
     pass
-
-
-@retry.retry(TestPushException, timeout_min=5, delay_sec=30)
-def check_dut_inventory(required_num_duts, pool):
-    """Check DUT inventory for each board in the pool specified..
-
-    @param required_num_duts: a dict specifying the number of DUT each platform
-                              requires in order to finish push tests.
-    @param pool: the pool used by test_push.
-    @raise TestPushException: if number of DUTs are less than the requirement.
-    """
-    print 'Checking DUT inventory...'
-    pool_label = constants.Labels.POOL_PREFIX + pool
-    hosts = AFE.run('get_hosts', status='Ready', locked=False)
-    hosts = [h for h in hosts if pool_label in h.get('labels', [])]
-    platforms = [host['platform'] for host in hosts]
-    current_inventory = {p : platforms.count(p) for p in platforms}
-    error_msg = ''
-    for platform, req_num in required_num_duts.items():
-        curr_num = current_inventory.get(platform, 0)
-        if curr_num < req_num:
-            error_msg += ('\nRequire %d %s DUTs in pool: %s, only %d are Ready'
-                          ' now' % (req_num, platform, pool, curr_num))
-    if error_msg:
-        raise TestPushException('Not enough DUTs to run push tests. %s' %
-                                error_msg)
 
 
 def powerwash_dut_to_test_repair(hostname, timeout):
@@ -257,9 +234,10 @@ def parse_arguments():
                              'are waiting on. Only for the asynchronous suites '
                              'triggered by create_and_return flag.')
     parser.add_argument('-ud', '--num_duts', dest='num_duts',
-                        default=DEFAULT_NUM_DUTS,
-                        help="String of dict that indicates the required number"
-                             " of DUTs for each board. E.g {'gandof':4}")
+                        default=dict(DEFAULT_NUM_DUTS),
+                        type=ast.literal_eval,
+                        help="Python dict literal that specifies the required"
+                        " number of DUTs for each board. E.g {'gandof':4}")
     parser.add_argument('-c', '--continue_on_failure', action='store_true',
                         dest='continue_on_failure',
                         help='All tests continue to run when there is failure')
@@ -272,8 +250,6 @@ def parse_arguments():
     if not arguments.shard_build:
         arguments.shard_build = get_default_build(arguments.shard_board,
                                                   arguments.web)
-
-    arguments.num_duts = ast.literal_eval(arguments.num_duts)
 
     return arguments
 
@@ -326,7 +302,8 @@ def do_run_suite(suite_name, arguments, use_shard=False,
            '-b', board,
            '-i', build,
            '-p', arguments.pool,
-           '-u', str(arguments.num)]
+           '-u', str(arguments.num),
+           '--minimum_duts', str(arguments.num_duts[board])]
     if create_and_return:
         cmd += ['-c']
     if testbed_test:
@@ -507,7 +484,7 @@ def test_suite_wrapper(queue, suite_name, expected_results, arguments,
     try:
         test_suite(suite_name, expected_results, arguments, use_shard,
                    create_and_return, testbed_test)
-    except:
+    except Exception:
         # Store the whole exc_info leads to a PicklingError.
         except_type, except_value, tb = sys.exc_info()
         queue.put((except_type, except_value, traceback.extract_tb(tb)))
@@ -614,7 +591,6 @@ def _main(arguments):
         # Verify all the DUTs at the beginning of testing push.
         reverify_all_push_duts()
         time.sleep(15) # Wait 15 secs for the verify test to start.
-        check_dut_inventory(arguments.num_duts, arguments.pool)
         queue = multiprocessing.Queue()
 
         push_to_prod_suite = multiprocessing.Process(
