@@ -661,13 +661,12 @@ class FirmwareTest(FAFTBase):
         """Setup the CPU/EC/PD UART capture."""
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
         self.servo.set('cpu_uart_capture', 'on')
-        self.cr50_console_file = None
+        self.cr50_uart_file = None
         self.ec_uart_file = None
         self.usbpd_uart_file = None
         try:
-            self.servo.set('cr50_console_capture', 'on')
-            self.cr50_console_file = os.path.join(self.resultsdir,
-                                                  'cr50_console.txt')
+            self.servo.set('cr50_uart_capture', 'on')
+            self.cr50_uart_file = os.path.join(self.resultsdir, 'cr50_uart.txt')
             # Check that the console works before declaring the cr50 console
             # connection exists.
             self.servo.get('cr50_version')
@@ -701,9 +700,9 @@ class FirmwareTest(FAFTBase):
         if self.cpu_uart_file:
             with open(self.cpu_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('cpu_uart_stream')))
-        if self.cr50_console_file:
-            with open(self.cr50_console_file, 'a') as f:
-                f.write(ast.literal_eval(self.servo.get('cr50_console_stream')))
+        if self.cr50_uart_file:
+            with open(self.cr50_uart_file, 'a') as f:
+                f.write(ast.literal_eval(self.servo.get('cr50_uart_stream')))
         if self.ec_uart_file and self.faft_config.chrome_ec:
             with open(self.ec_uart_file, 'a') as f:
                 f.write(ast.literal_eval(self.servo.get('ec_uart_stream')))
@@ -717,8 +716,8 @@ class FirmwareTest(FAFTBase):
         # Flush the remaining UART output.
         self._record_uart_capture()
         self.servo.set('cpu_uart_capture', 'off')
-        if self.cr50_console_file:
-            self.servo.set('cr50_console_capture', 'off')
+        if self.cr50_uart_file:
+            self.servo.set('cr50_uart_capture', 'off')
         if self.ec_uart_file and self.faft_config.chrome_ec:
             self.servo.set('ec_uart_capture', 'off')
         if (self.usbpd_uart_file and self.faft_config.chrome_ec and
