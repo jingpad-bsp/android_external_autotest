@@ -138,8 +138,11 @@ class _ChromeLogin(object):
             logging.info('Skipping reboot, restarting browser.')
             reboot = False
             try:
+                # We clean up /tmp (which is memory backed) from crashes and
+                # other files. A reboot would have cleaned /tmp as well.
+                script = 'stop ui && find /tmp/ -mindepth 1 -delete && start ui'
                 self._host.run(
-                    'restart ui',
+                    script,
                     ignore_status=False,
                     verbose=False,
                     timeout=120)
