@@ -9,7 +9,6 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.networking import cellular_proxy
 from autotest_lib.client.cros.networking import shill_context
