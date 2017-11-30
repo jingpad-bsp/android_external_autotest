@@ -15,42 +15,35 @@ import server_db_sync as sds
 class ServerDbSyncTest(unittest.TestCase):
   """Test server_db_sync."""
 
-  INVENTORY_RESPOND = '''
-{
- "servers": [
-  {
-   "attributes": {
-    "ip": "",
-    "max_processes": "0",
-    "mysql_server_id": "2"
-   },
-   "cname": "",
-   "environment": "PROD",
-   "hostname": "foo",
-   "notes": "autotest database slave",
-   "roles": [
-    "DATABASE_SLAVE"
-   ],
-   "status": "PRIMARY"
-  },
-  {
-   "attributes": {
-    "ip": "1.2.3.4",
-    "max_processes": "0",
-    "mysql_server_id": ""
-   },
-   "cname": "",
-   "environment": "STAGING",
-   "hostname": "bar",
-   "notes": "",
-   "roles": [
-    "CRASH_SERVER"
-   ],
-   "status": "BACKUP"
+  INVENTORY_RESPONSE = {
+      "servers": [
+          {
+              "attributes": {"ip": "",
+                             "max_processes": "0",
+                             "mysql_server_id": "2"},
+              "cname": "",
+              "environment": "PROD",
+              "hostname": "foo",
+              "notes": "autotest database slave",
+              "roles": ["DATABASE_SLAVE"],
+              "status": "PRIMARY"
+          },
+          {
+              "attributes": {
+                  "ip": "1.2.3.4",
+                  "max_processes": "0",
+                  "mysql_server_id": ""
+              },
+              "cname": "",
+              "environment": "STAGING",
+              "hostname": "bar",
+              "notes": "",
+              "roles": ["CRASH_SERVER"],
+              "status": "BACKUP"
+          }
+      ]
   }
- ]
-}
-'''
+
 
   def testServerDbDumpWithoutNone(self):
     """Test server_db_dump without None values."""
@@ -74,13 +67,13 @@ class ServerDbSyncTest(unittest.TestCase):
 
   def testInventoryApiResponseParseProdServer(self):
     """Test inventory_api_response_parse."""
-    results = sds.inventory_api_response_parse(self.INVENTORY_RESPOND, 'prod')
+    results = sds.inventory_api_response_parse(self.INVENTORY_RESPONSE, 'prod')
 
     expect_servers = [sds.Server('foo', None, 'primary',
                                  'autotest database slave')]
     expect_server_attrs = [
-        sds.ServerAttribute('foo', 'max_processes', '0'),
         sds.ServerAttribute('foo', 'mysql_server_id', '2'),
+        sds.ServerAttribute('foo', 'max_processes', '0'),
     ]
     expect_server_roles = [
         sds.ServerRole('foo', 'database_slave'),
@@ -93,13 +86,13 @@ class ServerDbSyncTest(unittest.TestCase):
 
   def testInventoryApiResponseParseStagingServer(self):
     """Test inventory_api_response_parse."""
-    results = sds.inventory_api_response_parse(self.INVENTORY_RESPOND,
+    results = sds.inventory_api_response_parse(self.INVENTORY_RESPONSE,
                                                'staging')
 
     expect_servers = [sds.Server('bar', None, 'backup', '')]
     expect_server_attrs = [
-        sds.ServerAttribute('bar', 'max_processes', '0'),
         sds.ServerAttribute('bar', 'ip', '1.2.3.4'),
+        sds.ServerAttribute('bar', 'max_processes', '0'),
     ]
     expect_server_roles = [
         sds.ServerRole('bar', 'crash_server')
