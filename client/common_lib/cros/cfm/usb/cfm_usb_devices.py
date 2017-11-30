@@ -43,7 +43,14 @@ PTZ_PRO_CAMERA = usb_device_spec.UsbDeviceSpec(
     vid='046d',
     pid='0853',
     product='PTZ Pro Camera',
-    interfaces=['uvcvideo', 'uvcvideo','usbhid'],
+    interfaces=['uvcvideo', 'uvcvideo', 'usbhid'],
+)
+
+PTZ_PRO_2_CAMERA = usb_device_spec.UsbDeviceSpec(
+    vid='046d',
+    pid='085f',
+    product='PTZ Pro 2 Camera',
+    interfaces=['uvcvideo', 'uvcvideo', 'usbhid'],
 )
 
 # Audio peripherals
