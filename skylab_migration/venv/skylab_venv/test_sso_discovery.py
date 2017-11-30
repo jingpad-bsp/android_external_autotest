@@ -2,8 +2,9 @@
 
 import mock
 import unittest
-import sso_discovery
 import subprocess
+
+from skylab_venv import sso_discovery
 
 
 class SsoDiscoveryTest(unittest.TestCase):
