@@ -19,12 +19,11 @@ import contextlib
 import logging
 import optparse
 import sys
-import subprocess
-import yaml
 
 import common
 import MySQLdb
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.skylab_migration import sso_discovery
 
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config
@@ -51,7 +50,7 @@ _METRICS_PREFIX = 'chromeos/autotest/skylab_migration/server_db'
 API_ROOT = 'https://inventory-dot-chromeos-skylab.googleplex.com/_ah/api'
 API = 'infrastructure'
 VERSION = 'v1'
-SERVER_LIST = 'servers'
+DISCOVERY_URL = '%s/discovery/v1/apis/%s/%s/rest' % (API_ROOT, API, VERSION)
 
 
 class SyncUpExpection(Exception):
@@ -91,23 +90,23 @@ def server_db_dump(cursor):
 def inventory_server_list():
   """Get the response from inventory server list API.
 
-  @returns: the response in String format.
+  @returns: the response in dict format
   """
-  api_url = '%s/%s/%s/%s' % (API_ROOT, API, VERSION, SERVER_LIST)
-  result = subprocess.check_output(['sso_client', '--url', api_url],
-                                   stderr=subprocess.STDOUT)
+  service = sso_discovery.build_service(
+      service_name=API, version=VERSION, discovery_service_url=DISCOVERY_URL)
+  result = service.list_servers().execute()
   return result
 
 
-def inventory_api_response_parse(response_str, environment):
+def inventory_api_response_parse(response, environment):
   """Parse the response from inventory API to namedtuples.
 
-  @param response_str: the String format of the response.
+  @param response: the response in dict format.
   @environment: the lab environment of the servers, prod or staging.
 
   @returns: a dict of servers, server_attrs, server_roles namedtuples list.
   """
-  summaries = yaml.load(response_str)['servers']
+  summaries = response.get('servers', [])
   # Parse server tuples, replace notes with note in summaries
   summaries = [s for s in summaries
                if s['environment'].lower() == environment.lower()]
@@ -329,8 +328,8 @@ def _main(options):
   @param args: parsed command line arguments.
   """
 
-  response_str = inventory_server_list()
-  skylab_server_data = inventory_api_response_parse(response_str,
+  response = inventory_server_list()
+  skylab_server_data = inventory_api_response_parse(response,
                                                     options.environment)
   with _msql_connection_with_transaction(options) as conn:
     with _cursor(conn) as cursor:
