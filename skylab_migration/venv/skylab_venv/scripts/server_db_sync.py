@@ -20,10 +20,11 @@ import logging
 import optparse
 import sys
 
+from skylab_venv import sso_discovery
+
 import common
 import MySQLdb
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.skylab_migration import sso_discovery
 
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config

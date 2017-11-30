@@ -10,7 +10,7 @@ from __future__ import print_function
 import mock
 import unittest
 
-import server_db_sync as sds
+from skylab_venv.scripts import server_db_sync as sds
 
 class ServerDbSyncTest(unittest.TestCase):
   """Test server_db_sync."""
