@@ -111,4 +111,8 @@ class firmware_ECBootTime(FirmwareTest):
 
     def cleanup(self):
         # Restore the ec_uart_regexp to None
-        self.ec.set_uart_regexp('None')
+        try:
+            self.ec.set_uart_regexp('None')
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
+        super(firmware_ECBootTime, self).cleanup()

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import logging
 import os
 import time
@@ -10,7 +11,9 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import power_status, power_utils
+from autotest_lib.client.cros import power_rapl
+from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
@@ -43,6 +46,7 @@ CPU_USAGE_DESCRIPTION = 'video_cpu_usage_'
 DROPPED_FRAMES_DESCRIPTION = 'video_dropped_frames_'
 DROPPED_FRAMES_PERCENT_DESCRIPTION = 'video_dropped_frames_percent_'
 POWER_DESCRIPTION = 'video_mean_energy_rate_'
+RAPL_GRAPH_NAME = 'rapl_power_consumption'
 
 # Minimum battery charge percentage to run the test
 BATTERY_INITIAL_CHARGED_MIN = 10
@@ -121,8 +125,25 @@ class video_PlaybackPerf(test.test):
             self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_description,
                             'percent')
         else:
-            keyvals = self.test_power(local_path)
-            self.log_result(keyvals, POWER_DESCRIPTION + video_description, 'W')
+            tmp = self.test_power(local_path)
+            # Power measurement with rapl(4 domains) and system drain are
+            # reported. Reformat the data to align with the log_result.
+            keyvals = collections.defaultdict(dict)
+            for top_key in tmp.keys():
+                for key in tmp[top_key].keys():
+                    keyvals[key][top_key] = tmp[top_key][key]
+
+            for key in keyvals:
+                rapl_type = [keyword for keyword in power_rapl.VALID_DOMAINS
+                             if keyword in key]
+                if rapl_type:
+                    description = "%s_%s_pwr" % (video_description,
+                                                 rapl_type[0])
+                    self.log_result(keyvals[key], description, 'W',
+                                    graph=RAPL_GRAPH_NAME)
+                else:
+                    self.log_result(keyvals[key],
+                                    POWER_DESCRIPTION + video_description, 'W')
 
 
     def test_dropped_frames(self, local_path):
@@ -217,7 +238,7 @@ class video_PlaybackPerf(test.test):
         self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
 
         measurements = [power_status.SystemPower(
-                self._power_status.battery_path)]
+                self._power_status.battery_path)] + power_rapl.create_rapl()
 
         def get_power(cr):
             power_logger = power_status.PowerLogger(measurements)
@@ -227,7 +248,9 @@ class video_PlaybackPerf(test.test):
             time.sleep(MEASUREMENT_DURATION)
             power_logger.checkpoint('result', start_time)
             keyval = power_logger.calc()
-            return keyval['result_' + measurements[0].domain + '_pwr']
+            keyval = {key: keyval[key]
+                      for key in keyval if key.endswith('_pwr')}
+            return keyval
 
         return self.test_playback(local_path, get_power)
 
@@ -292,7 +315,7 @@ class video_PlaybackPerf(test.test):
         return keyvals
 
 
-    def log_result(self, keyvals, description, units):
+    def log_result(self, keyvals, description, units, graph=None):
         """
         Logs the test result output to the performance dashboard.
 
@@ -301,18 +324,20 @@ class video_PlaybackPerf(test.test):
         @param description: a string that describes the video and test result
                 and it will be part of the entry name in the dashboard.
         @param units: the units of test result.
+        @param graph: a string that indicates which graph should the result
+                      belongs to.
         """
         result_with_hw = keyvals.get(PLAYBACK_WITH_HW_ACCELERATION)
         if result_with_hw is not None:
             self.output_perf_value(
                     description= 'hw_' + description, value=result_with_hw,
-                    units=units, higher_is_better=False)
+                    units=units, higher_is_better=False, graph=graph)
 
         result_without_hw = keyvals.get(PLAYBACK_WITHOUT_HW_ACCELERATION)
         if result_without_hw is not None:
             self.output_perf_value(
                     description= 'sw_' + description, value=result_without_hw,
-                    units=units, higher_is_better=False)
+                    units=units, higher_is_better=False, graph=graph)
 
 
     def cleanup(self):

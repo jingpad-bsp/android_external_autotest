@@ -248,3 +248,18 @@ class CfmMeetingsAPI(object):
         """Unmute (turn on) camera."""
         self._execute_telemetry_command('setCameraMuted(false)')
         logging.info('Camera unmuted.')
+
+    def move_camera(self, camera_motion):
+        """Move camera(PTZ functions).
+
+        @param camera_motion: String of the desired camera motion.
+        """
+        ptz_motions = ['panLeft','panRight','panStop',
+                       'tiltUp','tiltDown','tiltStop',
+                       'zoomIn','zoomOut','resetPosition']
+
+        if camera_motion in ptz_motions:
+            self._execute_telemetry_command('ptz.%s()' % camera_motion)
+        else:
+            raise ValueError('Unsupported PTZ camera action: "%s"'
+                             % camera_motion)

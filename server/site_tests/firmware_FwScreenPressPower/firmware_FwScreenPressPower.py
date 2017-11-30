@@ -59,10 +59,13 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.corrupt_usb_kernel(usb_dev)
 
     def cleanup(self):
-        self.servo.switch_usbkey('host')
-        usb_dev = self.servo.probe_host_usb_dev()
-        # Restore the kernel of USB stick which is corrupted on setup phase.
-        self.restore_usb_kernel(usb_dev)
+        try:
+            self.servo.switch_usbkey('host')
+            usb_dev = self.servo.probe_host_usb_dev()
+            # Restore the kernel of USB stick which is corrupted on setup phase.
+            self.restore_usb_kernel(usb_dev)
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_FwScreenPressPower, self).cleanup()
 
     def run_once(self):

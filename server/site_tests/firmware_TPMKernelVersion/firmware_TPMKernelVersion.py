@@ -36,10 +36,14 @@ class firmware_TPMKernelVersion(FirmwareTest):
 
     def cleanup(self):
         """Reboot device from SSD."""
-        if self.faft_client.system.is_removable_device_boot():
-          logging.info('Reboot into internal disk...')
-          self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-          self.switcher.mode_aware_reboot()
+        try:
+            if self.faft_client.system.is_removable_device_boot():
+                logging.info('Reboot into internal disk...')
+                self.faft_client.system.set_dev_boot_usb(
+                    self.original_dev_boot_usb)
+                self.switcher.mode_aware_reboot()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_TPMKernelVersion, self).cleanup()
 
     def run_once(self):

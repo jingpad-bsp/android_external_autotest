@@ -9,9 +9,9 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 # Number of seconds we wait for the cellular service to perform an action.
@@ -359,10 +359,9 @@ class network_3GModemControl(test.test):
             device_commands = DeviceCommands(self.test_env.shill,
                                              self.device,
                                              slow_connect)
-
-            with cell_tools.AutoConnectContext(self.device,
-                                               self.test_env.flim,
-                                               autoconnect):
+            with shill_context.ServiceAutoConnectContext(
+                    self.test_env.shill.find_cellular_service_object,
+                    self.autoconnect):
                 # Start with cellular disabled.
                 self.test_env.shill.manager.DisableTechnology(
                         shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
@@ -380,3 +379,12 @@ class network_3GModemControl(test.test):
                                              device_commands])
                 for _ in range(mixed_iterations):
                     self.TestCommands(mixed)
+
+                # Ensure cellular is re-enabled in order to restore AutoConnect
+                # settings when ServiceAutoConnectContext exits.
+                # TODO(benchan): Refactor this logic into
+                # ServiceAutoConnectContext and update other users of
+                # ServiceAutoConnectContext.
+                self.test_env.shill.manager.EnableTechnology(
+                        shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
+                self.EnsureEnabled(check_idle=False)

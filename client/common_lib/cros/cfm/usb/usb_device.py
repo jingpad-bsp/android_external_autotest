@@ -6,19 +6,24 @@ This class represents actual data found by running the usb-device command.
 class UsbDevice(object):
   """Utility class representing a CfM USB device."""
 
-  def __init__(self, vid, pid, product, interfaces):
+  def __init__(self, vid, pid, product, interfaces, bus, port):
       """
       Constructor.
 
       @param vid: Vendor ID. String.
       @param pid: Product ID. String.
       @param product: Product description. String
-      @param interfaces: List of strings
+      @param interfaces: List of strings.
+      @param bus: The bus this device is connected to. Number.
+      @param port: The port number as specified in /sys/bus/usb/devices/usb*.
+          Number.
       """
       self._vid = vid
       self._pid = pid
       self._product = product
       self._interfaces = interfaces
+      self._bus = bus
+      self._port = port
 
   @property
   def vendor_id(self):
@@ -44,6 +49,16 @@ class UsbDevice(object):
   def interfaces(self):
       """Returns the list of interfaces."""
       return self._interfaces
+
+  @property
+  def port(self):
+      """Returns the port this USB device is connected to."""
+      return self._port
+
+  @property
+  def bus(self):
+      """Returns the bus this USB device is connected to."""
+      return self._bus
 
   def interfaces_match_spec(self, usb_device_spec):
       """

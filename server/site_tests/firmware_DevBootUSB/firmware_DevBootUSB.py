@@ -31,7 +31,10 @@ class firmware_DevBootUSB(FirmwareTest):
                      str(self.original_dev_boot_usb))
 
     def cleanup(self):
-        self.ensure_internal_device_boot()
+        try:
+            self.ensure_internal_device_boot()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_DevBootUSB, self).cleanup()
 
     def ensure_internal_device_boot(self):

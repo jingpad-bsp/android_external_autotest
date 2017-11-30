@@ -36,7 +36,10 @@ class firmware_CorruptBothFwBodyAB(FirmwareTest):
             self.setup_usbkey(usbkey=True, host=False)
 
     def cleanup(self):
-        self.restore_firmware()
+        try:
+            self.restore_firmware()
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
         super(firmware_CorruptBothFwBodyAB, self).cleanup()
 
     def run_once(self, dev_mode=False):
