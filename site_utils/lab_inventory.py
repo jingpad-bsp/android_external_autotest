@@ -912,7 +912,7 @@ def _send_email(arguments, tag, subject, recipients, body):
     The message is logged in the selected log directory using `tag`
     for the file name.
 
-    If the --print option was requested, the message is neither
+    If the --debug option was requested, the message is neither
     logged nor sent, but merely printed on stdout.
 
     @param arguments   Parsed command-line options.
@@ -944,6 +944,137 @@ def _send_email(arguments, tag, subject, recipients, body):
         except Exception as e:
             logging.error('Failed to send e-mail to %s:  %s',
                           all_recipients, e)
+
+
+def _populate_board_counts(inventory):
+    """Gather board counts while providing interactive feedback.
+
+    Gathering the status of all individual DUTs in the lab can take
+    considerable time (~30 minutes at the time of this writing).
+
+    Normally, we pay that cost by querying as we go.  However, with
+    the `--debug` option, we expect a human being to be watching the
+    progress in real time.  So, we force the first (expensive)
+    queries to happen up front, and provide simple ASCII output
+    (without using logging) to show a progress bar and results.
+
+    @param inventory  _LabInventory object with the inventory to
+                      be gathered.
+
+    """
+    n = 0
+    total_broken = 0
+    for counts in inventory.by_board.itervalues():
+        n += 1
+        if n % 10 == 5:
+            c = '+'
+        elif n % 10 == 0:
+            c = '%d' % ((n / 10) % 10)
+        else:
+            c = '.'
+        sys.stdout.write(c)
+        sys.stdout.flush()
+        # This next call is where all the time goes - it forces all
+        # of a board's HostJobHistory objects to query the database
+        # and cache their results.
+        total_broken += counts.get_broken()
+    sys.stdout.write('\n')
+    sys.stdout.write('Found %d broken DUTs\n' % total_broken)
+
+
+def _perform_board_inventory(arguments, inventory, timestamp):
+    """Perform the board inventory report.
+
+    The board inventory report consists of the following:
+      * A list of DUTs that are recommended to be repaired.
+        This list is optional, and only appears if the `--recommend`
+        option is present.
+      * A list of all boards that have failed DUTs, with counts
+        of working, broken, and spare DUTs, among others.
+
+    @param arguments  Command-line arguments as returned by
+                      `ArgumentParser`
+    @param inventory  _LabInventory object with the inventory to
+                      be reported.
+    @param timestamp  A string used to identify this run's timestamp
+                      in logs and email output.
+    """
+    if arguments.recommend:
+        recommend_message = _generate_repair_recommendation(
+                inventory, arguments.recommend) + '\n\n\n'
+    else:
+        recommend_message = ''
+    board_message = _generate_board_inventory_message(inventory)
+    _send_email(arguments,
+                'boards-%s.txt' % timestamp,
+                'DUT board inventory %s' % timestamp,
+                arguments.board_notify,
+                recommend_message + board_message)
+
+
+def _perform_pool_inventory(arguments, inventory, timestamp):
+    """Perform the pool inventory report.
+
+    The pool inventory report consists of the following:
+      * A list of all critical pools that have failed DUTs, with counts
+        of working, broken, and idle DUTs.
+      * A list of all idle DUTs by hostname including the board and
+        pool.
+
+    @param arguments  Command-line arguments as returned by
+                      `ArgumentParser`
+    @param inventory  _LabInventory object with the inventory to
+                      be reported.
+    @param timestamp  A string used to identify this run's timestamp
+                      in logs and email output.
+    """
+    pool_message = _generate_pool_inventory_message(inventory)
+    idle_message = _generate_idle_inventory_message(inventory)
+    _send_email(arguments,
+                'pools-%s.txt' % timestamp,
+                'DUT pool inventory %s' % timestamp,
+                arguments.pool_notify,
+                pool_message + '\n\n\n' + idle_message)
+
+
+def _log_startup(arguments, startup_time):
+    """Log the start of this inventory run.
+
+    Print various log messages indicating the start of the run.  Return
+    a string based on `startup_time` that will be used to identify this
+    run in log files and e-mail messages.
+
+    @param startup_time   A UNIX timestamp marking the moment when
+                          this inventory run began.
+    @returns  A timestamp string that will be used to identify this run
+              in logs and email output.
+    """
+    timestamp = time.strftime('%Y-%m-%d.%H',
+                              time.localtime(startup_time))
+    logging.debug('Starting lab inventory for %s', timestamp)
+    if arguments.board_notify:
+        if arguments.recommend:
+            logging.debug('Will include repair recommendations')
+        logging.debug('Will include board inventory')
+    if arguments.pool_notify:
+        logging.debug('Will include pool inventory')
+    return timestamp
+
+
+def _create_inventory(arguments, end_time):
+    """Create the `_LabInventory` instance to use for reporting.
+
+    @param end_time   A UNIX timestamp for the end of the time range
+                      to be searched in this inventory run.
+    """
+    start_time = end_time - arguments.duration * 60 * 60
+    afe = frontend_wrappers.RetryingAFE(server=None)
+    inventory = _LabInventory.create_inventory(
+            afe, start_time, end_time, arguments.boardnames)
+    logging.info('Found %d hosts across %d boards',
+                     inventory.get_num_duts(),
+                     inventory.get_num_boards())
+    return inventory
 
 
 def _separate_email_addresses(address_list):
@@ -997,7 +1128,7 @@ def _verify_arguments(arguments):
     return True
 
 
-def _get_logdir(script):
+def _get_default_logdir(script):
     """Get the default directory for the `--logdir` option.
 
     The default log directory is based on the parent directory
@@ -1046,7 +1177,7 @@ def _parse_command(argv):
     parser.add_argument('--debug', action='store_true',
                         help='Print e-mail messages on stdout '
                              'without sending them.')
-    parser.add_argument('--logdir', default=_get_logdir(argv[0]),
+    parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
     parser.add_argument('boardnames', nargs='*',
                         metavar='BOARD',
@@ -1061,15 +1192,15 @@ def _parse_command(argv):
 def _configure_logging(arguments):
     """Configure the `logging` module for our needs.
 
-    How we log depends on whether the `--print` option was
-    provided on the command line.  Without the option, we log all
-    messages at DEBUG level or above, and write them to a file in
-    the directory specified by the `--logdir` option.  With the
-    option, we write log messages to stdout; messages below INFO
-    level are discarded.
-
-    The log file is configured to rotate once a week on Friday
-    evening, preserving ~3 months worth of history.
+    How we log depends on whether the `--debug` option was provided on
+    the command line.
+      * Without the option, we configure the logging to capture all
+        potentially relevant events in a log file.  The log file is
+        configured to rotate once a week on Friday evening, preserving
+        ~3 months worth of history.
+      * With the option, we expect stdout to contain other
+        human-readable output (including the contents of the e-mail
+        messages), so we restrict the output.
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
@@ -1100,42 +1231,6 @@ def _configure_logging(arguments):
     root_logger.addHandler(handler)
 
 
-def _populate_board_counts(inventory):
-    """Gather board counts while providing interactive feedback.
-
-    Gathering the status of all individual DUTs in the lab can take
-    considerable time (~30 minutes at the time of this writing).
-
-    Normally, we pay that cost by querying as we go.  However, with
-    the `--print` option, a human being may be watching the
-    progress.  So, we force the first (expensive) queries to happen
-    up front, and provide a small ASCII progress bar to give an
-    indicator of how many boards have been processed.
-
-    @param inventory  _LabInventory object with the inventory to
-                      be gathered.
-
-    """
-    n = 0
-    total_broken = 0
-    for counts in inventory.values():
-        n += 1
-        if n % 10 == 5:
-            c = '+'
-        elif n % 10 == 0:
-            c = '%d' % ((n / 10) % 10)
-        else:
-            c = '.'
-        sys.stdout.write(c)
-        sys.stdout.flush()
-        # This next call is where all the time goes - it forces all
-        # of a board's HostJobHistory objects to query the database
-        # and cache their results.
-        total_broken += counts.get_broken()
-    sys.stdout.write('\n')
-    sys.stdout.write('Found %d broken DUTs\n' % total_broken)
-
-
 def main(argv):
     """Standard main routine.
     @param argv  Command line arguments including `sys.argv[0]`.
@@ -1145,49 +1240,15 @@ def main(argv):
         sys.exit(1)
     _configure_logging(arguments)
     try:
-        end_time = int(time.time())
-        start_time = end_time - arguments.duration * 60 * 60
-        timestamp = time.strftime('%Y-%m-%d.%H',
-                                  time.localtime(end_time))
-        logging.debug('Starting lab inventory for %s', timestamp)
-        if arguments.board_notify:
-            if arguments.recommend:
-                logging.debug('Will include repair recommendations')
-            logging.debug('Will include board inventory')
-        if arguments.pool_notify:
-            logging.debug('Will include pool inventory')
-
-        afe = frontend_wrappers.RetryingAFE(server=None)
-        inventory = _LabInventory.create_inventory(
-                afe, start_time, end_time, arguments.boardnames)
-        logging.info('Found %d hosts across %d boards',
-                         inventory.get_num_duts(),
-                         inventory.get_num_boards())
-
+        startup_time = time.time()
+        timestamp = _log_startup(arguments, startup_time)
+        inventory = _create_inventory(arguments, startup_time)
         if arguments.debug:
             _populate_board_counts(inventory)
-
         if arguments.board_notify:
-            if arguments.recommend:
-                recommend_message = _generate_repair_recommendation(
-                        inventory, arguments.recommend) + '\n\n\n'
-            else:
-                recommend_message = ''
-            board_message = _generate_board_inventory_message(inventory)
-            _send_email(arguments,
-                        'boards-%s.txt' % timestamp,
-                        'DUT board inventory %s' % timestamp,
-                        arguments.board_notify,
-                        recommend_message + board_message)
-
+            _perform_board_inventory(arguments, inventory, timestamp)
         if arguments.pool_notify:
-            pool_message = _generate_pool_inventory_message(inventory)
-            idle_message = _generate_idle_inventory_message(inventory)
-            _send_email(arguments,
-                        'pools-%s.txt' % timestamp,
-                        'DUT pool inventory %s' % timestamp,
-                        arguments.pool_notify,
-                        pool_message + '\n\n\n' + idle_message)
+            _perform_pool_inventory(arguments, inventory, timestamp)
     except KeyboardInterrupt:
         pass
     except EnvironmentError as e:
