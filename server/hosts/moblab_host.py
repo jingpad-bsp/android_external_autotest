@@ -14,6 +14,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import cros_repair
 
+from chromite.lib import timeout_util
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value(
         'SCHEDULER', 'drone_installation_directory')
@@ -303,18 +304,21 @@ class MoblabHost(cros_host.CrosHost):
 
 
     def _check_afe(self):
-        """Verify whether afe of moblab works before verify its DUTs.
+        """Verify whether afe of moblab works before verifying its DUTs.
 
         Verifying moblab sometimes happens after a successful provision, in
         which case moblab is restarted but tunnel of afe is not re-connected.
         This func is used to check whether afe is working now.
 
-        @return True if afe works, otherwise, raise urllib2.HTTPError.
+        @return True if afe works.
+        @raises error.AutoservError if AFE is down; other exceptions are passed
+                through.
         """
         try:
             self.afe.get_hosts()
-        except error.TimeoutException:
-            raise error.AutoservError('Moblab AFE is not responding')
+        except (error.TimeoutException, timeout_util.TimeoutError) as e:
+            raise error.AutoservError('Moblab AFE is not responding: %s' %
+                                      str(e))
         except Exception as e:
             logging.error('Unknown exception when checking moblab AFE: %s', e)
             raise
