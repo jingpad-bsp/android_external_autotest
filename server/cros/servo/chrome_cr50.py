@@ -69,7 +69,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
 
     def __init__(self, servo):
-        super(ChromeCr50, self).__init__(servo, "cr50_console")
+        super(ChromeCr50, self).__init__(servo, 'cr50_uart')
 
 
     def send_command(self, commands):
@@ -148,17 +148,17 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         Args:
             timeout: seconds to wait to detect the reboot.
         """
-        original_timeout = float(self._servo.get('cr50_console_timeout'))
+        original_timeout = float(self._servo.get('cr50_uart_timeout'))
         # Change the console timeout to timeout, so we wait at least that long
         # for cr50 to print the start string.
-        self._servo.set_nocheck('cr50_console_timeout', timeout)
+        self._servo.set_nocheck('cr50_uart_timeout', timeout)
         try:
             self.send_command_get_output('\n', self.START_STR)
             logging.debug('Detected cr50 reboot')
         except error.TestFail, e:
             logging.debug('Failed to detect cr50 reboot')
         # Reset the timeout.
-        self._servo.set_nocheck('cr50_console_timeout', original_timeout)
+        self._servo.set_nocheck('cr50_uart_timeout', original_timeout)
 
 
     def wait_for_reboot(self, timeout=60):
