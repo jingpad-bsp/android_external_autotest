@@ -912,10 +912,17 @@ class cras_rms_test(_base_rms_test):
 
 
 class alsa_rms_test(_base_rms_test):
-    """Base test class for ALSA audio RMS test."""
+    """Base test class for ALSA audio RMS test.
 
+    Note the warmup will take 10 seconds and the device cannot be used before it
+    returns.
+    """
     def warmup(self):
         skip_devices_to_test('x86-mario')
         super(alsa_rms_test, self).warmup()
 
         cras_rms_test_setup()
+        # We need CRAS to initialize the volume and gain.
+        cras_utils.playback(playback_file="/dev/zero", duration=1)
+        # CRAS will release the device after 10 seconds.
+        time.sleep(11)
