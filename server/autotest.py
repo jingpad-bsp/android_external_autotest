@@ -45,7 +45,7 @@ AUTOSERV_PREBUILD = _CONFIG.get_config_value(
 # Match on a line like this:
 # FAIL test_name  test_name timestamp=1 localtime=Nov 15 12:43:10 <fail_msg>
 _FAIL_STATUS_RE = re.compile(
-    r'\s*FAIL.*localtime=.*\s*.*\s*[0-9:]+\s*(?P<fail_msg>.*)')
+    r'\s*FAIL.*localtime=.*\s*.*\s*[0-9]+:[0-9]+:[0-9]+\s*(?P<fail_msg>.*)')
 
 
 class AutodirNotFoundError(Exception):
