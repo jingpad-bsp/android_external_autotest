@@ -1090,6 +1090,17 @@ class Tzlocal(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class PyYAMLPackage(ExternalPackage):
+    """pyyaml package."""
+    version = '3.12'
+    local_filename = 'PyYAML-%s.tar.gz' % version
+    urls = (_CHROMEOS_MIRROR + local_filename,)
+    hex_sum = 'cb7fd3e58c129494ee86e41baedfec69eb7dafbe'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
