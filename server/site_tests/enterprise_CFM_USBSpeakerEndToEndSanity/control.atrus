@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
+from autotest_lib.client.common_lib.cros.cfm.usb import cfm_usb_devices
 
 AUTHOR = "harpreet@chromium.org"
 NAME = "enterprise_CFM_USBSpeakerEndToEndSanity.atrus"
@@ -28,13 +29,9 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args,
-            chameleon_args=chameleon_args)
-    repeat = int(args_dict.get('repeat', 10))
-    cmd = "cras_test_client --dump_server_info | awk '/Output Nodes:/," \
-          "/Input Devices:/' | grep -E 'USB' | awk -v N=3 '{print $N}'"
-
-    job.run_test('enterprise_CFM_USBSpeakerEndToEndSanity', host=host, repeat=repeat,
-            cmd=cmd, tag="atrus")
+                             chameleon_args=chameleon_args)
+    job.run_test('enterprise_CFM_USBSpeakerEndToEndSanity', host=host,
+                 usb_speaker=cfm_usb_devices.ATRUS, tag="atrus")
 
 
 parallel_simple(run_test, machines)
