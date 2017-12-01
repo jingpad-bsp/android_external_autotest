@@ -52,7 +52,7 @@ def main(args):
 def _main_loop(jobdir):
     while True:
         _main_loop_body(jobdir)
-        time.sleep(60)
+        time.sleep(20)
 
 
 def _main_loop_body(jobdir):
