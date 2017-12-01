@@ -452,6 +452,13 @@ def parse_arguments(argv):
                               'scheduler will fail if database is not in '
                               'localhost.'),
                         action='store_true', default=False)
+    parser.add_argument(
+            '--metrics-file',
+            help='If provided, drop metrics to this local file instead of '
+                 'reporting to ts_mon',
+            type=str,
+            default=None,
+    )
     options = parser.parse_args(argv)
 
     return options
@@ -481,7 +488,8 @@ def main():
         # Start the thread to report metadata.
         metadata_reporter.start()
 
-        ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler')
+        ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler',
+                                            debug_file=options.metrics_file)
 
         host_scheduler = HostScheduler()
         minimum_tick_sec = global_config.global_config.get_config_value(
