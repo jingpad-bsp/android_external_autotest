@@ -237,7 +237,7 @@ class RDBClientHostWrapper(RDBHost):
         """
         fields = {
             'dut_host_name': self.hostname,
-            'board': self.board or '',
+            'board': self.board,
         }
 
         return fields
@@ -294,7 +294,7 @@ class RDBClientHostWrapper(RDBHost):
                         working, fields=fields)
         metrics.Boolean(
                 self._BOARD_SHARD_METRIC, reset_after=True).set(
-            True, fields={'board': self.board or ''})
+            True, fields={'board': self.board})
         self.record_pool(fields)
 
 
@@ -329,10 +329,11 @@ class RDBClientHostWrapper(RDBHost):
     def board(self):
         """Get the names of the board of this host.
 
-        @return: A string of the name of the board, e.g., lumpy.
+        @return: A string of the name of the board, e.g., lumpy. Returns '' if
+                no board label is found.
         """
         labels = labellib.LabelsMapping(self.labels)
-        return labels.get(constants.Labels.BOARD_PREFIX)
+        return labels.get(constants.Labels.BOARD_PREFIX, '')
 
 
     @property
