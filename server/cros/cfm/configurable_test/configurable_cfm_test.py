@@ -1,5 +1,6 @@
 import logging
 
+from autotest_lib.client.common_lib.cros import crash_detector
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_port_manager
 from autotest_lib.server.cros.cfm import cfm_base_test
@@ -65,13 +66,19 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
         self.cfm_test = cfm_test
         device_collector = usb_device_collector.UsbDeviceCollector(host)
         port_manager = usb_port_manager.UsbPortManager(host)
+        crash_file_detector = crash_detector.CrashDetector(host)
+        # Call get_new_crash_files() once. This records the current crash
+        # files so that subsequent calls only check the delta, i.e.
+        # new crash files from here on.
+        crash_file_detector.get_new_crash_files()
         # self.cfm_facade is inherited from CfmBaseTest.
         context = action_context.ActionContext(
                 cfm_facade=self.cfm_facade,
                 file_contents_collector=HostFileContentsCollector(host),
                 host=host,
                 usb_device_collector=device_collector,
-                usb_port_manager=port_manager)
+                usb_port_manager=port_manager,
+                crash_detector=crash_file_detector)
         self.test_runner = TestRunner(context)
 
     def run_once(self):
