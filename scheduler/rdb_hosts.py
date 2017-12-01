@@ -17,7 +17,6 @@ back to the rdb.
 """
 
 import logging
-import time
 
 from django.core import exceptions as django_exceptions
 
@@ -27,7 +26,6 @@ from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
-from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils.suite_scheduler import constants
 
 try:
@@ -226,27 +224,6 @@ class RDBClientHostWrapper(RDBHost):
         super(RDBClientHostWrapper, self)._update_attributes(payload)
 
 
-    def record_state(self, type_str, state, value):
-        """Record metadata in elasticsearch.
-
-        @param type_str: sets the _type field in elasticsearch db.
-        @param state: string representing what state we are recording,
-                      e.g. 'status'
-        @param value: value of the state, e.g. 'running'
-        """
-        metadata = {
-            state: value,
-            'hostname': self.hostname,
-            'board': self.board,
-            'pools': self.pools,
-            'dbg_str': self.dbg_str,
-            '_type': type_str,
-            'time_recorded': time.time(),
-        }
-        metadata.update(self.metadata)
-        metadata_reporter.queue(metadata)
-
-
     def get_metric_fields(self):
         """Generate default set of fields to include for Monarch.
 
@@ -282,7 +259,6 @@ class RDBClientHostWrapper(RDBHost):
         """
         # Update elasticsearch db.
         self._update({'status': status})
-        self.record_state('host_history', 'status', status)
 
         # Update Monarch.
         fields = self.get_metric_fields()
