@@ -202,7 +202,7 @@ class RemoteDrone(Drone):
         safe_file = pipes.quote(output_file)
         # SSH creates a session for each command, so we do not have to
         # do it.
-        self._host.run('%(cmd)s <%(null)s >%(file)s 2>&1 &'
+        self._host.run('%(cmd)s <%(null)s >>%(file)s 2>&1 &'
                        % {'cmd': safe_cmd,
                           'file': safe_file,
                           'null': os.devnull})
@@ -228,7 +228,7 @@ def _spawn(path, argv, output_file):
     null_fd = os.open(os.devnull, os.O_RDONLY)
     os.dup2(null_fd, 0)
     os.close(null_fd)
-    out_fd = os.open(output_file, os.O_WRONLY | os.O_CREAT)
+    out_fd = os.open(output_file, os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     os.dup2(out_fd, 1)
     os.dup2(out_fd, 2)
     os.close(out_fd)
