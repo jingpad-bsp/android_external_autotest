@@ -79,9 +79,12 @@ class _ChromeLogin(object):
     def __init__(self, host, kwargs):
         self._host = host
         self._kwargs = kwargs
+        self._cts_helper_kwargs = kwargs
 
     def _cmd_builder(self, verbose=False):
         """Gets remote command to start browser with ARC enabled."""
+        # If autotest is not installed on the host, as with moblab at times,
+        # getting the autodir will raise an exception.
         cmd = autotest.Autotest.get_installed_autodir(self._host)
         cmd += '/bin/autologin.py --arc'
         if self._kwargs.get('dont_override_profile') == True:
@@ -93,12 +96,8 @@ class _ChromeLogin(object):
             cmd += ' > /dev/null 2>&1'
         return cmd
 
-    def __enter__(self):
-        """Logs in to the browser with ARC enabled."""
-        logging.info('Ensure Android is running...')
-        # If we can't login to Chrome and launch Android we want this job to
-        # die roughly after 6 minutes instead of hanging for the duration.
-        retry = False
+    def _login(self, timeout=60, raise_exception=False):
+        """Logs into Chrome."""
         try:
             # We used to call cheets_StartAndroid, but it is a little faster to
             # call a script on the DUT. This also saves CPU time on the server.
@@ -106,20 +105,36 @@ class _ChromeLogin(object):
                 self._cmd_builder(),
                 ignore_status=False,
                 verbose=False,
-                timeout=120)
+                timeout=timeout)
+            return True
+        except autotest.AutodirNotFoundError:
+            # Autotest is not installed (can happen on moblab after image
+            # install). Fall back to logging in via client test, which as a side
+            # effect installs autotest in the right place, so we should not hit
+            # this slow path repeatedly.
+            logging.warning('Autotest not installed, fallback to slow path...')
+            try:
+                autotest.Autotest(self._host).run_timed_test(
+                    'cheets_StartAndroid',
+                    timeout=2 * timeout,
+                    check_client_result=True,
+                    **self._cts_helper_kwargs)
+                return True
+            except Exception:
+                if raise_exception:
+                    raise
         except Exception:
-            retry = True
+            if raise_exception:
+                raise
+        return False
 
-        if retry:
-            logging.info('Loging into Chrome failed, trying again soon.')
-            # Give it some time to calm down.
+    def __enter__(self):
+        """Logs into Chrome with retry."""
+        logging.info('Ensure Android is running...')
+        if not self._login():
+            logging.info('Sleeping before next login attempt...')
             time.sleep(20)
-            # Spew output to logs this time and raise failures.
-            self._host.run(
-                self._cmd_builder(verbose=True),
-                ignore_status=False,
-                verbose=True,
-                timeout=240)
+            self._login(timeout=120, raise_exception=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit restart the browser or reboot the machine.
@@ -134,7 +149,7 @@ class _ChromeLogin(object):
                 if raised.
         """
         reboot = True
-        if self._kwargs.get('reboot') != True:
+        if self._cts_helper_kwargs.get('reboot') != True:
             logging.info('Skipping reboot, restarting browser.')
             reboot = False
             try:
@@ -142,10 +157,7 @@ class _ChromeLogin(object):
                 # other files. A reboot would have cleaned /tmp as well.
                 script = 'stop ui && find /tmp/ -mindepth 1 -delete && start ui'
                 self._host.run(
-                    script,
-                    ignore_status=False,
-                    verbose=False,
-                    timeout=120)
+                    script, ignore_status=False, verbose=False, timeout=120)
             except Exception:
                 logging.error('Restarting browser has failed.')
                 reboot = True
@@ -469,8 +481,7 @@ class TradefedTest(test.test):
     def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
 
-        Please see also cheets_StartAndroid and autologin.py for details on
-        how this works.
+        Please see also cheets_StartAndroid for details about how this works.
         """
         return _ChromeLogin(self._host, cts_helper_kwargs)
 
