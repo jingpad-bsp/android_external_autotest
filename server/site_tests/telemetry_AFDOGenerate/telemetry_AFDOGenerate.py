@@ -51,8 +51,6 @@ TELEMETRY_AFDO_BENCHMARKS = (
     ('octane',),
     ('kraken',),
     ('speedometer',),
-    ('dromaeo.domcoreattr',),
-    ('dromaeo.domcoremodify',),
     )
 
 # Temporarily disable this benchmark because it is failing a
