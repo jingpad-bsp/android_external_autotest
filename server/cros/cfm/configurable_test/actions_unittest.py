@@ -26,11 +26,13 @@ class TestActions(unittest.TestCase):
         self.cfm_facade_mock = mock.MagicMock()
         self.usb_device_collector_mock = mock.MagicMock()
         self.usb_port_manager_mock = mock.MagicMock()
+        self.crash_detector_mock = mock.MagicMock()
         self.context_with_mocks = action_context.ActionContext(
                 host=self.host_mock,
                 cfm_facade=self.cfm_facade_mock,
                 usb_device_collector=self.usb_device_collector_mock,
-                usb_port_manager=self.usb_port_manager_mock)
+                usb_port_manager=self.usb_port_manager_mock,
+                crash_detector=self.crash_detector_mock)
 
 
     def test_assert_file_does_not_contain_no_match(self):
@@ -170,6 +172,20 @@ class TestActions(unittest.TestCase):
         action = actions.RetryAssertAction(RaisesFirstTimeAction(), 1)
         self.assertRaises(
                 AssertionError, lambda: action.execute(self.context_with_mocks))
+
+    def test_assert_no_new_crashes(self):
+        action = actions.AssertNoNewCrashes()
+        self.crash_detector_mock.get_new_crash_files = mock.Mock(
+                return_value=[])
+        action.do_execute(self.context_with_mocks)
+
+    def test_assert_no_new_crashes_crash_detected(self):
+        action = actions.AssertNoNewCrashes()
+        self.crash_detector_mock.get_new_crash_files = mock.Mock(
+                return_value=['/a/new/crash/file'])
+        self.assertRaises(
+                AssertionError,
+                lambda: action.do_execute(self.context_with_mocks))
 
 
 class FakeCollector(object):
