@@ -27,6 +27,7 @@ from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
 from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.utils import labellib
 
 try:
     from chromite.lib import metrics
@@ -203,6 +204,11 @@ class RDBClientHostWrapper(RDBHost):
                 rdb_requests.UpdateHostRequest, rdb.update_hosts)
         self.dbg_str = ''
         self.metadata = {}
+        # We access labels for metrics generation below and it's awkward not
+        # knowing if labels were populated or not.
+        if not hasattr(self, 'labels'):
+            self.labels = ()
+
 
 
     def _update(self, payload):
@@ -319,27 +325,14 @@ class RDBClientHostWrapper(RDBHost):
         return self.platform_name
 
 
-    def find_labels_start_with(self, search_string):
-        """Find all labels started with given string.
-
-        @param search_string: A string to match the beginning of the label.
-        @return: A list of all matched labels.
-        """
-        try:
-            return [l for l in self.labels if l.startswith(search_string)]
-        except AttributeError:
-            return []
-
-
     @property
     def board(self):
         """Get the names of the board of this host.
 
         @return: A string of the name of the board, e.g., lumpy.
         """
-        boards = self.find_labels_start_with(constants.Labels.BOARD_PREFIX)
-        return (boards[0][len(constants.Labels.BOARD_PREFIX):] if boards
-                else None)
+        labels = labellib.LabelsMapping(self.labels)
+        return labels.get(constants.Labels.BOARD_PREFIX)
 
 
     @property
@@ -348,8 +341,8 @@ class RDBClientHostWrapper(RDBHost):
 
         @return: A list of pool names that the host is assigned to.
         """
-        return [label[len(constants.Labels.POOL_PREFIX):] for label in
-                self.find_labels_start_with(constants.Labels.POOL_PREFIX)]
+        return [l[len(constants.Labels.POOL_PREFIX):] for l in self.labels
+                if l.startswith(constants.Labels.POOL_PREFIX)]
 
 
     def get_object_dict(self, **kwargs):
