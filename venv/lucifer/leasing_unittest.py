@@ -55,71 +55,30 @@ def test_obtain_lease_with_error_leaves_files(tmpdir):
 
 
 @pytest.mark.slow
-def test_get_expired_leases(tmpdir, end_time):
+def test_Lease__expired(tmpdir, end_time):
     """Test get_expired_leases()."""
     _make_lease(tmpdir, 123)
     path = _make_lease(tmpdir, 124)
     with _obtain_lease(path):
-        got = list(leasing.get_expired_leases(str(tmpdir)))
-
-    assert all(isinstance(job, leasing.Lease) for job in got)
-    # Locked lease should not be returned
-    assert [job.id for job in got] == [123]
+        leases = _leases_dict(str(tmpdir))
+        assert leases[123].expired()
+        assert not leases[124].expired()
 
 
 def test_unlocked_fresh_leases_are_not_expired(tmpdir):
     """Test get_expired_leases()."""
     path = _make_lease(tmpdir, 123)
     os.utime(path, (_THE_END, _THE_END))
-    got = list(leasing.get_expired_leases(str(tmpdir)))
-    assert len(got) == 0
+    leases = _leases_dict(str(tmpdir))
+    assert not leases[123].expired()
 
 
-def test_get_expired_leases_with_sock_files(tmpdir, end_time):
-    """Test get_expired_leases()."""
+def test_leases_iter_with_sock_files(tmpdir):
+    """Test leases_iter() ignores sock files."""
     _make_lease(tmpdir, 123)
     tmpdir.join('124.sock').write('')
-    got = list(leasing.get_expired_leases(str(tmpdir)))
-
-    assert all(isinstance(job, leasing.Lease) for job in got)
-    # Abort socket should be ignored
-    assert [job.id for job in got] == [123]
-
-
-def test_get_timed_out_leases(tmpdir):
-    """Test get_timed_out_leases()."""
-    mock_model = mock.Mock()
-    (
-            mock_model.objects
-            .filter()
-            .extra()
-            .distinct
-    ).return_value = [_StubJob(122), _StubJob(123)]
-    _make_lease(tmpdir, 123)
-    _make_lease(tmpdir, 124)
-    got = list(leasing.get_timed_out_leases(mock_model, str(tmpdir)))
-
-    assert all(isinstance(job, leasing.Lease) for job in got)
-    assert 123 in [job.id for job in got]
-    assert 124 not in [job.id for job in got]
-
-
-def test_get_marked_aborting_leases(tmpdir):
-    """Test get_marked_aborting_leases()."""
-    mock_model = mock.Mock()
-    (
-            mock_model.objects
-            .filter()
-            .filter()
-            .distinct
-    ).return_value = [_StubJob(122), _StubJob(123)]
-    _make_lease(tmpdir, 123)
-    _make_lease(tmpdir, 124)
-    got = list(leasing.get_marked_aborting_leases(mock_model, str(tmpdir)))
-
-    assert all(isinstance(job, leasing.Lease) for job in got)
-    assert 123 in [job.id for job in got]
-    assert 124 not in [job.id for job in got]
+    leases = _leases_dict(str(tmpdir))
+    assert 124 not in leases
 
 
 def test_Job_cleanup(tmpdir):
@@ -231,6 +190,12 @@ def _abort_socket(tmpdir, job_id):
             proc.terminate()
 
 
+def _leases_dict(jobdir):
+    """Convenience method for tests."""
+    return {lease.id: lease for lease
+            in leasing.leases_iter(jobdir)}
+
+
 def _make_lease(tmpdir, job_id):
     return _make_lease_file(str(tmpdir), job_id)
 
@@ -245,10 +210,3 @@ def _make_lease_file(jobdir, job_id):
     with open(path, 'w'):
         pass
     return path
-
-
-class _StubJob(object):
-    """Stub for Django Job model."""
-
-    def __init__(self, job_id):
-        self.id = job_id

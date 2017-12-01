@@ -75,7 +75,9 @@ def _main(args):
             'autotest_scheduler', short_lived=True):
         atexit.register(metrics.Flush)
         handler = _make_handler(args)
-        return _run_job(args.run_job_path, handler, args)
+        ret = _run_job(args.run_job_path, handler, args)
+        _mark_handoff_completed(args.job_id)
+        return ret
 
 
 def _make_handler(args):
@@ -113,6 +115,13 @@ def _run_job(path, event_handler, args):
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler,
                                       args=command_args)
+
+
+def _mark_handoff_completed(job_id):
+    models = autotest.load('frontend.afe.models')
+    handoff = models.JobHandoff.objects.get(job_id=job_id)
+    handoff.completed = True
+    handoff.save()
 
 
 def _abort_sock_path(jobdir, job_id):
