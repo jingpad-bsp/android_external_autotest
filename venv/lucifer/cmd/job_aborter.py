@@ -51,6 +51,7 @@ def main(args):
 
 def _main_loop(jobdir):
     while True:
+        logger.debug('Tick')
         _main_loop_body(jobdir)
         time.sleep(20)
 
@@ -61,7 +62,7 @@ def _main_loop_body(jobdir):
             lease.id: lease for lease in leasing.leases_iter(jobdir)
             if not lease.expired()
     }
-    _mark_expired_jobs_aborted(models, active_leases)
+    _mark_expired_jobs_failed(models, active_leases)
     _abort_timed_out_jobs(models, active_leases)
     _abort_jobs_marked_aborting(models, active_leases)
     _abort_special_tasks_marked_aborted()
@@ -70,22 +71,25 @@ def _main_loop_body(jobdir):
     # lucifer_run_job
 
 
-def _mark_expired_jobs_aborted(models, active_leases):
-    """Mark expired jobs aborted.
+def _mark_expired_jobs_failed(models, active_leases):
+    """Mark expired jobs failed.
 
     Expired jobs are jobs that have an incomplete JobHandoff and that do
     not have an active lease.  These jobs have been handed off to a
     job_reporter, but that job_reporter has crashed.  These jobs are
-    marked aborted in the database.
+    marked failed in the database.
 
     @param models: frontend.afe.models
     @param active_leases: dict mapping job ids to Leases.
     """
+    logger.debug('Looking for expired jobs')
     job_ids_to_mark = []
     for handoff in _incomplete_handoffs_queryset(models.JobHandoff):
+        logger.debug('Found handoff: %d', handoff.job_id)
         if handoff.job_id not in active_leases:
+            logger.debug('Handoff %d is missing active lease', handoff.job_id)
             job_ids_to_mark.append(handoff.job_id)
-    _mark_aborted(models, job_ids_to_mark)
+    _mark_failed(models, job_ids_to_mark)
 
 
 def _abort_timed_out_jobs(models, active_leases):
@@ -191,17 +195,22 @@ def _filter_leased(jobdir, dbjobs):
             yield dbjob, our_jobs[dbjob.id]
 
 
-def _mark_aborted(models, job_ids):
-    """Mark jobs aborted in database.
+def _mark_failed(models, job_ids):
+    """Mark jobs failed in database.
 
     This also marks the corresponding JobHandoffs as completed.
     """
-    jobs = (models.Job.objects
-            .filter(id__in=job_ids)
-            .prefetch_related('hostqueueentry_set'))
-    for job in jobs:
-        logger.info('Aborting job %r', job)
-        job.abort()
+    if not job_ids:
+        return
+    logger.info('Marking jobs failed: %r', job_ids)
+    (models.HostQueueEntry.objects
+     .filter(job_id__in=job_ids)
+     .update(complete=True,
+             status=models.HostQueueEntry.Status.FAILED))
+    (models.HostQueueEntry.objects
+     .filter(job_id__in=job_ids)
+     .exclude(started_on=None)
+     .update(finished_on=datetime.datetime.now()))
     (models.JobHandoff.objects
      .filter(job_id__in=job_ids)
      .update(completed=True))
