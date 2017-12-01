@@ -1057,6 +1057,13 @@ def parse_options():
                       help='Minimum job age in days before a result can be '
                       'removed from local storage',
                       type='int', default=None)
+    parser.add_option(
+            '--metrics-file',
+            help='If provided, drop metrics to this local file instead of '
+                 'reporting to ts_mon',
+            type=str,
+            default=None,
+    )
 
     options = parser.parse_args()[0]
     if options.process_all and options.process_hosts_only:
@@ -1108,7 +1115,8 @@ def main():
 
     service_name = 'gs_offloader(%s)' % offloader_type
     with ts_mon_config.SetupTsMonGlobalState(service_name, indirect=True,
-                                             short_lived=False):
+                                             short_lived=False,
+                                             debug_file=options.metrics_file):
         with metrics.SuccessCounter('chromeos/autotest/gs_offloader/exit'):
             offloader = Offloader(options)
             if not options.delete_only:
