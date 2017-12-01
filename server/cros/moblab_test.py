@@ -41,7 +41,10 @@ class MoblabTest(test.test):
         """
         super(MoblabTest, self).initialize()
         self._host = host
-        self._host.verify_moblab_services(timeout_m=services_init_timeout_m)
+        # When passed in from test_that or run_suite, all incoming arguments are
+        # str.
+        self._host.verify_moblab_services(
+                timeout_m=int(services_init_timeout_m))
         self._host.wait_afe_up()
         self._host.install_boto_file(boto_path)
         self._set_image_storage_server(image_storage_server)
