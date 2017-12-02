@@ -109,10 +109,13 @@ def ClearTPMOwnerRequest(client, wait_for_ready=False, timeout=60):
     CleanupAndReboot(client)
 
     if wait_for_ready:
-        status = {}
+        status = ''
         end_time = time.time() + timeout
-        while not status.get('Ready', False) and time.time() < end_time:
-            status = TPMStatus(client)
+        # Wait for the TPM to be ready and for the attestation to be prepared.
+        while ('attestation_prepared: true' not in status and
+                time.time() < end_time):
+            status = client.run('cryptohome --action=tpm_more_status',
+                    ignore_status=True).stdout.strip()
             logging.debug(status)
             time.sleep(1)
 
