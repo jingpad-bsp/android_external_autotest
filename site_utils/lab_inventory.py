@@ -29,14 +29,18 @@ Options:
     When generating the "board status" e-mail, included a list of
     <number> specific DUTs to be recommended for repair.
 
+--repair-loops
+    Scan the inventory for DUTs stuck in repair loops, and report them
+    via a Monarch presence metric.
+
 --logdir <directory>
     Log progress and actions in a file under this directory.  Text
     of any e-mail sent will also be logged in a timestamped file in
     this directory.
 
 --debug
-    Suppress all logging and sending e-mail.  Instead, write the
-    output that would be generated onto stdout.
+    Suppress all logging, metrics reporting, and sending e-mail.
+    Instead, write the output that would be generated onto stdout.
 
 <board> arguments:
     With no arguments, gathers the status for all boards in the lab.
@@ -58,12 +62,14 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 from autotest_lib.utils import labellib
+from chromite.lib import metrics
 
 
 CRITICAL_POOLS = constants.Pools.CRITICAL_POOLS
@@ -86,10 +92,9 @@ _EXCLUDED_LABELS = {'adb', 'board:guado_moblab'}
 _DEFAULT_DURATION = 24
 
 # _LOGDIR:
-#     Relative path used in the calculation of the default setting
-#     for the --logdir option.  The full path path is relative to
-#     the root of the autotest directory, as determined from
-#     sys.argv[0].
+#     Relative path used in the calculation of the default setting for
+#     the --logdir option.  The full path is relative to the root of the
+#     autotest directory, as determined from sys.argv[0].
 # _LOGFILE:
 #     Basename of a file to which general log information will be
 #     written.
@@ -114,6 +119,12 @@ _HOSTNAME_PATTERN = re.compile(
 # Default entry for managed pools.
 
 _MANAGED_POOL_DEFAULT = 'all_pools'
+
+# _REPAIR_LOOP_THRESHOLD:
+#    The number of repeated Repair tasks that must be seen to declare
+#    that a DUT is stuck in a repair loop.
+
+_REPAIR_LOOP_THRESHOLD = 4
 
 
 class _CachedHostJobHistories(object):
@@ -1023,10 +1034,10 @@ def _perform_pool_inventory(arguments, inventory, timestamp):
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
-    @param inventory  _LabInventory object with the inventory to
-                      be reported.
-    @param timestamp  A string used to identify this run's timestamp
-                      in logs and email output.
+    @param inventory  _LabInventory object with the inventory to be
+                      reported.
+    @param timestamp  A string used to identify this run's timestamp in
+                      logs and email output.
     """
     pool_message = _generate_pool_inventory_message(inventory)
     idle_message = _generate_idle_inventory_message(inventory)
@@ -1035,6 +1046,87 @@ def _perform_pool_inventory(arguments, inventory, timestamp):
                 'DUT pool inventory %s' % timestamp,
                 arguments.pool_notify,
                 pool_message + '\n\n\n' + idle_message)
+
+
+def _dut_in_repair_loop(history):
+    """Return whether a DUT's history indicates a repair loop.
+
+    A DUT is considered looping if it runs no tests, and no tasks pass
+    other than repair tasks.
+
+    @param history  An instance of `status_history.HostJobHistory` to be
+                    scanned for a repair loop.  The caller guarantees
+                    that this history corresponds to a working DUT.
+    @returns  Return a true value if the DUT's most recent history
+              indicates a repair loop.
+    """
+    # Our caller passes only histories for working DUTs; that means
+    # we've already paid the cost of fetching the diagnosis task, and
+    # we know that the task was successful.  The diagnosis task will be
+    # one of the tasks we must scan to find a loop, so if the task isn't
+    # a repair task, then our history includes a successful non-repair
+    # task, and we're not looping.
+    #
+    # The for loop below  is very expensive, because it must fetch the
+    # full history, regardless of how many tasks we examine.  At the
+    # time of this writing, this check against the diagnosis task
+    # reduces the cost of finding loops in the full inventory from hours
+    # to minutes.
+    if history.last_diagnosis()[1].name != 'Repair':
+        return False
+    repair_ok_count = 0
+    for task in history:
+        if not task.is_special:
+            # This is a test, so we're not looping.
+            return False
+        if task.diagnosis == status_history.BROKEN:
+            # Failed a repair, so we're not looping.
+            return False
+        if (task.diagnosis == status_history.WORKING
+                and task.name != 'Repair'):
+            # Non-repair task succeeded, so we're not looping.
+            return False
+        # At this point, we have either a failed non-repair task, or
+        # a successful repair.
+        if task.name == 'Repair':
+            repair_ok_count += 1
+            if repair_ok_count >= _REPAIR_LOOP_THRESHOLD:
+                return True
+
+
+def _perform_repair_loop_report(arguments, inventory):
+    """Scan the inventory for DUTs stuck in a repair loop.
+
+    This routine walks through the given inventory looking for DUTs
+    where the most recent history shows that the DUT is regularly
+    passing repair tasks, but has not run any tests.
+
+    @param arguments  Command-line arguments as returned by
+                      `ArgumentParser`
+    @param inventory  _LabInventory object with the inventory to be
+                      reported.
+    """
+    loop_presence = metrics.BooleanMetric(
+        'chromeos/autotest/inventory/repair_loops',
+        'DUTs stuck in repair loops')
+    logging.info('Scanning for DUTs in repair loops.')
+    for counts in inventory.by_board.itervalues():
+        for history in counts.get_working_list():
+            # Managed DUTs with names that don't match
+            # _HOSTNAME_PATTERN shouldn't be possible.  However, we
+            # don't want arbitrary strings being attached to the
+            # 'dut_hostname' field, so for safety, we exclude all
+            # anomalies.
+            if not _HOSTNAME_PATTERN.match(history.hostname):
+                continue
+            if _dut_in_repair_loop(history):
+                fields = {'dut_hostname': history.hostname,
+                          'board': history.host_board,
+                          'pool': history.host_pool}
+                logging.info('Looping DUT: %(dut_hostname)s, '
+                             'board: %(board)s, pool: %(pool)s',
+                             fields)
+                loop_presence.set(True, fields=fields)
 
 
 def _log_startup(arguments, startup_time):
@@ -1075,6 +1167,28 @@ def _create_inventory(arguments, end_time):
                      inventory.get_num_duts(),
                      inventory.get_num_boards())
     return inventory
+
+
+def _perform_inventory_reports(arguments):
+    """Perform all inventory checks requested on the command line.
+
+    Create the initial inventory and run through the inventory reports
+    as called for by the parsed command-line arguments.
+
+    @param arguments  Command-line arguments as returned by
+                      `ArgumentParser`.
+    """
+    startup_time = time.time()
+    timestamp = _log_startup(arguments, startup_time)
+    inventory = _create_inventory(arguments, startup_time)
+    if arguments.debug:
+        _populate_board_counts(inventory)
+    if arguments.board_notify:
+        _perform_board_inventory(arguments, inventory, timestamp)
+    if arguments.pool_notify:
+        _perform_pool_inventory(arguments, inventory, timestamp)
+    if arguments.repair_loops:
+        _perform_repair_loop_report(arguments, inventory)
 
 
 def _separate_email_addresses(address_list):
@@ -1174,6 +1288,8 @@ def _parse_command(argv):
                         help=('Specify how many DUTs should be '
                               'recommended for repair (default: no '
                               'recommendation)'))
+    parser.add_argument('--repair-loops', action='store_true',
+                        help='Check for devices stuck in repair loops.')
     parser.add_argument('--debug', action='store_true',
                         help='Print e-mail messages on stdout '
                              'without sending them.')
@@ -1200,11 +1316,14 @@ def _configure_logging(arguments):
         ~3 months worth of history.
       * With the option, we expect stdout to contain other
         human-readable output (including the contents of the e-mail
-        messages), so we restrict the output.
+        messages), so we restrict the output to INFO level.
+
+    For convenience, when `--debug` is on, the logging format has
+    no adornments, so that a call like `logging.info(msg)` simply writes
+    `msg` to stdout, plus a trailing newline.
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
-
     """
     root_logger = logging.getLogger()
     if arguments.debug:
@@ -1233,22 +1352,20 @@ def _configure_logging(arguments):
 
 def main(argv):
     """Standard main routine.
-    @param argv  Command line arguments including `sys.argv[0]`.
+
+    @param argv  Command line arguments, including `sys.argv[0]`.
     """
     arguments = _parse_command(argv)
     if not arguments:
         sys.exit(1)
     _configure_logging(arguments)
     try:
-        startup_time = time.time()
-        timestamp = _log_startup(arguments, startup_time)
-        inventory = _create_inventory(arguments, startup_time)
-        if arguments.debug:
-            _populate_board_counts(inventory)
-        if arguments.board_notify:
-            _perform_board_inventory(arguments, inventory, timestamp)
-        if arguments.pool_notify:
-            _perform_pool_inventory(arguments, inventory, timestamp)
+        if not arguments.debug:
+            with site_utils.SetupTsMonGlobalState(
+                    'repair_loops', short_lived=True, auto_flush=False):
+                _perform_inventory_reports(arguments)
+        else:
+            _perform_inventory_reports(arguments)
     except KeyboardInterrupt:
         pass
     except EnvironmentError as e:
