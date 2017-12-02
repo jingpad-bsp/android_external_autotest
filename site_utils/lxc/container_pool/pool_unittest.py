@@ -251,7 +251,9 @@ class PoolTests(unittest.TestCase):
             # Block with timeout so that the test doesn't hang forever if
             # something goes wrong.  1 second should be sufficient because the
             # test factory is extremely lightweight.
-            self.assertIsNotNone(self.pool.get(timeout=1))
+            pool = self.pool.get(timeout=1)
+            self.assertIsNotNone(pool)
+            self.assertTrue(pool.started)
 
 
     def _verifyNoContainers(self):
@@ -558,6 +560,12 @@ class TestContainer(object):
 
     def __init__(self, factory):
         self._factory = factory
+        self.started = False
+
+
+    def start(self, wait_for_network=True):
+        """Simulates starting the container."""
+        self.started = True
 
 
     def destroy(self, *_args, **_kwargs):
