@@ -4,6 +4,7 @@
 
 import Queue
 import logging
+import os
 import socket
 import threading
 from multiprocessing import connection
@@ -29,6 +30,14 @@ class AsyncListener(object):
                            address.
         """
         self._socket = connection.Listener(address, family='AF_UNIX')
+
+        # This is done mostly for local testing/dev purposes - the easiest/most
+        # reliable way to run the container pool locally is as root, but then
+        # only other processes owned by root can connect to the container.
+        # Setting open permissions on the socket makes it so that other users
+        # can connect, which enables developers to then run tests without sudo.
+        os.chmod(address, 0777)
+
         self._address = address
         self._queue = Queue.Queue()
         self._thread = None
