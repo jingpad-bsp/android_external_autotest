@@ -26,6 +26,7 @@ class platform_ImageLoader(test.test):
     REGISTER_COMPONENT = 'RegisterComponent'
     REMOVE_COMPONENT = 'RemoveComponent'
     LOAD_COMPONENT = 'LoadComponent'
+    UNMOUNT_COMPONENT = 'UnmountComponent'
     LOAD_COMPONENT_AT_PATH = 'LoadComponentAtPath'
     BAD_RESULT = ''
     USER = 'chronos'
@@ -89,6 +90,17 @@ class platform_ImageLoader(test.test):
             user=self.USER,
             args=args).response
 
+    def _unmount_component(self, name):
+        args = [dbus.String(name)]
+        return dbus_send.dbus_send(
+            self.BUS_NAME,
+            self.BUS_INTERFACE,
+            self.BUS_PATH,
+            self.UNMOUNT_COMPONENT,
+            timeout_seconds=20,
+            user=self.USER,
+            args=args).response
+
     def _corrupt_and_load_component(self, component, iteration, target, offset):
         """Registers a valid component and then corrupts it by writing
         a random byte to the target file at the given offset.
@@ -123,13 +135,22 @@ class platform_ImageLoader(test.test):
         return utils.system_output(
                 '/usr/sbin/imageloader --dry_run --unmount_all').splitlines()
 
-    def _test_remove_component(self, component):
-        if not self._register_component("cros-termina", "10042.0.0",
+    def _test_remove_unmount_component(self, component):
+        component_name = "cros-termina"
+        if not self._register_component(component_name, "10042.0.0",
                                     component):
             raise error.TestError('Failed to register a valid component')
 
-        if not self._remove_component("cros-termina"):
-            self._components_to_delete.append("cros-termina")
+        mount_path = self._load_component(component_name)
+        if mount_path == self.BAD_RESULT:
+            raise error.TestError('Failed to mount component as dbus service.')
+
+        if not self._unmount_component(component_name):
+            raise error.TestError(
+                'Failed to unmount component as dbus service.')
+
+        if not self._remove_component(component_name):
+            self._components_to_delete.append(component_name)
             raise error.TestError('Failed to remove a removable component')
 
     def initialize(self):
@@ -141,7 +162,7 @@ class platform_ImageLoader(test.test):
         """Executes the test cases."""
 
         if component3 != None:
-            self._test_remove_component(component3)
+            self._test_remove_unmount_component(component3)
 
         if component1 == None or component2 == None:
             raise error.TestError('Must supply two versions of '
