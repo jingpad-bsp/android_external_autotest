@@ -372,6 +372,7 @@ class _Worker(threading.Thread):
         container = None
         try:
             container = self._factory.create_container()
+            container.start(wait_for_network=True)
         except Exception as e:
             logging.error('Worker error: %s', error.format_error())
             self._error_cb(self, e)
