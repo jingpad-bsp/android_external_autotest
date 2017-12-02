@@ -38,6 +38,14 @@ def _start(args):
         logging.warning('SSP requires root privilege to run commands, please '
                         'grant root access to this process.')
         utils.run('sudo true')
+
+    # Configure logging.
+    config = server_logging_config.ServerLoggingConfig()
+    config.configure_logging(verbose=args.verbose)
+    config.add_debug_file_handlers(log_dir=_LOG_LOCATION, log_name=_LOG_NAME)
+    # Pool code is heavily multi-threaded.  This will help debugging.
+    logging_config.add_threadname_in_log()
+
     host_dir = lxc.SharedHostDir()
     service = container_pool.Service(host_dir)
     # Catch signals, and send the appropriate stop request to the service
@@ -117,13 +125,6 @@ def main():
     """Main function."""
     # Parse args
     args = parse_args()
-
-    # Configure logging.
-    config = server_logging_config.ServerLoggingConfig()
-    config.configure_logging(verbose=args.verbose)
-    config.add_debug_file_handlers(log_dir=_LOG_LOCATION, log_name=_LOG_NAME)
-    # Pool code is heavily multi-threaded.  This will help debugging.
-    logging_config.add_threadname_in_log()
 
     # Dispatch control to the appropriate helper.
     args.func(args)
