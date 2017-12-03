@@ -358,6 +358,16 @@ class RetryAssertAction(Action):
                 % (self._action, self._num_tries, self._retry_delay_seconds))
 
 
+class AssertNoNewCrashes(Action):
+    """
+    Asserts that no new crash files exist on disk.
+    """
+    def do_execute(self, context):
+        new_crash_files = context.crash_detector.get_new_crash_files()
+        if new_crash_files:
+            raise AssertionError(
+                    'New crash files detected: %s', new_crash_files)
+
 
 class TimeoutError(RuntimeError):
     """

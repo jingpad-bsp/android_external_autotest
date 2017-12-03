@@ -1193,6 +1193,8 @@ class CommandParsingTests(unittest.TestCase):
         arguments = self._parse_arguments([], notify=[notify_option])
         self.assertEqual(arguments.duration,
                          lab_inventory._DEFAULT_DURATION)
+        self.assertIsNone(arguments.recommend)
+        self.assertFalse(arguments.repair_loops)
         self.assertFalse(arguments.debug)
         self.assertEqual(arguments.logdir, self._logdir)
         self.assertEqual(arguments.boardnames, [])
@@ -1222,6 +1224,20 @@ class CommandParsingTests(unittest.TestCase):
         self.assertEqual(arguments.boardnames, boardlist)
 
 
+    def test_recommend_option(self):
+        """Test parsing of the `--recommend` option."""
+        for opt in ['-r', '--recommend']:
+            for recommend in ['5', '55']:
+                arguments = self._parse_arguments([opt, recommend])
+                self.assertEqual(arguments.recommend, int(recommend))
+
+
+    def test_repair_loop_option(self):
+        """Test parsing of the `--repair-loops` option."""
+        arguments = self._parse_arguments(['--repair-loops'])
+        self.assertTrue(arguments.repair_loops)
+
+
     def test_debug_option(self):
         """Test parsing of the `--debug` option."""
         arguments = self._parse_arguments(['--debug'])
@@ -1230,14 +1246,10 @@ class CommandParsingTests(unittest.TestCase):
 
     def test_duration(self):
         """Test parsing of the `--duration` option."""
-        arguments = self._parse_arguments(['--duration', '1'])
-        self.assertEqual(arguments.duration, 1)
-        arguments = self._parse_arguments(['--duration', '11'])
-        self.assertEqual(arguments.duration, 11)
-        arguments = self._parse_arguments(['-d', '1'])
-        self.assertEqual(arguments.duration, 1)
-        arguments = self._parse_arguments(['-d', '11'])
-        self.assertEqual(arguments.duration, 11)
+        for opt in ['-d', '--duration']:
+            for duration in ['1', '11']:
+                arguments = self._parse_arguments([opt, duration])
+                self.assertEqual(arguments.duration, int(duration))
 
 
     def _check_email_option(self, option, getlist):
@@ -1286,7 +1298,7 @@ class CommandParsingTests(unittest.TestCase):
                                  lambda a: a.pool_notify)
 
 
-    def test_pool_logdir(self):
+    def test_logdir_option(self):
         """Test parsing of the `--logdir` option."""
         logdir = '/usr/local/whatsis/logs'
         arguments = self._parse_arguments(['--logdir', logdir])

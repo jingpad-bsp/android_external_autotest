@@ -16,10 +16,7 @@ strings, which are common keyval label values.
 """
 
 import collections
-import logging
 import re
-
-logger = logging.getLogger(__name__)
 
 
 class Key(object):
@@ -64,22 +61,13 @@ class LabelsMapping(collections.MutableMapping):
         return cls(l.name for l in host.labels.all())
 
     def _add_label(self, str_label):
-        """Add a label string to the internal map or plain labels list.
-
-        If there is already a corresponding keyval in the internal map,
-        skip adding the current label.  This is how existing labels code
-        tends to handle it, but duplicate keys should be considered an
-        anomaly.
-        """
+        """Add a label string to the internal map or plain labels list."""
         try:
             keyval_label = parse_keyval_label(str_label)
         except ValueError:
             self._plain_labels.append(str_label)
         else:
-            if keyval_label.key in self._keyval_map:
-                logger.warning('Duplicate keyval label %r (current map %r)',
-                               str_label, self._keyval_map)
-            else:
+            if keyval_label.key not in self._keyval_map:
                 self._keyval_map[keyval_label.key] = keyval_label.value
 
     def __getitem__(self, key):

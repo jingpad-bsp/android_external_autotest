@@ -3,6 +3,7 @@
 
 import logging, os, signal, unittest
 import common
+import mock
 from autotest_lib.client.common_lib import enum, global_config, host_protections
 from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
@@ -352,6 +353,12 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
         monitor_db.initialize_globals()
         scheduler_models.initialize_globals()
+
+        patcher = mock.patch(
+                'autotest_lib.scheduler.luciferlib.is_lucifer_enabled',
+                lambda: False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
 
     def _set_global_config_values(self):

@@ -9,8 +9,8 @@ See infra/lucifer for the implementation of job leasing.
 https://chromium.googlesource.com/chromiumos/infra/lucifer
 
 Jobs are leased to processes to own and run.  A process owning a job
-obtain a job lease.  Ownership of the lease is established using an
-exclusive fcntl lock on the lease file.
+obtain a job lease.  Ongoing ownership of the lease is established using
+an exclusive fcntl lock on the lease file.
 
 If a lease file is older than a few seconds and is not locked, then its
 owning process should be considered crashed.
@@ -45,53 +45,6 @@ def obtain_lease(path):
         yield path
         # Only remove the lease file if there was no exception.
         os.unlink(path)
-
-
-def get_expired_leases(jobdir):
-    """Yield expired Leases in jobdir.
-
-    Expired jobs are jobs whose lease files are no longer locked.
-
-    @param jobdir: job lease file directory
-    @returns: iterator of Leases
-    """
-    for lease in leases_iter(jobdir):
-        if lease.expired():
-            yield lease
-
-
-def get_timed_out_leases(dbjob_model, jobdir):
-    """Yield timed out Jobs that are leased.
-
-    @param dbjob_model: Django model for Job
-    @param jobdir: job lease file directory
-    @returns: iterator of Leases
-    """
-    all_timed_out_dbjobs = (
-            dbjob_model.objects
-            .filter(hostqueueentry__complete=False)
-            .extra(where=['created_on + INTERVAL timeout_mins MINUTE < NOW()'])
-            .distinct()
-    )
-    for _, lease in _filter_leased(jobdir, all_timed_out_dbjobs):
-        yield lease
-
-
-def get_marked_aborting_leases(dbjob_model, jobdir):
-    """Yield Jobs marked for aborting that are leased.
-
-    @param dbjob_model: Django model for Job
-    @param jobdir: job lease file directory
-    @returns: iterator of Leases
-    """
-    all_aborting_dbjobs = (
-            dbjob_model.objects
-            .filter(hostqueueentry__aborted=True)
-            .filter(hostqueueentry__complete=False)
-            .distinct()
-    )
-    for _, lease in _filter_leased(jobdir, all_aborting_dbjobs):
-        yield lease
 
 
 def leases_iter(jobdir):
@@ -184,21 +137,6 @@ class Lease(object):
     def _sock_path(self):
         """Return the path of the abort socket corresponding to the lease."""
         return self._entry.path + ".sock"
-
-
-def _filter_leased(jobdir, dbjobs):
-    """Filter Job models for leased jobs.
-
-    Yields pairs of Job model and Lease instances.
-
-    @param jobdir: job lease file directory
-    @param dbjobs: iterable of Django model Job instances
-    @returns: iterator of Leases
-    """
-    our_jobs = {job.id: job for job in leases_iter(jobdir)}
-    for dbjob in dbjobs:
-        if dbjob.id in our_jobs:
-            yield dbjob, our_jobs[dbjob.id]
 
 
 def _is_lease_entry(entry):

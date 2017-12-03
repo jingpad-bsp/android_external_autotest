@@ -547,17 +547,6 @@ def reduce_noise_and_get_rms(
         return get_rms(reduced_file.name, channels, bits, rate)
 
 
-def skip_devices_to_test(*boards):
-    """Devices to skip due to hardware or test compatibility issues.
-
-    @param boards: the boards to skip testing.
-    """
-    # TODO(scottz): Remove this when crbug.com/220147 is fixed.
-    dut_board = utils.get_current_board()
-    if dut_board in boards:
-       raise error.TestNAError('This test is not available on %s' % dut_board)
-
-
 def cras_rms_test_setup():
     """Setups for the cras_rms_tests.
 
@@ -878,7 +867,6 @@ class chrome_rms_test(_base_rms_test):
     The chrome instance can be accessed by self.chrome.
     """
     def warmup(self):
-        skip_devices_to_test('x86-mario')
         super(chrome_rms_test, self).warmup()
 
         # Not all client of this file using telemetry.
@@ -906,16 +894,21 @@ class cras_rms_test(_base_rms_test):
     """Base test class for CRAS audio RMS test."""
 
     def warmup(self):
-        skip_devices_to_test('x86-mario')
         super(cras_rms_test, self).warmup()
         cras_rms_test_setup()
 
 
 class alsa_rms_test(_base_rms_test):
-    """Base test class for ALSA audio RMS test."""
+    """Base test class for ALSA audio RMS test.
 
+    Note the warmup will take 10 seconds and the device cannot be used before it
+    returns.
+    """
     def warmup(self):
-        skip_devices_to_test('x86-mario')
         super(alsa_rms_test, self).warmup()
 
         cras_rms_test_setup()
+        # We need CRAS to initialize the volume and gain.
+        cras_utils.playback(playback_file="/dev/zero", duration=1)
+        # CRAS will release the device after 10 seconds.
+        time.sleep(11)
