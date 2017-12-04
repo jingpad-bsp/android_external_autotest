@@ -122,6 +122,14 @@ def main_without_exception_handling():
             type=str,
             default=None,
     )
+    parser.add_option(
+            '--lifetime-hours',
+            type=float,
+            default=None,
+            help='If provided, number of hours the scheduler should run for. '
+                 'At the expiry of this time, the process will exit '
+                 'gracefully.',
+    )
     parser.add_option('--production',
                       help=('Indicate that scheduler is running in production '
                             'environment and it can use database that is not '
@@ -170,6 +178,7 @@ def main_without_exception_handling():
                                              indirect=True,
                                              debug_file=options.metrics_file):
       try:
+          process_start_time = time.time()
           initialize()
           dispatcher = Dispatcher()
           dispatcher.initialize(recover_hosts=options.recover_hosts)
@@ -177,6 +186,9 @@ def main_without_exception_handling():
                   scheduler_config.CONFIG_SECTION, 'minimum_tick_sec', type=float)
 
           while not _shutdown:
+              if _lifetime_expired(options.lifetime_hours, process_start_time):
+                  break
+
               start = time.time()
               dispatcher.tick()
               curr_tick_sec = time.time() - start
@@ -203,6 +215,23 @@ def handle_signal(signum, frame):
     global _shutdown
     _shutdown = True
     logging.info("Shutdown request received.")
+
+
+def _lifetime_expired(lifetime_hours, process_start_time):
+    """Returns True if we've expired the process lifetime, False otherwise.
+
+    Also sets the global _shutdown so that any background processes also take
+    the cue to exit.
+    """
+    if lifetime_hours is None:
+        return False
+    if time.time() - process_start_time > lifetime_hours * 3600:
+        logging.info('Process lifetime %0.3f hours exceeded. Shutting down.',
+                     lifetime_hours)
+        global _shutdown
+        _shutdown = True
+        return True
+    return False
 
 
 def initialize():
