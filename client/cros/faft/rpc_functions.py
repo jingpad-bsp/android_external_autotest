@@ -710,6 +710,10 @@ class RPCFunctions(object):
         """
         return self._updater.retrieve_ecid()
 
+    def _updater_modify_ecid_and_flash_to_bios(self):
+        """Modify ecid, put it to AP firmware, and flash it to the system."""
+        self._updater.modify_ecid_and_flash_to_bios()
+
     def _updater_resign_firmware(self, version):
         """Resign firmware with version.
 
