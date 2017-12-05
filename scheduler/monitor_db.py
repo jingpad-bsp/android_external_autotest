@@ -760,7 +760,13 @@ class Dispatcher(object):
                 only_tasks_with_leased_hosts=not self._inline_host_acquisition):
             if self.host_has_agent(task.host):
                 continue
-            self.add_agent_task(self._get_agent_task_for_special_task(task))
+            try:
+                self.add_agent_task(self._get_agent_task_for_special_task(task))
+            except scheduler_lib.MalformedRecordError:
+                logging.exception('Skipping schedule for malformed '
+                                  'special task.')
+                m = 'chromeos/autotest/scheduler/skipped_schedule_special_task'
+                metrics.Counter(m).increment()
 
 
     def _reverify_remaining_hosts(self):
