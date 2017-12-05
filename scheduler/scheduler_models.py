@@ -800,7 +800,7 @@ class HostQueueEntry(DBObject):
         """
         self.set_status(models.HostQueueEntry.Status.PENDING)
         if not self.host:
-            raise scheduler_lib.NoHostId(
+            raise scheduler_lib.NoHostIdError(
                     'Failed to recover a job whose host_queue_entry_id=%r due'
                     ' to no host_id.'
                     % self.id)
