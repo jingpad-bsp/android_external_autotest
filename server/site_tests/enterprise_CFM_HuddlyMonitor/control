@@ -10,7 +10,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:bluestreak"
+# TODO(egemih): enable once crbug.com/781734 is fixed.
+# ATTRIBUTES = "suite:bluestreak"
 JOB_RETRIES = 3
 
 DOC = """
