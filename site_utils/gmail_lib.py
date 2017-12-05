@@ -139,8 +139,8 @@ def send_email(to, subject, message_text, retry=True, creds_path=None):
     auth_creds = server_utils.get_creds_abspath(
         creds_path or DEFAULT_CREDS_FILE)
     if not auth_creds or not os.path.isfile(auth_creds):
-        logging.error('Failed to send email to %s: Credential file does not'
-                      'exist: %s. If this is a prod server, puppet should'
+        logging.error('Failed to send email to %s: Credential file does not '
+                      'exist: %s. If this is a prod server, puppet should '
                       'install it. If you need to be able to send email, '
                       'find the credential file from chromeos-admin repo and '
                       'copy it to %s', to, auth_creds, auth_creds)
