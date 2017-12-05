@@ -714,7 +714,13 @@ class Dispatcher(object):
         for entry in self._get_unassigned_entries(
                 models.HostQueueEntry.Status.PENDING):
             logging.info('Recovering Pending entry %s', entry)
-            entry.on_pending()
+            try:
+                entry.on_pending()
+            except scheduler_lib.MalformedRecordError as e:
+                logging.exception(
+                        'Skipping agent task for malformed special task.')
+                m = 'chromeos/autotest/scheduler/skipped_malformed_special_task'
+                metrics.Counter(m).increment()
 
 
     def _check_for_unrecovered_verifying_entries(self):
