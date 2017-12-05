@@ -9,7 +9,7 @@ NAME = "security_OpenFDs"
 PURPOSE = ("To ensure unnecessary open file descriptors don't undermine"
            "sandboxing or create other security weaknesses.")
 CRITERIA = "Fail if the list of open fds seen doesn't match the expected set."
-ATTRIBUTES = "suite:bvt-inline"
+ATTRIBUTES = "suite:bvt-perbuild"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
