@@ -15,7 +15,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
 POWER_CYCLE_WAIT_TIME = 1   # seconds
-UPDATER_WAIT_TIME = 40      # seconds
+UPDATER_WAIT_TIME = 80      # seconds
 # This is the GPIO on guado.
 FRONT_LEFT_USB_GPIO = 218
 
@@ -205,7 +205,7 @@ class enterprise_CFM_SiSFwUpdater(test.test):
         # Previous FW updating process will reset SiS after it finish.
 
         # Wait for fw updater to finish.
-        time.sleep(UPDATER_WAIT_TIME+15)
+        time.sleep(UPDATER_WAIT_TIME)
 
         # Try flash the new firmware, should detect same fw version.
         expect_output = 'The device has the same FW as system'
