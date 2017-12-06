@@ -42,7 +42,9 @@ import collections
 import datetime
 import json
 import random
+import re
 import signal
+import subprocess
 import sys
 import time
 
@@ -81,6 +83,8 @@ def get_parser():
                       help='Path to append JSON entries to.')
   parser.add_argument('--output', '-o', type=str, action='store',
                       help='Path to write JSON file to.')
+  parser.add_argument('--ping', action='store_true',
+                      help='Ping DUTs and blacklist unresponsive ones.')
   parser.add_argument('--simultaneous', type=int, action='store',
                       help='Number of simultaneous provisions to run.',
                       default=1)
@@ -412,6 +416,15 @@ def dump_entries_as_json(entries, output_file):
     output_file.write('\n')
     output_file.flush()
 
+def ping_dut(hostname):
+  """Checks if a host is responsive to pings."""
+  if re.match('^chromeos\d+-row\d+-rack\d+-host\d+$', hostname):
+    hostname += '.cros'
+
+  response = subprocess.call(["/bin/ping", "-c1", "-w2", hostname],
+                             stdout=subprocess.PIPE)
+  return response == 0
+
 def main(argv):
   """Load generator for a devserver."""
   parser = get_parser()
@@ -442,6 +455,18 @@ def main(argv):
     parser.print_usage()
     logging.error('Must specify --config')
     sys.exit(1)
+
+  if options.ping:
+    logging.info('Performing ping tests')
+    duts_alive = {}
+    for dut, board in duts.items():
+      if ping_dut(dut):
+        duts_alive[dut] = board
+      else:
+        logging.error('Ignoring DUT %s (%s) for failing initial ping check',
+                      dut, board)
+    duts = duts_alive
+    logging.info('After ping tests: %d boards, %d duts', len(boards), len(duts))
 
   # Set up the test runner and stage all the builds.
   outputlog = open(options.outputlog, 'a') if options.outputlog else None
