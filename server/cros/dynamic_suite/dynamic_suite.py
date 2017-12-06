@@ -48,11 +48,11 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 dynamic_suite.reimage_and_run(
     builds={provision.CROS_VERSION_PREFIX: build}, board=board, name='bvt',
-    job=job, pool=pool, check_hosts=check_hosts, add_experimental=True, num=num,
+    job=job, pool=pool, check_hosts=check_hosts, add_experimental=True,
     devserver_url=devserver_url)
 
 This will -- at runtime -- find all control files that contain "bvt" in their
-"SUITE=" clause, schedule jobs to reimage |num| or less devices in the
+"SUITE=" clause, schedule jobs to reimage devices in the
 specified pool of the specified board with the specified build and, upon
 completion of those jobs, schedule and wait for jobs that run all the tests it
 discovered.
@@ -110,11 +110,10 @@ to complete.
 
 As an artifact of an old implementation, the number of machines to use
 is called the 'sharding_factor', and the default is defined in the [CROS]
-section of global_config.ini.  This can be overridden by passing a 'num=N'
-parameter to create_suite_job(), which is piped through to reimage_and_run()
-just like the 'build' and 'board' parameters are.  However, with provisioning,
-this machine accounting hasn't been implemented nor removed.  However, 'num' is
-still passed around, as it might be used one day.
+section of global_config.ini.
+
+There used to be a 'num' parameter to control the maximum number of
+machines, but it does not do anything any more.
 
 A test control file can specify a list of DEPENDENCIES, which are really just
 the set of labels a host needs to have in order for that test to be scheduled
@@ -222,7 +221,6 @@ class _SuiteSpec(object):
             job=None,
             devserver_url=None,
             pool=None,
-            num=None,
             check_hosts=True,
             add_experimental=True,
             file_bugs=False,
@@ -259,7 +257,6 @@ class _SuiteSpec(object):
 
         Currently supported optional args:
         @param pool: the pool of machines to use for scheduling purposes.
-        @param num: the maximum number of devices to reimage.
         @param check_hosts: require appropriate hosts to be available now.
         @param add_experimental: schedule experimental tests as well, or not.
         @param file_bugs: File bugs when tests in this suite fail.
@@ -320,7 +317,6 @@ class _SuiteSpec(object):
         self.name = name
         self.job = job
         self.pool = ('pool:%s' % pool) if pool else pool
-        self.num = num
         self.check_hosts = check_hosts
         self.add_experimental = add_experimental
         self.file_bugs = file_bugs
