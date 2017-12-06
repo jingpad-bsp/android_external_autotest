@@ -31,6 +31,7 @@ optional arguments:
   -s POOL, --spare POOL
                         Pool from which to draw replacement spares (default:
                         pool:suites)
+  --sku SKU             The specific SKU we intend to swap with
   -n, --dry-run         Report actions to take in the form of shell commands
 
 
@@ -406,8 +407,9 @@ def _balance_board_or_model(arguments, afe, pool, labels, start_time, end_time):
                   target_total, add_msg)
 
         _log_info(dry_run,
-                  '%s %s pool has %d spares available.',
-                  labels, main_pool.pool, len(spare_pool.working_hosts))
+                  '%s %s pool has %d spares available for balancing pool %s',
+                  labels, spare_pool.pool, len(spare_pool.working_hosts),
+                  main_pool.pool)
 
         if spares_needed > len(spare_duts):
             _log_error('Not enough spares: need %d, only have %d.',
@@ -604,6 +606,9 @@ def _parse_command(argv):
         help='Names of boards or models to balance. (See also: --as-model)',
     )
 
+    parser.add_argument('--sku', type=str,
+                        help='Optional name of sku to restrict to.')
+
     arguments = parser.parse_args(argv[1:])
 
     # Error-check arguments.
@@ -662,6 +667,8 @@ def infer_balancer_targets(afe, arguments, pools):
                     labels['model'] = board_or_model
                 else:
                     labels['board'] = board_or_model
+            if arguments.sku:
+                labels['sku'] = arguments.sku
             balancer_targets.append((pool, labels.getlabels()))
     return balancer_targets
 
