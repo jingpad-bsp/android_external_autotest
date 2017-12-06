@@ -104,7 +104,7 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
             raise error.TestNAError('Cannot test on Cr50 with old CCD version')
 
         self._original_testlab_state = self.servo.get('cr50_testlab')
-        self.cr50.set_testlab('enable')
+        self.cr50.ccd_set_testlab('enable')
         if self.servo.get('cr50_testlab') != 'enabled':
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
 
