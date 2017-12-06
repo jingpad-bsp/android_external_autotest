@@ -393,6 +393,8 @@ class FirmwareUpdater(object):
                            extension,
                            fw_name,
                            extension)
+        truncate_cmd = '%s %s truncate -r FW_MAIN_A,FW_MAIN_B' % (
+            self.CBFSTOOL, bios)
 
         self.os_if.run_shell_command(rm_hash_cmd)
         self.os_if.run_shell_command(rm_bin_cmd)
@@ -405,6 +407,13 @@ class FirmwareUpdater(object):
 
         self.os_if.run_shell_command(add_hash_cmd)
         self.os_if.run_shell_command(add_bin_cmd)
+        try:
+            self.os_if.run_shell_command(truncate_cmd)
+        except shell_wrapper.ShellError:
+            self.os_if.log(('%s may be too old, '
+                            'continuing without "truncate" support') %
+                           self.CBFSTOOL)
+
         return True
 
     def cbfs_sign_and_flash(self):
