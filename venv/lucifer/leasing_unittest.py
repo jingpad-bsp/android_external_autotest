@@ -6,9 +6,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import contextlib
 import logging
 import os
+import signal
 import socket
 import sys
 
@@ -40,18 +42,19 @@ def test_obtain_lease(tmpdir):
 def test_obtain_lease_succesfully_removes_file(tmpdir):
     """Test obtain_lease cleans up lease file if successful."""
     path = _make_lease(tmpdir, 124)
-    with _obtain_lease(path) as finish:
-        finish()
+    with _obtain_lease(path) as lease_proc:
+        lease_proc.finish()
     assert not os.path.exists(path)
 
 
 @pytest.mark.slow
-def test_obtain_lease_with_error_leaves_files(tmpdir):
-    """Test obtain_lease leaves file if it errors."""
+def test_obtain_lease_with_error_removes_files(tmpdir):
+    """Test obtain_lease removes file if it errors."""
     path = _make_lease(tmpdir, 124)
-    with _obtain_lease(path):
-        pass
-    assert os.path.exists(path)
+    with _obtain_lease(path) as lease_proc:
+        lease_proc.proc.send_signal(signal.SIGINT)
+        lease_proc.proc.wait()
+    assert not os.path.exists(path)
 
 
 @pytest.mark.slow
@@ -138,11 +141,15 @@ def end_time():
         yield t
 
 
+_LeaseProc = collections.namedtuple('_LeaseProc', 'finish proc')
+
+
 @contextlib.contextmanager
 def _obtain_lease(path):
     """Lock a lease file.
 
-    Yields a function that can be called to finish the process normally.
+    Yields a _LeaseProc.  finish is a function that can be called to
+    finish the process normally.  proc is a Popen instance.
 
     This uses a slow subprocess; any test that uses this should be
     marked slow.
@@ -161,7 +168,7 @@ def _obtain_lease(path):
             # Wait for lease release.
             proc.stdout.readline()
         try:
-            yield finish
+            yield _LeaseProc(finish, proc)
         finally:
             proc.terminate()
 
@@ -210,3 +217,7 @@ def _make_lease_file(jobdir, job_id):
     with open(path, 'w'):
         pass
     return path
+
+
+class _TestError(Exception):
+    """Error for tests."""
