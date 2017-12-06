@@ -42,9 +42,10 @@ def obtain_lease(path):
     """
     with open(path, 'w') as f:
         fcntl.lockf(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        yield path
-        # Only remove the lease file if there was no exception.
-        os.unlink(path)
+        try:
+            yield path
+        finally:
+            os.unlink(path)
 
 
 def leases_iter(jobdir):
