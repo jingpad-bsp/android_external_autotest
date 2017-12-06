@@ -6,7 +6,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'platform'
 TEST_TYPE = 'client'
-ATTRIBUTES = "suite:perf_v2"
+ATTRIBUTES = ""
 DOC = """
 This test is used to monitor the memory usage trend of each build.
 
