@@ -37,6 +37,7 @@ import datetime
 import logging
 import os
 import sys
+import warnings
 
 from django.db import connection as db_connection
 from django.db import transaction
@@ -1859,12 +1860,9 @@ def create_suite_job(
 
     @return: the job ID of the suite; -1 on error.
     """
-    if type(num) is not int and num is not None:
-        raise error.SuiteArgumentException('Ill specified num argument %r. '
-                                           'Must be an integer or None.' % num)
-    if num == 0:
-        logging.warning("Can't run on 0 hosts; using default.")
-        num = None
+    if num is not None:
+        warnings.warn('num is deprecated for create_suite_job')
+    del num
 
     if builds is None:
         builds = {}
@@ -1943,7 +1941,6 @@ def create_suite_job(
         'check_hosts': check_hosts,
         'pool': pool,
         'child_dependencies': child_dependencies,
-        'num': num,
         'file_bugs': file_bugs,
         'timeout': timeout,
         'timeout_mins': timeout_mins,

@@ -11,7 +11,7 @@ import os
 import common
 
 from autotest_lib.database import database_connection
-from autotest_lib.frontend import setup_django_environment
+from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models

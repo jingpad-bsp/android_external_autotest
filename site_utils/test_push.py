@@ -41,6 +41,7 @@ except ImportError:
     pass
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
@@ -143,6 +144,31 @@ class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
     pass
 
+@retry.retry(TestPushException, timeout_min=5, delay_sec=30)
+def check_dut_inventory(required_num_duts, pool):
+    """Check DUT inventory for each board in the pool specified..
+
+    @param required_num_duts: a dict specifying the number of DUT each platform
+                              requires in order to finish push tests.
+    @param pool: the pool used by test_push.
+    @raise TestPushException: if number of DUTs are less than the requirement.
+    """
+    print 'Checking DUT inventory...'
+    pool_label = constants.Labels.POOL_PREFIX + pool
+    hosts = AFE.run('get_hosts', status='Ready', locked=False)
+    hosts = [h for h in hosts if pool_label in h.get('labels', [])]
+    platforms = [host['platform'] for host in hosts]
+    current_inventory = {p : platforms.count(p) for p in platforms}
+    error_msg = ''
+    for platform, req_num in required_num_duts.items():
+        curr_num = current_inventory.get(platform, 0)
+        if curr_num < req_num:
+            error_msg += ('\nRequire %d %s DUTs in pool: %s, only %d are Ready'
+                          ' now' % (req_num, platform, pool, curr_num))
+    if error_msg:
+        raise TestPushException('Not enough DUTs to run push tests. %s' %
+                                error_msg)
+
 
 def powerwash_dut_to_test_repair(hostname, timeout):
     """Powerwash dut to test repair workflow.
@@ -222,8 +248,6 @@ def parse_arguments():
     parser.add_argument('-ai', '--android_build', dest='android_build',
                         help='Android build to test.')
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
-    parser.add_argument('-u', '--num', dest='num', type=int, default=3,
-                        help='Run on at most NUM machines.')
     parser.add_argument('-e', '--email', nargs='+', dest='email',
                         default=DEFAULT_EMAIL,
                         help='Email address for the notification to be sent to '
@@ -302,7 +326,6 @@ def do_run_suite(suite_name, arguments, use_shard=False,
            '-b', board,
            '-i', build,
            '-p', arguments.pool,
-           '-u', str(arguments.num),
            '--minimum_duts', str(arguments.num_duts[board])]
     if create_and_return:
         cmd += ['-c']
@@ -591,6 +614,7 @@ def _main(arguments):
         # Verify all the DUTs at the beginning of testing push.
         reverify_all_push_duts()
         time.sleep(15) # Wait 15 secs for the verify test to start.
+        check_dut_inventory(arguments.num_duts, arguments.pool)
         queue = multiprocessing.Queue()
 
         push_to_prod_suite = multiprocessing.Process(

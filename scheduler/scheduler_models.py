@@ -799,6 +799,11 @@ class HostQueueEntry(DBObject):
         them in PENDING.
         """
         self.set_status(models.HostQueueEntry.Status.PENDING)
+        if not self.host:
+            raise scheduler_lib.NoHostIdError(
+                    'Failed to recover a job whose host_queue_entry_id=%r due'
+                    ' to no host_id.'
+                    % self.id)
         self.host.set_status(models.Host.Status.PENDING)
 
         # Some debug code here: sends an email if an asynchronous job does not
