@@ -248,8 +248,6 @@ def parse_arguments():
     parser.add_argument('-ai', '--android_build', dest='android_build',
                         help='Android build to test.')
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
-    parser.add_argument('-u', '--num', dest='num', type=int, default=3,
-                        help='Run on at most NUM machines.')
     parser.add_argument('-e', '--email', nargs='+', dest='email',
                         default=DEFAULT_EMAIL,
                         help='Email address for the notification to be sent to '
@@ -328,7 +326,6 @@ def do_run_suite(suite_name, arguments, use_shard=False,
            '-b', board,
            '-i', build,
            '-p', arguments.pool,
-           '-u', str(arguments.num),
            '--minimum_duts', str(arguments.num_duts[board])]
     if create_and_return:
         cmd += ['-c']
