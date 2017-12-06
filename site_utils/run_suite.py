@@ -877,26 +877,21 @@ class TestView(object):
            prefix from the job name, and append the rest to 'SERVER_JOB'
            or 'CLIENT_JOB' as a prefix. So the names returned by this
            method will look like:
-             'Telemetry Smoothness Measurement_SERVER_JOB'
              'dummy_Pass_SERVER_JOB'
              'dummy_Fail_SERVER_JOB'
 
         3) A test view is of a suite job and its status is ABORT.
            In this case, the view['test_name'] is the child job's name.
            For instance,
-             'lumpy-release/R35-5712.0.0/perf_v2/
-                   Telemetry Smoothness Measurement'
              'lumpy-release/R35-5712.0.0/dummy/dummy_Pass'
              'lumpy-release/R35-5712.0.0/dummy/dummy_Fail'
            The above names will be converted to the following:
-             'Telemetry Smoothness Measurement'
              'dummy_Pass'
              'dummy_Fail'
 
         4) A test view's status is of a suite job and its status is TEST_NA.
            In this case, the view['test_name'] is the NAME field of the control
            file. For instance,
-             'Telemetry Smoothness Measurement'
              'dummy_Pass'
              'dummy_Fail'
            This method will not modify these names.
