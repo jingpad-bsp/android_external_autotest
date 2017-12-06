@@ -402,7 +402,8 @@ class _BaseModeSwitcher(object):
 
     def restore_mode(self):
         """Restores original dev mode status if it has changed."""
-        if self._backup_mode is not None:
+        if (self._backup_mode is not None and
+            not self.checkers.mode_checker(self._backup_mode)):
             self.reboot_to_mode(self._backup_mode)
 
 
