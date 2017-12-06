@@ -128,6 +128,7 @@ class Service(object):
             status['pool size'] = self._pool.size
             status['pool worker count'] = self._pool.worker_count
             status['pool errors'] = self._pool.errors.qsize()
+            status['client thread count'] = len(self._client_threads)
         return status
 
 
@@ -302,8 +303,9 @@ class _ClientThread(threading.Thread):
         # This associates the container with the process to which it will be
         # handed off.
         if container is not None:
+            logging.debug(
+                'Assigning container (name=%s, id=%s)', container.name, id)
             container.id = id
-            logging.debug('Got container (name=%s, id=%s)', container.name, id)
         else:
             logging.debug('No container (id=%s)', id)
         return container
