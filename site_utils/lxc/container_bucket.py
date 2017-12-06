@@ -4,13 +4,16 @@
 
 import logging
 import os
+import socket
 import time
 
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.global_config import global_config
 from autotest_lib.site_utils.lxc import config as lxc_config
 from autotest_lib.site_utils.lxc import constants
+from autotest_lib.site_utils.lxc import container_pool
 from autotest_lib.site_utils.lxc import lxc
 from autotest_lib.site_utils.lxc.cleanup_if_fail import cleanup_if_fail
 from autotest_lib.site_utils.lxc.base_image import BaseImage
@@ -22,6 +25,12 @@ try:
 except ImportError:
     metrics = utils.metrics_mock
 
+
+# Timeout (in seconds) for container pool operations.
+_CONTAINER_POOL_TIMEOUT = 3
+
+_USE_LXC_POOL = global_config.get_config_value('LXC_POOL', 'use_lxc_pool',
+                                               type=bool)
 
 class ContainerBucket(object):
     """A wrapper class to interact with containers in a specific container path.
@@ -40,8 +49,20 @@ class ContainerBucket(object):
         if container_factory is not None:
             self._factory = container_factory
         else:
-            # Default container factory.  Use the default BaseImage.
-            self._factory = ContainerFactory(base_container = BaseImage().get())
+            # Pick the correct factory class to use (pool-based, or regular)
+            # based on the config variable.
+            factory_class = ContainerFactory
+            if _USE_LXC_POOL:
+                logging.debug('Using container pool')
+                factory_class = _PoolBasedFactory
+
+            # Pass in the container path so that the bucket is hermetic (i.e. so
+            # that if the container path is customized, the base image doesn't
+            # fall back to using the default container path).
+            self._factory = factory_class(
+                    base_container=BaseImage(self.container_path).get(),
+                    lxc_path=self.container_path)
+
 
     def get_all(self):
         """Get details of all containers.
@@ -91,7 +112,7 @@ class ContainerBucket(object):
         """
         containers = self.get_all().values()
         for container in sorted(
-            containers, key=lambda n: 1 if n.name == constants.BASE else 0):
+                containers, key=lambda n: 1 if n.name == constants.BASE else 0):
             logging.info('Destroy container %s.', container.name)
             container.destroy()
 
@@ -149,8 +170,7 @@ class ContainerBucket(object):
             utils.run('cp %s %s' % (control, safe_control))
 
         # Create test container from the base container.
-        container = self._factory.create_container(container_id,
-                                                   self.container_path)
+        container = self._factory.create_container(container_id)
 
         # Deploy server side package
         container.install_ssp(server_package_url)
@@ -168,7 +188,7 @@ class ContainerBucket(object):
                          (result_path,
                           os.path.join(constants.RESULT_DIR_FMT % job_folder),
                           False),
-                        ]
+        ]
 
         # Update container config to mount directories.
         for source, destination, readonly in mount_entries:
@@ -202,3 +222,56 @@ class ContainerBucket(object):
 
         logging.debug('Test container %s is set up.', container.name)
         return container
+
+
+class _PoolBasedFactory(ContainerFactory):
+    """A ContainerFactory that queries the running container pool.
+
+    Implementation falls back to the regular container factory behaviour
+    (i.e. locally cloning a container) if the pool is unavailable or if it does
+    not return a bucket before the specified timeout.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(_PoolBasedFactory, self).__init__(*args, **kwargs)
+        try:
+            self._client = container_pool.Client()
+        except (socket.error, socket.timeout) as e:
+            # If an error occurs connecting to the container pool, fall back to
+            # the default container factory.
+            logging.exception('Container pool connection failed.')
+            self._client = None
+
+
+    def create_container(self, new_id):
+        """Creates a new container.
+
+        Attempts to retrieve a container from the container pool.  If that
+        operation fails, this falls back to the parent class behaviour.
+
+        @param new_id: ContainerId to assign to the new container.  Containers
+                       must be assigned an ID before they can be released from
+                       the container pool.
+
+        @return: The new container.
+        """
+        container = None
+        if self._client:
+            try:
+                container = self._client.get_container(new_id,
+                                                       _CONTAINER_POOL_TIMEOUT)
+            except Exception:
+                logging.exception('Error communicating with container pool.')
+            else:
+                logging.debug('Retrieved container from pool: %s',
+                              container.name)
+                if container is not None:
+                    return container
+
+        # If the container pool did not yield a container, make one locally.
+        # TODO(crbug/772142): Add metrics to track this fallback.
+        logging.warning('Unable to obtain container from pre-populated pool.  '
+                        'Creating container locally.  This slows server tests '
+                        'down and should be debugged even if local creation '
+                        'works out.')
+        return super(_PoolBasedFactory, self).create_container(new_id)
