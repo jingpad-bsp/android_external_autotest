@@ -145,10 +145,6 @@ def _get_database_config(getter):
         'PASSWORD': getter('password', default=''),
         'READONLY_HOST': getter('readonly_host', default=getter('host')),
         'READONLY_USER': getter('readonly_user', default=getter('user')),
-        'OPTIONS': {
-            'init_command':
-                'SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED',
-        },
     }
     if config['READONLY_USER'] != config['USER']:
         config['READONLY_PASSWORD'] = getter('readonly_password', default='')
