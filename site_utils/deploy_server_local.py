@@ -460,6 +460,9 @@ def parse_arguments(args):
         results.update = False
         results.force_clean_externals = False
 
+    if not results.update_push_servers:
+      print('Will skip service check for pushing servers in prod.')
+      results.skip_service_status = True
     return results
 
 
