@@ -19,9 +19,6 @@ from chromite.lib import timeout_util
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value(
         'SCHEDULER', 'drone_installation_directory')
 
-ENABLE_SSH_TUNNEL_FOR_MOBLAB = global_config.global_config.get_config_value(
-        'CROS', 'enable_ssh_tunnel_for_moblab', type=bool, default=False)
-
 #'/usr/local/autotest'
 SHADOW_CONFIG_PATH = '%s/shadow_config.ini' % AUTOTEST_INSTALL_DIR
 ATEST_PATH = '%s/cli/atest' % AUTOTEST_INSTALL_DIR
@@ -66,22 +63,21 @@ class MoblabHost(cros_host.CrosHost):
     def _initialize_frontend_rpcs(self, timeout_min):
         """Initialize frontends for AFE and TKO for a moblab host.
 
-        AFE and TKO are initialized differently based on |_use_tunnel|,
-        which indicates that whether to use ssh tunnel to connect to moblab.
+        We tunnel all communication to the frontends through an SSH tunnel as
+        many testing environments block everything except SSH access to the
+        moblab DUT.
 
         @param timeout_min: The timeout minuties for AFE services.
         """
-        if self._use_tunnel:
-            self.web_address = self.rpc_server_tracker.tunnel_connect(
-                    MOBLAB_PORT)
+        web_address = self.rpc_server_tracker.tunnel_connect(MOBLAB_PORT)
         # Pass timeout_min to self.afe
         self.afe = frontend_wrappers.RetryingAFE(timeout_min=timeout_min,
                                                  user='moblab',
-                                                 server=self.web_address)
+                                                 server=web_address)
         # Use default timeout_min of MoblabHost for self.tko
         self.tko = frontend_wrappers.RetryingTKO(timeout_min=self.timeout_min,
                                                  user='moblab',
-                                                 server=self.web_address)
+                                                 server=web_address)
 
 
     def _initialize(self, *args, **dargs):
@@ -95,9 +91,6 @@ class MoblabHost(cros_host.CrosHost):
         # tested.
         if dargs.get('retain_image_storage') is not True:
             self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
-        self.web_address = dargs.get('web_address', self.hostname)
-        self._use_tunnel = (ENABLE_SSH_TUNNEL_FOR_MOBLAB and
-                            self.web_address == self.hostname)
         self.timeout_min = dargs.get('rpc_timeout_min', 1)
         self._initialize_frontend_rpcs(self.timeout_min)
 
