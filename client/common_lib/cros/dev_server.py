@@ -1863,7 +1863,7 @@ class ImageServer(ImageServerBase):
         return response
 
 
-    def _wait_for_auto_update_finished(self, pid, **kwargs):
+    def _check_for_auto_update_finished(self, pid, wait=True, **kwargs):
         """Polling devserver.get_au_status to get current auto-update status.
 
         The current auto-update status is used to identify whether the update
@@ -1871,6 +1871,7 @@ class ImageServer(ImageServerBase):
 
         @param pid:    The background process id for auto-update in devserver.
         @param kwargs: keyword arguments to make get_au_status devserver call.
+        @param wait:   Should the check wait for completion.
 
         @return: True if auto-update is finished for a given dut.
         """
@@ -1943,16 +1944,19 @@ class ImageServer(ImageServerBase):
                 raise DevServerException(
                         '%s (Got AU status: %r)' % (str(e), au_status))
 
-        bin_utils.poll_for_condition(
-                all_finished,
-                exception=bin_utils.TimeoutError(),
-                timeout=DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN * 60,
-                sleep_interval=CROS_AU_POLLING_INTERVAL)
+        if wait:
+            bin_utils.poll_for_condition(
+                    all_finished,
+                    exception=bin_utils.TimeoutError(),
+                    timeout=DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN * 60,
+                    sleep_interval=CROS_AU_POLLING_INTERVAL)
 
-        return True
+            return True
+        else:
+            return all_finished()
 
 
-    def wait_for_auto_update_finished(self, response, **kwargs):
+    def check_for_auto_update_finished(self, response, wait=True, **kwargs):
         """Processing response of 'cros_au' and polling for auto-update status.
 
         Will wait for the whole auto-update process is finished.
@@ -1961,12 +1965,14 @@ class ImageServer(ImageServerBase):
         @param kwargs: keyword arguments to make get_au_status devserver call.
 
         @return: a tuple includes two elements.
+          finished: True if the operation has completed.
           raised_error: None if everything works well or the raised error.
           pid: the auto-update process id on devserver.
         """
 
         pid = 0
         raised_error = None
+        finished = False
         try:
             response = json.loads(response)
             if response[0]:
@@ -1977,12 +1983,14 @@ class ImageServer(ImageServerBase):
                 if pid > 0:
                     logging.debug('start process %r for auto_update in '
                                   'devserver', pid)
-                    self._wait_for_auto_update_finished(pid, **kwargs)
+                    finished = self._check_for_auto_update_finished(
+                            pid, wait=wait, **kwargs)
         except Exception as e:
             logging.debug('Failed to trigger auto-update process on devserver')
+            finished = True
             raised_error = e
         finally:
-            return raised_error, pid
+            return finished, raised_error, pid
 
 
     def _parse_AU_error(self, response):
@@ -2201,7 +2209,7 @@ class ImageServer(ImageServerBase):
                     original_release_version=None, log_dir=None,
                     force_update=False, full_update=False,
                     payload_filename=None, force_original=False,
-                    clobber_stateful=True):
+                    clobber_stateful=True, quick_provision=False):
         """Auto-update a CrOS host.
 
         @param host_name: The hostname of the DUT to auto-update.
@@ -2225,6 +2233,7 @@ class ImageServer(ImageServerBase):
         @param force_original: Whether to force stateful update with the
                                original payload.
         @param clobber_stateful: If True do a clean install of stateful.
+        @param quick_provision: Attempt to use quick provision path first.
 
         @return A set (is_success, pid) in which:
             1. is_success indicates whether this auto_update succeeds.
@@ -2237,7 +2246,8 @@ class ImageServer(ImageServerBase):
                   'build_name': build_name,
                   'force_update': force_update,
                   'full_update': full_update,
-                  'clobber_stateful': clobber_stateful}
+                  'clobber_stateful': clobber_stateful,
+                  'quick_provision': quick_provision}
 
         is_aue2etest = payload_filename is not None
 
@@ -2296,7 +2306,7 @@ class ImageServer(ImageServerBase):
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
                 error_list.append(str(e))
             else:
-                raised_error, pid = self.wait_for_auto_update_finished(
+                _, raised_error, pid = self.check_for_auto_update_finished(
                         response, **kwargs)
 
                 # Error happens in _collect_au_log won't be raised.
