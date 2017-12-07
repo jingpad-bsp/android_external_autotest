@@ -13,7 +13,6 @@ for name in ['default', 'global', 'readonly', 'server']:
     settings.DATABASES[name]['ENGINE'] = (
             'autotest_lib.frontend.db.backends.afe_sqlite')
     settings.DATABASES[name]['NAME'] = ':memory:'
-    settings.DATABASES[name]['OPTIONS'] = {}
 
 
 from django.db import connections
