@@ -1968,6 +1968,38 @@ def get_board_type():
     return get_board_property('DEVICETYPE')
 
 
+def get_ec_version():
+    """Get the ec version as strings.
+
+    @returns a string representing this host's ec version.
+    """
+    return utils.run('mosys ec info -s fw_version').stdout.strip()
+
+
+def get_firmware_version():
+    """Get the firmware version as strings.
+
+    @returns a string representing this host's firmware version.
+    """
+    return utils.run('crossystem fwid').stdout.strip()
+
+
+def get_hardware_revision():
+    """Get the hardware revision as strings.
+
+    @returns a string representing this host's hardware revision.
+    """
+    return utils.run('mosys platform version').stdout.strip()
+
+
+def get_kernel_version():
+    """Get the kernel version as strings.
+
+    @returns a string representing this host's kernel version.
+    """
+    return utils.run('uname -r').stdout.strip()
+
+
 def get_board_with_frequency_and_memory():
     """
     Returns a board name modified with CPU frequency and memory size to
