@@ -1341,6 +1341,11 @@ class _BaseSuite(object):
         """
         test = self._jobs_to_tests[result.id]
         try:
+            # It only takes effect for CQ retriable job:
+            #   1) in first try, test.fast=True.
+            #   2) in second try, test will be run in normal mode, so reset
+            #       test.fast=False.
+            test.fast = False
             new_job = self._schedule_test(
                     record=record, test=test, retry_for=result.id)
         except (error.RPCException, proxy.JSONRPCException) as e:
