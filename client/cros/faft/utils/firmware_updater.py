@@ -134,6 +134,10 @@ class FirmwareUpdater(object):
         # Remove the tailing null characters
         return fwid.rstrip('\0')
 
+    def retrieve_ec_hash(self):
+        """Retrieve the hex string of the EC hash."""
+        return self._ec_handler.get_section_hash('rw')
+
     def modify_ecid_and_flash_to_bios(self):
         """Modify ecid, put it to AP firmware, and flash it to the system.
 
@@ -164,18 +168,18 @@ class FirmwareUpdater(object):
         self._ec_handler.resign_ec_rwsig()
 
         # Replace ecrw to the new one
-        ecrw = chip_utils.ecrw()
-        ecrw_bin_path = os.path.join(self._cbfs_work_path, ecrw.cbfs_bin_name)
+        ecrw_bin_path = os.path.join(self._cbfs_work_path,
+                                     chip_utils.ecrw.cbfs_bin_name)
         self._ec_handler.dump_section_body('rw', ecrw_bin_path)
 
-        # Update ecrw.hash
-        ecrw_hash_path = os.path.join(self._cbfs_work_path, ecrw.cbfs_hash_name)
-        ecrw.set_from_file(ecrw_bin_path)
+        # Replace ecrw.hash to the new one
+        ecrw_hash_path = os.path.join(self._cbfs_work_path,
+                                      chip_utils.ecrw.cbfs_hash_name)
         with open(ecrw_hash_path, 'w') as f:
-            f.write(ecrw.compute_hash_bytes())
+            f.write(self.retrieve_ec_hash())
 
         # Store the modified ecrw and its hash to cbfs
-        self.cbfs_replace_chip(ecrw.fw_name, extension='')
+        self.cbfs_replace_chip(chip_utils.ecrw.fw_name, extension='')
 
         # Resign and flash the AP firmware back to the system
         self.cbfs_sign_and_flash()

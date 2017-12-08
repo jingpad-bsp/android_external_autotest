@@ -551,6 +551,19 @@ class RPCFunctions(object):
         else:
             self._ec_handler.disable_write_protect()
 
+    def _ec_is_efs(self):
+        """Return True if the EC supports EFS."""
+        return self._ec_handler.has_section_body('rw_b')
+
+    def _ec_copy_rw(self, from_section, to_section):
+        """Copy EC RW from from_section to to_section."""
+        self._ec_handler.copy_from_to(from_section, to_section)
+
+    def _ec_reboot_to_switch_slot(self):
+        """Reboot EC to switch the active RW slot."""
+        self._os_if.run_shell_command(
+                'ectool reboot_ec cold switch-slot')
+
     @allow_multiple_section_input
     def _kernel_corrupt_sig(self, section):
         """Corrupt the requested kernel section.
@@ -713,6 +726,12 @@ class RPCFunctions(object):
     def _updater_modify_ecid_and_flash_to_bios(self):
         """Modify ecid, put it to AP firmware, and flash it to the system."""
         self._updater.modify_ecid_and_flash_to_bios()
+
+    def _updater_get_ec_hash(self):
+        """Return the hex string of the EC hash."""
+        blob = self._updater.retrieve_ec_hash()
+        # Format it to a hex string
+        return ''.join('%02x' % ord(c) for c in blob)
 
     def _updater_resign_firmware(self, version):
         """Resign firmware with version.
