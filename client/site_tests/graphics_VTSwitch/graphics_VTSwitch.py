@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import glob
+
 import logging
 import os
 import time
@@ -141,14 +141,14 @@ class graphics_VTSwitch(graphics_utils.GraphicsTest):
 
     def _take_current_vt_screenshot(self, current_vt):
         """
-        Captures a screenshot of the current VT screen in BMP format.
+        Captures a screenshot of the current VT screen in PNG format.
 
         @param current_vt: desired vt for screenshot.
 
         @returns the path of the screenshot file.
 
         """
-        extension = 'bmp'
+        extension = 'png'
 
         return graphics_utils.take_screenshot(self.resultsdir,
                                               'graphics_VTSwitch_VT%d' % current_vt,
