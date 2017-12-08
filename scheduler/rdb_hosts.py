@@ -26,7 +26,7 @@ from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
-from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.server import constants
 from autotest_lib.utils import labellib
 
 try:
