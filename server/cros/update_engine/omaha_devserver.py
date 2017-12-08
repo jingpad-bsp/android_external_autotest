@@ -53,8 +53,7 @@ class OmahaDevserver(object):
         @param update_payload_staged_url: URL to provision for update requests.
 
         """
-        self._devserver_dir = global_config.global_config.get_config_value(
-            'CROS', 'devserver_dir', default=None)
+        self._devserver_dir = '/home/chromeos-test/chromiumos/src/platform/dev'
 
         if not update_payload_staged_url:
             raise error.TestError('Missing update payload url')
