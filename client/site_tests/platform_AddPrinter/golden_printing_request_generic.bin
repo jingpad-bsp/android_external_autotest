@@ -1558,6 +1558,8 @@ CIDFontName currentdict end /CIDFont defineresource pop
 %%EndResource
 /F7_0 /DejaVuSansMono 0 pdfMakeFont16L3
 false pdfSetup
+%%EndSetup
+%%BeginSetup
 [{
 %%BeginFeature: *Resolution 600x600dpi
 <</HWResolution[600 600]>>setpagedevice
