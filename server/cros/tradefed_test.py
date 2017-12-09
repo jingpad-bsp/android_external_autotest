@@ -41,6 +41,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
+from autotest_lib.server.cros import cts_expected_failure_parser
 
 # TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
 try:
@@ -51,6 +52,7 @@ except ImportError:
 # TODO(ihf): Find a home for all these paths. This is getting out of hand.
 _SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
 _SDK_TOOLS_FILES = ['aapt']
+
 # To stabilize adb behavior, we use dynamically linked adb.
 _ADB_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-cheets_arm-user/3544738'
 _ADB_FILES = ['adb']
@@ -418,6 +420,7 @@ class TradefedTest(test.test):
                    uri=None,
                    host=None,
                    max_retry=None,
+                   retry_manual_tests=False,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -465,9 +468,12 @@ class TradefedTest(test.test):
             uri or self._get_default_bundle_url(bundle))
         self._repository = os.path.join(bundle_install_path,
                                         self._get_tradefed_base_dir())
-        # Load waivers and manual tests so TF doesn't re-run them.
+
+        # Load expected test failures to exclude them from re-runs.
         self._waivers = self._get_expected_failures('expectations')
-        self._manual_tests = self._get_expected_failures('manual_tests')
+        if not retry_manual_tests:
+            self._waivers.update(self._get_expected_failures('manual_tests'))
+
         # Load modules with no tests.
         self._notest_modules = self._get_expected_failures('notest_modules')
 
@@ -914,7 +920,7 @@ class TradefedTest(test.test):
         tradefed. It is up to the caller to handle inconsistencies.
 
         @param result: The result object from utils.run.
-        @param waivers: a set() of tests which are permitted to fail.
+        @param waivers: a set[] of tests which are permitted to fail.
         """
         return parse_tradefed_result(result.stdout, waivers)
 
@@ -961,33 +967,35 @@ class TradefedTest(test.test):
         shutil.copytree(
             os.path.join(repository_logs, datetime), destination_logs_datetime)
 
-    def _get_expected_failures(self, directory):
-        """Return a list of expected failures.
+    def _get_expected_failures(self, *directories):
+        """Return a list of expected failures or no test module.
 
-        @return: a list of expected failures.
+        @param directories: A list of directories with expected no tests
+                            or failures files.
+        @return: A list of expected failures or no test modules for the current
+                 testing device.
         """
-        logging.info('Loading expected failures from %s.', directory)
-        expected_fail_dir = os.path.join(self.bindir, directory)
-        expected_fail_files = glob.glob(expected_fail_dir + '/*.' + self._abi)
-        expected_failures = set()
-        for expected_fail_file in expected_fail_files:
-            try:
-                file_path = os.path.join(expected_fail_dir, expected_fail_file)
-                with open(file_path) as f:
-                    lines = set(f.read().splitlines())
-                    logging.info('Loaded %d expected failures from %s',
-                                 len(lines), expected_fail_file)
-                    expected_failures |= lines
-            except IOError as e:
-                logging.error('Error loading %s (%s).', file_path, e.strerror)
-        logging.info('Finished loading expected failures: %s',
-                     expected_failures)
-        return expected_failures
+        # Load waivers and manual tests so TF doesn't re-run them.
+        expected_fail_files = []
+        test_board = self._get_board_name(self._host)
+        test_arch = self._get_board_arch(self._host)
+        for directory in directories:
+            expected_fail_dir = os.path.join(self.bindir, directory)
+            if os.path.exists(expected_fail_dir):
+                expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
+
+        waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
+                expected_fail_files)
+        return waivers.find_waivers(test_board, test_arch)
 
     def _get_release_channel(self, host):
         """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
         channel = host.get_channel()
         return channel if channel else 'dev'
+
+    def _get_board_arch(self, host):
+        """ Return target DUT arch name."""
+        return 'arm' if host.get_cpu_arch() == 'arm' else 'x86'
 
     def _get_board_name(self, host):
         """Return target DUT board name."""
