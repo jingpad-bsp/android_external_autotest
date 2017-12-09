@@ -45,12 +45,17 @@ class GraphicsTest(test.test):
         _test_failure_report_enable(bool): Enable/Disable reporting
                                             failures to chrome perf dashboard
                                             automatically. (Default: True)
+        _test_failure_report_subtest(bool): Enable/Disable reporting
+                                            subtests failure to chrome perf
+                                            dashboard automatically.
+                                            (Default: False)
     """
     version = 1
     _GSC = None
 
     _test_failure_description = "Failures"
     _test_failure_report_enable = True
+    _test_failure_report_subtest = False
 
     def __init__(self, *args, **kwargs):
         """Initialize flag setting."""
@@ -85,23 +90,7 @@ class GraphicsTest(test.test):
         if self._GSC:
             self._GSC.finalize()
 
-        self.output_perf_value(
-            description='Timeout_Reboot',
-            value=0,
-            units='count',
-            higher_is_better=False,
-            replace_existing_values=True
-        )
-
-        logging.debug('GraphicsTest recorded failures: %s', self.get_failures())
-        if self._test_failure_report_enable:
-            self.output_perf_value(
-                description=self._test_failure_description,
-                value=len(self._failures),
-                units='count',
-                higher_is_better=False
-            )
-
+        self._output_perf()
         self._player.close()
 
         if hasattr(super(GraphicsTest, self), "cleanup"):
@@ -109,7 +98,7 @@ class GraphicsTest(test.test):
                                          *args, **kwargs)
 
     @contextlib.contextmanager
-    def failure_report(self, name):
+    def failure_report(self, name, subtest=None):
         """Record the failure of an operation to the self._failures.
 
         Records if the operation taken inside executed normally or not.
@@ -123,12 +112,12 @@ class GraphicsTest(test.test):
                 doSomething()
         """
         # Assume failed at the beginning
-        self.add_failures(name)
+        self.add_failures(name, subtest=subtest)
         yield {}
-        self.remove_failures(name)
+        self.remove_failures(name, subtest=subtest)
 
     @classmethod
-    def failure_report_decorator(cls, name):
+    def failure_report_decorator(cls, name, subtest=None):
         """Record the failure if the function failed to finish.
         This method should only decorate to functions of GraphicsTest.
         In addition, functions with this decorator should be called with no
@@ -166,7 +155,7 @@ class GraphicsTest(test.test):
                 # A member function of GraphicsTest is decorated. The first
                 # argument is the instance itself.
                 instance = args[0]
-                with instance.failure_report(name):
+                with instance.failure_report(name, subtest):
                     # Cherry pick the arguments for the wrapped function.
                     d_args, d_kwargs = test_utils._cherry_pick_args(fn, args,
                                                                     kwargs)
@@ -174,25 +163,100 @@ class GraphicsTest(test.test):
             return wrapper
         return decorator
 
-    def add_failures(self, failure_description):
+    def add_failures(self, name, subtest=None):
         """
         Add a record to failures list which will report back to chrome perf
-        dashboard at the cleanup stage.
+        dashboard at cleanup stage.
+        Args:
+            name: failure name.
+            subtest: subtest which will appears in cros-perf. If None is
+                     specified, use name instead.
         """
-        self._failures.append(failure_description)
+        target = self._get_failure(name, subtest=subtest)
+        if target:
+            target['names'].append(name)
+        else:
+            target = {
+                'description': self._get_failure_description(name, subtest),
+                'unit': 'count',
+                'higher_is_better': False,
+                'graph': self._get_failure_graph_name(),
+                'names': [name],
+            }
+            self._failures.append(target)
+        return target
 
-    def remove_failures(self, failure_description):
+    def remove_failures(self, name, subtest=None):
         """
         Remove a record from failures list which will report back to chrome perf
-        dashboard at the cleanup stage.
+        dashboard at cleanup stage.
+        Args:
+            name: failure name.
+            subtest: subtest which will appears in cros-perf. If None is
+                     specified, use name instead.
         """
-        self._failures.remove(failure_description)
+        target = self._get_failure(name, subtest=subtest)
+        if name in target['names']:
+            target['names'].remove(name)
+
+    def _output_perf(self):
+        """Report recorded failures back to chrome perf."""
+        if not self._test_failure_report_enable:
+            return
+
+        self.output_perf_value(
+            description='Timeout_Reboot',
+            value=0,
+            units='count',
+            higher_is_better=False,
+            replace_existing_values=True
+        )
+
+        total_failures = 0
+        # Report subtests failures
+        for failure in self._failures:
+            logging.debug('GraphicsTest failure: %s' % failure['names'])
+            total_failures += len(failure['names'])
+
+            if not self._test_failure_report_subtest:
+                continue
+
+            self.output_perf_value(
+                description=failure['description'],
+                value=len(failure['names']),
+                units=failure['unit'],
+                higher_is_better=failure['higher_is_better'],
+                graph=failure['graph']
+            )
+
+        # Report the count of all failures
+        self.output_perf_value(
+            description=self._get_failure_graph_name(),
+            value=total_failures,
+            units='count',
+            higher_is_better=False,
+        )
+
+    def _get_failure_graph_name(self):
+        return self._test_failure_description
+
+    def _get_failure_description(self, name, subtest):
+        return subtest or name
+
+    def _get_failure(self, name, subtest):
+        """Get specific failures."""
+        description = self._get_failure_description(name, subtest=subtest)
+        for failure in self._failures:
+            if failure['description'] == description:
+                return failure
+        return None
 
     def get_failures(self):
         """
         Get currently recorded failures list.
         """
-        return list(self._failures)
+        return [name for failure in self._failures
+                for name in failure['names']]
 
     def open_vt1(self):
         """Switch to VT1 with keyboard."""

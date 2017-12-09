@@ -4,7 +4,6 @@
 
 import logging
 import os
-from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
@@ -143,23 +142,27 @@ class graphics_Drm(graphics_utils.GraphicsTest):
     # graphics_Drm runs all available tests if tests = None.
     def run_once(self, tests=None, perf_report=False):
         self._test_failure_report_enable = perf_report
+        self._test_failure_report_subtest = perf_report
         for test in drm_tests.itervalues():
             if tests and test.name not in tests:
                 continue
 
             logging.info('-----------------[%s]-----------------' % test.name)
+            self.add_failures(test.name, subtest=test.name)
+            passed = False
             if test.should_run():
                 if test.can_run():
                     logging.debug('Running test %s.', test.name)
                     passed = test.run()
-                    if not passed:
-                        self.add_failures(test.name)
                 else:
-                    logging.info('Failed: test %s can not be run on current '
-                                 'configurations.' % test.name)
-                    self.add_failures(test.name)
+                    logging.info('Failed: test %s can not be run on current'
+                                 ' configurations.' % test.name)
             else:
+                passed = True
                 logging.info('Skipping test: %s.' % test.name)
+
+            if passed:
+                self.remove_failures(test.name, subtest=test.name)
 
         if self.get_failures():
             raise error.TestFail('Failed: %s' % self.get_failures())
