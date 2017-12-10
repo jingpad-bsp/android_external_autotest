@@ -12,3 +12,6 @@ class Values(gru.Values):
     has_lid = False
     has_keyboard = False
     ec_capability = ['arm', 'battery', 'charging']
+
+    mode_switcher_type = 'tablet_detachable_switcher'
+    fw_bypasser_type = 'tablet_detachable_bypasser'
