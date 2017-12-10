@@ -323,6 +323,8 @@ class ShardClient(object):
         This function executes a `shard_heartbeat` RPC. It retrieves the
         response of this call and processes the response by storing the returned
         objects in the local database.
+
+        Returns: True if the heartbeat ran successfully, False otherwise.
         """
         heartbeat_metrics_prefix  = 'chromeos/autotest/shard_client/heartbeat/'
 
@@ -336,35 +338,38 @@ class ShardClient(object):
         except urllib2.HTTPError as e:
             self._heartbeat_failure('HTTPError %d: %s' % (e.code, e.reason),
                                     'HTTPError')
-            return
+            return False
         except urllib2.URLError as e:
             self._heartbeat_failure('URLError: %s' % e.reason,
                                     'URLError')
-            return
+            return False
         except httplib.HTTPException as e:
             self._heartbeat_failure('HTTPException: %s' % e,
                                     'HTTPException')
-            return
+            return False
         except timeout_util.TimeoutError as e:
             self._heartbeat_failure('TimeoutError: %s' % e,
                                     'TimeoutError')
-            return
+            return False
         except proxy.JSONRPCException as e:
             self._heartbeat_failure('JSONRPCException: %s' % e,
                                     'JSONRPCException')
-            return
+            return False
 
         metrics.Gauge(heartbeat_metrics_prefix + 'response_size').set(
             len(str(response)))
         self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
+        return True
 
 
     def tick(self):
         """Performs all tasks the shard clients needs to do periodically."""
-        self.do_heartbeat()
-        metrics.Counter('chromeos/autotest/shard_client/tick').increment()
+        success = self.do_heartbeat()
+        if success:
+            metrics.Counter('chromeos/autotest/shard_client/tick').increment()
+
 
 
     def loop(self):
