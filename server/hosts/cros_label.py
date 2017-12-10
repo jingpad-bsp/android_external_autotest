@@ -408,8 +408,21 @@ class VideoLabel(base_label.StringLabel):
         return re.findall('^Detected label: (\w+)$', result, re.M)
 
 
-class CTSArchLabel(base_label.StringLabel):
-    """Labels to determine CTS abi."""
+class ArcLabel(base_label.BaseLabel):
+    """Label indicates if host has ARC support."""
+
+    _NAME = 'arc'
+
+    @base_label.forever_exists_decorate
+    def exists(self, host):
+        return 0 == host.run(
+            'grep CHROMEOS_ARC_VERSION /etc/lsb-release',
+            ignore_status=True).exit_status
+
+
+class CtsArchLabel(base_label.StringLabel):
+    """Labels to determine the abi of the CTS bundle (arm or x86 only)."""
+    # TODO(ihf): create labels for ABIs supported by container like x86_64.
 
     _NAME = ['cts_abi_arm', 'cts_abi_x86']
 
@@ -421,20 +434,48 @@ class CTSArchLabel(base_label.StringLabel):
         cts_abis = {'x86_64': ['arm', 'x86'], 'arm': ['arm']}
         return cts_abis.get(host.get_cpu_arch(), [])
 
-
     def generate_labels(self, host):
         return ['cts_abi_' + abi for abi in self._get_cts_abis(host)]
 
 
-class ArcLabel(base_label.BaseLabel):
-    """Label indicates if host has ARC support."""
+class SparseCoverageLabel(base_label.StringLabel):
+    """Label indicates if it is desirable to cover a test for this build."""
 
-    _NAME = 'arc'
+    # Prime numbers. We can easily construct 6, 10, 15 and 30 from these.
+    _NAME = ['sparse_coverage_2', 'sparse_coverage_3', 'sparse_coverage_5']
 
-    @base_label.forever_exists_decorate
-    def exists(self, host):
-        return 0 == host.run('grep CHROMEOS_ARC_VERSION /etc/lsb-release',
-                             ignore_status=True).exit_status
+    def _should_cover(self, host, nth_build):
+        release_info = utils.parse_cmd_output(
+            'cat /etc/lsb-release', run_method=host.run)
+        build = release_info.get('CHROMEOS_RELEASE_BUILD_NUMBER')
+        branch = release_info.get('CHROMEOS_RELEASE_BRANCH_NUMBER')
+        patch = release_info.get('CHROMEOS_RELEASE_PATCH_NUMBER')
+        builder = release_info.get('CHROMEOS_RELEASE_BUILDER_PATH')
+        if not 'release' in builder:
+            # Sparse coverage only makes sense on release/canary builds.
+            return True
+        if patch != '0':
+            # We are on a paladin or pfq build. These are never sparse.
+            # Redundant with release check above but just in case.
+            return True
+        if branch != '0':
+            # We are on a branch. For now these are not sparse.
+            # TODO(ihf): Consider sparse coverage on beta.
+            return True
+        # Now we can be sure we are on master.
+        if int(build) % nth_build == 0:
+            # We only want to cover one in n builds on master. This is the
+            # lucky one.
+            return True
+        # We skip all other builds on master.
+        return False
+
+    def generate_labels(self, host):
+        labels = []
+        for n in [2, 3, 5]:
+            if self._should_cover(host, n):
+                labels.append('sparse_coverage_%d' % n)
+        return labels
 
 
 class VideoGlitchLabel(base_label.BaseLabel):
@@ -551,7 +592,7 @@ CROS_LABELS = [
     ChameleonLabel(),
     ChameleonPeripheralsLabel(),
     common_label.OSLabel(),
-    CTSArchLabel(),
+    CtsArchLabel(),
     ECLabel(),
     HWIDLabel(),
     InternalDisplayLabel(),
@@ -559,6 +600,7 @@ CROS_LABELS = [
     LucidSleepLabel(),
     PowerSupplyLabel(),
     ServoLabel(),
+    SparseCoverageLabel(),
     StorageLabel(),
     VideoGlitchLabel(),
     VideoLabel(),
