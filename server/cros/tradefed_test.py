@@ -41,6 +41,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
+from autotest_lib.server.cros import cts_expected_failure_parser
 
 # TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
 try:
@@ -51,6 +52,7 @@ except ImportError:
 # TODO(ihf): Find a home for all these paths. This is getting out of hand.
 _SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
 _SDK_TOOLS_FILES = ['aapt']
+
 # To stabilize adb behavior, we use dynamically linked adb.
 _ADB_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-cheets_arm-user/3544738'
 _ADB_FILES = ['adb']
@@ -63,14 +65,28 @@ _ARC_POLLING_INTERVAL_SECONDS = 1
 _ARC_READY_TIMEOUT_SECONDS = 60
 
 _TRADEFED_PREFIX = 'autotest-tradefed-install_'
+# While running CTS tradefed creates state in the installed location (there is
+# currently no way to specify a dedicated result directory for all changes).
+# For this reason we start each test with a clean copy of the CTS/GTS bundle.
 _TRADEFED_CACHE_LOCAL = '/tmp/autotest-tradefed-cache'
+# On lab servers and moblab all server tests run inside of lxc instances
+# isolating file systems from each other. To avoid downloading CTS artifacts
+# repeatedly for each test (or lxc instance) we share a common location
+# /usr/local/autotest/results/shared which is visible to all lxc instances on
+# that server. It needs to be writable as the cache is maintained jointly by
+# all CTS/GTS tests. Currently both read and write access require taking the
+# lock. Writes happen rougly monthly while reads are many times a day. If this
+# becomes a bottleneck we could examine allowing concurrent reads.
 _TRADEFED_CACHE_CONTAINER = '/usr/local/autotest/results/shared/cache'
 _TRADEFED_CACHE_CONTAINER_LOCK = '/usr/local/autotest/results/shared/lock'
-
-# According to dshi a drone has 500GB of disk space. It is ok for now to use
-# 10GB of disk space, as no more than 10 tests should run in parallel.
-# TODO(ihf): Investigate tighter cache size.
-_TRADEFED_CACHE_MAX_SIZE = (10 * 1024 * 1024 * 1024)
+# The maximum size of the shared global cache. It needs to be able to hold
+# N, M, x86, arm CTS bundles (500MB), the GTS bundle and media stress videos
+# (2GB) zipped to not thrash. In addition it needs to be able to hold one
+# different revision per Chrome OS branch. While this sounds  like a lot,
+# only a single bundle is copied into each lxc instance (500MB), hence the
+# impact of running say 100 CTS tests in parallel is acceptable (quarter
+# servers have 500GB of disk, while full servers have 2TB).
+_TRADEFED_CACHE_MAX_SIZE = (20 * 1024 * 1024 * 1024)
 
 
 class _ChromeLogin(object):
@@ -78,7 +94,6 @@ class _ChromeLogin(object):
 
     def __init__(self, host, kwargs):
         self._host = host
-        self._kwargs = kwargs
         self._cts_helper_kwargs = kwargs
 
     def _cmd_builder(self, verbose=False):
@@ -87,7 +102,7 @@ class _ChromeLogin(object):
         # getting the autodir will raise an exception.
         cmd = autotest.Autotest.get_installed_autodir(self._host)
         cmd += '/bin/autologin.py --arc'
-        if self._kwargs.get('dont_override_profile') == True:
+        if self._cts_helper_kwargs.get('dont_override_profile') == True:
             logging.info('Using --dont_override_profile to start Chrome.')
             cmd += ' --dont_override_profile'
         else:
@@ -120,10 +135,10 @@ class _ChromeLogin(object):
                     check_client_result=True,
                     **self._cts_helper_kwargs)
                 return True
-            except Exception:
+            except:
                 if raise_exception:
                     raise
-        except Exception:
+        except:
             if raise_exception:
                 raise
         return False
@@ -158,7 +173,7 @@ class _ChromeLogin(object):
                 script = 'stop ui && find /tmp/ -mindepth 1 -delete && start ui'
                 self._host.run(
                     script, ignore_status=False, verbose=False, timeout=120)
-            except Exception:
+            except:
                 logging.error('Restarting browser has failed.')
                 reboot = True
         if reboot:
@@ -418,6 +433,7 @@ class TradefedTest(test.test):
                    uri=None,
                    host=None,
                    max_retry=None,
+                   retry_manual_tests=False,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
         logging.info('Hostname: %s', host.hostname)
@@ -442,6 +458,7 @@ class TradefedTest(test.test):
         self._safe_makedirs(cache_root)
         self._tradefed_cache = os.path.join(cache_root, 'cache')
         self._tradefed_cache_lock = os.path.join(cache_root, 'lock')
+        self._tradefed_cache_dirty = os.path.join(cache_root, 'dirty')
         # The content of the install location does not survive across jobs and
         # is isolated (by using a unique path)_against other autotest instances.
         # This is not needed for the lab, but if somebody wants to run multiple
@@ -452,7 +469,7 @@ class TradefedTest(test.test):
         # installed through the (shared) cache into the local (unshared)
         # lxc/autotest instance storage.
         # If clearing the cache it must happen before all downloads.
-        self._clear_download_cache_if_needed()
+        self._clean_download_cache_if_needed()
         # Set permissions (rwxr-xr-x) to the executable binaries.
         permission = (
             stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
@@ -465,9 +482,12 @@ class TradefedTest(test.test):
             uri or self._get_default_bundle_url(bundle))
         self._repository = os.path.join(bundle_install_path,
                                         self._get_tradefed_base_dir())
-        # Load waivers and manual tests so TF doesn't re-run them.
+
+        # Load expected test failures to exclude them from re-runs.
         self._waivers = self._get_expected_failures('expectations')
-        self._manual_tests = self._get_expected_failures('manual_tests')
+        if not retry_manual_tests:
+            self._waivers.update(self._get_expected_failures('manual_tests'))
+
         # Load modules with no tests.
         self._notest_modules = self._get_expected_failures('notest_modules')
 
@@ -631,35 +651,81 @@ class TradefedTest(test.test):
         """
         destination = os.path.splitext(filename)[0]
         if os.path.isdir(destination):
+            logging.info('Skipping unzip %s, reusing content of %s', filename,
+                         destination)
             return destination
-        self._safe_makedirs(destination)
-        utils.run('unzip', args=('-d', destination, filename))
+        tmp = tempfile.mkdtemp(dir=os.path.dirname(filename))
+        logging.info('Begin unzip %s', filename)
+        try:
+            utils.run('unzip', args=('-d', tmp, filename))
+        except:
+            logging.error('Failed unzip, cleaning up.')
+            # Clean up just created files.
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+        logging.info('End unzip %s', filename)
+        try:
+            os.renames(tmp, destination)
+        except:
+            logging.error('Failed rename, cleaning up.')
+            shutil.rmtree(destination, ignore_errors=True)
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
         return destination
 
     def _dir_size(self, directory):
         """Compute recursive size in bytes of directory."""
         size = 0
         for root, _, files in os.walk(directory):
-            size += sum(
-                os.path.getsize(os.path.join(root, name)) for name in files)
+            for name in files:
+                try:
+                    size += os.path.getsize(os.path.join(root, name))
+                except OSError:
+                    logging.error('Inaccessible path (crbug/793696): %s/%s',
+                                  root, name)
         return size
 
-    def _clear_download_cache_if_needed(self):
+    def _invalidate_download_cache(self):
+        """Marks the download cache for deferred deletion.
+
+        Used to make cache file operations atomic across failures and reboots.
+        The caller is responsible to hold the lock to the cache.
+        """
+        if not os.path.exists(self._tradefed_cache_dirty):
+            os.mkdir(self._tradefed_cache_dirty)
+
+    def _validate_download_cache(self):
+        """Validates and unmarks the download cache from deletion.
+
+        Used to make cache file operations atomic across failures and reboots.
+        The caller is responsible to hold the lock to the cache.
+        """
+        shutil.rmtree(self._tradefed_cache_dirty, ignore_errors=True)
+
+    def _clean_download_cache_if_needed(self, force=False):
         """Invalidates cache to prevent it from growing too large."""
         # If the cache is large enough to hold a working set, we can simply
         # delete everything without thrashing.
         # TODO(ihf): Investigate strategies like LRU.
+        clean = force
         with lock(self._tradefed_cache_lock):
             size = self._dir_size(self._tradefed_cache)
             if size > _TRADEFED_CACHE_MAX_SIZE:
                 logging.info(
                     'Current cache size=%d got too large. Clearing %s.', size,
                     self._tradefed_cache)
-                shutil.rmtree(self._tradefed_cache)
-                self._safe_makedirs(self._tradefed_cache)
+                clean = True
             else:
                 logging.info('Current cache size=%d of %s.', size,
                              self._tradefed_cache)
+            if os.path.exists(self._tradefed_cache_dirty):
+                logging.info('Found dirty cache.')
+                clean = True
+            if clean:
+                logging.warning('Cleaning download cache.')
+                shutil.rmtree(self._tradefed_cache, ignore_errors=True)
+                self._safe_makedirs(self._tradefed_cache)
+                shutil.rmtree(self._tradefed_cache_dirty, ignore_errors=True)
 
     def _download_to_cache(self, uri):
         """Downloads the uri from the storage server.
@@ -681,12 +747,15 @@ class TradefedTest(test.test):
         output_dir = os.path.join(self._tradefed_cache,
                                   hashlib.md5(uri).hexdigest())
         output = os.path.join(output_dir, filename)
-        # Check for existence of file.
-        if os.path.exists(output):
-            logging.info('Skipping download of %s, reusing %s.', uri, output)
+        # Check for existence of cache entry. We check for directory existence
+        # instead of file existence, so that _install_bundle can delete original
+        # zip files to save disk space.
+        if os.path.exists(output_dir):
+            logging.info('Skipping download of %s, reusing content of %s.', uri,
+                         output_dir)
             return output
-        self._safe_makedirs(output_dir)
 
+        self._safe_makedirs(output_dir)
         if parsed.scheme not in ['gs', 'http', 'https']:
             raise error.TestFail(
                 'Error: Unknown download scheme %s' % parsed.scheme)
@@ -736,7 +805,7 @@ class TradefedTest(test.test):
             verbose=True)
         return output
 
-    def _instance_copy(self, cache_path):
+    def _instance_copyfile(self, cache_path):
         """Makes a copy of a file from the (shared) cache to a wholy owned
         local instance. Also copies one level of cache directoy (MD5 named).
         """
@@ -749,18 +818,51 @@ class TradefedTest(test.test):
         shutil.copyfile(cache_path, instance_path)
         return instance_path
 
+    def _instance_copytree(self, cache_path):
+        """Makes a copy of a directory from the (shared and writable) cache to
+        a wholy owned local instance.
+
+        TODO(ihf): Consider using cp -al to only copy links. Not sure if this
+        is really a benefit across the container boundary, but it is risky due
+        to the possibility of corrupting the original files by an lxc instance.
+        """
+        # We keep the top 2 names from the cache_path = .../dir1/dir2.
+        dir2 = os.path.basename(cache_path)
+        dir1 = os.path.basename(os.path.dirname(cache_path))
+        instance_path = os.path.join(self._tradefed_install, dir1, dir2)
+        logging.info('Copying %s to instance %s', cache_path, instance_path)
+        shutil.copytree(cache_path, instance_path)
+        return instance_path
+
     def _install_bundle(self, gs_uri):
         """Downloads a zip file, installs it and returns the local path."""
         if not gs_uri.endswith('.zip'):
             raise error.TestFail('Error: Not a .zip file %s.', gs_uri)
         # Atomic write through of file.
         with lock(self._tradefed_cache_lock):
+            # Atomic operations.
+            self._invalidate_download_cache()
+            # Download is lazy (cache_path may not actually exist if
+            # cache_unzipped does).
             cache_path = self._download_to_cache(gs_uri)
-            local = self._instance_copy(cache_path)
-
-        unzipped = self._unzip(local)
-        self._abi = 'x86' if 'x86-x86' in unzipped else 'arm'
-        return unzipped
+            # Unzip is lazy as well (but cache_unzipped guaranteed to
+            # exist).
+            cache_unzipped = self._unzip(cache_path)
+            # To save space we delete the original zip file. This works as
+            # _download only checks existence of the cache directory for
+            # lazily skipping download, and unzip itself will bail if the
+            # unzipped destination exists. Hence we don't need the original
+            # anymore.
+            if os.path.exists(cache_path):
+                logging.info('Deleting original %s', cache_path)
+                os.remove(cache_path)
+            # Erase dirty marker from disk.
+            self._validate_download_cache()
+            # We always copy files to give tradefed a clean copy of the
+            # bundle.
+            unzipped_local = self._instance_copytree(cache_unzipped)
+        self._abi = 'x86' if 'x86-x86' in gs_uri else 'arm'
+        return unzipped_local
 
     def _install_files(self, gs_dir, files, permission):
         """Installs binary tools."""
@@ -768,8 +870,14 @@ class TradefedTest(test.test):
             gs_uri = os.path.join(gs_dir, filename)
             # Atomic write through of file.
             with lock(self._tradefed_cache_lock):
+                # We don't want to leave a corrupt cache for other jobs.
+                self._invalidate_download_cache()
                 cache_path = self._download_to_cache(gs_uri)
-                local = self._instance_copy(cache_path)
+                # Mark cache as clean again.
+                self._validate_download_cache()
+                # This only affects the current job, so not part of cache
+                # validation.
+                local = self._instance_copyfile(cache_path)
             os.chmod(local, permission)
             # Keep track of PATH.
             self._install_paths.append(os.path.dirname(local))
@@ -816,10 +924,9 @@ class TradefedTest(test.test):
         logging.info('Computing md5 of remote media files.')
         remote = self._run(
             'adb',
-            args=(
-                'shell',
-                'cd /sdcard/test; find ./bbb_short ./bbb_full -type f -print0 | '
-                'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
+            args=('shell', 'cd /sdcard/test; '
+                  'find ./bbb_short ./bbb_full -type f -print0 | '
+                  'xargs -0 md5sum | grep -v "\.DS_Store" | sort -k 2'))
         logging.info('Computing md5 of local media files.')
         local = self._run(
             '/bin/sh',
@@ -914,7 +1021,7 @@ class TradefedTest(test.test):
         tradefed. It is up to the caller to handle inconsistencies.
 
         @param result: The result object from utils.run.
-        @param waivers: a set() of tests which are permitted to fail.
+        @param waivers: a set[] of tests which are permitted to fail.
         """
         return parse_tradefed_result(result.stdout, waivers)
 
@@ -961,33 +1068,35 @@ class TradefedTest(test.test):
         shutil.copytree(
             os.path.join(repository_logs, datetime), destination_logs_datetime)
 
-    def _get_expected_failures(self, directory):
-        """Return a list of expected failures.
+    def _get_expected_failures(self, *directories):
+        """Return a list of expected failures or no test module.
 
-        @return: a list of expected failures.
+        @param directories: A list of directories with expected no tests
+                            or failures files.
+        @return: A list of expected failures or no test modules for the current
+                 testing device.
         """
-        logging.info('Loading expected failures from %s.', directory)
-        expected_fail_dir = os.path.join(self.bindir, directory)
-        expected_fail_files = glob.glob(expected_fail_dir + '/*.' + self._abi)
-        expected_failures = set()
-        for expected_fail_file in expected_fail_files:
-            try:
-                file_path = os.path.join(expected_fail_dir, expected_fail_file)
-                with open(file_path) as f:
-                    lines = set(f.read().splitlines())
-                    logging.info('Loaded %d expected failures from %s',
-                                 len(lines), expected_fail_file)
-                    expected_failures |= lines
-            except IOError as e:
-                logging.error('Error loading %s (%s).', file_path, e.strerror)
-        logging.info('Finished loading expected failures: %s',
-                     expected_failures)
-        return expected_failures
+        # Load waivers and manual tests so TF doesn't re-run them.
+        expected_fail_files = []
+        test_board = self._get_board_name(self._host)
+        test_arch = self._get_board_arch(self._host)
+        for directory in directories:
+            expected_fail_dir = os.path.join(self.bindir, directory)
+            if os.path.exists(expected_fail_dir):
+                expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
+
+        waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
+                expected_fail_files)
+        return waivers.find_waivers(test_board, test_arch)
 
     def _get_release_channel(self, host):
         """Returns the DUT channel of the image ('dev', 'beta', 'stable')."""
         channel = host.get_channel()
-        return channel if channel else 'dev'
+        return channel or 'dev'
+
+    def _get_board_arch(self, host):
+        """ Return target DUT arch name."""
+        return 'arm' if host.get_cpu_arch() == 'arm' else 'x86'
 
     def _get_board_name(self, host):
         """Return target DUT board name."""
@@ -1048,7 +1157,11 @@ class TradefedTest(test.test):
         try:
             output = self._run_tradefed(commands)
         except:
+            logging.error('Failed to run tradefed! Cleaning up now.')
             self._log_java_version()
+            # In case this happened due to file corruptions, try to force to
+            # recreate the cache.
+            self._clean_download_cache_if_needed(force=True)
             raise
 
         result_destination = os.path.join(self.resultsdir,

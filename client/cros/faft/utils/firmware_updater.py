@@ -167,31 +167,32 @@ class FirmwareUpdater(object):
             model = model_result[0]
             setvars_path = os.path.join(
                 self._work_path, 'models', model, 'setvars.sh')
-            fwid = self.retrieve_fwid()
-            ecid = self._retrieve_ecid()
-            args = ['-i']
-            args.append(
-                '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
-                % fwid)
-            args.append(setvars_path)
-            cmd = 'sed %s' % ' '.join(args)
-            self.os_if.run_shell_command(cmd)
+            if self.os_if.path_exists(setvars_path):
+                fwid = self.retrieve_fwid()
+                ecid = self._retrieve_ecid()
+                args = ['-i']
+                args.append(
+                    '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
+                    % fwid)
+                args.append(setvars_path)
+                cmd = 'sed %s' % ' '.join(args)
+                self.os_if.run_shell_command(cmd)
 
-            args = ['-i']
-            args.append(
-                '"s/TARGET_RO_FWID=\\".*\\"/TARGET_RO_FWID=\\"%s\\"/g"'
-                % fwid)
-            args.append(setvars_path)
-            cmd = 'sed %s' % ' '.join(args)
-            self.os_if.run_shell_command(cmd)
+                args = ['-i']
+                args.append(
+                    '"s/TARGET_RO_FWID=\\".*\\"/TARGET_RO_FWID=\\"%s\\"/g"'
+                    % fwid)
+                args.append(setvars_path)
+                cmd = 'sed %s' % ' '.join(args)
+                self.os_if.run_shell_command(cmd)
 
-            args = ['-i']
-            args.append(
-                '"s/TARGET_ECID=\\".*\\"/TARGET_ECID=\\"%s\\"/g"'
-                % ecid)
-            args.append(setvars_path)
-            cmd = 'sed %s' % ' '.join(args)
-            self.os_if.run_shell_command(cmd)
+                args = ['-i']
+                args.append(
+                    '"s/TARGET_ECID=\\".*\\"/TARGET_ECID=\\"%s\\"/g"'
+                    % ecid)
+                args.append(setvars_path)
+                cmd = 'sed %s' % ' '.join(args)
+                self.os_if.run_shell_command(cmd)
 
     def extract_shellball(self, append=None):
         """Extract the working shellball.

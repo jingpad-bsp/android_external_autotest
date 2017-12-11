@@ -324,9 +324,9 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
                  Power Off*
                  Language
            Menu options seen in TO_NORM screen:
-                 Confirm Enabling Verified Boot
+                 Confirm Enabling Verified Boot*
                  Cancel
-                 Power off*
+                 Power off
                  Language
         Vol up button selects previous item, vol down button selects
         next item and pwr button selects current activated item.
@@ -336,14 +336,46 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
                         'Enable Root Verification using pwr '
                         'button to enter TO_NORM screen'))
         self.servo.power_short_press()
+        logging.info('Transitioning from DEV to TO_NORM screen.')
         time.sleep(self.faft_config.firmware_screen)
-        self.servo.set_nocheck('volume_up_hold', 100)
-        time.sleep(self.faft_config.confirm_screen)
-        self.set_button('volume_up_hold', 100, ('Selecting Confirm '
-                        'Enabling Verified Boot using pwr '
-                        'button in TO_NORM screen'))
+        logging.info('Selecting Confirm Enabling Verified '
+                        'Boot using pwr button in '
+                        'TO_NORM screen')
         self.servo.power_short_press()
 
+    def trigger_dev_to_rec(self):
+        """Trigger to the TO_NORM screen from the dev screen.
+           Menu options seen in DEVELOPER WARNING screen:
+                 Developer Options
+                 Show Debug Info
+                 Enable Root Verification
+                 Power Off*
+                 Language
+           Menu options seen in TO_NORM screen:
+                 Confirm Enabling Verified Boot*
+                 Cancel
+                 Power off
+                 Language
+        Vol up button selects previous item, vol down button selects
+        next item and pwr button selects current activated item.
+        """
+        time.sleep(self.faft_config.firmware_screen)
+        self.set_button('volume_up_hold', 100, ('Selecting '
+                        'Enable Root Verification using pwr '
+                        'button to enter TO_NORM screen'))
+        self.servo.power_short_press()
+        logging.info('Transitioning from DEV to TO_NORM screen.')
+        time.sleep(self.faft_config.firmware_screen)
+
+        # In firmware_FwScreenPressPower, test will power off the DUT using
+        # Power button in second screen (TO_NORM screen) so scrolling to
+        # Power-off is necessary in this case. Hence scroll to Power-off as
+        # a generic action and wait for next action of either Lid close or
+        # power button press.
+        self.servo.set_nocheck('volume_down_hold', 100)
+        time.sleep(self.faft_config.confirm_screen)
+        self.servo.set_nocheck('volume_down_hold', 100)
+        time.sleep(self.faft_config.confirm_screen)
 
 def _create_fw_bypasser(faft_framework):
     """Creates a proper firmware bypasser.
