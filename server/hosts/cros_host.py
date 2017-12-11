@@ -1233,6 +1233,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def close(self):
+        """Close connection."""
         super(CrosHost, self).close()
         if self._chameleon_host:
             self._chameleon_host.close()
