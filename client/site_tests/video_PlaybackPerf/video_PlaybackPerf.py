@@ -238,7 +238,9 @@ class video_PlaybackPerf(test.test):
         self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
 
         measurements = [power_status.SystemPower(
-                self._power_status.battery_path)] + power_rapl.create_rapl()
+                self._power_status.battery_path)]
+        if power_utils.has_rapl_support():
+            measurements += power_rapl.create_rapl()
 
         def get_power(cr):
             power_logger = power_status.PowerLogger(measurements)
