@@ -46,7 +46,7 @@ class OmahaDevserver(object):
     _DEVSERVER_TIMELIMIT_SECONDS = 12 * 60 * 60
 
 
-    def __init__(self, omaha_host, update_payload_staged_url):
+    def __init__(self, omaha_host, update_payload_staged_url, max_updates=1):
         """Starts a private devserver instance, operating at Omaha capacity.
 
         @param omaha_host: host address where the devserver is spawned.
@@ -58,6 +58,7 @@ class OmahaDevserver(object):
         if not update_payload_staged_url:
             raise error.TestError('Missing update payload url')
 
+        self._max_updates = max_updates
         self._omaha_host = omaha_host
         self._devserver_pid = 0
         self._devserver_port = 0  # Determined later from devserver portfile.
@@ -215,7 +216,7 @@ class OmahaDevserver(object):
                 '--logfile=%s' % self._devserver_logfile,
                 '--remote_payload',
                 '--urlbase=%s' % update_payload_url_base,
-                '--max_updates=1',
+                '--max_updates=%s' % self._max_updates,
                 '--host_log',
                 '--static_dir=%s' % self._devserver_static_dir,
                 '--critical_update',
