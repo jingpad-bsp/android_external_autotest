@@ -15,10 +15,11 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.cros import constants, sys_power
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import facade_resource
 from autotest_lib.client.cros.multimedia import image_generator
+from autotest_lib.client.cros.power import sys_power
 from telemetry.internal.browser import web_contents
 
 class TimeoutException(Exception):

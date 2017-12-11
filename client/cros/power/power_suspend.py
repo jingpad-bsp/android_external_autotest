@@ -6,9 +6,10 @@ import collections, logging, os, re, shutil, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_logging, sys_power
-from autotest_lib.client.cros import power_utils
-from autotest_lib.client.cros import power_status
+from autotest_lib.client.cros import cros_logging
+from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_utils
+from autotest_lib.client.cros.power import sys_power
 #pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam

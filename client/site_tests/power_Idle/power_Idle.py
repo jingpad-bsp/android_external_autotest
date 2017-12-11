@@ -6,9 +6,9 @@ import logging, time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.bluetooth import bluetooth_device_xmlrpc_server
+from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
 
 
 class power_Idle(test.test):

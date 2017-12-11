@@ -6,7 +6,7 @@ import logging, numpy, random, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_suspend, sys_power
+from autotest_lib.client.cros.power import power_suspend, sys_power
 
 class power_SuspendStress(test.test):
     """Class for test."""
