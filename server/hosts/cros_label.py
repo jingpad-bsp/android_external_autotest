@@ -351,7 +351,7 @@ class StorageLabel(base_label.StringPrefixLabel):
 
         nvme_pattern = '/dev/nvme[0-9]+n[0-9]+'
         if re.match(nvme_pattern, rootdev_str):
-            self.type_str = 'nmve'
+            self.type_str = 'nvme'
             return True
 
         # All other internal device / error case will always fall here
