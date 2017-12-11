@@ -677,8 +677,12 @@ class TradefedTest(test.test):
         """Compute recursive size in bytes of directory."""
         size = 0
         for root, _, files in os.walk(directory):
-            size += sum(
-                os.path.getsize(os.path.join(root, name)) for name in files)
+            for name in files:
+                try:
+                    size += os.path.getsize(os.path.join(root, name))
+                except OSError:
+                    logging.error('Inaccessible path (crbug/793696): %s/%s',
+                                  root, name)
         return size
 
     def _invalidate_download_cache(self):
