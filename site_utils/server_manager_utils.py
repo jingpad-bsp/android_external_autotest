@@ -163,7 +163,6 @@ def format_servers_summary(servers):
         drone          : server2(primary),
         devserver      :
         database       :
-        suite_scheduler:
         crash_server   :
         No Role        :
 

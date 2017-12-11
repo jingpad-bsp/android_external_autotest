@@ -58,11 +58,11 @@ import sys
 import time
 
 import common
+from autotest_lib.server import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import site_utils
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
-from autotest_lib.site_utils.suite_scheduler import constants
 from autotest_lib.utils import labellib
 from chromite.lib import metrics
 from chromite.lib import parallel
