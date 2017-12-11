@@ -36,13 +36,13 @@ class firmware_SoftwareSync(FirmwareTest):
 
     def record_hash_and_corrupt(self):
         """Record current EC hash and corrupt EC firmware."""
-        self._ec_hash = self.faft_client.ec.get_firmware_sha()
+        self._ec_hash = self.faft_client.ec.get_active_hash()
         logging.info("Stored EC hash: %s", self._ec_hash)
         self.faft_client.ec.corrupt_body('rw')
 
     def software_sync_checker(self):
         """Check EC firmware is restored by software sync."""
-        ec_hash = self.faft_client.ec.get_firmware_sha()
+        ec_hash = self.faft_client.ec.get_active_hash()
         logging.info("Current EC hash: %s", self._ec_hash)
         if self._ec_hash != ec_hash:
             return False
@@ -61,7 +61,8 @@ class firmware_SoftwareSync(FirmwareTest):
         logging.info("Corrupt EC firmware RW body.")
         self.check_state((self.checkers.ec_act_copy_checker, 'RW'))
         self.record_hash_and_corrupt()
-        self.sync_and_ec_reboot()
+        logging.info("Reboot AP, check EC hash, and software sync it.")
+        self.switcher.simple_reboot(reboot_type='warm')
         self.wait_software_sync_and_boot()
         self.switcher.wait_for_client()
 
