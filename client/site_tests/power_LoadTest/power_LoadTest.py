@@ -11,9 +11,9 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.cros import backchannel, httpd
 from autotest_lib.client.cros import memory_bandwidth_logger
-from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
 from autotest_lib.client.cros.networking import wifi_proxy
 from telemetry.core import exceptions
 
