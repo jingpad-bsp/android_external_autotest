@@ -4,6 +4,8 @@
 
 """Unit tests for the `repair` module."""
 
+# pylint: disable=missing-docstring
+
 import functools
 import logging
 import unittest
@@ -11,8 +13,8 @@ import unittest
 import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib.hosts import repair
+from autotest_lib.server import constants
 from autotest_lib.server.hosts import host_info
-from autotest_lib.site_utils.suite_scheduler import constants
 
 
 class _StubHost(object):

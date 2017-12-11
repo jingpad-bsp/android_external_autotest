@@ -28,8 +28,6 @@ RESTART_SCHEDULER = (server_models.ServerRole.ROLE.SCHEDULER,
                      'sudo service scheduler restart')
 RESTART_HOST_SCHEDULER = (server_models.ServerRole.ROLE.HOST_SCHEDULER,
                           'sudo service host-scheduler restart')
-RESTART_SUITE_SCHEDULER = (server_models.ServerRole.ROLE.SUITE_SCHEDULER,
-                           'sudo service suite_scheduler restart')
 RELOAD_APACHE = (server_models.ServerRole.ROLE.SCHEDULER,
                  'sudo service apache reload')
 
@@ -37,8 +35,6 @@ STOP_SCHEDULER = (server_models.ServerRole.ROLE.SCHEDULER,
                   'sudo service scheduler stop')
 STOP_HOST_SCHEDULER = (server_models.ServerRole.ROLE.HOST_SCHEDULER,
                        'sudo service host-scheduler stop')
-STOP_SUITE_SCHEDULER = (server_models.ServerRole.ROLE.SUITE_SCHEDULER,
-                        'sudo service suite_scheduler stop')
 
 # Dictionary of actions needed for a role to be enabled. Key is the role, and
 # value is a list of action. All these actions should be applied after the role
@@ -46,8 +42,6 @@ STOP_SUITE_SCHEDULER = (server_models.ServerRole.ROLE.SUITE_SCHEDULER,
 ACTIONS_AFTER_ROLE_APPLIED = {
         server_models.ServerRole.ROLE.SCHEDULER: [RESTART_SCHEDULER],
         server_models.ServerRole.ROLE.HOST_SCHEDULER: [RESTART_HOST_SCHEDULER],
-        server_models.ServerRole.ROLE.SUITE_SCHEDULER:
-                [RESTART_SUITE_SCHEDULER],
         server_models.ServerRole.ROLE.DRONE: [RESTART_SCHEDULER],
         server_models.ServerRole.ROLE.DATABASE:
                 [RESTART_SCHEDULER, RESTART_HOST_SCHEDULER, RELOAD_APACHE],
@@ -61,7 +55,6 @@ ACTIONS_AFTER_ROLE_APPLIED = {
 ACTIONS_BEFORE_ROLE_REMOVED = {
         server_models.ServerRole.ROLE.SCHEDULER: [STOP_SCHEDULER],
         server_models.ServerRole.ROLE.HOST_SCHEDULER: [STOP_HOST_SCHEDULER],
-        server_models.ServerRole.ROLE.SUITE_SCHEDULER: [STOP_SUITE_SCHEDULER],
         server_models.ServerRole.ROLE.DATABASE:
                 [STOP_SCHEDULER, STOP_HOST_SCHEDULER],
         }
