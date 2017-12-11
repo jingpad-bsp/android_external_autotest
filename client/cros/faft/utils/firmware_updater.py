@@ -287,11 +287,7 @@ class FirmwareUpdater(object):
         """
 
         self.os_if.remove_dir(self._cbfs_work_path)
-        self.os_if.create_dir(self._cbfs_work_path)
-
-        self.os_if.copy_file(
-            os.path.join(self._work_path, self._bios_path),
-            os.path.join(self._cbfs_work_path, self._bios_path))
+        self.os_if.copy_dir(self._work_path, self._cbfs_work_path)
 
         return self._cbfs_work_path
 
