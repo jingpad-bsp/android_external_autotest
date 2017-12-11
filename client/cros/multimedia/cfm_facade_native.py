@@ -493,3 +493,40 @@ class CFMFacadeNative(object):
             defined in cfmApi.move_camera.
         """
         self._cfmApi.move_camera(camera_motion)
+
+    def get_media_info_data_points(self):
+        """
+        Gets media info data points containing media stats.
+
+        These are exported on the window object when the
+        ExportMediaInfo mod is enabled.
+
+        @returns A list with dictionaries of media info data points.
+        @raises RuntimeError if the data point API is not available.
+        """
+        is_api_available_script = (
+                '"realtime" in window '
+                '&& "media" in realtime '
+                '&& "getMediaInfoDataPoints" in realtime.media')
+        if not self._webview_context.EvaluateJavaScript(
+                is_api_available_script):
+            raise RuntimeError(
+                    'realtime.media.getMediaInfoDataPoints not available. '
+                    'Is the ExportMediaInfo mod active? '
+                    'The mod is only available for Meet.')
+
+        data_points = self._webview_context.EvaluateJavaScript(
+                'window.realtime.media.getMediaInfoDataPoints()')
+        for data_point in data_points:
+            # XML RCP gives overflow errors when trying to send too large
+            # integers or longs. Convert timestamps to float seconds and media
+            # stats to floats. We do not care if we lose some precision.
+            # When we are at it, convert the timestamp to seconds as
+            # expected in Python.
+            data_point['timestamp'] = data_point['timestamp'] / 1000.0
+            for media in data_point['media']:
+                for k, v in media.iteritems():
+                    if type(v) == int:
+                        media[k] = float(v)
+        return data_points
+
