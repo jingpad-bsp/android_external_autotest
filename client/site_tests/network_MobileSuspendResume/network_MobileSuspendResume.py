@@ -9,9 +9,10 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_suspend, rtc
+from autotest_lib.client.cros import rtc
 from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_context as cntc
+from autotest_lib.client.cros.power import power_suspend
 
 # Special import to define the location of the flimflam library.
 from autotest_lib.client.cros import flimflam_test_path

@@ -23,8 +23,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
-from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
 
 # Minimum battery charge percentage to run the test
 BATTERY_INITIAL_CHARGED_MIN = 10

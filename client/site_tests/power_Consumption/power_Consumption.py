@@ -14,9 +14,9 @@ from autotest_lib.client.cros import backchannel
 # pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path  # Needed for flimflam
 from autotest_lib.client.cros import httpd
-from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
 import flimflam  # Requires flimflam_test_path to be imported first.
 
 
