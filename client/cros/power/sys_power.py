@@ -144,6 +144,7 @@ def do_suspend(suspend_seconds, delay_seconds=0):
     """
 
     # stop check_ethernet.hook from running until the test exits
+    global pause_ethernet_fd
     if pause_ethernet_fd == 0:
         # we don't write to the file - but we might need to create it.
         pause_ethernet_fd = open(PAUSE_ETHERNET_HOOK_FILE,'a+')
