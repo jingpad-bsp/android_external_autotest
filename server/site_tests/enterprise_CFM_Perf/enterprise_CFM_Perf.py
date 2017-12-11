@@ -9,6 +9,8 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import system_metrics_collector
+from autotest_lib.client.common_lib.cros.cfm.metrics import (
+        media_metrics_collector)
 from autotest_lib.server.cros import cfm_jmidata_log_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
 
@@ -76,6 +78,9 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
             time.sleep(_MEASUREMENT_DURATION_SECONDS)
             self.metrics_collector.collect_snapshot()
+            if self.is_meeting:
+                # Media metrics collector is only available for Meet.
+                self.media_metrics_collector.collect_snapshot()
         self.metrics_collector.write_metrics(self.output_perf_value)
 
     def _get_average(self, data_type, jmidata):
@@ -138,8 +143,26 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         @param jmidata: Raw jmi data log to parse.
         @return Data for given data type from jmidata log.
         """
-        return cfm_jmidata_log_collector.GetDataFromLogs(
-                self, data_type, jmidata)
+        if self.is_meeting:
+            try:
+                timestamped_values = self.media_metrics_collector.get_metric(
+                        data_type)
+            except KeyError:
+                # Ensure we always return at least one element, or perf uploads
+                # will be sad.
+                return [0]
+            # Strip timestamps.
+            values = [x[1] for x in timestamped_values]
+            # Each entry in values is a list, extract the raw values:
+            res = []
+            for value_list in values:
+                res.extend(value_list)
+            # Ensure we always return at least one element, or perf uploads will
+            # be sad.
+            return res or [0]
+        else:
+            return cfm_jmidata_log_collector.GetDataFromLogs(
+                    self, data_type, jmidata)
 
 
     def _get_file_to_parse(self):
@@ -273,13 +296,15 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                 units='count', higher_is_better=True)
 
 
-    def initialize(self, host):
+    def initialize(self, host, run_test_only=False):
         """
         Initializes common test properties.
 
         @param host: a host object representing the DUT.
+        @param run_test_only: Wheter to run only the test or to also perform
+            deprovisioning, enrollment and system reboot. See cfm_base_test.
         """
-        super(enterprise_CFM_Perf, self).initialize(host)
+        super(enterprise_CFM_Perf, self).initialize(host, run_test_only)
         self.system_facade = self._facade_factory.create_system_facade()
         metrics = system_metrics_collector.create_default_metric_set(
                 self.system_facade)
@@ -287,9 +312,14 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         self.metrics_collector = (system_metrics_collector.
                                   SystemMetricsCollector(self.system_facade,
                                                          metrics))
+        data_point_collector = media_metrics_collector.DataPointCollector(
+                self.cfm_facade)
+        self.media_metrics_collector = (media_metrics_collector
+                                        .MetricsCollector(data_point_collector))
 
     def run_once(self, is_meeting=False):
         """Stays in a meeting/hangout and collects perf data."""
+        self.is_meeting = is_meeting
         if is_meeting:
             self.join_meeting()
         else:
