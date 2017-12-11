@@ -10,8 +10,8 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.power import power_status, power_utils
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import helper_logger

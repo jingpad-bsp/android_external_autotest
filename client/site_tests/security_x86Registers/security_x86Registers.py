@@ -5,8 +5,8 @@
 import logging, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils
-from autotest_lib.client.cros import sys_power
+from autotest_lib.client.cros.power import power_utils
+from autotest_lib.client.cros.power import sys_power
 
 MSR_POSITIVE = {
     'Atom': {
