@@ -506,6 +506,11 @@ class RPCFunctions(object):
         """Get SHA1 hash of EC RW firmware section."""
         return self._ec_handler.get_section_sha('rw')
 
+    def _ec_get_active_hash(self):
+        """Get hash of active EC RW firmware."""
+        return self._os_if.run_shell_command_get_output(
+                'ectool echash | grep hash: | sed "s/hash:\s\+//"')[0]
+
     def _ec_dump_whole(self, ec_path):
         """Dump the current EC firmware to a file, specified by ec_path.
 
