@@ -459,9 +459,10 @@ class TelemetryRunner(object):
             dst = os.path.join(DUT_CHROME_ROOT, dep)
             if self._devserver:
                 logging.info('Copying: %s -> %s', src, dst)
-                utils.run('ssh %s rsync %s %s %s:%s' %
-                          (devserver_hostname, self._host.rsync_options(), src,
-                           self._host.hostname, dst))
+                rsync_cmd = utils.sh_escape('rsync %s %s %s:%s' %
+                                            (self._host.rsync_options(), src,
+                                            self._host.hostname, dst))
+                utils.run('ssh %s "%s"' % (devserver_hostname, rsync_cmd))
             else:
                 if not os.path.isfile(src):
                     raise error.TestFail('Error occurred while saving DEPs.')
