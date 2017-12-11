@@ -291,19 +291,19 @@ class FirmwareUpdater(object):
 
         return self._cbfs_work_path
 
-    def cbfs_extract_chip(self, fw_name):
+    def cbfs_extract_chip(self, fw_name, extension='.bin'):
         """Extracts chip firmware blob from cbfs.
 
         For a given chip type, looks for the corresponding firmware
         blob and hash in the specified bios.  The firmware blob and
         hash are extracted into self._cbfs_work_path.
 
-        The extracted blobs will be <fw_name>.bin and
+        The extracted blobs will be <fw_name><extension> and
         <fw_name>.hash located in cbfs_work_path.
 
         Args:
-            fw_name:
-                Chip firmware name to be extracted.
+            fw_name: Chip firmware name to be extracted.
+            extension: Extension of the name of the cbfs component.
 
         Returns:
             Boolean success status.
@@ -317,7 +317,7 @@ class FirmwareUpdater(object):
             fw,
             os.path.join(self._cbfs_work_path, fw))
 
-        cmd = cbfs_extract % ('.bin', '.bin')
+        cmd = cbfs_extract % (extension, extension)
         if self.os_if.run_shell_command_get_status(cmd) != 0:
             return False
 
@@ -353,7 +353,7 @@ class FirmwareUpdater(object):
         hashblob = self.os_if.run_shell_command_get_output(hexdump_cmd)
         return hashblob
 
-    def cbfs_replace_chip(self, fw_name):
+    def cbfs_replace_chip(self, fw_name, extension='.bin'):
         """Replaces chip firmware in CBFS (bios.bin).
 
         For a given chip type, replaces its firmware blob and hash in
@@ -361,8 +361,8 @@ class FirmwareUpdater(object):
         directory set up using cbfs_setup_work_dir().
 
         Args:
-            fw_name:
-                Chip firmware name to be replaced.
+            fw_name: Chip firmware name to be replaced.
+            extension: Extension of the name of the cbfs component.
 
         Returns:
             Boolean success status.
@@ -375,8 +375,8 @@ class FirmwareUpdater(object):
         bios = os.path.join(self._cbfs_work_path, self._bios_path)
         rm_hash_cmd = '%s %s remove -r FW_MAIN_A,FW_MAIN_B -n %s.hash' % (
             self.CBFSTOOL, bios, fw_name)
-        rm_bin_cmd = '%s %s remove -r FW_MAIN_A,FW_MAIN_B -n %s.bin' % (
-            self.CBFSTOOL, bios, fw_name)
+        rm_bin_cmd = '%s %s remove -r FW_MAIN_A,FW_MAIN_B -n %s%s' % (
+            self.CBFSTOOL, bios, fw_name, extension)
         expand_cmd = '%s %s expand -r FW_MAIN_A,FW_MAIN_B' % (
             self.CBFSTOOL, bios)
         add_hash_cmd = ('%s %s add -r FW_MAIN_A,FW_MAIN_B -t raw -c none '
@@ -386,11 +386,13 @@ class FirmwareUpdater(object):
                             os.path.join(self._cbfs_work_path, fw_name),
                             fw_name)
         add_bin_cmd = ('%s %s add -r FW_MAIN_A,FW_MAIN_B -t raw -c lzma '
-                       '-f %s.bin -n %s.bin') % (
+                       '-f %s%s -n %s%s') % (
                            self.CBFSTOOL,
                            bios,
                            os.path.join(self._cbfs_work_path, fw_name),
-                           fw_name)
+                           extension,
+                           fw_name,
+                           extension)
 
         self.os_if.run_shell_command(rm_hash_cmd)
         self.os_if.run_shell_command(rm_bin_cmd)
