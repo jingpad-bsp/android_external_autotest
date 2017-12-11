@@ -62,12 +62,12 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.server import constants
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import gmail_lib
-from autotest_lib.site_utils.suite_scheduler import constants
 from autotest_lib.utils import labellib
 from chromite.lib import metrics
 

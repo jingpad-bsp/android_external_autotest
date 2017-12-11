@@ -32,6 +32,8 @@ of DUT, based on pool assignments:
     from all of the verification and repair code in this module.
 """
 
+# pylint: disable=missing-docstring
+
 import logging
 import re
 
@@ -39,7 +41,7 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
-from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.server import constants
 
 
 # _FIRMWARE_REPAIR_POOLS - The set of pools that should be
