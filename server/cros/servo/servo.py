@@ -461,6 +461,11 @@ class Servo(object):
             raise
 
 
+    def get_ec_active_copy(self):
+        """Get the active copy of the EC image."""
+        return self.get('ec_active_copy')
+
+
     def _get_xmlrpclib_exception(self, xmlexc):
         """Get meaningful exception string from xmlrpc.
 
