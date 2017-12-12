@@ -220,9 +220,9 @@ def lock(filename):
             logging.info('Waiting for cache lock...')
             filelock.acquire(random.randint(1, 5))
         except (lockfile.AlreadyLocked, lockfile.LockTimeout):
-            if attempts > 1000:
-                # Normally we should aqcuire the lock in a few seconds. Once we
-                # wait on the order of hours either the dev server IO is
+            if attempts > 200:
+                # Normally we should aqcuire the lock immediately. Once we
+                # wait on the order of 10 minutes either the dev server IO is
                 # overloaded or a lock didn't get cleaned up. Take one for the
                 # team, break the lock and report a failure. This should fix
                 # the lock for following tests. If the failure affects more than
