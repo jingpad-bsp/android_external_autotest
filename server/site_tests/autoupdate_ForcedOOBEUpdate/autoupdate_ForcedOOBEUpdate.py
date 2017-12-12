@@ -85,7 +85,8 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         events against expected update events. There is a hostlog for the
         rootfs update and for the post reboot update check.
         """
-        hostlog = self._omaha_devserver.get_hostlog(self._host.ip)
+        hostlog = self._omaha_devserver.get_hostlog(self._host.ip,
+                                                    wait_for_reboot_events=True)
         logging.info('Hostlog: %s', hostlog)
 
         # File names to save the hostlog events to.

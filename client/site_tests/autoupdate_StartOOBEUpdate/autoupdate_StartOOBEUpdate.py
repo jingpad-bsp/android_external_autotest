@@ -66,7 +66,7 @@ class autoupdate_StartOOBEUpdate(test.test):
     def _step_through_oobe_screens(self):
         """Walk through the OOBE to the update check screen."""
         utils.poll_for_condition(
-            self._is_oobe_ready,
+            self._is_oobe_ready, timeout=30, sleep_interval=1,
             exception=error.TestFail('OOBE not ready'))
 
         # TODO(dhaddock): Replace with single call when crbug.com/790015 fixed.
@@ -115,6 +115,8 @@ class autoupdate_StartOOBEUpdate(test.test):
             if 'UPDATE_STATUS_DOWNLOADING' in status[2]:
                 update_started = True
             elif 'UPDATE_STATUS_CHECKING_FOR_UPDATE' in status[2]:
+                continue
+            elif 'UPDATE_STATUS_UPDATE_AVAILABLE' in status[2]:
                 continue
             else:
                 raise error.TestFail('update_engine had an unexpected status: '
