@@ -19,7 +19,7 @@ LSOF_CHROME_VIDEO = {
                     }
 
 
-def get_video_by_name(dut, name, debug):
+def get_video_by_name(dut, name):
     """
     Get v4l2 interface based on WebCamera
     @param dut: The handle of the device under test. Should be initialized in
@@ -27,7 +27,6 @@ def get_video_by_name(dut, name, debug):
     @param name: The name of web camera
                  For example: 'Huddly GO'
                               'Logitech Webcam C930e'
-    @param debug: if True print out the output of cli.
     @returns:  if video device v4l2 found, return True,
                else return False.
     """
@@ -36,64 +35,57 @@ def get_video_by_name(dut, name, debug):
     for video_dev in video4linux_list:
         cmd = 'cat /sys/class/video4linux/{}/name'.format(video_dev)
         video_dev_name = dut.run(cmd, ignore_status=True).stdout.strip()
-        if debug:
-            logging.info('---%s', cmd)
-            logging.info('---%s', video_dev_name)
+        logging.info('---%s', cmd)
+        logging.info('---%s', video_dev_name)
         if name in video_dev_name and not 'overview' in video_dev_name:
-            if debug:
-                logging.info('---found interface for %s', name)
+            logging.info('---found interface for %s', name)
             return video_dev
     return None
 
 
-def get_lsof4_video(dut, video, debug):
+def get_lsof4_video(dut, video):
     """
     Get output of chrome processes which attach to video device.
     @param dut: The handle of the device under test. Should be initialized in
                 autotest.
     @param video: video device name for camera.
-    @param debug: if True print out the output of cli.
     @returns: output of lsof /dev/videox.
     """
     cmd = 'lsof /dev/{} | grep chrome'.format(video)
     lsof_output = dut.run(cmd, ignore_status=True).stdout.strip().split('\n')
-    if debug:
-        logging.info('---%s', cmd)
-        logging.info('---%s', lsof_output)
+    logging.info('---%s', cmd)
+    logging.info('---%s', lsof_output)
     return lsof_output
 
 
-def get_video_streams(dut, name, debug):
+def get_video_streams(dut, name):
     """
     Get output of chrome processes which attach to video device.
     @param dut: The handle of the device under test.
     @param name: name of camera.
-    @param debug: if True print out the output of cli.
     @returns: output of lsof for v4l2 device.
     """
-    video_dev = get_video_by_name(dut, name, debug)
-    lsof_output = get_lsof4_video(dut, video_dev, debug)
+    video_dev = get_video_by_name(dut, name)
+    lsof_output = get_lsof4_video(dut, video_dev)
     return lsof_output
 
 
-def check_v4l2_interface(dut, vidpid, camera, debug):
+def check_v4l2_interface(dut, vidpid, camera):
     """
     Check v4l2 interface exists for camera.
     @param dut: The handle of the device under test.
     @param vidpid: vidpid of camera.
     @param camera: name of camera
-    @param debug: if True print out the output of cli.
     @returns: True if v4l2 interface found for camera,
               False if not found.
     """
-    if debug:
-        logging.info('---check v4l2 interface for %s', camera)
-    if get_video_by_name(dut, camera, debug):
+    logging.info('---check v4l2 interface for %s', camera)
+    if get_video_by_name(dut, camera):
         return True, None
-    return False, '%s have no v4l2 interface'.format(camera)
+    return False, '{} have no v4l2 interface.'.format(camera)
 
 
-def check_video_stream(dut, is_muted, vidpid, camera, debug):
+def check_video_stream(dut, is_muted, vidpid, camera):
     """
     Check camera is streaming as expected.
     @param dut: The handle of the device under test.
@@ -101,16 +93,15 @@ def check_video_stream(dut, is_muted, vidpid, camera, debug):
                    False if not.
     @param vidpid: vidpid of camera
     @param camera: name of camera.
-    @param debug: if True print out the output of cli.
     @returns: True if camera is streaming or not based on
               expectation,
               False, errMsg if not found.
     """
-    process_camera = get_video_streams(dut, camera, debug)
+    process_camera = get_video_streams(dut, camera)
     if is_muted:
-        if len(process_camera) == LSOF_CHROME_VIDEO[vidpid]:
-           return False, '%s fails to stop streaming'.format(camera)
+        if len(process_camera) >= LSOF_CHROME_VIDEO[vidpid]:
+            return False, '{} fails to stop video streaming.'.format(camera)
     else:
-        if not len(process_camera) == LSOF_CHROME_VIDEO[vidpid]:
-           return False, '%s fails to start streaming'.format(camera)
+        if not len(process_camera) >= LSOF_CHROME_VIDEO[vidpid]:
+            return False, '{} fails to start video streaming.'.format(camera)
     return True, None
