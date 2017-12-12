@@ -10,7 +10,7 @@ import urllib2
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
-from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import hosts
 
@@ -301,28 +301,39 @@ class OmahaDevserver(object):
         return self._get_devserver_file_content(self._devserver_stdoutfile)
 
 
-    def get_hostlog(self, ip):
+    def get_hostlog(self, ip, wait_for_reboot_events=False):
         """Get the update events json (aka hostlog).
 
         @param ip: IP of the DUT to get update info for.
+        @param wait_for_reboot_events: True if we expect the reboot events.
 
         @return the json dump of the update events for the given IP.
         """
         omaha_hostlog_url = urlparse.urlunsplit(
             ['http', self.get_netloc(), '/api/hostlog',
              'ip=' + ip, ''])
-        try:
-            conn = urllib2.urlopen(omaha_hostlog_url)
-        except urllib2.URLError, e:
-            logging.warning('Failed to read event log url: %s', e)
-            return None
-        except socket.timeout, e:
-            logging.warning('Timed out reading event log url: %s', e)
-            return None
 
-        event_log_resp = conn.read()
-        conn.close()
-        return json.loads(event_log_resp)
+        # 4 rootfs and 1 post reboot
+        expected_events_count = 5
+
+        while True:
+            try:
+                conn = urllib2.urlopen(omaha_hostlog_url)
+            except urllib2.URLError, e:
+                logging.warning('Failed to read event log url: %s', e)
+                return None
+            except socket.timeout, e:
+                logging.warning('Timed out reading event log url: %s', e)
+                return None
+
+            event_log_resp = conn.read()
+            conn.close()
+            hostlog = json.loads(event_log_resp)
+            if wait_for_reboot_events and len(hostlog) < expected_events_count:
+                time.sleep(5)
+                continue
+            else:
+                return hostlog
 
 
     def _dump_devserver_log(self, logging_level=logging.ERROR):
