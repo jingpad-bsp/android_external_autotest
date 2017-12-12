@@ -10,7 +10,10 @@ See FirmwareUpdater object below.
 import os
 import re
 
-from autotest_lib.client.cros.faft.utils import shell_wrapper
+from autotest_lib.client.cros.faft.utils import (common,
+                                                 flashrom_handler,
+                                                 saft_flashrom_util,
+                                                 shell_wrapper)
 
 
 class FirmwareUpdater(object):
@@ -35,6 +38,21 @@ class FirmwareUpdater(object):
         self._work_path = os.path.join(self._temp_path, 'work')
         self._bios_path = 'bios.bin'
         self._ec_path = 'ec.bin'
+        pubkey_path = os.path.join(self._keys_path, 'root_key.vbpubk')
+        self._bios_handler = common.LazyInitHandlerProxy(
+                flashrom_handler.FlashromHandler,
+                saft_flashrom_util,
+                os_if,
+                pubkey_path,
+                self._keys_path,
+                'bios')
+        self._ec_handler = common.LazyInitHandlerProxy(
+                flashrom_handler.FlashromHandler,
+                saft_flashrom_util,
+                os_if,
+                pubkey_path,
+                self._keys_path,
+                'ec')
 
         # _detect_image_paths always needs to run during initialization
         # or after extract_shellball is called.
@@ -66,6 +84,11 @@ class FirmwareUpdater(object):
         self.os_if.copy_file(original_shellball, working_shellball)
         self.extract_shellball()
 
+        self._bios_handler.new_image(
+                os.path.join(self._work_path, self._bios_path))
+        self._ec_handler.new_image(
+                os.path.join(self._work_path, self._ec_path))
+
     def cleanup_temp_dir(self):
         """Cleanup temporary directory."""
         if self.os_if.is_dir(self._temp_path):
@@ -86,33 +109,26 @@ class FirmwareUpdater(object):
     def retrieve_fwid(self):
         """Retrieve shellball's fwid.
 
-        This method should be called after setup_firmwareupdate_temp_dir.
+        This method should be called after _setup_temp_dir.
 
         Returns:
             Shellball's fwid.
         """
-        self.os_if.run_shell_command('dump_fmap -x %s %s' %
-            (os.path.join(self._work_path, self._bios_path), 'RW_FWID_A'))
+        fwid = self._bios_handler.get_section_fwid('a')
+        # Remove the tailing null characters
+        return fwid.rstrip('\0')
 
-        [fwid] = self.os_if.run_shell_command_get_output(
-            "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
-        return fwid
-
-    def _retrieve_ecid(self):
+    def retrieve_ecid(self):
         """Retrieve shellball's ecid.
 
-        This method should be called after setup_firmwareupdate_temp_dir.
+        This method should be called after _setup_temp_dir.
 
         Returns:
             Shellball's ecid.
         """
-        self.os_if.run_shell_command('dump_fmap -x %s %s' %
-            (os.path.join(self._work_path, self._ec_path), 'RW_FWID'))
-
-        [ecid] = self.os_if.run_shell_command_get_output(
-                "cat RW_FWID | tr '\\0' '\\t' | cut -f1")
-
-        return ecid
+        fwid = self._ec_handler.get_section_fwid('rw')
+        # Remove the tailing null characters
+        return fwid.rstrip('\0')
 
     def resign_firmware(self, version):
         """Resign firmware with version.
@@ -169,7 +185,7 @@ class FirmwareUpdater(object):
                 self._work_path, 'models', model, 'setvars.sh')
             if self.os_if.path_exists(setvars_path):
                 fwid = self.retrieve_fwid()
-                ecid = self._retrieve_ecid()
+                ecid = self.retrieve_ecid()
                 args = ['-i']
                 args.append(
                     '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
