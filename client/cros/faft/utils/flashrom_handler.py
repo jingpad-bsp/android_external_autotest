@@ -22,9 +22,10 @@ class FvSection(object):
     version number.
     """
 
-    def __init__(self, sig_name, body_name):
+    def __init__(self, sig_name, body_name, fwid_name=None):
         self._sig_name = sig_name
         self._body_name = body_name
+        self._fwid_name = fwid_name
         self._version = -1  # Is not set on construction.
         self._flags = 0  # Is not set on construction.
         self._sha = None  # Is not set on construction.
@@ -33,13 +34,16 @@ class FvSection(object):
         self._kernel_subkey_version = -1 # Is not set on construction.
 
     def names(self):
-        return (self._sig_name, self._body_name)
+        return (self._sig_name, self._body_name, self._fwid_name)
 
     def get_sig_name(self):
         return self._sig_name
 
     def get_body_name(self):
         return self._body_name
+
+    def get_fwid_name(self):
+        return self._fwid_name
 
     def get_version(self):
         return self._version
@@ -116,8 +120,8 @@ class FlashromHandler(object):
             self.fum = flashrom_util_module.flashrom_util(
                     os_if, target_is_ec=False)
             self.fv_sections = {
-                'a': FvSection('VBOOTA', 'FVMAIN'),
-                'b': FvSection('VBOOTB', 'FVMAINB'),
+                'a': FvSection('VBOOTA', 'FVMAIN', 'RW_FWID_A'),
+                'b': FvSection('VBOOTB', 'FVMAINB', 'RW_FWID_B'),
                 'rec': FvSection(None, 'RECOVERY_MRC_CACHE'),
                 'ec_a': FvSection(None, 'ECMAINA'),
                 'ec_b': FvSection(None, 'ECMAINB'),
@@ -126,7 +130,8 @@ class FlashromHandler(object):
             self.fum = flashrom_util_module.flashrom_util(
                     os_if, target_is_ec=True)
             self.fv_sections = {
-                'rw': FvSection(None, 'EC_RW'),
+                'rw': FvSection(None, 'EC_RW', 'RW_FWID'),
+                'rw_b': FvSection(None, 'EC_RW_B'),
                 }
         else:
             raise FlashromHandlerError("Invalid target.")
@@ -379,6 +384,25 @@ class FlashromHandler(object):
                 'Attempt at using an uninitialized object')
         self.fum.write_whole(self.image)
 
+    def write_partial(self, subsection_name, blob=None, write_through=True):
+        """Write the subsection part into the flashrom.
+
+        One can pass a blob to update the data of the subsection before write
+        it into the flashrom.
+        """
+
+        if not self.image:
+            raise FlashromHandlerError(
+                'Attempt at using an uninitialized object')
+
+        if blob is not None:
+            self.image = self.fum.put_section(self.image, subsection_name, blob)
+
+        if write_through:
+            self.dump_partial(subsection_name,
+                              self.os_if.state_dir_file(subsection_name))
+            self.fum.write_partial(self.image, (subsection_name, ))
+
     def dump_whole(self, filename):
         """Write the whole image into a file."""
 
@@ -416,12 +440,7 @@ class FlashromHandler(object):
         except struct.error, e:
             raise FlashromHandlerError(e)
         gbb_section = gbb_section[:12] + formatted_flags + gbb_section[16:]
-        self.image = self.fum.put_section(self.image, section_name, gbb_section)
-
-        if write_through:
-            self.dump_partial(section_name,
-                              self.os_if.state_dir_file(section_name))
-            self.fum.write_partial(self.image, (section_name, ))
+        self.write_partial(section_name, gbb_section, write_through)
 
     def enable_write_protect(self):
         """Enable write protect of the flash chip"""
@@ -467,25 +486,26 @@ class FlashromHandler(object):
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
 
+    def get_section_fwid(self, section):
+        """Retrieve fwid blob of a firmware section"""
+        subsection_name = self.fv_sections[section].get_fwid_name()
+        blob = self.fum.get_section(self.image, subsection_name)
+        return blob
+
     def set_section_body(self, section, blob, write_through=False):
         """Put the supplied blob to the body of the firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
-        self.image = self.fum.put_section(self.image, subsection_name, blob)
-
-        if write_through:
-            self.dump_partial(subsection_name,
-                              self.os_if.state_dir_file(subsection_name))
-            self.fum.write_partial(self.image, (subsection_name, ))
+        self.write_partial(subsection_name, blob, write_through)
 
     def set_section_sig(self, section, blob, write_through=False):
         """Put the supplied blob to the vblock of the firmware section"""
         subsection_name = self.fv_sections[section].get_sig_name()
-        self.image = self.fum.put_section(self.image, subsection_name, blob)
+        self.write_partial(subsection_name, blob, write_through)
 
-        if write_through:
-            self.dump_partial(subsection_name,
-                              self.os_if.state_dir_file(subsection_name))
-            self.fum.write_partial(self.image, (subsection_name, ))
+    def set_section_fwid(self, section, blob, write_through=False):
+        """Put the supplied blob to the fwid of the firmware section"""
+        subsection_name = self.fv_sections[section].get_fwid_name()
+        self.write_partial(subsection_name, blob, write_through)
 
     def set_section_version(self, section, version, flags,
                             write_through=False):
@@ -526,7 +546,4 @@ class FlashromHandler(object):
 
         # Inject the new signature block into the image
         new_sig = open(sig_name, 'r').read()
-        self.image = self.fum.put_section(
-            self.image, fv_section.get_sig_name(), new_sig)
-        if write_through:
-            self.fum.write_partial(self.image, (fv_section.get_sig_name(), ))
+        self.write_partial(fv_section.get_sig_name(), new_sig, write_through)
