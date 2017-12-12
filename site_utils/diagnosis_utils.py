@@ -294,7 +294,7 @@ class RPCHelper(object):
             return
 
         # TODO(ayatane): Replace label prefixes with constants in
-        # site_utils.suite_scheduler.constants
+        # autotest_lib.server.constants
         hosts = self.rpc_interface.get_hosts(
                 invalid=False,
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))

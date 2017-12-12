@@ -43,7 +43,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
-from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.server import constants
 
 
 # Values used to describe the diagnosis of a DUT.  These values are

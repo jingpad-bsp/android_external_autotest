@@ -674,7 +674,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def _retry_auto_update_with_new_devserver(self, build, last_devserver,
                                               force_update, force_full_update,
-                                              force_original):
+                                              force_original, quick_provision):
         """Kick off auto-update by devserver and send metrics.
 
         @param build: the build to update.
@@ -685,6 +685,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                   force_full_update for details.
         @param force_original: Whether to force stateful update with the
                                original payload.
+        @param quick_provision: Attempt to use quick provision path first.
 
         @return the result of |auto_update| in dev_server.
         """
@@ -716,7 +717,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 log_dir=self.job.resultdir,
                 force_update=force_update,
                 full_update=force_full_update,
-                force_original=force_original)
+                force_original=force_original,
+                quick_provision=quick_provision)
 
 
     def machine_install_by_devserver(self, update_url=None, force_update=False,
@@ -808,6 +810,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         force_original = self.get_chromeos_release_milestone() is None
 
+        build_re = CONFIG.get_config_value(
+                'CROS', 'quick_provision_build_regex', type=str, default='')
+        quick_provision = (len(build_re) != 0 and
+                           re.match(build_re, build) is not None)
+
         try:
             devserver.auto_update(
                     self.hostname, build,
@@ -817,7 +824,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     log_dir=self.job.resultdir,
                     force_update=force_update,
                     full_update=force_full_update,
-                    force_original=force_original)
+                    force_original=force_original,
+                    quick_provision=quick_provision)
         except dev_server.RetryableProvisionException:
             # It indicates that last provision failed due to devserver load
             # issue, so another devserver is resolved to kick off provision
@@ -831,7 +839,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             if utils.ping(self.hostname, tries=1, deadline=1) == 0:
                 self._retry_auto_update_with_new_devserver(
                         build, devserver, force_update, force_full_update,
-                        force_original)
+                        force_original, quick_provision)
             else:
                 raise error.AutoservError(
                         'No answer to ping from %s' % self.hostname)
@@ -1233,6 +1241,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def close(self):
+        """Close connection."""
         super(CrosHost, self).close()
         if self._chameleon_host:
             self._chameleon_host.close()

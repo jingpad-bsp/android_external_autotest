@@ -11,10 +11,10 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import power_rapl
-from autotest_lib.client.cros import power_status
-from autotest_lib.client.cros import power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.power import power_rapl
+from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_utils
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import helper_logger
@@ -238,7 +238,9 @@ class video_PlaybackPerf(test.test):
         self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
 
         measurements = [power_status.SystemPower(
-                self._power_status.battery_path)] + power_rapl.create_rapl()
+                self._power_status.battery_path)]
+        if power_utils.has_rapl_support():
+            measurements += power_rapl.create_rapl()
 
         def get_power(cr):
             power_logger = power_status.PowerLogger(measurements)

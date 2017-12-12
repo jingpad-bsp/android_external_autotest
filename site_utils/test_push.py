@@ -42,12 +42,12 @@ except ImportError:
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import constants
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import gmail_lib
-from autotest_lib.site_utils.suite_scheduler import constants
 
 try:
     from chromite.lib import metrics

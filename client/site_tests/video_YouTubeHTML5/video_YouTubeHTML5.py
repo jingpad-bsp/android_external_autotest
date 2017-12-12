@@ -7,7 +7,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import httpd
-from autotest_lib.client.cros import power_rapl
+from autotest_lib.client.cros.power import power_rapl
 from autotest_lib.client.cros.video import youtube_helper
 from autotest_lib.client.cros.video import helper_logger
 

@@ -7,7 +7,7 @@
 import logging, os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros.power import power_utils
 
 class security_SMMLocked(test.test):
     """

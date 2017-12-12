@@ -360,3 +360,16 @@ class CFMFacadeRemoteAdapter(object):
             defined in cfmApi.move_camera.
         """
         self._cfm_proxy.move_camera(camera_motion)
+
+    def get_media_info_data_points(self):
+        """
+        Gets media info data points containing media stats.
+
+        These are exported on the window object when the
+        ExportMediaInfo mod is enabled.
+
+        @returns A list with dictionaries of media info data points.
+        @raises RuntimeError if the data point API is not available.
+        """
+        return self._cfm_proxy.get_media_info_data_points()
+
