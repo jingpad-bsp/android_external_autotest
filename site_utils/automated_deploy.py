@@ -52,6 +52,9 @@ def parse_arguments():
             help='Skip updating autotest prod branch. Default is False.')
     parser.add_argument('--skip_chromite', action='store_true', default=False,
             help='Skip updating chromite prod branch. Default is False.')
+    parser.add_argument('--force_update', action='store_true', default=False,
+            help=('Force a deployment without updating both autotest and '
+                  'chromite prod branch'))
     parser.add_argument('--autotest_hash', type=str, default=None,
             help='Update autotest prod branch to the given hash. If it is not'
                  ' specified, autotest prod branch will be rebased to '
@@ -68,6 +71,9 @@ def parse_arguments():
         parser.print_help()
         print 'Cannot specify skip_* and *_hash options at the same time.'
         sys.exit(1)
+    if results.force_update:
+      results.skip_autotest = True
+      results.skip_chromite = True
     return results
 
 
