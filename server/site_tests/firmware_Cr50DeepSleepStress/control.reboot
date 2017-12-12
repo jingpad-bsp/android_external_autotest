@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
-NAME = "firmware_Cr50DeepSleepStress"
+NAME = "firmware_Cr50DeepSleepStress.reboot"
 PURPOSE = "Verify deep sleep"
 ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "LONG"
@@ -13,7 +13,7 @@ TEST_TYPE = "server"
 DEPENDENCIES = "servo"
 
 DOC = """
-Cr50 should enter deep sleep every time the system goes into S3. Run
+Cr50 should enter deep sleep every time the system goes into S5. Run
 power_SuspendStress and verify the deep sleep count matches the number of
 suspend iterations.
 """
@@ -24,8 +24,8 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    suspend_count = int(args_dict.get("suspend_count", 1000))
-    reset_type = args_dict.get("reset_type", "mem")
+    suspend_count = int(args_dict.get("suspend_count", 100))
+    reset_type = args_dict.get("reset_type", "reboot")
 
     job.run_test("firmware_Cr50DeepSleepStress", host=host, cmdline_args=args,
                  suspend_count=suspend_count, reset_type=reset_type)
