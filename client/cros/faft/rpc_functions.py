@@ -10,6 +10,7 @@ These can be exposed via a xmlrpci server running on the DUT.
 import functools, os, tempfile
 
 from autotest_lib.client.cros.faft.utils import (cgpt_handler,
+                                                 common,
                                                  os_interface,
                                                  firmware_check_keys,
                                                  firmware_updater,
@@ -38,31 +39,6 @@ def allow_multiple_section_input(image_operator):
         else:
             image_operator(self, section)
     return wrapper
-
-
-class LazyInitHandlerProxy:
-    """Proxy of a given handler_class for lazy initialization."""
-    _loaded = False
-    _obj = None
-
-    def __init__(self, handler_class, *args, **kargs):
-        self._handler_class = handler_class
-        self._args = args
-        self._kargs = kargs
-
-    def _load(self):
-        self._obj = self._handler_class()
-        self._obj.init(*self._args, **self._kargs)
-        self._loaded = True
-
-    def __getattr__(self, name):
-        if not self._loaded:
-            self._load()
-        return getattr(self._obj, name)
-
-    def reload(self):
-        """Reload the FlashromHandler class."""
-        self._loaded = False
 
 
 class RPCFunctions(object):
@@ -100,7 +76,7 @@ class RPCFunctions(object):
         self._os_if.init(state_dir, log_file=self._log_file)
         os.chdir(state_dir)
 
-        self._bios_handler = LazyInitHandlerProxy(
+        self._bios_handler = common.LazyInitHandlerProxy(
                 flashrom_handler.FlashromHandler,
                 saft_flashrom_util,
                 self._os_if,
@@ -110,7 +86,7 @@ class RPCFunctions(object):
 
         self._ec_handler = None
         if self._os_if.run_shell_command_get_status('mosys ec info') == 0:
-            self._ec_handler = LazyInitHandlerProxy(
+            self._ec_handler = common.LazyInitHandlerProxy(
                     flashrom_handler.FlashromHandler,
                     saft_flashrom_util,
                     self._os_if,
@@ -125,7 +101,7 @@ class RPCFunctions(object):
                                   dev_key_path='/usr/share/vboot/devkeys',
                                   internal_disk=True)
 
-        self._tpm_handler = LazyInitHandlerProxy(
+        self._tpm_handler = common.LazyInitHandlerProxy(
                 tpm_handler.TpmHandler,
                 self._os_if)
 
@@ -726,6 +702,13 @@ class RPCFunctions(object):
         @return: Shellball's fwid.
         """
         return self._updater.retrieve_fwid()
+
+    def _updater_get_ecid(self):
+        """Retrieve shellball's ecid.
+
+        @return: Shellball's ecid.
+        """
+        return self._updater.retrieve_ecid()
 
     def _updater_resign_firmware(self, version):
         """Resign firmware with version.
