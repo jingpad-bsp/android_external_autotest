@@ -28,7 +28,6 @@ class FirmwareUpdater(object):
     DAEMON = 'update-engine'
     CBFSTOOL = 'cbfstool'
     HEXDUMP = 'hexdump -v -e \'1/1 "0x%02x\\n"\''
-    SIGNER = '/usr/share/vboot/bin/make_dev_firmware.sh'
 
     def __init__(self, os_if):
         self.os_if = os_if
@@ -130,17 +129,19 @@ class FirmwareUpdater(object):
         # Remove the tailing null characters
         return fwid.rstrip('\0')
 
-    def resign_firmware(self, version):
+    def resign_firmware(self, version=None, work_path=None):
         """Resign firmware with version.
 
         Args:
-            version: new firmware version number.
+            version: new firmware version number, default to no modification.
+            work_path: work path, default to the updater work path.
         """
-        ro_normal = 0
+        if work_path is None:
+            work_path = self._work_path
         self.os_if.run_shell_command(
                 '/usr/share/vboot/bin/resign_firmwarefd.sh '
-                '%s %s %s %s %s %s %s %d %d' % (
-                    os.path.join(self._work_path, self._bios_path),
+                '%s %s %s %s %s %s %s %s' % (
+                    os.path.join(work_path, self._bios_path),
                     os.path.join(self._temp_path, 'output.bin'),
                     os.path.join(self._keys_path, 'firmware_data_key.vbprivk'),
                     os.path.join(self._keys_path, 'firmware.keyblock'),
@@ -148,11 +149,10 @@ class FirmwareUpdater(object):
                                  'dev_firmware_data_key.vbprivk'),
                     os.path.join(self._keys_path, 'dev_firmware.keyblock'),
                     os.path.join(self._keys_path, 'kernel_subkey.vbpubk'),
-                    version,
-                    ro_normal))
+                    ('%d' % version) if version is not None else ''))
         self.os_if.copy_file('%s' % os.path.join(self._temp_path, 'output.bin'),
                              '%s' % os.path.join(
-                                 self._work_path, self._bios_path))
+                                 work_path, self._bios_path))
 
     def _detect_image_paths(self):
         """Scans shellball to find correct bios and ec image paths."""
@@ -434,13 +434,10 @@ class FirmwareUpdater(object):
 
     def cbfs_sign_and_flash(self):
         """Signs CBFS (bios.bin) and flashes it."""
-
-        bios = os.path.join(self._cbfs_work_path, self._bios_path)
-        signer = ('%s '
-                  '--noforce_backup '
-                  '--nomod_hwid '
-                  '-f %s') % (self.SIGNER, bios)
-        self.os_if.run_shell_command(signer)
+        self.resign_firmware(work_path=self._cbfs_work_path)
+        self._bios_handler.new_image(
+                os.path.join(self._cbfs_work_path, self._bios_path))
+        self._bios_handler.write_whole()
         return True
 
     def get_temp_path(self):
