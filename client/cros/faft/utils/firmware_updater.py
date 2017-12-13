@@ -10,10 +10,15 @@ See FirmwareUpdater object below.
 import os
 import re
 
+from autotest_lib.client.common_lib.cros import chip_utils
 from autotest_lib.client.cros.faft.utils import (common,
                                                  flashrom_handler,
                                                  saft_flashrom_util,
                                                  shell_wrapper)
+
+
+class FirmwareUpdaterError(Exception):
+    """Error in the FirmwareUpdater module."""
 
 
 class FirmwareUpdater(object):
@@ -128,6 +133,52 @@ class FirmwareUpdater(object):
         fwid = self._ec_handler.get_section_fwid('rw')
         # Remove the tailing null characters
         return fwid.rstrip('\0')
+
+    def modify_ecid_and_flash_to_bios(self):
+        """Modify ecid, put it to AP firmware, and flash it to the system.
+
+        This method is used for testing EC software sync for EC EFS (Early
+        Firmware Selection). It creates a slightly different EC RW image
+        (a different EC fwid) in AP firmware, in order to trigger EC
+        software sync on the next boot (a different hash with the original
+        EC RW).
+
+        The steps of this method:
+         * Modify the EC fwid by appending a '~', like from
+           'fizz_v1.1.7374-147f1bd64' to 'fizz_v1.1.7374-147f1bd64~'.
+         * Resign the EC image.
+         * Store the modififed EC RW image to CBFS component 'ecrw' of the
+           AP firmware's FW_MAIN_A and FW_MAIN_B, and also the new hash.
+         * Resign the AP image.
+         * Flash the modified AP image back to the system.
+        """
+        self.cbfs_setup_work_dir()
+
+        fwid = self.retrieve_ecid()
+        if fwid.endswith('~'):
+            raise FirmwareUpdaterError('The EC fwid is already modified')
+
+        # Modify the EC FWID and resign
+        fwid = fwid[:-1] + '~'
+        self._ec_handler.set_section_fwid('rw', fwid)
+        self._ec_handler.resign_ec_rwsig()
+
+        # Replace ecrw to the new one
+        ecrw = chip_utils.ecrw()
+        ecrw_bin_path = os.path.join(self._cbfs_work_path, ecrw.cbfs_bin_name)
+        self._ec_handler.dump_section_body('rw', ecrw_bin_path)
+
+        # Update ecrw.hash
+        ecrw_hash_path = os.path.join(self._cbfs_work_path, ecrw.cbfs_hash_name)
+        ecrw.set_from_file(ecrw_bin_path)
+        with open(ecrw_hash_path, 'w') as f:
+            f.write(ecrw.compute_hash_bytes())
+
+        # Store the modified ecrw and its hash to cbfs
+        self.cbfs_replace_chip(ecrw.fw_name, extension='')
+
+        # Resign and flash the AP firmware back to the system
+        self.cbfs_sign_and_flash()
 
     def resign_firmware(self, version=None, work_path=None):
         """Resign firmware with version.
