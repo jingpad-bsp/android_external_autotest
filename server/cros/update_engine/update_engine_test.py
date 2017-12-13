@@ -5,6 +5,7 @@
 import json
 import logging
 import update_engine_event as uee
+import urlparse
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
@@ -272,6 +273,54 @@ class UpdateEngineTest(test.test):
         return ('The update completed successfully but one of the steps of '
                 'the update took longer than we would like. We failed to '
                 'receive %s within %d seconds.' % (desc, timeout))
+
+
+    def _stage_payload_by_uri(self, payload_uri):
+        """Stage a payload based on its GS URI.
+
+        This infers the build's label, filename and GS archive from the
+        provided GS URI.
+
+        @param payload_uri: The full GS URI of the payload.
+
+        @return URL of the staged payload on the server.
+
+        @raise error.TestError if there's a problem with staging.
+
+        """
+        archive_url, _, filename = payload_uri.rpartition('/')
+        build_name = urlparse.urlsplit(archive_url).path.strip('/')
+        return self._stage_payload(build_name, filename,
+                                   archive_url=archive_url)
+
+
+    def _stage_payload(self, build_name, filename, archive_url=None):
+        """Stage the given payload onto the devserver.
+
+        Works for either a stateful or full/delta test payload. Expects the
+        gs_path or a combo of build_name + filename.
+
+        @param build_name: The build name e.g. x86-mario-release/<version>.
+                           If set, assumes default gs archive bucket and
+                           requires filename to be specified.
+        @param filename: In conjunction with build_name, this is the file you
+                         are downloading.
+        @param archive_url: An optional GS archive location, if not using the
+                            devserver's default.
+
+        @return URL of the staged payload on the server.
+
+        @raise error.TestError if there's a problem with staging.
+
+        """
+        try:
+            self._autotest_devserver.stage_artifacts(image=build_name,
+                                                     files=[filename],
+                                                     archive_url=archive_url)
+            return self._autotest_devserver.get_staged_file_url(filename,
+                                                                build_name)
+        except dev_server.DevServerException, e:
+            raise error.TestError('Failed to stage payload: %s' % e)
 
 
     def verify_update_events(self, source_release, hostlog_filename,
