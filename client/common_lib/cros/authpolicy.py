@@ -1,53 +1,18 @@
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+"""
+Wrapper for D-Bus calls ot the AuthPolicy daemon.
+"""
 
-import dbus
 import logging
 import os
+import sys
 
-from autotest_lib.client.common_lib import enum
+import dbus
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-
-
-"""
-Error enum returned from almost all D-Bus calls.
-See CrOS - platform/system_api/dbus/authpolicy/active_directory_info.proto.
-KEEP THE ORDER IN SYNC WITH THE PROTO FILE!
-
-"""
-ErrorType = enum.Enum(
-        'ERROR_NONE',                        # 0
-        'ERROR_UNKNOWN',                     # 1
-        'ERROR_DBUS_FAILURE',                # 3
-        'ERROR_PARSE_UPN_FAILED',            # 4
-        'ERROR_BAD_USER_NAME',               # 5
-        'ERROR_BAD_PASSWORD',                # 6
-        'ERROR_PASSWORD_EXPIRED',            # 7
-        'ERROR_CANNOT_RESOLVE_KDC',          # 8
-        'ERROR_KINIT_FAILED',                # 9
-        'ERROR_NET_FAILED',                  # 10
-        'ERROR_SMBCLIENT_FAILED',            # 11
-        'ERROR_PARSE_FAILED',                # 12
-        'ERROR_PARSE_PREG_FAILED',           # 13
-        'ERROR_BAD_GPOS',                    # 14
-        'ERROR_LOCAL_IO',                    # 15
-        'ERROR_NOT_JOINED',                  # 16
-        'ERROR_NOT_LOGGED_IN',               # 17
-        'ERROR_STORE_POLICY_FAILED',         # 18
-        'ERROR_JOIN_ACCESS_DENIED',          # 19
-        'ERROR_NETWORK_PROBLEM',             # 19
-        'ERROR_INVALID_MACHINE_NAME',        # 20
-        'ERROR_MACHINE_NAME_TOO_LONG',       # 21
-        'ERROR_USER_HIT_JOIN_QUOTA',         # 22
-        'ERROR_CONTACTING_KDC_FAILED',       # 23
-        'ERROR_NO_CREDENTIALS_CACHE_FOUND',  # 24
-        'ERROR_KERBEROS_TICKET_EXPIRED',     # 25
-        'ERROR_KLIST_FAILED',                # 26
-        'ERROR_BAD_MACHINE_NAME',            # 27
-        'ERROR_PASSWORD_REJECTED',           # 28
-        'ERROR_COUNT')                       # 29
 
 
 class AuthPolicy(object):
@@ -74,10 +39,13 @@ class AuthPolicy(object):
     _DBUS_SERVICE_PATH = '/org/chromium/AuthPolicy'
     _DBUS_INTERFACE_NAME = 'org.chromium.AuthPolicy'
 
+    # Default timeout in seconds for D-Bus calls.
+    _DEFAULT_TIMEOUT = 120
+
     # Chronos user ID.
     _CHRONOS_UID = 1000
 
-    def __init__(self, bus_loop):
+    def __init__(self, bus_loop, proto_binding_location):
         """
         Constructor
 
@@ -85,8 +53,12 @@ class AuthPolicy(object):
         be running.
 
         @param bus_loop: glib main loop object.
-
+        @param proto_binding_location: the location of generated python bindings
+                                       for authpolicy protobufs.
         """
+
+        # Pull in protobuf bindings.
+        sys.path.append(proto_binding_location)
 
         try:
             # Get the interface as Chronos since only they are allowed to send
@@ -100,7 +72,6 @@ class AuthPolicy(object):
         finally:
             os.setresuid(0, 0, 0)
 
-
     def __del__(self):
         """
         Destructor
@@ -111,61 +82,96 @@ class AuthPolicy(object):
 
         self.set_default_log_level(0)
 
-
-    def join_ad_domain(self, machine_name, username, password):
+    def join_ad_domain(self,
+                       user_principal_name,
+                       password,
+                       machine_name,
+                       machine_domain=None,
+                       machine_ou=None):
         """
         Joins a machine (=device) to an Active Directory domain.
 
-        @param machine_name: Name of the machine (=device) to be joined to the
-                             Active Directory domain.
-        @param username: User logon name (user@example.com) for the Active
-                         Directory domain.
-        @param password: Password corresponding to username.
+        @param user_principal_name: Logon name of the user (with @realm) who
+            joins the machine to the domain.
+        @param password: Password corresponding to user_principal_name.
+        @param machine_name: Netbios computer (aka machine) name for the joining
+            device.
+        @param machine_domain: Domain (realm) the machine should be joined to.
+            If not specified, the machine is joined to the user's realm.
+        @param machine_ou: Array of organizational units (OUs) from leaf to
+            root. The machine is put into the leaf OU. If not specified, the
+            machine account is created in the default 'Computers' OU.
 
-        @return ErrorType from the D-Bus call.
+        @return A tuple with the ErrorType and the joined domain returned by the
+            D-Bus call.
 
         """
+
+        from active_directory_info_pb2 import JoinDomainRequest
+
+        request = JoinDomainRequest()
+        request.user_principal_name = user_principal_name
+        request.machine_name = machine_name
+        if machine_ou:
+            request.machine_ou.extend(machine_ou)
+        if machine_domain:
+            request.machine_domain = machine_domain
 
         with self.PasswordFd(password) as password_fd:
             return self._authpolicyd.JoinADDomain(
-                    dbus.String(machine_name),
-                    dbus.String(username),
-                    dbus.types.UnixFd(password_fd))
+                dbus.ByteArray(request.SerializeToString()),
+                dbus.types.UnixFd(password_fd),
+                timeout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
 
-
-    def authenticate_user(self, username, account_id, password):
+    def authenticate_user(self, user_principal_name, account_id, password):
         """
         Authenticates a user with an Active Directory domain.
 
-        @param username: User logon name (user@example.com) for the Active
-                         Directory domain.
+        @param user_principal_name: User logon name (user@example.com) for the
+            Active Directory domain.
         #param account_id: User account id (aka objectGUID). May be empty.
-        @param password: Password corresponding to username.
+        @param password: Password corresponding to user_principal_name.
 
         @return A tuple with the ErrorType and an ActiveDirectoryAccountInfo
                 blob string returned by the D-Bus call.
 
         """
 
+        from active_directory_info_pb2 import ActiveDirectoryAccountInfo
+        from active_directory_info_pb2 import AuthenticateUserRequest
+        from active_directory_info_pb2 import ERROR_NONE
+
+        request = AuthenticateUserRequest()
+        request.user_principal_name = user_principal_name
+        if account_id:
+            request.account_id = account_id
+
         with self.PasswordFd(password) as password_fd:
-            return self._authpolicyd.AuthenticateUser(
-                    dbus.String(username),
-                    dbus.String(account_id),
-                    dbus.types.UnixFd(password_fd))
+            error_value, account_info_blob = self._authpolicyd.AuthenticateUser(
+                dbus.ByteArray(request.SerializeToString()),
+                dbus.types.UnixFd(password_fd),
+                timeout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
+            account_info = ActiveDirectoryAccountInfo()
+            if error_value == ERROR_NONE:
+                account_info.ParseFromString(account_info_blob)
+            return error_value, account_info
 
-
-    def refresh_user_policy(self, account_id_key):
+    def refresh_user_policy(self, account_id):
         """
         Fetches user policy and sends it to Session Manager.
 
-        @param account_id_key: User account ID (aka objectGUID) prefixed by "a-"
+        @param account_id: User account ID (aka objectGUID).
 
         @return ErrorType from the D-Bus call.
 
         """
 
-        return self._authpolicyd.RefreshUserPolicy(dbus.String(account_id_key))
-
+        return self._authpolicyd.RefreshUserPolicy(
+            dbus.String(account_id),
+            timeout=self._DEFAULT_TIMEOUT,
+            byte_arrays=True)
 
     def refresh_device_policy(self):
         """
@@ -175,8 +181,8 @@ class AuthPolicy(object):
 
         """
 
-        return self._authpolicyd.RefreshDevicePolicy()
-
+        return self._authpolicyd.RefreshDevicePolicy(
+            timeout=self._DEFAULT_TIMEOUT, byte_arrays=True)
 
     def set_default_log_level(self, level):
         """
@@ -188,8 +194,7 @@ class AuthPolicy(object):
 
         """
 
-        return self._authpolicyd.SetDefaultLogLevel(level)
-
+        return self._authpolicyd.SetDefaultLogLevel(level, byte_arrays=True)
 
     def print_log_tail(self):
         """
@@ -201,10 +206,8 @@ class AuthPolicy(object):
             cmd = 'tail -n %s %s' % (self._LOG_LINE_LIMIT, self._LOG_FILE)
             log_tail = utils.run(cmd).stdout
             logging.info('Tail of %s:\n%s', self._LOG_FILE, log_tail)
-        except error.CmdError as e:
-            logging.error(
-                    'Failed to print authpolicyd log tail: %s', e)
-
+        except error.CmdError as ex:
+            logging.error('Failed to print authpolicyd log tail: %s', ex)
 
     def print_seccomp_failure_info(self):
         """
@@ -216,20 +219,18 @@ class AuthPolicy(object):
         cmd = 'grep -q "failed: exit code 253" %s' % self._LOG_FILE
         if utils.run(cmd, ignore_status=True).exit_status == 0:
             logging.error('Seccomp failure detected!')
-            cmd = 'grep -oE "blocked syscall: \w+" %s | tail -1' % \
+            cmd = 'grep -oE "blocked syscall: \\w+" %s | tail -1' % \
                     self._SYSLOG_FILE
             try:
                 logging.error(utils.run(cmd).stdout)
                 logging.error(
-                        'This can happen if you changed a dependency of '
-                        'authpolicyd. Consider whitelisting this syscall in '
-                        'the appropriate -seccomp.policy file in authpolicyd.'
-                        '\n')
-            except error.CmdError as e:
+                    'This can happen if you changed a dependency of '
+                    'authpolicyd. Consider whitelisting this syscall in '
+                    'the appropriate -seccomp.policy file in authpolicyd.'
+                    '\n')
+            except error.CmdError as ex:
                 logging.error(
-                        'Failed to determine reason for seccomp issue: %s',
-                        e)
-
+                    'Failed to determine reason for seccomp issue: %s', ex)
 
     def clear_log(self):
         """
@@ -239,9 +240,8 @@ class AuthPolicy(object):
 
         try:
             utils.run('echo "" > %s' % self._LOG_FILE)
-        except error.CmdError as e:
-            logging.error('Failed to clear authpolicyd log file: %s', e)
-
+        except error.CmdError as ex:
+            logging.error('Failed to clear authpolicyd log file: %s', ex)
 
     class PasswordFd(object):
         """
@@ -257,20 +257,17 @@ class AuthPolicy(object):
         """
 
         def __init__(self, password):
-          self._password = password
-          self._read_fd = None
-
+            self._password = password
+            self._read_fd = None
 
         def __enter__(self):
-          """Creates the password file descriptor."""
-          self._read_fd, write_fd = os.pipe()
-          os.write(write_fd, self._password)
-          os.close(write_fd)
-          return self._read_fd
+            """Creates the password file descriptor."""
+            self._read_fd, write_fd = os.pipe()
+            os.write(write_fd, self._password)
+            os.close(write_fd)
+            return self._read_fd
 
-
-        def __exit__(self, type, value, traceback):
-          """Closes the password file descriptor again."""
-          if self._read_fd:
-            os.close(self._read_fd)
-
+        def __exit__(self, mytype, value, traceback):
+            """Closes the password file descriptor again."""
+            if self._read_fd:
+                os.close(self._read_fd)
