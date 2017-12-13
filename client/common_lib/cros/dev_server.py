@@ -45,14 +45,12 @@ DEPENDENCIES_FILE = 'test_suites/dependency_info'
 _ARTIFACT_STAGE_POLLING_INTERVAL = 5
 # Artifacts that should be staged when client calls devserver RPC to stage an
 # image.
-_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('full_payload,test_suites,stateful,'
-                                     'quick_provision')
+_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = 'full_payload,test_suites,stateful'
 # Artifacts that should be staged when client calls devserver RPC to stage an
 # image with autotest artifact.
 _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
                                                    'control_files,stateful,'
-                                                   'autotest_packages,'
-                                                   'quick_provision')
+                                                   'autotest_packages')
 # Artifacts that should be staged when client calls devserver RPC to stage an
 # Android build.
 _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('zip_images,vendor_partitions')
