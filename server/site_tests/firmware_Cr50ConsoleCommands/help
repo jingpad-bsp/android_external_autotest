@@ -3,7 +3,7 @@ bid
 brdprop
 (?P<ccd_v0>-)?ccd
 (?P<ccd_v1>-ccdblock)?
-(?P<ccd_v1>-ccdstate)?
+(?P<ccd_v1>ccdstate)?
 -chan
 (?P<ccd_v0>devices)?
 ecrst
