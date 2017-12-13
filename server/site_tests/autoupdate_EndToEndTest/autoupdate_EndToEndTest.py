@@ -173,53 +173,6 @@ class autoupdate_EndToEndTest(update_engine_test.UpdateEngineTest):
             return staged_uri, staged_stateful
 
 
-    def _stage_payload_by_uri(self, payload_uri):
-        """Stage a payload based on its GS URI.
-
-        This infers the build's label, filename and GS archive from the
-        provided GS URI.
-
-        @param payload_uri: The full GS URI of the payload.
-
-        @return URL of the staged payload on the server.
-
-        @raise error.TestError if there's a problem with staging.
-
-        """
-        archive_url, _, filename = payload_uri.rpartition('/')
-        build_name = urlparse.urlsplit(archive_url).path.strip('/')
-        return self._stage_payload(build_name, filename,
-                                   archive_url=archive_url)
-
-    def _stage_payload(self, build_name, filename, archive_url=None):
-        """Stage the given payload onto the devserver.
-
-        Works for either a stateful or full/delta test payload. Expects the
-        gs_path or a combo of build_name + filename.
-
-        @param build_name: The build name e.g. x86-mario-release/<version>.
-                           If set, assumes default gs archive bucket and
-                           requires filename to be specified.
-        @param filename: In conjunction with build_name, this is the file you
-                         are downloading.
-        @param archive_url: An optional GS archive location, if not using the
-                            devserver's default.
-
-        @return URL of the staged payload on the server.
-
-        @raise error.TestError if there's a problem with staging.
-
-        """
-        try:
-            self._autotest_devserver.stage_artifacts(image=build_name,
-                                                     files=[filename],
-                                                     archive_url=archive_url)
-            return self._autotest_devserver.get_staged_file_url(filename,
-                                                                build_name)
-        except dev_server.DevServerException, e:
-            raise error.TestError('Failed to stage payload: %s' % e)
-
-
     @staticmethod
     def _get_stateful_uri(build_uri):
         """Returns a complete GS URI of a stateful update given a build path."""
