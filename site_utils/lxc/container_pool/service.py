@@ -8,6 +8,7 @@ import threading
 import time
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils.lxc import base_image
 from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc import container_factory
@@ -21,6 +22,11 @@ try:
     import cPickle as pickle
 except:
     import pickle
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 # The minimum period between polling for new connections, in seconds.
@@ -84,6 +90,7 @@ class Service(object):
             self._handle_incoming_connections()
             self._cleanup_closed_connections()
             # TODO(kenobi): Poll for and log errors from pool.
+            metrics.Counter('chromeos/autotest/container_pool/tick').increment()
             time.sleep(_MIN_POLLING_PERIOD)
 
         logging.debug('Exit event loop.')
