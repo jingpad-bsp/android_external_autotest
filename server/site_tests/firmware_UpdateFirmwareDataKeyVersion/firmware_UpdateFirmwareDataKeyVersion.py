@@ -55,6 +55,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
         super(firmware_UpdateFirmwareDataKeyVersion, self).initialize(
             host, cmdline_args)
         self.backup_firmware()
+        self.switcher.setup_mode('normal')
         self.setup_firmwareupdate_shellball(shellball_path)
 
         # Update firmware if needed
@@ -64,7 +65,6 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
             self.switcher.mode_aware_reboot()
 
         self.setup_usbkey(usbkey=True)
-        self.switcher.setup_mode('normal')
         self._fwid = self.faft_client.updater.get_fwid()
 
         actual_ver = self.faft_client.bios.get_datakey_version('a')
