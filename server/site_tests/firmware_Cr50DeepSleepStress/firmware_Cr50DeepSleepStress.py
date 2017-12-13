@@ -15,9 +15,6 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
     Cr50 should enter deep sleep every suspend. Verify that by checking the
     idle deep sleep count.
 
-    @param duration: Total time to spend running power_SuspendStress.
-            suspend_iterations will take priority if it is set to some
-            non-zero value.
     @param suspend_iterations: The number of iterations to run for
             power_SuspendStress.
     """
@@ -47,13 +44,10 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         self.check_deep_sleep_count()
         super(firmware_Cr50DeepSleepStress, self).cleanup()
 
-    def run_once(self, host, duration=600, suspend_iterations=0):
+    def run_once(self, host, suspend_iterations=100):
         """Verify deep sleep after suspending for the given number of cycles
 
         @param host: the host object representing the DUT.
-        @param duration: Total time to spend running power_SuspendStress.
-                suspend_iterations will take priority if it is set to some
-                non-zero value.
         @param suspend_iterations: The number of iterations to run for
                 power_SuspendStress.
         """
@@ -64,6 +58,8 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
                          'shorter than the Cr50 idle timeout. Cr50 may not '
                          'enter deep sleep every cycle',
                          self.MIN_SUSPEND + self.MIN_RESUME)
+        if not suspend_iterations:
+            raise error.TestFail('Need to provide non-zero suspend_iterations')
 
         # Clear the deep sleep count
         logging.info('Clear Cr50 deep sleep count')
@@ -72,10 +68,10 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         self.cr50.ccd_disable()
 
         self.client_at = autotest.Autotest(host)
-        suspend_iterations = suspend_iterations if suspend_iterations else None
-
+        # Duration is set to 0, because it is required but unused when
+        # iterations is given.
         self.client_at.run_test('power_SuspendStress', tag='idle',
-                                duration=duration,
+                                duration=0,
                                 min_suspend=self.MIN_SUSPEND,
                                 min_resume=self.MIN_RESUME,
                                 check_connection=False,
@@ -83,13 +79,9 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
                                 suspend_state=self.MEM)
 
         count = self.check_deep_sleep_count()
-        if suspend_iterations:
-            logging.info('After %d suspend-resume cycles Cr50 entered deep '
-                         'sleep %d times.', suspend_iterations, count)
-            if count != suspend_iterations:
-                raise error.TestFail('Cr50 deep sleep count, %d, did not '
-                                     'match suspend count, %d' %
-                                     (count, suspend_iterations))
-        else:
-            logging.info('During the %ds test Cr50 entered deep sleep %d '
-                         'times', duration, count)
+        logging.info('After %d suspend-resume cycles Cr50 entered deep '
+                     'sleep %d times.', suspend_iterations, count)
+        if count != suspend_iterations:
+            raise error.TestFail('Cr50 deep sleep count, %d, did not '
+                                 'match suspend count, %d' %
+                                 (count, suspend_iterations))
