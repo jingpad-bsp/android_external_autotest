@@ -99,6 +99,10 @@ class provision_AutoUpdate(test.test):
             ds = dev_server.ImageServer.resolve(image, host.hostname)
             ds.stage_artifacts(image, ['full_payload', 'stateful',
                                        'autotest_packages'])
+            try:
+                ds.stage_artifacts(image, ['quick_provision'])
+            except dev_server.DevServerException as e:
+                logging.warning('Unable to stage quick provision payload', e)
         except dev_server.DevServerException as e:
             raise error.TestFail, str(e), sys.exc_info()[2]
         finally:
