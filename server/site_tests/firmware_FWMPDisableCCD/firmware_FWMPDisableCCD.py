@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
@@ -25,9 +26,8 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         self.host = host
         # Test CCD if servo has access to Cr50, is running with CCD v1, and has
         # testlab mode enabled.
-        self.test_ccd_unlock = (hasattr(self, "cr50") and
-            self.cr50.has_command('ccdstate') and
-            self.servo.get('cr50_testlab') == 'enabled')
+        self.test_ccd_unlock = (hasattr(self, 'cr50') and
+            self.cr50.has_command('ccdstate'))
 
         logging.info('%sTesting CCD Unlock', '' if self.test_ccd_unlock else
             'Not ')
@@ -42,34 +42,14 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         @param level: the ccd privilege level: open or unlock.
         @param fwmp_disabled_unlock: True if the unlock process should fail
         """
-        # Verify that the ccd disable flag is set
-        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
-
-        # Enable the lock
-        self.cr50.ccd_set_level('lock')
-        try:
-            self.cr50.ccd_set_level(level)
-            success = True
-            logging.info('Cr50 CCD %s Succeeded', level)
-        except error.TestFail, e:
-            logging.info('Cr50 CCD %s Failed', level)
-            success = False
-
-        if fwmp_disabled_unlock == success:
-            raise error.TestFail('Did not expect %s %s with fwmp unlock %sabled'
-                                 % (level, 'success' if success else 'fail',
-                                 'dis' if fwmp_disabled_unlock else 'en'))
-
-        # Verify that the ccd disable flag is still set
-        self.cr50_check_fwmp_flag(fwmp_disabled_unlock)
-
-
-    def cr50_check_fwmp_flag(self, fwmp_disabled_unlock):
-        """Verify cr50 thinks the flag is set or cleared"""
-        response = 'Console unlock%s allowed' % (' not' if fwmp_disabled_unlock
+        response = 'Console unlock%s allowed.*>' % (' not' if fwmp_disabled_unlock
                                                  else '')
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command_get_output('sysrst pulse', [response])
+        self.cr50.send_command('ccd lock')
+        logging.info(self.cr50.send_command_get_output('ccd %s' % level,
+                [response]))
+
+        # Wait long enough for any ccd commands to time out.
+        time.sleep(10)
 
 
     def cr50_check_lock_control(self, flags):

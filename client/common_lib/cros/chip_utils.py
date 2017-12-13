@@ -5,7 +5,14 @@
 """A collection of classes representing TCPC firmware blobs.
 """
 
+import logging
 import os
+import subprocess
+
+
+class ChipUtilsError(Exception):
+    """Error in the chip_utils module."""
+
 
 
 class generic_chip(object):
@@ -39,10 +46,11 @@ class generic_chip(object):
         if not basename.startswith(self.chip_name):
             raise ValueError('filename did not start with %s' % self.chip_name)
         fname = basename.split('.')[0]
-        if '_' not in fname:
-            raise ValueError('could not parse filename %s' % basename)
-        rev = fname.split('_')[-1]
-        self.set_fw_ver_from_string(rev)
+        if '_' in fname:
+            rev = fname.split('_')[-1]
+            self.set_fw_ver_from_string(rev)
+        else:
+            logging.info('No fw ver found in filename %s', basename)
         self.fw_file_name = file_name
 
 
@@ -62,6 +70,9 @@ class ps8751(generic_chip):
 
     def compute_hash_bytes(self):
         """Generates the firmware blob hash."""
+
+        if self.fw_ver is None:
+            raise ChipUtilsError('fw_ver not initialized')
 
         h = bytearray(2)
         h[0] = 0xa3
@@ -86,9 +97,35 @@ class anx3429(generic_chip):
     def compute_hash_bytes(self):
         """Generates the firmware blob hash."""
 
+        if self.fw_ver is None:
+            raise ChipUtilsError('fw_ver not initialized')
+
         h = bytearray(1)
         h[0] = self.fw_ver
         return h
+
+
+class ecrw(generic_chip):
+
+    """Chrome EC RW portion."""
+
+    chip_name = 'ecrw'
+    fw_name = 'ecrw'
+    cbfs_bin_name = fw_name
+    cbfs_hash_name = fw_name + '.hash'
+
+    def compute_hash_bytes(self):
+        """Generates the firmware blob hash."""
+
+        if self.fw_file_name is None:
+            raise ChipUtilsError('fw_file_name not initialized')
+
+        if not os.path.exists(self.fw_file_name):
+            raise ChipUtilsError('%s does not exist' % self.fw_file_name)
+
+        # openssl outputs the result to stdout
+        cmd = 'openssl dgst -sha256 -binary %s' % self.fw_file_name
+        return subprocess.check_output(cmd, shell=True)
 
 
 chip_id_map = {
