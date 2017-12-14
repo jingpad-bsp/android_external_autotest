@@ -16,6 +16,8 @@ import os
 import struct
 import tempfile
 
+from autotest_lib.client.common_lib.cros import chip_utils
+
 class FvSection(object):
     """An object to hold information about a firmware section.
 
@@ -373,10 +375,13 @@ class FlashromHandler(object):
             self.image,
             dst_sect.get_body_name(),
             self.fum.get_section(self.image, src_sect.get_body_name()))
-        self.image = self.fum.put_section(
-            self.image,
-            dst_sect.get_sig_name(),
-            self.fum.get_section(self.image, src_sect.get_sig_name()))
+        # If there is no "sig" subsection, skip copying signature.
+        if src_sect.get_sig_name() and dst_sect.get_sig_name():
+            self.image = self.fum.put_section(
+                self.image,
+                dst_sect.get_sig_name(),
+                self.fum.get_section(self.image, src_sect.get_sig_name()))
+        self.write_whole()
 
     def write_whole(self):
         """Write the whole image into the flashrom."""
@@ -426,6 +431,15 @@ class FlashromHandler(object):
         """Write the body of a firmware section into a file"""
         subsection_name = self.fv_sections[section].get_body_name()
         self.dump_partial(subsection_name, filename)
+
+    def get_section_hash(self, section):
+        """Retrieve the hash of the body of a firmware section"""
+        ecrw = chip_utils.ecrw()
+        with tempfile.NamedTemporaryFile(prefix=ecrw.chip_name) as f:
+            self.dump_section_body(section, f.name)
+            ecrw.set_from_file(f.name)
+            result = ecrw.compute_hash_bytes()
+        return result
 
     def get_gbb_flags(self):
         """Retrieve the GBB flags"""
@@ -486,6 +500,10 @@ class FlashromHandler(object):
         subsection_name = self.fv_sections[section].get_body_name()
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
+
+    def has_section_body(self, section):
+        """Return True if the section body is in the image"""
+        return bool(self.get_section_body(section))
 
     def get_section_sig(self, section):
         """Retrieve vblock of a firmware section"""
