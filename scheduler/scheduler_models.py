@@ -177,7 +177,8 @@ class DBObject(object):
 
 
     def _fetch_row_from_db(self, row_id):
-        sql = 'SELECT * FROM %s WHERE ID=%%s' % self.__table
+        fields = ', '.join(self._fields)
+        sql = 'SELECT %s FROM %s WHERE ID=%%s' % (fields, self.__table)
         rows = _db.execute(sql, (row_id,))
         if not rows:
             raise DBError("row not found (table=%s, row id=%s)"
