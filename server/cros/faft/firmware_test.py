@@ -1238,10 +1238,11 @@ class FirmwareTest(FAFTBase):
         """Clear the firmware saved by the method backup_firmware."""
         self._backup_firmware_sha = ()
 
-    def restore_firmware(self, suffix='.original'):
+    def restore_firmware(self, suffix='.original', restore_ec=True):
         """Restore firmware from host in resultsdir.
 
         @param suffix: a string appended to backup file name
+        @param restore_ec: True to restore the ec firmware; False not to do.
         """
         if not self.is_firmware_changed():
             return
@@ -1257,7 +1258,7 @@ class FirmwareTest(FAFTBase):
         self.faft_client.bios.write_whole(
             os.path.join(remote_temp_dir, 'bios'))
 
-        if self.faft_config.chrome_ec:
+        if self.faft_config.chrome_ec and restore_ec:
             self._client.send_file(os.path.join(self.resultsdir, 'ec' + suffix),
                 os.path.join(remote_temp_dir, 'ec'))
             self.faft_client.ec.write_whole(
