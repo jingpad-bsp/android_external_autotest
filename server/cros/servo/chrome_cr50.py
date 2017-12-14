@@ -372,7 +372,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if 'enable' in current_state:
             self.send_command('ccd testlab open')
         else:
-            self.ccd_set_level('open')
+            self.set_ccd_level('open')
 
         # Set testlab mode
         rv = self.send_command_get_output('ccd testlab %s' % state, ['.*>'])[0]
@@ -382,13 +382,13 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # Press the power button once a second for 15 seconds.
         self.run_pp(self.PP_SHORT)
 
-        self.ccd_set_level(original_level)
+        self.set_ccd_level(original_level)
 
         if state not in self._servo.get('cr50_testlab'):
             raise error.TestFail('Failed to set ccd testlab to %s' % state)
 
 
-    def ccd_set_level(self, level):
+    def set_ccd_level(self, level):
         """Increase the console timeout and try disabling the lock."""
         # TODO(mruthven): add support for CCD password
         level = level.lower().strip()
