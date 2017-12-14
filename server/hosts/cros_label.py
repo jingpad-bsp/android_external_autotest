@@ -67,10 +67,15 @@ class ModelLabel(base_label.StringPrefixLabel):
         model = None
 
         if lsb_output.unibuild:
-            cmd = 'mosys platform model'
-            result = host.run(command=cmd, ignore_status=True)
+            test_label_cmd = 'cros_config / test-label'
+            result = host.run(command=test_label_cmd, ignore_status=True)
             if result.exit_status == 0:
                 model = result.stdout.strip()
+            if not model:
+                mosys_cmd = 'mosys platform model'
+                result = host.run(command=mosys_cmd, ignore_status=True)
+                if result.exit_status == 0:
+                    model = result.stdout.strip()
 
         # We need some sort of backwards compatibility for boards that
         # are not yet supported with mosys and unified builds.
