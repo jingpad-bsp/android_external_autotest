@@ -137,7 +137,7 @@ class platform_ImageLoader(test.test):
 
     def _test_remove_unmount_component(self, component):
         component_name = "cros-termina"
-        if not self._register_component(component_name, "10042.0.0",
+        if not self._register_component(component_name, "10209.0.0",
                                     component):
             raise error.TestError('Failed to register a valid component')
 
