@@ -58,10 +58,10 @@ class platform_ImageLoaderServer(test.test):
                       stderr_is_expected=False,
                       ignore_timeout=False)
 
-            version3 = '/tmp/prod_signed_10042.0.0.tar.gz'
+            version3 = '/tmp/prod_signed_10209.0.0.tar.gz'
             utils.run('gsutil',
                       args=('cp', 'gs://chromeos-localmirror-private/'
-                            'testing/components/prod_signed_10042.0.0.tar.gz',
+                            'testing/components/prod_signed_10209.0.0.tar.gz',
                             version3),
                       timeout=300,
                       ignore_status=False,
@@ -82,7 +82,7 @@ class platform_ImageLoaderServer(test.test):
         self.host.run('tar xvf "%s" -C "%s"' % (version3, '/home/chronos'))
         version1_unpack = '/home/chronos/prod_signed_23.0.0.207'
         version2_unpack = '/home/chronos/prod_signed_24.0.0.186'
-        version3_unpack = '/home/chronos/prod_signed_10042.0.0'
+        version3_unpack = '/home/chronos/prod_signed_10209.0.0'
         self.host.run('chmod -R 0755 "%s"' % (version1_unpack))
         self.host.run('chmod -R 0755 "%s"' % (version2_unpack))
         self.host.run('chmod -R 0755 "%s"' % (version3_unpack))
