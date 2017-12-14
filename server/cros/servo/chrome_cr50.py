@@ -344,7 +344,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return testlab_pp or open_pp
 
 
-    def ccd_set_testlab(self, state):
+    def set_ccd_testlab(self, state):
         """Set the testlab mode
 
         Args:
