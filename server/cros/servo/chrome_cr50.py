@@ -363,7 +363,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info('ccd testlab already set to %s', state)
             return
 
-        original_level = self._servo.get('cr50_ccd_level').lower()
+        original_level = self.get_ccd_level()
 
         # We can only change the testlab mode when the device is open. If
         # testlab mode is already enabled, we can go directly to open using 'ccd
@@ -388,12 +388,27 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestFail('Failed to set ccd testlab to %s' % state)
 
 
-    def set_ccd_level(self, level):
-        """Increase the console timeout and try disabling the lock."""
-        # TODO(mruthven): add support for CCD password
-        level = level.lower().strip()
+    def get_ccd_level(self):
+        """Returns the current ccd privilege level"""
+        # TODO(mruthven): delete the part removing the trailing 'ed' once
+        # servo is up to date in the lab
+        return self._servo.get('cr50_ccd_level').lower().rstrip('ed')
 
-        if level in self._servo.get('cr50_ccd_level').lower():
+
+    def set_ccd_level(self, level):
+        """Set the Cr50 CCD privilege level.
+
+        Args:
+            level: a string of the ccd privilege level: 'open', 'lock', or
+                   'unlock'.
+
+        Raises:
+            TestFail if the level couldn't be set
+        ."""
+        # TODO(mruthven): add support for CCD password
+        level = level.lower()
+
+        if level == self.get_ccd_level():
             logging.info('CCD privilege level is already %s', level)
             return
 
@@ -425,7 +440,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             # DBG images have shorter unlock processes
             self.run_pp(self.PP_SHORT if dbg_en else self.PP_LONG)
 
-        if level not in self._servo.get('cr50_ccd_level').lower():
+        if level != self.get_ccd_level():
             raise error.TestFail('Could not set privilege level to %s' % level)
 
         logging.info('Successfully set CCD privelege level to %s', level)
