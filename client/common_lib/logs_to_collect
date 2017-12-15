@@ -21,7 +21,6 @@ dev_image/autotest/results
 /sys/kernel/debug/dri/0/i915_error_state
 
 # Grab all possible pstore files.  Who knows what goodies might be in there!
-/dev/pstore
 /sys/fs/pstore
 
 /var/log
