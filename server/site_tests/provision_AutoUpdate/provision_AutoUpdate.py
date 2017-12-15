@@ -102,7 +102,8 @@ class provision_AutoUpdate(test.test):
             try:
                 ds.stage_artifacts(image, ['quick_provision'])
             except dev_server.DevServerException as e:
-                logging.warning('Unable to stage quick provision payload', e)
+                logging.warning('Unable to stage quick provision payload: %s',
+                                e)
         except dev_server.DevServerException as e:
             raise error.TestFail, str(e), sys.exc_info()[2]
         finally:
