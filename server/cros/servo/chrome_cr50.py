@@ -55,8 +55,10 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     # BID B:   00000000:00000000:00000000 Yes
     # Use the first group from ACTIVE_VERSION to match the active board id
     # partition.
-    BID_FORMAT = ':\s+([a-f0-9:]+) '
-    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE_VERSION, BID_FORMAT)
+    BID_ERROR = 'read_board_id: failed'
+    BID_FORMAT = ':\s+[a-f0-9:]+ '
+    ACTIVE_BID = r'%s.*(\1%s|%s.*>)' % (ACTIVE_VERSION, BID_FORMAT,
+            BID_ERROR)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
@@ -246,24 +248,16 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         #
         # If board id is not supported on the device, return None. This is
         # still expected on all current non board id locked release images.
-        #
-        # TODO(mruthven): switch to only trying once when getting the cr50
-        # console command output becomes entirely reliable.
-        for i in range(3):
-            try:
-                version_info = self.get_version_info(self.ACTIVE_BID)
-                break
-            except error.TestFail, e:
-                logging.info(e.message)
-                version_info = None
-
-        if not version_info:
+        try:
+            version_info = self.get_version_info(self.ACTIVE_BID)
+        except error.TestFail, e:
+            logging.info(e.message)
             logging.info('Cannot use the version to get the board id')
             return None
 
-        bid = version_info[-1]
-        logging.info('%r %r', version_info, bid)
-
+        if self.BID_ERROR in version_info[4]:
+            raise error.TestError(version_info)
+        bid = version_info[4].split()[1]
         return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None
 
 
