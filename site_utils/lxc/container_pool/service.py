@@ -212,6 +212,11 @@ class _ClientThread(threading.Thread):
                         logging.error('Message error: %s', e)
                         # Exit if an error occurs
                         break
+                    except EOFError:
+                        # EOFError means the client closed the connection early.
+                        # TODO(chromium:794685): Return container to pool.
+                        logging.error('Client closed connection before return.')
+                        break
 
         finally:
             # Always close the connection.
