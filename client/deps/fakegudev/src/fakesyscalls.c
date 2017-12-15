@@ -6,6 +6,12 @@
 
 #define _GNU_SOURCE /* for RTLD_NEXT in dlfcn.h */
 
+// FIXME(gbiv): Remove this after CL:756290 has been in for long enough to
+// apply everywhere. Without it, this file needs to be in one of two states,
+// depending on whether said CL has been applied. We can't "know" for sure,
+// since it's a change to system headers.
+#undef _FORTIFY_SOURCE
+
 #include <glib.h>
 
 #include <dlfcn.h>
@@ -186,12 +192,6 @@ setup_redirection_map (void)
   g_strfreev (redirections);
 }
 
-#ifdef __use_clang_fortify
-/* Clang-style FORTIFY requires that all FORTIFY'ed function redeclarations and
- * redefinitions be marked with the overloadable attribute.
- */
-__attribute__((overloadable))
-#endif
 int
 open (const char *pathname, int flags, ...)
 {
