@@ -9,9 +9,19 @@ import threading
 import time
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils.lxc.container_pool import error as lxc_error
+from autotest_lib.site_utils.lxc.constants import \
+    CONTAINER_POOL_METRICS_PREFIX as METRICS_PREFIX
 
+try:
+    from chromite.lib import metrics
+    from infra_libs import ts_mon
+except ImportError:
+    import mock
+    metrics = utils.metrics_mock
+    ts_mon = mock.Mock()
 
 # The maximum number of concurrent workers.  Each worker is responsible for
 # managing the creation of a single container.
@@ -115,6 +125,8 @@ class Pool(object):
         except Queue.Empty:
             pass
         finally:
+            metrics.Counter(METRICS_PREFIX + '/containers_cleaned_up'
+                            ).increment_by(dcount)
             logging.debug('Done.  Destroyed %d containers', dcount)
 
 
@@ -245,8 +257,12 @@ class _Monitor(threading.Thread):
         if len(self._workers) >= self._worker_max:
             return
 
+        too_many_errors = len(self._error_timestamps) >= _MAX_ERRORS_PER_HOUR
+        metrics.Counter(METRICS_PREFIX + '/error_throttled',
+                        field_spec=[ts_mon.BooleanField('throttled')]
+                        ).increment(fields={'throttled': too_many_errors})
         # Throttle if too many errors occur.
-        if len(self._error_timestamps) >= _MAX_ERRORS_PER_HOUR:
+        if too_many_errors:
             logging.warning('Error throttled (until %d)',
                             self._error_timestamps[0] + 3600)
             return
@@ -326,6 +342,8 @@ class _Monitor(threading.Thread):
     def _clear_old_errors(self):
         """Clears errors more than an hour old out of the log."""
         one_hour_ago = time.time() - 3600
+        metrics.Counter(METRICS_PREFIX + '/recent_errors'
+                        ).increment_by(len(self._error_timestamps))
         while (self._error_timestamps and
                self._error_timestamps[0] < one_hour_ago):
             self._error_timestamps.popleft()
