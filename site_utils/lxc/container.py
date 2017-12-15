@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import collections
+import json
 import logging
 import os
-import pickle
 import re
 import tempfile
 import time
@@ -29,7 +29,7 @@ except ImportError:
 # 2424:       The PID of autoserv that starts the container.
 _TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
 # Name of the container ID file.
-_CONTAINER_ID_FILENAME = 'container_id.p'
+_CONTAINER_ID_FILENAME = 'container_id.json'
 
 
 class ContainerId(collections.namedtuple('ContainerId',
@@ -52,13 +52,8 @@ class ContainerId(collections.namedtuple('ContainerId',
                      serialized.
         """
         dst = os.path.join(path, _CONTAINER_ID_FILENAME)
-        # Write to a tmpfile and then move it, so the operation is atomic.
-        with tempfile.NamedTemporaryFile(delete=False) as id_tmp:
-            pickle.dump(self, id_tmp)
-            id_tmp.close()
-            # sudo is needed because the container directory is owned by root.
-            utils.run('sudo mv %s %s' % (id_tmp.name, dst))
-
+        with open(dst, 'w') as f:
+            json.dump(self, f)
 
     @classmethod
     def load(cls, path):
@@ -68,14 +63,19 @@ class ContainerId(collections.namedtuple('ContainerId',
 
         @return: A container ID if one is found on the given path, or None
                  otherwise.
+
+        @raise ValueError: If a JSON load error occurred.
+        @raise TypeError: If the file was valid JSON but didn't contain a valid
+                          ContainerId.
         """
         src = os.path.join(path, _CONTAINER_ID_FILENAME)
 
-        if lxc_utils.path_exists(src):
-            # Read as root because the container directory is owned by root.
-            pickle_data = utils.run('sudo cat %s' % src).stdout
-            return pickle.loads(pickle_data)
-        else:
+        try:
+            with open(src, 'r') as f:
+                return cls(*json.load(f))
+        except IOError:
+            # File not found, or couldn't be opened for some other reason.
+            # Treat all these cases as no ID.
             return None
 
 
@@ -140,17 +140,17 @@ class Container(object):
             try:
                 self._id = ContainerId.load(
                         os.path.join(self.container_path, self.name))
-            except (pickle.PicklingError, EOFError):
-                # Ignore unpickling errors.  ContainerBucket currently queries
-                # every container quite frequently, and emitting exceptions here
-                # would cause any invalid containers on a server to block all
+            except (ValueError, TypeError):
+                # Ignore load errors.  ContainerBucket currently queries every
+                # container quite frequently, and emitting exceptions here would
+                # cause any invalid containers on a server to block all
                 # ContainerBucket.get_all calls (see crbug/783865).
                 # TODO(kenobi): Containers with invalid ID files are probably
                 # the result of an aborted or failed operation.  There is a
                 # non-zero chance that such containers would contain leftover
                 # state, or themselves be corrupted or invalid.  Should we
                 # provide APIs for checking if a container is in this state?
-                logging.exception('Error unpickling ID for container %s:',
+                logging.exception('Error loading ID for container %s:',
                                   self.name)
                 self._id = None
 
@@ -218,6 +218,11 @@ class Container(object):
                     logging.warn('Failed to destroy container %s, error: %s',
                                  new_name, e)
                     utils.run('sudo rm -rf "%s"' % container_folder)
+            # Create the directory prior to creating the new container.  This
+            # puts the ownership of the container under the current process's
+            # user, rather than root.  This is necessary to enable the
+            # ContainerId to serialize properly.
+            os.mkdir(container_folder)
 
         # Create and return the new container.
         new_container = cls(new_path, new_name, {}, src, snapshot)
