@@ -200,9 +200,17 @@ def _sso_request(url_with_args, headers, postdata, timeout):
         cmd += ['-request_timeout', '3600']
 
     try:
-        return subprocess.check_output(cmd)
+        return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
+        if _sso_creds_error(e.output):
+            raise JSONRPCException('RPC blocked by uberproxy. Have your run '
+                                   '`prodaccess`')
+
         raise JSONRPCException(
                 'Error (code: %s) retrieving url (%s): %s' %
                 (e.returncode, url_with_args, e.output)
         )
+
+
+def _sso_creds_error(output):
+    return 'No user creds available' in output
