@@ -92,27 +92,42 @@ class MockHost(object):
 class ModelLabelTests(unittest.TestCase):
     """Unit tests for ModelLabel"""
 
-    def test_mosys_succeeds(self):
+    def test_cros_config_succeeds(self):
         cat_lsb_release_output = """
 CHROMEOS_RELEASE_BOARD=pyro
 CHROMEOS_RELEASE_UNIBUILD=1
 """
-        host = MockHost([], MockCmd('mosys platform model', 0, 'coral\n'),
+        host = MockHost([],
+                        MockCmd('cros_config / test-label', 0, 'coral\n'),
                         MockCmd('cat /etc/lsb-release', 0,
                                 cat_lsb_release_output))
         self.assertEqual(ModelLabel().generate_labels(host), ['coral'])
 
-    def test_mosys_fails(self):
+    def test_cros_config_fails_mosys_succeeds(self):
         cat_lsb_release_output = """
 CHROMEOS_RELEASE_BOARD=pyro
 CHROMEOS_RELEASE_UNIBUILD=1
 """
-        host = MockHost([], MockCmd('mosys platform model', 1, ''),
+        host = MockHost([],
+                        MockCmd('cros_config / test-label', 1, ''),
+                        MockCmd('mosys platform model', 0, 'coral\n'),
+                        MockCmd('cat /etc/lsb-release', 0,
+                                cat_lsb_release_output))
+        self.assertEqual(ModelLabel().generate_labels(host), ['coral'])
+
+    def test_cros_config_fails_mosys_fails(self):
+        cat_lsb_release_output = """
+CHROMEOS_RELEASE_BOARD=pyro
+CHROMEOS_RELEASE_UNIBUILD=1
+"""
+        host = MockHost([],
+                        MockCmd('cros_config / test-label', 1, ''),
+                        MockCmd('mosys platform model', 1, ''),
                         MockCmd('cat /etc/lsb-release', 0,
                                 cat_lsb_release_output))
         self.assertEqual(ModelLabel().generate_labels(host), ['pyro'])
 
-    def test_mosys_only_used_for_unibuilds(self):
+    def test_cros_config_only_used_for_unibuilds(self):
         cat_lsb_release_output = """
 CHROMEOS_RELEASE_BOARD=pyro
 """
