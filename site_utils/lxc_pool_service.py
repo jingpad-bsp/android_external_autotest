@@ -19,6 +19,11 @@ from autotest_lib.server import server_logging_config
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import container_pool
 
+try:
+    from chromite.lib import ts_mon_config
+except ImportError:
+    ts_mon_config = utils.metrics_mock
+
 
 # Location and base name of log files.
 _LOG_LOCATION = '/usr/local/autotest/logs'
@@ -55,9 +60,12 @@ def _start(args):
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda s, f: service.stop())
 
-    # Start the service.  This blocks and does not return till the service shuts
-    # down.
-    service.start(pool_size=args.size)
+    with ts_mon_config.SetupTsMonGlobalState(service_name='lxc_pool_service',
+                                             indirect=True,
+                                             short_lived=False):
+        # Start the service.  This blocks and does not return till the service
+        # shuts down.
+        service.start(pool_size=args.size)
 
 
 def _status(_args):
