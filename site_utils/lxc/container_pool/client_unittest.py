@@ -84,6 +84,13 @@ class ClientTests(unittest.TestCase):
                 client.Client(tmp.name, 0)
 
 
+    def testConnection_deadLine(self):
+        """Tests that the connection times out if no action is ever taken."""
+        id = 3
+        short_timeout = TIMEOUT/2
+        with client.Client.connect(self.address, TIMEOUT) as c:
+            self.assertIsNone(c.get_container(id, short_timeout))
+
 if __name__ == '__main__':
     unittest_setup.setup(require_sudo=False)
     unittest.main()

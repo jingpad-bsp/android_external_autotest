@@ -15,9 +15,10 @@ from autotest_lib.site_utils.lxc import constants
 from autotest_lib.site_utils.lxc.container_pool import message
 
 
-# Timeout in seconds for client connections.
-_DEFAULT_TIMEOUT = 1
-
+# Default server-side timeout in seconds; limits time to fetch container.
+_SERVER_CONNECTION_TIMEOUT = 1
+# Extra timeout to use on the client side; limits network communication time.
+_CLIENT_CONNECTION_TIMEOUT = 5
 
 class Client(object):
     """A class for communicating with a container pool service.
@@ -40,7 +41,7 @@ class Client(object):
         print(client.get_status())
     """
 
-    def __init__(self, address=None, timeout=_DEFAULT_TIMEOUT):
+    def __init__(self, address=None, timeout=_SERVER_CONNECTION_TIMEOUT):
         """Initializes a new Client object.
 
         @param address: The address of the pool to connect to.
@@ -100,10 +101,16 @@ class Client(object):
                  if no containers were available within the specified timeout.
         """
         self._connection.send(message.get(id, timeout))
-        # Note: this blocks indefinitely.  The reason this works is that the
-        # service-side provides a guarantee that it always returns something
-        # (i.e. a Container, or None) within the specified timeout period.
-        return self._connection.recv()
+        # The service side guarantees that it always returns something
+        # (i.e. a Container, or None) within the specified timeout period, or
+        # to wait indefinitely if given None.
+        # However, we don't entirely trust it and account for network problems.
+        if timeout is None or self._connection.poll(
+                timeout + _CLIENT_CONNECTION_TIMEOUT):
+            return self._connection.recv()
+        else:
+            logging.debug('No container (id=%s). Connection failed.', id)
+            return None
 
 
     def get_status(self):
