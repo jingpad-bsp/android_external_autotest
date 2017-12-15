@@ -263,9 +263,9 @@ class _PoolBasedFactory(ContainerFactory):
             except Exception:
                 logging.exception('Error communicating with container pool.')
             else:
-                logging.debug('Retrieved container from pool: %s',
-                              container.name)
                 if container is not None:
+                    logging.debug('Retrieved container from pool: %s',
+                                  container.name)
                     return container
 
         # If the container pool did not yield a container, make one locally.
