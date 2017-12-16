@@ -30,7 +30,7 @@ class EventHandler(object):
 
         @param models: reference to frontend.afe.models
         @param metrics: Metrics instance
-        @param job: Job instance to own
+        @param job: frontend.afe.models.Job instance to own
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
         """
@@ -61,7 +61,7 @@ class EventHandler(object):
 
     def _handle_completed(self, _event):
         final_status = self._final_status()
-        for hqe in self._hqes:
+        for hqe in self._job.hostqueueentry_set.all():
             self._set_completed_status(hqe, final_status)
         if final_status is not self._models.HostQueueEntry.Status.ABORTED:
             _stop_prejob_hqes(self._models, self._job)
@@ -72,21 +72,11 @@ class EventHandler(object):
 
     def _final_status(self):
         Status = self._models.HostQueueEntry.Status
-        if self._job_was_aborted():
+        if _job_aborted(self._job):
             return Status.ABORTED
         if self._autoserv_exit == 0:
             return Status.COMPLETED
         return Status.FAILED
-
-    @property
-    def _hqes(self):
-        return self._models.HostQueueEntry.objects.filter(job_id=self._job.id)
-
-    def _job_was_aborted(self):
-        for hqe in self._hqes:
-            if hqe.aborted:
-                return True
-        return False
 
     def _set_completed_status(self, hqe, status):
         """Set completed status of HQE.
@@ -125,7 +115,6 @@ class Metrics(object):
         self._types = autotest.deps_load(
                 'google.protobuf.internal.well_known_types')
 
-
     def send_hqe_completion(self, hqe):
         """Send ts_mon metrics for HQE completion."""
         fields = {
@@ -154,6 +143,13 @@ class Metrics(object):
         span.endTime = types.Timestamp()
         span.endTime.FromDatetime(hqe.finished_on)
         cloud_trace.LogSpan(span)
+
+
+def _job_aborted(job):
+    for hqe in job.hostqueueentry_set.all():
+        if hqe.aborted:
+            return True
+    return False
 
 
 def _stop_prejob_hqes(models, job):
