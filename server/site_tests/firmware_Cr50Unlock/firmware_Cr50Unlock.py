@@ -30,6 +30,6 @@ class firmware_Cr50Unlock(FirmwareTest):
 
     def run_once(self):
         """Lock CCD and then Unlock it."""
-        self.cr50.ccd_set_level('lock')
-        self.cr50.ccd_set_level('unlock')
+        self.cr50.set_ccd_level('lock')
+        self.cr50.set_ccd_level('unlock')
 
