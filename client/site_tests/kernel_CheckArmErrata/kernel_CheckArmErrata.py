@@ -447,6 +447,9 @@ class kernel_CheckArmErrata(test.test):
                          test_count, failure_count)
             return
 
+        if utils.get_cpu_soc_family() != 'arm':
+            raise error.TestNAError('Applicable to ARM processors only')
+
         cpuinfo = self._parse_cpu_info(utils.read_file('/proc/cpuinfo'))
 
         for cpu_id in sorted(cpuinfo.keys()):
