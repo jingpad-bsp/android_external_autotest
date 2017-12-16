@@ -245,11 +245,16 @@ def lock(filename):
     attempts = 0
     while not filelock.i_am_locking():
         try:
-            attempts += 1
             logging.info('Waiting for cache lock...')
-            filelock.acquire(random.randint(1, 5))
+            # We must not use a random integer as the filelock implementations
+            # may underflow an integer division.
+            filelock.acquire(random.uniform(0.0, pow(2.0, attempts)))
+            attempts += 1
         except (lockfile.AlreadyLocked, lockfile.LockTimeout):
-            if attempts > 200:
+            # Our goal is to wait long enough to be sure something very bad
+            # happened to the locking thread. 11 attempts is between 15 and
+            # 30 minutes.
+            if attempts > 11:
                 # Normally we should aqcuire the lock immediately. Once we
                 # wait on the order of 10 minutes either the dev server IO is
                 # overloaded or a lock didn't get cleaned up. Take one for the
@@ -257,6 +262,11 @@ def lock(filename):
                 # the lock for following tests. If the failure affects more than
                 # one job look for a deadlock or dev server overload.
                 logging.error('Permanent lock failure. Trying to break lock.')
+                # TODO(ihf): Think how to do this cleaner without having a
+                # recursive lock breaking problem. We may have to kill every
+                # job that is currently waiting. The main goal though really is
+                # to have a cache that does not corrupt. And cache updates
+                # only happen once a month or so, everything else are reads.
                 filelock.break_lock()
                 raise error.TestFail('Error: permanent cache lock failure.')
         else:
@@ -1115,7 +1125,7 @@ class TradefedTest(test.test):
                 expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
 
         waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
-                expected_fail_files)
+            expected_fail_files)
         return waivers.find_waivers(test_board, test_arch)
 
     def _get_release_channel(self, host):
