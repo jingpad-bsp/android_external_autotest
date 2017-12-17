@@ -24,7 +24,7 @@ pinmux
 (?P<ccd_v1>-rddkeepalive)?
 -reboot
 (?P<ccd_v1>recbtnforce)?
-(?P<ccd_v1>rma_auth)?
+(?P<rma>rma_auth)?
 -serialno
 shmem
 sysinfo
