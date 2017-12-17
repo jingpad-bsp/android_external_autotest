@@ -92,9 +92,26 @@ _TRADEFED_CACHE_MAX_SIZE = (20 * 1024 * 1024 * 1024)
 class _ChromeLogin(object):
     """Context manager to handle Chrome login state."""
 
+    def need_reboot(self):
+        """Marks state as "dirty" - reboot needed during/after test."""
+        logging.info('Will reboot DUT when Chrome stops.')
+        self._need_reboot = True
+
+    def need_restart(self):
+        """Marks state as "dirty" - restart needed after test."""
+        self._need_restart = True
+
     def __init__(self, host, kwargs):
         self._host = host
         self._cts_helper_kwargs = kwargs
+        # We will override reboot/restart options to some degree. Keep track
+        # of them in a local copy.
+        self._need_reboot = False
+        if kwargs.get('reboot'):
+            self.need_reboot()
+        self._need_restart = False
+        if kwargs.get('restart'):
+            self.need_restart()
 
     def _cmd_builder(self, verbose=False):
         """Gets remote command to start browser with ARC enabled."""
@@ -102,7 +119,7 @@ class _ChromeLogin(object):
         # getting the autodir will raise an exception.
         cmd = autotest.Autotest.get_installed_autodir(self._host)
         cmd += '/bin/autologin.py --arc'
-        if self._cts_helper_kwargs.get('dont_override_profile') == True:
+        if self._cts_helper_kwargs.get('dont_override_profile'):
             logging.info('Using --dont_override_profile to start Chrome.')
             cmd += ' --dont_override_profile'
         else:
@@ -111,7 +128,7 @@ class _ChromeLogin(object):
             cmd += ' > /dev/null 2>&1'
         return cmd
 
-    def _login(self, timeout=60, raise_exception=False):
+    def login(self, timeout=60, raise_exception=False, verbose=False):
         """Logs into Chrome."""
         try:
             # We used to call cheets_StartAndroid, but it is a little faster to
@@ -119,7 +136,7 @@ class _ChromeLogin(object):
             self._host.run(
                 self._cmd_builder(),
                 ignore_status=False,
-                verbose=False,
+                verbose=verbose,
                 timeout=timeout)
             return True
         except autotest.AutodirNotFoundError:
@@ -136,9 +153,15 @@ class _ChromeLogin(object):
                     **self._cts_helper_kwargs)
                 return True
             except:
+                # We were unable to start the browser/Android. Maybe we can
+                # salvage the DUT by rebooting. This can hide some failures.
+                self.reboot()
                 if raise_exception:
                     raise
         except:
+            # We were unable to start the browser/Android. Maybe we can
+            # salvage the DUT by rebooting. This can hide some failures.
+            self.reboot()
             if raise_exception:
                 raise
         return False
@@ -146,10 +169,10 @@ class _ChromeLogin(object):
     def __enter__(self):
         """Logs into Chrome with retry."""
         logging.info('Ensure Android is running...')
-        if not self._login():
-            logging.info('Sleeping before next login attempt...')
-            time.sleep(20)
-            self._login(timeout=120, raise_exception=True)
+        if not self.login():
+            # The DUT reboots after unsuccessful login, try with more time again.
+            logging.info('Retrying failed login...')
+            self.login(timeout=120, raise_exception=True, verbose=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit restart the browser or reboot the machine.
@@ -163,23 +186,28 @@ class _ChromeLogin(object):
         @return None, indicating not to ignore an exception from the with-block
                 if raised.
         """
-        reboot = True
-        if self._cts_helper_kwargs.get('reboot') != True:
+        if not self._need_reboot:
             logging.info('Skipping reboot, restarting browser.')
-            reboot = False
             try:
-                # We clean up /tmp (which is memory backed) from crashes and
-                # other files. A reboot would have cleaned /tmp as well.
-                script = 'stop ui && find /tmp/ -mindepth 1 -delete && start ui'
-                self._host.run(
-                    script, ignore_status=False, verbose=False, timeout=120)
+                self.restart()
             except:
                 logging.error('Restarting browser has failed.')
-                reboot = True
-        if reboot:
-            self._reboot(exc_type, exc_value, traceback)
+                self.need_reboot()
+        if self._need_reboot:
+            self.reboot(exc_type, exc_value, traceback)
 
-    def _reboot(self, exc_type, exc_value, traceback):
+    def restart(self):
+        # We clean up /tmp (which is memory backed) from crashes and
+        # other files. A reboot would have cleaned /tmp as well.
+        # TODO(ihf): Remove "start ui" which is a nicety to non-ARC tests (i.e.
+        # now we wait on login screen, but login() above will 'stop ui' again
+        # before launching Chrome with ARC enabled).
+        script = 'stop ui'
+        script += '&& find /tmp/ -mindepth 1 -delete '
+        script += '&& start ui'
+        self._host.run(script, ignore_status=False, verbose=False, timeout=120)
+
+    def reboot(self, exc_type=None, exc_value=None, traceback=None):
         """Reboot the machine.
 
         @param exc_type: Exception type if an exception is raised from the
@@ -194,6 +222,7 @@ class _ChromeLogin(object):
         logging.info('Rebooting...')
         try:
             self._host.reboot()
+            self._need_reboot = False
         except Exception:
             if exc_type is None:
                 raise
@@ -216,11 +245,16 @@ def lock(filename):
     attempts = 0
     while not filelock.i_am_locking():
         try:
-            attempts += 1
             logging.info('Waiting for cache lock...')
-            filelock.acquire(random.randint(1, 5))
+            # We must not use a random integer as the filelock implementations
+            # may underflow an integer division.
+            filelock.acquire(random.uniform(0.0, pow(2.0, attempts)))
+            attempts += 1
         except (lockfile.AlreadyLocked, lockfile.LockTimeout):
-            if attempts > 200:
+            # Our goal is to wait long enough to be sure something very bad
+            # happened to the locking thread. 11 attempts is between 15 and
+            # 30 minutes.
+            if attempts > 11:
                 # Normally we should aqcuire the lock immediately. Once we
                 # wait on the order of 10 minutes either the dev server IO is
                 # overloaded or a lock didn't get cleaned up. Take one for the
@@ -228,6 +262,11 @@ def lock(filename):
                 # the lock for following tests. If the failure affects more than
                 # one job look for a deadlock or dev server overload.
                 logging.error('Permanent lock failure. Trying to break lock.')
+                # TODO(ihf): Think how to do this cleaner without having a
+                # recursive lock breaking problem. We may have to kill every
+                # job that is currently waiting. The main goal though really is
+                # to have a cache that does not corrupt. And cache updates
+                # only happen once a month or so, everything else are reads.
                 filelock.break_lock()
                 raise error.TestFail('Error: permanent cache lock failure.')
         else:
@@ -1086,7 +1125,7 @@ class TradefedTest(test.test):
                 expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
 
         waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
-                expected_fail_files)
+            expected_fail_files)
         return waivers.find_waivers(test_board, test_arch)
 
     def _get_release_channel(self, host):

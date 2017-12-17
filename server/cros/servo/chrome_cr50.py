@@ -55,8 +55,10 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     # BID B:   00000000:00000000:00000000 Yes
     # Use the first group from ACTIVE_VERSION to match the active board id
     # partition.
-    BID_FORMAT = ':\s+([a-f0-9:]+) '
-    ACTIVE_BID = r'%s.*\1%s' % (ACTIVE_VERSION, BID_FORMAT)
+    BID_ERROR = 'read_board_id: failed'
+    BID_FORMAT = ':\s+[a-f0-9:]+ '
+    ACTIVE_BID = r'%s.*(\1%s|%s.*>)' % (ACTIVE_VERSION, BID_FORMAT,
+            BID_ERROR)
     WAKE_CHAR = '\n'
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
@@ -246,24 +248,16 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         #
         # If board id is not supported on the device, return None. This is
         # still expected on all current non board id locked release images.
-        #
-        # TODO(mruthven): switch to only trying once when getting the cr50
-        # console command output becomes entirely reliable.
-        for i in range(3):
-            try:
-                version_info = self.get_version_info(self.ACTIVE_BID)
-                break
-            except error.TestFail, e:
-                logging.info(e.message)
-                version_info = None
-
-        if not version_info:
+        try:
+            version_info = self.get_version_info(self.ACTIVE_BID)
+        except error.TestFail, e:
+            logging.info(e.message)
             logging.info('Cannot use the version to get the board id')
             return None
 
-        bid = version_info[-1]
-        logging.info('%r %r', version_info, bid)
-
+        if self.BID_ERROR in version_info[4]:
+            raise error.TestError(version_info)
+        bid = version_info[4].split()[1]
         return bid if bid != cr50_utils.EMPTY_IMAGE_BID else None
 
 
@@ -350,7 +344,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return testlab_pp or open_pp
 
 
-    def ccd_set_testlab(self, state):
+    def set_ccd_testlab(self, state):
         """Set the testlab mode
 
         Args:
@@ -369,7 +363,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             logging.info('ccd testlab already set to %s', state)
             return
 
-        original_level = self._servo.get('cr50_ccd_level').lower()
+        original_level = self.get_ccd_level()
 
         # We can only change the testlab mode when the device is open. If
         # testlab mode is already enabled, we can go directly to open using 'ccd
@@ -378,7 +372,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if 'enable' in current_state:
             self.send_command('ccd testlab open')
         else:
-            self.ccd_set_level('open')
+            self.set_ccd_level('open')
 
         # Set testlab mode
         rv = self.send_command_get_output('ccd testlab %s' % state, ['.*>'])[0]
@@ -388,18 +382,33 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # Press the power button once a second for 15 seconds.
         self.run_pp(self.PP_SHORT)
 
-        self.ccd_set_level(original_level)
+        self.set_ccd_level(original_level)
 
         if state not in self._servo.get('cr50_testlab'):
             raise error.TestFail('Failed to set ccd testlab to %s' % state)
 
 
-    def ccd_set_level(self, level):
-        """Increase the console timeout and try disabling the lock."""
-        # TODO(mruthven): add support for CCD password
-        level = level.lower().strip()
+    def get_ccd_level(self):
+        """Returns the current ccd privilege level"""
+        # TODO(mruthven): delete the part removing the trailing 'ed' once
+        # servo is up to date in the lab
+        return self._servo.get('cr50_ccd_level').lower().rstrip('ed')
 
-        if level in self._servo.get('cr50_ccd_level').lower():
+
+    def set_ccd_level(self, level):
+        """Set the Cr50 CCD privilege level.
+
+        Args:
+            level: a string of the ccd privilege level: 'open', 'lock', or
+                   'unlock'.
+
+        Raises:
+            TestFail if the level couldn't be set
+        ."""
+        # TODO(mruthven): add support for CCD password
+        level = level.lower()
+
+        if level == self.get_ccd_level():
             logging.info('CCD privilege level is already %s', level)
             return
 
@@ -431,7 +440,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             # DBG images have shorter unlock processes
             self.run_pp(self.PP_SHORT if dbg_en else self.PP_LONG)
 
-        if level not in self._servo.get('cr50_ccd_level').lower():
+        if level != self.get_ccd_level():
             raise error.TestFail('Could not set privilege level to %s' % level)
 
         logging.info('Successfully set CCD privelege level to %s', level)

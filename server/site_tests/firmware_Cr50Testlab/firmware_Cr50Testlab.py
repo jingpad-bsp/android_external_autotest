@@ -78,7 +78,7 @@ class firmware_Cr50Testlab(FirmwareTest):
         if 'enable' in self.servo.get('cr50_testlab'):
             self.try_testlab('open')
         else:
-            self.cr50.ccd_set_level('open')
+            self.cr50.set_ccd_level('open')
         self.try_testlab('enable')
         self.check_reset_count()
 
@@ -92,7 +92,7 @@ class firmware_Cr50Testlab(FirmwareTest):
         # If ccd is locked, ccd testlab dummy should fail with access denied not
         # invalid param.
         self.reset_ccd()
-        self.cr50.ccd_set_level('lock')
+        self.cr50.set_ccd_level('lock')
         self.try_testlab('dummy', err=self.ACCESS_DENIED)
 
         # CCD can be opened without physical presence if testlab mode is enabled
@@ -109,13 +109,13 @@ class firmware_Cr50Testlab(FirmwareTest):
 
         # You can't enable testlab mode while ccd is locked
         self.reset_ccd()
-        self.cr50.ccd_set_level('lock')
+        self.cr50.set_ccd_level('lock')
         self.try_testlab('enable', err=self.ACCESS_DENIED)
         self.check_reset_count()
 
         # You can't disable testlab mode while ccd is locked
         self.reset_ccd()
-        self.cr50.ccd_set_level('lock')
+        self.cr50.set_ccd_level('lock')
         self.try_testlab('disable', err=self.ACCESS_DENIED)
         self.check_reset_count()
 
@@ -123,7 +123,7 @@ class firmware_Cr50Testlab(FirmwareTest):
         # presence by using 'ccd testlab open'.
         self.reset_ccd()
         self.try_testlab('enable')
-        self.cr50.ccd_set_level('lock')
+        self.cr50.set_ccd_level('lock')
         self.try_testlab('open')
         self.check_reset_count()
 
@@ -131,6 +131,6 @@ class firmware_Cr50Testlab(FirmwareTest):
         # denied.
         self.reset_ccd()
         self.try_testlab('disable')
-        self.cr50.ccd_set_level('lock')
+        self.cr50.set_ccd_level('lock')
         self.try_testlab('open', err=self.ACCESS_DENIED)
         self.check_reset_count()
