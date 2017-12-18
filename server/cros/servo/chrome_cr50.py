@@ -68,6 +68,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     START_STR = ['(.*Console is enabled;)']
     REBOOT_DELAY_WITH_CCD = 60
     REBOOT_DELAY_WITH_FLEX = 3
+    ON_STRINGS = ['enable', 'enabled', 'on']
 
 
     def __init__(self, servo):
@@ -344,11 +345,22 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return testlab_pp or open_pp
 
 
+    def _state_to_bool(self, state):
+        """Converts the state string to True or False"""
+        # TODO(mruthven): compare to 'on' once servo is up to date in the lab
+        return state.lower() in self.ON_STRINGS
+
+
+    def testlab_is_on(self):
+        """Returns True of testlab mode is on"""
+        return self._state_to_bool(self._servo.get('cr50_testlab'))
+
+
     def set_ccd_testlab(self, state):
         """Set the testlab mode
 
         Args:
-            state: the desired testlab mode string: 'enable' or 'disable'
+            state: the desired testlab mode string: 'on' or 'off'
 
         Raises:
             TestFail if testlab mode was not changed
@@ -357,10 +369,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError('Cannot set testlab mode with CCD. Use flex '
                     'cable instead.')
 
-        state = state.lower()
-        current_state = self._servo.get('cr50_testlab').lower()
-        if state in current_state:
-            logging.info('ccd testlab already set to %s', state)
+        request_on = self._state_to_bool(state)
+        testlab_on = self.testlab_is_on()
+        request_str = 'on' if request_on else 'off'
+
+        if testlab_on == request_on:
+            logging.info('ccd testlab already set to %s', request_str)
             return
 
         original_level = self.get_ccd_level()
@@ -369,22 +383,23 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # testlab mode is already enabled, we can go directly to open using 'ccd
         # testlab open'. This will save 5 minutes, because we can skip the
         # physical presence check.
-        if 'enable' in current_state:
+        if testlab_on:
             self.send_command('ccd testlab open')
         else:
             self.set_ccd_level('open')
 
         # Set testlab mode
-        rv = self.send_command_get_output('ccd testlab %s' % state, ['.*>'])[0]
+        rv = self.send_command_get_output('ccd testlab %s' % request_str,
+                ['.*>'])[0]
         if 'Access Denied' in rv:
-            raise error.TestFail("'ccd %s' %s" % (state, rv))
+            raise error.TestFail("'ccd %s' %s" % (request_str, rv))
 
         # Press the power button once a second for 15 seconds.
         self.run_pp(self.PP_SHORT)
 
         self.set_ccd_level(original_level)
 
-        if state not in self._servo.get('cr50_testlab'):
+        if request_on != self.self.testlab_is_on():
             raise error.TestFail('Failed to set ccd testlab to %s' % state)
 
 
@@ -416,7 +431,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError("Can't change testlab mode using "
                 "ccd_set_level")
 
-        testlab_enabled = self._servo.get('cr50_testlab') == 'enabled'
+        testlab_on = self._state_to_bool(self._servo.get('cr50_testlab'))
         req_pp = self._level_change_req_pp(level)
         has_pp = not self.using_ccd()
         dbg_en = 'DBG' in self._servo.get('cr50_version')
@@ -425,7 +440,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError("Can't change privilege level to '%s' "
                 "without physical presence." % level)
 
-        if not testlab_enabled and not has_pp:
+        if not testlab_on and not has_pp:
             raise error.TestError("Wont change privilege level without "
                 "physical presence or testlab mode enabled")
 
