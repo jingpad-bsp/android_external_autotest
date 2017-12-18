@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 import logging
 import shutil
-import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -18,7 +17,6 @@ class autoupdate_StartOOBEUpdate(test.test):
     side test.
     """
     version = 1
-    _LANGUAGE_SELECT = 'language-select'
     _CUSTOM_LSB_RELEASE = '/mnt/stateful_partition/etc/lsb-release'
 
 
@@ -29,20 +27,6 @@ class autoupdate_StartOOBEUpdate(test.test):
     def cleanup(self):
         logging.info('Update engine log saved to results dir.')
         shutil.copy('/var/log/update_engine.log', self.resultsdir)
-
-
-    def _is_oobe_ready(self):
-        """Check that Chrome OS OOBE is ready."""
-        return (self._chrome.browser.oobe and
-                self._chrome.browser.oobe.EvaluateJavaScript(
-                    "var select = document.getElementById('%s');"
-                    "select && select.children.length >= 2" %
-                    self._LANGUAGE_SELECT))
-
-
-    def _clear_local_state(self):
-        """Clear local state so OOBE is reset."""
-        utils.run('rm /home/chronos/Local\ State', ignore_status=True)
 
 
     def _setup_custom_lsb_release(self, update_url):
@@ -63,62 +47,34 @@ class autoupdate_StartOOBEUpdate(test.test):
                   (update_url, self._CUSTOM_LSB_RELEASE))
 
 
-    def _step_through_oobe_screens(self):
-        """Walk through the OOBE to the update check screen."""
-        utils.poll_for_condition(
-            self._is_oobe_ready, timeout=30, sleep_interval=1,
-            exception=error.TestFail('OOBE not ready'))
-
-        # TODO(dhaddock): Replace with single call when crbug.com/790015 fixed.
-        lets_go = "$('oobe-welcome-md').$.welcomeScreen.$.welcomeNextButton" \
-                  ".click()"
-        self._oobe.EvaluateJavaScript(lets_go)
-        time.sleep(3)
-        next_button = "$('oobe-welcome-md').$.networkSelectionScreen" \
-                      ".querySelector('oobe-next-button').click()"
-        self._oobe.EvaluateJavaScript(next_button)
-        time.sleep(3)
-        self._oobe.EvaluateJavaScript("$('accept-button').disabled = false")
-        self._oobe.EvaluateJavaScript("$('accept-button').click()")
-        time.sleep(3)
+    def _skip_to_oobe_update_screen(self):
+        """Skips to the OOBE update check screen."""
+        self._oobe.WaitForJavaScriptCondition("typeof Oobe == 'function' && "
+                                              "Oobe.readyForTesting",
+                                              timeout=30)
+        self._oobe.ExecuteJavaScript('Oobe.skipToUpdateForTesting()')
 
 
-    def _check_update_screen_visible(self):
-        """Make sure we are currently on the update scren at OOBE."""
-        result = self._oobe.EvaluateJavaScript("Oobe.getInstance("
-                                               ").currentScreen.id")
-        if result != 'update':
-            raise error.TestFail('We were not on the update screen when we '
-                                 'expected to be. Check logs in resultsdir.')
+    def _is_update_started(self):
+        """Checks if the update has started."""
+        status = utils.run('update_engine_client --status',
+                           ignore_timeout=True).stdout
+        status = status.splitlines()
+        logging.info(status)
+        return 'UPDATE_STATUS_DOWNLOADING' in status[2]
 
 
     def run_once(self, image_url):
         utils.run('restart update-engine')
 
-        self._clear_local_state()
         self._setup_custom_lsb_release(image_url)
 
         # Start chrome instance to interact with OOBE.
         self._chrome = chrome.Chrome(auto_login=False)
         self._oobe = self._chrome.browser.oobe
 
-        self._step_through_oobe_screens()
-        self._check_update_screen_visible()
+        self._skip_to_oobe_update_screen()
+        utils.poll_for_condition(self._is_update_started,
+                                 error.TestFail('Update did not start.'),
+                                 timeout=30)
 
-        update_started = False
-        while not update_started:
-            status = utils.run('update_engine_client --status',
-                               ignore_timeout=True).stdout
-            status = status.splitlines()
-            logging.info(status)
-            time.sleep(1)
-            if 'UPDATE_STATUS_DOWNLOADING' in status[2]:
-                update_started = True
-            elif 'UPDATE_STATUS_CHECKING_FOR_UPDATE' in status[2]:
-                continue
-            elif 'UPDATE_STATUS_UPDATE_AVAILABLE' in status[2]:
-                continue
-            else:
-                raise error.TestFail('update_engine had an unexpected status: '
-                                     '%s. Check logs and update_engine.log in '
-                                     'the results dir.' % status[2])
