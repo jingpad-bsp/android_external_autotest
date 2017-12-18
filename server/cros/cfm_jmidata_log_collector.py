@@ -5,7 +5,6 @@
 import logging
 
 from autotest_lib.server.cros import cfm_jmidata_v3_helper
-from autotest_lib.server.cros import cfm_webrtc_data_helper
 
 
 def GetDataFromLogs(testcase, data_type, log_lines):
@@ -20,10 +19,7 @@ def GetDataFromLogs(testcase, data_type, log_lines):
         supported for the given type of data (i.e. the underlying helper raises
         NotImplementedError), an empty list is returned.
     """
-    if 'jmidatav3' in log_lines:
-        helper = cfm_jmidata_v3_helper.JMIDataV3Helper(log_lines)
-    else:
-        helper = cfm_webrtc_data_helper.WebRTCDataHelper(log_lines)
+    helper = cfm_jmidata_v3_helper.JMIDataV3Helper(log_lines)
     data_type_to_func_map = {
         'video_sent_bytes': helper.GetVideoSentBytesList,
         'video_received_bytes': helper.GetVideoReceivedBytesList,

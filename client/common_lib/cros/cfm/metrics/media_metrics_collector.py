@@ -47,7 +47,7 @@ FRAMERATE_DECODED = 'framerate_decoded'
 # Max for all received streams per data point.
 FRAMERATE_DECODED_MAX = 'framerate_decoded_max'
 # Mean for all received streams per data point.
-FRAMERATE_RECEIVED = 'framerate_to_renderer'
+FRAMERATE_RECEIVED = 'framerate_received'
 # Max for all received streams per data point.
 FRAMERATE_RECEIVED_MAX = 'framerate_received_max'
 FRAMERATE_SENT = 'framerate_sent'

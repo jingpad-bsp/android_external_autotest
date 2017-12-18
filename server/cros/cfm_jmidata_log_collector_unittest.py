@@ -9,58 +9,8 @@ class CfmJmidataLogCollectorTest(unittest.TestCase):
     """
     # Test methods, disable missing-docstring
     # pylint: disable=missing-docstring
-    def assert_webrtc_data(self, key, expected):
-        data = cfm_jmidata_log_collector.GetDataFromLogs(self, key, WEBRTC_LOG)
-        self.assertEqual(data, expected)
-
     def jmi_get_no_error(self, key):
         data = cfm_jmidata_log_collector.GetDataFromLogs(self, key, JMI_LOG)
-
-    def test_empty_webrtc_data(self):
-        data = cfm_jmidata_log_collector.GetDataFromLogs(self,
-                                                         'video_sent_bytes',
-                                                         '["webrtc_media_'
-                                                         'stats",{}]')
-        self.assertEqual(data, [0])
-
-    def test_webrtc_data(self):
-        self.assert_webrtc_data('video_sent_bytes', [2558788, 4112224])
-        self.assert_webrtc_data('video_received_bytes',
-                              [2539560, 3057482, 418574,
-                               4043668, 4710091, 955339])
-        self.assert_webrtc_data('audio_sent_bytes', [55434, 73108])
-        self.assert_webrtc_data('audio_received_bytes',
-                              [83149, 72223, 61665, 115274, 103717, 93686])
-        self.assert_webrtc_data('audio_received_energy_level',
-                              [6603, 75, 9523, 7999, 41, 9506])
-        self.assert_webrtc_data('audio_sent_energy_level', [3, 20])
-        self.assert_webrtc_data('framerate_received', [21, 21, 20, 13, 18, 16])
-        self.assert_webrtc_data('framerate_sent', [0])
-        self.assert_webrtc_data('framerate_decoded', [16, 21, 19, 10, 18, 14])
-        self.assert_webrtc_data('frames_decoded', [0])
-        self.assert_webrtc_data('frames_encoded', [0])
-        self.assert_webrtc_data('average_encode_time', [0])
-        self.assert_webrtc_data('framerate_to_renderer', [0])
-        self.assert_webrtc_data('framerate_outgoing', [0])
-        self.assert_webrtc_data('video_sent_frame_width', [1280, 1280])
-        self.assert_webrtc_data('video_received_frame_width',
-                              [320, 1280, 320, 320, 1280, 320])
-        self.assert_webrtc_data('video_sent_frame_height', [720, 720])
-        self.assert_webrtc_data('video_received_frame_height',
-                              [180, 720, 180, 180, 720, 180])
-        self.assert_webrtc_data('cpu_adaptation', [0])
-        self.assert_webrtc_data('bandwidth_adaptation', [0])
-        self.assert_webrtc_data('adaptation_changes', [0])
-        self.assert_webrtc_data('video_packets_sent', [0])
-        self.assert_webrtc_data('video_packets_lost', [0])
-        self.assert_webrtc_data('video_encode_cpu_usage', [0])
-        self.assert_webrtc_data('num_active_vid_in_streams', [3, 3])
-        self.assert_webrtc_data('cpu_processors', 1)
-        self.assert_webrtc_data('cpu_percent', [887.0, 980.0])
-        self.assert_webrtc_data('browser_cpu_percent', [30.0, 30.0])
-        self.assert_webrtc_data('gpu_cpu_percent', [0.0, 0.0])
-        self.assert_webrtc_data('nacl_effects_cpu_percent', [0])
-        self.assert_webrtc_data('renderer_cpu_percent', [99.0, 103.0])
 
     def test_jmi_data(self):
         # TODO(kerl): Add assertions on the actual values.
@@ -99,58 +49,6 @@ class CfmJmidataLogCollectorTest(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-WEBRTC_LOG = (
-'[ 31.355s] [realtime.media.api.webrtc.LocalSession] [INFO] c109567983618734'
-'69218_NMS datapoint: ["webrtc_media_stats",{"ssrc":{"audio_sent_bytes":5543'
-'4,"audio_sent_packets":810,"audio_sent_energy_level":3,"ssrc":894135154}}'
-',{"ssrc":{"video_sent_bytes":2558788,"video_sent_packets":4004,"video_sent_'
-'frame_width":1280,"video_sent_frame_height":720,"ssrc":590213457}},{"bwe":{'
-'"available_send_bitrate":1964411,"available_recv_bitrate":0,"transmission'
-'_bitrate":1173952}},{"ssrc":{"audio_received_bytes":83149,"audio_received_p'
-'ackets":842,"audio_received_energy_level":6603,"ssrc":2711698310}},{"ssrc":'
-'{"video_received_bytes":2539560,"video_received_packets":2297,"video_rece'
-'ived_frame_width":320,"video_received_frame_height":180,"framerate_received'
-'":21,"framerate_decoded":16,"ssrc":3789698688}},{"ssrc":{"audio_received_by'
-'tes":72223,"audio_received_packets":732,"audio_received_energy_level":75,'
-'"ssrc":2258904597}},{"ssrc":{"video_received_bytes":3057482,"video_received'
-'_packets":2706,"video_received_frame_width":1280,"video_received_frame_he'
-'ight":720,"framerate_received":21,"framerate_decoded":21,"ssrc":1745684158}'
-'},{"ssrc":{"audio_received_bytes":61665,"audio_received_packets":625,"audio'
-'_received_energy_level":9523,"ssrc":4085031398}},{"ssrc":{"video_received'
-'_bytes":418574,"video_received_packets":481,"video_received_frame_width":32'
-'0,"video_received_frame_height":180,"framerate_received":20,"framerate_deco'
-'ded":19,"ssrc":2425148651}},{"global":{"number_of_active_incoming_video_s'
-'treams":3,"cpu_percent_of_total":887,"gpu_percent_of_total":0,"renderer_cpu'
-'_percent_of_total":99,"browser_cpu_percent_of_total":30}}]\n'
-'[ 31.360s] [boq.meetingscallcommon.model.VideoDelayMonitorModel] [INFO] R'
-'eceived max video delay: 318ms\n'
-'[ 41.267s] [wiz.Dispatcher] [INFO] Getting controller: boq.meetingscommon'
-'.ui.volumelevel.VolumeLevelController_\n'
-'[ 41.268s] [wiz.Dispatcher] [INFO] Calling method updateVolume_ on boq.me'
-'etingscommon.ui.volumelevel.VolumeLevelController_[163]\n'
-'[171003 05:34:26.32] [ 41.280s] [realtime.media.api.webrtc.LocalSession]'
-'[INFO] c10956798361873469218_NMS datapoint: ["webrtc_media_stats",{"ssrc":'
-'{"audio_sent_bytes":73108,"audio_sent_packets":1057,"audio_sent_energy_le'
-'vel":20,"ssrc":894135154}},{"ssrc":{"video_sent_bytes":4112224,"video_sent_'
-'packets":5587,"video_sent_frame_width":1280,"video_sent_frame_height":720,"'
-'ssrc":590213457}},{"bwe":{"available_send_bitrate":2039176,"available_rec'
-'v_bitrate":0,"transmission_bitrate":1277736}},{"ssrc":{"audio_received_byte'
-'s":115274,"audio_received_packets":1167,"audio_received_energy_level":7999,'
-'"ssrc":2711698310}},{"ssrc":{"video_received_bytes":4043668,"video_receiv'
-'ed_packets":3617,"video_received_frame_width":320,"video_received_frame_hei'
-'ght":180,"framerate_received":13,"framerate_decoded":10,"ssrc":3789698688}}'
-',{"ssrc":{"audio_received_bytes":103717,"audio_received_packets":1051,"au'
-'dio_received_energy_level":41,"ssrc":2258904597}},{"ssrc":{"video_received_'
-'bytes":4710091,"video_received_packets":4170,"video_received_frame_width":1'
-'280,"video_received_frame_height":720,"framerate_received":18,"framerate_'
-'decoded":18,"ssrc":1745684158}},{"ssrc":{"audio_received_bytes":93686,"audi'
-'o_received_packets":950,"audio_received_energy_level":9506,"ssrc":4085031'
-'398}},{"ssrc":{"video_received_bytes":955339,"video_received_packets":1011,'
-'"video_received_frame_width":320,"video_received_frame_height":180,"framera'
-'te_received":16,"framerate_decoded":14,"ssrc":2425148651}},{"global":{"nu'
-'mber_of_active_incoming_video_streams":3,"cpu_percent_of_total":980,"gpu_pe'
-'rcent_of_total":0,"renderer_cpu_percent_of_total":103,"browser_cpu_percent_'
-'of_total":30}}]\n')
 
 JMI_LOG = (
 '[15.269s]8 talk.media.webrtc.FluteSession: Sending ["jmidatav3","muvc-priva'
