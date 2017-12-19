@@ -172,11 +172,29 @@ class MySqlArchiver(object):
         @return: The path to a tempfile containing a dump of
                  hosts and their pool labels.
         """
-        query = ('SELECT hostname, labels.name FROM afe_hosts AS hosts '
-                 'JOIN afe_hosts_labels ON hosts.id = afe_hosts_labels.host_id '
-                 'JOIN afe_labels AS labels '
-                 'ON labels.id = afe_hosts_labels.label_id '
-                 'WHERE labels.name LIKE \'%%pool%%\';')
+        respect_static_labels = global_config.global_config.get_config_value(
+                'SKYLAB', 'respect_static_labels', type=bool, default=False)
+        template = ('SELECT hosts.hostname, labels.name FROM afe_hosts AS '
+                    'hosts JOIN %(hosts_labels_table)s AS hlt ON '
+                    'hosts.id = hlt.host_id '
+                    'JOIN %(labels_table)s AS labels '
+                    'ON labels.id = hlt.%(column)s '
+                    'WHERE labels.name LIKE \'%%pool%%\';')
+        if respect_static_labels:
+            # HACK: We're not checking the replaced_by_static_label on the
+            # pool label and just hard coding the fact that pool labels are
+            # indeed static labels. Expedience.
+            query = template % {
+                    'hosts_labels_table': 'afe_static_hosts_labels',
+                    'labels_table': 'afe_static_labels',
+                    'column': 'staticlabel_id',
+            }
+        else:
+            query = template % {
+                    'hosts_labels_table': 'afe_hosts_labels',
+                    'labels_table': 'afe_labels',
+                    'column': 'label_id',
+            }
         return self._create_dump_from_query(query)
 
 
