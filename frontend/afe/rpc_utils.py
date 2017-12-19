@@ -196,23 +196,14 @@ def extra_host_filters(multiple_labels=()):
 
 def get_host_query(multiple_labels, exclude_only_if_needed_labels,
                    valid_only, filter_data):
+    """
+    @param exclude_only_if_needed_labels: Deprecated. By default it's false.
+    """
     if valid_only:
         query = models.Host.valid_objects.all()
     else:
         query = models.Host.objects.all()
 
-    if exclude_only_if_needed_labels:
-        only_if_needed_labels = models.Label.valid_objects.filter(
-            only_if_needed=True)
-        if only_if_needed_labels.count() > 0:
-            only_if_needed_ids = ','.join(
-                    str(label['id'])
-                    for label in only_if_needed_labels.values('id'))
-            query = models.Host.objects.add_join(
-                query, 'afe_hosts_labels', join_key='host_id',
-                join_condition=('afe_hosts_labels_exclude_OIN.label_id IN (%s)'
-                                % only_if_needed_ids),
-                suffix='_exclude_OIN', exclude=True)
     try:
         assert 'extra_args' not in filter_data
         filter_data['extra_args'] = extra_host_filters(multiple_labels)
