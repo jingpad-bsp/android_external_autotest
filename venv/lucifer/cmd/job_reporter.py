@@ -51,7 +51,7 @@ def _parse_args_and_configure_logging(args):
                         help='Path to lucifer_run_job binary')
     parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='Path to job leases directory.')
-    parser.add_argument('--job-id', type=int, default=None,
+    parser.add_argument('--job-id', type=int, default=None, required=True,
                         help='Autotest Job ID')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
@@ -83,14 +83,10 @@ def _main(args):
 def _make_handler(args):
     """Make event handler for lucifer_run_job."""
     models = autotest.load('frontend.afe.models')
-    if args.job_id is not None:
-        if args.autoserv_exit is None:
-            # TODO(crbug.com/748234): autoserv not implemented yet.
-            raise NotImplementedError('not implemented yet (crbug.com/748234)')
-        job = models.Job.objects.get(id=args.job_id)
-    else:
-        # TODO(crbug.com/748234): Full jobs not implemented yet.
-        raise NotImplementedError('not implemented yet')
+    if args.autoserv_exit is None:
+        # TODO(crbug.com/748234): autoserv not implemented yet.
+        raise NotImplementedError('not implemented yet (crbug.com/748234)')
+    job = models.Job.objects.get(id=args.job_id)
     return handlers.EventHandler(
             models=models,
             metrics=handlers.Metrics(),
