@@ -144,6 +144,7 @@ class Job(object):
 
     self.start_time = datetime.datetime.now()
     self.finish_time = None
+    self.trigger_response = None
 
     self.kwargs = {
         'host_name': host_name,
@@ -178,6 +179,7 @@ class Job(object):
         'clobber_stateful': self.kwargs['clobber_stateful'],
         'quick_provision': self.kwargs['quick_provision'],
         'elapsed': int(self.elapsed().total_seconds()),
+        'trigger_response': self.trigger_response,
     })
     if self.check_active_count:
       entry['avg_active'] = self.check_active_sum / self.check_active_count
@@ -283,7 +285,8 @@ class Runner(object):
               board=self.get_dut_board_type(host_name),
               start_active=len(self.active), dryrun=self.dryrun)
     self.active.append(job)
-    logging.info('Provision of %s to %s started', job.host_name, job.build_name)
+    logging.info('Provision (%d) of %s to %s started',
+                 job.entry_id[1], job.host_name, job.build_name)
     self.last_versions[host_name] = build_name
     self.started += 1
 
@@ -305,8 +308,8 @@ class Runner(object):
     still_active = []
     for job in self.active:
       if job.check(len(self.active)):
-        logging.info('Provision of %s to %s %s in %s: %s',
-                     job.host_name, job.build_name,
+        logging.info('Provision (%d) of %s to %s %s in %s: %s',
+                     job.entry_id[1], job.host_name, job.build_name,
                      'completed' if job.success else 'failed',
                      job.elapsed(), job.raised_error)
         entry = job.as_entry()
