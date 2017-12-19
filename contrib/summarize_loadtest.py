@@ -6,6 +6,7 @@
 
 """Load generator for devserver."""
 
+import argparse
 import ast
 import itertools
 import json
@@ -52,8 +53,9 @@ FILTER_ARGS = [
 def get_parser():
   """Creates the argparse parser."""
   parser = commandline.ArgumentParser(description=__doc__)
-  parser.add_argument('--input', '-o', type=str, action='store',
-                      help='Path to JSON file to read.')
+  parser.add_argument('infile', nargs='*', type=argparse.FileType('r'),
+                      help='Path to JSON file to read.',
+                      default=[sys.stdin])
   parser.add_argument('--boards', type=str, action='store',
                       help='Boards to show.')
   parser.add_argument('--group', type=str, action='store',
@@ -200,8 +202,9 @@ def main(argv):
   options = parser.parse_args(argv)
 
   # Read entries from the specified file.
-  with open(options.input, 'r') as f:
-    all_entries = [json.loads(line) for line in f]
+  all_entries = []
+  for f in options.infile:
+    all_entries.extend([json.loads(line) for line in f])
 
   # Filter entries:
   # - Ignore non-provisions.
