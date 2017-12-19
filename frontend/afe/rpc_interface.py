@@ -550,11 +550,13 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
 
     @param multiple_labels: match hosts in all of the labels given.  Should
             be a list of label names.
-    @param exclude_only_if_needed_labels: Exclude hosts with at least one
-            "only_if_needed" label applied.
+    @param exclude_only_if_needed_labels: Deprecated. Raise error if it's True.
     @param include_current_job: Set to True to include ids of currently running
             job and special task.
     """
+    if exclude_only_if_needed_labels:
+        raise error.RPCException('exclude_only_if_needed_labels is deprecated')
+
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
                                      valid_only, filter_data)
@@ -598,6 +600,9 @@ def get_num_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
 
     @returns The number of matching hosts.
     """
+    if exclude_only_if_needed_labels:
+        raise error.RPCException('exclude_only_if_needed_labels is deprecated')
+
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
                                      valid_only, filter_data)
