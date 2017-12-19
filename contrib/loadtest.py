@@ -53,6 +53,7 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from chromite.lib import commandline
 from chromite.lib import cros_logging as logging
+from chromite.lib import parallel
 
 # Paylods to stage.
 PAYLOADS = ['quick_provision', 'stateful']
@@ -73,25 +74,34 @@ def get_parser():
                       help='Path to JSON config file.'
                            'Config file is indexed by board with keys of '
                            '"duts" and "versions", each a list.')
-  parser.add_argument('--boards', type=str, action='store',
+  parser.add_argument('--blacklist-total', '-T', type=int, action='store',
+                      help=('Total number of failures before blacklisting '
+                            'DUT (default %d).') % BLACKLIST_TOTAL_FAILURE,
+                      default=BLACKLIST_TOTAL_FAILURE)
+  parser.add_argument('--blacklist-consecutive', '-C', type=int, action='store',
+                      help=('Consecutive number of failures before '
+                            'blacklisting DUT (default %d).') %
+                           BLACKLIST_CONSECUTIVE_FAILURE,
+                      default=BLACKLIST_CONSECUTIVE_FAILURE)
+  parser.add_argument('--boards', '-b', type=str, action='store',
                       help='Comma-separated list of boards to provision.')
-  parser.add_argument('--dryrun', action='store_true', dest='dryrun',
+  parser.add_argument('--dryrun', '-n', action='store_true', dest='dryrun',
                       help='Do not attempt to provision.')
-  parser.add_argument('--duts', type=str, action='store',
+  parser.add_argument('--duts', '-d', type=str, action='store',
                       help='Comma-separated list of duts to provision.')
-  parser.add_argument('--outputlog', type=str, action='store',
+  parser.add_argument('--outputlog', '-l', type=str, action='store',
                       help='Path to append JSON entries to.')
   parser.add_argument('--output', '-o', type=str, action='store',
                       help='Path to write JSON file to.')
-  parser.add_argument('--ping', action='store_true',
+  parser.add_argument('--ping', '-p', action='store_true',
                       help='Ping DUTs and blacklist unresponsive ones.')
-  parser.add_argument('--simultaneous', type=int, action='store',
+  parser.add_argument('--simultaneous', '-s', type=int, action='store',
                       help='Number of simultaneous provisions to run.',
                       default=1)
   parser.add_argument('--no-stage', action='store_false',
                       dest='stage', default=True,
                       help='Do not attempt to stage builds.')
-  parser.add_argument('--total', type=int, action='store',
+  parser.add_argument('--total', '-t', type=int, action='store',
                       help='Number of total provisions to run.',
                       default=0)
   return parser
@@ -226,7 +236,8 @@ class Job(object):
 class Runner(object):
   """Parallel provision load test runner."""
   def __init__(self, ds, duts, config, simultaneous=1, total=0,
-               outputlog=None, ping=False, dryrun=False):
+               outputlog=None, ping=False,
+               blacklist_total=None, blacklist_consecutive=None, dryrun=False):
     self.ds = ds
     self.duts = duts
     self.config = config
@@ -236,6 +247,8 @@ class Runner(object):
     self.total = total
     self.outputlog = outputlog
     self.ping = ping
+    self.blacklist_total = blacklist_total
+    self.blacklist_consecutive = blacklist_consecutive
     self.dryrun = dryrun
 
     self.active = []
@@ -344,10 +357,10 @@ class Runner(object):
       if not job.success:
         total += 1
         consecutive += 1
-        if ((BLACKLIST_TOTAL_FAILURE is not None and
-             total >= BLACKLIST_TOTAL_FAILURE) or
-            (BLACKLIST_CONSECUTIVE_FAILURE is not None and
-             consecutive >= BLACKLIST_CONSECUTIVE_FAILURE)):
+        if ((self.blacklist_total is not None and
+             total >= self.blacklist_total) or
+            (self.blacklist_consecutive is not None and
+             consecutive >= self.blacklist_consecutive)):
           return True
       else:
         consecutive = 0
@@ -379,14 +392,19 @@ class Runner(object):
       return versions[0]
     return versions[(last_index + 1) % len(versions)]
 
+  def stage(self, build):
+    logging.debug('Staging %s', build)
+    self.ds.stage_artifacts(build, PAYLOADS)
+
   def stage_all(self):
     """Stage all necessary artifacts."""
     boards = set(self.duts.values())
     logging.info('Staging for %d boards', len(boards))
+    funcs = []
     for board in boards:
       for build in self.get_board_versions(board):
-        logging.debug('Staging %s', build)
-        self.ds.stage_artifacts(build, PAYLOADS)
+        funcs.append(lambda build_=build: self.stage(build_))
+    parallel.RunParallelSteps(funcs)
 
   def loop(self):
     """Run the main provision loop."""
@@ -444,12 +462,16 @@ def main(argv):
   parser = get_parser()
   options = parser.parse_args(argv)
 
+  # Parse devserver.
   if options.server:
-    server = 'http://%s/' % options.server
+    if re.match(r'^https?://', options.server):
+      server = options.server
+    else:
+      server = 'http://%s/' % options.server
     ds = dev_server.ImageServer(server)
   else:
     parser.print_usage()
-    logging.error('Must specify --server')
+    logging.error('Must specify devserver')
     sys.exit(1)
 
   # Parse config file and determine master list of duts and their board type,
@@ -467,7 +489,7 @@ def main(argv):
                  options.config, len(boards), len(duts))
   else:
     parser.print_usage()
-    logging.error('Must specify --config')
+    logging.error('Must specify config file')
     sys.exit(1)
 
   if options.ping:
@@ -487,6 +509,8 @@ def main(argv):
   runner = Runner(ds, duts, config,
                   simultaneous=options.simultaneous, total=options.total,
                   outputlog=outputlog, ping=options.ping,
+                  blacklist_total=options.blacklist_total,
+                  blacklist_consecutive=options.blacklist_consecutive,
                   dryrun=options.dryrun)
   if options.stage:
     runner.stage_all()
