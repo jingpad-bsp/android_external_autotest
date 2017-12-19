@@ -36,6 +36,7 @@ DEFAULT_SKIP = [
     'name',
     'parent',
     'quick_provision',
+    'trigger_response',
 ]
 
 # List of commandline arguments for easy filtering.
