@@ -53,6 +53,7 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from chromite.lib import commandline
 from chromite.lib import cros_logging as logging
+from chromite.lib import locking
 from chromite.lib import parallel
 
 # Paylods to stage.
@@ -516,7 +517,8 @@ def main(argv):
     runner.stage_all()
 
   # Run all the provisions.
-  completed = runner.loop()
+  with locking.FileLock(options.config, blocking=True).lock():
+    completed = runner.loop()
   logging.info('%s in %s', 'Completed' if completed else 'Interrupted',
                runner.elapsed())
   # Write all entries as JSON.
