@@ -62,9 +62,10 @@ PAYLOADS = ['quick_provision', 'stateful']
 # Number of seconds between full status checks.
 STATUS_POLL_SECONDS = 2
 
-# Number of failures to blacklist a DUT.
-BLACKLIST_TOTAL_FAILURE = 5
+# Number of successes/failures to blacklist a DUT.
 BLACKLIST_CONSECUTIVE_FAILURE = 2
+BLACKLIST_TOTAL_SUCCESS = 0
+BLACKLIST_TOTAL_FAILURE = 5
 
 def get_parser():
   """Creates the argparse parser."""
@@ -75,15 +76,19 @@ def get_parser():
                       help='Path to JSON config file.'
                            'Config file is indexed by board with keys of '
                            '"duts" and "versions", each a list.')
-  parser.add_argument('--blacklist-total', '-T', type=int, action='store',
-                      help=('Total number of failures before blacklisting '
-                            'DUT (default %d).') % BLACKLIST_TOTAL_FAILURE,
-                      default=BLACKLIST_TOTAL_FAILURE)
   parser.add_argument('--blacklist-consecutive', '-C', type=int, action='store',
                       help=('Consecutive number of failures before '
                             'blacklisting DUT (default %d).') %
                            BLACKLIST_CONSECUTIVE_FAILURE,
                       default=BLACKLIST_CONSECUTIVE_FAILURE)
+  parser.add_argument('--blacklist-success', '-S', type=int, action='store',
+                      help=('Total number of successes before blacklisting '
+                            'DUT (default %d).') % BLACKLIST_TOTAL_SUCCESS,
+                      default=BLACKLIST_TOTAL_SUCCESS)
+  parser.add_argument('--blacklist-total', '-T', type=int, action='store',
+                      help=('Total number of failures before blacklisting '
+                            'DUT (default %d).') % BLACKLIST_TOTAL_FAILURE,
+                      default=BLACKLIST_TOTAL_FAILURE)
   parser.add_argument('--boards', '-b', type=str, action='store',
                       help='Comma-separated list of boards to provision.')
   parser.add_argument('--dryrun', '-n', action='store_true', dest='dryrun',
@@ -237,8 +242,8 @@ class Job(object):
 class Runner(object):
   """Parallel provision load test runner."""
   def __init__(self, ds, duts, config, simultaneous=1, total=0,
-               outputlog=None, ping=False,
-               blacklist_total=None, blacklist_consecutive=None, dryrun=False):
+               outputlog=None, ping=False, blacklist_consecutive=None,
+               blacklist_success=None, blacklist_total=None, dryrun=False):
     self.ds = ds
     self.duts = duts
     self.config = config
@@ -248,8 +253,9 @@ class Runner(object):
     self.total = total
     self.outputlog = outputlog
     self.ping = ping
-    self.blacklist_total = blacklist_total
     self.blacklist_consecutive = blacklist_consecutive
+    self.blacklist_success = blacklist_success
+    self.blacklist_total = blacklist_total
     self.dryrun = dryrun
 
     self.active = []
@@ -317,15 +323,17 @@ class Runner(object):
 
   def replenish(self):
     """Replenish the number of active provisions to match goals."""
-    while (len(self.active) < self.simultaneous and
+    while ((self.simultaneous == 0 or len(self.active) < self.simultaneous) and
            (self.total == 0 or self.started < self.total)):
       host_name = self.find_idle_dut()
       if host_name:
         build_name = self.find_build_for_dut(host_name)
         self.spawn(host_name, build_name)
-      else:
+      elif self.simultaneous:
         logging.warn('Insufficient DUTs to satisfy goal')
         return False
+      else:
+        return len(self.active) > 0
     return True
 
   def check_all(self):
@@ -354,6 +362,7 @@ class Runner(object):
     jobs = [job for job in self.completed if job.host_name == host_name]
     total = 0
     consecutive = 0
+    successes = 0
     for job in jobs:
       if not job.success:
         total += 1
@@ -364,6 +373,10 @@ class Runner(object):
              consecutive >= self.blacklist_consecutive)):
           return True
       else:
+        successes += 1
+        if (self.blacklist_success is not None and
+            successes >= self.blacklist_success):
+          return True
         consecutive = 0
     return False
 
@@ -510,8 +523,9 @@ def main(argv):
   runner = Runner(ds, duts, config,
                   simultaneous=options.simultaneous, total=options.total,
                   outputlog=outputlog, ping=options.ping,
-                  blacklist_total=options.blacklist_total,
                   blacklist_consecutive=options.blacklist_consecutive,
+                  blacklist_success=options.blacklist_success,
+                  blacklist_total=options.blacklist_total,
                   dryrun=options.dryrun)
   if options.stage:
     runner.stage_all()
