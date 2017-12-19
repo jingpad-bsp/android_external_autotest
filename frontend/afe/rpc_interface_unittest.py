@@ -96,14 +96,6 @@ class RpcInterfaceTest(unittest.TestCase,
         self._check_hostnames(hosts, ['host1'])
 
 
-    def test_get_hosts_exclude_only_if_needed(self):
-        self.hosts[0].labels.add(self.label3)
-
-        hosts = rpc_interface.get_hosts(hostname__in=['host1', 'host2'],
-                                        exclude_only_if_needed_labels=True)
-        self._check_hostnames(hosts, ['host2'])
-
-
     def test_job_keyvals(self):
         keyval_dict = {'mykey': 'myvalue'}
         job_id = rpc_interface.create_job(name='test',
