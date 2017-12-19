@@ -75,6 +75,8 @@ def get_parser():
                       help='Comma-separated list of boards to provision.')
   parser.add_argument('--dryrun', action='store_true', dest='dryrun',
                       help='Do not attempt to provision.')
+  parser.add_argument('--duts', type=str, action='store',
+                      help='Comma-separated list of duts to provision.')
   parser.add_argument('--outputlog', type=str, action='store',
                       help='Path to append JSON entries to.')
   parser.add_argument('--output', '-o', type=str, action='store',
@@ -430,8 +432,10 @@ def main(argv):
     with open(options.config, 'r') as f:
       config = json.load(f)
       boards = options.boards.split(',') if options.boards else config.keys()
+      duts_specified = set(options.duts.split(',')) if options.duts else None
       for board in boards:
-        duts.update({dut: board for dut in config[board]['duts']})
+        duts.update({dut: board for dut in config[board]['duts']
+                     if duts_specified is None or dut in duts_specified})
     logging.info('Config file %s: %d boards, %d duts',
                  options.config, len(boards), len(duts))
   else:
