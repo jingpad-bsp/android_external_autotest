@@ -128,7 +128,7 @@ class Job(object):
                start_active=0,
                force_update=False, full_update=False,
                clobber_stateful=True, quick_provision=True,
-               dryrun=False):
+               ping=False, dryrun=False):
 
     self.ds = ds
     self.host_name = host_name
@@ -146,6 +146,10 @@ class Job(object):
     self.finish_time = None
     self.trigger_response = None
 
+    self.ping = ping
+    self.pre_ping = None
+    self.post_ping = None
+
     self.kwargs = {
         'host_name': host_name,
         'build_name': build_name,
@@ -161,6 +165,8 @@ class Job(object):
       self.success = True
       self.pid = 0
     else:
+      if self.ping:
+        self.pre_ping = ping_dut(self.host_name)
       self.trigger_response = ds._trigger_auto_update(**self.kwargs)
 
   def as_entry(self):
@@ -180,6 +186,8 @@ class Job(object):
         'quick_provision': self.kwargs['quick_provision'],
         'elapsed': int(self.elapsed().total_seconds()),
         'trigger_response': self.trigger_response,
+        'pre_ping': self.pre_ping,
+        'post_ping': self.post_ping,
     })
     if self.check_active_count:
       entry['avg_active'] = self.check_active_sum / self.check_active_count
@@ -205,6 +213,8 @@ class Job(object):
       self.success = self.raised_error is None
       self.pid = pid
       self.end_active = active_count
+      if self.ping:
+        self.post_ping = ping_dut(self.host_name)
 
     return finished
 
@@ -216,7 +226,7 @@ class Job(object):
 class Runner(object):
   """Parallel provision load test runner."""
   def __init__(self, ds, duts, config, simultaneous=1, total=0,
-               outputlog=None, dryrun=False):
+               outputlog=None, ping=False, dryrun=False):
     self.ds = ds
     self.duts = duts
     self.config = config
@@ -225,6 +235,7 @@ class Runner(object):
     self.simultaneous = simultaneous
     self.total = total
     self.outputlog = outputlog
+    self.ping = ping
     self.dryrun = dryrun
 
     self.active = []
@@ -283,7 +294,7 @@ class Runner(object):
     job = Job(self.ds, host_name, build_name,
               entry_id=self.get_next_id(), parent=self.entry_id,
               board=self.get_dut_board_type(host_name),
-              start_active=len(self.active), dryrun=self.dryrun)
+              start_active=len(self.active), ping=self.ping, dryrun=self.dryrun)
     self.active.append(job)
     logging.info('Provision (%d) of %s to %s started',
                  job.entry_id[1], job.host_name, job.build_name)
@@ -475,7 +486,7 @@ def main(argv):
   outputlog = open(options.outputlog, 'a') if options.outputlog else None
   runner = Runner(ds, duts, config,
                   simultaneous=options.simultaneous, total=options.total,
-                  outputlog=outputlog,
+                  outputlog=outputlog, ping=options.ping,
                   dryrun=options.dryrun)
   if options.stage:
     runner.stage_all()
