@@ -22,8 +22,7 @@ initiated in the lab.
 You will need to use a lab DUT and a lab devserver but kick it off from your
 workstation. You can start by going to cautotest and locking a DUT.
 
-You will need to pass a job_repo_url param to run_test below. Eg
-http://<IP>:<port>/static/samus-release/R65-10184.0.0/autotest/packages
+You will need to pass a job_repo_url param to test_that.
 
 The test needs to be able to ssh into devservers. To ssh into lab devservers
 you need to download the chromium key file from:
@@ -47,13 +46,15 @@ Host <devserver hostname>
 Check that you can now ssh into a lab devserver without a password.
 Copy the ssh files to your chroot's .ssh folder to ssh from there.
 
-test_that <hostname of dut that you locked>.cros autoupdate_ForcedOOBEUpdate
+test_that <hostname>.cros autoupdate_ForcedOOBEUpdate --args="job_repo_url='http://<IP>:<port>/static/<board>-release/RXX-XXXX.X.X/autotest/packages'"
 """
 
 from autotest_lib.client.common_lib import utils
 
+args_dict = utils.args_to_dict(args)
+
 def run(machine):
     host = hosts.create_host(machine)
-    job.run_test('autoupdate_ForcedOOBEUpdate', host=host)
+    job.run_test('autoupdate_ForcedOOBEUpdate', host=host, **args_dict)
 
 job.parallel_simple(run, machines)
