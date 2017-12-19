@@ -536,17 +536,14 @@ class Container(object):
         @param dst: The destination file or directory.  If the path to the
                     destination does not exist, it will be created.
         """
-        # Create the dst dir if it doesn't exist.
+        # Create the dst dir. mkdir -p will not fail if dst_dir exists.
         dst_dir = os.path.dirname(dst)
-        if not lxc_utils.path_exists(dst_dir):
-            utils.run('sudo mkdir -p "%s"' % dst_dir)
-
         # Make sure the source ends with `/.` if it's a directory. Otherwise
         # command cp will not work.
         if os.path.isdir(src) and os.path.split(src)[1] != '.':
             src = os.path.join(src, '.')
-        utils.run('sudo cp -RL "%s" "%s"' % (src, dst))
-
+        utils.run("sudo sh -c 'mkdir -p \"%s\" && cp -RL \"%s\" \"%s\"'" %
+                  (dst_dir, src, dst))
 
     def _set_lxc_config(self, key, value):
         """Sets an LXC config value for this container.
