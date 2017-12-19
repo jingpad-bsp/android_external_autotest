@@ -31,7 +31,6 @@ import re
 import shutil
 import stat
 import tempfile
-import time
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
@@ -88,6 +87,11 @@ _TRADEFED_CACHE_CONTAINER_LOCK = '/usr/local/autotest/results/shared/lock'
 # servers have 500GB of disk, while full servers have 2TB).
 _TRADEFED_CACHE_MAX_SIZE = (20 * 1024 * 1024 * 1024)
 
+# It looks like the GCE builder can be very slow and login on VMs take much
+# longer than on hardware or bare metal.
+_LOGIN_BOARD_TIMEOUT = {'betty': 300}
+_LOGIN_DEFAULT_TIMEOUT = 90
+
 
 class _ChromeLogin(object):
     """Context manager to handle Chrome login state."""
@@ -102,6 +106,13 @@ class _ChromeLogin(object):
         self._need_restart = True
 
     def __init__(self, host, kwargs):
+        """Initializes the _ChromeLogin object.
+
+        @param reboot: indicate if a reboot before destruction is required.
+        @param restart: indicate if a restart before destruction is required.
+        @param board: optional parameter to extend timeout for login for slow
+                      DUTs. Used in particular for virtual machines.
+        """
         self._host = host
         self._cts_helper_kwargs = kwargs
         # We will override reboot/restart options to some degree. Keep track
@@ -112,6 +123,10 @@ class _ChromeLogin(object):
         self._need_restart = False
         if kwargs.get('restart'):
             self.need_restart()
+        self._timeout = _LOGIN_DEFAULT_TIMEOUT
+        board = kwargs.get('board')
+        if board in _LOGIN_BOARD_TIMEOUT:
+            self._timeout = _LOGIN_BOARD_TIMEOUT[board]
 
     def _cmd_builder(self, verbose=False):
         """Gets remote command to start browser with ARC enabled."""
@@ -128,8 +143,10 @@ class _ChromeLogin(object):
             cmd += ' > /dev/null 2>&1'
         return cmd
 
-    def login(self, timeout=60, raise_exception=False, verbose=False):
+    def login(self, timeout=None, raise_exception=False, verbose=False):
         """Logs into Chrome."""
+        if not timeout:
+            timout = self._timeout
         try:
             # We used to call cheets_StartAndroid, but it is a little faster to
             # call a script on the DUT. This also saves CPU time on the server.
@@ -168,11 +185,13 @@ class _ChromeLogin(object):
 
     def __enter__(self):
         """Logs into Chrome with retry."""
-        logging.info('Ensure Android is running...')
-        if not self.login():
+        timeout = self._timeout
+        logging.info('Ensure Android is running (timeout=%d)...', timeout)
+        if not self.login(timeout=timeout):
+            timeout *= 2
             # The DUT reboots after unsuccessful login, try with more time again.
-            logging.info('Retrying failed login...')
-            self.login(timeout=120, raise_exception=True, verbose=True)
+            logging.info('Retrying failed login (timeout=%d)...', timeout)
+            self.login(timeout=timeout, raise_exception=True, verbose=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit restart the browser or reboot the machine.
@@ -1334,13 +1353,14 @@ class TradefedTest(test.test):
         total_passed = 0
         self.summary = ''
         session_id = 0
-
+        board = self._get_board_name(self._host)
         # Unconditionally run CTS/GTS module until we see some tests executed.
         while total_tests == 0 and steps < self._max_retry:
             steps += 1
             self._run_precondition_scripts(self._host,
                                            login_precondition_commands, steps)
             with self._login_chrome(
+                    board=board,
                     reboot=self._should_reboot(steps),
                     dont_override_profile=pushed_media):
                 self._ready_arc()
@@ -1405,6 +1425,7 @@ class TradefedTest(test.test):
             self._run_precondition_scripts(self._host,
                                            login_precondition_commands, steps)
             with self._login_chrome(
+                    board=board,
                     reboot=self._should_reboot(steps),
                     dont_override_profile=pushed_media):
                 self._ready_arc()
