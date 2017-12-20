@@ -71,6 +71,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.server import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
+from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.deployment import commandline
@@ -479,7 +480,7 @@ def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
                 afe.create_label(platform, platform=True)
             afe_host.add_labels([platform])
         version = [label for label in afe_host.labels
-                       if label.startswith(constants.VERSION_PREFIX)]
+                       if label.startswith(VERSION_PREFIX)]
         if version:
             afe_host.remove_labels(version)
     except Exception as e:
