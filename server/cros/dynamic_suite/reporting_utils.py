@@ -48,9 +48,13 @@ _CRBUG_URL = global_config.global_config.get_config_value(
 
 
 WMATRIX_RETRY_URL = global_config.global_config.get_config_value(
-    BUG_CONFIG_SECTION, 'wmatrix_retry_url')
+    BUG_CONFIG_SECTION, 'wmatrix_retry_url', default='')
 WMATRIX_TEST_HISTORY_URL = global_config.global_config.get_config_value(
-    BUG_CONFIG_SECTION, 'wmatrix_test_history_url')
+    BUG_CONFIG_SECTION, 'wmatrix_test_history_url', default='')
+STAINLESS_RETRY_URL = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'stainless_retry_url', default='')
+STAINLESS_TEST_HISTORY_URL = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'stainless_test_history_url', default='')
 
 
 class InvalidBugTemplateException(Exception):
@@ -257,7 +261,7 @@ def link_status_log(job_id, result_owner, hostname):
     return 'NA'
 
 
-def link_retry_url(test_name):
+def link_wmatrix_retry_url(test_name):
     """Link to the wmatrix retry stats page for this test.
 
     @param test_name: Test we want to search the retry stats page for.
@@ -267,14 +271,34 @@ def link_retry_url(test_name):
     return WMATRIX_RETRY_URL % test_name
 
 
+def link_retry_url(test_name):
+    """Link to the retry stats page for this test.
+
+    @param test_name: Test we want to search the retry stats page for.
+
+    @return: A link to the retry stats dashboard for this test.
+    """
+    if STAINLESS_RETRY_URL:
+        args_dict = {
+            'test_name_re': '^%s$' % re.escape(test_name),
+        }
+        return STAINLESS_RETRY_URL % args_dict
+    return WMATRIX_RETRY_URL % test_name
+
+
 def link_test_history(test_name):
-  """Link to the wmatrix test history page for this test.
+    """Link to the test history page for this test.
 
-  @param test_name: Test we want to search the test history for.
+    @param test_name: Test we want to search the test history for.
 
-  @return: A link to the wmatrix test history page for this test.
-  """
-  return WMATRIX_TEST_HISTORY_URL % test_name
+    @return: A link to the test history page for this test.
+    """
+    if STAINLESS_TEST_HISTORY_URL:
+        args_dict = {
+            'test_name_re': '^%s$' % re.escape(test_name),
+        }
+        return STAINLESS_TEST_HISTORY_URL % args_dict
+    return WMATRIX_TEST_HISTORY_URL % test_name
 
 
 def link_crbug(bug_id):
