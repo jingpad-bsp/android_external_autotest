@@ -311,8 +311,10 @@ def _main_for_lab_run(argv, arguments):
     @param argv: Script command line arguments.
     @param arguments: Parsed command line arguments.
     """
-    autotest_path = os.path.realpath(os.path.join(os.path.dirname(__file__),
-                                                  '..'))
+    autotest_path = os.path.realpath(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            '..',
+    ))
     command = [os.path.join(autotest_path, 'site_utils',
                             'run_suite.py'),
                '--board=%s' % (arguments.board,),
