@@ -309,8 +309,13 @@ class DBObject(object):
         """
         order_by = cls._prefix_with(order_by, 'ORDER BY ')
         where = cls._prefix_with(where, 'WHERE ')
-        query = ('SELECT %(table)s.* FROM %(table)s %(joins)s '
-                 '%(where)s %(order_by)s' % {'table' : cls._table_name,
+        fields = []
+        for field in cls._fields:
+            fields.append('%s.%s' % (cls._table_name, field))
+
+        query = ('SELECT %(fields)s FROM %(table)s %(joins)s '
+                 '%(where)s %(order_by)s' % {'fields' : ', '.join(fields),
+                                             'table' : cls._table_name,
                                              'joins' : joins,
                                              'where' : where,
                                              'order_by' : order_by})
