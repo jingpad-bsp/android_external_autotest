@@ -90,7 +90,7 @@ class TestBug(object):
                     'results log: %(results_log)s.\n'
                     'status log: %(status_log)s.\n'
                     'job link: %(job)s.\n\n'
-                    'You may want to check the test history on wmatrix: '
+                    'You may want to check the test history: '
                     '%(test_history_url)s\n'
                     'You may also want to check the test retry dashboard in '
                     'case this is a flakey test: %(retry_url)s\n')

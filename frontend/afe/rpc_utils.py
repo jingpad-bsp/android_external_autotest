@@ -863,6 +863,16 @@ def get_wmatrix_url():
                                                         default='')
 
 
+def get_stainless_url():
+    """Get stainless url from config file.
+
+    @returns the stainless url or an empty string.
+    """
+    return global_config.global_config.get_config_value('AUTOTEST_WEB',
+                                                        'stainless_url',
+                                                        default='')
+
+
 def inject_times_to_filter(start_time_key=None, end_time_key=None,
                          start_time_value=None, end_time_value=None,
                          **filter_data):
