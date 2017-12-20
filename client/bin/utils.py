@@ -1608,6 +1608,11 @@ def compute_active_cpu_time(cpu_usage_start, cpu_usage_end):
                            if x[0] not in idle_cols])
     total_time_start = sum(cpu_usage_start.values())
     total_time_end = sum(cpu_usage_end.values())
+    # Avoid bogus division which has been observed on Tegra.
+    if total_time_end <= total_time_start:
+        logging.warning('compute_active_cpu_time observed bogus data')
+        # We pretend to be busy, this will force a longer wait for idle CPU.
+        return 1.0
     return ((float(time_active_end) - time_active_start) /
             (total_time_end - total_time_start))
 
@@ -1636,8 +1641,8 @@ def wait_for_idle_cpu(timeout, utilization):
         time_passed += sleep_time
         sleep_time = min(16.0, 2.0 * sleep_time)
         cpu_usage_end = get_cpu_usage()
-        fraction_active_time = \
-                compute_active_cpu_time(cpu_usage_start, cpu_usage_end)
+        fraction_active_time = compute_active_cpu_time(cpu_usage_start,
+                                                       cpu_usage_end)
         logging.info('After waiting %.1fs CPU utilization is %.3f.',
                      time_passed, fraction_active_time)
         if time_passed > timeout:
