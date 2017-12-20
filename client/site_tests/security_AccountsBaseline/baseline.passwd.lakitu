@@ -1,3 +1,0 @@
-systemd-timesync:!:271:271::/dev/null:/bin/false
-systemd-network:!:274:274::/dev/null:/bin/false
-systemd-resolve:!:275:275::/dev/null:/bin/false
