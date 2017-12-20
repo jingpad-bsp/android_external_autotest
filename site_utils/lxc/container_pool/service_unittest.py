@@ -10,7 +10,6 @@ import os
 import shutil
 import tempfile
 import threading
-import time
 import unittest
 from contextlib import contextmanager
 from multiprocessing import connection
@@ -146,7 +145,7 @@ class ServiceTests(unittest.TestCase):
         """Tests getting a container from the pool."""
         test_pool = MockPool()
         fake_container = MockContainer()
-        test_id = lxc.ContainerId(42, int(time.time()), os.getpid())
+        test_id = lxc.ContainerId.create(42)
         test_pool.containers.put(fake_container)
 
         with self.run_service(test_pool):
@@ -158,7 +157,7 @@ class ServiceTests(unittest.TestCase):
 
     def testGet_timeoutImmediate(self):
         """Tests getting a container with timeouts."""
-        test_id = lxc.ContainerId(42, int(time.time()), os.getpid())
+        test_id = lxc.ContainerId.create(42)
         with self.run_service():
             with self.create_client() as client:
                 client.send(message.get(test_id))
@@ -168,7 +167,7 @@ class ServiceTests(unittest.TestCase):
 
     def testGet_timeoutDelayed(self):
         """Tests getting a container with timeouts."""
-        test_id = lxc.ContainerId(42, int(time.time()), os.getpid())
+        test_id = lxc.ContainerId.create(42)
         with self.run_service():
             with self.create_client() as client:
                 client.send(message.get(test_id, timeout=1))

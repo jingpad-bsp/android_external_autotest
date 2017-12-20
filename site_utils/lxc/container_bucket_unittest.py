@@ -50,7 +50,7 @@ class ContainerBucketTests(unittest.TestCase):
     def testEmptyPool(self):
         """Verifies that the bucket falls back to creating a new container if it
         can't get one from the pool."""
-        id = 3
+        id = lxc.ContainerId.create(3)
         factory = container_bucket.ContainerBucket()._factory
         factory._client = DummyClient()
         container = factory.create_container(id)
