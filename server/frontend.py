@@ -90,7 +90,7 @@ class RpcClient(object):
         self.debug = debug
         self.reply_debug = reply_debug
         headers = {'AUTHORIZATION': self.user}
-        rpc_server = 'http://' + server + path
+        rpc_server = rpc_client_lib.add_protocol(server) + path
         if debug:
             print 'SERVER: %s' % rpc_server
             print 'HEADERS: %s' % headers
