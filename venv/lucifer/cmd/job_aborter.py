@@ -211,13 +211,12 @@ def _mark_failed(models, job_ids):
     if not job_ids:
         return
     logger.info('Marking jobs failed: %r', job_ids)
-    (models.HostQueueEntry.objects
-     .filter(job_id__in=job_ids)
-     .update(complete=True,
-             status=models.HostQueueEntry.Status.FAILED))
-    (models.HostQueueEntry.objects
-     .filter(job_id__in=job_ids)
-     .exclude(started_on=None)
+    hqes = models.HostQueueEntry.objects.filter(job_id__in=job_ids)
+
+    hqes.update(complete=True,
+                active=False,
+                status=models.HostQueueEntry.Status.FAILED)
+    (hqes.exclude(started_on=None)
      .update(finished_on=datetime.datetime.now()))
     (models.JobHandoff.objects
      .filter(job_id__in=job_ids)
