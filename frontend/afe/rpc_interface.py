@@ -85,6 +85,9 @@ LabHealthIndicator = collections.namedtuple(
         ]
 )
 
+RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_labels', type=bool, default=False)
+
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 # labels
@@ -110,6 +113,15 @@ def delete_label(id):
     @param id: id or name of a label. More often a label name.
     """
     label_model = models.Label.smart_get(id)
+    if RESPECT_STATIC_LABELS:
+        replaced = models.ReplacedLabel.objects.filter(
+                label__id=label_model.id)
+        if len(replaced) > 0:
+            raise error.UnmodifiableLabelException(
+                    'Failed to delete label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to modify this '
+                    'label.' % label_model.name)
+
     # Hosts that have the label to be deleted. Save this info before
     # the label is deleted to use it later.
     hosts = []
