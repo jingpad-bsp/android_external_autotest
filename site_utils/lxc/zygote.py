@@ -131,7 +131,8 @@ class Zygote(Container):
         with lxc_utils.TempDir(dir=usr_local_path) as tmpdir:
             download_tmp = os.path.join(tmpdir,
                                         'autotest_server_package.tar.bz2')
-            lxc.download_extract(ssp_url, download_tmp, usr_local_path)
+            lxc.download_extract(ssp_url, download_tmp, usr_local_path,
+                                 sudo=False)
 
         container_ssp_path = os.path.join(
                 constants.CONTAINER_HOST_DIR,
@@ -157,20 +158,27 @@ class Zygote(Container):
         # the container.
         self._do_copy(src=host_path,
                       dst=os.path.join(self.host_path,
-                                       container_path.lstrip(os.path.sep)))
+                                       container_path.lstrip(os.path.sep)),
+                      sudo=False)
 
         src = os.path.join(constants.CONTAINER_HOST_DIR,
                            container_path.lstrip(os.path.sep))
         dst = container_path
 
+        # Build up a command and make only one attach_run call, as this involves
+        # sudo, which is slow.
+        cmds = []
         # In the container, bind-mount from host path to destination.
         # The mount destination must have the correct type (file vs dir).
         if os.path.isdir(host_path):
-            self.attach_run('mkdir -p %s' % dst)
+            cmds.append('mkdir -p %s' % dst)
         else:
-            self.attach_run(
-                'mkdir -p %s && touch %s' % (os.path.dirname(dst), dst))
-        self.attach_run('mount --bind %s %s' % (src, dst))
+            cmds.append('mkdir -p %s' % os.path.dirname(dst))
+            cmds.append('touch %s' % dst)
+
+        cmds.append('mount --bind %s %s' % (src, dst))
+
+        self.attach_run(' && '.join(cmds))
 
 
     def mount_dir(self, source, destination, readonly=False):
@@ -186,9 +194,6 @@ class Zygote(Container):
         # Destination path in container must be absolute.
         if not os.path.isabs(destination):
             destination = os.path.join('/', destination)
-
-        # Create directory in container for mount.
-        self.attach_run('mkdir -p %s' % destination)
 
         # Creating read-only shared bind mounts is a two-stage process.  First,
         # the original file/directory is bind-mounted (with the ro option) to an
@@ -210,8 +215,10 @@ class Zygote(Container):
 
         container_host_path = os.path.join(constants.CONTAINER_HOST_DIR,
                                            destination.lstrip(os.path.sep))
-        self.attach_run('mount --bind %s %s' %
-                        (container_host_path, destination))
+        # Create directory in container for mount.
+        cmds = ['mkdir -p %s' % destination,
+                'mount --bind %s %s' % (container_host_path, destination)]
+        self.attach_run(' && '.join(cmds))
 
 
     def _cleanup_host_mount(self):

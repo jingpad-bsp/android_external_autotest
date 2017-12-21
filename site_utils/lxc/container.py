@@ -529,21 +529,30 @@ class Container(object):
         self._id.save(os.path.join(self.container_path, self.name))
 
 
-    def _do_copy(self, src, dst):
+    def _do_copy(self, src, dst, sudo=True):
         """Copies files and directories on the host system.
 
         @param src: The source file or directory.
         @param dst: The destination file or directory.  If the path to the
                     destination does not exist, it will be created.
+        @param sudo: Whether to use sudo to perform copies.  Copying files into
+                     the container requires sudo.  Copying files elsewhere
+                     (e.g. into the host mount) does not.
         """
-        # Create the dst dir. mkdir -p will not fail if dst_dir exists.
-        dst_dir = os.path.dirname(dst)
         # Make sure the source ends with `/.` if it's a directory. Otherwise
         # command cp will not work.
         if os.path.isdir(src) and os.path.split(src)[1] != '.':
             src = os.path.join(src, '.')
-        utils.run("sudo sh -c 'mkdir -p \"%s\" && cp -RL \"%s\" \"%s\"'" %
-                  (dst_dir, src, dst))
+
+        # Create the dst dir, and do the copy. mkdir -p will not fail if dst_dir
+        # exists.  Coalesce commands to reduce 'sudo' calls.
+        dst_dir = os.path.dirname(dst)
+        cmds = 'mkdir -p "%s" && cp -RL "%s" "%s"' % (dst_dir, src, dst)
+        if sudo:
+            utils.run('sudo bash -c \'%s\'' % cmds)
+        else:
+            utils.run(cmds)
+
 
     def _set_lxc_config(self, key, value):
         """Sets an LXC config value for this container.
