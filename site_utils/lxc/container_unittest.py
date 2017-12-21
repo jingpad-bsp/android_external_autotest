@@ -7,7 +7,6 @@ import os
 import random
 import shutil
 import tempfile
-import time
 import unittest
 from contextlib import contextmanager
 
@@ -382,7 +381,7 @@ class ContainerIdTests(unittest.TestCase):
 
 def random_container_id():
     """Generate a random container ID for testing."""
-    return lxc.ContainerId(random.randint(0, 1000), time.time(), os.getpid())
+    return lxc.ContainerId.create(random.randint(0, 1000))
 
 
 if __name__ == '__main__':
