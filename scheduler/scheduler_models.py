@@ -348,7 +348,7 @@ class AtomicGroup(DBObject):
 class Label(DBObject):
     _table_name = 'afe_labels'
     _fields = ('id', 'name', 'kernel_config', 'platform', 'invalid',
-               'only_if_needed', 'atomic_group_id', 'replaced_by_static_label')
+               'only_if_needed', 'atomic_group_id')
 
 
     def __repr__(self):
