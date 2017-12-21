@@ -143,12 +143,13 @@ class BindMount(object):
         spec = (dst, (rename if rename else src).lstrip(os.path.sep))
         full_dst = os.path.join(*list(spec))
 
-        if not path_exists(full_dst):
-            utils.run('sudo mkdir -p %s' % full_dst)
-
-        utils.run('sudo mount --bind %s %s' % (src, full_dst))
+        utils.run('mkdir -p %s' % full_dst)
+        # Coalese commands to reduce sudo calls.
+        cmds = []
+        cmds.append('mount --bind %s %s' % (src, full_dst))
         if readonly:
-            utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
+            cmds.append('mount -o remount,ro,bind %s' % full_dst)
+        utils.run('sudo bash -c \'%s\'' % ' && '.join(cmds))
 
         return cls(spec)
 
