@@ -30,6 +30,18 @@ def is_lucifer_enabled():
                                     type=bool)
 
 
+def is_enabled_for(level):
+    """Return True if lucifer is enabled for the given level.
+
+    @param level: string, e.g. 'PARSING', 'GATHERING'
+    """
+    if not is_lucifer_enabled():
+        return False
+    config_level = (_config.get_config_value(_SECTION, 'lucifer_level')
+                    .upper())
+    return level.upper() == config_level
+
+
 def is_lucifer_owned(job):
     """Return True if job is already sent to lucifer."""
     return hasattr(job, 'jobhandoff')
