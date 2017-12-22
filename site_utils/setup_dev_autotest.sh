@@ -5,17 +5,23 @@
 # found in the LICENSE file.
 set -e
 
-USAGE='Usage: setup_dev_autotest.sh [-pavnm]'
-HELP="${USAGE}\n\n\
-Install and configure software needed to run autotest locally.\n\
-If you're just working on tests, you do not need to run this.\n\n\
-Options:\n\
-  -p Desired Autotest DB password. Must be non-empty.\n\
-  -a Absolute path to autotest source tree.\n\
-  -v Show info logging from build_externals.py and compile_gwt_clients.py \n\
+function usage() {
+  cat >&2 <<EOT
+Usage: setup_dev_autotest.sh [-pavnm]
+
+Install and configure software needed to run autotest locally.
+If you're just working on tests, you do not need to run this.
+Options:
+  -p Desired Autotest DB password. Must be non-empty.
+  -a Absolute path to autotest source tree.
+  -v Show info logging from build_externals.py and compile_gwt_clients.py
   -n Non-interactive mode, doesn't ask for any user input.
-     Requires -p and -a to be set.\n\
-  -m Allow remote access for database."
+     Requires -p and -a to be set.
+  -m Allow remote access for database.
+
+EOT
+}
+
 
 function get_y_or_n_interactive {
     local ret
@@ -62,17 +68,17 @@ while getopts ":p:a:vnmh" opt; do
       remotedb="TRUE"
       ;;
     h)
-      echo -e "${HELP}" >&2
+      usage
       exit 0
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
-      echo -e "${HELP}" >&2
+      usage
       exit 1
       ;;
     :)
       echo "Option -$OPTARG requires an argument." >&2
-      echo -e "${HELP}" >&2
+      usage
       exit 1
       ;;
   esac
