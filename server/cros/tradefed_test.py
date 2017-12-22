@@ -192,6 +192,7 @@ class _ChromeLogin(object):
             # The DUT reboots after unsuccessful login, try with more time again.
             logging.info('Retrying failed login (timeout=%d)...', timeout)
             self.login(timeout=timeout, raise_exception=True, verbose=True)
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit restart the browser or reboot the machine.
@@ -1261,65 +1262,6 @@ class TradefedTest(test.test):
         """
         return False
 
-    def _consistent(self, tests, passed, failed, notexecuted):
-        """Verifies that the given counts are plausible.
-
-        Used for finding bad logfile parsing using accounting identities.
-
-        TODO(ihf): change to tests != passed + failed + notexecuted
-        only once b/35530394 fixed."""
-        return ((tests == passed + failed) or
-                (tests == passed + failed + notexecuted))
-
-    def _tradefed_retry(self, test_name, session_id):
-        """Retries failing tests in session.
-
-        It is assumed that there are no notexecuted tests of session_id,
-        otherwise some tests will be missed and never run.
-
-        @param test_name: the name of test to be retried.
-        @param session_id: tradefed session id to retry.
-        @param result_type: either 'failed' or 'not_executed'
-        @return: tuple of (new session_id, tests, pass, fail, notexecuted).
-        """
-        # Creating new test plan for retry.
-        derivedplan = 'retry.%s.%s' % (test_name, session_id)
-        logging.info('Retrying failures using derived plan %s.', derivedplan)
-        # The list commands are not required. It allows the reader to inspect
-        # the tradefed state when examining the autotest logs.
-        commands = [[
-            'add', 'subplan', '--name', derivedplan, '--session',
-            '%d' % session_id, '--result-type', 'failed', '--result-type',
-            'not_executed'
-        ], ['list', 'subplans'], ['list', 'results'],
-                    self._tradefed_run_command(
-                        plan=derivedplan, session_id=session_id)]
-        # TODO(ihf): Consider if diffing/parsing output of "list results" for
-        # new session_id might be more reliable. For now just assume simple
-        # increment. This works if only one tradefed instance is active and
-        # only a single run command is executing at any moment.
-        return session_id + 1, self._run_and_parse_tradefed(commands)
-
-    def _classify_results(self, total_tests, passed, failed, notexecuted,
-                          waived, steps, retry_inconsistency_error):
-        """Decide if the test passed or failed by analysing results."""
-        if passed + waived == 0 or failed + notexecuted > waived:
-            raise error.TestFail(
-                'Failed: after %d retries giving up. '
-                'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
-                (steps, passed, failed, notexecuted, waived, self.summary))
-        if not self._consistent(total_tests, passed, failed, notexecuted):
-            raise error.TestFail(
-                'Error: Test count inconsistent. %s' % self.summary)
-        if retry_inconsistency_error:
-            raise error.TestFail('Error: %s %s' % (retry_inconsistency_error,
-                                                   self.summary))
-        if steps > 0 and self._warn_on_test_retry:
-            # TODO(ihf): Make this error.TestPass('...') once available.
-            raise error.TestWarn(
-                'Passed: after %d retries passing %d tests, waived=%d. %s' %
-                (steps, passed, waived, self.summary))
-
     def _should_reboot(self, steps):
         """Oracle to decide if DUT should reboot or just restart Chrome.
 
@@ -1332,6 +1274,26 @@ class TradefedTest(test.test):
         if steps < 3:
             return False
         return True
+
+    def _run_tradefed_list_results(self):
+        """Run the `tradefed list results` command.
+
+        @return: tuple of the last (session_id, pass, fail, all_done?).
+        """
+        output = self._run_tradefed([['list', 'results']])
+
+        # Parses the last session from the output that looks like:
+        #
+        # Session  Pass  Fail  Modules Complete ...
+        # 0        90    10    1 of 2
+        # 1        199   1     2 of 2
+        # ...
+        lastmatch = None
+        for m in re.finditer(r'^(\d+)\s+(\d+)\s+(\d+)\s+(\d+) of (\d+)',
+                             output.stdout, re.MULTILINE):
+            session, passed, failed, done, total = map(int, m.group(1,2,3,4,5))
+            lastmatch = (session, passed, failed, done==total)
+        return lastmatch
 
     def _run_tradefed_with_retries(self,
                                    target_module,
@@ -1347,22 +1309,23 @@ class TradefedTest(test.test):
         We first kick off the specified module. Then rerun just the failures
         on the next MAX_RETRY iterations.
         """
+        if self._should_skip_test():
+            logging.warning('Skipped test %s', ' '.join(test_command))
+            return
+
         steps = -1  # For historic reasons the first iteration is not counted.
         pushed_media = False
-        total_tests = 0
-        total_passed = 0
         self.summary = ''
-        session_id = 0
         board = self._get_board_name(self._host)
-        # Unconditionally run CTS/GTS module until we see some tests executed.
-        while total_tests == 0 and steps < self._max_retry:
+        session_id = None
+
+        while steps < self._max_retry:
             steps += 1
             self._run_precondition_scripts(self._host,
                                            login_precondition_commands, steps)
             with self._login_chrome(
-                    board=board,
-                    reboot=self._should_reboot(steps),
-                    dont_override_profile=pushed_media):
+                    board=board, reboot=self._should_reboot(steps),
+                    dont_override_profile=pushed_media) as current_login:
                 self._ready_arc()
                 self._run_precondition_scripts(self._host,
                                                precondition_commands, steps)
@@ -1373,100 +1336,70 @@ class TradefedTest(test.test):
                     # copy_media.sh is not lazy, but we try to be.
                     pushed_media = True
 
-                # Start each valid iteration with a clean repository. This
-                # allows us to track session_id blindly.
-                self._clean_repository()
-                if target_plan is not None:
-                    self._install_plan(target_plan)
-                logging.info('Running %s:', test_name)
+                # Run tradefed.
+                if session_id == None:
+                    # Start each valid iteration with a clean repository. This
+                    # allows us to track session_id blindly.
+                    self._clean_repository()
+                    if target_plan is not None:
+                        self._install_plan(target_plan)
 
-                # The list command is not required. It allows the reader to
-                # inspect the tradefed state when examining the autotest logs.
-                commands = [['list', 'results'], test_command]
-                counts = self._run_and_parse_tradefed(commands)
-                tests, passed, failed, notexecuted, waived = counts
-                msg = 'run(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
-                logging.info('RESULT: %s', msg)
+                    logging.info('Running %s:', test_name)
+                    commands = [test_command]
+                else:
+                    logging.info('Retrying failures of %s with session_id %d:',
+                                 test_name, session_id)
+                    commands = [test_command + ['--retry', '%d' % session_id]]
+
+                legacy_counts = self._run_and_parse_tradefed(commands)
+                result = self._run_tradefed_list_results()
+                if not result:
+                    logging.error('Did not find any test results. Retry.')
+                    current_login.need_reboot()
+                    continue
+
+                # TODO(kinaba): stop parsing |legacy_counts| except for waivers,
+                # and rely more on |result| for generating the message.
+                ltests, lpassed, lfailed, lnotexecuted, lwaived = legacy_counts
+                last_session_id, passed, failed, all_done = result
+
+                msg = 'run' if session_id == None else ' retry'
+                msg += '(t=%d, p=%d, f=%d, ne=%d, w=%d)' % legacy_counts
                 self.summary += msg
-                if tests == 0 and target_module in self._notest_modules:
-                    logging.info('Package has no tests as expected.')
-                    return
-                if tests > 0 and target_module in self._notest_modules:
-                    # We expected no tests, but the new bundle drop must have
-                    # added some for us. Alert us to the situation.
-                    raise error.TestFail(
-                        'Failed: Remove module %s from '
-                        'notest_modules directory!' % target_module)
-                if self._should_skip_test():
-                    tests += 1
-                    notexecuted += 1
-                    waived += 1
-                    logging.warning('Skipped test %s', ' '.join(test_command))
-                elif tests == 0 and target_module not in self._notest_modules:
+                logging.info('RESULT: %s %s', msg, result)
+
+                # Check for no-test modules
+                notest = (passed + failed == 0 and all_done)
+                if target_module in self._notest_modules:
+                    if notest:
+                        logging.info('Package has no tests as expected.')
+                        return
+                    else:
+                        # We expected no tests, but the new bundle drop must
+                        # have added some for us. Alert us to the situation.
+                        raise error.TestFail(
+                            'Failed: Remove module %s from '
+                            'notest_modules directory!' % target_module)
+                elif notest:
                     logging.error('Did not find any tests in module. Hoping '
                                   'this is transient. Retry after reboot.')
-                if not self._consistent(tests, passed, failed, notexecuted):
-                    # Try to figure out what happened. Example: b/35605415.
-                    self._run_tradefed([['list', 'results']])
-                    logging.warning('Test count inconsistent. %s', self.summary)
-                # Keep track of global count, we can't trust continue/retry.
-                if total_tests == 0:
-                    total_tests = tests
-                total_passed += passed
-                # The DUT has rebooted at this point and is in a clean state.
-        if total_tests == 0:
+                    current_login.need_reboot()
+                    continue
+
+                session_id = last_session_id
+
+                # Check if all the tests passed.
+                if failed <= lwaived and all_done:
+                    # TODO(ihf): Make this error.TestPass('...') once available.
+                    if steps > 0 and self._warn_on_test_retry:
+                        raise error.TestWarn(
+                            'Passed: after %d retries passing %d tests, waived='
+                            '%d. %s' % (steps, passed, lwaived, self.summary))
+                    return
+
+        if session_id == None:
             raise error.TestFail('Error: Could not find any tests in module.')
-
-        retry_inconsistency_error = None
-        # If the results were not completed or were failing then continue or
-        # retry them iteratively MAX_RETRY times.
-        while steps < self._max_retry and failed + notexecuted > waived:
-            steps += 1
-            self._run_precondition_scripts(self._host,
-                                           login_precondition_commands, steps)
-            with self._login_chrome(
-                    board=board,
-                    reboot=self._should_reboot(steps),
-                    dont_override_profile=pushed_media):
-                self._ready_arc()
-                self._run_precondition_scripts(self._host,
-                                               precondition_commands, steps)
-                logging.info('Retrying failures of %s with session_id %d:',
-                             test_name, session_id)
-                expected_tests = failed + notexecuted
-                session_id, counts = self._tradefed_retry(test_name, session_id)
-                tests, passed, failed, notexecuted, waived = counts
-                # Consistency check, did we really run as many as we thought
-                # initially?
-                if expected_tests != tests:
-                    msg = ('Retry inconsistency - '
-                           'initially saw %d failed+notexecuted, ran %d tests. '
-                           'passed=%d, failed=%d, notexecuted=%d, waived=%d.' %
-                           (expected_tests, tests, passed, failed, notexecuted,
-                            waived))
-                    logging.warning(msg)
-                    if expected_tests > tests:
-                        # See b/36523200#comment8. Due to the existence of the
-                        # multiple tests having the same ID, more cases may be
-                        # run than previous fail count. As a workaround, making
-                        # it an error only when the tests run were less than
-                        # expected.
-                        # TODO(kinaba): Find a way to handle this dup.
-                        retry_inconsistency_error = msg
-                if not self._consistent(tests, passed, failed, notexecuted):
-                    logging.warning('Tradefed inconsistency - retrying.')
-                    session_id, counts = self._tradefed_retry(
-                        test_name, session_id)
-                    tests, passed, failed, notexecuted, waived = counts
-                msg = 'retry(t=%d, p=%d, f=%d, ne=%d, w=%d)' % counts
-                logging.info('RESULT: %s', msg)
-                self.summary += ' ' + msg
-                if not self._consistent(tests, passed, failed, notexecuted):
-                    logging.warning('Test count inconsistent. %s', self.summary)
-                total_passed += passed
-                if tests > expected_tests:
-                    total_tests += tests - expected_tests
-            # The DUT has rebooted at this point and is in a clean state.
-
-        self._classify_results(total_tests, total_passed, failed, notexecuted,
-                               waived, steps, retry_inconsistency_error)
+        raise error.TestFail(
+            'Failed: after %d retries giving up. '
+            'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
+             (steps, passed, failed, lnotexecuted, lwaived, self.summary))
