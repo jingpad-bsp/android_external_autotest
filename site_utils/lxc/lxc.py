@@ -109,17 +109,13 @@ def get_container_info(container_path, **filters):
     return info_collection
 
 
-def download_extract(url, target, extract_dir, sudo=True):
+def download_extract(url, target, extract_dir):
     """Download the file from given url and save it to the target, then extract.
 
     @param url: Url to download the file.
     @param target: Path of the file to save to.
     @param extract_dir: Directory to extract the content of the file to.
-    @param sudo: Whether to use sudo to execute commands.  True by default.  If
-                 the package is being extracted into the host dir of a zygote,
-                 sudo can be set to false, and this can save some time.
     """
-    sudostr = 'sudo' if sudo else ''
     remote_url = dev_server.DevServer.get_server_url(url)
     # This can be run in multiple threads, pick a unique tmp_file.name.
     with tempfile.NamedTemporaryFile(prefix=os.path.basename(target) + '_',
@@ -130,8 +126,8 @@ def download_extract(url, target, extract_dir, sudo=True):
             _download_via_devserver(url, tmp_file.name)
         else:
             _download_via_wget(url, tmp_file.name)
-        common_utils.run('%s mv %s %s' % (sudostr, tmp_file.name, target))
-    common_utils.run('%s tar -xvf %s -C %s' % (sudostr, target, extract_dir))
+        common_utils.run('sudo mv %s %s' % (tmp_file.name, target))
+    common_utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
 # Make sure retries only happen in the non-timeout case.
