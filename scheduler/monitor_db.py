@@ -556,10 +556,21 @@ class Dispatcher(object):
         @param to_schedule: Whether to get agent tasks for scheduling
         @return: A list of AgentTasks.
         """
-        if luciferlib.is_lucifer_enabled() and to_schedule:
-            statuses = (models.HostQueueEntry.Status.STARTING,
-                        models.HostQueueEntry.Status.RUNNING,
-                        models.HostQueueEntry.Status.GATHERING)
+        if to_schedule:
+            # TODO(crbug.com/748234): This is temporary to enable
+            # toggling lucifer rollouts with an option.
+            if luciferlib.is_enabled_for('GATHERING'):
+                statuses = (models.HostQueueEntry.Status.STARTING,
+                            models.HostQueueEntry.Status.RUNNING)
+            elif luciferlib.is_enabled_for('PARSING'):
+                statuses = (models.HostQueueEntry.Status.STARTING,
+                            models.HostQueueEntry.Status.RUNNING,
+                            models.HostQueueEntry.Status.GATHERING)
+            else:
+                statuses = (models.HostQueueEntry.Status.STARTING,
+                            models.HostQueueEntry.Status.RUNNING,
+                            models.HostQueueEntry.Status.GATHERING,
+                            models.HostQueueEntry.Status.PARSING)
         else:
             # host queue entry statuses handled directly by AgentTasks
             # (Verifying is handled through SpecialTasks, so is not
@@ -963,6 +974,23 @@ class Dispatcher(object):
         """
         Hand off ownership of a job to lucifer component.
         """
+        # TODO(crbug.com/748234): This is temporary to enable toggling
+        # lucifer rollouts with an option.
+        if luciferlib.is_enabled_for('GATHERING'):
+            self._send_gathering_to_lucifer()
+        else:
+            self._send_parsing_to_lucifer()
+
+
+    # TODO(crbug.com/748234): This is temporary to enable toggling
+    # lucifer rollouts with an option.
+    def _send_gathering_to_lucifer(self):
+        raise NotImplementedError
+
+
+    # TODO(crbug.com/748234): This is temporary to enable toggling
+    # lucifer rollouts with an option.
+    def _send_parsing_to_lucifer(self):
         Status = models.HostQueueEntry.Status
         queue_entries_qs = (models.HostQueueEntry.objects
                             .filter(status=Status.PARSING))
