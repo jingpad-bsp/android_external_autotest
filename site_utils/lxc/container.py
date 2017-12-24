@@ -79,6 +79,23 @@ class ContainerId(collections.namedtuple('ContainerId',
             return None
 
 
+    @classmethod
+    def create(cls, job_id, ctime=None, pid=None):
+        """Creates a new container ID.
+
+        @param job_id: The first field in the ID.
+        @param ctime: The second field in the ID.  Optional. If not provided,
+                      the current epoch timestamp is used.
+        @param pid: The third field in the ID.  Optional.  If not provided, the
+                    PID of the current process is used.
+        """
+        if ctime is None:
+            ctime = int(time.time())
+        if pid is None:
+            pid = os.getpid()
+        return cls(job_id, ctime, pid)
+
+
 class Container(object):
     """A wrapper class of an LXC container.
 

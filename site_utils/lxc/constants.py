@@ -107,3 +107,5 @@ CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 CONTAINER_UTSNAME_FORMAT = 'test-%s'
 
 STATS_KEY = 'chromeos/autotest/lxc'
+
+CONTAINER_POOL_METRICS_PREFIX = 'chromeos/autotest/container_pool'

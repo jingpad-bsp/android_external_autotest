@@ -17,7 +17,6 @@ import argparse
 import logging
 import os
 import tempfile
-import time
 
 import common
 from autotest_lib.client.bin import utils
@@ -341,7 +340,7 @@ def main(options):
     setup_base(TEMP_DIR)
     bucket = lxc.ContainerBucket(TEMP_DIR)
 
-    container_id = lxc.ContainerId(TEST_JOB_ID, time.time(), os.getpid())
+    container_id = lxc.ContainerId.create(TEST_JOB_ID)
     container = setup_test(bucket, container_id, options.skip_cleanup)
     test_share(container)
     test_autoserv(container)

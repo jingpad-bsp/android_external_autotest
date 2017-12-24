@@ -25,12 +25,7 @@ def get_autotest_server(web_server=None):
             web_server = GLOBAL_CONFIG.get_config_value(
                     'SERVER', 'hostname', default=DEFAULT_SERVER)
 
-    # if the name doesn't start with http://,
-    # nonexistant hosts get an obscure error
-    if (not web_server.startswith('http://') and
-        not web_server.startswith('https://')):
-        web_server = 'http://' + web_server
-
+    web_server = rpc_client_lib.add_protocol(web_server)
     return web_server
 
 

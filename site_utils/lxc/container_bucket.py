@@ -8,6 +8,7 @@ import socket
 import time
 
 import common
+
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.global_config import global_config
@@ -17,13 +18,18 @@ from autotest_lib.site_utils.lxc import container_pool
 from autotest_lib.site_utils.lxc import lxc
 from autotest_lib.site_utils.lxc.cleanup_if_fail import cleanup_if_fail
 from autotest_lib.site_utils.lxc.base_image import BaseImage
+from autotest_lib.site_utils.lxc.constants import \
+    CONTAINER_POOL_METRICS_PREFIX as METRICS_PREFIX
 from autotest_lib.site_utils.lxc.container import Container
 from autotest_lib.site_utils.lxc.container_factory import ContainerFactory
 
 try:
     from chromite.lib import metrics
+    from infra_libs import ts_mon
 except ImportError:
+    import mock
     metrics = utils.metrics_mock
+    ts_mon = mock.Mock()
 
 
 # Timeout (in seconds) for container pool operations.
@@ -59,9 +65,20 @@ class ContainerBucket(object):
             # Pass in the container path so that the bucket is hermetic (i.e. so
             # that if the container path is customized, the base image doesn't
             # fall back to using the default container path).
+            try:
+                base_image_ok = True
+                container = BaseImage(self.container_path).get()
+            except error.ContainerError as e:
+                base_image_ok = False
+                raise e
+            finally:
+                metrics.Counter(METRICS_PREFIX + '/base_image',
+                                field_spec=[ts_mon.BooleanField('corrupted')]
+                                ).increment(
+                                    fields={'corrupted': not base_image_ok})
             self._factory = factory_class(
-                    base_container=BaseImage(self.container_path).get(),
-                    lxc_path=self.container_path)
+                base_container=container,
+                lxc_path=self.container_path)
 
 
     def get_all(self):
@@ -267,9 +284,14 @@ class _PoolBasedFactory(ContainerFactory):
                     logging.debug('Retrieved container from pool: %s',
                                   container.name)
                     return container
+        metrics.Counter(METRICS_PREFIX + '/containers_served',
+                        field_spec = [ts_mon.BooleanField('from_pool')]
+                        ).increment(fields={
+                            'from_pool': (container is not None)})
+        if container is not None:
+            return container
 
         # If the container pool did not yield a container, make one locally.
-        # TODO(crbug/772142): Add metrics to track this fallback.
         logging.warning('Unable to obtain container from pre-populated pool.  '
                         'Creating container locally.  This slows server tests '
                         'down and should be debugged even if local creation '

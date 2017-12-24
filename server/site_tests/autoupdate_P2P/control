@@ -1,0 +1,30 @@
+AUTHOR = "dhaddock, Chromium OS"
+NAME = "autoupdate_P2P"
+PURPOSE = "Test autoupdate via peer to peer(P2P)."
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "server"
+ATTRIBUTES = "suite:bvt-perbuild"
+SYNC_COUNT = 2
+DOC = """
+This tests autoupdate between two devices via peer to peer.
+
+Since the test uses two different DUTs in the lab together it is more
+difficult to debug at your desk.
+
+Use the control.local to run this test locally.
+
+"""
+
+from autotest_lib.server import utils as server_utils
+
+def run(ntuple):
+    job.run_test('autoupdate_P2P', hosts=ntuple)
+
+ntuples, failures = server_utils.form_ntuples_from_machines(
+    machines, SYNC_COUNT)
+
+# Use log=False in parallel_simple to avoid an exception in setting up
+# the incremental parser when SYNC_COUNT > 1.
+job.parallel_simple(run, ntuples, log=False)
