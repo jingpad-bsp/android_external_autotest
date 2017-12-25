@@ -45,7 +45,7 @@ SHADOW_ROOT = '/home/.shadow'
 
 CRYPTOHOME_DEV_REGEX_ANY = r'.*'
 CRYPTOHOME_DEV_REGEX_REGULAR_USER_SHADOW = r'^/home/\.shadow/.*/vault$'
-CRYPTOHOME_DEV_REGEX_REGULAR_USER_DEVICE = r'^/dev/[^/]*$'
+CRYPTOHOME_DEV_REGEX_REGULAR_USER_DEVICE = r'^/dev/(?!loop[0-9]+$)[^/]*$'
 CRYPTOHOME_DEV_REGEX_REGULAR_USER_EPHEMERAL = r'^ephemeralfs/.*$'
 # Ecryptfs-based user home directory mounts the SHADOW encrypted directory,
 # while ext4-crypto based user home is a bind-mount to an encrypted directory
@@ -55,10 +55,9 @@ CRYPTOHOME_DEV_REGEX_REGULAR_USER = r'(%s|%s|%s)' % (
    CRYPTOHOME_DEV_REGEX_REGULAR_USER_SHADOW,
    CRYPTOHOME_DEV_REGEX_REGULAR_USER_DEVICE,
    CRYPTOHOME_DEV_REGEX_REGULAR_USER_EPHEMERAL)
-CRYPTOHOME_DEV_REGEX_GUEST = r'^guestfs$'
+CRYPTOHOME_DEV_REGEX_LOOP_DEVICE = r'^/dev/loop[0-9]+$'
 
 CRYPTOHOME_FS_REGEX_ANY = r'.*'
-CRYPTOHOME_FS_REGEX_TMPFS = r'^tmpfs$'
 CRYPTOHOME_FS_REGEX_EXT4 = r'^ext4$'
 CRYPTOHOME_FS_REGEX_ECRYPTFS = r'^ecryptfs$'
 
