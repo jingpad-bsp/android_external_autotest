@@ -306,12 +306,12 @@ def mount_vault(user, password, create=False):
 
 
 def mount_guest():
-    """Mount the given user's vault."""
+    """Mount the guest vault."""
     args = [CRYPTOHOME_CMD, '--action=mount_guest', '--async']
     logging.info(__run_cmd(' '.join(args)))
-    # Ensure that the guest tmpfs is mounted.
+    # Ensure that the guest vault is mounted.
     if not is_guest_vault_mounted(allow_fail=True):
-        raise ChromiumOSError('Cryptohome did not mount tmpfs.')
+        raise ChromiumOSError('Cryptohome did not mount guest vault.')
 
 
 def test_auth(user, password):
@@ -403,9 +403,12 @@ def is_vault_mounted(user, regexes=None, allow_fail=False):
         if not re.match(device_regex, mount_info[0]):
             return False
 
-        if re.match(constants.CRYPTOHOME_FS_REGEX_EXT4, mount_info[2]):
-            # We are using ext4 crypto. Check there is an encryption key for
-            # that directory.
+        if (re.match(constants.CRYPTOHOME_FS_REGEX_EXT4, mount_info[2])
+            and not(re.match(constants.CRYPTOHOME_DEV_REGEX_LOOP_DEVICE,
+                             mount_info[0]))):
+            # Ephemeral cryptohome uses ext4 mount from a loop device,
+            # otherwise it should be ext4 crypto. Check there is an encryption
+            # key for that directory.
             find_key_cmd_list = ['e4crypt  get_policy %s' % (mount_info[1]),
                                  'cut -d \' \' -f 2']
             key = __run_cmd(' | ' .join(find_key_cmd_list))
@@ -419,12 +422,14 @@ def is_vault_mounted(user, regexes=None, allow_fail=False):
 
 
 def is_guest_vault_mounted(allow_fail=False):
-    """Check whether a vault backed by tmpfs is mounted for the guest user."""
+    """Check whether a vault is mounted for the guest user.
+       It should be a mount of an ext4 partition on a loop device.
+    """
     return is_vault_mounted(
         user=GUEST_USER_NAME,
         regexes={
-            constants.CRYPTOHOME_FS_REGEX_TMPFS :
-                constants.CRYPTOHOME_DEV_REGEX_GUEST,
+            constants.CRYPTOHOME_FS_REGEX_EXT4 :
+                constants.CRYPTOHOME_DEV_REGEX_LOOP_DEVICE,
         },
         allow_fail=allow_fail)
 
