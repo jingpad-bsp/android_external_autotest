@@ -423,13 +423,18 @@ def is_vault_mounted(user, regexes=None, allow_fail=False):
 
 def is_guest_vault_mounted(allow_fail=False):
     """Check whether a vault is mounted for the guest user.
-       It should be a mount of an ext4 partition on a loop device.
+       It should be a mount of an ext4 partition on a loop device
+       or be backed by tmpfs.
     """
     return is_vault_mounted(
         user=GUEST_USER_NAME,
         regexes={
+            # Remove tmpfs support when it becomes unnecessary as all guest
+            # modes will use ext4 on a loop device.
             constants.CRYPTOHOME_FS_REGEX_EXT4 :
                 constants.CRYPTOHOME_DEV_REGEX_LOOP_DEVICE,
+            constants.CRYPTOHOME_FS_REGEX_TMPFS :
+                constants.CRYPTOHOME_DEV_REGEX_GUEST,
         },
         allow_fail=allow_fail)
 
