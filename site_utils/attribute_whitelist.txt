@@ -74,6 +74,7 @@ suite:crosbolt_arc_perf_nightly
 suite:crosbolt_arc_perf_perbuild
 suite:crosbolt_perf_nightly
 suite:crosbolt_perf_perbuild
+suite:crosbolt_perf_weekly
 suite:dummy
 suite:dummy_server
 suite:dummy_server_nossp
