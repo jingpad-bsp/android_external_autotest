@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package GtsAppBlacklistDeviceTestCases of the '
-       'Android 5.0_r1 Google Test Suite (GTS), build 4144450,'
+       'Android 5.1_r2 Google Test Suite (GTS), build 4507047,'
        'in the ARC++ container.')
 
 def run_GTS(machine):
