@@ -697,26 +697,6 @@ class NumpyPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setupegg_py)
 
 
-class MatplotlibPackage(ExternalPackage):
-    """
-    matplotlib package
-
-    This requires numpy so it must be declared after numpy to guarantee that
-    it is already installed.
-    """
-    version = '0.98.5.3'
-    short_version = '0.98.5'
-    local_filename = 'matplotlib-%s.tar.gz' % version
-    urls = (_CHROMEOS_MIRROR + local_filename,)
-    hex_sum = '2f6c894cf407192b3b60351bcc6468c0385d47b6'
-    os_requirements = {('/usr/include/freetype2/ft2build.h',
-                        '/usr/include/ft2build.h'): 'libfreetype6-dev',
-                       ('/usr/include/png.h'): 'libpng12-dev'}
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-            ExternalPackage._build_and_install_current_dir_setupegg_py)
-
 
 class JsonRPCLib(ExternalPackage):
     """jsonrpclib package"""
