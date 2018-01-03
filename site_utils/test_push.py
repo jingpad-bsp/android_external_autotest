@@ -42,6 +42,7 @@ except ImportError:
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.server import constants
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
@@ -472,7 +473,7 @@ def verify_test_results(job_id, expected_results):
 
     # Test link to log can be loaded.
     job_name = '%s-%s' % (job_id, getpass.getuser())
-    log_link = URL_PATTERN % (URL_HOST, job_name)
+    log_link = URL_PATTERN % (rpc_client_lib.add_protocol(URL_HOST), job_name)
     try:
         urllib2.urlopen(log_link).read()
     except urllib2.URLError:
