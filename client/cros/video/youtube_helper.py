@@ -167,6 +167,18 @@ class YouTubeHelper(object):
         logging.info('checking resolution: %d width  %d height', width, height)
         for quality in supporting_qualities:
             logging.info('Playing video in %s quality.', quality)
+
+            if quality == "hd1080":
+                self._tab.ExecuteJavaScript('player.setSize(1920, 1080)')
+            if quality == "hd720":
+                self._tab.ExecuteJavaScript('player.setSize(1280, 720)')
+            if quality == "large":
+                self._tab.ExecuteJavaScript('player.setSize(853, 480)')
+            if quality == "medium":
+                self._tab.ExecuteJavaScript('player.setSize(640, 360)')
+            if quality == "small":
+                self._tab.ExecuteJavaScript('player.setSize(320, 240)')
+
             self.set_playback_quality(quality)
             self.wait_for_player_state(PLAYER_PLAYING_STATE)
             self.wait_for_expected_resolution(quality)
