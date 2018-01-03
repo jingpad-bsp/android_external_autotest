@@ -47,7 +47,6 @@ from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.site_utils import gmail_lib
 
 try:
     from chromite.lib import metrics
@@ -71,8 +70,6 @@ TESTBED_SUITE = 'testbed_push'
 # TODO(shuqianz): Dynamically get android build after crbug.com/646068 fixed
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
-DEFAULT_EMAIL = CONFIG.get_config_value(
-        'SCHEDULER', 'notify_email', type=list, default=[])
 # TODO(crbug.com/767302): Bump up tesbed requirement back to 1 when we
 # re-enable testbed tests.
 DEFAULT_NUM_DUTS = (
@@ -248,10 +245,6 @@ def parse_arguments():
     parser.add_argument('-ai', '--android_build', dest='android_build',
                         help='Android build to test.')
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
-    parser.add_argument('-e', '--email', nargs='+', dest='email',
-                        default=DEFAULT_EMAIL,
-                        help='Email address for the notification to be sent to '
-                             'after the script finished running.')
     parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
                         default=DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB,
                         help='Time in mins to wait before abort the jobs we '
@@ -576,20 +569,6 @@ def push_prod_next_branch(updated_repo_heads):
                                        shell=True)
 
 
-def send_notification_email(email_list, title, msg):
-    """Send notification to all email addresses in email list.
-
-    @param email_list: a email address list which receives notification email,
-        whose format is like:
-            [xxx@google.com, xxx@google.com, xxx@google.com,...]
-        so that users could also specify multiple email addresses by using
-        config '--email' or '-e'.
-    @param title: the title of the email to be sent.
-    @param msg: the content of the email to be sent.
-    """
-    gmail_lib.send_email(','.join(email_list), title, msg)
-
-
 def _main(arguments):
     """Running tests.
 
@@ -653,20 +632,6 @@ def _main(arguments):
             for suite_id in _all_suite_ids:
                 if AFE.get_jobs(id=suite_id, finished=False):
                     AFE.run('abort_host_queue_entries', job=suite_id)
-        # Send out email about the test failure.
-        if arguments.email:
-            send_notification_email(
-                    arguments.email,
-                    'Test for pushing to prod failed. Do NOT push!',
-                    ('Test CLs of the following repos failed. Below are the '
-                     'repos and the corresponding test HEAD.\n\n%s\n\n.'
-                     'Error occurred during test:\n\n%s\n\n'
-                     'All logs have been saved to '
-                     '/var/log/test_push/test_push.log on push master. '
-                     'Stats on recent success rate can be found at '
-                     'go/test-push-stats . Detailed '
-                     'debugging info can be found at go/push-to-prod' %
-                     (updated_repo_msg, str(e)) + '\n'.join(_run_suite_output)))
         raise
     finally:
         metrics.Counter('chromeos/autotest/test_push/completed').increment(
@@ -679,12 +644,6 @@ def _main(arguments):
                '%s\n\n\nInstructions for pushing to prod are available at '
                'https://goto.google.com/autotest-to-prod ' % updated_repo_msg)
     print message
-    # Send out email about test completed successfully.
-    if arguments.email:
-        send_notification_email(
-                arguments.email,
-                'Test for pushing to prod completed successfully',
-                message)
 
 
 def main():
