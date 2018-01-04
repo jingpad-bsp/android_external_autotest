@@ -17,10 +17,10 @@ class desktopui_MashLogin(test.test):
         """Entry point of this test."""
 
         # Flaky on nyan_* boards. http://crbug.com/717275
+        boards_to_skip = ['nyan_big', 'nyan_kitty', 'nyan_blaze']
         # Crashes on some KBL boards in ui::DrmThread::SchedulePageFlip.
         # http://crbug.com/784621
-        boards_to_skip = ['nyan_big', 'nyan_kitty', 'nyan_blaze',
-                          'poppy', 'pyro', 'snappy', 'soraka']
+        boards_to_skip += ['coral', 'poppy', 'pyro', 'snappy', 'soraka']
         if utils.get_current_board() in boards_to_skip:
           logging.warning('Skipping test run on this board.')
           return
