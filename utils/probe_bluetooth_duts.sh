@@ -7,13 +7,13 @@
 # This script probes the readiness of the DUTs and chameleon boards in
 # the wifi-cells in the test lab.
 
-BT_HOSTS="chromeos9-row4-rack7-host1
-          chromeos9-row4-rack7-host2
-          chromeos9-row4-rack7-host3
-          chromeos9-row4-rack7-host4
-          chromeos9-row4-rack8-host1
-          chromeos9-row4-rack8-host2
-          chromeos9-row4-rack8-host3"
+BT_HOSTS="chromeos15-row1-rack4-host1
+          chromeos15-row1-rack4-host2
+          chromeos15-row1-rack4-host3
+          chromeos15-row1-rack5-host1
+          chromeos15-row1-rack5-host2
+          chromeos15-row1-rack5-host3
+          chromeos15-row1-rack5-host4"
 
 SSH_OPTIONS="-q -i ~/.ssh/.test_rsa \
              -o UserKnownHostsFile=/dev/null \
