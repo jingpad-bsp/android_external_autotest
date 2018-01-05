@@ -31,9 +31,10 @@ params_dict = {
 class power_LoadTest(arc.ArcTest):
     """test class"""
     version = 2
-    _username = 'powerloadtest@gmail.com'
-    _pltp_url = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
-                '/testing/power-testing/pltp/pltp'
+    _url_base = 'https://sites.google.com/a/chromium.org/dev/chromium-os/testing/power-testing/pltp'
+    _pltu_url = _url_base + '/pltu'
+    _pltp_url = _url_base + '/pltp'
+
 
 
     def initialize(self, percent_initial_charge_min=None,
@@ -106,6 +107,10 @@ class power_LoadTest(arc.ArcTest):
             raise error.TestNAError(rsp)
         self._power_status = power_status.get_status()
         self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
+
+        with tempfile.NamedTemporaryFile() as pltu:
+            file_utils.download_file(self._pltu_url, pltu.name)
+            self._username = pltu.read().rstrip()
 
         with tempfile.NamedTemporaryFile() as pltp:
             file_utils.download_file(self._pltp_url, pltp.name)
