@@ -47,15 +47,11 @@ def run(machine):
         # Webcam
         str("lsusb -v -d 058f:") :
             ["idVendor\s+0x058f\s+Alcor", "iProduct.*(TeckNet|2.0 PC Camera)"],
-        # Mouse
-        str("lsusb -v -d 04f2:0939") :
-            ["idVendor\s+0x04f2\s+Chicony", "iProduct.*Optical\s+Mouse"],
 
         }
 
     vendor_id_dict_control_file = {'045e': 'Microsoft Headphone',
                                    '058f': 'Webcam',
-                                   '04f2': 'Mouse',
                                   }
 
     job.run_test("kernel_ExternalUsbPeripheralsDetectionTest", host=host,
