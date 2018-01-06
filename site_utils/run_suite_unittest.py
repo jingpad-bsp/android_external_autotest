@@ -597,7 +597,8 @@ class ResultCollectorUnittest(unittest.TestCase):
         collector = self._end_to_end_test_helper(
                 include_aborted_by_suite_test=True)
         self.assertEqual(
-                collector.return_result.return_code, run_suite.RETURN_CODES.OK)
+                collector.return_result.return_code,
+                run_suite.RETURN_CODES.SUITE_TIMEOUT)
 
         # suite job timed out.
         collector = self._end_to_end_test_helper(suite_job_timed_out=True)
