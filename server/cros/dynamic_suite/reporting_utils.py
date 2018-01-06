@@ -4,6 +4,7 @@ import re
 import common
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend.afe import rpc_client_lib
 
 
 # Number of times to retry if a gs command fails. Defaults to 10,
@@ -202,8 +203,7 @@ def link_job(job_id, instance_server=None):
     if not instance_server:
         instance_server = global_config.global_config.get_config_value(
             'SERVER', 'hostname', default='localhost')
-    if 'cautotest' in instance_server:
-        instance_server += '.corp.google.com'
+        instance_server = rpc_client_lib.add_protocol(instance_server)
     return _job_view % (instance_server, job_id)
 
 
