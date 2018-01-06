@@ -20,7 +20,10 @@ Use the control.local to run this test locally.
 from autotest_lib.server import utils as server_utils
 
 def run(ntuple):
-    job.run_test('autoupdate_P2P', hosts=ntuple)
+    host_list = []
+    for machine in ntuple:
+        host_list.append(hosts.create_host(machine))
+    job.run_test('autoupdate_P2P', hosts=host_list)
 
 ntuples, failures = server_utils.form_ntuples_from_machines(
     machines, SYNC_COUNT)
