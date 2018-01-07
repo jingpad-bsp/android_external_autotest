@@ -265,11 +265,11 @@ def lock(filename):
     attempts = 0
     while not filelock.i_am_locking():
         try:
+            attempts += 1
             logging.info('Waiting for cache lock...')
             # We must not use a random integer as the filelock implementations
             # may underflow an integer division.
             filelock.acquire(random.uniform(0.0, pow(2.0, attempts)))
-            attempts += 1
         except (lockfile.AlreadyLocked, lockfile.LockTimeout):
             # Our goal is to wait long enough to be sure something very bad
             # happened to the locking thread. 11 attempts is between 15 and
