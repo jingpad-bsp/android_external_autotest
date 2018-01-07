@@ -1,6 +1,8 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+import datetime
 import logging
 import re
 
@@ -40,6 +42,7 @@ class MoblabTest(test.test):
                 upstart service initialzation after boot.
         """
         super(MoblabTest, self).initialize()
+        self._start_time = datetime.datetime.now()
         self._host = host
         # When passed in from test_that or run_suite, all incoming arguments are
         # str.
@@ -51,6 +54,12 @@ class MoblabTest(test.test):
         self._host.find_and_add_duts()
         self._host.verify_duts()
         self._host.verify_special_tasks_complete()
+
+
+    @property
+    def elapsed(self):
+        """A datetime.timedleta for time elapsed since start of test."""
+        return datetime.datetime.now() - self._start_time
 
 
     def _set_image_storage_server(self, image_storage_server):
