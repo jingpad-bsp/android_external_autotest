@@ -10,6 +10,8 @@ from autotest_lib.server.hosts import moblab_host
 from autotest_lib.utils import labellib
 
 
+_CLEANUP_TIME_M = 5
+
 class moblab_RunSuite(moblab_test.MoblabTest):
     """
     Moblab run suite test. Ensures that a Moblab can run a suite from start
@@ -20,7 +22,7 @@ class moblab_RunSuite(moblab_test.MoblabTest):
 
 
     def run_once(self, host, suite_name, moblab_suite_max_retries,
-                 target_build=''):
+                 target_build='', test_timeout_hint_m=None):
         """Runs a suite on a Moblab Host against its test DUTS.
 
         @param host: Moblab Host that will run the suite.
@@ -31,6 +33,11 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                 call on moblab. This argument is passed as is to run_suite. It
                 must be a sensible build target for the board of the sub-DUTs
                 attached to the moblab.
+        @param test_timeout_hint_m: (int) Optional overall timeout for the test.
+                For this test, it is very important to collect post failure data
+                from the moblab device. If the overall timeout is provided, the
+                test will try to fail early to save some time for log collection
+                from the DUT.
 
         @raises AutoservRunError if the suite does not complete successfully.
         """
@@ -55,9 +62,14 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                "--suite_name=%s --retry=True " "--max_retries=%d" %
                (moblab_host.AUTOTEST_INSTALL_DIR, board, target_build,
                 suite_name, moblab_suite_max_retries))
+        cmd, run_suite_timeout_s = self._append_run_suite_timeout(
+                cmd,
+                test_timeout_hint_m,
+        )
+
         logging.debug('Run suite command: %s', cmd)
         try:
-            result = host.run_as_moblab(cmd, timeout=10800)
+            result = host.run_as_moblab(cmd, timeout=run_suite_timeout_s)
         except error.AutoservRunError as e:
             if _is_run_suite_error_critical(e.result_obj.exit_status):
                 raise
@@ -68,6 +80,33 @@ class moblab_RunSuite(moblab_test.MoblabTest):
             # The cache is owned by root user
             host.run('rm -fR /mnt/moblab/results/shared/cache',
                       timeout=600)
+
+    def _append_run_suite_timeout(self, cmd, test_timeout_hint_m):
+        """Modify given run_suite command with timeout.
+
+        @param cmd: run_suite command str.
+        @param test_timeout_hint_m: (int) timeout for the test, or None.
+        @return cmd, run_suite_timeout_s: cmd is the updated command str,
+                run_suite_timeout_s is the timeout to use for the run_suite
+                call, in seconds.
+        """
+        if test_timeout_hint_m is None:
+            return cmd, 10800
+
+        # Arguments passed in via test_args may be all str, depending on how
+        # they're passed in.
+        test_timeout_hint_m = int(test_timeout_hint_m)
+        elasped_m = self.elapsed.total_seconds() / 60
+        run_suite_timeout_m = (
+                test_timeout_hint_m - elasped_m - _CLEANUP_TIME_M)
+        logging.info('Overall test timeout hint provided (%d minutes)',
+                     test_timeout_hint_m)
+        logging.info('%d minutes have already elasped', elasped_m)
+        logging.info(
+                'Keeping %d minutes for cleanup, will allow %d minutes for '
+                'the suite to run.', _CLEANUP_TIME_M, run_suite_timeout_m)
+        cmd += ' --timeout_mins %d' % run_suite_timeout_m
+        return cmd, run_suite_timeout_m * 60
 
 
 def _is_run_suite_error_critical(return_code):
