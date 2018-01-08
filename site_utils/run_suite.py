@@ -63,6 +63,7 @@ from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
@@ -554,7 +555,8 @@ class LogLink(object):
         @param sponge_url  url to Sponge result.
         """
         self.anchor = anchor
-        self.url = _URL_PATTERN % (server, job_string)
+        self.url = _URL_PATTERN % (rpc_client_lib.add_protocol(server),
+                                   job_string)
         self.reason = reason
         self.retry_count = retry_count
         self.testname = testname

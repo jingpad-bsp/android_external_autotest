@@ -296,8 +296,8 @@ class ResultCollectorUnittest(unittest.TestCase):
         # are expecting.
         expected_web_links = [
                  (v.get_testname(),
-                  URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')),
+                  URL_PATTERN % ('http://fake_server',
+                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')),
                   test_sponge_url)
                  for v in collector._test_views]
         # Verify web links are generated correctly.
@@ -309,8 +309,8 @@ class ResultCollectorUnittest(unittest.TestCase):
 
         expected_buildbot_links = [
                  (v.get_testname(),
-                  URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
+                  URL_PATTERN % ('http://fake_server',
+                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views if v['status'] != 'GOOD']
         # Verify buildbot links are generated correctly.
         for i in range(len(collector.buildbot_links)):
