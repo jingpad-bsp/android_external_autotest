@@ -18,7 +18,7 @@ from autotest_lib.client.common_lib.cros import chrome, arc_common
 
 _ADB_KEYS_PATH = '/tmp/adb_keys'
 _ADB_VENDOR_KEYS = 'ADB_VENDOR_KEYS'
-_ANDROID_CONTAINER_PID_PATH = '/run/containers/android_*/container.pid'
+_ANDROID_CONTAINER_PID_PATH = '/run/containers/android*/container.pid'
 _SCREENSHOT_DIR_PATH = '/var/log/arc-screenshots'
 _SCREENSHOT_BASENAME = 'arc-screenshot'
 _MAX_SCREENSHOT_NUM = 10
