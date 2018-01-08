@@ -76,7 +76,8 @@ def _main(args):
         atexit.register(metrics.Flush)
         handler = _make_handler(args)
         ret = _run_job(args.run_job_path, handler, args)
-        _mark_handoff_completed(args.job_id)
+        if handler.completed:
+            _mark_handoff_completed(args.job_id)
         return ret
 
 
