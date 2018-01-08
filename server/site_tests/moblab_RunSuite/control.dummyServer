@@ -34,6 +34,13 @@ Values pertaining to the test case include:
                                        services to start on the moblab host.
                                        This can take ~5 minutes on a physical
                                        devices and ~10 minutes on a VM.
+  test_timeout_hint_m=<int>            The overall timeout to expect for the
+                                       test run. For this test, it is very
+                                       important to collect post failure data
+                                       from the moblab device. If the overall
+                                       timeout is provided, the test will try to
+                                       fail early to save some time for log
+                                       collection from the DUT.
 """
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import utils
