@@ -23,6 +23,10 @@ class EventHandler(object):
 
     Each handler method must handle its exceptions accordingly.  If an
     exception escapes, the job dies on the spot.
+
+    Instances have one public attribute completed.  completed is set to
+    True once the final COMPLETED event is received and the handler
+    finishes.
     """
 
     def __init__(self, models, metrics, job, autoserv_exit):
@@ -34,6 +38,7 @@ class EventHandler(object):
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
         """
+        self.completed = False
         self._models = models
         self._metrics = metrics
         self._job = job
@@ -69,6 +74,7 @@ class EventHandler(object):
             # If shard_id is None, the job will be synced back to the master
             self._job.shard_id = None
             self._job.save()
+        self.completed = True
 
     def _final_status(self):
         Status = self._models.HostQueueEntry.Status
