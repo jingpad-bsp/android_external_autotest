@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
@@ -24,12 +26,15 @@ class firmware_Cr50Unlock(FirmwareTest):
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
 
-        if not self.cr50.has_command('ccdstate'):
-            raise error.TestNAError('Cannot test on Cr50 with old CCD version')
-
 
     def run_once(self):
-        """Lock CCD and then Unlock it."""
-        self.cr50.set_ccd_level('lock')
-        self.cr50.set_ccd_level('unlock')
+        """Verify cr50 lock behavior on v1 images and v0 images"""
+        if self.cr50.has_command('ccdstate'):
+            self.cr50.set_ccd_level('lock')
+            self.cr50.set_ccd_level('unlock')
+        else:
+            # pre-v1, cr50 cannot be unlocked. Make sure that's true
+            logging.info(self.cr50.send_command_get_output('lock disable',
+                    ['Access Denied\s+Usage: lock']))
+            logging.info('Cr50 cannot be unlocked with ccd v0')
 
