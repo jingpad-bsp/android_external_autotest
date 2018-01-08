@@ -43,6 +43,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
+from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.server import constants
 
 
@@ -125,7 +126,10 @@ class _JobEvent(object):
         @return A URL to the requested results log.
 
         """
-        return cls._LOG_URL_PATTERN % (afe_hostname, logdir)
+        return cls._LOG_URL_PATTERN % (
+            rpc_client_lib.add_protocol(afe_hostname),
+            logdir,
+        )
 
 
     @classmethod
