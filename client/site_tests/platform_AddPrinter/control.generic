@@ -12,7 +12,7 @@ cupstestppd, cups filters).
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-cq"
 JOB_RETRIES = 2
 
 DOC = """
