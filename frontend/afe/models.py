@@ -1237,6 +1237,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                     shard.id))
 
 
+    RebootBefore = model_attributes.RebootBefore
+    RebootAfter = model_attributes.RebootAfter
     # TIMEOUT is deprecated.
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=24)
