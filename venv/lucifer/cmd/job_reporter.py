@@ -90,7 +90,6 @@ def _make_handler(args):
         raise NotImplementedError('not implemented yet (crbug.com/748234)')
     job = models.Job.objects.get(id=args.job_id)
     return handlers.EventHandler(
-            models=models,
             metrics=handlers.Metrics(),
             job=job,
             autoserv_exit=args.autoserv_exit,
