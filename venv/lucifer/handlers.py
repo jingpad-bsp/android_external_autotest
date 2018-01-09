@@ -59,10 +59,28 @@ class EventHandler(object):
         # TODO(crbug.com/748234): No event update needed yet.
         pass
 
-    def _handle_parsing(self, event, msg):
-        # TODO(crbug.com/748234): monitor_db leaves the HQEs in parsing
-        # for now
+    def _handle_gathering(self, event, msg):
+        # TODO(crbug.com/794779): monitor_db leaves HQEs in GATHERING
         pass
+
+    def _handle_x_tests_done(self, _event, msg):
+        autoserv_exit, failures = msg.split(',')
+        success = (autoserv_exit == 0 and failures == 0)
+        reset_after_failure = not self._job.run_reset and not success
+        if self._should_reboot_duts(autoserv_exit, failures,
+                                    reset_after_failure):
+            _create_cleanup_for_job_hosts(self._models, self._job)
+        else:
+            _mark_job_hosts_ready(self._models, self._job)
+        if not reset_after_failure:
+            return
+        self._metrics.send_reset_after_failure(autoserv_exit, failures)
+        _create_reset_for_job_hosts(self._models, self._job)
+
+    def _handle_parsing(self, _event, _msg):
+        PARSING = self._models.HostQueueEntry.Status.PARSING
+        hqes = self._job.hostqueueentry_set.all()
+        hqes.update(status=PARSING)
 
     def _handle_completed(self, _event, _msg):
         final_status = self._final_status()
@@ -75,6 +93,17 @@ class EventHandler(object):
             self._job.shard_id = None
             self._job.save()
         self.completed = True
+
+    def _should_reboot_duts(self, autoserv_exit, failures, reset_after_failure):
+        reboot_after = self._job.reboot_after
+        if self._final_status() == self._models.HostQueueEntry.Status.ABORTED:
+            return True
+        elif reboot_after == self._models.Job.RebootAfter.ALWAYS:
+            return True
+        elif reboot_after == self._models.Job.RebootAfter.IF_ALL_TESTS_PASSED:
+            return autoserv_exit == 0 and failures == 0
+        else:
+            return failures > 0 and not reset_after_failure
 
     def _final_status(self):
         Status = self._models.HostQueueEntry.Status
@@ -109,6 +138,9 @@ class Metrics(object):
         metrics = autotest.chromite_load('metrics')
         self._hqe_completion_metric = metrics.Counter(
                 'chromeos/autotest/scheduler/hqe_completion_count')
+        self._reset_after_failure_metric = metrics.Counter(
+                'chromeos/autotest/scheduler/postjob_tasks/'
+                'reset_after_failure')
 
         # Autotest libs
         self._scheduler_models = autotest.load('scheduler.scheduler_models')
@@ -150,6 +182,13 @@ class Metrics(object):
         span.endTime.FromDatetime(hqe.finished_on)
         cloud_trace.LogSpan(span)
 
+    def send_reset_after_failure(self, autoserv_exit, failures):
+        """Send reset_after_failure metric."""
+        self._reset_after_failure_metric.increment(
+                fields={'autoserv_process_success': autoserv_exit == 0,
+                        # Yes, this is a boolean
+                        'num_tests_failed': failures > 0})
+
 
 def _job_aborted(job):
     for hqe in job.hostqueueentry_set.all():
@@ -180,3 +219,43 @@ def _get_prejob_hqes(models, job, include_active=True):
         statuses = list(models.HostQueueEntry.IDLE_PRE_JOB_STATUSES)
     return models.HostQueueEntry.objects.filter(
             job=job, status__in=statuses)
+
+
+def _create_reset_for_job_hosts(models, job):
+    """Create reset tasks for a job's hosts.
+
+    @param models: frontend.afe.models
+    @param job: frontend.afe.models.Job instance
+    """
+    User = models.User
+    SpecialTask = models.SpecialTask
+    for entry in job.hostqueueentry_set.all():
+        SpecialTask.objects.create(
+                host_id=entry.host.id,
+                task=SpecialTask.Task.RESET,
+                requested_by=User.objects.get(login=job.owner))
+
+
+def _create_cleanup_for_job_hosts(models, job):
+    """Create cleanup tasks for a job's hosts.
+
+    @param models: frontend.afe.models
+    @param job: frontend.afe.models.Job instance
+    """
+    User = models.User
+    SpecialTask = models.SpecialTask
+    for entry in job.hostqueueentry_set.all():
+        SpecialTask.objects.create(
+                host_id=entry.host.id,
+                task=SpecialTask.Task.CLEANUP,
+                requested_by=User.objects.get(login=job.owner))
+
+
+def _mark_job_hosts_ready(models, job):
+    """Mark job's hosts READY.
+
+    @param models: frontend.afe.models
+    @param job: frontend.afe.models.Job instance
+    """
+    for entry in job.hostqueueentry_set.all():
+        entry.host.set_status(models.Host.Status.READY)

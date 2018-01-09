@@ -42,9 +42,14 @@ class Event(enum.Enum):
     This should be backward compatible with all versions of
     lucifer_run_job, which lives in the infra/lucifer repository.
 
+    TODO(crbug.com/748234): Events starting with X are temporary to
+    support gradual lucifer rollout.
+
     https://chromium.googlesource.com/chromiumos/infra/lucifer
     """
     STARTING = 'starting'
+    GATHERING = 'gathering'
+    X_TESTS_DONE = 'x_tests_done'
     PARSING = 'parsing'
     COMPLETED = 'completed'
 

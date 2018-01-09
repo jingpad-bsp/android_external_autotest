@@ -978,14 +978,34 @@ class Dispatcher(object):
         # lucifer rollouts with an option.
         if luciferlib.is_enabled_for('GATHERING'):
             self._send_gathering_to_lucifer()
-        else:
-            self._send_parsing_to_lucifer()
+        self._send_parsing_to_lucifer()
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling
     # lucifer rollouts with an option.
     def _send_gathering_to_lucifer(self):
-        raise NotImplementedError
+        Status = models.HostQueueEntry.Status
+        queue_entries_qs = (models.HostQueueEntry.objects
+                            .filter(status=Status.GATHERING))
+        for queue_entry in queue_entries_qs:
+            # If this HQE already has an agent, let monitor_db continue
+            # owning it.
+            if self.get_agents_for_entry(queue_entry):
+                continue
+
+            job = queue_entry.job
+            if luciferlib.is_lucifer_owned(job):
+                continue
+            task = postjob_task.PostJobTask(
+                    [queue_entry], log_file_name='/dev/null')
+            pidfile_id = task._autoserv_monitor.pidfile_id
+            autoserv_exit = task._autoserv_monitor.exit_code()
+            luciferlib.spawn_gathering_job_handler(
+                    manager=_drone_manager,
+                    job=job,
+                    autoserv_exit=autoserv_exit,
+                    pidfile_id=pidfile_id)
+            models.JobHandoff.objects.create(job=job)
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling
@@ -1007,7 +1027,7 @@ class Dispatcher(object):
                     [queue_entry], log_file_name='/dev/null')
             pidfile_id = task._autoserv_monitor.pidfile_id
             autoserv_exit = task._autoserv_monitor.exit_code()
-            luciferlib.spawn_job_handler(
+            luciferlib.spawn_parsing_job_handler(
                     manager=_drone_manager,
                     job=job,
                     autoserv_exit=autoserv_exit,
