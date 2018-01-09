@@ -45,26 +45,26 @@ class EventHandler(object):
         # TODO(crbug.com/748234): autoserv not implemented yet.
         self._autoserv_exit = autoserv_exit
 
-    def __call__(self, event):
-        logger.debug('Received event %r', event.name)
+    def __call__(self, event, msg):
+        logger.debug('Received event %r with message %r', event.name, msg)
         method_name = '_handle_%s' % event.value
         try:
             handler = getattr(self, method_name)
         except AttributeError:
             raise NotImplementedError('%s is not implemented for handling %s',
                                       method_name, event.name)
-        handler(event)
+        handler(event, msg)
 
-    def _handle_starting(self, event):
+    def _handle_starting(self, event, msg):
         # TODO(crbug.com/748234): No event update needed yet.
         pass
 
-    def _handle_parsing(self, event):
+    def _handle_parsing(self, event, msg):
         # TODO(crbug.com/748234): monitor_db leaves the HQEs in parsing
         # for now
         pass
 
-    def _handle_completed(self, _event):
+    def _handle_completed(self, _event, _msg):
         final_status = self._final_status()
         for hqe in self._job.hostqueueentry_set.all():
             self._set_completed_status(hqe, final_status)
