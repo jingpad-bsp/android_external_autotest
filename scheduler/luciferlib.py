@@ -47,7 +47,47 @@ def is_lucifer_owned(job):
     return hasattr(job, 'jobhandoff')
 
 
-def spawn_job_handler(manager, job, autoserv_exit, pidfile_id=None):
+# TODO(crbug.com/748234): This is temporary to enable toggling
+# lucifer rollouts with an option.
+def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
+    """Spawn job_reporter to handle a job.
+
+    Pass all arguments by keyword.
+
+    @param manager: DroneManager instance
+    @param job: Job instance
+    @param autoserv_exit: autoserv exit status
+    @param pidfile_id: PidfileId instance
+    """
+    manager = _DroneManager(manager)
+    if pidfile_id is None:
+        drone = manager.pick_drone_to_use()
+    else:
+        drone = manager.get_drone_for_pidfile(pidfile_id)
+    args = [
+            '--run-job-path', _get_run_job_path(),
+            '--jobdir', _get_jobdir(),
+            '--job-id', str(job.id),
+            '--autoserv-exit', str(autoserv_exit),
+    ]
+    # lucifer_run_job arguments
+    results_dir = _results_dir(manager, job)
+    num_tests_failed = manager.get_num_tests_failed(pidfile_id)
+    args.extend([
+            '--',
+            '-resultsdir', results_dir,
+            '-autotestdir', _AUTOTEST_DIR,
+            '-watcherpath', _get_watcher_path(),
+            '-x-need-gather',
+            '-x-num-tests-failed', str(num_tests_failed),
+    ])
+    output_file = os.path.join(results_dir, 'job_reporter_output.log')
+    drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+
+
+# TODO(crbug.com/748234): This is temporary to enable toggling
+# lucifer rollouts with an option.
+def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     """Spawn job_reporter to handle a job.
 
     Pass all arguments by keyword.
@@ -106,6 +146,17 @@ class _DroneManager(object):
         @param old_manager: old style DroneManager
         """
         self._manager = old_manager
+
+    def get_num_tests_failed(self, pidfile_id):
+        """Return the number of tests failed for autoserv by pidfile.
+
+        @param pidfile_id: PidfileId instance.
+        @returns: int (-1 if missing)
+        """
+        state = self._manager.get_pidfile_contents(pidfile_id)
+        if state.num_tests_failed is None:
+            return -1
+        return state.num_tests_failed
 
     def get_drone_for_pidfile(self, pidfile_id):
         """Return a drone to use from a pidfile.
