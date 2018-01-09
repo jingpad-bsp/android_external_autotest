@@ -24,13 +24,27 @@ def test_run_event_command_normal(capfd):
                   'echo completed;'])
 
     # Handler should be called with events in order.
-    assert handler.events == [Event('starting'), Event('completed')]
+    assert handler.events == [(Event('starting'), ''), (Event('completed'), '')]
     # Handler should return the exit status of the command.
     assert ret == 0
     # Child stderr should go to stderr.
     out, err = capfd.readouterr()
     assert out == ''
     assert err == 'log message\n'
+
+
+def test_run_event_command_normal_with_messages():
+    """Test happy path with messages."""
+    handler = _FakeHandler()
+
+    ret = eventlib.run_event_command(
+            event_handler=handler,
+            args=['bash', '-c', 'echo starting foo'])
+
+    # Handler should be called with events and messages.
+    assert handler.events == [(Event('starting'), 'foo')]
+    # Handler should return the exit status of the command.
+    assert ret == 0
 
 
 def test_run_event_command_with_invalid_events():
@@ -68,8 +82,8 @@ class _FakeHandler(object):
     def __init__(self):
         self.events = []
 
-    def __call__(self, event):
-        self.events.append(event)
+    def __call__(self, event, msg):
+        self.events.append((event, msg))
 
 
 class _RaisingHandler(object):
@@ -78,7 +92,7 @@ class _RaisingHandler(object):
     def __init__(self, exception):
         self._exception = exception
 
-    def __call__(self, event):
+    def __call__(self, event, msg):
         raise self._exception
 
 
