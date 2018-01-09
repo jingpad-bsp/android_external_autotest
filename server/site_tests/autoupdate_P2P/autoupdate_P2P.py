@@ -161,7 +161,12 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         line3 = "Replacing URL (.*) with local URL " \
                 "http://%s:(.*)/cros_update_size_(.*)_hash_(.*).cros_au " \
                 "since p2p is enabled." % self._hosts[0].ip
+        errline = "Forcibly disabling use of p2p for downloading because no " \
+                  "suitable peer could be found."
 
+        if re.compile(errline).search(update_engine_log) is not None:
+            raise error.TestFail('P2P update was disabled because no suitable '
+                                 'peer DUT was found.')
         for line in [line1, line2, line3]:
             ue = re.compile(line)
             if ue.search(update_engine_log) is None:
@@ -239,5 +244,4 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
 
         # Update the 2nd DUT with the delta payload via P2P from the 1st DUT.
         update_engine_log = self._update_via_p2p(self._hosts[1])
-
         self._check_for_p2p_entries_in_update_log(update_engine_log)
