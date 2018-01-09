@@ -149,21 +149,6 @@ class MoblabHost(cros_host.CrosHost):
         return self.run(command, **kwargs)
 
 
-    def reboot(self, **dargs):
-        """Reboot the Moblab Host and wait for its services to restart."""
-        super(MoblabHost, self).reboot(**dargs)
-        # In general after a reboot, we want to wait till the web frontend
-        # and other Autotest services are up before executing. However should
-        # something be wrong with these services, repair needs to be able
-        # to continue and reimage the device.
-        try:
-            self.wait_afe_up()
-        except Exception as e:
-            logging.error(
-                    'DUT has rebooted but AFE has failed to load: %s', e)
-            logging.error('Ignoring this error condition')
-
-
     def wait_afe_up(self, timeout_min=5):
         """Wait till the AFE is up and loaded.
 
