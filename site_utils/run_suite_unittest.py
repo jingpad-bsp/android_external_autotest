@@ -296,8 +296,8 @@ class ResultCollectorUnittest(unittest.TestCase):
         # are expecting.
         expected_web_links = [
                  (v.get_testname(),
-                  URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')),
+                  URL_PATTERN % ('http://fake_server',
+                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')),
                   test_sponge_url)
                  for v in collector._test_views]
         # Verify web links are generated correctly.
@@ -309,8 +309,8 @@ class ResultCollectorUnittest(unittest.TestCase):
 
         expected_buildbot_links = [
                  (v.get_testname(),
-                  URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
+                  URL_PATTERN % ('http://fake_server',
+                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views if v['status'] != 'GOOD']
         # Verify buildbot links are generated correctly.
         for i in range(len(collector.buildbot_links)):
@@ -597,7 +597,8 @@ class ResultCollectorUnittest(unittest.TestCase):
         collector = self._end_to_end_test_helper(
                 include_aborted_by_suite_test=True)
         self.assertEqual(
-                collector.return_result.return_code, run_suite.RETURN_CODES.OK)
+                collector.return_result.return_code,
+                run_suite.RETURN_CODES.SUITE_TIMEOUT)
 
         # suite job timed out.
         collector = self._end_to_end_test_helper(suite_job_timed_out=True)

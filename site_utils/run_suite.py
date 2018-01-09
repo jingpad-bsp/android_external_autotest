@@ -63,6 +63,7 @@ from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
@@ -176,9 +177,19 @@ _RETURN_RESULTS = collections.OrderedDict([
     ('test_retry', _ReturnResult(
         RETURN_CODES.WARNING, 'Tests were retried.')),
 
-    ('aborted_test', _ReturnResult(
+    ('test_aborted_prestart', _ReturnResult(
         RETURN_CODES.SUITE_TIMEOUT,
         'Tests were aborted before running; suite must have timed out.')),
+    # This really indicates a user action or an infra failure. But, suite
+    # timeouts cause similar fauilres in the individual tests, so we must
+    # classify these lower than suite_timeout. In case of a suite_timeout, the
+    # result from the suite job will promote the result to suite_timeout.
+    ('test_aborted_mystery',
+     _ReturnResult(
+             RETURN_CODES.SUITE_TIMEOUT,
+             'Tests were aborted after running, but before timeout; '
+             'Test was manually aborted or parsing results failed: '
+             'crbug.com/796348.')),
     ('suite_timeout', _ReturnResult(
         RETURN_CODES.SUITE_TIMEOUT, 'Suite job timed out.')),
 
@@ -554,7 +565,8 @@ class LogLink(object):
         @param sponge_url  url to Sponge result.
         """
         self.anchor = anchor
-        self.url = _URL_PATTERN % (server, job_string)
+        self.url = _URL_PATTERN % (rpc_client_lib.add_protocol(server),
+                                   job_string)
         self.reason = reason
         self.retry_count = retry_count
         self.testname = testname
@@ -1166,7 +1178,7 @@ class _ReturnCodeComputer(object):
         if test_view.is_aborted() and test_view.is_relevant_suite_view():
             # The test was aborted before started
             # This gurantees that the suite has timed out.
-            return _RETURN_RESULTS['aborted_test']
+            return _RETURN_RESULTS['test_aborted_prestart']
         elif test_view.is_aborted() and not test_view.hit_timeout():
             # The test was aborted, but
             # not due to a timeout. This is most likely
@@ -1174,7 +1186,7 @@ class _ReturnCodeComputer(object):
             # also because it was aborted by the user.
             # Since suite timing out is determined by checking
             # the suite job view, we simply ignore this view here.
-            return _RETURN_RESULTS['ok']
+            return _RETURN_RESULTS['test_aborted_mystery']
         elif test_view.is_in_fail_status():  # The test job failed
             if test_view.is_provision():
                 return _RETURN_RESULTS['provision_failed']
