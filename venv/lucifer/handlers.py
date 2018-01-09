@@ -29,17 +29,15 @@ class EventHandler(object):
     finishes.
     """
 
-    def __init__(self, models, metrics, job, autoserv_exit):
+    def __init__(self, metrics, job, autoserv_exit):
         """Initialize instance.
 
-        @param models: reference to frontend.afe.models
         @param metrics: Metrics instance
         @param job: frontend.afe.models.Job instance to own
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
         """
         self.completed = False
-        self._models = models
         self._metrics = metrics
         self._job = job
         # TODO(crbug.com/748234): autoserv not implemented yet.
@@ -69,25 +67,27 @@ class EventHandler(object):
         reset_after_failure = not self._job.run_reset and not success
         if self._should_reboot_duts(autoserv_exit, failures,
                                     reset_after_failure):
-            _create_cleanup_for_job_hosts(self._models, self._job)
+            _create_cleanup_for_job_hosts(self._job)
         else:
-            _mark_job_hosts_ready(self._models, self._job)
+            _mark_job_hosts_ready(self._job)
         if not reset_after_failure:
             return
         self._metrics.send_reset_after_failure(autoserv_exit, failures)
-        _create_reset_for_job_hosts(self._models, self._job)
+        _create_reset_for_job_hosts(self._job)
 
     def _handle_parsing(self, _event, _msg):
-        PARSING = self._models.HostQueueEntry.Status.PARSING
+        models = autotest.load('frontend.afe.models')
+        PARSING = models.HostQueueEntry.Status.PARSING
         hqes = self._job.hostqueueentry_set.all()
         hqes.update(status=PARSING)
 
     def _handle_completed(self, _event, _msg):
+        models = autotest.load('frontend.afe.models')
         final_status = self._final_status()
         for hqe in self._job.hostqueueentry_set.all():
             self._set_completed_status(hqe, final_status)
-        if final_status is not self._models.HostQueueEntry.Status.ABORTED:
-            _stop_prejob_hqes(self._models, self._job)
+        if final_status is not models.HostQueueEntry.Status.ABORTED:
+            _stop_prejob_hqes(self._job)
         if self._job.shard_id is not None:
             # If shard_id is None, the job will be synced back to the master
             self._job.shard_id = None
@@ -95,18 +95,20 @@ class EventHandler(object):
         self.completed = True
 
     def _should_reboot_duts(self, autoserv_exit, failures, reset_after_failure):
+        models = autotest.load('frontend.afe.models')
         reboot_after = self._job.reboot_after
-        if self._final_status() == self._models.HostQueueEntry.Status.ABORTED:
+        if self._final_status() == models.HostQueueEntry.Status.ABORTED:
             return True
-        elif reboot_after == self._models.Job.RebootAfter.ALWAYS:
+        elif reboot_after == models.Job.RebootAfter.ALWAYS:
             return True
-        elif reboot_after == self._models.Job.RebootAfter.IF_ALL_TESTS_PASSED:
+        elif reboot_after == models.Job.RebootAfter.IF_ALL_TESTS_PASSED:
             return autoserv_exit == 0 and failures == 0
         else:
             return failures > 0 and not reset_after_failure
 
     def _final_status(self):
-        Status = self._models.HostQueueEntry.Status
+        models = autotest.load('frontend.afe.models')
+        Status = models.HostQueueEntry.Status
         if _job_aborted(self._job):
             return Status.ABORTED
         if self._autoserv_exit == 0:
@@ -142,17 +144,6 @@ class Metrics(object):
                 'chromeos/autotest/scheduler/postjob_tasks/'
                 'reset_after_failure')
 
-        # Autotest libs
-        self._scheduler_models = autotest.load('scheduler.scheduler_models')
-        self._labellib = autotest.load('utils.labellib')
-
-        # Chromite libs
-        self._cloud_trace = autotest.chromite_load('cloud_trace')
-
-        # Other libs
-        self._types = autotest.deps_load(
-                'google.protobuf.internal.well_known_types')
-
     def send_hqe_completion(self, hqe):
         """Send ts_mon metrics for HQE completion."""
         fields = {
@@ -161,7 +152,8 @@ class Metrics(object):
                 'pool': 'NO_HOST',
         }
         if hqe.host:
-            labels = self._labellib.LabelsMapping.from_host(hqe.host)
+            labellib = autotest.load('utils.labellib')
+            labels = labellib.LabelsMapping.from_host(hqe.host)
             fields['board'] = labels.get('board', '')
             fields['pool'] = labels.get('pool', '')
         self._hqe_completion_metric.increment(fields=fields)
@@ -170,9 +162,10 @@ class Metrics(object):
         """Send CloudTrace metrics for HQE duration."""
         if not (hqe.started_on and hqe.finished_on):
             return
-        cloud_trace = self._cloud_trace
-        hqe_trace_id = self._scheduler_models.hqe_trace_id
-        types = self._types
+        scheduler_models = autotest.load('scheduler.scheduler_models')
+        cloud_trace = autotest.chromite_load('cloud_trace')
+        types = autotest.deps_load('google.protobuf.internal.well_known_types')
+        hqe_trace_id = scheduler_models.hqe_trace_id
 
         span = cloud_trace.Span(
                 'HQE', spanId='0', traceId=hqe_trace_id(hqe.id))
@@ -197,22 +190,26 @@ def _job_aborted(job):
     return False
 
 
-def _stop_prejob_hqes(models, job):
+def _stop_prejob_hqes(job):
     """Stop pending HQEs for a job (for synch_count)."""
-    not_yet_run = _get_prejob_hqes(models, job)
+    models = autotest.load('frontend.afe.models')
+    HQEStatus = models.HostQueueEntry.Status
+    HostStatus = models.Host.Status
+    not_yet_run = _get_prejob_hqes(job)
     if not_yet_run.count() == job.synch_count:
         return
-    entries_to_stop = _get_prejob_hqes(models, job, include_active=False)
+    entries_to_stop = _get_prejob_hqes(job, include_active=False)
     for hqe in entries_to_stop:
-        if hqe.status == models.HostQueueEntry.Status.PENDING:
-            hqe.host.status = models.Host.Status.READY
+        if hqe.status == HQEStatus.PENDING:
+            hqe.host.status = HostStatus.READY
             hqe.host.save()
-        hqe.status = models.HostQueueEntry.Status.STOPPED
+        hqe.status = HQEStatus.STOPPED
         hqe.save()
 
 
-def _get_prejob_hqes(models, job, include_active=True):
+def _get_prejob_hqes(job, include_active=True):
     """Return a queryset of not run HQEs for the job (for synch_count)."""
+    models = autotest.load('frontend.afe.models')
     if include_active:
         statuses = list(models.HostQueueEntry.PRE_JOB_STATUSES)
     else:
@@ -221,12 +218,12 @@ def _get_prejob_hqes(models, job, include_active=True):
             job=job, status__in=statuses)
 
 
-def _create_reset_for_job_hosts(models, job):
+def _create_reset_for_job_hosts(job):
     """Create reset tasks for a job's hosts.
 
-    @param models: frontend.afe.models
     @param job: frontend.afe.models.Job instance
     """
+    models = autotest.load('frontend.afe.models')
     User = models.User
     SpecialTask = models.SpecialTask
     for entry in job.hostqueueentry_set.all():
@@ -236,12 +233,12 @@ def _create_reset_for_job_hosts(models, job):
                 requested_by=User.objects.get(login=job.owner))
 
 
-def _create_cleanup_for_job_hosts(models, job):
+def _create_cleanup_for_job_hosts(job):
     """Create cleanup tasks for a job's hosts.
 
-    @param models: frontend.afe.models
     @param job: frontend.afe.models.Job instance
     """
+    models = autotest.load('frontend.afe.models')
     User = models.User
     SpecialTask = models.SpecialTask
     for entry in job.hostqueueentry_set.all():
@@ -251,11 +248,11 @@ def _create_cleanup_for_job_hosts(models, job):
                 requested_by=User.objects.get(login=job.owner))
 
 
-def _mark_job_hosts_ready(models, job):
+def _mark_job_hosts_ready(job):
     """Mark job's hosts READY.
 
-    @param models: frontend.afe.models
     @param job: frontend.afe.models.Job instance
     """
+    models = autotest.load('frontend.afe.models')
     for entry in job.hostqueueentry_set.all():
         entry.host.set_status(models.Host.Status.READY)
