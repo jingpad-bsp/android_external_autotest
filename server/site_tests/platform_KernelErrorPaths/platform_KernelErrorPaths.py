@@ -124,10 +124,14 @@ class platform_KernelErrorPaths(test.test):
 
         result = self.client.run('cat %s/kernel.*.kcrash' %
                                  self._crash_log_dir)
-        if text not in result.stdout:
+        if not type(text) == tuple:
+           match = (text,)
+        else:
+           match = text
+        if not any(s in result.stdout for s in match):
             raise error.TestFail(
-                "No '%s' in the log after sending '%s' on cpu %d" %
-                (text, trigger, cpu))
+                "'%s' not found in log after sending '%s' on cpu %d" %
+                ((match,), trigger, cpu))
 
     def _client_run_output(self, cmd):
         return self.client.run(cmd).stdout.strip()
@@ -290,7 +294,8 @@ class platform_KernelErrorPaths(test.test):
             'SOFTLOCKUP' : (None, 25, False, 'BUG: soft lockup'),
             'HARDLOCKUP' : ('nmiwatchdog', 50, False,
                             'Watchdog detected hard LOCKUP'),
-            'SPINLOCKUP' : (None, 25, False, 'softlockup: hung tasks'),
+            'SPINLOCKUP' : (None, 25, False, ('softlockup: hung tasks',
+                                              'BUG: scheduling while atomic')),
             'EXCEPTION' : ('nullptr',     10, True,
              # x86 gives "BUG: unable to" while ARM gives "Unableto".
                            'nable to handle kernel NULL pointer '
