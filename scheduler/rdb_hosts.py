@@ -333,7 +333,7 @@ class RDBClientHostWrapper(RDBHost):
                 no board label is found.
         """
         labels = labellib.LabelsMapping(self.labels)
-        return labels.get(constants.Labels.BOARD_PREFIX, '')
+        return labels.get('board', '')
 
 
     @property
