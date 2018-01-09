@@ -104,7 +104,8 @@ class OmahaDevserver(object):
         logging.info(remote_cmd)
 
         try:
-            result = self._devserver_ssh.run(remote_cmd, ignore_status=True)
+            result = self._devserver_ssh.run(remote_cmd, ignore_status=True,
+                                             ssh_failure_retry_ok=True)
         except error.AutoservRunError as e:
             self._log_and_raise_remote_ssh_error(e)
         if result.exit_status != 0:
@@ -156,7 +157,8 @@ class OmahaDevserver(object):
                 time.sleep(self._WAIT_SLEEP_INTERVAL)
         else:
             try:
-                self._devserver_ssh.run_output('uptime')
+                self._devserver_ssh.run_output('uptime',
+                                               ssh_failure_retry_ok=True)
             except error.AutoservRunError as e:
                 logging.debug('Failed to run uptime on the devserver: %s', e)
             raise OmahaDevserverFailedToStart(
@@ -226,7 +228,8 @@ class OmahaDevserver(object):
 
         logging.info('Starting devserver with %r', remote_cmd)
         try:
-            self._devserver_ssh.run_output(remote_cmd)
+            self._devserver_ssh.run_output(remote_cmd,
+                                           ssh_failure_retry_ok=True)
         except error.AutoservRunError as e:
             self._log_and_raise_remote_ssh_error(e)
 
@@ -250,7 +253,7 @@ class OmahaDevserver(object):
 
         for signal in 'SIGTERM', 'SIGKILL':
             remote_cmd = 'kill -s %s %s' % (signal, self._devserver_pid)
-            self._devserver_ssh.run(remote_cmd)
+            self._devserver_ssh.run(remote_cmd, ssh_failure_retry_ok=True)
             try:
                 client_utils.poll_for_condition(
                         devserver_down, sleep_interval=1, desc='devserver down')
@@ -289,7 +292,8 @@ class OmahaDevserver(object):
     def _get_devserver_file_content(self, filename):
         """Returns the content of a file on the devserver."""
         return self._devserver_ssh.run_output('cat %s' % filename,
-                                              stdout_tee=None)
+                                              stdout_tee=None,
+                                              ssh_failure_retry_ok=True)
 
 
     def _get_devserver_log(self):
