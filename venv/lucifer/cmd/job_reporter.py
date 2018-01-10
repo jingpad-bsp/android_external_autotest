@@ -75,6 +75,7 @@ def _main(args):
             'autotest_scheduler', short_lived=True):
         atexit.register(metrics.Flush)
         handler = _make_handler(args)
+        _add_run_job_args(args)
         ret = _run_job(args.run_job_path, handler, args)
         if handler.completed:
             _mark_handoff_completed(args.job_id)
@@ -89,11 +90,20 @@ def _make_handler(args):
         raise NotImplementedError('not implemented yet (crbug.com/748234)')
     job = models.Job.objects.get(id=args.job_id)
     return handlers.EventHandler(
-            models=models,
             metrics=handlers.Metrics(),
             job=job,
             autoserv_exit=args.autoserv_exit,
     )
+
+
+def _add_run_job_args(args):
+    """Add extra args to run_job_args."""
+    models = autotest.load('frontend.afe.models')
+    job = models.Job.objects.get(id=args.job_id)
+    args.run_job_args.extend([
+            '-x-autoserv-exit', str(args.autoserv_exit),
+            '-x-hosts', ','.join(_job_hostnames(job))
+    ])
 
 
 def _run_job(path, event_handler, args):
@@ -119,6 +129,15 @@ def _mark_handoff_completed(job_id):
     handoff = models.JobHandoff.objects.get(job_id=job_id)
     handoff.completed = True
     handoff.save()
+
+
+def _job_hostnames(job):
+    """Return a list of hostnames for a Job.
+
+    @param job: frontend.afe.models.Job instance
+    """
+    hqes = job.hostqueueentry_set.all().prefetch_related('host')
+    return [hqe.host.hostname for hqe in hqes if hqe.host is not None]
 
 
 def _abort_sock_path(jobdir, job_id):

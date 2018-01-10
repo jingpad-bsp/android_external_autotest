@@ -183,7 +183,7 @@ class Chrome(object):
                 if i == num_tries-1:
                     raise
         if init_network_controller:
-          self._browser.platform.network_controller.InitializeIfNeeded()
+          self._browser.platform.network_controller.Open()
 
     def __enter__(self):
         return self

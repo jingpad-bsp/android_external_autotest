@@ -112,8 +112,8 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
                         continue
                     old_val = self.state[k]
                     if (not old_val) != (not v):
-                        raise error.TestFail('%s mismatch: %r %r', k, old_val,
-                                v)
+                        raise error.TestFail('%s mismatch: %r %r' % (k, old_val,
+                                v))
                 self.state.update(match.groupdict())
 
             # Remove the matching string from the output.

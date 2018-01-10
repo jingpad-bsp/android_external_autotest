@@ -238,6 +238,7 @@ class RDBClientHostWrapper(RDBHost):
         fields = {
             'dut_host_name': self.hostname,
             'board': self.board,
+            'model': self._model,
         }
 
         return fields
@@ -292,9 +293,13 @@ class RDBClientHostWrapper(RDBHost):
         metrics.Boolean(
                 self._HOST_WORKING_METRIC, reset_after=True).set(
                         working, fields=fields)
-        metrics.Boolean(
-                self._BOARD_SHARD_METRIC, reset_after=True).set(
-            True, fields={'board': self.board})
+        metrics.Boolean(self._BOARD_SHARD_METRIC, reset_after=True).set(
+                True,
+                fields={
+                        'board': self.board,
+                        'model': self._model,
+                },
+        )
         self.record_pool(fields)
 
 
@@ -333,7 +338,18 @@ class RDBClientHostWrapper(RDBHost):
                 no board label is found.
         """
         labels = labellib.LabelsMapping(self.labels)
-        return labels.get(constants.Labels.BOARD_PREFIX, '')
+        return labels.get('board', '')
+
+
+    @property
+    def _model(self):
+        """Get the model this host.
+
+        @return: A string of the name of the model, e.g., robo360. Returns '' if
+                no model label is found.
+        """
+        labels = labellib.LabelsMapping(self.labels)
+        return labels.get('model', '')
 
 
     @property

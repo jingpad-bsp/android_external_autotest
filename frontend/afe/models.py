@@ -143,6 +143,58 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
         return unicode(self.name)
 
 
+class StaticLabel(model_logic.ModelWithInvalid, dbmodels.Model):
+    """\
+    Required:
+      name: label name
+
+    Optional:
+      kernel_config: URL/path to kernel config for jobs run on this label.
+      platform: If True, this is a platform label (defaults to False).
+      only_if_needed: Deprecated. This is always False.
+      atomic_group: Deprecated. This is always NULL.
+    """
+    name = dbmodels.CharField(max_length=255, unique=True)
+    kernel_config = dbmodels.CharField(max_length=255, blank=True)
+    platform = dbmodels.BooleanField(default=False)
+    invalid = dbmodels.BooleanField(default=False,
+                                    editable=settings.FULL_ADMIN)
+    only_if_needed = dbmodels.BooleanField(default=False)
+
+    name_field = 'name'
+    objects = model_logic.ModelWithInvalidManager()
+    valid_objects = model_logic.ValidObjectsManager()
+    atomic_group = dbmodels.ForeignKey(AtomicGroup, null=True, blank=True)
+
+    def clean_object(self):
+        self.host_set.clear()
+        self.test_set.clear()
+
+
+    class Meta:
+        """Metadata for class StaticLabel."""
+        db_table = 'afe_static_labels'
+
+
+    def __unicode__(self):
+        return unicode(self.name)
+
+
+class ReplacedLabel(dbmodels.Model, model_logic.ModelExtensions):
+    """The tag to indicate Whether to replace labels with static labels."""
+    label = dbmodels.ForeignKey(Label)
+    objects = model_logic.ExtendedManager()
+
+
+    class Meta:
+        """Metadata for class ReplacedLabel."""
+        db_table = 'afe_replaced_labels'
+
+
+    def __unicode__(self):
+        return unicode(self.name)
+
+
 class Shard(dbmodels.Model, model_logic.ModelExtensions):
 
     hostname = dbmodels.CharField(max_length=255, unique=True)
@@ -435,6 +487,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
     Protection = host_protections.Protection
     labels = dbmodels.ManyToManyField(Label, blank=True,
                                       db_table='afe_hosts_labels')
+    static_labels = dbmodels.ManyToManyField(
+            StaticLabel, blank=True, db_table='afe_static_hosts_labels')
     locked_by = dbmodels.ForeignKey(User, null=True, blank=True, editable=False)
     name_field = 'hostname'
     objects = model_logic.ModelWithInvalidManager()
@@ -567,6 +621,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
     def clean_object(self):
         self.aclgroup_set.clear()
         self.labels.clear()
+        self.static_labels.clear()
 
 
     def save(self, *args, **kwargs):
@@ -1237,6 +1292,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                     shard.id))
 
 
+    RebootBefore = model_attributes.RebootBefore
+    RebootAfter = model_attributes.RebootAfter
     # TIMEOUT is deprecated.
     DEFAULT_TIMEOUT = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_timeout_default', default=24)

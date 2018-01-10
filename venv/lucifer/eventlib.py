@@ -4,9 +4,13 @@
 
 """Event subprocess module.
 
-Event subprocesses are subprocesses that print event changes to stdout.
+Event subprocesses are subprocesses that print events to stdout.
 
-Each event is a UNIX line, with a terminating newline character.
+Each event is one line of ASCII text with a terminating newline
+character.  The event is identified with one of the preset strings in
+Event.  The event string may be followed with a single space and a
+message, on the same line.  The interpretation of the message is up to
+the event handler.
 
 run_event_command() starts such a process with a synchronous event
 handler.
@@ -38,9 +42,14 @@ class Event(enum.Enum):
     This should be backward compatible with all versions of
     lucifer_run_job, which lives in the infra/lucifer repository.
 
+    TODO(crbug.com/748234): Events starting with X are temporary to
+    support gradual lucifer rollout.
+
     https://chromium.googlesource.com/chromiumos/infra/lucifer
     """
     STARTING = 'starting'
+    GATHERING = 'gathering'
+    X_TESTS_DONE = 'x_tests_done'
     PARSING = 'parsing'
     COMPLETED = 'completed'
 
@@ -54,10 +63,12 @@ def run_event_command(event_handler, args):
     standard file descriptors are closed and the process is waited for.
     The event command should terminate if this happens.
 
-    event_handler is called with Event instances.  Malformed events
-    emitted by the command will be logged and discarded.
+    event_handler is called to handle each event.  Malformed events
+    emitted by the command will be logged and discarded.  The
+    event_handler should take two positional arguments: an Event
+    instance and a message string.
 
-    @param event_handler: callable that takes an Event instance.
+    @param event_handler: event handler.
     @param args: passed to subprocess.Popen.
     @param returns: exit status of command.
     """
@@ -92,9 +103,10 @@ def _handle_output_line(event_handler, line):
     @param event_handler: callable that takes a StatusChangeEvent.
     @param line: line of output.
     """
+    event_str, _, message = line.rstrip().partition(' ')
     try:
-        event = Event(line.rstrip())
+        event = Event(event_str)
     except ValueError:
         logger.warning('Invalid output %r received', line)
         return
-    event_handler(event)
+    event_handler(event, message)
