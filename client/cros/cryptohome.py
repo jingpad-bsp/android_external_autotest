@@ -694,3 +694,14 @@ class CryptohomeProxy(DBusClient):
             password = ''.join(random.sample(string.ascii_lowercase, 6))
         self.remove(user)
         self.mount(user, password, create=True)
+
+    def lock_install_attributes(self, attrs):
+        """Set and lock install attributes for the device.
+
+        @param attrs: dict of install attributes.
+        """
+        for key, value in attrs.items():
+            if not self.__call(self.iface.InstallAttributesSet, key,
+                               dbus.ByteArray(value + '\0')):
+                return False
+        return self.__call(self.iface.InstallAttributesFinalize)
