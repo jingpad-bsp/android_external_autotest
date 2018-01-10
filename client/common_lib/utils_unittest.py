@@ -689,11 +689,26 @@ class test_run(unittest.TestCase):
     Note: This test runs simple external commands to test the utils.run()
     API without assuming implementation details.
     """
+
+    # Log levels in ascending severity.
+    LOG_LEVELS = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR,
+                  logging.CRITICAL]
+
+
     def setUp(self):
         self.god = mock.mock_god(ut=self)
         self.god.stub_function(utils.logging, 'warning')
         self.god.stub_function(utils.logging, 'debug')
 
+        # Log level -> StringIO.StringIO.
+        self.logs = {}
+        for level in self.LOG_LEVELS:
+            self.logs[level] = StringIO.StringIO()
+
+        # Override logging_manager.LoggingFile to return buffers.
+        def logging_file(level=None, prefix=None):
+            return self.logs[level]
+        self.god.stub_with(utils.logging_manager, 'LoggingFile', logging_file)
 
     def tearDown(self):
         self.god.unstub_all()
@@ -705,6 +720,15 @@ class test_run(unittest.TestCase):
         self.assertEquals(result.exit_status, exit_status)
         self.assertEquals(result.stdout, stdout)
         self.assertEquals(result.stderr, stderr)
+
+
+    def __get_logs(self):
+        """Returns contents of log buffers at all levels.
+
+            @return: 5-element list of strings corresponding to logged messages
+                at the levels in self.LOG_LEVELS.
+        """
+        return [self.logs[v].getvalue() for v in self.LOG_LEVELS]
 
 
     def test_default_simple(self):
@@ -753,6 +777,40 @@ class test_run(unittest.TestCase):
         cmd = 'cat'
         self.__check_result(utils.run(cmd, verbose=False, stdin='hi!\n'),
                             cmd, stdout='hi!\n')
+
+
+    def test_stdout_tee_to_logs_info(self):
+        """Test logging stdout at the info level."""
+        utils.run('echo output', stdout_tee=utils.TEE_TO_LOGS,
+                  stdout_level=logging.INFO, verbose=False)
+        self.assertEqual(self.__get_logs(), ['', 'output\n', '', '', ''])
+
+
+    def test_stdout_tee_to_logs_warning(self):
+        """Test logging stdout at the warning level."""
+        utils.run('echo output', stdout_tee=utils.TEE_TO_LOGS,
+                  stdout_level=logging.WARNING, verbose=False)
+        self.assertEqual(self.__get_logs(), ['', '', 'output\n', '', ''])
+
+
+    def test_stdout_and_stderr_tee_to_logs(self):
+        """Test simultaneous stdout and stderr log levels."""
+        utils.run('echo output && echo error >&2', stdout_tee=utils.TEE_TO_LOGS,
+                  stderr_tee=utils.TEE_TO_LOGS, stdout_level=logging.INFO,
+                  stderr_level=logging.ERROR, verbose=False)
+        self.assertEqual(self.__get_logs(), ['', 'output\n', '', 'error\n', ''])
+
+
+    def test_default_expected_stderr_log_level(self):
+        """Test default expected stderr log level.
+
+        stderr should be logged at the same level as stdout when
+        stderr_is_expected is true and stderr_level isn't passed.
+        """
+        utils.run('echo output && echo error >&2', stdout_tee=utils.TEE_TO_LOGS,
+                  stderr_tee=utils.TEE_TO_LOGS, stdout_level=logging.INFO,
+                  stderr_is_expected=True, verbose=False)
+        self.assertEqual(self.__get_logs(), ['', 'output\nerror\n', '', '', ''])
 
 
     def test_safe_args(self):
