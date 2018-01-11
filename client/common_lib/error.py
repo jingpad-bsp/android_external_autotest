@@ -455,6 +455,10 @@ class NoEligibleHostException(RPCException):
     """Raised when no host could satisfy the requirements of a job."""
 
 
+class UnmodifiableLabelException(RPCException):
+    """Raised when an RPC tries to modify static labels."""
+
+
 class InvalidBgJobCall(Exception):
     """Raised when an invalid call is made to a BgJob object."""
 
