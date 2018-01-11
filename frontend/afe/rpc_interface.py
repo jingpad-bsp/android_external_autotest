@@ -606,7 +606,7 @@ def get_num_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
                                      valid_only, filter_data)
-    return hosts.count()
+    return len(hosts)
 
 
 # tests
