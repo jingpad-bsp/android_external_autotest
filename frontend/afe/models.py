@@ -26,6 +26,9 @@ from autotest_lib.server import utils as server_utils
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
 DEFAULT_REBOOT_AFTER = model_attributes.RebootBefore.NEVER
 
+RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_labels', type=bool, default=False)
+
 
 class AclAccessViolation(Exception):
     """\
@@ -500,6 +503,54 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
     def __init__(self, *args, **kwargs):
         super(Host, self).__init__(*args, **kwargs)
         self._record_attributes(['status'])
+
+
+    @classmethod
+    def classify_labels(cls, multiple_labels):
+        """Split labels to static & non-static.
+
+        @multiple_labels: a list of labels (string).
+
+        @returns: a list of StaticLabel objects & a list of
+                  (non-static) Label objects.
+        """
+        if not multiple_labels:
+            return [], []
+
+        labels = Label.objects.filter(name__in=multiple_labels)
+        if not RESPECT_STATIC_LABELS:
+            return [], labels
+
+        replaced_labels = ReplacedLabel.objects.filter(label__in=labels)
+        replaced_ids = [l.label.id for l in replaced_labels]
+        non_static_labels = [
+                l for l in labels if not l.id in replaced_ids]
+        static_label_names = [
+                l.name for l in labels if l.id in replaced_ids]
+        static_labels = StaticLabel.objects.filter(name__in=static_label_names)
+        return static_labels, non_static_labels
+
+
+    @classmethod
+    def get_hosts_with_labels(cls, multiple_labels, initial_query):
+        """Get hosts by label filters.
+
+        @param multiple_labels: label (string) lists for fetching hosts.
+        @param initial_query: a list of Host object, e.g.
+            [<Host: 100.107.151.253>, <Host: 100.107.151.251>, ...]
+        """
+        if not initial_query:
+            return set()
+
+        static_labels, non_static_labels = cls.classify_labels(multiple_labels)
+
+        for l in static_labels:
+            initial_query = initial_query.filter(static_labels=l)
+
+        for l in non_static_labels:
+            initial_query = initial_query.filter(labels=l)
+
+        return initial_query
 
 
     @staticmethod

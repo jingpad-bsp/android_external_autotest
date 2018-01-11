@@ -28,6 +28,8 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
 DUPLICATE_KEY_MSG = 'Duplicate entry'
+RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_labels', type=bool, default=False)
 
 def prepare_for_serialization(objects):
     """
@@ -179,35 +181,23 @@ def extra_job_type_filters(extra_args, suite=False,
     return extra_args
 
 
-
-def extra_host_filters(multiple_labels=()):
-    """\
-    Generate SQL WHERE clauses for matching hosts in an intersection of
-    labels.
-    """
-    extra_args = {}
-    where_str = ('afe_hosts.id in (select host_id from afe_hosts_labels '
-                 'where label_id=%s)')
-    extra_args['where'] = [where_str] * len(multiple_labels)
-    extra_args['params'] = [models.Label.smart_get(label).id
-                            for label in multiple_labels]
-    return extra_args
-
-
 def get_host_query(multiple_labels, exclude_only_if_needed_labels,
                    valid_only, filter_data):
     """
     @param exclude_only_if_needed_labels: Deprecated. By default it's false.
     """
     if valid_only:
-        query = models.Host.valid_objects.all()
+        initial_query = models.Host.valid_objects.all()
     else:
-        query = models.Host.objects.all()
+        initial_query = models.Host.objects.all()
 
     try:
-        assert 'extra_args' not in filter_data
-        filter_data['extra_args'] = extra_host_filters(multiple_labels)
-        return models.Host.query_objects(filter_data, initial_query=query)
+        initial_hosts = models.Host.query_objects(
+                filter_data, initial_query=initial_query)
+        hosts = models.Host.get_hosts_with_labels(
+                multiple_labels=multiple_labels,
+                initial_query=initial_hosts)
+        return hosts
     except models.Label.DoesNotExist:
         return models.Host.objects.none()
 
@@ -1192,6 +1182,7 @@ def get_sample_dut(board, pool):
     """
     if not (dev_server.PREFER_LOCAL_DEVSERVER and pool and board):
         return None
+
     hosts = list(get_host_query(
         multiple_labels=('pool:%s' % pool, 'board:%s' % board),
         exclude_only_if_needed_labels=False,
