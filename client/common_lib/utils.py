@@ -121,7 +121,8 @@ def _join_with_nickname(base_string, nickname):
 # semantics problem in BgJob. See crbug.com/279312
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
-                 stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None,
+                 stdin=None, stdout_level=DEFAULT_STDOUT_LEVEL,
+                 stderr_level=DEFAULT_STDERR_LEVEL, nickname=None,
                  unjoinable=False, env=None, extra_paths=None):
         """Create and start a new BgJob.
 
@@ -158,10 +159,11 @@ class BgJob(object):
         @param verbose: Boolean, make BgJob logging more verbose.
         @param stdin: Stream object, will be passed to Popen as the new
                       process's stdin.
-        @param stderr_level: A logging level value. If stderr_tee was set to
+        @param stdout_level: A logging level value. If stdout_tee was set to
                              TEE_TO_LOGS, sets the level that tee'd
-                             stderr output will be logged at. Ignored
+                             stdout output will be logged at. Ignored
                              otherwise.
+        @param stderr_level: Same as stdout_level, but for stderr.
         @param nickname: Optional string, to be included in logging messages
         @param unjoinable: Optional bool, default False.
                            This should be True for BgJobs running in background
@@ -186,7 +188,7 @@ class BgJob(object):
                 'stdout_tee and stderr_tee must be DEVNULL for '
                 'unjoinable BgJob')
         self._stdout_tee = get_stream_tee_file(
-                stdout_tee, DEFAULT_STDOUT_LEVEL,
+                stdout_tee, stdout_level,
                 prefix=_join_with_nickname(STDOUT_PREFIX, nickname))
         self._stderr_tee = get_stream_tee_file(
                 stderr_tee, stderr_level,
@@ -660,16 +662,16 @@ def update_version(srcdir, preserve_srcdir, new_version, install,
             pickle.dump(new_version, open(versionfile, 'w'))
 
 
-def get_stderr_level(stderr_is_expected):
+def get_stderr_level(stderr_is_expected, stdout_level=DEFAULT_STDOUT_LEVEL):
     if stderr_is_expected:
-        return DEFAULT_STDOUT_LEVEL
+        return stdout_level
     return DEFAULT_STDERR_LEVEL
 
 
-def run(command, timeout=None, ignore_status=False,
-        stdout_tee=None, stderr_tee=None, verbose=True, stdin=None,
-        stderr_is_expected=None, args=(), nickname=None, ignore_timeout=False,
-        env=None, extra_paths=None):
+def run(command, timeout=None, ignore_status=False, stdout_tee=None,
+        stderr_tee=None, verbose=True, stdin=None, stderr_is_expected=None,
+        stdout_level=None, stderr_level=None, args=(), nickname=None,
+        ignore_timeout=False, env=None, extra_paths=None):
     """
     Run a command on the host.
 
@@ -688,6 +690,9 @@ def run(command, timeout=None, ignore_status=False,
             descriptor, a file object of a real file or a string).
     @param stderr_is_expected: if True, stderr will be logged at the same level
             as stdout
+    @param stdout_level: logging level used if stdout_tee is TEE_TO_LOGS;
+            if None, a default is used.
+    @param stderr_level: like stdout_level but for stderr.
     @param args: sequence of strings of arguments to be given to the command
             inside " quotes after they have been escaped for that; each
             element in the sequence will be given as a separate command
@@ -719,13 +724,18 @@ def run(command, timeout=None, ignore_status=False,
         command = ' '.join([sh_quote_word(arg) for arg in command])
 
     command = ' '.join([command] + [sh_quote_word(arg) for arg in args])
+
     if stderr_is_expected is None:
         stderr_is_expected = ignore_status
+    if stdout_level is None:
+        stdout_level = DEFAULT_STDOUT_LEVEL
+    if stderr_level is None:
+        stderr_level = get_stderr_level(stderr_is_expected, stdout_level)
 
     try:
         bg_job = join_bg_jobs(
             (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
-                   stderr_level=get_stderr_level(stderr_is_expected),
+                   stdout_level=stdout_level, stderr_level=stderr_level,
                    nickname=nickname, env=env, extra_paths=extra_paths),),
             timeout)[0]
     except error.CmdTimeoutError:
