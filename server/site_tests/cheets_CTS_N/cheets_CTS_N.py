@@ -84,8 +84,8 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             cmd = ['run', 'commandAndExit', 'cts', '--plan', plan,
                    '--retry', '%d' % session_id]
         elif plan is not None:
-            # TODO(ihf): This needs testing to support media team.
-            cmd = ['run', 'commandAndExit', 'cts', '--plan', plan]
+            # Subplan for any customized CTS test plan in form of xml.
+            cmd = ['run', 'commandAndExit', 'cts', '--subplan', plan]
         else:
             logging.warning('Running all tests. This can take several days.')
             cmd = ['run', 'commandAndExit', 'cts']
@@ -183,8 +183,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                     module=target_module, session_id=session_id)
         elif target_plan is not None:
             test_name = 'plan.%s' % target_plan
-            test_command = self._tradefed_run_command(
-                plan=target_plan, session_id=session_id)
+            test_command = self._tradefed_run_command(plan=target_plan)
         elif cts_tradefed_args is not None:
             test_name = 'run tradefed %s' % ' '.join(cts_tradefed_args)
             test_command = cts_tradefed_args
@@ -192,6 +191,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             test_command = self._tradefed_run_command()
             test_name = 'all_CTS'
 
+        logging.info('CTS command: %s', test_command)
         return test_command, test_name
 
     def run_once(self,
