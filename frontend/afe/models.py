@@ -195,7 +195,7 @@ class ReplacedLabel(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def __unicode__(self):
-        return unicode(self.name)
+        return unicode(self.label)
 
 
 class Shard(dbmodels.Model, model_logic.ModelExtensions):
