@@ -69,12 +69,6 @@ class DrmTest(object):
             logging.warning('Baytrail is on kernel v4.4, but there is no '
                             'intention to enable atomic.')
             return False
-        if (self.name == 'vgem_test' and
-           (soc == 'rockchip' or soc == 'tegra' or soc == 'mediatek')):
-            if utils.compare_versions(kernel_version, '4.4') < 0:
-                logging.warning('Some ARM SoCs have issues with the vgem_test '
-                                'and we are not going to fix them.')
-                return False
         return True
 
     def run(self):
