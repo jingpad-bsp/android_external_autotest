@@ -202,27 +202,29 @@ def adb_root():
 
 
 def get_container_root():
-    """Returns path to Android container root directory.
+    """Returns path to Android container root directory."""
+    return os.path.dirname(get_container_pid_path())
+
+
+def get_container_pid_path():
+    """Returns the container's PID file path.
 
     Raises:
-      TestError if no container root directory is found, or
-      more than one container root directories are found.
+      TestError if no PID file is found, or more than one files are found.
     """
     # Find the PID file rather than the android_XXXXXX/ directory to ignore
     # stale and empty android_XXXXXX/ directories when they exist.
-    # TODO(yusukes): Investigate why libcontainer sometimes fails to remove
-    # the directory. See b/63376749 for more details.
     arc_container_pid_files = glob.glob(_ANDROID_CONTAINER_PID_PATH)
 
     if len(arc_container_pid_files) == 0:
-        raise error.TestError('Android container not available')
+        raise error.TestError('Android container.pid not available')
 
     if len(arc_container_pid_files) > 1:
-        raise error.TestError('Multiple Android containers found: %r. '
+        raise error.TestError('Multiple Android container.pid files found: %r. '
                               'Reboot your DUT to recover.' % (
                                   arc_container_pid_files))
 
-    return os.path.dirname(arc_container_pid_files[0])
+    return arc_container_pid_files[0]
 
 
 def get_job_pid(job_name):
@@ -237,9 +239,7 @@ def get_job_pid(job_name):
 
 def get_container_pid():
     """Returns the PID of the container."""
-    container_root = get_container_root()
-    pid_path = os.path.join(container_root, 'container.pid')
-    return utils.read_one_line(pid_path)
+    return utils.read_one_line(get_container_pid_path())
 
 
 def get_sdcard_pid():
