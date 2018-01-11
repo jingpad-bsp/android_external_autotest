@@ -125,7 +125,7 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     def cleanup(self):
         """Disable CCD and reenable the EC uart"""
         if hasattr(self, '_orignal_testlab_state'):
-            self.cr50.ccd_set_testlab(self._original_testlab_state)
+            self.cr50.set_ccd_testlab(self._original_testlab_state)
         if (hasattr(self, '_orignal_ccdstate') and
             self._orignal_ccdstate != self.get_ccdstate()):
             self.reset_ccd()
