@@ -6,7 +6,6 @@ from __future__ import division
 
 import base64
 import logging
-import mkvparse
 import os
 import subprocess
 import tempfile
@@ -49,30 +48,39 @@ SW_PREFIX = 'sw_'
 PERCENT = 'percent'
 TIME_UNIT = 'millisecond'
 
-class MatroskaResultListener(mkvparse.MatroskaHandler):
-    def __init__(self):
-        self.all_timestamps_ = set()
-        self.video_track_num_ = 0
-
-    def tracks_available(self):
-        for k in self.tracks:
-            t = self.tracks[k]
-            if t['type'] == 'video':
-                self.video_track_num_ = t['TrackNumber'][1]
-                break
-
-    def frame(self, track_id, timestamp, data, more_laced_frames, duration,
-              keyframe, invisible, discardable):
-        if track_id == self.video_track_num_:
-            timestamp = round(timestamp, 6)
-            self.all_timestamps_.add(timestamp)
-
-    def get_num_frames(self):
-        return len(self.all_timestamps_)
 
 class video_MediaRecorderPerf(test.test):
     """This test measures the performance of MediaRecorder."""
     version = 1
+
+    def get_mkv_result_listener(self):
+        # We want to import mkvparse in a method instead of in the global scope
+        # because when emerging the test, global import of mkvparse would fail
+        # since host environment does not have the path to mkvparse library set
+        # up.
+        import mkvparse
+        class MatroskaResultListener(mkvparse.MatroskaHandler):
+            def __init__(self):
+                self.all_timestamps_ = set()
+                self.video_track_num_ = 0
+
+            def tracks_available(self):
+                for k in self.tracks:
+                    t = self.tracks[k]
+                    if t['type'] == 'video':
+                        self.video_track_num_ = t['TrackNumber'][1]
+                        break
+
+            def frame(self, track_id, timestamp, data, more_laced_frames, duration,
+                      keyframe, invisible, discardable):
+                if track_id == self.video_track_num_:
+                    timestamp = round(timestamp, 6)
+                    self.all_timestamps_.add(timestamp)
+
+            def get_num_frames(self):
+                return len(self.all_timestamps_)
+
+        return MatroskaResultListener()
 
     def video_record_completed(self):
         """Checks if MediaRecorder has recorded videos.
@@ -136,8 +144,9 @@ class video_MediaRecorderPerf(test.test):
             raise error.TestFail('Video buffer from JS is truncated: Was %d.\
                     Got %d' % (video_buffer_size, len(video_buffer)))
 
+        import mkvparse
         video_byte_array = bytearray(base64.b64decode(video_buffer))
-        mkv_listener = MatroskaResultListener()
+        mkv_listener = self.get_mkv_result_listener()
         with tempfile.TemporaryFile() as video_file:
             video_file.write(video_byte_array)
             video_file.seek(0)
