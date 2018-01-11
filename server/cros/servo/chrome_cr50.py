@@ -399,7 +399,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
         self.set_ccd_level(original_level)
 
-        if request_on != self.self.testlab_is_on():
+        if request_on != self.testlab_is_on():
             raise error.TestFail('Failed to set ccd testlab to %s' % state)
 
 
