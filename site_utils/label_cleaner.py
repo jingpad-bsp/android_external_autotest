@@ -46,6 +46,8 @@ PASSWD = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'password')
 DATABASE = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'database')
+RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_labels', type=bool, default=False)
 
 SELECT_USED_LABELS_FORMAT = """
 SELECT DISTINCT(label_id) FROM afe_autotests_dependency_labels UNION
@@ -58,6 +60,9 @@ SELECT DISTINCT(meta_host) FROM afe_host_queue_entries
 
 SELECT_LABELS_FORMAT = """
 SELECT id FROM afe_labels WHERE name %s
+"""
+SELECT_REPLACED_LABELS = """
+SELECT label_id FROM afe_replaced_labels
 """
 
 DELETE_LABELS_FORMAT = """
@@ -98,7 +103,15 @@ def fetch_labels(conn, label, prefix):
     logging.debug('Running: %r', sql)
     cursor.execute(sql)
     rows = cursor.fetchall()
-    return set(r[0] for r in rows)
+    # Don't delete labels whose replaced_by_static_label=True, since they're
+    # actually maintained by afe_static_labels, not afe_labels.
+    if not RESPECT_STATIC_LABELS:
+        return set(r[0] for r in rows)
+    else:
+        cursor.execute(SELECT_REPLACED_LABELS)
+        replaced_labels = cursor.fetchall()
+        replaced_label_ids = set([r[0] for r in replaced_labels])
+        return set(r[0] for r in rows) - replaced_label_ids
 
 
 def _delete_labels(conn, labels):
