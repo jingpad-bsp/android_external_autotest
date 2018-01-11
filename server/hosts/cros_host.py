@@ -2028,6 +2028,40 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return utils.parse_chrome_version(version_string)
 
 
+    def get_ec_version(self):
+        """Get the ec version as strings.
+
+        @returns a string representing this host's ec version.
+        """
+        return self.run('mosys ec info -s fw_version').stdout.strip()
+
+
+    def get_firmware_version(self):
+        """Get the firmware version as strings.
+
+        @returns a string representing this host's firmware version.
+        """
+        crossystem = utils.Crossystem(self)
+        crossystem.init()
+        return crossystem.fwid()
+
+
+    def get_hardware_revision(self):
+        """Get the hardware revision as strings.
+
+        @returns a string representing this host's hardware revision.
+        """
+        return self.run('mosys platform version').stdout.strip()
+
+
+    def get_kernel_version(self):
+        """Get the kernel version as strings.
+
+        @returns a string representing this host's kernel version.
+        """
+        return self.run('uname -r').stdout.strip()
+
+
     def is_chrome_switch_present(self, switch):
         """Returns True if the specified switch was provided to Chrome.
 
