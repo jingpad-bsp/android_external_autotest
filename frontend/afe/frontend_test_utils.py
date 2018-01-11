@@ -37,6 +37,10 @@ class FrontendTestMixin(object):
         self.label1, self.label2, self.label3, self.label6, self.label7, _ \
             = self.labels
 
+        self.labels.append(models.Label.objects.create(name='static'))
+        self.replaced_labels = [models.ReplacedLabel.objects.create(
+                label_id=self.labels[-1].id)]
+
         self.label3.only_if_needed = True
         self.label3.save()
         self.hosts[0].labels.add(self.label1)
