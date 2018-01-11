@@ -88,11 +88,6 @@ class FirmwareUpdater(object):
         self.os_if.copy_file(original_shellball, working_shellball)
         self.extract_shellball()
 
-        self._bios_handler.new_image(
-                os.path.join(self._work_path, self._bios_path))
-        self._ec_handler.new_image(
-                os.path.join(self._work_path, self._ec_path))
-
     def cleanup_temp_dir(self):
         """Cleanup temporary directory."""
         if self.os_if.is_dir(self._temp_path):
@@ -118,6 +113,8 @@ class FirmwareUpdater(object):
         Returns:
             Shellball's fwid.
         """
+        self._bios_handler.new_image(
+                os.path.join(self._work_path, self._bios_path))
         fwid = self._bios_handler.get_section_fwid('a')
         # Remove the tailing null characters
         return fwid.rstrip('\0')
@@ -130,6 +127,8 @@ class FirmwareUpdater(object):
         Returns:
             Shellball's ecid.
         """
+        self._ec_handler.new_image(
+                os.path.join(self._work_path, self._ec_path))
         fwid = self._ec_handler.get_section_fwid('rw')
         # Remove the tailing null characters
         return fwid.rstrip('\0')
