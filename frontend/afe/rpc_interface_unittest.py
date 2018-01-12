@@ -67,6 +67,29 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.god.check_playback()
 
 
+    def test_modify_static_label(self):
+        label1 = models.Label.smart_get('static')
+        self.assertEqual(label1.invalid, 0)
+
+        host2 = models.Host.objects.all()[1]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host2.shard = shard1
+        host2.labels.add(label1)
+        host2.save()
+
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
+                                                  'MockAFE')
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+        self.assertRaises(error.UnmodifiableLabelException,
+                          rpc_interface.modify_label,
+                          label1.id,
+                          invalid=1)
+
+        self.assertEqual(models.Label.smart_get('static').invalid, 0)
+        self.god.check_playback()
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
