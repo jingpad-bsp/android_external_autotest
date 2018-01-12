@@ -12,6 +12,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
+DEPENDENCIES = "meet_app, ptzpro2"
 JOB_RETRIES = 1
 
 DOC = """
