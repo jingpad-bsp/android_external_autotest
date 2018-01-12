@@ -99,6 +99,15 @@ def modify_label(id, **data):
     @param data: New data for a label.
     """
     label_model = models.Label.smart_get(id)
+    if RESPECT_STATIC_LABELS:
+        replaced = models.ReplacedLabel.objects.filter(
+                label__id=label_model.id)
+        if len(replaced) > 0:
+            raise error.UnmodifiableLabelException(
+                    'Failed to delete label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to modify this '
+                    'label.' % label_model.name)
+
     label_model.update_object(data)
 
     # Master forwards the RPC to shards
