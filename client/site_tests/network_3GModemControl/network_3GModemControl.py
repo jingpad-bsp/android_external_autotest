@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import dbus
 import logging
 import random
@@ -9,6 +10,7 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.cellular import cellular
 from autotest_lib.client.cros.networking import cellular_proxy
 from autotest_lib.client.cros.networking import shill_context
@@ -359,9 +361,20 @@ class network_3GModemControl(test.test):
             device_commands = DeviceCommands(self.test_env.shill,
                                              self.device,
                                              slow_connect)
-            with shill_context.ServiceAutoConnectContext(
+
+            # shill disables autoconnect on any cellular service before a user
+            # logs in (CL:851267). To test the autoconnect scenario, we need a
+            # user session to run the test.
+            chrome_context = chrome.Chrome()
+
+            # Set up the autoconnect context after starting a user session so
+            # that we ensure the autoconnect property is set on the cellular
+            # service that may be in the user profile.
+            autoconnect_context = shill_context.ServiceAutoConnectContext(
                     self.test_env.shill.find_cellular_service_object,
-                    self.autoconnect):
+                    self.autoconnect)
+
+            with contextlib.nested(chrome_context, autoconnect_context):
                 # Start with cellular disabled.
                 self.test_env.shill.manager.DisableTechnology(
                         shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR)
