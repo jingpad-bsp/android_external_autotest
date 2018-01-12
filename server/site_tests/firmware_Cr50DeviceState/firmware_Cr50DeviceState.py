@@ -48,6 +48,8 @@ class firmware_Cr50DeviceState(FirmwareTest):
         191 : 'EC_RX_CR50_TX',
         193 : 'USB',
     }
+    # Cr50 won't enable any form of sleep until it has been up for 20 seconds.
+    SLEEP_DELAY = 20
     # The time in seconds to wait in each state
     SLEEP_TIME = 30
     SHORT_WAIT = 5
@@ -109,8 +111,11 @@ class firmware_Cr50DeviceState(FirmwareTest):
             A list with the expected irq count range [min, max]
         """
         if irq_key == self.KEY_REGULAR_SLEEP:
-            min_count = cr50_time if cr50_time >= self.SLEEP_TIME else 0
-            max_count = cr50_time * self.SLEEP_RATE
+            min_count = max(cr50_time - self.SLEEP_DELAY, 0)
+            # Just checking there is not a lot of extra sleep wakeups. Add 1 to
+            # the sleep rate so cr50 can have some extra wakeups, but not too
+            # many.
+            max_count = cr50_time * (self.SLEEP_RATE + 1)
             return [min_count, max_count]
         return self.EXPECTED_IRQ_COUNT_RANGE.get(irq_key, self.DEFAULT_COUNTS)
 
