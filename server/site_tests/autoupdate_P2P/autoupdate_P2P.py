@@ -5,9 +5,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import autoupdater
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.server.cros.update_engine import omaha_devserver
 from autotest_lib.server.cros.update_engine import update_engine_test
 from chromite.lib import retry_util
 
@@ -21,8 +19,6 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
 
 
     def cleanup(self):
-        if self._omaha_devserver is not None:
-            self._omaha_devserver.stop_devserver()
         logging.info('Disabling p2p_update on hosts.')
         for host in self._hosts:
             try:
@@ -31,6 +27,7 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                           cmd)
             except Exception:
                 logging.info('Failed to disable P2P in cleanup.')
+        super(autoupdate_P2P, self).cleanup()
 
     def _enable_p2p_update_on_hosts(self):
         """Turn on the option to enable p2p updating on both DUTs."""
@@ -48,44 +45,17 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
             host.reboot()
 
 
-    def _get_delta_payload(self, build):
-        """
-        Gets the GStorage URL of the N-to-N payload to use for the update.
-
-        @param build: build string e.g samus-release/R65-10225.0.0.
-
-        @returns the delta payload URL.
-
-        """
-        # TODO(dhaddock): Use 'delta_payloads' artifact when crbug.com/793434
-        # is fixed: stage_artifacts(build, ['delta_payloads']).
-        # This will make retrieving and staging the delta payload a one line
-        # operation. It will also mean we can use a lab devserver to serve
-        # the payload on update requests. For now we need to find the payload
-        # ourselves on GStorage.
-        gs = dev_server._get_image_storage_server()
-        delta_regex = 'chromeos_%s*_delta_*' % build.rpartition('/')[2]
-        delta_payload_url_regex = gs + build + '/' + delta_regex
-        logging.debug('Trying to find payloads at %s', delta_payload_url_regex)
-        delta_payloads = utils.gs_ls(delta_payload_url_regex)
-        if len(delta_payloads) < 1:
-            raise error.TestFail('Could not find delta payload for %s', build)
-        logging.debug('Delta payloads found: %s', delta_payloads)
-        logging.info('Found delta payload for test: %s', delta_payloads[0])
-        return delta_payloads[0]
-
-
-    def _update_dut(self, host):
+    def _update_dut(self, host, update_url):
         """
         Update the first DUT normally and save the update engine logs.
 
         @param host: the host object for the first DUT.
+        @param update_url: the url to call for updating the DUT.
 
         """
         logging.info('Updating first DUT with a regular update.')
         try:
-            updater = autoupdater.ChromiumOSUpdater(
-                self._omaha_devserver.get_update_url(), host)
+            updater = autoupdater.ChromiumOSUpdater(update_url, host)
             updater.update_image()
         except autoupdater.RootFSUpdateError:
             logging.exception('Failed to update the first DUT.')
@@ -122,7 +92,7 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                  exception=error.TestFail(err))
 
 
-    def _update_via_p2p(self, host):
+    def _update_via_p2p(self, host, update_url):
         """
         Update the second DUT via P2P from the first DUT.
 
@@ -130,14 +100,15 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         for other devices that have P2P enabled and download from them instead.
 
         @param host: The second DUT.
+        @param update_url: the url to call for updating the DUT.
 
         """
         logging.info('Updating second host via p2p.')
 
         try:
             # Start a non-interactive update which is required for p2p.
-            updater = autoupdater.ChromiumOSUpdater(
-                self._omaha_devserver.get_update_url(), host, interactive=False)
+            updater = autoupdater.ChromiumOSUpdater(update_url, host,
+                                                    interactive=False)
             updater.update_image()
         except autoupdater.RootFSUpdateError:
             logging.exception('Failed to update the second DUT via P2P.')
@@ -224,35 +195,26 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                 raise error.TestFail('The builds on the hosts did not match. '
                                      'Host one: %s, Host two: %s' % (build1,
                                                                      build2))
-            return url, build1
-        else:
-            return tools.get_devserver_build_from_package_url(job_repo_url)
 
 
     def run_once(self, hosts, job_repo_url=None):
         self._hosts = hosts
         logging.info('Hosts for this test: %s', self._hosts)
 
-        url, build = self._verify_hosts(job_repo_url)
+        self._verify_hosts(job_repo_url)
         self._enable_p2p_update_on_hosts()
 
-        # Get an N-to-N delta payload to use for the test.
+        # Get an N-to-N delta payload update url to use for the test.
         # P2P updates are very slow so we will only update with a delta payload.
-        delta_payload = self._get_delta_payload(build)
-        self._autotest_devserver = dev_server.ImageServer(url)
-        staged_url = self._stage_payload_by_uri(delta_payload)
-
-        # Since staging delta payloads by artifact is broken (crbug.com/793434)
-        # we will need to start our own devserver to serve the delta payload
-        # to update requests.
-        self._omaha_devserver = omaha_devserver.OmahaDevserver(
-            self._autotest_devserver.hostname, staged_url, max_updates=2)
-        self._omaha_devserver.start_devserver()
+        update_url = self.get_update_url_for_test(job_repo_url,
+                                                  full_payload=False,
+                                                  critical_update=False,
+                                                  max_updates=2)
 
         # The first device just updates normally.
-        self._update_dut(self._hosts[0])
+        self._update_dut(self._hosts[0], update_url)
         self._check_p2p_still_enabled(self._hosts[0])
 
         # Update the 2nd DUT with the delta payload via P2P from the 1st DUT.
-        update_engine_log = self._update_via_p2p(self._hosts[1])
+        update_engine_log = self._update_via_p2p(self._hosts[1], update_url)
         self._check_for_p2p_entries_in_update_log(update_engine_log)
