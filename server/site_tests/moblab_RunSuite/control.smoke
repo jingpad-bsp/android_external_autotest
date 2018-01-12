@@ -41,6 +41,10 @@ Values pertaining to the test case include:
                                        timeout is provided, the test will try to
                                        fail early to save some time for log
                                        collection from the DUT.
+  clear_devserver_cache=<boolean>      If True, image cache of the devserver
+                                       running on moblab is cleared before
+                                       running the test to validate devserver
+                                       imaging staging flow.
 """
 from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import utils
