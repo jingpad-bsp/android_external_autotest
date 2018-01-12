@@ -91,7 +91,8 @@ def _get_graphics_memory_usage():
         logging.warning('graphics memory info is not available')
         return 0
 
-    return usage
+    # The original value is in bytes
+    return usage / 1024
 
 def _get_linear_regression_slope(x, y):
     """
