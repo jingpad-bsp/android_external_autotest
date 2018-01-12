@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.update_engine import omaha_devserver
 from autotest_lib.server.cros.update_engine import update_engine_test
-
+from chromite.lib import retry_util
 
 class autoupdate_P2P(update_engine_test.UpdateEngineTest):
     """Tests a peer to peer (P2P) autoupdate."""
@@ -25,14 +25,24 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
             self._omaha_devserver.stop_devserver()
         logging.info('Disabling p2p_update on hosts.')
         for host in self._hosts:
-            host.run('update_engine_client --p2p_update=no')
-
+            try:
+                cmd = 'update_engine_client --p2p_update=no'
+                retry_util.RetryException(error.AutoservRunError, 2, host.run,
+                                          cmd)
+            except Exception:
+                logging.info('Failed to disable P2P in cleanup.')
 
     def _enable_p2p_update_on_hosts(self):
         """Turn on the option to enable p2p updating on both DUTs."""
         logging.info('Enabling p2p_update on hosts.')
         for host in self._hosts:
-            host.run('update_engine_client --p2p_update=yes')
+            try:
+                cmd = 'update_engine_client --p2p_update=yes'
+                retry_util.RetryException(error.AutoservRunError, 2, host.run,
+                                          cmd)
+            except Exception:
+                raise error.TestFail('Failed to enable p2p on %s' % host)
+
             host.run('rm /var/lib/update_engine/prefs/p2p-num-attempts',
                      ignore_status=True)
             host.reboot()
@@ -98,7 +108,8 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         """
         logging.info('Checking that p2p is still enabled after update.')
         def _is_p2p_enabled():
-            p2p = host.run('update_engine_client --show_p2p_update')
+            p2p = host.run('update_engine_client --show_p2p_update',
+                           ignore_status=True)
             if p2p.stderr is not None and 'ENABLED' in p2p.stderr:
                 return True
             else:
