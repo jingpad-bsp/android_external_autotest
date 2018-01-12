@@ -146,6 +146,19 @@ class Label(model_logic.ModelWithInvalid, dbmodels.Model):
         return unicode(self.name)
 
 
+    def is_replaced_by_static(self):
+        """Detect whether a label is replaced by a static label.
+
+        'Static' means it can only be modified by skylab inventory tools.
+        """
+        if RESPECT_STATIC_LABELS:
+            replaced = ReplacedLabel.objects.filter(label__id=self.id)
+            if len(replaced) > 0:
+                return True
+
+        return False
+
+
 class StaticLabel(model_logic.ModelWithInvalid, dbmodels.Model):
     """\
     Required:
