@@ -380,7 +380,11 @@ def parse_control_string(control, raise_warnings=False, path=''):
     """
     try:
         mod = compiler.parse(control)
-    except SyntaxError, e:
+    except SyntaxError as e:
+        logging.error('Syntax error (%s) while parsing control string:', e)
+        lines = control.split('\n')
+        for n, l in enumerate(lines):
+            logging.error('Line %d: %s', n + 1, l)
         raise ControlVariableException("Error parsing data because %s" % e)
     return finish_parse(mod, path, raise_warnings)
 
