@@ -71,15 +71,15 @@ class cheets_GTS(tradefed_test.TradefedTest):
         return output
 
 
-    def run_once(self, target_package=None, gts_tradefed_args=None):
+    def run_once(self, target_package=None, tradefed_args=None):
         """Runs GTS with either a target module or a custom command line.
 
         @param target_package: the name of test module to be run.
-        @param gts_tradefed_args: used to pass any specific cmd to GTS binary.
+        @param tradefed_args: used to pass any specific cmd to GTS binary.
         """
-        if gts_tradefed_args:
-            test_command = gts_tradefed_args
-            test_name = ' '.join(gts_tradefed_args)
+        if tradefed_args:
+            test_command = tradefed_args
+            test_name = ' '.join(tradefed_args)
         else:
             test_command = self._tradefed_run_command(target_package)
             test_name = 'module.%s' % target_package
