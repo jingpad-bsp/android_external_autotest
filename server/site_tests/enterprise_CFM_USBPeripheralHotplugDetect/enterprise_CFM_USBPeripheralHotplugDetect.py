@@ -76,6 +76,9 @@ class _Peripherals(object):
                 peripherals_diff[type] = type_diff
         return peripherals_diff
 
+    def __repr__(self):
+     return str(self._dict)
+
 
 class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
     """
@@ -218,13 +221,13 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
 
         cros_peripherals = self._get_cros_usb_peripherals(
             peripherals_to_check)
-        logging.debug('Peripherals detected by CrOS: %s', cros_peripherals)
+        logging.info('Peripherals detected by CrOS: %s', cros_peripherals)
 
         try:
             self._enroll_device_and_skip_oobe()
             cfm_peripherals = self._get_connected_cfm_hangouts_peripherals(
                 peripherals_to_check)
-            logging.debug('Peripherals detected by hotrod: %s',
+            logging.info('Peripherals detected by hangouts: %s',
                           cfm_peripherals)
         except Exception as e:
             exception_msg = str(e)
