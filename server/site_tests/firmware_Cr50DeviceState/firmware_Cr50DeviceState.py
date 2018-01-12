@@ -157,16 +157,14 @@ class firmware_Cr50DeviceState(FirmwareTest):
         return [ irq_dict.get(irq_key, 0) for irq_dict in self.steps ]
 
 
-    def check_irq_counts(self, state):
-        """Check the IRQ counts at each step.
+    def check_for_errors(self, state):
+        """Check for unexpected IRQ counts at each step.
+
+        Find the irq count errors and add them to all_errors.
 
         Args:
             state: The power state: S0, S0ix, S3, or G3.
-
-        Returns:
-            A list of errors
         """
-
         num_steps = len(self.steps)
         # Get all of the deep sleep counts
         events = self.get_step_events()
@@ -236,7 +234,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         if errors:
             logging.info('ERRORS %s IRQ Counts:\n%s', state,
                     pprint.pformat(errors))
-        return errors
+            self.all_errors.append(errors)
 
 
     def enter_state(self, state):
@@ -255,7 +253,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
         time.sleep(self.SHORT_WAIT);
         # check S3 state transition
-        if not self.wait_power_state(state, 10):
+        if not self.wait_power_state(state, self.SHORT_WAIT):
             raise error.TestFail('Platform failed to reach %s state.' % state)
         self.stage_irq_add(self.get_irq_counts(), 'in %s' % state)
 
@@ -298,12 +296,12 @@ class firmware_Cr50DeviceState(FirmwareTest):
         self.enter_state('S0')
 
         # Check that the progress of the irq counts seems reasonable
-        return self.check_irq_counts(state)
+        self.check_for_errors(state)
 
 
     def run_once(self, host):
         """Go through S0ix, S3, and G3. Verify there are no interrupt storms"""
-        all_errors = []
+        self.all_errors = []
 
         # Initialize the Test IRQ counts
         self.reset_irq_counts()
@@ -314,20 +312,13 @@ class firmware_Cr50DeviceState(FirmwareTest):
         # Login before entering S0ix so cr50 will be able to enter regular sleep
         client_at = autotest.Autotest(host)
         client_at.run_test('login_LoginSuccess')
-        rv = self.run_transition('S0ix')
-        if rv:
-            all_errors.append(rv)
+        self.run_transition('S0ix')
 
         # Enter S3
-        rv = self.run_transition('S3')
-        if rv:
-            all_errors.append(rv)
+        self.run_transition('S3')
 
         # Enter G3
-        rv = self.run_transition('G3')
-        if rv:
-            all_errors.append(rv)
+        self.run_transition('G3')
 
-        if all_errors:
-            raise error.TestFail('Unexpected IRQ counts: %s' % all_errors)
-
+        if self.all_errors:
+            raise error.TestFail('Unexpected IRQ counts: %s' % self.all_errors)
