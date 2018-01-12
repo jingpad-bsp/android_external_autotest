@@ -14,7 +14,7 @@ from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 class firmware_Cr50DeviceState(FirmwareTest):
     """Verify Cr50 tracks the EC and AP state correctly.
 
-    Put the device through S0, S0ix, S3, and S5. Cr50 responds to these state
+    Put the device through S0, S0ix, S3, and G3. Cr50 responds to these state
     changes by enabling/disabling uart and changing its suspend type. Verify
     that none of these cause any interrupt storms on Cr50. Make sure that there
     aren't any interrupt storms and that Cr50 enters regular or deep sleep a
@@ -67,7 +67,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         KEY_TIME : [0, CONSERVATIVE_WAIT_TIME],
         'S0ix' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
         'S3' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
-        'S5' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
+        'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
         # Regular sleep is calculated based on the cr50 time
     }
 
@@ -161,7 +161,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         """Check the IRQ counts at each step.
 
         Args:
-            state: The power state: S0, S0ix, S3, or S5.
+            state: The power state: S0, S0ix, S3, or G3.
 
         Returns:
             A list of errors
@@ -249,7 +249,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
                 full_command = 'echo freeze > /sys/power/state &'
             elif state == 'S3':
                 full_command = 'echo mem > /sys/power/state &'
-            elif state == 'S5':
+            elif state == 'G3':
                 full_command = 'poweroff'
             self.faft_client.system.run_shell_command(full_command)
 
@@ -281,7 +281,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         correctly.
 
         Args:
-            state: the power state: S0ix, S3, or S5
+            state: the power state: S0ix, S3, or G3
 
         Returns:
             A list of errors or an empty list if there were none
@@ -302,7 +302,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
 
     def run_once(self, host):
-        """Go through S0ix, S3, and S5. Verify there are no interrupt storms"""
+        """Go through S0ix, S3, and G3. Verify there are no interrupt storms"""
         all_errors = []
 
         # Initialize the Test IRQ counts
@@ -323,8 +323,8 @@ class firmware_Cr50DeviceState(FirmwareTest):
         if rv:
             all_errors.append(rv)
 
-        # Enter S5
-        rv = self.run_transition('S5')
+        # Enter G3
+        rv = self.run_transition('G3')
         if rv:
             all_errors.append(rv)
 
