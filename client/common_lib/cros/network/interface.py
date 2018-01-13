@@ -57,8 +57,6 @@ DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x168c', '0x003e'): NAME_QUALCOMM_ATHEROS_QCA6174,
     DeviceInfo('0x105b', '0xe09d'): NAME_QUALCOMM_ATHEROS_NFA344A,
     DeviceInfo('0x8086', '0x08b1'): NAME_INTEL_7260,
-    # TODO(wiley): Why is this number slightly different on some platforms?
-    #              Is it just a different part source?
     DeviceInfo('0x8086', '0x08b2'): NAME_INTEL_7260,
     DeviceInfo('0x8086', '0x095a'): NAME_INTEL_7265,
     DeviceInfo('0x8086', '0x095b'): NAME_INTEL_7265,
