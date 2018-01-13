@@ -4,11 +4,11 @@
 
 import datetime
 import logging
+import os.path
 import time
 from autotest_lib.client.common_lib.cros import arc
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.bin import test
-
 
 class cheets_StartAndroid(test.test):
     """Helper to run Android's CTS on autotest.
@@ -22,6 +22,7 @@ class cheets_StartAndroid(test.test):
     version = 1
 
     def cleanup(self):
+        """Log to the dashboard after everything finishes up"""
         if hasattr(self, '_run_times'):
             logging.debug("Times to start Chrome and Android: %s",
                           self._run_times)
@@ -40,25 +41,38 @@ class cheets_StartAndroid(test.test):
                 )
 
     def run_once(self, count=None, dont_override_profile=False):
+        """Run stress test by logging in and starting ARC several times."""
         if count:
-            # Run stress test by logging in and starting ARC several times.
             # Each iteration is about 15s on Samus.
             self._run_times = []
             for i in range(count):
                 logging.info('cheets_StartAndroid iteration %d', i)
 
-                start = datetime.datetime.utcnow()
-                chrome_obj = chrome.Chrome(
-                    arc_mode = arc.arc_common.ARC_MODE_ENABLED,
-                    dont_override_profile=dont_override_profile)
-                elapsed_time = (datetime.datetime.utcnow() - start
-                       ).total_seconds()
+                try:
+                    start = datetime.datetime.utcnow()
+                    chrome_obj = chrome.Chrome(
+                        arc_mode = arc.arc_common.ARC_MODE_ENABLED,
+                        dont_override_profile=dont_override_profile)
+                    elapsed_time = (datetime.datetime.utcnow() - start
+                           ).total_seconds()
+                    self._run_times.append(elapsed_time)
+
+                except:
+                    pid = chrome_obj.get_browser_pid()
+                    chrome_comm = os.path.join('/proc/', str(pid), '/comm')
+                    if os.path.isfile(chrome_comm):
+                        with open(chrome_comm, 'r') as f:
+                            if f.read() == 'chrome':
+                                logging.info('Chrome is still alive')
+                            else:
+                                logging.info('This PID is no longer chrome')
+                    else:
+                        logging.info('Chrome seems to have died')
 
                 # 2 seconds for chrome to settle down before logging out
                 time.sleep(2)
                 chrome_obj.close()
 
-                self._run_times.append(elapsed_time)
         else:
             # Utility used by server tests to login. We do not log out, and
             # ensure the machine will be rebooted after test.
