@@ -518,6 +518,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             return [], []
 
         labels = Label.objects.filter(name__in=multiple_labels)
+
         if not RESPECT_STATIC_LABELS:
             return [], labels
 
@@ -536,13 +537,22 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         """Get hosts by label filters.
 
         @param multiple_labels: label (string) lists for fetching hosts.
-        @param initial_query: a list of Host object, e.g.
-            [<Host: 100.107.151.253>, <Host: 100.107.151.251>, ...]
+        @param initial_query: a model_logic.QuerySet of Host object, e.g.
+
+                Host.objects.all(), Host.valid_objects.all().
+
+            This initial_query cannot be a sliced QuerySet, e.g.
+
+                Host.objects.all().filter(query_limit=10)
         """
-        if not initial_query:
-            return set()
+        if not multiple_labels:
+            return initial_query
 
         static_labels, non_static_labels = cls.classify_labels(multiple_labels)
+        if len(static_labels) + len(non_static_labels) != len(multiple_labels):
+            # Some labels don't exist in afe db, which means no hosts
+            # should be matched.
+            return set()
 
         for l in static_labels:
             initial_query = initial_query.filter(static_labels=l)
