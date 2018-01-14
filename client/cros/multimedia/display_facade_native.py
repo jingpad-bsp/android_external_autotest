@@ -157,8 +157,12 @@ class DisplayFacadeNative(object):
         utils.wait_for_value(lambda: (
                 extension.EvaluateJavaScript(
                     'window.__set_display_rotation_has_error') != None),
-                expected_value="success")
+                expected_value=True)
         time.sleep(delay_after_rotation)
+        result = extension.EvaluateJavaScript(
+                'window.__set_display_rotation_has_error')
+        if result != 'success':
+            raise RuntimeError('Failed to set display rotation: %r' % result)
 
 
     def get_available_resolutions(self, display_id):
@@ -219,8 +223,6 @@ class DisplayFacadeNative(object):
                             for (var m of info['modes']) {
                                 if (m['width'] == %(width)d &&
                                     m['height'] == %(height)d) {
-                                    window.__set_resolution_progress =
-                                        "found_mode";
                                     mode = m;
                                     break;
                                 }
@@ -252,7 +254,11 @@ class DisplayFacadeNative(object):
         utils.wait_for_value(lambda: (
                 extension.EvaluateJavaScript(
                     'window.__set_resolution_progress') != None),
-                expected_value="success")
+                expected_value=True)
+        result = extension.EvaluateJavaScript(
+                'window.__set_resolution_progress')
+        if result != 'succeeded':
+            raise RuntimeError('Failed to set resolution, result: %r' % result)
 
 
     @_retry_display_call
