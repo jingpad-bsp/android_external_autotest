@@ -6,6 +6,7 @@ import logging
 import time
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error as error_lib
 from autotest_lib.client.cros.chameleon import screen_utility_factory
 
 
@@ -75,6 +76,12 @@ class ChameleonScreenTest(object):
                 # calibration image directly as an workaround.
                 board = self._host.get_board().replace('board:', '')
                 if board in ['kevin']:
+                    # TODO(waihong): In mirrored mode, using calibration image
+                    # to compare is not feasible due to the size difference.
+                    # Skip the error first and think a better way to compare.
+                    if test_mirrored:
+                        raise error_lib.TestNAError('Test this item manually! '
+                                'Missing CrOS feature, not able to automate.')
                     logging.info('Compare the calibration image directly...')
                     error = self._calib_comparer.compare()
 
