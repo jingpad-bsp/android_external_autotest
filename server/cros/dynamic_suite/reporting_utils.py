@@ -203,7 +203,8 @@ def link_job(job_id, instance_server=None):
     if not instance_server:
         instance_server = global_config.global_config.get_config_value(
             'SERVER', 'hostname', default='localhost')
-        instance_server = rpc_client_lib.add_protocol(instance_server)
+
+    instance_server = rpc_client_lib.add_protocol(instance_server)
     return _job_view % (instance_server, job_id)
 
 

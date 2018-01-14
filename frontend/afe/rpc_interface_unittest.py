@@ -31,6 +31,65 @@ SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
 _hqe_status = models.HostQueueEntry.Status
 
 
+class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
+                       frontend_test_utils.FrontendTestMixin):
+    def setUp(self):
+        self._frontend_common_setup()
+        self.god = mock.mock_god()
+        self.old_respect_static_config = rpc_interface.RESPECT_STATIC_LABELS
+        rpc_interface.RESPECT_STATIC_LABELS = True
+
+
+    def tearDown(self):
+        self.god.unstub_all()
+        self._frontend_common_teardown()
+        global_config.global_config.reset_config_values()
+        rpc_interface.RESPECT_STATIC_LABELS = self.old_respect_static_config
+
+
+    def test_delete_static_label(self):
+        label1 = models.Label.smart_get('static')
+
+        host2 = models.Host.objects.all()[1]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host2.shard = shard1
+        host2.labels.add(label1)
+        host2.save()
+
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
+                                                  'MockAFE')
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+        self.assertRaises(error.UnmodifiableLabelException,
+                          rpc_interface.delete_label,
+                          label1.id)
+
+        self.god.check_playback()
+
+
+    def test_modify_static_label(self):
+        label1 = models.Label.smart_get('static')
+        self.assertEqual(label1.invalid, 0)
+
+        host2 = models.Host.objects.all()[1]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host2.shard = shard1
+        host2.labels.add(label1)
+        host2.save()
+
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
+                                                  'MockAFE')
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+        self.assertRaises(error.UnmodifiableLabelException,
+                          rpc_interface.modify_label,
+                          label1.id,
+                          invalid=1)
+
+        self.assertEqual(models.Label.smart_get('static').invalid, 0)
+        self.god.check_playback()
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):

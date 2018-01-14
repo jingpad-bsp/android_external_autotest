@@ -36,6 +36,8 @@ NAME_QUALCOMM_ATHEROS_QCA6174 = 'Qualcomm Atheros QCA6174'
 NAME_QUALCOMM_ATHEROS_NFA344A = 'Qualcomm Atheros NFA344A/QCA6174'
 NAME_INTEL_7260 = 'Intel 7260'
 NAME_INTEL_7265 = 'Intel 7265'
+NAME_INTEL_9000 = 'Intel 9000'
+NAME_INTEL_9260 = 'Intel 9260'
 NAME_BROADCOM_BCM4354_SDIO = 'Broadcom BCM4354 SDIO'
 NAME_BROADCOM_BCM4356_PCIE = 'Broadcom BCM4356 PCIE'
 NAME_BROADCOM_BCM4371_PCIE = 'Broadcom BCM4371 PCIE'
@@ -55,11 +57,12 @@ DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x168c', '0x003e'): NAME_QUALCOMM_ATHEROS_QCA6174,
     DeviceInfo('0x105b', '0xe09d'): NAME_QUALCOMM_ATHEROS_NFA344A,
     DeviceInfo('0x8086', '0x08b1'): NAME_INTEL_7260,
-    # TODO(wiley): Why is this number slightly different on some platforms?
-    #              Is it just a different part source?
     DeviceInfo('0x8086', '0x08b2'): NAME_INTEL_7260,
     DeviceInfo('0x8086', '0x095a'): NAME_INTEL_7265,
     DeviceInfo('0x8086', '0x095b'): NAME_INTEL_7265,
+    DeviceInfo('0x8086', '0x9df0'): NAME_INTEL_9000,
+    DeviceInfo('0x8086', '0x31dc'): NAME_INTEL_9000,
+    DeviceInfo('0x8086', '0x2526'): NAME_INTEL_9260,
     DeviceInfo('0x02d0', '0x4354'): NAME_BROADCOM_BCM4354_SDIO,
     DeviceInfo('0x14e4', '0x43ec'): NAME_BROADCOM_BCM4356_PCIE,
     DeviceInfo('0x14e4', '0x440d'): NAME_BROADCOM_BCM4371_PCIE,

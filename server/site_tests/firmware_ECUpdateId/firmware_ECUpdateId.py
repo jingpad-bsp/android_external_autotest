@@ -17,9 +17,9 @@ class firmware_ECUpdateId(FirmwareTest):
     version = 1
 
     def initialize(self, host, cmdline_args, dev_mode=False):
-        # This test tries to corrupt EC firmware. Should disable EC WP.
+        # If EC isn't write-protected, it won't do EFS. Should enable WP.
         super(firmware_ECUpdateId, self).initialize(host, cmdline_args,
-                                                      ec_wp=False)
+                                                    ec_wp=True)
         # In order to test software sync, it must be enabled.
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC, 0)
         self.backup_firmware()
@@ -33,11 +33,13 @@ class firmware_ECUpdateId(FirmwareTest):
         self.dev_mode = dev_mode
 
     def cleanup(self):
+        # The superclass's cleanup() restores the original WP state.
+        # Do it before restore the firmware.
+        super(firmware_ECUpdateId, self).cleanup()
         try:
             self.restore_firmware()
         except Exception as e:
             logging.error("Caught exception: %s", str(e))
-        super(firmware_ECUpdateId, self).cleanup()
 
     def setup_ec_rw_to_a(self):
         """For EC EFS, make EC boot into RW A."""
@@ -97,9 +99,19 @@ class firmware_ECUpdateId(FirmwareTest):
         else:
             time.sleep(self.faft_config.software_sync_update)
 
+    def is_type_c_charger(self):
+        """Return True if it uses a Type-C charger."""
+        command = 'ectool usbpdpower'
+        output = self.faft_client.system.run_shell_command_get_output(command)
+        # Check if the string 'SNK Charger' appears in one of the PD ports.
+        return 'SNK Charger' in '\n'.join(output)
+
     def run_once(self):
         if not self.faft_client.ec.is_efs():
             raise error.TestNAError("Nothing needs to be tested for non-EFS")
+
+        type_c = self.is_type_c_charger()
+        logging.info("Type-C charger is %sused", "" if type_c else "not ")
 
         logging.info("Check the current state and record hash.")
         self.check_state((self.active_copy_checker, 'RW'))
@@ -110,7 +122,7 @@ class firmware_ECUpdateId(FirmwareTest):
         modified_hash = self.faft_client.updater.get_ec_hash()
 
         logging.info("Reboot EC. Verify if EFS works as intended.")
-        self.sync_and_ec_reboot()
+        self.sync_and_ec_reboot('hard')
         self.wait_software_sync_and_boot()
         self.switcher.wait_for_client()
 
@@ -118,21 +130,40 @@ class firmware_ECUpdateId(FirmwareTest):
         self.check_state((self.active_copy_checker, 'RW_B'))
         self.check_state((self.active_hash_checker, modified_hash))
 
+        logging.info("Disable EC WP (also reboot)")
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.set_ec_write_protect_and_reboot(False))
+
         logging.info("Corrupt the active EC RW.")
         self.corrupt_active_rw()
 
-        logging.info("Reboot EC. Verify if EFS works as intended.")
-        self.sync_and_ec_reboot()
-        self.wait_software_sync_and_boot()
-        self.switcher.wait_for_client()
+        logging.info("Re-enable EC WP (also reboot)")
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.set_ec_write_protect_and_reboot(True))
 
         logging.info("Expect EC recovered.")
-        self.check_state((self.active_copy_checker, 'RW'))
+        # For the case of using Type-C charger,
+        #  * EC performs EC-EFS, jumps to A, and boots AP.
+        #  * AP software-sync's to EC B. Reboots.
+        #  * EC performs EC-EFS and jumps to B.
+        # For the case of using barrel jack charger,
+        #  * EC does not perform EC-EFS, stays in RO, and boots AP.
+        #  * AP software-sync's to EC A and EC jumps to A.
+        self.check_state((self.active_copy_checker, 'RW_B' if type_c else 'RW'))
         self.check_state((self.active_hash_checker, modified_hash))
 
         logging.info("Restore the original AP firmware and reboot.")
         self.restore_firmware(restore_ec=False)
 
         logging.info("Expect EC restored back (the original hash).")
-        self.check_state((self.active_copy_checker, 'RW_B'))
+        # For the case of using Type-C charger,
+        #  * EC performs EC-EFS, jumps to B, and boots AP.
+        #  * AP software-sync's to EC A. Reboots.
+        #  * EC performs EC-EFS and jumps to A.
+        # For the case of using barrel jack charger,
+        #  * EC does not perform EC-EFS, stays in RO, and boots AP.
+        #  * AP software-sync's to EC B and EC jumps to B.
+        self.check_state((self.active_copy_checker, 'RW' if type_c else 'RW_B'))
         self.check_state((self.active_hash_checker, original_hash))
