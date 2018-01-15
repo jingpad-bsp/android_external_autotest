@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import re
 import time
 
 from autotest_lib.client.common_lib import error
@@ -15,29 +16,36 @@ from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 _SHORT_TIMEOUT = 5
 
-# Mappings from USB spec to string names that are displayed in the Hangouts UI.
+# Constants for Hangouts UI peripherals names. Each entry is a tuple in the form
+# of (<hangouts_name_regex>, <USB device spec>). We use regular expressions for
+# the labels since these are not constant values, i.e. they depend on which USB
+# port a device has been plugged in to.
 # TODO(dtosic): Move this out to a separate util so other tests can reuse it.
-_HANGOUTS_UI_CAMERA_NAMES = {
-    cfm_usb_devices.HD_PRO_WEBCAM_C920 : 'HD Pro Webcam C920 (046d:082d)',
-    cfm_usb_devices.LOGITECH_WEBCAM_C930E : 'Logitech Webcam C930e (046d:0843)',
-}
+_HANGOUTS_UI_CAMERA_NAMES = [
+    (r'HD Pro Webcam C920 \(046d:082d\)', cfm_usb_devices.HD_PRO_WEBCAM_C920),
+    (r'Logitech Webcam C930e \(046d:0843\)',
+        cfm_usb_devices.LOGITECH_WEBCAM_C930E),
+]
 
-_HANGOUTS_UI_MICROPHONE_NAMES = {
-    cfm_usb_devices.JABRA_SPEAK_410 : 'Jabra SPEAK 410',
-    # The cameras also have microphones on them.
-    cfm_usb_devices.HD_PRO_WEBCAM_C920 : 'HD Pro Webcam C920: USB Audio:0,0',
-    cfm_usb_devices.LOGITECH_WEBCAM_C930E : (
-        'Logitech Webcam C930e: USB Audio:0,0'),
-}
+_HANGOUTS_UI_MICROPHONE_NAMES = [
+    (r'Jabra SPEAK 410', cfm_usb_devices.JABRA_SPEAK_410),
+    # Some cameras also have integrated microphones.
+    (r'HD Pro Webcam C920: USB Audio:[0-9],[0-9]',
+        cfm_usb_devices.HD_PRO_WEBCAM_C920),
+    (r'Logitech Webcam C930e: USB Audio:[0-9],[0-9]',
+        cfm_usb_devices.LOGITECH_WEBCAM_C930E),
+]
 
-_HANGOUTS_UI_SPEAKER_NAMES = {
-    cfm_usb_devices.JABRA_SPEAK_410 : 'Jabra SPEAK 410',
-}
+_HANGOUTS_UI_SPEAKER_NAMES = [
+    (r'Jabra SPEAK 410', cfm_usb_devices.JABRA_SPEAK_410),
+]
 
-
-def _get_filtered_values(original, key_whitelist):
-    """Returns a list of values for for the specified keys."""
-    return [original[key] for key in original if key in key_whitelist]
+def _get_usb_spec_for_hangouts_device_name(device_name, name_to_spec_map):
+    """Returns a USB spec (if found) for the specified name, or None."""
+    for name_regex, usb_spec in name_to_spec_map:
+        if re.match(name_regex, device_name):
+            return usb_spec
+    return None
 
 
 class _Peripherals(object):
@@ -50,17 +58,20 @@ class _Peripherals(object):
             'Camera':[]
         }
 
-    def add_mic(self, mic_name):
+    def add_mic(self, spec):
         """Registers a mic name."""
-        self._dict['Microphone'].append(mic_name)
+        self._add_device('Microphone', spec)
 
-    def add_speaker(self, speaker_name):
+    def add_speaker(self, spec):
         """Registers a speaker name."""
-        self._dict['Speaker'].append(speaker_name)
+        self._add_device('Speaker', spec)
 
-    def add_camera(self, camera_name):
+    def add_camera(self, spec):
         """Registers a camera name."""
-        self._dict['Camera'].append(camera_name)
+        self._add_device('Camera', spec)
+
+    def _add_device(self, type, spec):
+        self._dict[type].append(str(spec))
 
     def _get_by_type(self, type):
         return self._dict[type]
@@ -125,16 +136,11 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
             device_spec = cfm_usb_devices.get_usb_device_spec(vid_pid)
             if device_spec in peripherals_to_check:
                 if 'Microphone' in device_types:
-                    cros_peripherals.add_mic(
-                        _HANGOUTS_UI_MICROPHONE_NAMES[device_spec])
+                    cros_peripherals.add_mic(device_spec)
                 if 'Speaker' in device_types:
-                    cros_peripherals.add_speaker(
-                        _HANGOUTS_UI_SPEAKER_NAMES[device_spec])
+                    cros_peripherals.add_speaker(device_spec)
                 if 'Video' in device_types:
-                    cros_peripherals.add_camera(
-                        _HANGOUTS_UI_CAMERA_NAMES[device_spec])
-
-        logging.info("Connected Cros USB peripherals: %s", cros_peripherals)
+                    cros_peripherals.add_camera(device_spec)
         return cros_peripherals
 
 
@@ -154,22 +160,25 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         @returns  A _Peripherals object
         """
         cfm_peripherals = _Peripherals()
-        for mic in self.cfm_facade.get_mic_devices():
-            if mic in _get_filtered_values(_HANGOUTS_UI_MICROPHONE_NAMES,
-                                           peripherals_to_check):
-                cfm_peripherals.add_mic(mic)
+        for mic_name in self.cfm_facade.get_mic_devices():
+            mic_spec = _get_usb_spec_for_hangouts_device_name(
+                mic_name, _HANGOUTS_UI_MICROPHONE_NAMES)
+            if mic_spec and mic_spec in peripherals_to_check:
+                cfm_peripherals.add_mic(mic_spec)
 
-        for speaker in self.cfm_facade.get_speaker_devices():
-            if speaker in _get_filtered_values(_HANGOUTS_UI_SPEAKER_NAMES,
-                                               peripherals_to_check):
-                cfm_peripherals.add_speaker(speaker)
+        for speaker_name in self.cfm_facade.get_speaker_devices():
+            speaker_spec = _get_usb_spec_for_hangouts_device_name(
+                speaker_name, _HANGOUTS_UI_SPEAKER_NAMES)
+            if speaker_spec and speaker_spec in peripherals_to_check:
+                cfm_peripherals.add_speaker(speaker_spec)
 
-        for camera in self.cfm_facade.get_camera_devices():
-            if camera in _get_filtered_values(_HANGOUTS_UI_CAMERA_NAMES,
-                                               peripherals_to_check):
-                cfm_peripherals.add_camera(camera)
-
-        logging.info("Reported CfM peripherals: %s", cfm_peripherals)
+        for camera_name in self.cfm_facade.get_camera_devices():
+            logging.info("Ccamera_name: %s", camera_name)
+            camera_spec = _get_usb_spec_for_hangouts_device_name(
+                camera_name, _HANGOUTS_UI_CAMERA_NAMES)
+            logging.info("camera_spec: %s", camera_spec)
+            if camera_spec and camera_spec in peripherals_to_check:
+                cfm_peripherals.add_camera(camera_spec)
         return cfm_peripherals
 
 
@@ -254,7 +263,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         if peripherals_diff:
             raise error.TestFail(
                 'Peripherals do not match.\n'
-                'Diff: {0} \n Cros: {1} \n CfM: {2} \n.'
+                'Diff: {0} \n Cros: {1} \n Hangouts: {2} \n.'
                 'No of Crashes: {3}. Crashes: {4}'.format(
                 peripherals_diff, cros_peripherals, cfm_peripherals,
                 len(detect_crash.get_crash_files()), crash_identified_at))
