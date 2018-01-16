@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.audio import alsa_utils
 
 
 class audio_AlsaAPI(test.test):
@@ -19,6 +19,9 @@ class audio_AlsaAPI(test.test):
     # Chell's HDMI device hw:0,4 can not be used without being plugged.
     # Also, its HDMI device hw:0,5 and hw:0,6 are dummy devices.
     _DEVICES_TO_BE_SKIPPED = {'chell': [(0, 4), (0, 5), (0, 6)]}
+    # A list of boards that do not correctly implement snd_pcm_drop, see
+    # crosbug.com/p/51882
+    _BOARDS_WITHOUT_DROP_SUPPORT  = ['banon', 'elm', 'samus', 'squawks']
 
     def run_once(self, to_test):
         """Run alsa_api_test binary and verify its result.
@@ -31,9 +34,17 @@ class audio_AlsaAPI(test.test):
                         drop: Checks snd_pcm_drop API.
 
         """
+
+        # Skip test_drop on boards that do not implement snd_pcm_drop
+        # correctly, as it cannot pass.
+        board = utils.get_board().lower()
+        if to_test == 'drop' and board in self._BOARDS_WITHOUT_DROP_SUPPORT:
+            logging.info('Skipping test_drop for unsupported board: %s', board)
+            return
+
         self._devices = []
         self._find_sound_devices()
-        method_name = 'test_' + to_test
+        method_name = '_test_' + to_test
         method = getattr(self, method_name)
         for card_index, device_index in self._devices:
             device = 'hw:%s,%s' % (card_index, device_index)
@@ -80,7 +91,7 @@ class audio_AlsaAPI(test.test):
         return ['alsa_api_test', '--device', device, '--%s' % option]
 
 
-    def test_move(self, device):
+    def _test_move(self, device):
         """Runs alsa_api_test command and checks the return code.
 
         Test snd_pcm_forward can move appl_ptr to hw_ptr.
@@ -98,7 +109,7 @@ class audio_AlsaAPI(test.test):
                     'ALSA API failed to move appl_ptr on device %s' % device)
 
 
-    def test_fill(self, device):
+    def _test_fill(self, device):
         """Runs alsa_api_test command and checks the return code.
 
         Test snd_pcm_mmap_begin can provide the access to the buffer, and memset
@@ -117,7 +128,7 @@ class audio_AlsaAPI(test.test):
                     'ALSA API failed to fill buffer on device %s' % device)
 
 
-    def test_drop(self, device):
+    def _test_drop(self, device):
         """Runs alsa_api_test command and checks the return code.
 
         Test snd_pcm_drop can stop playback and reset hw_ptr to 0 in hardware.
