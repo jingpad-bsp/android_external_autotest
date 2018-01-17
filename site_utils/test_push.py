@@ -570,8 +570,55 @@ def push_prod_next_branch(updated_repo_heads):
                                        shell=True)
 
 
+def _run_test_suites(arguments):
+    """Run the actual tests that comprise the test_push."""
+    # Use daemon flag will kill child processes when parent process fails.
+    use_daemon = not arguments.continue_on_failure
+    queue = multiprocessing.Queue()
+
+    push_to_prod_suite = multiprocessing.Process(
+            target=test_suite_wrapper,
+            args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
+                    arguments))
+    push_to_prod_suite.daemon = use_daemon
+    push_to_prod_suite.start()
+
+    # suite test with --create_and_return flag
+    asynchronous_suite = multiprocessing.Process(
+            target=test_suite_wrapper,
+            args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
+                    arguments, True, True))
+    asynchronous_suite.daemon = True
+    asynchronous_suite.start()
+
+    while push_to_prod_suite.is_alive() or asynchronous_suite.is_alive():
+        check_queue(queue)
+        time.sleep(5)
+    check_queue(queue)
+    push_to_prod_suite.join()
+    asynchronous_suite.join()
+
+
+def _promote_prod_next_refs():
+    """Updates prod-next branch on relevant repos."""
+    updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
+    push_prod_next_branch(updated_repo_heads)
+    return updated_repo_heads
+
+
+_SUCCESS_MSG = """
+All tests completed successfully, the prod branch of the following repos is
+ready to be pushed to the hash list below.
+
+%(updated_repos_msg)s
+
+Instructions for pushing to prod are available at
+https://goto.google.com/autotest-to-prod
+"""
+
+
 def _main(arguments):
-    """Running tests.
+    """Run test and promote repo branches if tests succeed.
 
     @param arguments: command line arguments.
     """
@@ -579,55 +626,23 @@ def _main(arguments):
     # TODO Use chromite.lib.parallel.Manager instead, to workaround the
     # too-long-tmp-path problem.
     mpmanager = multiprocessing.Manager()
-
+    # These are globals used by other functions in this module to communicate
+    # back from worker processes.
+    global _run_suite_output
     _run_suite_output = mpmanager.list()
+    global _all_suite_ids
     _all_suite_ids = mpmanager.list()
 
-    updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
-    updated_repo_msg = '\n'.join(
-        ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
-    test_push_success = False
-
     try:
-        # Use daemon flag will kill child processes when parent process fails.
-        use_daemon = not arguments.continue_on_failure
-        # Verify all the DUTs at the beginning of testing push.
         reverify_all_push_duts()
-        time.sleep(15) # Wait 15 secs for the verify test to start.
+        time.sleep(15) # Wait for the verify test to start.
         check_dut_inventory(arguments.num_duts, arguments.pool)
-        queue = multiprocessing.Queue()
-
-        push_to_prod_suite = multiprocessing.Process(
-                target=test_suite_wrapper,
-                args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
-                      arguments))
-        push_to_prod_suite.daemon = use_daemon
-        push_to_prod_suite.start()
-
-        # suite test with --create_and_return flag
-        asynchronous_suite = multiprocessing.Process(
-                target=test_suite_wrapper,
-                args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
-                      arguments, True, True))
-        asynchronous_suite.daemon = True
-        asynchronous_suite.start()
-
-        while (push_to_prod_suite.is_alive()
-               or asynchronous_suite.is_alive()):
-            check_queue(queue)
-            time.sleep(5)
-
-        check_queue(queue)
-
-        push_to_prod_suite.join()
-        asynchronous_suite.join()
-
-        # All tests pass, push prod-next branch for UPDATED_REPOS.
-        push_prod_next_branch(updated_repo_heads)
-        test_push_success = True
-    except Exception as e:
-        print 'Test for pushing to prod failed:\n'
-        print str(e)
+        _run_test_suites(arguments)
+        updated_repo_heads = _promote_prod_next_refs()
+        updated_repos_msg = '\n'.join(
+                ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
+        print _SUCCESS_MSG % {'updated_repos_msg': updated_repos_msg}
+    except Exception:
         # Abort running jobs when choose not to continue when there is failure.
         if not arguments.continue_on_failure:
             for suite_id in _all_suite_ids:
@@ -635,16 +650,8 @@ def _main(arguments):
                     AFE.run('abort_host_queue_entries', job=suite_id)
         raise
     finally:
-        metrics.Counter('chromeos/autotest/test_push/completed').increment(
-            fields={'success': test_push_success})
         # Reverify all the hosts
         reverify_all_push_duts()
-
-    message = ('\nAll tests completed successfully, the prod branch of the '
-               'following repos is ready to be pushed to the hash list below.\n'
-               '%s\n\n\nInstructions for pushing to prod are available at '
-               'https://goto.google.com/autotest-to-prod ' % updated_repo_msg)
-    print message
 
 
 def main():
@@ -652,7 +659,14 @@ def main():
     arguments = parse_arguments()
     with ts_mon_config.SetupTsMonGlobalState(service_name='test_push',
                                              indirect=True):
-        return _main(arguments)
+        test_push_success = False
+        try:
+            _main(arguments)
+            test_push_success = True
+        finally:
+            metrics.Counter('chromeos/autotest/test_push/completed').increment(
+                    fields={'success': test_push_success})
+
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()
