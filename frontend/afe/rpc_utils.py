@@ -192,12 +192,13 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
         initial_query = models.Host.objects.all()
 
     try:
-        initial_hosts = models.Host.query_objects(
-                filter_data, initial_query=initial_query)
         hosts = models.Host.get_hosts_with_labels(
                 multiple_labels=multiple_labels,
-                initial_query=initial_hosts)
-        return hosts
+                initial_query=initial_query)
+        if not hosts:
+            return hosts
+
+        return models.Host.query_objects(filter_data, initial_query=hosts)
     except models.Label.DoesNotExist:
         return models.Host.objects.none()
 
