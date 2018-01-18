@@ -38,7 +38,12 @@ class firmware_Cr50DeviceState(FirmwareTest):
         98  : 'GPIO1',
         103 : 'I2CS WRITE',
         KEY_REGULAR_SLEEP : 'PMU WAKEUP',
+        113 : 'AC present FED',
+        114 : 'AC present RED',
         124 : 'RBOX_INTR_PWRB',
+        130 : 'SPS CS deassert',
+        138 : 'SPS RXFIFO LVL',
+        159 : 'SPS RXFIFO overflow',
         160 : 'EVENT TIMER',
         174 : 'CR50_RX_SERVO_TX',
         177 : 'CR50_TX_SERVO_RX',
@@ -58,6 +63,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
     SLEEP_RATE = 2
 
     DEEP_SLEEP_MAX = 1
+    ARM = 'ARM '
 
     # If there are over 100,000 interrupts, it is an interrupt storm.
     DEFAULT_COUNTS = [0, 100000]
@@ -67,9 +73,13 @@ class firmware_Cr50DeviceState(FirmwareTest):
         KEY_RESET : [0, 0],
         KEY_DEEP_SLEEP : [0, DEEP_SLEEP_MAX],
         KEY_TIME : [0, CONSERVATIVE_WAIT_TIME],
-        'S0ix' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
-        'S3' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
-        'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
+        'S0ix ' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
+        'S3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
+        'G3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
+        # Cr50 may or may not enter deep sleep on ARM devices. We have separate
+        # tests for that jus make sure it is 0 or 1.
+        ARM + 'S3' + DEEP_SLEEP_STEP_SUFFIX : [0, 1],
+        ARM + 'G3' + DEEP_SLEEP_STEP_SUFFIX : [0, 1],
         # Regular sleep is calculated based on the cr50 time
     }
 
@@ -177,7 +187,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         irq_list = list(self.irqs)
         irq_list.sort()
 
-        irq_diff = ['                step' + ''.join(self.step_names)]
+        irq_diff = ['%23s' % 'step' + ''.join(self.step_names)]
         step_errors = [ [] for i in range(num_steps) ]
 
         cr50_times = self.get_irq_step_counts(self.KEY_TIME)
@@ -190,7 +200,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         # Go through each irq and update its info in the progress dict
         for irq_key in irq_list:
             name = self.INT_NAME.get(irq_key, 'Unknown')
-            irq_progress_str = ['%16s %3s:' % (name, irq_key)]
+            irq_progress_str = ['%19s %3s:' % (name, irq_key)]
 
             irq_counts = self.get_irq_step_counts(irq_key)
             for step, count in enumerate(irq_counts):
@@ -221,7 +231,8 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
         errors = {}
 
-        ds_key = state + self.DEEP_SLEEP_STEP_SUFFIX
+        ds_key = self.ARM if self.is_arm else ''
+        ds_key += state + self.DEEP_SLEEP_STEP_SUFFIX
         expected_range = self.get_expected_count(ds_key, 0)
         rv = self.check_increase(None, ds_key, events.count(self.DS_RESUME),
                 expected_range)
@@ -303,10 +314,13 @@ class firmware_Cr50DeviceState(FirmwareTest):
         # Check that the progress of the irq counts seems reasonable
         self.check_for_errors(state)
 
+    def is_arm_family(self, arch):
+        return arch in ['aarch64', 'armv7l']
 
     def run_once(self, host):
         """Go through S0ix, S3, and G3. Verify there are no interrupt storms"""
         self.all_errors = []
+        self.is_arm = self.is_arm_family(host.run('arch').stdout.strip())
 
         # Initialize the Test IRQ counts
         self.reset_irq_counts()
@@ -315,9 +329,10 @@ class firmware_Cr50DeviceState(FirmwareTest):
         self.enter_state('S0')
 
         # Login before entering S0ix so cr50 will be able to enter regular sleep
-        client_at = autotest.Autotest(host)
-        client_at.run_test('login_LoginSuccess')
-        self.run_transition('S0ix')
+        if not self.is_arm:
+            client_at = autotest.Autotest(host)
+            client_at.run_test('login_LoginSuccess')
+            self.run_transition('S0ix')
 
         # Enter S3
         self.run_transition('S3')
