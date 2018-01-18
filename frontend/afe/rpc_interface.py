@@ -182,6 +182,12 @@ def add_label_to_hosts(id, hosts):
     @raises models.Label.DoesNotExist: If the label with id doesn't exist.
     """
     label = models.Label.smart_get(id)
+    if RESPECT_STATIC_LABELS:
+        replaced = models.ReplacedLabel.objects.filter(
+                label__id=label.id)
+        if len(replaced) > 0:
+            label = models.StaticLabel.smart_get(label.name)
+
     host_objs = models.Host.smart_get_bulk(hosts)
     if label.platform:
         models.Host.check_no_platform(host_objs)
@@ -442,7 +448,14 @@ def add_labels_to_host(id, labels):
     @param labels: ids or names for labels.
     """
     label_objs = models.Label.smart_get_bulk(labels)
-    models.Host.smart_get(id).labels.add(*label_objs)
+    if not RESPECT_STATIC_LABELS:
+        models.Host.smart_get(id).labels.add(*label_objs)
+    else:
+        static_labels, non_static_labels = models.Host.classify_label_objects(
+            label_objs)
+        host = models.Host.smart_get(id)
+        host.static_labels.add(*static_labels)
+        host.labels.add(*non_static_labels)
 
 
 @rpc_utils.route_rpc_to_master
@@ -459,6 +472,7 @@ def host_add_labels(id, labels):
         _create_label_everywhere(label, [id])
 
     label_objs = models.Label.smart_get_bulk(labels)
+
     platforms = [label.name for label in label_objs if label.platform]
     boards = [label.name for label in label_objs
               if label.name.startswith('board:')]
