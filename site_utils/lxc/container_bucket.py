@@ -119,7 +119,12 @@ class ContainerBucket(object):
         if container_id in self.container_cache:
             return self.container_cache[container_id]
 
-        return self.get_all().get(container_id, None)
+        maybe_dictionary = lxc.get_container_info(self.container_path,
+                                                  {'name': container_id})
+        if not maybe_dictionary:
+            return None
+        return Container.create_from_existing_dir(self.container_path,
+                                                  **maybe_dictionary[0])
 
 
     def exist(self, container_id):
