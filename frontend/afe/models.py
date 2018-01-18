@@ -522,12 +522,17 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         if not RESPECT_STATIC_LABELS:
             return [], labels
 
-        replaced_labels = ReplacedLabel.objects.filter(label__in=labels)
+        return cls.classify_label_objects(labels)
+
+
+    @classmethod
+    def classify_label_objects(cls, label_objects):
+        replaced_labels = ReplacedLabel.objects.filter(label__in=label_objects)
         replaced_ids = [l.label.id for l in replaced_labels]
         non_static_labels = [
-                l for l in labels if not l.id in replaced_ids]
+                l for l in label_objects if not l.id in replaced_ids]
         static_label_names = [
-                l.name for l in labels if l.id in replaced_ids]
+                l.name for l in label_objects if l.id in replaced_ids]
         static_labels = StaticLabel.objects.filter(name__in=static_label_names)
         return static_labels, non_static_labels
 
@@ -761,10 +766,16 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             platform.
         """
         Host.objects.populate_relationships(hosts, Label, 'label_list')
+        Host.objects.populate_relationships(hosts, StaticLabel,
+                                            'staticlabel_list')
         errors = []
         for host in hosts:
             platforms = [label.name for label in host.label_list
                          if label.platform]
+            if RESPECT_STATIC_LABELS:
+                platforms += [label.name for label in host.staticlabel_list
+                              if label.platform]
+
             if platforms:
                 # do a join, just in case this host has multiple platforms,
                 # we'll be able to see it
@@ -787,10 +798,16 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                 or the given board labels cannot be added to the hsots.
         """
         Host.objects.populate_relationships(hosts, Label, 'label_list')
+        Host.objects.populate_relationships(hosts, StaticLabel,
+                                            'staticlabel_list')
         errors = []
         for host in hosts:
             boards = [label.name for label in host.label_list
                       if label.name.startswith('board:')]
+            if RESPECT_STATIC_LABELS:
+                boards += [label.name for label in host.staticlabel_list
+                           if label.name.startswith('board:')]
+
             if not server_utils.board_labels_allowed(boards + new_labels):
                 # do a join, just in case this host has multiple boards,
                 # we'll be able to see it
