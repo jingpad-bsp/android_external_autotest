@@ -506,18 +506,18 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
-    def classify_labels(cls, multiple_labels):
+    def classify_labels(cls, label_names):
         """Split labels to static & non-static.
 
-        @multiple_labels: a list of labels (string).
+        @label_names: a list of labels (string).
 
         @returns: a list of StaticLabel objects & a list of
                   (non-static) Label objects.
         """
-        if not multiple_labels:
+        if not label_names:
             return [], []
 
-        labels = Label.objects.filter(name__in=multiple_labels)
+        labels = Label.objects.filter(name__in=label_names)
 
         if not RESPECT_STATIC_LABELS:
             return [], labels
@@ -538,10 +538,10 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
-    def get_hosts_with_labels(cls, multiple_labels, initial_query):
+    def get_hosts_with_labels(cls, label_names, initial_query):
         """Get hosts by label filters.
 
-        @param multiple_labels: label (string) lists for fetching hosts.
+        @param label_names: label (string) lists for fetching hosts.
         @param initial_query: a model_logic.QuerySet of Host object, e.g.
 
                 Host.objects.all(), Host.valid_objects.all().
@@ -550,11 +550,11 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
                 Host.objects.all().filter(query_limit=10)
         """
-        if not multiple_labels:
+        if not label_names:
             return initial_query
 
-        static_labels, non_static_labels = cls.classify_labels(multiple_labels)
-        if len(static_labels) + len(non_static_labels) != len(multiple_labels):
+        static_labels, non_static_labels = cls.classify_labels(label_names)
+        if len(static_labels) + len(non_static_labels) != len(label_names):
             # Some labels don't exist in afe db, which means no hosts
             # should be matched.
             return set()
@@ -566,6 +566,19 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             initial_query = initial_query.filter(labels=l)
 
         return initial_query
+
+
+    @classmethod
+    def get_hosts_with_label_ids(cls, label_ids, initial_query):
+        """Get hosts by label_id filters.
+
+        @param label_ids: label id (int) lists for fetching hosts.
+        @param initial_query: a list of Host object, e.g.
+            [<Host: 100.107.151.253>, <Host: 100.107.151.251>, ...]
+        """
+        labels = Label.objects.filter(id__in=label_ids)
+        label_names = [l.name for l in labels]
+        return cls.get_hosts_with_labels(label_names, initial_query)
 
 
     @staticmethod
