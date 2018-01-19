@@ -65,7 +65,7 @@ class network_MobileSuspendResume(test.test):
     # This function returns True when mobile service is available.  Otherwise,
     # if the timeout period has been hit, it returns false.
     def mobile_service_available(self, timeout=60):
-        service = self.FindMobileService(timeout)
+        service = self.flim.FindCellularService(timeout)
         if service:
             logging.info('Mobile service is available.')
             return service
@@ -121,7 +121,7 @@ class network_MobileSuspendResume(test.test):
         # back, so instead we sleep
         time.sleep(4)
 
-    # __get_mobile_device is a hack wrapper around the FindMobileDevice
+    # __get_mobile_device is a hack wrapper around the flim.FindCellularDevice
     # that verifies that GetProperties can be called before proceeding.
     # There appears to be an issue after suspend/resume where GetProperties
     # returns with UnknownMethod called until some time later.
@@ -131,7 +131,7 @@ class network_MobileSuspendResume(test.test):
         timeout = start_time + timeout
         while properties is None and time.time() < timeout:
             try:
-                device = self.FindMobileDevice(timeout)
+                device = self.flim.FindCellularDevice(timeout)
                 properties = device.GetProperties(utf8_strings=True)
             except dbus.exceptions.DBusException:
                 logging.debug('Mobile device not ready yet')
@@ -193,13 +193,6 @@ class network_MobileSuspendResume(test.test):
         # Turn on the device to make sure we can bring it back up.
         self.enable_device(device, True)
 
-    # Special override for connecting to wimax devices since it requires
-    # EAP parameters.
-    def connect_wimax(self, service=None, identity='test',
-                      password='test', **kwargs):
-      service.SetProperty('EAP.Identity', identity)
-      service.SetProperty('EAP.Password', identity)
-      self.flim.ConnectService(service=service, **kwargs)
 
     # This test randomly enables or disables the modem.  This is mainly used
     # for stress tests as it does not check the power state of the modem before
@@ -218,7 +211,7 @@ class network_MobileSuspendResume(test.test):
             self.suspend_resume(randint(10, 40))
             device = self.__get_mobile_device()
             self.enable_device(device, True)
-            if not self.FindMobileService(self.TIMEOUT*2):
+            if not self.flim.FindCellularService(self.TIMEOUT*2):
                 raise error.TestError('Unable to find mobile service')
             time.sleep(randint(1, 30))
 
@@ -227,7 +220,7 @@ class network_MobileSuspendResume(test.test):
     def scenario_autoconnect(self, **kwargs):
         device = self.__get_mobile_device()
         self.enable_device(device, True)
-        service = self.FindMobileService(self.TIMEOUT)
+        service = self.flim.FindCellularService(self.TIMEOUT)
         if not service:
             raise error.TestError('Unable to find mobile service')
 
@@ -245,7 +238,7 @@ class network_MobileSuspendResume(test.test):
             device = self.__get_mobile_device()
 
             # verify the service state is correct
-            service = self.FindMobileService(self.TIMEOUT)
+            service = self.flim.FindCellularService(self.TIMEOUT)
             if not service:
                 raise error.TestFail('Cannot find mobile service')
 
@@ -256,10 +249,6 @@ class network_MobileSuspendResume(test.test):
                 raise error.TestFail('Mobile state %s not in %s as expected'
                                      % (state, ', '.join(expected_states)))
 
-    # Running modem status is not supported by all modems, specifically wimax
-    # type modems.
-    def _skip_modem_status(self, *args, **kwargs):
-        return 1
 
     # Returns 1 if modem_status returned output within duration.
     # otherwise, returns 0
@@ -297,7 +286,7 @@ class network_MobileSuspendResume(test.test):
 
         logging.info('Scenario complete: %s.' % function_name)
 
-        if not self.modem_status():
+        if not self._get_modem_status():
             raise error.TestFail('Failed to get modem_status after %s.'
                               % function_name)
         service = self.mobile_service_available()
@@ -305,28 +294,15 @@ class network_MobileSuspendResume(test.test):
             raise error.TestFail('Could not find mobile service at the end '
                                  'of test %s.' % function_name)
 
-    def init_flimflam(self, device_type):
+    def init_flimflam(self):
         # Initialize flimflam and device type specific functions.
         self.flim = flimflam.FlimFlam(dbus.SystemBus())
         self.flim.SetDebugTags(SHILL_LOG_SCOPES)
 
-        logging.debug('Using device type: %s' % device_type)
-        if device_type == flimflam.FlimFlam.DEVICE_WIMAX:
-            self.FindMobileService = self.flim.FindWimaxService
-            self.FindMobileDevice = self.flim.FindWimaxDevice
-            self.modem_status = self._skip_modem_status
-            self.connect_mobile_service= self.connect_wimax
-        elif device_type == flimflam.FlimFlam.DEVICE_CELLULAR:
-            self.FindMobileService = self.flim.FindCellularService
-            self.FindMobileDevice = self.flim.FindCellularDevice
-            self.modem_status = self._get_modem_status
-            self.connect_mobile_service = self.flim.ConnectService
-        else:
-            raise error.TestError('Device type %s not supported yet.' %
-                                  device_type)
+        self.flim.FindCellularService = self.flim.FindCellularService
+        self.flim.FindCellularDevice = self.flim.FindCellularDevice
 
-    def run_once(self, scenario_group='all', autoconnect=False,
-                 device_type=flimflam.FlimFlam.DEVICE_CELLULAR, **kwargs):
+    def run_once(self, scenario_group='all', autoconnect=False, **kwargs):
 
         with chrome.Chrome():
             # Replace the test type with the list of tests
@@ -336,14 +312,14 @@ class network_MobileSuspendResume(test.test):
             logging.info('Running scenario group: %s' % scenario_group)
             scenarios = network_MobileSuspendResume.scenarios[scenario_group]
 
-            self.init_flimflam(device_type)
+            self.init_flimflam()
 
             device = self.__get_mobile_device()
             if not device:
                 raise error.TestFail('Cannot find mobile device.')
             self.enable_device(device, True)
 
-            service = self.FindMobileService(self.TIMEOUT)
+            service = self.flim.FindCellularService(self.TIMEOUT)
             if not service:
                 raise error.TestFail('Cannot find mobile service.')
 
