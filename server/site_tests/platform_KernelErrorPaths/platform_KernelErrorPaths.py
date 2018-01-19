@@ -158,9 +158,14 @@ class platform_KernelErrorPaths(test.test):
             try:
                 if parent:
                     ppid = self._client_run_output('ps -C %s -o pid=' % parent)
-                    pid = self._client_run_output('ps --ppid %s -o pid=' % ppid)
-                    new_comm = self._client_run_output('ps -p %s -o comm=' %
-                                                       pid)
+                    pid_list = self._client_run_output('ps --ppid %s -o pid= -o comm=' %
+                                                       ppid).splitlines()
+                    for line in pid_list:
+                        pair = line.split()
+                        pid = pair[0]
+                        new_comm = pair[1]
+                        if comm == new_comm:
+                            break
                     if comm != new_comm:
                         logging.info("comm mismatch: %s != %s", comm, new_comm)
                         time.sleep(1)
