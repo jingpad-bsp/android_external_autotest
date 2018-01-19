@@ -61,7 +61,11 @@ class ModelLabel(base_label.StringPrefixLabel):
     _NAME = ds_constants.MODEL_LABEL
 
     def generate_labels(self, host):
-        # TODO - Return the existing label once model labels become more stable.
+        # Based on the issue explained in BoardLabel, return the existing
+        # label if it has already been set once.
+        for label in host._afe_host.labels:
+            if label.startswith(self._NAME + ':'):
+                return [label.split(':')[-1]]
 
         lsb_output = _parse_lsb_output(host)
         model = None
