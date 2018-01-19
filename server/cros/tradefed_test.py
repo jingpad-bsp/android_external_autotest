@@ -810,9 +810,15 @@ class TradefedTest(test.test):
         # instead of file existence, so that _install_bundle can delete original
         # zip files to save disk space.
         if os.path.exists(output_dir):
-            logging.info('Skipping download of %s, reusing content of %s.', uri,
-                         output_dir)
-            return output
+            # TODO(crbug.com/800657): Mitigation for the invalid state. Normally
+            # this should not happen, but when a lock is force borken due to
+            # high IO load, multiple processes may enter the critical section
+            # and leave a bad state permanently.
+            if os.listdir(output_dir):
+                logging.info('Skipping download of %s, reusing content of %s.',
+                         uri, output_dir)
+                return output
+            logging.error('Empty cache entry detected %s', output_dir)
 
         self._safe_makedirs(output_dir)
         if parsed.scheme not in ['gs', 'http', 'https']:
