@@ -143,9 +143,9 @@ class DisplayFacadeNative(object):
                 window.__set_display_rotation_has_error = null;
                 chrome.system.display.setDisplayProperties('%(id)s',
                     {"rotation": %(rotation)d}, () => {
-                    if (runtime.lastError) {
+                    if (chrome.runtime.lastError) {
                         console.error('Failed to set display rotation',
-                            runtime.lastError);
+                            chrome.runtime.lastError);
                         window.__set_display_rotation_has_error = "failure";
                     } else {
                         window.__set_display_rotation_has_error = "success";
@@ -239,9 +239,9 @@ class DisplayFacadeNative(object):
 
                     chrome.system.display.setDisplayProperties('%(id)s',
                         {'displayMode': mode}, () => {
-                            if (runtime.lastError) {
-                                window.__set_resolution_progress = "failed " +
-                                    runtime.lastError;
+                            if (chrome.runtime.lastError) {
+                                window.__set_resolution_progress = "failed: " +
+                                    chrome.runtime.lastError.message;
                             } else {
                                 window.__set_resolution_progress = "succeeded";
                             }
@@ -258,7 +258,7 @@ class DisplayFacadeNative(object):
         result = extension.EvaluateJavaScript(
                 'window.__set_resolution_progress')
         if result != 'succeeded':
-            raise RuntimeError('Failed to set resolution, result: %r' % result)
+            raise RuntimeError('Failed to set resolution: %r' % result)
 
 
     @_retry_display_call
