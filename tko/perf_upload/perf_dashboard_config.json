@@ -672,6 +672,10 @@
     "master_name": "ChromeOSVideo"
   },
   {
+    "autotest_name": "video_MediaRecorderPerf",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "video_PlaybackPerf",
     "master_name": "ChromeOSVideo"
   },
