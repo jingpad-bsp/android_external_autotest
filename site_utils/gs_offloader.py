@@ -530,9 +530,44 @@ class BaseGSOffloader(object):
 
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractmethod
     def offload(self, dir_entry, dest_path, job_complete_time):
+        """Safely offload a directory entry to Google Storage.
+
+        This method is responsible for copying the contents of
+        `dir_entry` to Google storage at `dest_path`.
+
+        When successful, the method must delete all of `dir_entry`.
+        On failure, `dir_entry` should be left undisturbed, in order
+        to allow for retry.
+
+        Errors are conveyed simply and solely by two methods:
+          * At the time of failure, write enough information to the log
+            to allow later debug, if necessary.
+          * Don't delete the content.
+
+        In order to guarantee robustness, this method must not raise any
+        exceptions.
+
+        @param dir_entry: Directory entry to offload.
+        @param dest_path: Location in google storage where we will
+                          offload the directory.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
+        """
+        try:
+            self._full_offload(dir_entry, dest_path, job_complete_time)
+        except Exception as e:
+            logging.debug('Exception in offload for %s', dir_entry)
+            logging.debug('Ignoring this error: %s', str(e))
+
+    @abc.abstractmethod
+    def _full_offload(self, dir_entry, dest_path, job_complete_time):
         """Offload a directory entry to Google Storage.
+
+        This method implements the actual offload behavior of its
+        subclass.  To guarantee effective debug, this method should
+        catch all exceptions, and perform any reasonable diagnosis
+        or other handling.
 
         @param dir_entry: Directory entry to offload.
         @param dest_path: Location in google storage where we will
@@ -561,7 +596,7 @@ class GSOffloader(BaseGSOffloader):
 
     @metrics.SecondsTimerDecorator(
             'chromeos/autotest/gs_offloader/job_offload_duration')
-    def offload(self, dir_entry, dest_path, job_complete_time):
+    def _full_offload(self, dir_entry, dest_path, job_complete_time):
         """Offload the specified directory entry to Google storage.
 
         @param dir_entry: Directory entry to offload.
@@ -574,15 +609,15 @@ class GSOffloader(BaseGSOffloader):
              tempfile.TemporaryFile('w+') as stderr_file:
             try:
                 try:
-                    self._offload(dir_entry, dest_path, stdout_file,
-                                  stderr_file)
+                    self._try_offload(dir_entry, dest_path, stdout_file,
+                                      stderr_file)
                 except OSError as e:
                     # Correct file permission error of the directory, then raise
                     # the exception so gs_offloader can retry later.
                     _handle_dir_os_error(dir_entry, e.errno==errno.EACCES)
                     # Try again after the permission issue is fixed.
-                    self._offload(dir_entry, dest_path, stdout_file,
-                                  stderr_file)
+                    self._try_offload(dir_entry, dest_path, stdout_file,
+                                      stderr_file)
             except _OffloadError as e:
                 metrics_fields = _get_metrics_fields(dir_entry)
                 m_any_error = 'chromeos/autotest/errors/gs_offloader/any_error'
@@ -609,7 +644,7 @@ class GSOffloader(BaseGSOffloader):
             else:
                 self._prune(dir_entry, job_complete_time)
 
-    def _offload(self, dir_entry, dest_path,
+    def _try_offload(self, dir_entry, dest_path,
                  stdout_file, stderr_file):
         """Offload the specified directory entry to Google storage.
 
@@ -711,7 +746,7 @@ class FakeGSOffloader(BaseGSOffloader):
 
     """Fake Google Storage Offloader that only deletes directories."""
 
-    def offload(self, dir_entry, dest_path, job_complete_time):
+    def _full_offload(self, dir_entry, dest_path, job_complete_time):
         """Pretend to offload a directory and delete it.
 
         @param dir_entry: Directory entry to offload.
