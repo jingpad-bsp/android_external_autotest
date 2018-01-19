@@ -126,8 +126,8 @@ class power_Idle(test.test):
             keyvals['v_voltage_min_design'] = \
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
-            keyvals.update(self._plog.calc())
 
+        keyvals.update(self._plog.calc())
         keyvals.update(self._tlog.calc())
         keyvals.update(self._psr.get_keyvals())
         logging.debug("keyvals = %s", keyvals)
