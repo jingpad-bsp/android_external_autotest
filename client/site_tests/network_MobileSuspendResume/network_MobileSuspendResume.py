@@ -9,9 +9,8 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import rtc
-from autotest_lib.client.cros.networking.chrome_testing \
-        import chrome_networking_test_context as cntc
 from autotest_lib.client.cros.power import power_suspend
 
 # Special import to define the location of the flimflam library.
@@ -329,7 +328,7 @@ class network_MobileSuspendResume(test.test):
     def run_once(self, scenario_group='all', autoconnect=False,
                  device_type=flimflam.FlimFlam.DEVICE_CELLULAR, **kwargs):
 
-        with cntc.ChromeNetworkingTestContext():
+        with chrome.Chrome():
             # Replace the test type with the list of tests
             if (scenario_group not in
                     network_MobileSuspendResume.scenarios.keys()):
