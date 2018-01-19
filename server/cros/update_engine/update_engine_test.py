@@ -8,8 +8,11 @@ import update_engine_event as uee
 import urlparse
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import test
+from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.update_engine import omaha_devserver
 from datetime import datetime, timedelta
 from update_engine_event import UpdateEngineEvent
 
@@ -52,6 +55,12 @@ class UpdateEngineTest(test.test):
         self._num_consumed_events = 0
         self._current_timestamp = None
         self._expected_events = []
+        self._omaha_devserver = None
+
+
+    def cleanup(self):
+        if self._omaha_devserver is not None:
+            self._omaha_devserver.stop_devserver()
 
 
     def _get_expected_events_for_rootfs_update(self, source_release):
@@ -323,6 +332,34 @@ class UpdateEngineTest(test.test):
             raise error.TestError('Failed to stage payload: %s' % e)
 
 
+    def _get_delta_payload(self, build):
+        """
+        Gets the GStorage URL of the N-to-N payload to use for the update.
+
+        @param build: build string e.g samus-release/R65-10225.0.0.
+
+        @returns the delta payload URL.
+
+        """
+        # TODO(dhaddock): Use 'delta_payloads' artifact when crbug.com/793434
+        # is fixed: stage_artifacts(build, ['delta_payloads']).
+        # This will make retrieving and staging the delta payload a one line
+        # operation. It will also mean we can use a lab devserver to serve
+        # the payload on update requests. For now we need to find the payload
+        # ourselves on GStorage.
+        gs = dev_server._get_image_storage_server()
+        # Sample regex: chromeos_R65-10225.0.0_R65-10225.0.0_samus_delta_dev.bin
+        delta_regex = 'chromeos_%s*_delta_*' % build.rpartition('/')[2]
+        delta_payload_url_regex = gs + build + '/' + delta_regex
+        logging.debug('Trying to find payloads at %s', delta_payload_url_regex)
+        delta_payloads = utils.gs_ls(delta_payload_url_regex)
+        if len(delta_payloads) < 1:
+            raise error.TestFail('Could not find delta payload for %s', build)
+        logging.debug('Delta payloads found: %s', delta_payloads)
+        logging.info('Found delta payload for test: %s', delta_payloads[0])
+        return delta_payloads[0]
+
+
     def verify_update_events(self, source_release, hostlog_filename,
                              target_release=None):
         """Compares a hostlog file against a set of expected events.
@@ -353,6 +390,64 @@ class UpdateEngineTest(test.test):
             if err_msg is not None:
                 logging.error('Failed expected event: %s', err_msg)
                 raise UpdateEngineEventMissing(err_msg)
+
+
+    def get_update_url_for_test(self, job_repo_url, full_payload=True,
+                                critical_update=False, max_updates=1):
+        """
+        Get the correct update URL for autoupdate tests to use.
+
+        There are bunch of different update configurations that are required
+        by AU tests. Some tests need a full payload, some need a delta payload.
+        Some require the omaha response to be critical or be able to handle
+        multiple DUTs etc. This function returns the correct update URL to the
+        test based on the inputs parameters.
+
+        Ideally all updates would use an existing lab devserver to handle the
+        updates. However the lab devservers default setup does not work for
+        all test needs. So we also kick off our own omaha_devserver for the
+        test run some times.
+
+        @param job_repo_url: string url containing the current build.
+        @param full_payload: bool whether we want a full payload.
+        @param critical_update: bool whether we need a critical update.
+        @param max_updates: int number of updates the test will perform. This
+                            is passed to src/platform/dev/devserver.py if we
+                            create our own deverver.
+
+        @returns an update url string.
+
+        """
+        if job_repo_url is None:
+            info = self._host.host_info_store.get()
+            job_repo_url = info.attributes.get(
+                self._host.job_repo_url_attribute, '')
+        if not job_repo_url:
+            raise error.TestFail('There was no job_repo_url so we cannot get '
+                                 'a payload to use.')
+        ds_url, build = tools.get_devserver_build_from_package_url(job_repo_url)
+
+        # We always stage the payloads on the existing lab devservers.
+        self._autotest_devserver = dev_server.ImageServer(ds_url)
+
+        if full_payload:
+            self._autotest_devserver.stage_artifacts(build, ['full_payload'])
+            if not critical_update:
+                # We can use the same lab devserver to handle the update.
+                return self._autotest_devserver.get_update_url(build)
+            else:
+                staged_url = self._autotest_devserver._get_image_url(build)
+        else:
+            # We need to stage delta ourselves due to crbug.com/793434.
+            delta_payload = self._get_delta_payload(build)
+            staged_url = self._stage_payload_by_uri(delta_payload)
+
+        # We need to start our own devserver for the rest of the cases.
+        self._omaha_devserver = omaha_devserver.OmahaDevserver(
+            self._autotest_devserver.hostname, staged_url,
+            max_updates=max_updates)
+        self._omaha_devserver.start_devserver()
+        return self._omaha_devserver.get_update_url()
 
 
 class UpdateEngineEventMissing(error.TestFail):
