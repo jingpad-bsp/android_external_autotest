@@ -136,14 +136,9 @@ CHROMEOS_RELEASE_BOARD=pyro
                                 cat_lsb_release_output))
         self.assertEqual(ModelLabel().generate_labels(host), ['pyro'])
 
-    def test_existing_label_ignored(self):
-        cat_lsb_release_output = """
-CHROMEOS_RELEASE_BOARD=coral
-"""
-        host = MockHost([],
-                        MockCmd('cat /etc/lsb-release', 0,
-                                cat_lsb_release_output))
-        self.assertEqual(ModelLabel().generate_labels(host), ['coral'])
+    def test_existing_label(self):
+        host = MockHost(['model:existing'])
+        self.assertEqual(ModelLabel().generate_labels(host), ['existing'])
 
 
 class BoardLabelTests(unittest.TestCase):
