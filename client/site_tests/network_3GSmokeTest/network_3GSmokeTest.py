@@ -50,8 +50,8 @@ class network_3GSmokeTest(test.test):
             self.test_env.shill.connect_service_synchronous(
                     service, CONNECT_TIMEOUT)
 
-            properties = service.GetProperties(utf8_strings=True)
-            state = properties[shill_proxy.ShillProxy.SERVICE_PROPERTY_STATE]
+            state = self.test_env.shill.get_dbus_property(
+                    service, shill_proxy.ShillProxy.SERVICE_PROPERTY_STATE)
             logging.info('Service state = %s', state)
 
             if state == 'portal':
@@ -63,9 +63,8 @@ class network_3GSmokeTest(test.test):
                 url_pattern = network.FETCH_URL_PATTERN_FOR_TEST
                 bytes_to_fetch = 64 * 1024
 
-            properties = device.GetProperties(utf8_strings=True)
-            interface = \
-                    properties[shill_proxy.ShillProxy.DEVICE_PROPERTY_INTERFACE]
+            interface = self.test_env.shill.get_dbus_property(
+                    device, shill_proxy.ShillProxy.DEVICE_PROPERTY_INTERFACE)
             logging.info('Expected interface for %s: %s',
                          service.object_path, interface)
             network.CheckInterfaceForDestination(
