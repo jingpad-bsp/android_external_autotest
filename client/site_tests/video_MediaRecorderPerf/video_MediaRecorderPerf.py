@@ -189,6 +189,10 @@ class video_MediaRecorderPerf(test.test):
                 init_network_controller=True) as cr:
             (processing_time_sw, cpu_usage_sw) = self.get_record_performance(
                     cr, codec, False)
+            self.output_perf_value(description=(SW_PREFIX + FRAME_PROCESSING_TIME),
+                    value=processing_time_sw, units=TIME_UNIT, higher_is_better=False)
+            self.output_perf_value(description=(SW_PREFIX + CPU_USAGE),
+                    value=cpu_usage_sw, units=PERCENT, higher_is_better=False)
 
         with chrome.Chrome(
                 extra_browser_args=EXTRA_BROWSER_ARGS +
@@ -197,6 +201,10 @@ class video_MediaRecorderPerf(test.test):
                 init_network_controller=True) as cr:
             (processing_time_hw, cpu_usage_hw) = self.get_record_performance(
                     cr, codec, True)
+            self.output_perf_value(description=(HW_PREFIX + FRAME_PROCESSING_TIME),
+                    value=processing_time_hw, units=TIME_UNIT, higher_is_better=False)
+            self.output_perf_value(description=(HW_PREFIX + CPU_USAGE),
+                    value=cpu_usage_hw, units=PERCENT, higher_is_better=False)
 
         log = 'sw processing_time=%f cpu=%d hw processing_time=%f cpu=%d' % (
                 processing_time_sw,
@@ -204,14 +212,4 @@ class video_MediaRecorderPerf(test.test):
                 processing_time_hw,
                 cpu_usage_hw)
         logging.info(log)
-
-        self.output_perf_value(description=(HW_PREFIX + FRAME_PROCESSING_TIME),
-                value=processing_time_hw, units=TIME_UNIT, higher_is_better=False)
-        self.output_perf_value(description=(SW_PREFIX + FRAME_PROCESSING_TIME),
-                value=processing_time_sw, units=TIME_UNIT, higher_is_better=False)
-        self.output_perf_value(description=(HW_PREFIX + CPU_USAGE),
-                value=cpu_usage_hw, units=PERCENT, higher_is_better=False)
-        self.output_perf_value(description=(SW_PREFIX + CPU_USAGE),
-                value=cpu_usage_sw, units=PERCENT, higher_is_better=False)
-
 
