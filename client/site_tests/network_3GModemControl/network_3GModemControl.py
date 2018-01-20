@@ -172,8 +172,8 @@ class network_3GModemControl(test.test):
 
     def CompareDevicePowerState(self, device, expected_state):
         """Compare the shill device power state to an expected state."""
-        device_properties = device.GetProperties(utf8_strings=True);
-        state = device_properties['Powered']
+        state = self.test_env.shill.get_dbus_property(
+                device, shill_proxy.ShillProxy.DEVICE_PROPERTY_POWERED)
         logging.info('Device Enabled = %s' % state)
         return state == expected_state
 
@@ -183,8 +183,8 @@ class network_3GModemControl(test.test):
             logging.info('Service not found.')
             return False
 
-        service_properties = service.GetProperties(utf8_strings=True);
-        state = service_properties['State']
+        state = self.test_env.shill.get_dbus_property(
+                service, shill_proxy.ShillProxy.SERVICE_PROPERTY_STATE)
         logging.info('Service State = %s' % state)
         return state in expected_states
 
@@ -337,10 +337,9 @@ class network_3GModemControl(test.test):
     def FindAPN(self):
         default = 'None'
         service = self.test_env.shill.find_cellular_service_object()
-        props = service.GetProperties()
-        last_good_apn = props.get(
-                cellular_proxy.CellularProxy.SERVICE_PROPERTY_LAST_GOOD_APN,
-                None)
+        last_good_apn = self.test_env.shill.get_dbus_property(
+                service,
+                cellular_proxy.CellularProxy.SERVICE_PROPERTY_LAST_GOOD_APN)
         if not last_good_apn:
             return default
         return last_good_apn.get(
