@@ -9,8 +9,9 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.cellular import modem_utils
-from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
 from autotest_lib.client.cros.mainloop import ExceptionForward
+from autotest_lib.client.cros.mainloop import GenericTesterMainLoop
+from autotest_lib.client.cros.networking import shill_proxy
 
 DEFAULT_TEST_TIMEOUT_S = 600
 
@@ -152,7 +153,9 @@ class ShillDisableTester(DisableTester):
         error_handler=self.build_error_handler('Connect'))
 
   def _enabled(self):
-    return self.cellular_device.GetProperties()['Powered']
+    return self.test.test_env.shill.get_dbus_property(
+            self.cellular_device,
+            shill_proxy.ShillProxy.DEVICE_PROPERTY_POWERED)
 
 
 class ModemDisableTester(DisableTester):
