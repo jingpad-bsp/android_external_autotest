@@ -38,6 +38,7 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.god = mock.mock_god()
         self.old_respect_static_config = rpc_interface.RESPECT_STATIC_LABELS
         rpc_interface.RESPECT_STATIC_LABELS = True
+        models.RESPECT_STATIC_LABELS = True
 
 
     def tearDown(self):
@@ -45,6 +46,7 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self._frontend_common_teardown()
         global_config.global_config.reset_config_values()
         rpc_interface.RESPECT_STATIC_LABELS = self.old_respect_static_config
+        models.RESPECT_STATIC_LABELS = self.old_respect_static_config
 
 
     def test_delete_static_label(self):
@@ -88,6 +90,55 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
 
         self.assertEqual(models.Label.smart_get('static').invalid, 0)
         self.god.check_playback()
+
+
+    def test_multiple_platforms_add_non_static_to_static(self):
+        """Test non-static platform to a host with static platform."""
+        static_platform = models.StaticLabel.objects.create(
+                name='static_platform', platform=True)
+        platform2 = models.Label.objects.create(name='platform2', platform=True)
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.static_labels.add(static_platform)
+        host1.save()
+
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_interface.label_add_hosts, id='platform2',
+                          hosts=['test_host'])
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_interface.host_add_labels,
+                          id='test_host', labels=['platform2'])
+        # make sure the platform didn't get added
+        platforms = rpc_interface.get_labels(
+            host__hostname__in=['test_host'], platform=True)
+        # TODO(xixuan): Modify get_labels to fetch static labels also.
+        self.assertEquals(len(platforms), 0)
+
+
+    def test_multiple_platforms_add_static_to_non_static(self):
+        """Test static platform to a host with non-static platform."""
+        platform1 = models.Label.objects.create(
+                name='static_platform', platform=True)
+        models.ReplacedLabel.objects.create(label_id=platform1.id)
+        static_platform = models.StaticLabel.objects.create(
+                name='static_platform', platform=True)
+        platform2 = models.Label.objects.create(
+                name='platform2', platform=True)
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(platform2)
+        host1.save()
+
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_interface.label_add_hosts,
+                          id='static_platform',
+                          hosts=['test_host'])
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_interface.host_add_labels,
+                          id='test_host', labels=['static_platform'])
+        # make sure the platform didn't get added
+        platforms = rpc_interface.get_labels(
+            host__hostname__in=['test_host'], platform=True)
+        self.assertEquals(len(platforms), 1)
 
 
 class RpcInterfaceTest(unittest.TestCase,

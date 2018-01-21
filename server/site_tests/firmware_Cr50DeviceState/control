@@ -7,6 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50DeviceState"
 PURPOSE = "Verify Cr50 tracks the EC and AP state correctly"
+ATTRIBUTES = "suite:cr50_stress_experimental"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
@@ -14,7 +15,7 @@ DEPENDENCIES = "servo"
 DOC = """
 Verify Cr50 tracks the EC and AP state correctly.
 
-Put the device through S0, S0ix, S3, and S5. Cr50 responds to these state
+Put the device through S0, S0ix, S3, and G3. Cr50 responds to these state
 changes by enabling/disabling uart and changing its suspend type. Verify that
 none of these cause any interrupt storms on Cr50. Make sure that there aren't
 any interrupt storms and that Cr50 enters regular or deep sleep reasonable

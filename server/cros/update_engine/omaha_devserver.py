@@ -51,7 +51,8 @@ class OmahaDevserver(object):
 
         @param omaha_host: host address where the devserver is spawned.
         @param update_payload_staged_url: URL to provision for update requests.
-
+        @param max_updates: int number of updates this devserver will handle.
+                            This is passed to src/platform/dev/devserver.py.
         """
         self._devserver_dir = '/home/chromeos-test/chromiumos/src/platform/dev'
 

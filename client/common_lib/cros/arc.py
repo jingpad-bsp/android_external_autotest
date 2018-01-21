@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib.cros import chrome, arc_common
 _ADB_KEYS_PATH = '/tmp/adb_keys'
 _ADB_VENDOR_KEYS = 'ADB_VENDOR_KEYS'
 _ANDROID_CONTAINER_PID_PATH = '/run/containers/android*/container.pid'
+_ANDROID_DATA_ROOT_PATH = '/opt/google/containers/android/rootfs/android-data'
 _SCREENSHOT_DIR_PATH = '/var/log/arc-screenshots'
 _SCREENSHOT_BASENAME = 'arc-screenshot'
 _MAX_SCREENSHOT_NUM = 10
@@ -225,6 +226,11 @@ def get_container_pid_path():
                                   arc_container_pid_files))
 
     return arc_container_pid_files[0]
+
+
+def get_android_data_root():
+    """Returns path to Chrome OS directory that bind-mounts Android's /data."""
+    return _ANDROID_DATA_ROOT_PATH
 
 
 def get_job_pid(job_name):

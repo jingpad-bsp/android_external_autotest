@@ -99,6 +99,17 @@ class power_Idle(test.test):
             bt_device.set_powered(False)
             bt_device.stop_bluetoothd()
 
+
+    def _publish_power_dashboard(self, measurements):
+        """Report to chromeperf dashboard."""
+        publish = {key: measurements[key]
+                   for key in measurements.keys() if key.endswith('pwr')}
+
+        for key, values in publish.iteritems():
+            self.output_perf_value(description=key, value=values,
+                units='W', higher_is_better=False, graph='power')
+
+
     def postprocess_iteration(self):
         """Write power stats to file.
 
@@ -126,8 +137,10 @@ class power_Idle(test.test):
             keyvals['v_voltage_min_design'] = \
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
-            keyvals.update(self._plog.calc())
 
+        plog_keyvals = self._plog.calc()
+        self._publish_power_dashboard(plog_keyvals)
+        keyvals.update(plog_keyvals)
         keyvals.update(self._tlog.calc())
         keyvals.update(self._psr.get_keyvals())
         logging.debug("keyvals = %s", keyvals)

@@ -146,6 +146,10 @@ AUTO_UPDATE_LOG_DIR = 'autoupdate_logs'
 
 DEFAULT_SUBNET_MASKBIT = 19
 
+# Metrics basepaths.
+METRICS_PATH = 'chromeos/autotest'
+PROVISION_PATH = METRICS_PATH + '/provision'
+
 
 class DevServerException(Exception):
     """Raised when the dev server returns a non-200 HTTP response."""
@@ -2076,10 +2080,64 @@ class ImageServer(ImageServerBase):
         return board, build_type, milestone
 
 
-    def _emit_auto_update_metrics(self, error_list, duration_list,
-                                  is_au_success, board, build_type, milestone,
-                                  dut_host_name, is_aue2etest):
-        """Send metrics for auto_update.
+    def _emit_auto_update_metrics(self, board, build_type, dut_host_name,
+                                  build_name, attempt,
+                                  success, failure_reason, duration):
+        """Send metrics for a single auto_update attempt.
+
+        @param board: a field in metrics representing which board this
+            auto_update tries to update.
+        @param build_type: a field in metrics representing which build type this
+            auto_update tries to update.
+        @param dut_host_name: a field in metrics representing which DUT this
+            auto_update tries to update.
+        @param build_name: auto update build being updated to.
+        @param attempt: a field in metrics, representing which attempt/retry
+            this auto_update is.
+        @param success: a field in metrics, representing whether this
+            auto_update succeeds or not.
+        @param failure_reason: auto update failure reason if success is False.
+        @param duration: auto update duration time, in seconds.
+        """
+        # The following is high cardinality, but sparse.
+        # Each DUT is of a single board type, and likely build type.
+        # The affinity also results in each DUT being attached to the same
+        # dev_server as well.
+        fields = {
+                'board': board,
+                'build_type': build_type,
+                'dut_host_name': dut_host_name,
+                'dev_server': self.resolved_hostname,
+                'attempt': attempt,
+                'success': success,
+        }
+
+        # reset_after=True is required for String gauges events to ensure that
+        # the metrics are not repeatedly emitted until the server restarts.
+
+        metrics.String(PROVISION_PATH + '/auto_update_build_by_devserver_dut',
+                       reset_after=True).set(build_name, fields=fields)
+
+        if not success:
+            metrics.String(
+                    PROVISION_PATH +
+                    '/auto_update_failure_reason_by_devserver_dut',
+                    reset_after=True).set(
+                            self._classify_exceptions(failure_reason)
+                            if failure_reason else '', fields=fields)
+
+        metrics.SecondsDistribution(
+                PROVISION_PATH + '/auto_update_duration_by_devserver_dut').add(
+                        duration, fields=fields)
+
+
+    def _emit_provision_metrics(self, error_list, duration_list,
+                                is_au_success, board, build_type, milestone,
+                                dut_host_name, is_aue2etest,
+                                total_duration, build_name):
+        """Send metrics for provision request.
+
+        Provision represents potentially multiple auto update attempts.
 
         Please note: to avoid reaching or exceeding the monarch field
         cardinality limit, we avoid a metric that includes both dut hostname
@@ -2103,6 +2161,39 @@ class ImageServer(ImageServerBase):
         @param is_aue2etest: a field in metrics representing if provision was
             done as part of the autoupdate_EndToEndTest.
         """
+        # The following is high cardinality, but sparse.
+        # Each DUT is of a single board type, and likely build type.
+        # The affinity also results in each DUT being attached to the same
+        # dev_server as well.
+        fields = {
+                'board': board,
+                'build_type': build_type,
+                'dut_host_name': dut_host_name,
+                'dev_server': self.resolved_hostname,
+                'success': is_au_success,
+        }
+
+        # reset_after=True is required for String gauges events to ensure that
+        # the metrics are not repeatedly emitted until the server restarts.
+
+        metrics.String(PROVISION_PATH + '/provision_build_by_devserver_dut',
+                       reset_after=True).set(build_name, fields=fields)
+
+        if error_list:
+            metrics.String(
+                    PROVISION_PATH +
+                    '/provision_failure_reason_by_devserver_dut',
+                    reset_after=True).set(
+                            self._classify_exceptions(error_list[0]),
+                            fields=fields)
+
+        metrics.SecondsDistribution(
+                PROVISION_PATH + '/provision_duration_by_devserver_dut').add(
+                        total_duration, fields=fields)
+
+        # TODO(davidriley): The following are all older metrics which are
+        # scheduled for deprecation.
+
         # Per-devserver cros_update metric.
         c1 = metrics.Counter(
                 'chromeos/autotest/provision/cros_update_per_devserver')
@@ -2171,6 +2262,7 @@ class ImageServer(ImageServerBase):
 
         f_duration['duration_seconds'] = total_provision_duration
         c5.increment(fields=f_duration)
+
 
     def _parse_buildname_from_gs_uri(self, uri):
         """Get parameters needed for AU metrics when build_name is not known.
@@ -2270,10 +2362,12 @@ class ImageServer(ImageServerBase):
             board, build_type, milestone = self._parse_buildname_safely(
                 build_name)
 
+        provision_start_time = time.time()
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
-            start_time = time.time()
+            au_start_time = time.time()
+            failure_reason = None
             # No matter _trigger_auto_update succeeds or fails, the auto-update
             # track_status_file should be cleaned, and the auto-update execute
             # log should be collected to directory sysinfo. Also, the error
@@ -2304,7 +2398,7 @@ class ImageServer(ImageServerBase):
                     response = self._trigger_auto_update(**kwargs)
             except DevServerException as e:
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
-                error_list.append(str(e))
+                failure_reason = str(e)
             else:
                 _, raised_error, pid = self.check_for_auto_update_finished(
                         response, **kwargs)
@@ -2337,23 +2431,31 @@ class ImageServer(ImageServerBase):
                         logging.debug('Failed to kill auto_update process %d',
                                       pid)
                     if raised_error:
-                        logging.debug(error_msg_attempt, au_attempt+1,
-                                      str(raised_error))
+                        error_str = str(raised_error)
+                        logging.debug(error_msg_attempt, au_attempt + 1,
+                                      error_str)
                         if au_log_dir:
                             logging.debug('Please see error details in log %s',
                                           self._get_au_log_filename(
                                                   au_log_dir,
                                                   kwargs['host_name'],
                                                   pid))
-                        error_list.append(self._parse_AU_error(str(raised_error)))
-                        if self._is_retryable(str(raised_error)):
+                        failure_reason = self._parse_AU_error(error_str)
+                        if self._is_retryable(error_str):
                             retry_with_another_devserver = True
 
-                        if self._should_use_original_payload(str(raised_error)):
+                        if self._should_use_original_payload(error_str):
                             force_original = True
 
             finally:
-                duration_list.append(int(time.time() - start_time))
+                duration = int(time.time() - au_start_time)
+                duration_list.append(duration)
+                if failure_reason:
+                    error_list.append(failure_reason)
+                self._emit_auto_update_metrics(board, build_type, host_name,
+                                               build_name, au_attempt + 1,
+                                               is_au_success, failure_reason,
+                                               duration)
                 if retry_with_another_devserver:
                     break
 
@@ -2366,9 +2468,10 @@ class ImageServer(ImageServerBase):
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
 
-        self._emit_auto_update_metrics(error_list, duration_list, is_au_success,
-                                       board, build_type, milestone, host_name,
-                                       is_aue2etest)
+        total_duration = int(time.time() - provision_start_time)
+        self._emit_provision_metrics(error_list, duration_list, is_au_success,
+                                     board, build_type, milestone, host_name,
+                                     is_aue2etest, total_duration, build_name)
 
         if is_au_success:
             return (is_au_success, pid)

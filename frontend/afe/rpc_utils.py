@@ -193,8 +193,7 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
 
     try:
         hosts = models.Host.get_hosts_with_labels(
-                multiple_labels=multiple_labels,
-                initial_query=initial_query)
+                multiple_labels, initial_query)
         if not hosts:
             return hosts
 

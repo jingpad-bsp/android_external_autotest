@@ -197,6 +197,9 @@ def main(args):
     if not options.skip_chromite:
         repos.update({'chromite': options.chromite_hash})
 
+    print 'Moving CIPD prod ref to prod-next'
+    subprocess.check_call('''\
+        cipd set-ref chromiumos/infra/lucifer -version prod-next -ref prod''')
     try:
         # update_log saves the git log of the updated repo.
         update_log = ''

@@ -506,37 +506,42 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
-    def classify_labels(cls, multiple_labels):
+    def classify_labels(cls, label_names):
         """Split labels to static & non-static.
 
-        @multiple_labels: a list of labels (string).
+        @label_names: a list of labels (string).
 
         @returns: a list of StaticLabel objects & a list of
                   (non-static) Label objects.
         """
-        if not multiple_labels:
+        if not label_names:
             return [], []
 
-        labels = Label.objects.filter(name__in=multiple_labels)
+        labels = Label.objects.filter(name__in=label_names)
 
         if not RESPECT_STATIC_LABELS:
             return [], labels
 
-        replaced_labels = ReplacedLabel.objects.filter(label__in=labels)
+        return cls.classify_label_objects(labels)
+
+
+    @classmethod
+    def classify_label_objects(cls, label_objects):
+        replaced_labels = ReplacedLabel.objects.filter(label__in=label_objects)
         replaced_ids = [l.label.id for l in replaced_labels]
         non_static_labels = [
-                l for l in labels if not l.id in replaced_ids]
+                l for l in label_objects if not l.id in replaced_ids]
         static_label_names = [
-                l.name for l in labels if l.id in replaced_ids]
+                l.name for l in label_objects if l.id in replaced_ids]
         static_labels = StaticLabel.objects.filter(name__in=static_label_names)
         return static_labels, non_static_labels
 
 
     @classmethod
-    def get_hosts_with_labels(cls, multiple_labels, initial_query):
+    def get_hosts_with_labels(cls, label_names, initial_query):
         """Get hosts by label filters.
 
-        @param multiple_labels: label (string) lists for fetching hosts.
+        @param label_names: label (string) lists for fetching hosts.
         @param initial_query: a model_logic.QuerySet of Host object, e.g.
 
                 Host.objects.all(), Host.valid_objects.all().
@@ -545,11 +550,11 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
                 Host.objects.all().filter(query_limit=10)
         """
-        if not multiple_labels:
+        if not label_names:
             return initial_query
 
-        static_labels, non_static_labels = cls.classify_labels(multiple_labels)
-        if len(static_labels) + len(non_static_labels) != len(multiple_labels):
+        static_labels, non_static_labels = cls.classify_labels(label_names)
+        if len(static_labels) + len(non_static_labels) != len(label_names):
             # Some labels don't exist in afe db, which means no hosts
             # should be matched.
             return set()
@@ -561,6 +566,19 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             initial_query = initial_query.filter(labels=l)
 
         return initial_query
+
+
+    @classmethod
+    def get_hosts_with_label_ids(cls, label_ids, initial_query):
+        """Get hosts by label_id filters.
+
+        @param label_ids: label id (int) lists for fetching hosts.
+        @param initial_query: a list of Host object, e.g.
+            [<Host: 100.107.151.253>, <Host: 100.107.151.251>, ...]
+        """
+        labels = Label.objects.filter(id__in=label_ids)
+        label_names = [l.name for l in labels]
+        return cls.get_hosts_with_labels(label_names, initial_query)
 
 
     @staticmethod
@@ -761,10 +779,16 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             platform.
         """
         Host.objects.populate_relationships(hosts, Label, 'label_list')
+        Host.objects.populate_relationships(hosts, StaticLabel,
+                                            'staticlabel_list')
         errors = []
         for host in hosts:
             platforms = [label.name for label in host.label_list
                          if label.platform]
+            if RESPECT_STATIC_LABELS:
+                platforms += [label.name for label in host.staticlabel_list
+                              if label.platform]
+
             if platforms:
                 # do a join, just in case this host has multiple platforms,
                 # we'll be able to see it
@@ -787,10 +811,16 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                 or the given board labels cannot be added to the hsots.
         """
         Host.objects.populate_relationships(hosts, Label, 'label_list')
+        Host.objects.populate_relationships(hosts, StaticLabel,
+                                            'staticlabel_list')
         errors = []
         for host in hosts:
             boards = [label.name for label in host.label_list
                       if label.name.startswith('board:')]
+            if RESPECT_STATIC_LABELS:
+                boards += [label.name for label in host.staticlabel_list
+                           if label.name.startswith('board:')]
+
             if not server_utils.board_labels_allowed(boards + new_labels):
                 # do a join, just in case this host has multiple boards,
                 # we'll be able to see it
