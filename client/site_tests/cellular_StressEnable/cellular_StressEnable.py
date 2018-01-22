@@ -12,7 +12,7 @@ from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 
-class network_3GStressEnable(test.test):
+class cellular_StressEnable(test.test):
     """
     Stress-tests enabling and disabling a technology at short intervals.
 
@@ -31,7 +31,7 @@ class network_3GStressEnable(test.test):
             else:
                 self.device.Disable(timeout=timeout)
         except dbus.exceptions.DBusException, err:
-            if err.get_dbus_name() in network_3GStressEnable.okerrors:
+            if err.get_dbus_name() in cellular_StressEnable.okerrors:
                 return
             raise error.TestFail(err)
 
