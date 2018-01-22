@@ -8,20 +8,28 @@ import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-
+from autotest_lib.client.cros.audio import alsa_utils
 
 class audio_AlsaAPI(test.test):
     """Checks that simple ALSA API functions correctly."""
     version = 2
     _SND_DEV_DIR = '/dev/snd/'
     _PLAYBACK_DEVICE_NAME = '^pcmC(\d+)D(\d+)p$'
-    # A dict of list of (card, device) to be skipped on some boards.
-    # Chell's HDMI device hw:0,4 can not be used without being plugged.
-    # Also, its HDMI device hw:0,5 and hw:0,6 are dummy devices.
-    _DEVICES_TO_BE_SKIPPED = {'chell': [(0, 4), (0, 5), (0, 6)]}
     # A list of boards that do not correctly implement snd_pcm_drop, see
     # crosbug.com/p/51882
     _BOARDS_WITHOUT_DROP_SUPPORT  = ['banon', 'elm', 'samus', 'squawks']
+    # A dict of list of (card name, device) to be skipped on some boards.
+    _DEVICES_TO_BE_SKIPPED = {
+        # On the following boards, devices 4,5,6 are HDMI devices.
+        'asuka': {'sklnau8825max': [4, 5, 6]},
+        'cave': {'sklnau8825max': [4, 5, 6]},
+        'snappy': {'bxtda7219max': [4, 5, 6]},
+        # Chell's HDMI device 4 can not be used without being plugged.
+        # Also, its HDMI devices 5 and 6 are dummy devices.
+        'chell': {'sklnau8825adi': [4, 5, 6]},
+        # Kevin's device 3 is a DisplayPort device.
+        'kevin': {'rk3399-gru-sound': [3]},
+    }
 
     def run_once(self, to_test):
         """Run alsa_api_test binary and verify its result.
@@ -34,7 +42,6 @@ class audio_AlsaAPI(test.test):
                         drop: Checks snd_pcm_drop API.
 
         """
-
         # Skip test_drop on boards that do not implement snd_pcm_drop
         # correctly, as it cannot pass.
         board = utils.get_board().lower()
@@ -42,6 +49,7 @@ class audio_AlsaAPI(test.test):
             logging.info('Skipping test_drop for unsupported board: %s', board)
             return
 
+        self._cardnames = alsa_utils.get_soundcard_names()
         self._devices = []
         self._find_sound_devices()
         method_name = '_test_' + to_test
@@ -59,8 +67,10 @@ class audio_AlsaAPI(test.test):
         @returns: True if the device should be skipped. False otherwise.
 
         """
-        return card_device in self._DEVICES_TO_BE_SKIPPED.get(
-                utils.get_board().lower(), [])
+        card_name = self._cardnames[card_device[0]]
+
+        return card_device[1] in self._DEVICES_TO_BE_SKIPPED.get(
+                utils.get_board().lower(), {}).get(card_name, [])
 
 
     def _find_sound_devices(self):
@@ -72,7 +82,7 @@ class audio_AlsaAPI(test.test):
         for filename in filenames:
             search = re.match(self._PLAYBACK_DEVICE_NAME, filename)
             if search:
-                card_device = (int(search.group(1)), int(search.group(2)))
+                card_device = (search.group(1), int(search.group(2)))
                 if not self._skip_device(card_device):
                     self._devices.append(card_device)
         if not self._devices:

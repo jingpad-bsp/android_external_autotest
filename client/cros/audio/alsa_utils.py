@@ -137,6 +137,19 @@ def get_first_soundcard_with_control(cname, scname):
     return None
 
 
+def get_soundcard_names():
+    '''Returns a dictionary of card names, keyed by card number.'''
+
+    cmd = "alsa_helpers -l"
+    try:
+        output = utils.system_output(command=cmd, retain_output=True)
+    except error.CmdError:
+        raise RuntimeError('alsa_helpers -l failed to return card names')
+
+    return dict((index, name) for index, name in (
+        line.split(',') for line in output.splitlines()))
+
+
 def get_default_playback_device():
     '''Gets the first playback device.
 
