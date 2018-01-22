@@ -14,7 +14,7 @@ from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 
-class network_3GSafetyDance(test.test):
+class cellular_SafetyDance(test.test):
     """
     Stress tests all connection manager 3G operations.
 
