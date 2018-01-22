@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemControl.pseudomodem"
+NAME = "cellular_ModemControl.pseudomodem"
 PURPOSE = "Verify commands sent to a modem manager are reflected in shill."
 CRITERIA = """
 This test will fail if modem manager state differs from shill state.
@@ -29,15 +29,15 @@ from autotest_lib.client.cros.cellular import test_environment
 # 3GPP
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': '3GPP'},))
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=False,
              tag='no-autoconnect-pseudomodem.3GPP')
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=True,
              tag='autoconnect-pseudomodem.3GPP')
 
 # CDMA
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': 'CDMA'},))
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=False,
              tag='no-autoconnect-pseudomodem.CDMA')
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=True,
              tag='autoconnect-pseudomodem.CDMA')
