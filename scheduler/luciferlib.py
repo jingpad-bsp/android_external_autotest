@@ -287,6 +287,9 @@ def _spawn(path, argv, output_file):
     assert all(isinstance(arg, basestring) for arg in argv)
     if os.fork():
         return
+    # Double fork to reparent to init since monitor_db does not reap.
+    if os.fork():
+        os._exit(os.EX_OK)
     os.setsid()
     null_fd = os.open(os.devnull, os.O_RDONLY)
     os.dup2(null_fd, 0)
