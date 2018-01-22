@@ -169,8 +169,6 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
-                _cri = cros_interface.CrOSInterface()
-                self._browser_pid = _cri.GetChromePid()
                 if utils.is_arc_available():
                     if disable_arc_opt_in:
                         if arc_util.should_start_arc(arc_mode):
@@ -200,9 +198,6 @@ class Chrome(object):
         """Returns a telemetry browser instance."""
         return self._browser
 
-    def get_browser_pid(self):
-        """Returns the pid of the telemetry browser"""
-        return self._browser_pid
 
     def get_extension(self, extension_path):
         """Fetches a telemetry extension instance given the extension path."""
