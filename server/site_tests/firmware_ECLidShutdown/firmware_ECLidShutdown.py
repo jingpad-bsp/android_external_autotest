@@ -40,8 +40,7 @@ class firmware_ECLidShutdown(FirmwareTest):
             self._reset_ec_regexp()
             if self.servo.get('lid_open') == 'no':
                 self.servo.set('lid_open', 'yes')
-                self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN,
-                                         0)
+            self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN, 0)
             self.switcher.wait_for_client()
         except ConnectionError:
             logging.error("ERROR: client not in OS mode.  Rebooting ...")
