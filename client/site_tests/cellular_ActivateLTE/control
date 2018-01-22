@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_LTEActivate"
+NAME = "cellular_ActivateLTE"
 PURPOSE = """
 Test various scenarios that may arise during the post-payment LTE
 activation process.
@@ -25,4 +25,4 @@ DOC = """
   possible scenarios using the pseudo modem manager.
 """
 
-job.run_test('network_LTEActivate')
+job.run_test('cellular_ActivateLTE')
