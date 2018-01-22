@@ -8,7 +8,6 @@ import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.client.common_lib import host_queue_entry_states
-from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import monitor_db
@@ -57,6 +56,7 @@ class BaseSchedulerModelsTest(unittest.TestCase,
 
 
 class DBObjectTest(BaseSchedulerModelsTest):
+
     def test_compare_fields_in_row(self):
         host = scheduler_models.Host(id=1)
         fields = list(host._fields)
@@ -136,6 +136,56 @@ class DBObjectTest(BaseSchedulerModelsTest):
 
 
 class HostTest(BaseSchedulerModelsTest):
+
+    def setUp(self):
+        super(HostTest, self).setUp()
+        self.old_config = scheduler_models.RESPECT_STATIC_LABELS
+
+
+    def tearDown(self):
+        super(HostTest, self).tearDown()
+        scheduler_models.RESPECT_STATIC_LABELS = self.old_config
+
+
+    def _setup_static_labels(self):
+        label1 = models.Label.objects.create(name='non_static_label')
+        non_static_platform = models.Label.objects.create(
+                name='static_platform', platform=False)
+        models.ReplacedLabel.objects.create(label_id=non_static_platform.id)
+
+        static_label1 = models.StaticLabel.objects.create(
+                name='no_reference_label', platform=False)
+        static_platform = models.StaticLabel.objects.create(
+                name=non_static_platform.name, platform=True)
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(label1)
+        host1.labels.add(non_static_platform)
+        host1.static_labels.add(static_label1)
+        host1.static_labels.add(static_platform)
+        host1.save()
+        return host1
+
+
+    def test_platform_and_labels_with_respect(self):
+        scheduler_models.RESPECT_STATIC_LABELS = True
+        test_host = self._setup_static_labels()
+        host = scheduler_models.Host(id=test_host.id)
+        platform, all_labels = host.platform_and_labels()
+        self.assertEqual(platform, 'static_platform')
+        self.assertNotIn('no_reference_label', all_labels)
+        self.assertEqual(all_labels, ['non_static_label', 'static_platform'])
+
+
+    def test_platform_and_labels_without_respect(self):
+        scheduler_models.RESPECT_STATIC_LABELS = False
+        test_host = self._setup_static_labels()
+        host = scheduler_models.Host(id=test_host.id)
+        platform, all_labels = host.platform_and_labels()
+        self.assertIsNone(platform)
+        self.assertEqual(all_labels, ['non_static_label', 'static_platform'])
+
+
     def test_cmp_for_sort(self):
         expected_order = [
                 'alice', 'Host1', 'host2', 'host3', 'host09', 'HOST010',
