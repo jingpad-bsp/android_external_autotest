@@ -68,26 +68,34 @@ firewalld,firewall,firewall,Yes,Yes,Yes,No
 conntrackd,nfqueue,nfqueue,No,Yes,Yes,Yes
 avahi-daemon,avahi,avahi,No,Yes,No,No
 upstart-udev-br,root,root,No,No,No,No
+midis,midis,midis,Yes,Yes,Yes,Yes
 
 # ARC-related services running on Chrome OS.
+# exe,euser,egroup,pidns,caps,nonewprivs,filter
 arc_camera_serv,arc-camera,arc-camera,No,Yes,No,No
+arc_camera3_ser,arc-camera,arc-camera,Yes,Yes,Yes,Yes
+arc_camera_algo,arc-camera,arc-camera,Yes,Yes,Yes,Yes
 arc-networkd,root,root,No,No,No,No
 arc-obb-mounter,root,root,Yes,No,No,No
+arc-oemcrypto,arc-oemcrypto,arc-oemcrypto,Yes,Yes,Yes,Yes
 
 # Broadcomm Bluetooth firmware patch downloader runs on some veyron boards.
 brcm_patchram_p,root,root,No,No,No,No
 
-# tpm_manager runs on all TPM2 boards, such as reef.
+# tpm_managerd and trunks run on all TPM2 boards, such as reef.
 tpm_managerd,root,root,No,No,No,No
+trunksd,trunks,trunks,No,Yes,Yes,Yes
 
 # ARC container.
 # root inside the ARC container.
+app_process,android-root,android-root,Yes,No,No,No
 debuggerd,android-root,android-root,Yes,No,No,No
 debuggerd:sig,android-root,android-root,Yes,No,No,No
-vold,android-root,android-root,Yes,No,No,No
 healthd,android-root,android-root,Yes,No,No,No
+vold,android-root,android-root,Yes,No,No,No
 
 # Non-root inside the ARC container.
+boot_latch,656360,656360,Yes,Yes,No,No
 bugreportd,657360,656367,Yes,Yes,No,No
 logd,656396,656396,Yes,Yes,No,No
 servicemanager,656360,656360,Yes,Yes,No,No
