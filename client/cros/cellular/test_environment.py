@@ -12,12 +12,13 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import backchannel
-from autotest_lib.client.cros.cellular import cell_tools
 from autotest_lib.client.cros.cellular import mm
 from autotest_lib.client.cros.cellular.pseudomodem import pseudomodem_context
 from autotest_lib.client.cros.cellular.wardmodem import wardmodem
 from autotest_lib.client.cros.networking import cellular_proxy
+from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
+
 
 class CellularTestEnvironment(object):
     """Setup and verify cellular test environment.
@@ -83,7 +84,8 @@ class CellularTestEnvironment(object):
             self._context_managers.append(self._backchannel)
         if shutdown_other_devices:
             self._context_managers.append(
-                    cell_tools.OtherDeviceShutdownContext('cellular'))
+                    shill_context.AllowedTechnologiesContext(
+                            [shill_proxy.ShillProxy.TECHNOLOGY_CELLULAR]))
 
 
     @contextlib.contextmanager
