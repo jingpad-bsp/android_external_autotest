@@ -36,6 +36,7 @@ class _BaseProgrammer(object):
 
     Private attributes:
       _servo: a servo object controlling the servo device
+      _servo_host: a host object running commands like 'flashrom'
       _servo_prog_state: a tuple of strings of "<control>:<value>" pairs,
                          listing servo controls and their required values for
                          programming
@@ -48,19 +49,25 @@ class _BaseProgrammer(object):
                     firmware/hardware type, set by subclasses.
     """
 
-    def __init__(self, servo, req_list):
+    def __init__(self, servo, req_list, servo_host=None):
         """Base constructor.
         @param servo: a servo object controlling the servo device
         @param req_list: a list of strings, names of the utilities required
                          to be in the path for the programmer to succeed
+        @param servo_host: a host object to execute commands. Default to None,
+                           using the host object from the above servo object
         """
         self._servo = servo
         self._servo_prog_state = ()
         self._servo_prog_state_delay = 0
         self._servo_saved_state = []
         self._program_cmd = ''
+        self._servo_host = servo_host
+        if self._servo_host is None:
+            self._servo_host = self._servo._servo_host
+
         try:
-            self._servo.system('which %s' % ' '.join(req_list))
+            self._servo_host.run('which %s' % ' '.join(req_list))
         except error.AutoservRunError:
             # TODO: We turn this exception into a warn since the fw programmer
             # is not working right now, and some systems do not package the
@@ -102,8 +109,8 @@ class _BaseProgrammer(object):
         self._set_servo_state()
         try:
             logging.debug("Programmer command: %s", self._program_cmd)
-            self._servo.system(self._program_cmd,
-                               timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
+            self._servo_host.run(self._program_cmd,
+                                 timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
         finally:
             self._restore_servo_state()
 
@@ -171,14 +178,14 @@ class FlashromProgrammer(_BaseProgrammer):
                                 self._servo_version)
             # Save needed sections from current firmware
             for section in preserved_sections + gbb_section:
-                self._servo.system(' '.join([
+                self._servo_host.run(' '.join([
                     'flashrom', '-V', '-p', programmer,
                     '-r', self._fw_main, '-i', '%s:%s' % section]),
                     timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
 
             # Pack the saved VPD into new firmware
-            self._servo.system('cp %s %s' % (self._fw_path, self._fw_main))
-            img_size = self._servo.system_output(
+            self._servo_host.run('cp %s %s' % (self._fw_path, self._fw_main))
+            img_size = self._servo_host.run_output(
                     "stat -c '%%s' %s" % self._fw_main)
             pack_cmd = ['flashrom',
                     '-p', 'dummy:image=%s,size=%s,emulate=VARIABLE_SIZE' % (
@@ -186,23 +193,23 @@ class FlashromProgrammer(_BaseProgrammer):
                     '-w', self._fw_main]
             for section in preserved_sections:
                 pack_cmd.extend(['-i', '%s:%s' % section])
-            self._servo.system(' '.join(pack_cmd),
-                               timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
+            self._servo_host.run(' '.join(pack_cmd),
+                                 timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
 
             # HWID is inside the RO portion. Don't preserve HWID if we keep RO.
             if not self._keep_ro:
                 # Read original HWID. The output format is:
                 #    hardware_id: RAMBI TEST A_A 0128
-                gbb_hwid_output = self._servo.system_output(
+                gbb_hwid_output = self._servo_host.run_output(
                         'gbb_utility -g --hwid %s' % self._gbb)
                 original_hwid = gbb_hwid_output.split(':', 1)[1].strip()
 
                 # Write HWID to new firmware
-                self._servo.system("gbb_utility -s --hwid='%s' %s" %
+                self._servo_host.run("gbb_utility -s --hwid='%s' %s" %
                         (original_hwid, self._fw_main))
 
             # Flash the new firmware
-            self._servo.system(' '.join([
+            self._servo_host.run(' '.join([
                     'flashrom', '-V', '-p', programmer,
                     '-w', self._fw_main]), timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
         finally:
