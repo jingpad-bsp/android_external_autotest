@@ -240,20 +240,36 @@ class FlashromProgrammer(_BaseProgrammer):
 class FlashECProgrammer(_BaseProgrammer):
     """Class for programming AP flashrom."""
 
-    def __init__(self, servo):
-        """Configure required servo state."""
-        super(FlashECProgrammer, self).__init__(servo, ['flash_ec',])
-        self._servo = servo
+    def __init__(self, servo, host=None, ec_chip=None):
+        """Configure required servo state.
+
+        @param servo: a servo object controlling the servo device
+        @param host: a host object to execute commands. Default to None,
+                     using the host object from the above servo object, i.e.
+                     a servo host. A CrOS host object can be passed here
+                     such that it executes commands on the CrOS device.
+        @param ec_chip: a string of EC chip. Default to None, using the
+                        EC chip name reported by servo, the primary EC.
+                        Can pass a different chip name, for the case of
+                        the base EC.
+
+        """
+        super(FlashECProgrammer, self).__init__(servo, ['flash_ec'], host)
         self._servo_version = self._servo.get_servo_version()
+        if ec_chip is None:
+            self._ec_chip = servo.get('ec_chip')
+        else:
+            self._ec_chip = ec_chip
 
     def prepare_programmer(self, image):
         """Prepare programmer for programming.
 
         @param image: string with the location of the image file
         """
+        # Get the port of servod. flash_ec may use it to talk to servod.
         port = self._servo._servo_host.servo_port
         self._program_cmd = ('flash_ec --chip=%s --image=%s --port=%d' %
-                             (self._servo.get('ec_chip'), image, port))
+                             (self._ec_chip, image, port))
         if self._servo_version == 'servo_v4_with_ccd_cr50':
             self._program_cmd += ' --raiden'
 
@@ -482,3 +498,43 @@ class ProgrammerV3RwOnly(ProgrammerV3):
         """
         # Do nothing. EC software sync will update the EC RW.
         pass
+
+
+class ProgrammerDfu(object):
+    """Main programmer class which provides programmer for Base EC via DFU.
+
+    It programs through the DUT, i.e. running the flash_ec script on DUT
+    instead of running it in beaglebone (a host of the servo board).
+    It is independent of the version of servo board as long as the servo
+    board has the ec_boot_mode interface.
+
+    """
+
+    def __init__(self, servo, cros_host):
+        self._servo = servo
+        self._cros_host = cros_host
+        # Get the chip name of the base EC and append '_dfu' to it, like
+        # 'stm32' -> 'stm32_dfu'.
+        ec_chip = servo.get(servo.get_base_board() + '_ec_chip') + '_dfu'
+        self._ec_programmer = FlashECProgrammer(servo, cros_host, ec_chip)
+
+
+    def program_ec(self, image):
+        """Programs the DUT with provide ec image.
+
+        @param image: (required) location of ec image file.
+
+        """
+        self._ec_programmer.prepare_programmer(image)
+        ec_boot_mode = self._servo.get_base_board() + '_ec_boot_mode'
+        try:
+            self._servo.set(ec_boot_mode, 'on')
+            # Power cycle the base to enter DFU mode
+            self._cros_host.run('ectool gpioset PP3300_DX_BASE 0')
+            self._cros_host.run('ectool gpioset PP3300_DX_BASE 1')
+            self._ec_programmer.program()
+        finally:
+            self._servo.set(ec_boot_mode, 'off')
+            # Power cycle the base to back normal mode
+            self._cros_host.run('ectool gpioset PP3300_DX_BASE 0')
+            self._cros_host.run('ectool gpioset PP3300_DX_BASE 1')
