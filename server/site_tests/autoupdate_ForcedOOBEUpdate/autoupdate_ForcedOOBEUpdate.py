@@ -6,6 +6,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.update_engine import update_engine_test
@@ -84,10 +85,16 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             time.sleep(1)
 
 
-    def run_once(self, host, job_repo_url=None):
+    def run_once(self, host, full_payload=True, job_repo_url=None):
         self._host = host
+
+        # veyron_rialto is a medical device with a different OOBE that auto
+        # completes so this test is not valid on that device.
+        if 'veyron_rialto' in self._host.get_board():
+            raise error.TestNAError('Rialto has a custom OOBE. Skipping test.')
+
         update_url = self.get_update_url_for_test(job_repo_url,
-                                                  full_payload=True,
+                                                  full_payload=full_payload,
                                                   critical_update=True)
         logging.info('Update url: %s', update_url)
         before = self._get_chromeos_version()
