@@ -137,13 +137,16 @@ class kernel_ConfigVerify(test.test):
         },
     ]
 
-    def is_arm_family(self, arch):
-      return arch in ['armv7l', 'aarch64']
-
     def is_x86_family(self, arch):
+      """
+      Returns true if the architecture is x86 family.
+      """
       return arch in ['i386', 'x86_64']
 
     def run_once(self):
+        """
+        The actual test.
+        """
         # Cache the architecture to avoid redundant execs to "uname".
         arch = utils.get_arch()
         userspace_arch = utils.get_arch_userspace()
@@ -195,13 +198,11 @@ class kernel_ConfigVerify(test.test):
         # Run the dynamic checks.
 
         # Security; NULL-address hole should be as large as possible.
-        # Upstream kernel recommends 64k, which should be large enough to
-        # catch nearly all dereferenced structures.
-        wanted = '65536'
-        if self.is_arm_family(arch):
-            # ... except on ARM where it shouldn't be larger than 32k due
-            # to historical ELF load location.
-            wanted = '32768'
+        # Upstream kernel recommends 64k, which should be large enough
+        # to catch nearly all dereferenced structures. For
+        # compatibility with ARM binaries (even on x86) this needs to
+        # be 32k.
+        wanted = '32768'
         config.has_value('DEFAULT_MMAP_MIN_ADDR', [wanted])
 
         # Security; make sure NX page table bits are usable.
