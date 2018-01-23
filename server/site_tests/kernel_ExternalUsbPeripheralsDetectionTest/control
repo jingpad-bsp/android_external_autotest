@@ -42,15 +42,17 @@ def run(machine):
 
     usb_checks = {
         # Microsoft Headphone
-        str("lsusb -v -d 045e:070f") :
-            ["idVendor\s+0x045e\s+Microsoft", "Audio"],
+        # str("lsusb -v -d 045e:070f") :
+        #    ["idVendor\s+0x045e\s+Microsoft", "Audio"],
         # Webcam
         str("lsusb -v -d 058f:") :
             ["idVendor\s+0x058f\s+Alcor", "iProduct.*(TeckNet|2.0 PC Camera)"],
 
         }
 
-    vendor_id_dict_control_file = {'045e': 'Microsoft Headphone',
+    vendor_id_dict_control_file = {
+                                    # '045e': 'Microsoft Headphone',
+
                                    '058f': 'Webcam',
                                   }
 
