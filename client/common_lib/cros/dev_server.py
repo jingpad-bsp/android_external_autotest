@@ -155,6 +155,12 @@ class DevServerException(Exception):
     """Raised when the dev server returns a non-200 HTTP response."""
     pass
 
+
+class BadBuildException(DevServerException):
+    """Raised when build failed to boot on DUT."""
+    pass
+
+
 class RetryableProvisionException(DevServerException):
     """Raised when provision fails due to a retryable reason."""
     pass
@@ -166,6 +172,59 @@ class DevServerOverloadException(Exception):
 class DevServerFailToLocateException(Exception):
     """Raised when fail to locate any devserver."""
     pass
+
+
+class DevServerExceptionClassifier(object):
+    """A Class represents exceptions raised from DUT by calling auto_update."""
+    def __init__(self, err, keep_full_trace=True):
+        """
+        @param err: A single string representing one time provision
+            error happened in auto_update().
+        @param keep_full_trace: True to keep the whole track trace of error.
+            False when just keep the last line.
+        """
+        self._err = err if keep_full_trace else err.split('\n')[-1]
+        self._classification = None
+
+    def _classify(self):
+        for err_pattern, classification in _EXCEPTION_PATTERNS:
+            if re.match(err_pattern, self._err):
+                return classification
+
+        return '(0) Unknown exception'
+
+    @property
+    def classification(self):
+        """Classify the error
+
+        @return: return a classified exception type (string) from
+            _EXCEPTION_PATTERNS or 'Unknown exception'. Current patterns in
+            _EXCEPTION_PATTERNS are very specific so that errors cannot match
+            more than one pattern.
+        """
+        if not self._classification:
+            self._classification = self._classify()
+        return self._classification
+
+    @property
+    def summary(self):
+        """Use one line to show the error message."""
+        return ' '.join(self._err.splitlines())
+
+    @property
+    def classified_exception(self):
+        """What kind of exception will be raised to higher.
+
+        @return: return a special Exception when the raised error is an
+            RootfsUpdateError. Otherwise, return general DevServerException.
+        """
+        # The classification of RootfsUpdateError in _EXCEPTION_PATTERNS starts
+        # with "(4)"
+        if self.classification.startswith('(4)'):
+            return BadBuildException
+
+        return DevServerException
+
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -1997,33 +2056,6 @@ class ImageServer(ImageServerBase):
             return finished, raised_error, pid
 
 
-    def _parse_AU_error(self, response):
-        """Parse auto_update error returned from devserver."""
-        return re.split('\n', response)[-1]
-
-
-    def _classify_exceptions(self, target_error):
-        """Parse the error that was raised from auto_update.
-
-        @param target_error: A single string representing one time provision
-            error happened in auto_update().
-
-        @return: If target_error is empty, return None. Otherwise, return a
-            classified exception type (string) from _EXCEPTION_PATTERNS
-            or 'Unknown exception'. Current patterns in _EXCEPTION_PATTERNS are
-            very specific so that errors cannot match more than one pattern.
-        """
-        if not target_error:
-            return None
-
-        for err_pattern, classification in _EXCEPTION_PATTERNS:
-            match = re.match(err_pattern, target_error)
-            if match:
-                return classification
-
-        return '(0) Unknown exception'
-
-
     def _check_error_message(self, error_patterns_to_check, error_msg):
         """Detect whether specific error pattern exist in error message.
 
@@ -2096,7 +2128,8 @@ class ImageServer(ImageServerBase):
             this auto_update is.
         @param success: a field in metrics, representing whether this
             auto_update succeeds or not.
-        @param failure_reason: auto update failure reason if success is False.
+        @param failure_reason: DevServerExceptionClassifier object to show
+            auto update failure reason, or None.
         @param duration: auto update duration time, in seconds.
         """
         # The following is high cardinality, but sparse.
@@ -2120,11 +2153,11 @@ class ImageServer(ImageServerBase):
 
         if not success:
             metrics.String(
-                    PROVISION_PATH +
-                    '/auto_update_failure_reason_by_devserver_dut',
-                    reset_after=True).set(
-                            self._classify_exceptions(failure_reason)
-                            if failure_reason else '', fields=fields)
+                PROVISION_PATH +
+                '/auto_update_failure_reason_by_devserver_dut',
+                reset_after=True).set(
+                    failure_reason.classification if failure_reason else '',
+                    fields=fields)
 
         metrics.SecondsDistribution(
                 PROVISION_PATH + '/auto_update_duration_by_devserver_dut').add(
@@ -2143,9 +2176,10 @@ class ImageServer(ImageServerBase):
         cardinality limit, we avoid a metric that includes both dut hostname
         and other high cardinality fields.
 
-        @param error_list: a list of errors happened in provision. Usually it
-            contains 1 ~ AU_RETRY_LIMIT errors since we only retry provision
-            for several times.
+        @param error_list: a list of DevServerExceptionClassifier objects to
+            show errors happened in provision. Usually it contains 1 ~
+            AU_RETRY_LIMIT objects since we only retry provision for several
+            times.
         @param duration_list: a list of provision duration time, counted by
             seconds.
         @param is_au_success: a field in metrics, representing whether this
@@ -2183,9 +2217,8 @@ class ImageServer(ImageServerBase):
             metrics.String(
                     PROVISION_PATH +
                     '/provision_failure_reason_by_devserver_dut',
-                    reset_after=True).set(
-                            self._classify_exceptions(error_list[0]),
-                            fields=fields)
+                    reset_after=True).set(error_list[0].classification,
+                                          fields=fields)
 
         metrics.SecondsDistribution(
                 PROVISION_PATH + '/provision_duration_by_devserver_dut').add(
@@ -2240,7 +2273,7 @@ class ImageServer(ImageServerBase):
             c2.increment(fields=f2)
         else:
             # In metrics, use the first error as the real provision errors.
-            raised_error = str(self._classify_exceptions(error_list[0]))
+            raised_error = error_list[0].classification
             f1['error'] = raised_error
             c1.increment(fields=f1)
             f2['error'] = raised_error
@@ -2251,7 +2284,7 @@ class ImageServer(ImageServerBase):
             # hit lab frequently. Previously, all errors raised in the second
             # try of auto_update will be eaten.
             for err in error_list:
-                f3['error'] = str(self._classify_exceptions(err))
+                f3['error'] = err.classification
                 c3.increment(fields=f3)
 
         total_provision_duration = 0
@@ -2398,7 +2431,7 @@ class ImageServer(ImageServerBase):
                     response = self._trigger_auto_update(**kwargs)
             except DevServerException as e:
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
-                failure_reason = str(e)
+                failure_reason = DevServerExceptionClassifier(str(e))
             else:
                 _, raised_error, pid = self.check_for_auto_update_finished(
                         response, **kwargs)
@@ -2440,7 +2473,8 @@ class ImageServer(ImageServerBase):
                                                   au_log_dir,
                                                   kwargs['host_name'],
                                                   pid))
-                        failure_reason = self._parse_AU_error(error_str)
+                        failure_reason = DevServerExceptionClassifier(
+                            error_str, keep_full_trace=False)
                         if self._is_retryable(error_str):
                             retry_with_another_devserver = True
 
@@ -2482,16 +2516,14 @@ class ImageServer(ImageServerBase):
         # auto-update logs, or killing auto-update processes, just report a
         # common error here.
         if error_list:
-            real_error = ''
-            for i in range(len(error_list)):
-                real_error += '%d) %s, ' % (
-                        i, ' '.join(error_list[i].splitlines()))
+            real_error = ', '.join(['%d) %s' % (i, e.summary)
+                                    for i, e in enumerate(error_list)])
             if retry_with_another_devserver:
                 raise RetryableProvisionException(
                         error_msg % (host_name, real_error))
             else:
-                raise DevServerException(
-                        error_msg % (host_name, real_error))
+                raise error_list[0].classified_exception(
+                    error_msg % (host_name, real_error))
         else:
             raise DevServerException(error_msg % (
                         host_name, ('RPC calls after the whole auto-update '
