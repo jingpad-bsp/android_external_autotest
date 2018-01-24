@@ -13,6 +13,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import dbus_send
 from autotest_lib.client.cros import debugd_util
 from fake_printer import FakePrinter
 
@@ -72,23 +73,19 @@ class platform_AddPrinter(test.test):
         Delete downloaded ppd file, fake printer log file, component (if
         downloaded);
         """
+        # Remove component.
+        if hasattr(self, 'component'):
+          self.delete_component(self.component)
+
+        # Close browser.
         if hasattr(self, 'browser'):
             self.browser.close()
 
-        # Remove temp files
-        os.remove(self.ppd_file)
-        os.remove(self.printing_log_path)
-
-        # Remove escpr components (if exists)
-        shutil.rmtree('/home/chronos/epson-inkjet-printer-escpr',
-                      ignore_errors=True);
-        shutil.rmtree('/var/lib/imageloader/', ignore_errors=True);
-        mount_folder = '/run/imageloader/epson-inkjet-printer-escpr/'
-        if os.path.exists(mount_folder):
-            for foldername in os.listdir(mount_folder):
-                utils.system_output(
-                    'umount ' + mount_folder + foldername)
-            shutil.rmtree(mount_folder, ignore_errors=True);
+        # Remove temp files.
+        if os.path.exists(self.ppd_file):
+          os.remove(self.ppd_file)
+        if os.path.exists(self.printing_log_path):
+          os.remove(self.printing_log_path)
 
     def load_ppd(self, ppd_path):
         """
@@ -107,6 +104,8 @@ class platform_AddPrinter(test.test):
 
         Args:
         @param ppd_path: path to ppd file
+
+        @raises: error.TestFail if could not setup a printer
         """
         logging.info('add printer from ppd:' + ppd_path);
 
@@ -141,9 +140,26 @@ class platform_AddPrinter(test.test):
             'cmp %s %s' % (self.printing_log_path, golden_file_path)
         )
         if output:
-            error.TestFail('ERROR: Printing request is not verified!')
+            raise error.TestFail('ERROR: Printing request is not verified!')
         logging.info('cmp output:' + output);
 
+
+    def delete_component(self, component):
+        """
+        Delete filter component via dbus API
+
+        Args:
+        @param component: name of component
+        """
+        logging.info('delete component:' + component);
+
+        # TODO (xiaochu) use dbus_send wrapper here: crbug.com/804485
+        stdout=utils.system_output(
+            'dbus-send --system --type=method_call --print-reply '
+            '--dest=org.chromium.ComponentUpdaterService '
+            '/org/chromium/ComponentUpdaterService '
+            'org.chromium.ComponentUpdaterService.UnloadComponent '
+            '"string:%s"' % (component))
 
     def download_component(self, component):
         """
@@ -151,15 +167,22 @@ class platform_AddPrinter(test.test):
 
         Args:
         @param component: name of component
+
+        @raises: error.TestFail is component is not loaded.
         """
         logging.info('download component:' + component);
 
-        stdout=utils.system_output(
-            'dbus-send --system --type=method_call --print-reply '
-            '--dest=org.chromium.ComponentUpdaterService '
-            '/org/chromium/ComponentUpdaterService '
-            'org.chromium.ComponentUpdaterService.LoadComponent '
-            '"string:%s"' % (component))
+        res = dbus_send.dbus_send(
+            'org.chromium.ComponentUpdaterService',
+            'org.chromium.ComponentUpdaterService',
+            '/org/chromium/ComponentUpdaterService',
+            'LoadComponent',
+            timeout_seconds=20,
+            user='root',
+            args=[dbus.String(component)])
+
+        if res.response == '':
+          raise error.TestFail('Component could not be loaded.')
 
     def run_once(self, golden_file, component=None):
         """
@@ -167,7 +190,8 @@ class platform_AddPrinter(test.test):
         @param golden_file: printing request golden file name
         """
         if component:
-            self.download_component(component)
+            self.component = component
+            self.download_component(self.component)
 
         current_dir = os.path.dirname(os.path.realpath(__file__))
         self.add_a_printer(self.ppd_file)

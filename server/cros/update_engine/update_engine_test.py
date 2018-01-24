@@ -56,7 +56,9 @@ class UpdateEngineTest(test.test):
         self._current_timestamp = None
         self._expected_events = []
         self._omaha_devserver = None
-
+        self._host = None
+        # Some AU tests use multiple DUTs
+        self._hosts = None
 
     def cleanup(self):
         if self._omaha_devserver is not None:
@@ -408,6 +410,8 @@ class UpdateEngineTest(test.test):
         all test needs. So we also kick off our own omaha_devserver for the
         test run some times.
 
+        This tests expects the test to set self._host or self._hosts.
+
         @param job_repo_url: string url containing the current build.
         @param full_payload: bool whether we want a full payload.
         @param critical_update: bool whether we need a critical update.
@@ -419,6 +423,10 @@ class UpdateEngineTest(test.test):
 
         """
         if job_repo_url is None:
+            if self._hosts is not None:
+                self._host = self._hosts[0]
+            if self._host is None:
+                raise error.TestFail('No _host specified by AU test.')
             info = self._host.host_info_store.get()
             job_repo_url = info.attributes.get(
                 self._host.job_repo_url_attribute, '')

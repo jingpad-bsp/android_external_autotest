@@ -32,6 +32,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
+from autotest_lib.server.cros.servo import firmware_programmer
 from autotest_lib.server.cros.servo import plankton
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import base_label
@@ -1126,6 +1127,19 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 self._add_fw_version_label(build, rw_only)
         finally:
             tmpd.clean()
+
+
+    def program_base_ec(self, image_path):
+        """Program Base EC on DUT with the given image.
+
+        @param image_path: a string, file name of the EC image to program
+                           on the DUT.
+
+        """
+        dest_path = os.path.join('/tmp', os.path.basename(image_path))
+        self.send_file(image_path, dest_path)
+        programmer = firmware_programmer.ProgrammerDfu(self.servo, self)
+        programmer.program_ec(dest_path)
 
 
     def show_update_engine_log(self):
