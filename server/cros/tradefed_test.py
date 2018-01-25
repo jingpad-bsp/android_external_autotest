@@ -22,7 +22,6 @@ import contextlib
 import errno
 import glob
 import hashlib
-import lockfile
 import logging
 import os
 import pipes
@@ -41,6 +40,7 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 from autotest_lib.server.cros import cts_expected_failure_parser
+from autotest_lib.server.cros import lockfile
 
 # TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
 try:
