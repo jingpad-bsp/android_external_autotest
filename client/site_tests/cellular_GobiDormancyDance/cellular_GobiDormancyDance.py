@@ -173,7 +173,7 @@ class DormancyTester(ExceptionForwardingMainLoop):
 
 
 
-class network_3GDormancyDance(test.test):
+class cellular_GobiDormancyDance(test.test):
     version = 1
 
     def FindModemPath(self):
