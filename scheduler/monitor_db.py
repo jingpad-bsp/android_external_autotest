@@ -178,6 +178,7 @@ def main_without_exception_handling():
                                              indirect=True,
                                              debug_file=options.metrics_file):
       try:
+          metrics.Counter('chromeos/autotest/scheduler/start').increment()
           process_start_time = time.time()
           initialize()
           dispatcher = Dispatcher()
