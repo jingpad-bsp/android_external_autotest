@@ -52,7 +52,7 @@ def GetFailConnectModem(family):
     return FailConnectModem()
 
 
-class network_3GFailedConnect(test.test):
+class cellular_ConnectFailure(test.test):
     """
     Tests that 3G connect failures are handled by shill properly.
 

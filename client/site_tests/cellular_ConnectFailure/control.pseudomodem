@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GFailedConnect.pseudomodem"
+NAME = "cellular_ConnectFailure.pseudomodem"
 PURPOSE = "Verify that a failed modem connect attempt puts the service in a failed state."
 CRITERIA = """
 This test will fail if a connect failure does not immediately cause the
@@ -26,14 +26,14 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_module_path = os.path.join(
-        job.testdir, 'network_3GFailedConnect', 'network_3GFailedConnect.py')
+        job.testdir, 'cellular_ConnectFailure', 'cellular_ConnectFailure.py')
 
 # 3GPP
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'test-module' : test_module_path,
                         'test-modem-class' : 'GetFailConnectModem',
                         'test-modem-arg' : ['3GPP']},))
-job.run_test('network_3GFailedConnect', tag='pseudomodem_3GPP',
+job.run_test('cellular_ConnectFailure', tag='pseudomodem_3GPP',
              test_env=test_env)
 
 # CDMA
@@ -41,5 +41,5 @@ test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'test-module' : test_module_path,
                         'test-modem-class' : 'GetFailConnectModem',
                         'test-modem-arg' : ['CDMA']},))
-job.run_test('network_3GFailedConnect', tag='pseudomodem_CDMA',
+job.run_test('cellular_ConnectFailure', tag='pseudomodem_CDMA',
              test_env=test_env)
