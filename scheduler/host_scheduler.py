@@ -80,7 +80,6 @@ from autotest_lib.scheduler import rdb_utils
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils import job_overhead
-from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
 
 
@@ -485,9 +484,6 @@ def main():
 
         initialize(options.testing)
 
-        # Start the thread to report metadata.
-        metadata_reporter.start()
-
         ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler',
                                             debug_file=options.metrics_file)
 
@@ -513,7 +509,6 @@ def main():
         email_manager.manager.send_queued_emails()
         if _db_manager:
             _db_manager.disconnect()
-        metadata_reporter.abort()
 
 
 if __name__ == '__main__':
