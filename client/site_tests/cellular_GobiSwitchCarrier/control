@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_SwitchCarrier"
+NAME = "cellular_GobiSwitchCarrier"
 PURPOSE = "Tries switching carriers."
 CRITERIA = """
 This test will fail if the modem fails to switch carriers.
@@ -18,4 +18,4 @@ DOC = """
 Try switching through a list of carriers, checking that each switch succeeded.
 """
 
-job.run_test('network_SwitchCarrier')
+job.run_test('cellular_GobiSwitchCarrier')
