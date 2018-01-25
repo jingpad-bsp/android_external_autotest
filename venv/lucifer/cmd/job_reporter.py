@@ -38,10 +38,12 @@ def main(args):
     @param args: list of command line args
     """
     args = _parse_args_and_configure_logging(args)
-    lease_path = _lease_path(args.jobdir, args.job_id)
-    with leasing.obtain_lease(lease_path):
+    logger.info('Starting with args: %r', args)
+    with leasing.obtain_lease(_lease_path(args.jobdir, args.job_id)):
         autotest.monkeypatch()
-        return _main(args)
+        ret = _main(args)
+    logger.info('Exiting normally with: %r', ret)
+    return ret
 
 
 def _parse_args_and_configure_logging(args):

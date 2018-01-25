@@ -43,10 +43,11 @@ def main(args):
     loglib.add_logging_options(parser)
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
+    logger.info('Starting with args: %r', args)
 
     autotest.monkeypatch()
     _main_loop(jobdir=args.jobdir)
-    return 0
+    assert False  # cannot exit normally
 
 
 def _main_loop(jobdir):
@@ -222,4 +223,4 @@ def _mark_failed(job_ids):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    main(sys.argv[1:])
