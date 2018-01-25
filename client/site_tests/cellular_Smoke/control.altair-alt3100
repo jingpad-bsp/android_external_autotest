@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSmokeTest.altair-alt3100"
+NAME = "cellular_Smoke.altair-alt3100"
 PURPOSE = "Verify 3G modem can connect to the network."
 CRITERIA = """
 This test will fail if one of the following conditions occur:
@@ -29,4 +29,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GSmokeTest', tag='altair-alt3100', test_env=test_env)
+job.run_test('cellular_Smoke', tag='altair-alt3100', test_env=test_env)

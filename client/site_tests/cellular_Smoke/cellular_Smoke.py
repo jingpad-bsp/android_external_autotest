@@ -17,7 +17,7 @@ from autotest_lib.client.cros.networking import shill_proxy
 CONNECT_TIMEOUT = 120
 DISCONNECT_TIMEOUT = 60
 
-class network_3GSmokeTest(test.test):
+class cellular_Smoke(test.test):
     """
     Tests that 3G modem can connect to the network
 
