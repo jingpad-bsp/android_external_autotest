@@ -298,26 +298,22 @@ def _try_unlock_host(afe_host):
     return True
 
 
-def _update_host_attributes(afe, hostname, host_attr_dict):
+def _update_host_attributes(afe, hostname, host_attrs):
     """Update the attributes for a given host.
 
-    @param afe             AFE object for RPC calls.
-    @param hostname        Name of the host to be updated.
-    @param host_attr_dict  Dict of host attributes to store in the AFE.
+    @param afe          AFE object for RPC calls.
+    @param hostname     Host name of the DUT.
+    @param host_attrs   Dictionary with attributes to be applied to the
+                        host.
     """
-    # Let's grab the servo hostname/port/serial from host_attr_dict
-    # if possible.
-    host_attr_servo_host = None
-    host_attr_servo_port = None
-    host_attr_servo_serial = None
-    if hostname in host_attr_dict:
-        host_attr_servo_host = host_attr_dict[hostname].get(
-                servo_host.SERVO_HOST_ATTR)
-        host_attr_servo_port = host_attr_dict[hostname].get(
-                servo_host.SERVO_PORT_ATTR)
-        host_attr_servo_serial = host_attr_dict[hostname].get(
-                servo_host.SERVO_SERIAL_ATTR)
-
+    # Grab the servo hostname/port/serial from `host_attrs` if supplied.
+    # For new servo V4 deployments, we require the user to supply the
+    # attributes (because there are no appropriate defaults).  So, if
+    # none are supplied, we assume it can't be V4, and apply the
+    # defaults for servo V3.
+    host_attr_servo_host = host_attrs.get(servo_host.SERVO_HOST_ATTR)
+    host_attr_servo_port = host_attrs.get(servo_host.SERVO_PORT_ATTR)
+    host_attr_servo_serial = host_attrs.get(servo_host.SERVO_SERIAL_ATTR)
     servo_hostname = (host_attr_servo_host or
                       servo_host.make_servo_hostname(hostname))
     servo_port = (host_attr_servo_port or
@@ -334,7 +330,7 @@ def _update_host_attributes(afe, hostname, host_attr_dict):
                                hostname=hostname)
 
 
-def _get_afe_host(afe, hostname, arguments, host_attr_dict):
+def _get_afe_host(afe, hostname, host_attrs, arguments):
     """Get an AFE Host object for the given host.
 
     If the host is found in the database, return the object
@@ -343,10 +339,11 @@ def _get_afe_host(afe, hostname, arguments, host_attr_dict):
     If no host is found, create one with appropriate servo
     attributes and the given board label.
 
-    @param afe             AFE from which to get the host.
-    @param hostname        Name of the host to look up or create.
-    @param arguments       Command line arguments with options.
-    @param host_attr_dict  Dict of host attributes to store in the AFE.
+    @param afe          AFE object for RPC calls.
+    @param hostname     Host name of the DUT.
+    @param host_attrs   Dictionary with attributes to be applied to the
+                        host.
+    @param arguments    Command line arguments with options.
 
     @return A tuple of the afe_host, plus a flag. The flag indicates
             whether the Host should be unlocked if subsequent operations
@@ -365,13 +362,17 @@ def _get_afe_host(afe, hostname, arguments, host_attr_dict):
             if unlock_on_failure and not _try_unlock_host(afe_host):
                 raise Exception('Host is in use, and failed to unlock it')
             raise Exception('Host is in use by Autotest')
+        # This host was pre-existing; if the user didn't supply
+        # attributes, don't update them, because the defaults may
+        # not be correct.
+        if host_attrs:
+            _update_host_attributes(afe, hostname, host_attrs)
     else:
         afe_host = afe.create_host(hostname,
                                    locked=True,
                                    lock_reason=_LOCK_REASON_NEW_HOST)
         afe_host.add_labels([constants.Labels.BOARD_PREFIX + arguments.board])
-
-    _update_host_attributes(afe, hostname, host_attr_dict)
+        _update_host_attributes(afe, hostname, host_attrs)
     afe_host = afe.get_hosts([hostname])[0]
     return afe_host, unlock_on_failure
 
@@ -449,7 +450,7 @@ def _install_test_image(host, arguments):
         host.close()
 
 
-def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
+def _install_and_update_afe(afe, hostname, host_attrs, arguments):
     """Perform all installation and AFE updates.
 
     First, lock the host if it exists and is unlocked.  Then,
@@ -460,13 +461,14 @@ def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
     If installation succeeds, make sure the DUT is in the AFE,
     and make sure that it has basic labels.
 
-    @param afe               AFE object for RPC calls.
-    @param hostname          Host name of the DUT.
-    @param arguments         Command line arguments with options.
-    @param host_attr_dict    Dict of host attributes to store in the AFE.
+    @param afe          AFE object for RPC calls.
+    @param hostname     Host name of the DUT.
+    @param host_attrs   Dictionary with attributes to be applied to the
+                        host.
+    @param arguments    Command line arguments with options.
     """
-    afe_host, unlock_on_failure = _get_afe_host(afe, hostname, arguments,
-                                                host_attr_dict)
+    afe_host, unlock_on_failure = _get_afe_host(afe, hostname, host_attrs,
+                                                arguments)
     try:
         host = _create_host(hostname, afe, afe_host)
         _install_test_image(host, arguments)
@@ -495,33 +497,32 @@ def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
 def _install_dut(arguments, host_attr_dict, hostname):
     """Deploy or repair a single DUT.
 
-    Implementation note: This function is expected to run in a
-    subprocess created by a multiprocessing Pool object.  As such,
-    it can't (shouldn't) write to shared files like `sys.stdout`.
-
-    @param hostname        Host name of the DUT to install on.
     @param arguments       Command line arguments with options.
-    @param host_attr_dict  Dict of host attributes to store in the AFE.
+    @param host_attr_dict  Dict mapping hostnames to attributes to be
+                           stored in the AFE.
+    @param hostname        Host name of the DUT to install on.
 
     @return On success, return `None`.  On failure, return a string
             with an error message.
     """
-    logpath = os.path.join(arguments.logdir, hostname + '.log')
-    logfile = open(logpath, 'w')
-
     # In some cases, autotest code that we call during install may
     # put stuff onto stdout with 'print' statements.  Most notably,
     # the AFE frontend may print 'FAILED RPC CALL' (boo, hiss).  We
     # want nothing from this subprocess going to the output we
-    # inherited from our parent, so redirect stdout and stderr here,
-    # before we make any AFE calls.  Note that this does what we
-    # want only because we're in a subprocess.
+    # inherited from our parent, so redirect stdout and stderr, before
+    # we make any AFE calls.  Note that this is reasonable because we're
+    # in a subprocess.
+
+    logpath = os.path.join(arguments.logdir, hostname + '.log')
+    logfile = open(logpath, 'w')
     sys.stderr = sys.stdout = logfile
     _configure_logging_to_file(logfile)
 
     afe = frontend.AFE(server=arguments.web)
     try:
-        _install_and_update_afe(afe, hostname, arguments, host_attr_dict)
+        _install_and_update_afe(afe, hostname,
+                                host_attr_dict.get(hostname, {}),
+                                arguments)
     except Exception as e:
         logging.exception('Original exception: %s', e)
         return str(e)
