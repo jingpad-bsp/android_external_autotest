@@ -255,7 +255,7 @@ class ModemDisableTester(DisableTester):
         error_handler=self.build_error_handler('Enable'))
 
 
-class network_3GDisableWhileConnecting(test.test):
+class cellular_DisableWhileConnecting(test.test):
   """Check that the modem can handle a disconnect while connecting."""
   version = 1
 
