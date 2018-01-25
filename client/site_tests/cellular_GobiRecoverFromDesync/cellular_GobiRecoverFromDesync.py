@@ -316,7 +316,7 @@ class EnableDisableTest():
         raise error.TestFail('Modem Failed to enter state Disabled')
 
 
-class network_3GRecoverFromGobiDesync(test.test):
+class cellular_GobiRecoverFromDesync(test.test):
   version = 1
 
   def run_test(self, test_env, test):
