@@ -451,23 +451,6 @@ def get_shard_client():
 
 
 def main():
-    ts_mon_config.SetupTsMonGlobalState('shard_client')
-
-    try:
-        metrics.Counter('chromeos/autotest/shard_client/start').increment()
-        main_without_exception_handling()
-    except Exception as e:
-        metrics.Counter('chromeos/autotest/shard_client/uncaught_exception'
-                        ).increment()
-        message = 'Uncaught exception. Terminating shard_client.'
-        email_manager.manager.log_stacktrace(message)
-        logging.exception(message)
-        raise
-    finally:
-        email_manager.manager.send_queued_emails()
-
-
-def main_without_exception_handling():
     parser = argparse.ArgumentParser(description='Shard client.')
     parser.add_argument(
             '--lifetime-hours',
@@ -477,8 +460,35 @@ def main_without_exception_handling():
                  'At the expiry of this time, the process will exit '
                  'gracefully.',
     )
+    parser.add_argument(
+            '--metrics-file',
+            help='If provided, drop metrics to this local file instead of '
+                 'reporting to ts_mon',
+            type=str,
+            default=None,
+    )
     options = parser.parse_args()
 
+    with ts_mon_config.SetupTsMonGlobalState(
+          'shard_client',
+          indirect=True,
+          debug_file=options.metrics_file,
+    ):
+        try:
+            metrics.Counter('chromeos/autotest/shard_client/start').increment()
+            main_without_exception_handling(options)
+        except Exception as e:
+            metrics.Counter('chromeos/autotest/shard_client/uncaught_exception'
+                            ).increment()
+            message = 'Uncaught exception. Terminating shard_client.'
+            email_manager.manager.log_stacktrace(message)
+            logging.exception(message)
+            raise
+        finally:
+            email_manager.manager.send_queued_emails()
+
+
+def main_without_exception_handling(options):
     scheduler_lib.setup_logging(
             os.environ.get('AUTOTEST_SCHEDULER_LOG_DIR', None),
             None, timestamped_logfile_prefix='shard_client')
