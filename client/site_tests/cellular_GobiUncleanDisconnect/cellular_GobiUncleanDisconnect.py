@@ -7,7 +7,7 @@ from autotest_lib.client.common_lib import error
 
 import subprocess
 
-class network_GobiUncleanDisconnect(test.test):
+class cellular_GobiUncleanDisconnect(test.test):
     version = 1
 
     def unclean_disconnect(self, iteration):
