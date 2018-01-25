@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GDisconnectFailure"
+NAME = "cellular_DisconnectFailure"
 PURPOSE = """
 Tests that a disconnect failure at the modemmanager level is handled properly
 by shill.
@@ -30,9 +30,9 @@ modem state is DISCONNECTING and to clean up the service otherwise.
 """
 
 # 3GPP
-job.run_test('network_3GDisconnectFailure', tag='3GPP')
+job.run_test('cellular_DisconnectFailure', tag='3GPP')
 
 # CDMA
-job.run_test('network_3GDisconnectFailure',
+job.run_test('cellular_DisconnectFailure',
              pseudomodem_family='CDMA',
              tag='CDMA')
