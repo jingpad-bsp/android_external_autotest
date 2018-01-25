@@ -1678,24 +1678,30 @@ class ProvisionSuite(_BaseSuite):
                 builds=builds,
                 board=board,
                 **kwargs)
-        dummy_test = _load_dummy_test(
-                builds, devserver, cf_getter,
-                run_prod_code, test_args, test_source_build)
+        self._num_successful = 0
+        self._num_required = 0
+        self.tests = []
+
         static_deps = [dep for dep in self._dependencies
                        if not provision.Provision.acts_on(dep)]
+        if 'pool:suites' in static_deps:
+            logging.info('Provision suite is disabled on suites pool')
+            return
+        logging.debug('Looking for hosts matching %r', static_deps)
         hosts = self._afe.get_hosts(
                 invalid=False, multiple_labels=static_deps)
-        logging.debug('Looking for hosts matching %r', static_deps)
         logging.debug('Found %d matching hosts for ProvisionSuite', len(hosts))
         available_hosts = [h for h in hosts if h.is_available()]
         logging.debug('Found %d available hosts for ProvisionSuite',
                       len(available_hosts))
+        dummy_test = _load_dummy_test(
+                builds, devserver, cf_getter,
+                run_prod_code, test_args, test_source_build)
         self.tests = [dummy_test] * min(len(available_hosts), num_max)
         logging.debug('Made %d tests for ProvisionSuite', len(self.tests))
         self._num_required = min(num_required, len(self.tests))
         logging.debug('Expecting %d tests to pass for ProvisionSuite',
                       self._num_required)
-        self._num_successful = 0
 
     def _handle_result(self, result, record, waiter):
         super(ProvisionSuite, self)._handle_result(result, record, waiter)
