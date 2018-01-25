@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemControl.novatel-e362"
+NAME = "cellular_ModemControl.huawei-mu736"
 PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
@@ -13,14 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:novatel-e362, modem_repair"
-
-# The E362 modems may fail while connecting and disconnecting.  These
-# failures go away if the test is retried.  See crbug.com/224026,
-# crbug.com/224110, and crbug.com/224329.
-# TODO(thieule): Change this from generic retry to specific failure retry.
-# crbug.com/224369.
-RETRIES = 2
+DEPENDENCIES = "modem:huawei-mu736"
 
 DOC = """
   Tests that commands sent to ModemManager or cromo are reflected in flimflam.
@@ -32,12 +25,8 @@ DOC = """
 
 from autotest_lib.client.cros.cellular import test_environment
 
-# For E362 modems, we need to prevent the modem from disconnecting too quickly
-# or else the out-of-credits logic will kick in and attempt to reconnect (see
-# shill/cellular_service.cc).  This is accomplished by setting |slow_connect|
-# to True.
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
-             slow_connect=True, tag='no-autoconnect-novatel-e362')
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
-             slow_connect=True, tag='autoconnect-novatel-e362')
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=False,
+             tag='no-autoconnect-huawei-mu736')
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=True,
+             tag='autoconnect-huawei-mu736')
