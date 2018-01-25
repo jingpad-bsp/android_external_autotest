@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network_3GScanningProperty"
+NAME = "cellular_ScanningProperty"
 PURPOSE = "Verify cellular device 'Scanning' property is updated correctly."
 CRITERIA = """
 This test will fail if shill does not update the |Scanning| property correctly
@@ -23,4 +23,4 @@ updated correctly in the following two scenarios:
   (2) During the initial modem enable-register-connect sequence.
 """
 
-job.run_test('network_3GScanningProperty')
+job.run_test('cellular_ScanningProperty')
