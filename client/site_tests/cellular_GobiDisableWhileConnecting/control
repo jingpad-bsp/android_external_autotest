@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GDisableGobiWhileConnecting"
+NAME = "cellular_GobiDisableWhileConnecting"
 PURPOSE = "Check that the 3G modem can handle a disconnect while connecting."
 CRITERIA = """
 This test will fail if a disconnect request while the modem is
