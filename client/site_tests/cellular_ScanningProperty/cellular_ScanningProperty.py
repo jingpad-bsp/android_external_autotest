@@ -21,7 +21,7 @@ STATE_MACHINE_SCAN = 'ScanMachine'
 TEST_MODEMS_MODULE_PATH = os.path.join(os.path.dirname(__file__), 'files',
                                        'modems.py')
 
-class network_3GScanningProperty(test.test):
+class cellular_ScanningProperty(test.test):
     """
     Test that the |Scanning| Property of the shill cellular device object is
     updated correctly in the following two scenarios:
