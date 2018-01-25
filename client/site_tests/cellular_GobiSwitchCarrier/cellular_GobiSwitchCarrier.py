@@ -7,7 +7,7 @@ from autotest_lib.client.common_lib import error
 
 import dbus, dbus.mainloop.glib, gobject
 
-class network_SwitchCarrier(test.test):
+class cellular_GobiSwitchCarrier(test.test):
     version = 1
 
     def fail(self, msg):
