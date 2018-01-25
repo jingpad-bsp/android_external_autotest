@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GFailedConnect"
+NAME = "cellular_ConnectFailure"
 PURPOSE = "Verify that a failed modem connect attempt puts the service in a failed state."
 CRITERIA = """
 This test will fail if a connect failure does not immediately cause the
@@ -25,4 +25,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GFailedConnect', test_env=test_env)
+job.run_test('cellular_ConnectFailure', test_env=test_env)
