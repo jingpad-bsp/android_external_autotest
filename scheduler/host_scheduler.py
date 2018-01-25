@@ -467,9 +467,6 @@ def main():
     if _monitor_db_host_acquisition:
         logging.info('Please set inline_host_acquisition=False in the shadow '
                      'config before starting the host scheduler.')
-        # The upstart job for the host scheduler understands exit(0) to mean
-        # 'don't respawn'. This is desirable when the job scheduler is acquiring
-        # hosts inline.
         sys.exit(0)
     try:
         options = parse_arguments(sys.argv[1:])
