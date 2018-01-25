@@ -10,15 +10,9 @@ import urllib2
 
 import common
 
-# Import 'flimflam_test_path' first in order to import 'routing'.
-# Disable warning about flimflam_test_path not being used since it is used
-# to find routing but not explicitly used as a module.
-# pylint: disable-msg=W0611
-import flimflam_test_path
-import routing
-
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import routing
 from autotest_lib.client.cros.cellular import mm
 
 
