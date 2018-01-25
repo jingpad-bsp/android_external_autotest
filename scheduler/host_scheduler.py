@@ -452,6 +452,14 @@ def parse_arguments(argv):
                               'localhost.'),
                         action='store_true', default=False)
     parser.add_argument(
+            '--lifetime-hours',
+            type=float,
+            default=None,
+            help='If provided, number of hours the scheduler should run for. '
+                 'At the expiry of this time, the process will exit '
+                 'gracefully.',
+    )
+    parser.add_argument(
             '--metrics-file',
             help='If provided, drop metrics to this local file instead of '
                  'reporting to ts_mon',
@@ -486,10 +494,14 @@ def main():
                 indirect=True,
                 debug_file=options.metrics_file,
         ):
+            process_start_time = time.time()
             host_scheduler = HostScheduler()
             minimum_tick_sec = global_config.global_config.get_config_value(
                     'SCHEDULER', 'host_scheduler_minimum_tick_sec', type=float)
             while not _shutdown:
+                if _lifetime_expired(options.lifetime_hours,
+                                     process_start_time):
+                    break
                 start = time.time()
                 host_scheduler.tick()
                 curr_tick_sec = time.time() - start
@@ -497,6 +509,7 @@ def main():
                     time.sleep(minimum_tick_sec - curr_tick_sec)
                 else:
                     time.sleep(0.0001)
+            logging.info('Shutdown request recieved. Bye! Bye!')
     except server_manager_utils.ServerActionError:
         # This error is expected when the server is not in primary status
         # for host-scheduler role. Thus do not send email for it.
@@ -508,6 +521,23 @@ def main():
         email_manager.manager.send_queued_emails()
         if _db_manager:
             _db_manager.disconnect()
+
+
+def _lifetime_expired(lifetime_hours, process_start_time):
+    """Returns True if we've expired the process lifetime, False otherwise.
+
+    Also sets the global _shutdown so that any background processes also take
+    the cue to exit.
+    """
+    if lifetime_hours is None:
+        return False
+    if time.time() - process_start_time > lifetime_hours * 3600:
+        logging.info('Process lifetime %0.3f hours exceeded. Shutting down.',
+                     lifetime_hours)
+        global _shutdown
+        _shutdown = True
+        return True
+    return False
 
 
 if __name__ == '__main__':
