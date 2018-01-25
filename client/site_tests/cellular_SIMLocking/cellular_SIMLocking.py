@@ -15,7 +15,7 @@ from autotest_lib.client.cros.cellular.pseudomodem import sim
 # This is a software only test. Most time delayes are only dbus update delays.
 DEFAULT_OPERATION_TIMEOUT=3
 
-class network_SIMLocking(test.test):
+class cellular_SIMLocking(test.test):
     """
     Test the SIM locking functionality of shill.
 
