@@ -23,7 +23,7 @@ class TestSIM(sim.SIM):
                          mm1_constants.MM_MODEM_ACCESS_TECHNOLOGY_GSM)
 
 
-class network_3GIdentifiers(test.test):
+class cellular_Identifiers(test.test):
     """This test verifies that a modem returns valid identifiers."""
     version = 1
 
