@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GStressEnable.altair-messi_v"
+NAME = "cellular_StressEnable.fibocom-l850gl"
 PURPOSE = "Stress-test Connman enable/disable"
 CRITERIA = """
 This test fails if flimflam ever fails to respond to a DBus message or crashes.
@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:altair-messi_v"
+DEPENDENCIES = "modem:fibocom-l850gl"
 
 DOC = """
   Stress-tests enabling and disabling a technology at short intervals.
@@ -22,4 +22,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GStressEnable', tag='altair-messi_v', test_env=test_env)
+job.run_test('cellular_StressEnable', tag='fibocom-l850gl', test_env=test_env)

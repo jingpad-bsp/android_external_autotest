@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GStressEnable.huawei-e303"
+NAME = "cellular_StressEnable.huawei-e303"
 PURPOSE = "Stress-test Connman enable/disable"
 CRITERIA = """
 This test fails if flimflam ever fails to respond to a DBus message or crashes.
@@ -22,4 +22,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GStressEnable', tag='huawei-e303', test_env=test_env)
+job.run_test('cellular_StressEnable', tag='huawei-e303', test_env=test_env)
