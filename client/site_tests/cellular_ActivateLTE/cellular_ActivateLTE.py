@@ -157,7 +157,7 @@ class ActivationDueToMdnTest(ActivationTest):
         self.test.CheckServiceActivationState('activated')
 
 
-class network_LTEActivate(test.test):
+class cellular_ActivateLTE(test.test):
     """
     After an online payment to activate a network, shill keeps track of service
     activation by monitoring changes to network registration and MDN updates
