@@ -422,6 +422,9 @@ class _BaseModeSwitcher(object):
         do so.
 
         @param mode: A string of mode, one of 'normal', 'dev', or 'rec'.
+        @raise TestFail: If the system not switched to expected mode after
+                         reboot_to_mode.
+
         """
         if not self.checkers.mode_checker(mode):
             logging.info('System not in expected %s mode. Reboot into it.',
@@ -430,13 +433,22 @@ class _BaseModeSwitcher(object):
                 # Only resume to normal/dev mode after test, not recovery.
                 self._backup_mode = 'dev' if mode == 'normal' else 'normal'
             self.reboot_to_mode(mode)
-
+            if not self.checkers.mode_checker(mode):
+                raise error.TestFail('System not switched to expected %s'
+                        ' mode after setup_mode.' % mode)
 
     def restore_mode(self):
-        """Restores original dev mode status if it has changed."""
+        """Restores original dev mode status if it has changed.
+
+        @raise TestFail: If the system not restored to expected mode.
+        """
         if (self._backup_mode is not None and
             not self.checkers.mode_checker(self._backup_mode)):
             self.reboot_to_mode(self._backup_mode)
+            if not self.checkers.mode_checker(self._backup_mode):
+                raise error.TestFail('System not restored to expected %s'
+                        ' mode in cleanup.' % self._backup_mode)
+
 
 
     def reboot_to_mode(self, to_mode, from_mode=None, sync_before_boot=True,
