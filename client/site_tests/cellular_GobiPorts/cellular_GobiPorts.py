@@ -8,7 +8,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
 
-class network_3GGobiPorts(test.test):
+class cellular_GobiPorts(test.test):
     version = 1
 
     def run_once(self):
