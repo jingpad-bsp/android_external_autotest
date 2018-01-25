@@ -700,6 +700,7 @@ class CryptohomeProxy(DBusClient):
 
         @param attrs: dict of install attributes.
         """
+        take_tpm_ownership()
         for key, value in attrs.items():
             if not self.__call(self.iface.InstallAttributesSet, key,
                                dbus.ByteArray(value + '\0')):
