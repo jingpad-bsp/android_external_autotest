@@ -61,7 +61,8 @@ class autoupdate_StartOOBEUpdate(test.test):
                            ignore_timeout=True).stdout
         status = status.splitlines()
         logging.info(status)
-        return 'UPDATE_STATUS_DOWNLOADING' in status[2]
+        return any(arg in status[2] for arg in ['UPDATE_STATUS_DOWNLOADING',
+                                                'UPDATE_STATUS_FINALIZING'])
 
 
     def run_once(self, image_url):
