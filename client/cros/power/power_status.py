@@ -1397,6 +1397,8 @@ class MeasurementLogger(threading.Thread):
 
     def run(self):
         """Threads run method."""
+        loop = 0
+        start_time = time.time()
         while(not self.done):
             readings = []
             for meas in self._measurements:
@@ -1405,8 +1407,11 @@ class MeasurementLogger(threading.Thread):
             # since there have been race conditions with modifying and accessing
             # data.
             self.readings.append(readings)
-            self.times.append(time.time())
-            time.sleep(self.seconds_period)
+            current_time = time.time()
+            self.times.append(current_time)
+            loop += 1
+            next_measurement_time = start_time + loop * self.seconds_period
+            time.sleep(next_measurement_time - current_time)
 
     @contextlib.contextmanager
     def checkblock(self, tname=''):
