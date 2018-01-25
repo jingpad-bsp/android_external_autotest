@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "cellular_ScanningProperty"
+NAME = "cellular_ScanningProperty.pseudomodem"
 PURPOSE = "Verify cellular device 'Scanning' property is updated correctly."
 CRITERIA = """
 This test will fail if shill does not update the |Scanning| property correctly

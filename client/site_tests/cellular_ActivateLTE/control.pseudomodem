@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "cellular_ActivateLTE"
+NAME = "cellular_ActivateLTE.pseudomodem"
 PURPOSE = """
 Test various scenarios that may arise during the post-payment LTE
 activation process.
