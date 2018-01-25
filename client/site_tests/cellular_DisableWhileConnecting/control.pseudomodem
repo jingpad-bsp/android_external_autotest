@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GDisableWhileConnecting.pseudomodem"
+NAME = "cellular_DisableWhileConnecting.pseudomodem"
 PURPOSE = "Check that the 3G modem can handle a disconnect while connecting."
 CRITERIA = """
 This test will fail if a disconnect request while the modem is
@@ -26,7 +26,7 @@ ITERATIONS_PER_TEST=1
 # 3GPP
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': '3GPP'},))
-job.run_test('network_3GDisableWhileConnecting',
+job.run_test('cellular_DisableWhileConnecting',
              test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
@@ -36,7 +36,7 @@ job.run_test('network_3GDisableWhileConnecting',
 
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': '3GPP'},))
-job.run_test('network_3GDisableWhileConnecting',
+job.run_test('cellular_DisableWhileConnecting',
              test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
@@ -47,7 +47,7 @@ job.run_test('network_3GDisableWhileConnecting',
 # CDMA
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': 'CDMA'},))
-job.run_test('network_3GDisableWhileConnecting',
+job.run_test('cellular_DisableWhileConnecting',
              test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
@@ -57,7 +57,7 @@ job.run_test('network_3GDisableWhileConnecting',
 
 test_env = test_environment.CellularPseudoMMTestEnvironment(
         pseudomm_args=({'family': 'CDMA'},))
-job.run_test('network_3GDisableWhileConnecting',
+job.run_test('cellular_DisableWhileConnecting',
              test_env=test_env,
              timeout_s=20,
              delay_before_disable_ms=0,
