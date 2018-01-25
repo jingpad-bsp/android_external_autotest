@@ -303,7 +303,32 @@ def get_labels(exclude_filters=(), **filter_data):
     labels = models.Label.query_objects(filter_data)
     for exclude_filter in exclude_filters:
         labels = labels.exclude(**exclude_filter)
-    return rpc_utils.prepare_rows_as_nested_dicts(labels, ())
+
+    if not RESPECT_STATIC_LABELS:
+        return rpc_utils.prepare_rows_as_nested_dicts(labels, ())
+
+    static_labels = models.StaticLabel.query_objects(filter_data)
+    for exclude_filter in exclude_filters:
+        static_labels = static_labels.exclude(**exclude_filter)
+
+    non_static_lists = rpc_utils.prepare_rows_as_nested_dicts(labels, ())
+    static_lists = rpc_utils.prepare_rows_as_nested_dicts(static_labels, ())
+
+    label_ids = [label.id for label in labels]
+    replaced = models.ReplacedLabel.objects.filter(label__id__in=label_ids)
+    replaced_ids = {r.label_id for r in replaced}
+    replaced_label_names = {l.name for l in labels if l.id in replaced_ids}
+
+    return_lists  = []
+    for non_static_label in non_static_lists:
+        if non_static_label.get('id') not in replaced_ids:
+            return_lists.append(non_static_label)
+
+    for static_label in static_lists:
+        if static_label.get('name') in replaced_label_names:
+            return_lists.append(static_label)
+
+    return return_lists
 
 
 # hosts

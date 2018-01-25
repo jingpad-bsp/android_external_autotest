@@ -55,6 +55,7 @@ args_dict = utils.args_to_dict(args)
 
 def run(machine):
     host = hosts.create_host(machine)
-    job.run_test('autoupdate_ForcedOOBEUpdate', host=host, **args_dict)
+    job.run_test('autoupdate_ForcedOOBEUpdate', host=host, full_payload=True,
+                 **args_dict)
 
 job.parallel_simple(run, machines)

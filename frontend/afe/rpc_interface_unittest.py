@@ -96,9 +96,13 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         """Test non-static platform to a host with static platform."""
         static_platform = models.StaticLabel.objects.create(
                 name='static_platform', platform=True)
+        non_static_platform = models.Label.objects.create(
+                name='static_platform', platform=True)
+        models.ReplacedLabel.objects.create(label_id=non_static_platform.id)
         platform2 = models.Label.objects.create(name='platform2', platform=True)
         host1 = models.Host.objects.create(hostname='test_host')
         host1.static_labels.add(static_platform)
+        host1.labels.add(non_static_platform)
         host1.save()
 
         self.assertRaises(model_logic.ValidationError,
@@ -110,8 +114,7 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         # make sure the platform didn't get added
         platforms = rpc_interface.get_labels(
             host__hostname__in=['test_host'], platform=True)
-        # TODO(xixuan): Modify get_labels to fetch static labels also.
-        self.assertEquals(len(platforms), 0)
+        self.assertEquals(len(platforms), 1)
 
 
     def test_multiple_platforms_add_static_to_non_static(self):
