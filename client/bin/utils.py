@@ -2331,3 +2331,4 @@ def run_sql_cmd(server, user, password, command, database=''):
            (user, password, server, database, command))
     # Set verbose to False so the command line won't be logged, as it includes
     # database credential.
+    return utils.run(cmd, verbose=False).stdout
