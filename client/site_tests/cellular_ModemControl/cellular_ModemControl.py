@@ -163,7 +163,7 @@ class MixedRandomCommands():
         return 'Mixed Commands'
 
 
-class network_3GModemControl(test.test):
+class cellular_ModemControl(test.test):
     version = 1
 
     def CompareModemPowerState(self, modem, expected_state):

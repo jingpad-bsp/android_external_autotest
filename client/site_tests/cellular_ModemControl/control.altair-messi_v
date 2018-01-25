@@ -3,17 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemControl.huawei-e303"
+NAME = "cellular_ModemControl.altair-messi_v"
 PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
 """
-ATTRIBUTES = "suite:network3g_att, suite:network3g_tmobile"
+ATTRIBUTES = "suite:network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:huawei-e303"
+DEPENDENCIES = "modem:altair-messi_v"
 
 DOC = """
   Tests that commands sent to ModemManager or cromo are reflected in flimflam.
@@ -26,7 +26,7 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
-             tag='no-autoconnect-huawei-e303')
-job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
-             tag='autoconnect-huawei-e303')
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=False,
+             tag='no-autoconnect-altair-messi_v')
+job.run_test('cellular_ModemControl', test_env=test_env, autoconnect=True,
+             tag='autoconnect-altair-messi_v')
