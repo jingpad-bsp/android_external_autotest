@@ -11,13 +11,11 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import backchannel
-# pylint: disable=W0611
-from autotest_lib.client.cros import flimflam_test_path  # Needed for flimflam
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.networking import wifi_proxy
 from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
-import flimflam  # Requires flimflam_test_path to be imported first.
 
 
 class power_Consumption(test.test):
@@ -375,19 +373,17 @@ class power_Consumption(test.test):
     def _run_group_backchannel(self):
         """WiFi sub-tests."""
 
-        wifi_ap = 'GoogleGuest'
-        wifi_sec = 'none'
-        wifi_pw = ''
+        shill = wifi_proxy.WifiProxy()
+        for _ in xrange(3):
+            succeeded, _, _, _, _ = shill.connect_to_wifi_network(
+                    ssid='GoogleGuest',
+                    security='none',
+                    security_parameters={},
+                    save_credentials=False)
+            if succeeded:
+                break
 
-        flim = flimflam.FlimFlam()
-        conn = flim.ConnectService(retries=3,
-                              retry=True,
-                              service_type='wifi',
-                              ssid=wifi_ap,
-                              security=wifi_sec,
-                              passphrase=wifi_pw,
-                              mode='managed')
-        if not conn[0]:
+        if not succeeded:
             logging.error("Could not connect to WiFi")
             return
 
