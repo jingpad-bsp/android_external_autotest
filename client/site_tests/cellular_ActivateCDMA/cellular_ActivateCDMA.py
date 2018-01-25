@@ -182,7 +182,7 @@ class ActivationFailureRetryTest(ActivationTest):
         self.test.check_service_activation_state('activated')
 
 
-class network_CDMAActivate(test.test):
+class cellular_ActivateCDMA(test.test):
     """
     Tests various scenarios that may arise during the post-payment CDMA
     activation process when shill accesses the modem via ModemManager.

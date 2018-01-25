@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_CDMAActivate"
+NAME = "cellular_ActivateCDMA"
 PURPOSE = """
 Tests various scenarios that may arise during the post-payment CDMA
 activation process when shill accesses the modem via ModemManager.
@@ -27,4 +27,4 @@ DOC = """
   scheduled in case of failure.
 """
 
-job.run_test('network_CDMAActivate')
+job.run_test('cellular_ActivateCDMA')
