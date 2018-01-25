@@ -282,7 +282,7 @@ class DisconnectFailOtherTest(DisconnectFailTest):
             raise error.TestError('Service should be disconnected.')
 
 
-class network_3GDisconnectFailure(test.test):
+class cellular_DisconnectFailure(test.test):
     """
     The test uses the pseudo modem manager to simulate two failure scenarios of
     a Disconnect call: failure while the modem state is DISCONNECTING and
