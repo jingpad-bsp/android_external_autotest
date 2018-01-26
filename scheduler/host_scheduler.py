@@ -494,6 +494,7 @@ def main():
                 indirect=True,
                 debug_file=options.metrics_file,
         ):
+            metrics.Counter('%s/start' % _METRICS_PREFIX).increment()
             process_start_time = time.time()
             host_scheduler = HostScheduler()
             minimum_tick_sec = global_config.global_config.get_config_value(
