@@ -144,6 +144,43 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.assertEquals(len(platforms), 1)
 
 
+    def test_label_remove_hosts(self):
+        """Test remove a label of hosts."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(label)
+        host1.static_labels.add(static_label)
+        host1.save()
+
+        self.assertRaises(error.UnmodifiableLabelException,
+                          rpc_interface.label_remove_hosts,
+                          id='static', hosts=['test_host'])
+
+
+    def test_host_remove_labels(self):
+        """Test remove labels of a given host."""
+        label = models.Label.smart_get('static')
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(label)
+        host1.labels.add(label1)
+        host1.labels.add(label2)
+        host1.static_labels.add(static_label)
+        host1.save()
+
+        rpc_interface.host_remove_labels(
+                'test_host', ['static', 'label1'])
+        labels = rpc_interface.get_labels(host__hostname__in=['test_host'])
+        # Only non_static label 'label1' is removed.
+        self.assertEquals(len(labels), 2)
+        self.assertEquals(labels[0].get('name'), 'label2')
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
