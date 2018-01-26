@@ -79,26 +79,32 @@ class ContainerBucket(object):
             self._factory = factory_class(
                 base_container=container,
                 lxc_path=self.container_path)
+        self.container_cache = {}
 
 
-    def get_all(self):
+    def get_all(self, force_update=False):
         """Get details of all containers.
 
         Retrieves all containers owned by the bucket.  Note that this doesn't
         include the base container, or any containers owned by the container
         pool.
 
+        @param force_update: Boolean, ignore cached values if set.
+
         @return: A dictionary of all containers with detailed attributes,
                  indexed by container name.
         """
         info_collection = lxc.get_container_info(self.container_path)
-        containers = {}
+        containers = {} if force_update else self.container_cache
         for info in info_collection:
+            if containers[info["name"]]:
+                continue
             container = Container.create_from_existing_dir(self.container_path,
                                                            **info)
             # Active containers have an ID.  Zygotes and base containers, don't.
             if container.id is not None:
                 containers[container.id] = container
+        self.container_cache = containers
         return containers
 
 
@@ -110,6 +116,9 @@ class ContainerBucket(object):
         @return: A container object with matching name. Returns None if no
                  container matches the given name.
         """
+        if container_id in self.container_cache:
+            return self.container_cache[container_id]
+
         return self.get_all().get(container_id, None)
 
 
@@ -130,8 +139,11 @@ class ContainerBucket(object):
         containers = self.get_all().values()
         for container in sorted(
                 containers, key=lambda n: 1 if n.name == constants.BASE else 0):
+            key = container.id
             logging.info('Destroy container %s.', container.name)
             container.destroy()
+            del self.container_cache[key]
+
 
 
     @metrics.SecondsTimerDecorator(
