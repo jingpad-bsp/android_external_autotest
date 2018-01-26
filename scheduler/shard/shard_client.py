@@ -114,7 +114,7 @@ class ShardClient(object):
                                                  delay_sec=RPC_DELAY_SEC)
         self.hostname = shard_hostname
         self.tick_pause_sec = tick_pause_sec
-        self._shutdown = False
+        self._shutdown_requested = False
         self._shard = None
 
 
@@ -371,10 +371,13 @@ class ShardClient(object):
             metrics.Counter('chromeos/autotest/shard_client/tick').increment()
 
 
+    def loop(self, lifetime_hours):
+        """Calls tick() until shutdown() is called or lifetime expires.
 
-    def loop(self):
-        """Calls tick() until shutdown() is called."""
-        while not self._shutdown:
+        @param lifetime_hours: (int) hours to loop for.
+        """
+        loop_start_time = time.time()
+        while self._continue_looping(lifetime_hours, loop_start_time):
             self.tick()
             # Sleep with +/- 10% fuzzing to avoid phaselock of shards.
             tick_fuzz = self.tick_pause_sec * 0.2 * (random.random() - 0.5)
@@ -384,7 +387,26 @@ class ShardClient(object):
     def shutdown(self):
         """Stops the shard client after the current tick."""
         logging.info("Shutdown request received.")
-        self._shutdown = True
+        self._shutdown_requested = True
+
+
+    def _continue_looping(self, lifetime_hours, loop_start_time):
+        """Determines if we should continue with the next mainloop iteration.
+
+        @param lifetime_hours: (float) number of hours to loop for. None
+                implies no deadline.
+        @param process_start_time: Time when we started looping.
+        @returns True if we should continue looping, False otherwise.
+        """
+        if self._shutdown_requested:
+            return False
+
+        if (lifetime_hours is None
+            or time.time() - loop_start_time < lifetime_hours * 3600):
+            return True
+        logging.info('Process lifetime %0.3f hours exceeded. Shutting down.',
+                     lifetime_hours)
+        return False
 
 
 def handle_signal(signum, frame):
@@ -447,6 +469,14 @@ def main():
 
 def main_without_exception_handling():
     parser = argparse.ArgumentParser(description='Shard client.')
+    parser.add_argument(
+            '--lifetime-hours',
+            type=float,
+            default=None,
+            help='If provided, number of hours we should run for. '
+                 'At the expiry of this time, the process will exit '
+                 'gracefully.',
+    )
     options = parser.parse_args()
 
     scheduler_lib.setup_logging(
@@ -460,7 +490,7 @@ def main_without_exception_handling():
     logging.info("Starting shard client.")
     global _heartbeat_client
     _heartbeat_client = get_shard_client()
-    _heartbeat_client.loop()
+    _heartbeat_client.loop(options.lifetime_hours)
 
 
 if __name__ == '__main__':
