@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "cellular_ActivateCDMA"
+NAME = "cellular_ActivateCDMA.pseudomodem"
 PURPOSE = """
 Tests various scenarios that may arise during the post-payment CDMA
 activation process when shill accesses the modem via ModemManager.

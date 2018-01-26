@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "cellular_SIMLocking"
+NAME = "cellular_SIMLocking.pseudomodem"
 PURPOSE = "Tests various SIM Lock related operations in software only."
 CRITERIA = """
 This test will fail if SIM locking/unlocking/changing operations are not
