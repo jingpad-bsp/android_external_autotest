@@ -1,9 +1,9 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume.icera-y3400"
+NAME = "cellular_SuspendResume.altair-messi_v"
 PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify
@@ -11,19 +11,19 @@ CRITERIA = """
     Verify that if autoconnect is turned on that the modem autoconnects
     after resuming.
 """
-ATTRIBUTES = "suite:network3g_tmobile"
+ATTRIBUTES = "suite:network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:icera-y3400"
+DEPENDENCIES = "modem:altair-messi_v"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
 """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
-job.run_test('network_MobileSuspendResume',
-             autoconnect=False, tag='autoconnect_off-icera-y3400')
-job.run_test('network_MobileSuspendResume',
-             autoconnect=True, tag='autoconnect_on-icera-y3400')
+job.run_test('cellular_SuspendResume',
+             autoconnect=False, tag='autoconnect_off-altair-messi_v')
+job.run_test('cellular_SuspendResume',
+             autoconnect=True, tag='autoconnect_on-altair-messi_v')
