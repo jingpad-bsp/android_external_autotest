@@ -19,18 +19,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import ast
 import contextlib
 import imp
 import importlib
 import logging
 import os
 import site
+import subprocess
 import sys
 
 import autotest_lib
 
 _AUTOTEST_DIR = autotest_lib.__path__[0]
 _SITEPKG_DIR = os.path.join(_AUTOTEST_DIR, 'site-packages')
+_SYSTEM_PYTHON = '/usr/bin/python2.7'
 
 _setup_done = False
 
@@ -73,7 +76,17 @@ def _monkeypatch_body():
 
     # Add chromite's third-party to the import path (chromite does this
     # on import).
-    importlib.import_module('chromite')
+    try:
+        importlib.import_module('chromite')
+    except ImportError:
+        # Moblab does not run build_externals; dependencies like
+        # chromite are installed system-wide.
+        logger.info("""\
+Could not find chromite; adding system packages and retrying \
+(This should only happen on Moblab)""")
+        for d in _system_site_packages():
+            site.addsitedir(d)
+        importlib.import_module('chromite')
 
     # Set up Django environment variables.
     importlib.import_module('autotest_lib.frontend.setup_django_environment')
@@ -93,6 +106,18 @@ def _monkeypatch_body():
     # drone_utility uses this.
     common = importlib.import_module('autotest_lib.scheduler.common')
     common.autotest_dir = _AUTOTEST_DIR
+
+
+def _system_site_packages():
+    """Get list of system site-package directories.
+
+    This is needed for Moblab because dependencies are installed
+    system-wide instead of using build_externals.py.
+    """
+    output = subprocess.check_output([
+        _SYSTEM_PYTHON, '-c',
+        'import site; print repr(site.getsitepackages())'])
+    return ast.literal_eval(output)
 
 
 class _CommonRemovingFinder(object):
