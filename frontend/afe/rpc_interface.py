@@ -2250,8 +2250,14 @@ def remove_board_from_shard(hostname, label):
     if label not in shard.labels.all():
         raise error.RPCException(
           'Cannot remove label from shard that does not belong to it.')
+
     shard.labels.remove(label)
-    models.Host.objects.filter(labels__in=[label]).update(shard=None)
+    if label.is_replaced_by_static():
+        static_label = models.StaticLabel.smart_get(label.name)
+        models.Host.objects.filter(
+                static_labels__in=[static_label]).update(shard=None)
+    else:
+        models.Host.objects.filter(labels__in=[label]).update(shard=None)
 
 
 def delete_shard(hostname):
