@@ -1435,11 +1435,15 @@ class ResultCollector(object):
         # suite job's page for the aborted job. Need a fix.
         self._web_links = []
         self.buildbot_links = []
+
         # Bug info are stored in the suite job's keyvals.
         if self._solo_test_run:
             suite_job_keyvals = {}
+        elif not self._suite_views:
+            suite_job_keyvals = {}
         else:
             suite_job_keyvals = self._suite_views[0]['job_keyvals']
+
         for v in self._test_views:
             retry_count = self._retry_counts.get(v['test_idx'], 0)
             bug_info = v.get_bug_info(suite_job_keyvals)
