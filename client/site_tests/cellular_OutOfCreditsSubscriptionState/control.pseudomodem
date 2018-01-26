@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "cellular_OutOfCreditsSubscriptionState"
+NAME = "cellular_OutOfCreditsSubscriptionState.pseudomodem"
 PURPOSE = "Verify shill out-of-credits behavior using subscription state."
 CRITERIA = """
 This test will fail if one of the following conditions occurs:
