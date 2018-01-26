@@ -99,14 +99,11 @@ def modify_label(id, **data):
     @param data: New data for a label.
     """
     label_model = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label_model.id)
-        if len(replaced) > 0:
-            raise error.UnmodifiableLabelException(
-                    'Failed to delete label "%s" because it is a static label. '
-                    'Use go/chromeos-skylab-inventory-tools to modify this '
-                    'label.' % label_model.name)
+    if label_model.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to delete label "%s" because it is a static label. '
+                'Use go/chromeos-skylab-inventory-tools to modify this '
+                'label.' % label_model.name)
 
     label_model.update_object(data)
 
@@ -122,14 +119,11 @@ def delete_label(id):
     @param id: id or name of a label. More often a label name.
     """
     label_model = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label_model.id)
-        if len(replaced) > 0:
-            raise error.UnmodifiableLabelException(
-                    'Failed to delete label "%s" because it is a static label. '
-                    'Use go/chromeos-skylab-inventory-tools to modify this '
-                    'label.' % label_model.name)
+    if label_model.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to delete label "%s" because it is a static label. '
+                'Use go/chromeos-skylab-inventory-tools to modify this '
+                'label.' % label_model.name)
 
     # Hosts that have the label to be deleted. Save this info before
     # the label is deleted to use it later.
@@ -182,11 +176,8 @@ def add_label_to_hosts(id, hosts):
     @raises models.Label.DoesNotExist: If the label with id doesn't exist.
     """
     label = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label.id)
-        if len(replaced) > 0:
-            label = models.StaticLabel.smart_get(label.name)
+    if label.is_replaced_by_static():
+        label = models.StaticLabel.smart_get(label.name)
 
     host_objs = models.Host.smart_get_bulk(hosts)
     if label.platform:
@@ -276,7 +267,14 @@ def remove_label_from_hosts(id, hosts):
     @param hosts: The hostnames of hosts that need to remove the label from.
     """
     host_objs = models.Host.smart_get_bulk(hosts)
-    models.Label.smart_get(id).host_set.remove(*host_objs)
+    label = models.Label.smart_get(id)
+    if label.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to remove label "%s" for hosts "%r" because it is a '
+                'static label. Use go/chromeos-skylab-inventory-tools to '
+                'modify this label.' % (label.name, hosts))
+
+    label.host_set.remove(*host_objs)
 
 
 @rpc_utils.route_rpc_to_master
@@ -525,7 +523,18 @@ def remove_labels_from_host(id, labels):
     @param labels: ids or names for labels.
     """
     label_objs = models.Label.smart_get_bulk(labels)
-    models.Host.smart_get(id).labels.remove(*label_objs)
+    if not RESPECT_STATIC_LABELS:
+        models.Host.smart_get(id).labels.remove(*label_objs)
+    else:
+        static_labels, non_static_labels = models.Host.classify_label_objects(
+                label_objs)
+        host = models.Host.smart_get(id)
+        host.labels.remove(*non_static_labels)
+        if static_labels:
+            logging.info('Cannot remove labels "%r" for host "%r" due to they '
+                         'are static labels. Use '
+                         'go/chromeos-skylab-inventory-tools to modify these '
+                         'labels.', static_labels, id)
 
 
 @rpc_utils.route_rpc_to_master
