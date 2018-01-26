@@ -164,6 +164,14 @@ public class MoblabRpcHelper {
         });
   }
 
+  /**
+   * Apply update and reboot Moblab device
+   */
+  public static void updateMoblab(final JsonRpcCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("update_moblab", null, callback);
+  }
+
    /**
    * Get information about the DUT's connected to the moblab.
    */
