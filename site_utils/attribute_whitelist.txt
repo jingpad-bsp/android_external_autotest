@@ -54,6 +54,7 @@ suite:cell_emulator
 suite:cellular_endtoend
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
+suite:cellular_qual
 suite:chameleon_audio
 suite:chameleon_audio_nightly
 suite:chameleon_audio_perbuild
