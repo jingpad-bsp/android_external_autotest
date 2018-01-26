@@ -3,12 +3,15 @@
 # found in the LICENSE file.
 
 import BaseHTTPServer
+import logging
+import shutil
 import thread
 import urlparse
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.cellular import test_environment
 
 def _split_url(url):
     """Splits a URL into the URL base and path."""
@@ -42,7 +45,7 @@ class NanoOmahaDevserver(object):
               ChromeOSVersion=\"9999.0.0\"
               sha256=\"%s\"
               needsadmin=\"false\"
-              IsDeltaPayload=\"false\"
+              IsDeltaPayload=\"%s\"
 """
 
         _OMAHA_RESPONSE_TEMPLATE_TAIL = """ />
@@ -58,9 +61,13 @@ class NanoOmahaDevserver(object):
             if self.path == '/update':
                 (base, name) = _split_url(self.server._devserver._image_url)
                 response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
-                        base + '/', name,
+                        base + '/',
+                        name,
                         self.server._devserver._image_size,
-                        self.server._devserver._sha256)
+                        self.server._devserver._sha256,
+                        str(self.server._devserver._is_delta).lower())
+                if self.server._devserver._is_delta:
+                    response += '              IsDelta="true"\n'
                 if self.server._devserver._metadata_size:
                     response += '              MetadataSize="%d"\n' % (
                             self.server._devserver._metadata_size)
@@ -95,9 +102,8 @@ class NanoOmahaDevserver(object):
         return self._port
 
     def set_image_params(self, image_url, image_size, sha256,
-                         metadata_size=None,
-                         metadata_signature=None,
-                         public_key=None):
+                         metadata_size=None, metadata_signature=None,
+                         public_key=None, is_delta=False):
         """Sets the values to return in the Omaha response. Only the
         |image_url|, |image_size| and |sha256| parameters are
         mandatory."""
@@ -107,39 +113,62 @@ class NanoOmahaDevserver(object):
         self._metadata_size = metadata_size
         self._metadata_signature = metadata_signature
         self._public_key = public_key
+        self._is_delta = is_delta
 
 
 class autoupdate_CannedOmahaUpdate(test.test):
-    """Client-side mechanism to update a DUT with a given image."""
-    version = 1
+    """
+    Client-side mechanism to update a DUT with a given image.
 
-    """Restarts update_engine and attempts an update from the image
+    Restarts update_engine and attempts an update from the image
     pointed to by |image_url| of size |image_size| with checksum
-    |image_sha256|. The |metadata_size|, |metadata_signature| and
-    |public_key| parameters are optional.
+    |image_sha256|. The rest of the parameters are optional.
 
     If the |allow_failure| parameter is True, then the test will
-    succeed even if the update failed."""
-    def run_once(self, image_url, image_size, image_sha256,
-                 allow_failure=False,
-                 metadata_size=None,
-                 metadata_signature=None,
-                 public_key=None):
-        utils.run('restart update-engine')
+    succeed even if the update failed.
 
-        omaha = NanoOmahaDevserver()
-        omaha.set_image_params(image_url,
-                               image_size,
-                               image_sha256,
-                               metadata_size,
-                               metadata_signature,
-                               public_key)
-        omaha.start()
+    """
+    version = 1
+
+    def cleanup(self):
+        shutil.copy('/var/log/update_engine.log', self.resultsdir)
+
+
+    def run_canned_update(self, allow_failure):
+        utils.run('restart update-engine')
+        self._omaha.start()
         try:
-            utils.run('update_engine_client -omaha_url=' +
-                      'http://127.0.0.1:%d/update ' % omaha.get_port() +
-                      '-update')
-        except error.CmdError:
-            omaha.stop()
+            utils.run('update_engine_client -update -omaha_url=' +
+                      'http://127.0.0.1:%d/update ' % self._omaha.get_port())
+        except error.CmdError as e:
+            self._omaha.stop()
             if not allow_failure:
-                raise error.TestFail('Update attempt failed.')
+                raise error.TestFail('Update attempt failed: %s' % e)
+            else:
+                logging.info('Ignoring failed update. Failure reason: %s', e)
+
+
+    def run_once(self, image_url, image_size, image_sha256,
+                 allow_failure=False, metadata_size=None,
+                 metadata_signature=None, public_key=None, use_cellular=False,
+                 is_delta=False):
+
+        self._omaha = NanoOmahaDevserver()
+        self._omaha.set_image_params(image_url, image_size, image_sha256,
+                                     metadata_size, metadata_signature,
+                                     public_key, is_delta)
+
+        if use_cellular:
+            # Setup DUT so that we have ssh over ethernet but DUT uses
+            # cellular as main connection.
+            test_env = test_environment.CellularOTATestEnvironment()
+            CONNECT_TIMEOUT = 120
+            with test_env:
+                service = test_env.shill.wait_for_cellular_service_object()
+                if not service:
+                    raise error.TestError('No cellular service found.')
+                test_env.shill.connect_service_synchronous(
+                        service, CONNECT_TIMEOUT)
+                self.run_canned_update(allow_failure)
+        else:
+            self.run_canned_update(allow_failure)
