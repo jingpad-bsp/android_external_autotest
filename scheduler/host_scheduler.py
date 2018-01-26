@@ -484,20 +484,22 @@ def main():
 
         initialize(options.testing)
 
-        ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler',
-                                            debug_file=options.metrics_file)
-
-        host_scheduler = HostScheduler()
-        minimum_tick_sec = global_config.global_config.get_config_value(
-                'SCHEDULER', 'host_scheduler_minimum_tick_sec', type=float)
-        while not _shutdown:
-            start = time.time()
-            host_scheduler.tick()
-            curr_tick_sec = time.time() - start
-            if (minimum_tick_sec > curr_tick_sec):
-                time.sleep(minimum_tick_sec - curr_tick_sec)
-            else:
-                time.sleep(0.0001)
+        with ts_mon_config.SetupTsMonGlobalState(
+                'autotest_host_scheduler',
+                indirect=True,
+                debug_file=options.metrics_file,
+        ):
+            host_scheduler = HostScheduler()
+            minimum_tick_sec = global_config.global_config.get_config_value(
+                    'SCHEDULER', 'host_scheduler_minimum_tick_sec', type=float)
+            while not _shutdown:
+                start = time.time()
+                host_scheduler.tick()
+                curr_tick_sec = time.time() - start
+                if (minimum_tick_sec > curr_tick_sec):
+                    time.sleep(minimum_tick_sec - curr_tick_sec)
+                else:
+                    time.sleep(0.0001)
     except server_manager_utils.ServerActionError:
         # This error is expected when the server is not in primary status
         # for host-scheduler role. Thus do not send email for it.
