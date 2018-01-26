@@ -216,3 +216,8 @@ class display_LidCloseOpen(test.test):
 
             if self.errors:
                 raise error.TestFail('; '.join(set(self.errors)))
+
+    def cleanup(self):
+        """Test cleanup"""
+        # Keep device in lid open sate.
+        self.open_lid()
