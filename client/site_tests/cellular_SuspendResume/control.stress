@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResumeStress.stress"
+NAME = "cellular_SuspendResumeStress.stress"
 PURPOSE = "Test 3g modem state after suspend/resume over many iterations"
 CRITERIA = """
     Check the 3g state of the device after many iterations of suspend/resume.
@@ -21,9 +21,9 @@ DOC = """
 """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
-job.run_test('network_MobileSuspendResume',
+job.run_test('cellular_SuspendResume',
              autoconnect=False, tag='autoconnect_off-stress',
              scenario_group='stress', stress_iterations=100)
-job.run_test('network_MobileSuspendResume',
+job.run_test('cellular_SuspendResume',
              autoconnect=True, tag='autoconnect_on-stress',
              scenario_group='stress', stress_iterations=100)
