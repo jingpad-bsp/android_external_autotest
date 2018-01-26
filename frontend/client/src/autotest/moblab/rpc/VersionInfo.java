@@ -7,12 +7,23 @@ import com.google.gwt.json.client.JSONObject;
 
 public class VersionInfo extends JsonRpcEntity {
 
+  public enum UPDATE_STATUS {
+    IDLE,
+    CHECKING_FOR_UPDATE,
+    UPDATE_AVAILABLE,
+    DOWNLOADING,
+    UPDATED_NEED_REBOOT,
+    UNKNOWN
+  }
+
   private static final String NO_MILESTONE_FOUND = "NO MILESTONE FOUND";
   private static final String NO_VERSION_FOUND = "NO VERSION FOUND";
   private static final String NO_TRACK_FOUND = "NO TRACK FOUND";
   private static final String NO_DESCRIPTION_FOUND = "NO DESCRIPTION FOUND";
   private static final String NO_ID_FOUND = "NO ID FOUND";
   private static final String NO_MAC_ADDRESS_FOUND = "NO MAC ADDRESS FOUND";
+  private static final String NO_UPDATE_VERSION_FOUND =
+      "NO UPDATE VERSION FOUND";
 
   private String milestoneInfo;
   private String versionInfo;
@@ -20,6 +31,9 @@ public class VersionInfo extends JsonRpcEntity {
   private String releaseDescription;
   private String moblabIdentification;
   private String moblabMacAddress;
+  private String moblabUpdateVersion;
+  private double moblabUpdateProgress;
+  private UPDATE_STATUS moblabUpdateStatus;
 
   public VersionInfo() { reset(); }
 
@@ -30,6 +44,9 @@ public class VersionInfo extends JsonRpcEntity {
   public String getReleaseDescription() { return releaseDescription; }
   public String getMoblabIdentification() { return moblabIdentification; }
   public String getMoblabMacAddress() { return moblabMacAddress; }
+  public String getMoblabUpdateVersion() { return moblabUpdateVersion; }
+  public double getMoblabUpdateProgress() { return moblabUpdateProgress; }
+  public UPDATE_STATUS getMoblabUpdateStatus() { return moblabUpdateStatus; }
 
   private void reset() {
     milestoneInfo = new String(NO_MILESTONE_FOUND);
@@ -38,6 +55,9 @@ public class VersionInfo extends JsonRpcEntity {
     releaseDescription = new String(NO_DESCRIPTION_FOUND);
     moblabIdentification = new String(NO_ID_FOUND);
     moblabMacAddress = new String(NO_MAC_ADDRESS_FOUND);
+    moblabUpdateVersion = new String(NO_UPDATE_VERSION_FOUND);
+    moblabUpdateStatus = UPDATE_STATUS.UNKNOWN;
+    moblabUpdateProgress = 0.0;
   }
 
   @Override
@@ -55,6 +75,63 @@ public class VersionInfo extends JsonRpcEntity {
         NO_DESCRIPTION_FOUND).trim();
     moblabMacAddress = getStringFieldOrDefault(object, "MOBLAB_MAC_ADDRESS",
         NO_DESCRIPTION_FOUND).trim();
+    moblabUpdateVersion = getStringFieldOrDefault(
+        object, "MOBLAB_UPDATE_VERSION", NO_UPDATE_VERSION_FOUND).trim();
+    moblabUpdateStatus = getUpdateStatus(object);
+
+    String progressString = getStringFieldOrDefault(
+        object, "MOBLAB_UPDATE_PROGRESS", "0.0").trim();
+    try {
+      moblabUpdateProgress = Double.parseDouble(progressString);
+    }
+    catch (NumberFormatException e) {
+      moblabUpdateProgress = 0.0;
+    }
+  }
+
+  private UPDATE_STATUS getUpdateStatus(JSONObject object) {
+    String status = getStringFieldOrDefault(
+        object, "MOBLAB_UPDATE_STATUS", "").trim();
+
+    if(status.contains("IDLE")) {
+      return UPDATE_STATUS.IDLE;
+    }
+    else if(status.contains("CHECKING_FOR_UPDATE")) {
+      return UPDATE_STATUS.CHECKING_FOR_UPDATE;
+    }
+    else if(status.contains("UPDATE_AVAILABLE")) {
+      return UPDATE_STATUS.UPDATE_AVAILABLE;
+    }
+    else if(status.contains("DOWNLOADING") || status.contains("VERIFYING") ||
+        status.contains("FINALIZING")) {
+      return UPDATE_STATUS.DOWNLOADING;
+    }
+    else if(status.contains("NEED_REBOOT")) {
+      return UPDATE_STATUS.UPDATED_NEED_REBOOT;
+    }
+    else {
+      return UPDATE_STATUS.UNKNOWN;
+    }
+  }
+
+  public String getUpdateString() {
+    switch(moblabUpdateStatus){
+      case CHECKING_FOR_UPDATE:
+        return "Checking for update..";
+      case UPDATE_AVAILABLE:
+        return "Version " + moblabUpdateVersion + " is available";
+      case DOWNLOADING:
+        int percent = (int)(moblabUpdateProgress * 100.0);
+        return "Downloading version " + moblabUpdateVersion
+            + " (" + percent + "%)";
+      case UPDATED_NEED_REBOOT:
+        return "Version " + moblabUpdateVersion
+            + " is available, reboot required";
+      case IDLE:
+      case UNKNOWN:
+      default:
+        return "";
+    }
   }
 
   @Override
@@ -64,4 +141,3 @@ public class VersionInfo extends JsonRpcEntity {
     return new JSONObject();
   }
 }
-
