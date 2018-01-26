@@ -181,6 +181,27 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.assertEquals(labels[0].get('name'), 'label2')
 
 
+    def test_remove_board_from_shard(self):
+        """test remove a board (static label) from shard."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        shard = models.Shard.objects.create(hostname='test_shard')
+        shard.labels.add(label)
+
+        host = models.Host.objects.create(hostname='test_host',
+                                          leased=False,
+                                          shard=shard)
+        host.static_labels.add(static_label)
+        host.save()
+
+        rpc_interface.remove_board_from_shard(shard.hostname, label.name)
+        host1 = models.Host.smart_get(host.id)
+        shard1 = models.Shard.smart_get(shard.id)
+        self.assertEqual(host1.shard, None)
+        self.assertItemsEqual(shard1.labels.all(), [])
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
