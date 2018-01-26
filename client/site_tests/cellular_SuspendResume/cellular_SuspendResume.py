@@ -19,7 +19,7 @@ import flimflam
 
 SHILL_LOG_SCOPES = 'cellular+dbus+device+dhcp+manager+modem+portal+service'
 
-class network_MobileSuspendResume(test.test):
+class cellular_SuspendResume(test.test):
     version = 1
     TIMEOUT = 60
 
@@ -98,7 +98,7 @@ class network_MobileSuspendResume(test.test):
     def enable_device(self, device, enable):
         lambda_func = lambda: device.Enable() if enable else device.Disable()
         self.filterexns(lambda_func,
-                        network_MobileSuspendResume.device_okerrors)
+                        cellular_SuspendResume.device_okerrors)
         # Sometimes if we disable the modem then immediately enable the modem
         # we hit a condition where the modem seems to ignore the enable command
         # and keep the modem disabled.  This is to prevent that from happening.
@@ -257,7 +257,7 @@ class network_MobileSuspendResume(test.test):
         while time.time() < time_end:
             status = utils.system_output('modem status', timeout=self.TIMEOUT)
             if reduce(lambda x, y: x & y(status),
-                      network_MobileSuspendResume.modem_status_checks,
+                      cellular_SuspendResume.modem_status_checks,
                       True):
                 break
         else:
@@ -307,10 +307,10 @@ class network_MobileSuspendResume(test.test):
         with chrome.Chrome():
             # Replace the test type with the list of tests
             if (scenario_group not in
-                    network_MobileSuspendResume.scenarios.keys()):
+                    cellular_SuspendResume.scenarios.keys()):
                 scenario_group = 'all'
             logging.info('Running scenario group: %s' % scenario_group)
-            scenarios = network_MobileSuspendResume.scenarios[scenario_group]
+            scenarios = cellular_SuspendResume.scenarios[scenario_group]
 
             self.init_flimflam()
 
