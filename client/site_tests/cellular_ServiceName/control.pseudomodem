@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "cellular_ServiceName"
+NAME = "cellular_ServiceName.pseudomodem"
 PURPOSE = "Verify the cellular service name is correctly populated"
 CRITERIA = """
 This test will fail if one of the following conditions occur:
