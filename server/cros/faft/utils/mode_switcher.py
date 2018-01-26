@@ -278,12 +278,8 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
         """Trigger to the dev mode from the rec screen using vol up button.
 
         On tablets/ detachables, recovery entered by pressing pwr, vol up
-        & vol down buttons for 10s.
-           Menu options seen in RECOVERY screen:
-                 Enable Developer Mode
-                 Show Debug Info
-                 Power off*
-                 Language
+        & vol down buttons for 10s. TO_DEV screen is entered by pressing
+        vol up & vol down buttons together on the INSERT screen.
            Menu options seen in TO_DEV screen:
                  Confirm enabling developer mode
                  Cancel*
@@ -293,23 +289,10 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
         next item and pwr button selects current activated item.
         """
         time.sleep(self.faft_config.firmware_screen)
-        # since order is press vup, press vdown, release vup, release vdown,
-        # vdown will get registered upon release.
-        # need to add an extra volume up to accomodate this.
         self.set_button('volume_up_down_hold', 100, ('Enter Recovery Menu.'))
         time.sleep(self.faft_config.confirm_screen)
-        self.servo.set_nocheck('volume_up_hold', 100)
-        time.sleep(self.faft_config.confirm_screen)
-        self.servo.set_nocheck('volume_up_hold', 100)
-        time.sleep(self.faft_config.confirm_screen)
         self.set_button('volume_up_hold', 100, ('Selecting power as '
-                        'enter key to select Enable Developer Mode'))
-        self.servo.power_short_press()
-        logging.info('Transitioning from REC to TO_DEV screen.')
-        time.sleep(self.faft_config.confirm_screen)
-        self.set_button('volume_up_hold', 100, ('Selecting power as '
-                        'enter key to select Confirm enabling '
-                        'developer mode'))
+                        'enter key to select Confirm Enabling Developer Mode'))
         self.servo.power_short_press()
         time.sleep(self.faft_config.firmware_screen)
 
