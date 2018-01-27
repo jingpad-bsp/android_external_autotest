@@ -202,6 +202,72 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.assertItemsEqual(shard1.labels.all(), [])
 
 
+    def test_check_job_dependencies_success(self):
+        """Test check_job_dependencies successfully."""
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.static_labels.add(static_label)
+        host.save()
+
+        host1 = models.Host.smart_get(host.id)
+        rpc_utils.check_job_dependencies([host1], ['static'])
+
+
+    def test_check_job_dependencies_fail(self):
+        """Test check_job_dependencies with raising ValidationError."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.labels.add(label)
+        host.save()
+
+        host1 = models.Host.smart_get(host.id)
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_utils.check_job_dependencies,
+                          [host1],
+                          ['static'])
+
+    def test_check_job_metahost_dependencies_success(self):
+        """Test check_job_metahost_dependencies successfully."""
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.static_labels.add(static_label)
+        host.labels.add(label1)
+        host.labels.add(label2)
+        host.save()
+
+        rpc_utils.check_job_metahost_dependencies(
+                [label1, label], [label2.name])
+        rpc_utils.check_job_metahost_dependencies(
+                [label1], [label2.name, static_label.name])
+
+
+    def test_check_job_metahost_dependencies_fail(self):
+        """Test check_job_metahost_dependencies with raising errors."""
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.labels.add(label1)
+        host.labels.add(label2)
+        host.save()
+
+        self.assertRaises(error.NoEligibleHostException,
+                          rpc_utils.check_job_metahost_dependencies,
+                          [label1, label], [label2.name])
+        self.assertRaises(error.NoEligibleHostException,
+                          rpc_utils.check_job_metahost_dependencies,
+                          [label1], [label2.name, static_label.name])
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
