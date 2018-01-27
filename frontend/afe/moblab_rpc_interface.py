@@ -619,6 +619,12 @@ def add_moblab_label(ipaddress, label_name):
         label = models.Label.add_object(name=label_name)
     except:
         label = models.Label.smart_get(label_name)
+        if label.is_replaced_by_static():
+            raise error.UnmodifiableLabelException(
+                    'Failed to add label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to add this '
+                    'label.' % label.name)
+
     host_obj = models.Host.smart_get(ipaddress)
     if label:
         label.host_set.add(host_obj)
@@ -637,7 +643,14 @@ def remove_moblab_label(ipaddress, label_name):
     @return: A string giving information about the status.
     """
     host_obj = models.Host.smart_get(ipaddress)
-    models.Label.smart_get(label_name).host_set.remove(host_obj)
+    label = models.Label.smart_get(label_name)
+    if label.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                    'Failed to remove label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to remove this '
+                    'label.' % label.name)
+
+    label.host_set.remove(host_obj)
     return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
 
 
