@@ -134,6 +134,13 @@ class Lease(object):
         # TODO(ayatane): I don't know if it is possible for sent to be 0
         assert sent > 0
 
+    def maybe_abort(self):
+        """Abort the job, ignoring errors."""
+        try:
+            self.abort()
+        except socket.error as e:
+            logger.debug('Error aborting socket: %s', e)
+
     @property
     def _sock_path(self):
         """Return the path of the abort socket corresponding to the lease."""
