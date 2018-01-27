@@ -254,5 +254,6 @@ def _mark_job_hosts_ready(job):
     @param job: frontend.afe.models.Job instance
     """
     models = autotest.load('frontend.afe.models')
-    for entry in job.hostqueueentry_set.all():
-        entry.host.set_status(models.Host.Status.READY)
+    hosts = set(job.hostqueueentry_set.all().values_list('host_id', flat=True))
+    (models.Host.objects.filter(id__in=hosts)
+     .update(status=models.Host.Status.READY))
