@@ -298,7 +298,11 @@ def check_job_dependencies(host_objects, job_dependencies):
     ok_hosts = hosts_in_job
     for index, dependency in enumerate(job_dependencies):
         if not provision.is_for_special_action(dependency):
-            ok_hosts = ok_hosts.filter(labels__name=dependency)
+            label = models.Label.smart_get(dependency)
+            if label.is_replaced_by_static():
+                ok_hosts = ok_hosts.filter(static_labels__name=dependency)
+            else:
+                ok_hosts = ok_hosts.filter(labels__name=dependency)
     failing_hosts = (set(host.hostname for host in host_objects) -
                      set(host.hostname for host in ok_hosts))
     if failing_hosts:
@@ -318,10 +322,20 @@ def check_job_metahost_dependencies(metahost_objects, job_dependencies):
     @raises NoEligibleHostException If a metahost cannot run the job.
     """
     for metahost in metahost_objects:
-        hosts = models.Host.objects.filter(labels=metahost)
+        if metahost.is_replaced_by_static():
+            static_metahost = models.StaticLabel.smart_get(metahost.name)
+            hosts = models.Host.objects.filter(static_labels=static_metahost)
+        else:
+            hosts = models.Host.objects.filter(labels=metahost)
+
         for label_name in job_dependencies:
             if not provision.is_for_special_action(label_name):
-                hosts = hosts.filter(labels__name=label_name)
+                label = models.Label.smart_get(label_name)
+                if label.is_replaced_by_static():
+                    hosts = hosts.filter(static_labels__name=label_name)
+                else:
+                    hosts = hosts.filter(labels__name=label_name)
+
         if not any(hosts):
             raise error.NoEligibleHostException("No hosts within %s satisfy %s."
                     % (metahost.name, ', '.join(job_dependencies)))
