@@ -107,7 +107,7 @@ def _abort_timed_out_jobs(active_leases):
     """
     for job in _timed_out_jobs_queryset():
         if job.id in active_leases:
-            active_leases[job.id].abort()
+            active_leases[job.id].maybe_abort()
 
 
 def _abort_jobs_marked_aborting(active_leases):
@@ -117,7 +117,7 @@ def _abort_jobs_marked_aborting(active_leases):
     """
     for job in _aborting_jobs_queryset():
         if job.id in active_leases:
-            active_leases[job.id].abort()
+            active_leases[job.id].maybe_abort()
 
 
 def _abort_special_tasks_marked_aborted():
