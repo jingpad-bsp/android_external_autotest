@@ -37,7 +37,6 @@ from autotest_lib.scheduler import scheduler_config
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import system_utils
 from autotest_lib.server import utils as server_utils
-from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
 
 try:
@@ -171,13 +170,11 @@ def main_without_exception_handling():
         global _testing_mode
         _testing_mode = True
 
-    # Start the thread to report metadata.
-    metadata_reporter.start()
-
     with ts_mon_config.SetupTsMonGlobalState('autotest_scheduler',
                                              indirect=True,
                                              debug_file=options.metrics_file):
       try:
+          metrics.Counter('chromeos/autotest/scheduler/start').increment()
           process_start_time = time.time()
           initialize()
           dispatcher = Dispatcher()
@@ -205,7 +202,6 @@ def main_without_exception_handling():
           metrics.Counter('chromeos/autotest/scheduler/uncaught_exception'
                           ).increment()
 
-    metadata_reporter.abort()
     email_manager.manager.send_queued_emails()
     _drone_manager.shutdown()
     _db_manager.disconnect()

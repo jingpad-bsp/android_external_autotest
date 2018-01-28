@@ -53,6 +53,9 @@ _DHCPD_LEASES = '/var/lib/dhcp/dhcpd.leases'
 # File where information about the current device is stored.
 _ETC_LSB_RELEASE = '/etc/lsb-release'
 
+# ChromeOS update engine client binary location
+_UPDATE_ENGINE_CLIENT = '/usr/bin/update_engine_client'
+
 # Full path to the correct gsutil command to run.
 class GsUtil:
     """Helper class to find correct gsutil command."""
@@ -463,7 +466,70 @@ def get_version_info():
     version_response['MOBLAB_ID'] = utils.get_moblab_id();
     version_response['MOBLAB_MAC_ADDRESS'] = (
         utils.get_default_interface_mac_address())
+    _check_for_system_update()
+    update_status = _get_system_update_status()
+    version_response['MOBLAB_UPDATE_VERSION'] = update_status['NEW_VERSION']
+    version_response['MOBLAB_UPDATE_STATUS'] = update_status['CURRENT_OP']
+    version_response['MOBLAB_UPDATE_PROGRESS'] = update_status['PROGRESS']
     return rpc_utils.prepare_for_serialization(version_response)
+
+
+@rpc_utils.moblab_only
+def update_moblab():
+    """ RPC call to update and reboot moblab """
+    _install_system_update()
+
+
+def _check_for_system_update():
+    """ Run the ChromeOS update client to check update server for an
+    update. If an update exists, the update client begins downloading it
+    in the background
+    """
+    # sudo is required to run the update client
+    subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--check_for_update'])
+
+
+def _get_system_update_status():
+    """ Run the ChromeOS update client to check status on a
+    pending/downloading update
+
+    @return: A dictionary containing {
+        PROGRESS: str containing percent progress of an update download
+        CURRENT_OP: str current status of the update engine,
+            ex UPDATE_STATUS_UPDATED_NEED_REBOOT
+        NEW_SIZE: str size of the update
+        NEW_VERSION: str version number for the update
+        LAST_CHECKED_TIME: str unix time stamp of the last update check
+    }
+    """
+    # sudo is required to run the update client
+    cmd_out = subprocess.check_output(
+        ['sudo' ,_UPDATE_ENGINE_CLIENT, '--status'])
+    split_lines = [x.split('=') for x in cmd_out.strip().split('\n')]
+    status = dict((key, val) for [key, val] in split_lines)
+    return status
+
+
+def _install_system_update():
+    """ Installs a ChromeOS update, will cause the system to reboot
+    """
+    # sudo is required to run the update client
+    # first run a blocking command to check, fetch, prepare an update
+    # then check if a reboot is needed
+    try:
+        subprocess.check_call(['sudo', _UPDATE_ENGINE_CLIENT, '--update'])
+        try:
+            # --is_reboot_needed returns 2 if a reboot is required, which
+            # technically is an error
+            subprocess.check_call(
+                ['sudo', _UPDATE_ENGINE_CLIENT, '--is_reboot_needed'])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
+
+    except subprocess.CalledProcessError as e:
+        pass
+        #TODO(crbug/806311) surface error to UI
 
 
 @rpc_utils.moblab_only
@@ -553,6 +619,12 @@ def add_moblab_label(ipaddress, label_name):
         label = models.Label.add_object(name=label_name)
     except:
         label = models.Label.smart_get(label_name)
+        if label.is_replaced_by_static():
+            raise error.UnmodifiableLabelException(
+                    'Failed to add label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to add this '
+                    'label.' % label.name)
+
     host_obj = models.Host.smart_get(ipaddress)
     if label:
         label.host_set.add(host_obj)
@@ -571,7 +643,14 @@ def remove_moblab_label(ipaddress, label_name):
     @return: A string giving information about the status.
     """
     host_obj = models.Host.smart_get(ipaddress)
-    models.Label.smart_get(label_name).host_set.remove(host_obj)
+    label = models.Label.smart_get(label_name)
+    if label.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                    'Failed to remove label "%s" because it is a static label. '
+                    'Use go/chromeos-skylab-inventory-tools to remove this '
+                    'label.' % label.name)
+
+    label.host_set.remove(host_obj)
     return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
 
 

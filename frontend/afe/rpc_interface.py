@@ -99,14 +99,11 @@ def modify_label(id, **data):
     @param data: New data for a label.
     """
     label_model = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label_model.id)
-        if len(replaced) > 0:
-            raise error.UnmodifiableLabelException(
-                    'Failed to delete label "%s" because it is a static label. '
-                    'Use go/chromeos-skylab-inventory-tools to modify this '
-                    'label.' % label_model.name)
+    if label_model.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to delete label "%s" because it is a static label. '
+                'Use go/chromeos-skylab-inventory-tools to modify this '
+                'label.' % label_model.name)
 
     label_model.update_object(data)
 
@@ -122,14 +119,11 @@ def delete_label(id):
     @param id: id or name of a label. More often a label name.
     """
     label_model = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label_model.id)
-        if len(replaced) > 0:
-            raise error.UnmodifiableLabelException(
-                    'Failed to delete label "%s" because it is a static label. '
-                    'Use go/chromeos-skylab-inventory-tools to modify this '
-                    'label.' % label_model.name)
+    if label_model.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to delete label "%s" because it is a static label. '
+                'Use go/chromeos-skylab-inventory-tools to modify this '
+                'label.' % label_model.name)
 
     # Hosts that have the label to be deleted. Save this info before
     # the label is deleted to use it later.
@@ -182,11 +176,8 @@ def add_label_to_hosts(id, hosts):
     @raises models.Label.DoesNotExist: If the label with id doesn't exist.
     """
     label = models.Label.smart_get(id)
-    if RESPECT_STATIC_LABELS:
-        replaced = models.ReplacedLabel.objects.filter(
-                label__id=label.id)
-        if len(replaced) > 0:
-            label = models.StaticLabel.smart_get(label.name)
+    if label.is_replaced_by_static():
+        label = models.StaticLabel.smart_get(label.name)
 
     host_objs = models.Host.smart_get_bulk(hosts)
     if label.platform:
@@ -276,7 +267,14 @@ def remove_label_from_hosts(id, hosts):
     @param hosts: The hostnames of hosts that need to remove the label from.
     """
     host_objs = models.Host.smart_get_bulk(hosts)
-    models.Label.smart_get(id).host_set.remove(*host_objs)
+    label = models.Label.smart_get(id)
+    if label.is_replaced_by_static():
+        raise error.UnmodifiableLabelException(
+                'Failed to remove label "%s" for hosts "%r" because it is a '
+                'static label. Use go/chromeos-skylab-inventory-tools to '
+                'modify this label.' % (label.name, hosts))
+
+    label.host_set.remove(*host_objs)
 
 
 @rpc_utils.route_rpc_to_master
@@ -525,7 +523,18 @@ def remove_labels_from_host(id, labels):
     @param labels: ids or names for labels.
     """
     label_objs = models.Label.smart_get_bulk(labels)
-    models.Host.smart_get(id).labels.remove(*label_objs)
+    if not RESPECT_STATIC_LABELS:
+        models.Host.smart_get(id).labels.remove(*label_objs)
+    else:
+        static_labels, non_static_labels = models.Host.classify_label_objects(
+                label_objs)
+        host = models.Host.smart_get(id)
+        host.labels.remove(*non_static_labels)
+        if static_labels:
+            logging.info('Cannot remove labels "%r" for host "%r" due to they '
+                         'are static labels. Use '
+                         'go/chromeos-skylab-inventory-tools to modify these '
+                         'labels.', static_labels, id)
 
 
 @rpc_utils.route_rpc_to_master
@@ -2241,64 +2250,28 @@ def remove_board_from_shard(hostname, label):
     if label not in shard.labels.all():
         raise error.RPCException(
           'Cannot remove label from shard that does not belong to it.')
+
     shard.labels.remove(label)
-    models.Host.objects.filter(labels__in=[label]).update(shard=None)
+    if label.is_replaced_by_static():
+        static_label = models.StaticLabel.smart_get(label.name)
+        models.Host.objects.filter(
+                static_labels__in=[static_label]).update(shard=None)
+    else:
+        models.Host.objects.filter(labels__in=[label]).update(shard=None)
 
 
 def delete_shard(hostname):
     """Delete a shard and reclaim all resources from it.
 
-    This claims back all assigned hosts from the shard. To ensure all DUTs are
-    in a sane state, a Reboot task with highest priority is scheduled for them.
-    This reboots the DUTs and then all left tasks continue to run in drone of
-    the master.
-
-    The procedure for deleting a shard:
-        * Lock all unlocked hosts on that shard.
-        * Remove shard information .
-        * Assign a reboot task with highest priority to these hosts.
-        * Unlock these hosts, then, the reboot tasks run in front of all other
-        tasks.
-
-    The status of jobs that haven't been reported to be finished yet, will be
-    lost. The master scheduler will pick up the jobs and execute them.
-
-    @param hostname: Hostname of the shard to delete.
+    This claims back all assigned hosts from the shard.
     """
     shard = rpc_utils.retrieve_shard(shard_hostname=hostname)
-    hostnames_to_lock = [h.hostname for h in
-                         models.Host.objects.filter(shard=shard, locked=False)]
-
-    # TODO(beeps): Power off shard
-    # For ChromeOS hosts, a reboot test with the highest priority is added to
-    # the DUT. After a reboot it should be ganranteed that no processes from
-    # prior tests that were run by a shard are still running on.
-
-    # Lock all unlocked hosts.
-    dicts = {'locked': True, 'lock_time': datetime.datetime.now()}
-    models.Host.objects.filter(hostname__in=hostnames_to_lock).update(**dicts)
 
     # Remove shard information.
     models.Host.objects.filter(shard=shard).update(shard=None)
     models.Job.objects.filter(shard=shard).update(shard=None)
     shard.labels.clear()
     shard.delete()
-
-    # Assign a reboot task with highest priority: Super.
-    t = models.Test.objects.get(name='platform_BootPerfServer:shard')
-    c = utils.read_file(os.path.join(common.autotest_dir, t.path))
-    if hostnames_to_lock:
-        rpc_utils.create_job_common(
-                'reboot_dut_for_shard_deletion',
-                priority=priorities.Priority.SUPER,
-                control_type='Server',
-                control_file=c, hosts=hostnames_to_lock,
-                timeout_mins=10,
-                max_runtime_mins=10)
-
-    # Unlock these shard-related hosts.
-    dicts = {'locked': False, 'lock_time': None}
-    models.Host.objects.filter(hostname__in=hostnames_to_lock).update(**dicts)
 
 
 def get_servers(hostname=None, role=None, status=None):

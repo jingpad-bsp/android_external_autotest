@@ -151,7 +151,9 @@ def main():
     conn = RetryingConnection('localhost', DEFAULT_USER, DEFAULT_PASSWD)
     conn.Connect()
 
-    with ts_mon_config.SetupTsMonGlobalState('mysql_stats', indirect=True):
+    # TODO(crbug.com/803566) Use indirect=False to mitigate orphan mysql_stats
+    # processes overwhelming shards.
+    with ts_mon_config.SetupTsMonGlobalState('mysql_stats', indirect=False):
       QueryLoop(conn)
 
 

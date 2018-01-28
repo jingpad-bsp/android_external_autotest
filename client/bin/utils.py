@@ -118,58 +118,6 @@ def extract_tarball(tarball):
         raise NameError('extracting tarball produced no dir')
 
 
-def unmap_url_cache(cachedir, url, expected_hash, method="md5"):
-    """
-    Downloads a file from a URL to a cache directory. If the file is already
-    at the expected position and has the expected hash, let's not download it
-    again.
-
-    @param cachedir: Directory that might hold a copy of the file we want to
-            download.
-    @param url: URL for the file we want to download.
-    @param expected_hash: Hash string that we expect the file downloaded to
-            have.
-    @param method: Method used to calculate the hash string (md5, sha1).
-    """
-    # Let's convert cachedir to a canonical path, if it's not already
-    cachedir = os.path.realpath(cachedir)
-    if not os.path.isdir(cachedir):
-        try:
-            os.makedirs(cachedir)
-        except:
-            raise ValueError('Could not create cache directory %s' % cachedir)
-    file_from_url = os.path.basename(url)
-    file_local_path = os.path.join(cachedir, file_from_url)
-
-    file_hash = None
-    failure_counter = 0
-    while not file_hash == expected_hash:
-        if os.path.isfile(file_local_path):
-            file_hash = hash_file(file_local_path, method)
-            if file_hash == expected_hash:
-                # File is already at the expected position and ready to go
-                src = file_from_url
-            else:
-                # Let's download the package again, it's corrupted...
-                logging.error("Seems that file %s is corrupted, trying to "
-                              "download it again", file_from_url)
-                src = url
-                failure_counter += 1
-        else:
-            # File is not there, let's download it
-            src = url
-        if failure_counter > 1:
-            raise EnvironmentError("Consistently failed to download the "
-                                   "package %s. Aborting further download "
-                                   "attempts. This might mean either the "
-                                   "network connection has problems or the "
-                                   "expected hash string that was determined "
-                                   "for this file is wrong", file_from_url)
-        file_path = utils.unmap_url(cachedir, src, cachedir)
-
-    return file_path
-
-
 def force_copy(src, dest):
     """Replace dest with a new copy of src, even if it exists"""
     if os.path.isfile(dest):
@@ -2383,3 +2331,4 @@ def run_sql_cmd(server, user, password, command, database=''):
            (user, password, server, database, command))
     # Set verbose to False so the command line won't be logged, as it includes
     # database credential.
+    return utils.run(cmd, verbose=False).stdout

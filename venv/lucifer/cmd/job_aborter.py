@@ -90,13 +90,14 @@ def _mark_expired_jobs_failed(active_leases):
     @param active_leases: dict mapping job ids to Leases.
     """
     logger.debug('Looking for expired jobs')
-    job_ids_to_mark = []
+    job_ids = []
     for handoff in _incomplete_handoffs_queryset():
         logger.debug('Found handoff: %d', handoff.job_id)
         if handoff.job_id not in active_leases:
             logger.debug('Handoff %d is missing active lease', handoff.job_id)
-            job_ids_to_mark.append(handoff.job_id)
-    _mark_failed(job_ids_to_mark)
+            job_ids.append(handoff.job_id)
+    _clean_up_failed(job_ids)
+    _mark_handoffs_complete(job_ids)
 
 
 def _abort_timed_out_jobs(active_leases):
@@ -106,7 +107,7 @@ def _abort_timed_out_jobs(active_leases):
     """
     for job in _timed_out_jobs_queryset():
         if job.id in active_leases:
-            active_leases[job.id].abort()
+            active_leases[job.id].maybe_abort()
 
 
 def _abort_jobs_marked_aborting(active_leases):
@@ -116,7 +117,7 @@ def _abort_jobs_marked_aborting(active_leases):
     """
     for job in _aborting_jobs_queryset():
         if job.id in active_leases:
-            active_leases[job.id].abort()
+            active_leases[job.id].maybe_abort()
 
 
 def _abort_special_tasks_marked_aborted():
@@ -201,22 +202,47 @@ def _filter_leased(jobdir, dbjobs):
             yield dbjob, our_jobs[dbjob.id]
 
 
-def _mark_failed(job_ids):
-    """Mark jobs failed in database.
+def _clean_up_failed(job_ids):
+    """Clean up failed jobs failed in database.
 
-    This also marks the corresponding JobHandoffs as completed.
+    This brings the database into a clean state, which includes marking
+    the job, HQEs, and hosts.
     """
     if not job_ids:
         return
     models = autotest.load('frontend.afe.models')
-    logger.info('Marking jobs failed: %r', job_ids)
+    transaction = autotest.deps_load('django.db.transaction')
+    logger.info('Cleaning up failed jobs: %r', job_ids)
     hqes = models.HostQueueEntry.objects.filter(job_id__in=job_ids)
+    logger.debug('Cleaning up HQEs: %r', hqes.values_list('id', flat=True))
 
     hqes.update(complete=True,
                 active=False,
                 status=models.HostQueueEntry.Status.FAILED)
     (hqes.exclude(started_on=None)
      .update(finished_on=datetime.datetime.now()))
+    hosts = {id for id in hqes.values_list('host_id', flat=True)
+             if id is not None}
+    logger.debug('Found Hosts associated with jobs: %r', hosts)
+    with transaction.commit_on_success():
+        active_hosts = {
+            id for id in (models.HostQueueEntry.objects
+                          .filter(active=True, complete=False)
+                          .values_list('host_id', flat=True))
+            if id is not None}
+        logger.debug('Found active Hosts: %r', active_hosts)
+        (models.Host.objects
+         .filter(id__in=hosts)
+         .exclude(id__in=active_hosts)
+         .update(status=None))
+
+
+def _mark_handoffs_complete(job_ids):
+    """Mark the corresponding JobHandoffs as completed."""
+    if not job_ids:
+        return
+    models = autotest.load('frontend.afe.models')
+    logger.info('Marking job handoffs complete: %r', job_ids)
     (models.JobHandoff.objects
      .filter(job_id__in=job_ids)
      .update(completed=True))

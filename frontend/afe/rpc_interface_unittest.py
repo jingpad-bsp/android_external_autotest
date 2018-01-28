@@ -144,6 +144,130 @@ class RpcInterfaceTestWithStaticLabel(unittest.TestCase,
         self.assertEquals(len(platforms), 1)
 
 
+    def test_label_remove_hosts(self):
+        """Test remove a label of hosts."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(label)
+        host1.static_labels.add(static_label)
+        host1.save()
+
+        self.assertRaises(error.UnmodifiableLabelException,
+                          rpc_interface.label_remove_hosts,
+                          id='static', hosts=['test_host'])
+
+
+    def test_host_remove_labels(self):
+        """Test remove labels of a given host."""
+        label = models.Label.smart_get('static')
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.labels.add(label)
+        host1.labels.add(label1)
+        host1.labels.add(label2)
+        host1.static_labels.add(static_label)
+        host1.save()
+
+        rpc_interface.host_remove_labels(
+                'test_host', ['static', 'label1'])
+        labels = rpc_interface.get_labels(host__hostname__in=['test_host'])
+        # Only non_static label 'label1' is removed.
+        self.assertEquals(len(labels), 2)
+        self.assertEquals(labels[0].get('name'), 'label2')
+
+
+    def test_remove_board_from_shard(self):
+        """test remove a board (static label) from shard."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        shard = models.Shard.objects.create(hostname='test_shard')
+        shard.labels.add(label)
+
+        host = models.Host.objects.create(hostname='test_host',
+                                          leased=False,
+                                          shard=shard)
+        host.static_labels.add(static_label)
+        host.save()
+
+        rpc_interface.remove_board_from_shard(shard.hostname, label.name)
+        host1 = models.Host.smart_get(host.id)
+        shard1 = models.Shard.smart_get(shard.id)
+        self.assertEqual(host1.shard, None)
+        self.assertItemsEqual(shard1.labels.all(), [])
+
+
+    def test_check_job_dependencies_success(self):
+        """Test check_job_dependencies successfully."""
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.static_labels.add(static_label)
+        host.save()
+
+        host1 = models.Host.smart_get(host.id)
+        rpc_utils.check_job_dependencies([host1], ['static'])
+
+
+    def test_check_job_dependencies_fail(self):
+        """Test check_job_dependencies with raising ValidationError."""
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.labels.add(label)
+        host.save()
+
+        host1 = models.Host.smart_get(host.id)
+        self.assertRaises(model_logic.ValidationError,
+                          rpc_utils.check_job_dependencies,
+                          [host1],
+                          ['static'])
+
+    def test_check_job_metahost_dependencies_success(self):
+        """Test check_job_metahost_dependencies successfully."""
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.static_labels.add(static_label)
+        host.labels.add(label1)
+        host.labels.add(label2)
+        host.save()
+
+        rpc_utils.check_job_metahost_dependencies(
+                [label1, label], [label2.name])
+        rpc_utils.check_job_metahost_dependencies(
+                [label1], [label2.name, static_label.name])
+
+
+    def test_check_job_metahost_dependencies_fail(self):
+        """Test check_job_metahost_dependencies with raising errors."""
+        label1 = models.Label.smart_get('label1')
+        label2 = models.Label.smart_get('label2')
+        label = models.Label.smart_get('static')
+        static_label = models.StaticLabel.objects.create(name='static')
+
+        host = models.Host.objects.create(hostname='test_host')
+        host.labels.add(label1)
+        host.labels.add(label2)
+        host.save()
+
+        self.assertRaises(error.NoEligibleHostException,
+                          rpc_utils.check_job_metahost_dependencies,
+                          [label1, label], [label2.name])
+        self.assertRaises(error.NoEligibleHostException,
+                          rpc_utils.check_job_metahost_dependencies,
+                          [label1], [label2.name, static_label.name])
+
+
 class RpcInterfaceTest(unittest.TestCase,
                        frontend_test_utils.FrontendTestMixin):
     def setUp(self):
@@ -1412,7 +1536,6 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
         models.Test.objects.create(name='platform_BootPerfServer:shard',
                                    test_type=1)
         self.mox.StubOutWithMock(server_utils, 'read_file')
-        server_utils.read_file(mox.IgnoreArg()).AndReturn('')
         self.mox.ReplayAll()
         rpc_interface.delete_shard(hostname=shard1.hostname)
 
@@ -1421,16 +1544,9 @@ class ExtraRpcInterfaceTest(mox.MoxTestBase,
 
         job1 = models.Job.objects.get(pk=job1.id)
         lumpy_label = models.Label.objects.get(pk=lumpy_label.id)
-        host1 = models.Host.objects.get(pk=host1.id)
-        super_job = models.Job.objects.get(priority=priorities.Priority.SUPER)
-        super_job_host = models.HostQueueEntry.objects.get(
-                job_id=super_job.id)
 
         self.assertIsNone(job1.shard)
         self.assertEqual(len(lumpy_label.shard_set.all()), 0)
-        self.assertIsNone(host1.shard)
-        self.assertIsNotNone(super_job)
-        self.assertEqual(super_job_host.host_id, host1.id)
 
 
     def testCreateListShard(self):

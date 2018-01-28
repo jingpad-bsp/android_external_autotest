@@ -490,6 +490,56 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         moblab_rpc_interface._enable_notification_using_credentials_in_bucket()
 
+    def testInstallSystemUpdate(self):
+        update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'check_call')
+        moblab_rpc_interface.subprocess.check_call(['sudo',
+                update_engine_client, '--update'])
+        error = moblab_rpc_interface.subprocess.CalledProcessError(2, '')
+        moblab_rpc_interface.subprocess.check_call(['sudo',
+                update_engine_client, '--is_reboot_needed']).AndRaise(error)
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'call')
+        moblab_rpc_interface.subprocess.call(['sudo', update_engine_client,
+                '--reboot'])
+
+        self.mox.ReplayAll()
+        moblab_rpc_interface._install_system_update()
+
+
+    def testGetSystemUpdateStatus(self):
+        update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
+        update_status = ('LAST_CHECKED_TIME=1516753795\n'
+                         'PROGRESS=0.220121\n'
+                         'CURRENT_OP=UPDATE_STATUS_DOWNLOADING\n'
+                         'NEW_VERSION=10032.89.0\n'
+                         'NEW_SIZE=782805733')
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess,
+                'check_output')
+        moblab_rpc_interface.subprocess.check_output(['sudo',
+                update_engine_client, '--status']).AndReturn(
+                        update_status)
+
+        self.mox.ReplayAll()
+        output = moblab_rpc_interface._get_system_update_status()
+
+        self.assertEquals(output['PROGRESS'], '0.220121')
+        self.assertEquals(output['CURRENT_OP'], 'UPDATE_STATUS_DOWNLOADING')
+        self.assertEquals(output['NEW_VERSION'], '10032.89.0')
+        self.assertEquals(output['NEW_SIZE'], '782805733')
+
+    def testCheckForSystemUpdate(self):
+        update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'call')
+        moblab_rpc_interface.subprocess.call(['sudo', update_engine_client,
+                '--check_for_update'])
+
+        self.mox.ReplayAll()
+        moblab_rpc_interface._check_for_system_update()
+
 
 if __name__ == '__main__':
     unittest.main()
