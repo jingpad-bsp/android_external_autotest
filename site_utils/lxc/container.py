@@ -162,9 +162,7 @@ class Container(object):
                 # container quite frequently, and emitting exceptions here would
                 # cause any invalid containers on a server to block all
                 # ContainerBucket.get_all calls (see crbug/783865).
-                # TODO(jkop): get_all calls have been reduced. Investigate
-                # whether this should be changed.
-                # TODO(jkop): Containers with invalid ID files are probably
+                # TODO(kenobi): Containers with invalid ID files are probably
                 # the result of an aborted or failed operation.  There is a
                 # non-zero chance that such containers would contain leftover
                 # state, or themselves be corrupted or invalid.  Should we
