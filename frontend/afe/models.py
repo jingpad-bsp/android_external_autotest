@@ -1344,10 +1344,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         '  (t1.id = t2.job_id AND t2.complete != 1 AND t2.active != 1 '
         '   AND t2.meta_host IS NULL AND t2.host_id IS NOT NULL '
         '   %(check_known_jobs)s) '
-        'LEFT OUTER JOIN afe_hosts_labels t3 ON (t2.host_id = t3.host_id) '
-        'WHERE (t3.label_id IN '
-        '  (SELECT label_id FROM afe_shards_labels '
-        '   WHERE shard_id = %(shard_id)s))'
+        'LEFT OUTER JOIN %(host_label_table)s t3 ON (t2.host_id = t3.host_id) '
+        'WHERE (t3.%(host_label_column)s IN %(label_ids)s)'
         )
 
     # Even if we had filters about complete, active and aborted
@@ -1585,10 +1583,29 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             check_known_jobs_exclude = 'AND NOT ' + check_known_jobs
             check_known_jobs_include = 'OR ' + check_known_jobs
 
-        for sql in [cls.SQL_SHARD_JOBS, cls.SQL_SHARD_JOBS_WITH_HOSTS]:
-            query = Job.objects.raw(sql % {
-                    'check_known_jobs': check_known_jobs_exclude,
-                    'shard_id': shard.id})
+        query = Job.objects.raw(cls.SQL_SHARD_JOBS % {
+                'check_known_jobs': check_known_jobs_exclude,
+                'shard_id': shard.id})
+        job_ids |= set([j.id for j in query])
+
+        static_labels, non_static_labels = Host.classify_label_objects(
+                shard.labels.all())
+        if static_labels:
+            label_ids = [str(l.id) for l in static_labels]
+            query = Job.objects.raw(cls.SQL_SHARD_JOBS_WITH_HOSTS % {
+                'check_known_jobs': check_known_jobs_exclude,
+                'host_label_table': 'afe_static_hosts_labels',
+                'host_label_column': 'staticlabel_id',
+                'label_ids': '(%s)' % ','.join(label_ids)})
+            job_ids |= set([j.id for j in query])
+
+        if non_static_labels:
+            label_ids = [str(l.id) for l in non_static_labels]
+            query = Job.objects.raw(cls.SQL_SHARD_JOBS_WITH_HOSTS % {
+                'check_known_jobs': check_known_jobs_exclude,
+                'host_label_table': 'afe_hosts_labels',
+                'host_label_column': 'label_id',
+                'label_ids': '(%s)' % ','.join(label_ids)})
             job_ids |= set([j.id for j in query])
 
         if job_ids:
