@@ -172,6 +172,31 @@ def has_battery():
     return rv
 
 
+def charge_control_by_ectool(is_charge):
+    """Force the battery behavior by the is_charge paremeter.
+
+    Args:
+      is_charge: Boolean, True for charging, False for discharging.
+
+    Returns:
+      Boolean, True if the command success, False otherwise.
+    """
+    ec_cmd_discharge = 'ectool chargecontrol discharge'
+    ec_cmd_normal = 'ectool chargecontrol normal'
+    if is_charge:
+        utils.run(ec_cmd_normal)
+    else:
+        utils.run(ec_cmd_discharge)
+
+    success = utils.wait_for_value(lambda: (
+        is_charge != bool(re.search(r'Flags.*DISCHARGING',
+                                    utils.run('ectool battery',
+                                              ignore_status=True).stdout,
+                                    re.MULTILINE))),
+        expected_value=True)
+    return success
+
+
 class BacklightException(Exception):
     """Class for Backlight exceptions."""
 
