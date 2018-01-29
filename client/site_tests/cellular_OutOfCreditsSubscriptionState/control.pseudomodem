@@ -12,7 +12,7 @@ This test will fail if one of the following conditions occurs:
   - Shill does not clear the out-of-credits flag when the subscription state
     transitions to provisioned after being out-of-credits.
 """
-ATTRIBUTES = "suite:network3g_pseudomodem"
+ATTRIBUTES = "suite:cellular_pseudomodem"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network3g_pseudomodem"
+NAME = "cellular_pseudomodem"
 PURPOSE = "Cellular tests that use a pseudomodem and are able to run in VMs"
 
 TIME = "SHORT"
@@ -40,7 +40,7 @@ _BUG_TEMPLATE = {
     'cc': ['benchan@chromium.org', 'ejcaruso@chromium.org']
 }
 
-args_dict['name'] = 'network3g_pseudomodem'
+args_dict['name'] = 'cellular_pseudomodem'
 args_dict['max_runtime_mins'] = 10
 args_dict['job'] = job
 args_dict['add_experimental'] = True
