@@ -10,7 +10,7 @@ This test will fail if one of the following conditions occur:
   - 3G modem fails to connect to network
   - the modem is not left in a working state
 """
-ATTRIBUTES = "suite:network3g"
+ATTRIBUTES = "suite:cellular_ota"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
