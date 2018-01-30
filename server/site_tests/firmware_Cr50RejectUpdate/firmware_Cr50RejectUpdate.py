@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import time
 
 from autotest_lib.client.common_lib import error
@@ -68,8 +67,7 @@ class firmware_Cr50RejectUpdate(Cr50Test):
         """
 
         # Make sure trunskd isn't running
-        self.host.run('stop trunksd', ignore_status=True, ignore_timeout=True,
-                timeout=60)
+        cr50_utils.StopTrunksd(self.host)
 
         # Wait for cr50 to have been up for 60 seconds, so it won't
         # automatically reject the image.
