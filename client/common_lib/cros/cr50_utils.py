@@ -222,6 +222,12 @@ def SetRLZ(client, rlz):
         raise error.TestError('Could not set RLZ code')
 
 
+def StopTrunksd(client):
+    """Stop trunksd on the client"""
+    if 'running' in client.run('status trunksd').stdout:
+        client.run('stop trunksd')
+
+
 def UsbUpdater(client, args):
     """Run usb_update with the given args.
 
@@ -234,9 +240,8 @@ def UsbUpdater(client, args):
     """
     options = usb_update.parse_args(args)
 
-    result = client.run('status trunksd')
-    if options.systemdev and 'running' in result.stdout:
-        client.run('stop trunksd')
+    if options.systemdev:
+        StopTrunksd(client)
 
     # If we are updating the cr50 image, usb_update will return a non-zero exit
     # status so we should ignore it.

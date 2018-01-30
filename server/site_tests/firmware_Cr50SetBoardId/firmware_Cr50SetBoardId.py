@@ -74,8 +74,7 @@ class firmware_Cr50SetBoardId(Cr50Test):
             raise error.TestNAError('Could not get "mosys platform brand"')
         self.platform_brand = platform_brand
         self.erase_bid()
-        if 'running' in self.host.run('status trunksd').stdout.strip():
-            self.host.run('stop trunksd')
+        cr50_utils.StopTrunksd(self.host)
 
 
     def cleanup(self):
