@@ -1693,6 +1693,13 @@ class JobHandoff(dbmodels.Model, model_logic.ModelExtensions):
                                  primary_key=True)
     created = dbmodels.DateTimeField(auto_now_add=True)
     completed = dbmodels.BooleanField(default=False)
+    drone = dbmodels.CharField(
+        max_length=128, null=True,
+        help_text='''
+The hostname of the drone the job is running on and whose job_aborter
+should be responsible for aborting the job if the job process dies.
+NULL means any drone's job_aborter has free reign to abort the job.
+''')
 
     class Meta:
         """Metadata for class Job."""
