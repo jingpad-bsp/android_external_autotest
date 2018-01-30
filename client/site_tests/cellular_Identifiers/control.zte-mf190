@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:network3g"
+ATTRIBUTES = "suite:cellular_ota"
 DEPENDENCIES = "modem:zte-mf190"
 DOC = """
   Tests that a cellular modem provides correct identification information
