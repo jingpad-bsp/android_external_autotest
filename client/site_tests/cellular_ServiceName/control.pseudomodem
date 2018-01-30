@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if one of the following conditions occur:
   - Shill reports an incorrect service name
 """
-ATTRIBUTES = "suite:network3g_pseudomodem"
+ATTRIBUTES = "suite:cellular_pseudomodem"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
