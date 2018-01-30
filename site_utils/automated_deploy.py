@@ -35,6 +35,13 @@ PROD_BRANCH = 'prod'
 MASTER_AFE = 'cautotest'
 NOTIFY_GROUP = 'chromeos-infra-discuss@google.com'
 
+# CIPD packages whose prod refs should be updated.
+_CIPD_PACKAGES = (
+        'chromiumos/infra/lucifer',
+        'chromiumos/infra/tast-cmd',
+        'chromiumos/infra/tast-remote-tests-cros',
+)
+
 
 class AutoDeployException(Exception):
     """Raised when any deploy step fails."""
@@ -197,9 +204,10 @@ def main(args):
     if not options.skip_chromite:
         repos.update({'chromite': options.chromite_hash})
 
-    print 'Moving CIPD prod ref to prod-next'
-    subprocess.check_call('''\
-        cipd set-ref chromiumos/infra/lucifer -version prod-next -ref prod''')
+    print 'Moving CIPD prod refs to prod-next'
+    for pkg in _CIPD_PACKAGES:
+        subprocess.check_call(['cipd', 'set-ref', pkg, '-version', 'prod-next',
+                               '-ref', 'prod'])
     try:
         # update_log saves the git log of the updated repo.
         update_log = ''
