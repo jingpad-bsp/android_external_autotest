@@ -5,7 +5,7 @@
 AUTHOR = "ChromeOS Team"
 NAME = "cellular_GobiRecoverFromDesync.gobi3k"
 PURPOSE = "Verify that gobi-cromo-plugin recovers from driver failures"
-ATTRIBUTES = "suite:network3g"
+ATTRIBUTES = "suite:cellular_ota"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
