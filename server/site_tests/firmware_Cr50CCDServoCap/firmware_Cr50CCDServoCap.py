@@ -39,7 +39,8 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     # There are many valid CCD state strings. These lists define which strings
     # translate to off, on and unknown.
     STATE_VALUES = {
-        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC'],
+        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC',
+                'UARTAP UARTEC I2C'],
         ON : ['on', 'connected', 'enabled', 'UARTAP+TX UARTEC+TX I2C SPI'],
         UNDETECTABLE : ['undetectable'],
     }
