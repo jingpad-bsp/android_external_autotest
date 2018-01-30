@@ -5,7 +5,7 @@
 AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_WlanDriver'
 ATTRIBUTES = ('suite:network_nightly, suite:wifi_matfunc,'
-              'suite:wifi_matfunc_noservo')
+              'suite:wifi_matfunc_noservo, suite:bvt-perbuild')
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 
