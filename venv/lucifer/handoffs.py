@@ -46,19 +46,29 @@ def clean_up(job_ids):
     if not job_ids:
         return
     models = autotest.load('frontend.afe.models')
-    transaction = autotest.deps_load('django.db.transaction')
     logger.info('Cleaning up failed jobs: %r', job_ids)
     hqes = models.HostQueueEntry.objects.filter(job_id__in=job_ids)
     logger.debug('Cleaning up HQEs: %r', hqes.values_list('id', flat=True))
+    _clean_up_hqes(hqes)
+    host_ids = {id for id in hqes.values_list('host_id', flat=True)
+                if id is not None}
+    logger.debug('Found Hosts associated with jobs: %r', host_ids)
+    _clean_up_hosts(host_ids)
 
+
+def _clean_up_hqes(hqes):
+    models = autotest.load('frontend.afe.models')
+    logger.debug('Cleaning up HQEs: %r', hqes.values_list('id', flat=True))
     hqes.update(complete=True,
                 active=False,
                 status=models.HostQueueEntry.Status.FAILED)
     (hqes.exclude(started_on=None)
      .update(finished_on=datetime.datetime.now()))
-    hosts = {id for id in hqes.values_list('host_id', flat=True)
-             if id is not None}
-    logger.debug('Found Hosts associated with jobs: %r', hosts)
+
+
+def _clean_up_hosts(host_ids):
+    models = autotest.load('frontend.afe.models')
+    transaction = autotest.deps_load('django.db.transaction')
     with transaction.commit_on_success():
         active_hosts = {
             id for id in (models.HostQueueEntry.objects
@@ -67,7 +77,7 @@ def clean_up(job_ids):
             if id is not None}
         logger.debug('Found active Hosts: %r', active_hosts)
         (models.Host.objects
-         .filter(id__in=hosts)
+         .filter(id__in=host_ids)
          .exclude(id__in=active_hosts)
          .update(status=None))
 
