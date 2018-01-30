@@ -10,7 +10,7 @@ This test will fail if shill does not update the |Scanning| property correctly
 during the initial modem enable-register-connect sequence, or when the user
 requests a network scan using |ProposeScan|.
 """
-ATTRIBUTES = "suite:network3g_pseudomodem"
+ATTRIBUTES = "suite:cellular_pseudomodem"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
