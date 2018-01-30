@@ -144,11 +144,11 @@ class CellularTestEnvironment(object):
 
 
     def _get_shill_cellular_device_object(self):
-        modem_device = self.shill.find_cellular_device_object()
-        if not modem_device:
-            raise error.TestError('Cannot find cellular device in shill. '
-                                  'Is the modem plugged in?')
-        return modem_device
+        return utils.poll_for_condition(
+            lambda: self.shill.find_cellular_device_object(),
+            exception=error.TestError('Cannot find cellular device in shill. '
+                                      'Is the modem plugged in?'),
+            timeout=shill_proxy.ShillProxy.DEVICE_ENUMERATION_TIMEOUT)
 
 
     def _enable_modem(self):
