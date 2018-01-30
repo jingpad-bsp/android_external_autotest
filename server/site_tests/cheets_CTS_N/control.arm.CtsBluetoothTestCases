@@ -22,7 +22,7 @@ def run_CTS(machine):
         'cheets_CTS_N',
         host=host,
         iterations=1,
-        max_retry=3,
+        max_retry=10,
         needs_push_media=False,
         tag='CtsBluetoothTestCases',
         target_module='CtsBluetoothTestCases',
