@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:network3g_tmobile, suite:network3g_verizon"
+ATTRIBUTES = "suite:cellular_ota_tmobile, suite:cellular_ota_verizon"
 DEPENDENCIES = "modem:gobi3k"
 DOC = """
   Tests that a cellular modem provides correct identification information

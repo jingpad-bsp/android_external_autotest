@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if the gobi serial ports for QXDM, AT commands and
 GPS are not present.
 """
-ATTRIBUTES = "suite:network3g"
+ATTRIBUTES = "suite:cellular_ota"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

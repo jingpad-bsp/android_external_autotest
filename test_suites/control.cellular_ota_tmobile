@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network3g_tmobile"
+NAME = "cellular_ota_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
@@ -36,12 +36,10 @@ _BUG_TEMPLATE = {
     'cc': ['benchan@chromium.org', 'ejcaruso@chromium.org']
 }
 
-# TODO(benchan): Re-enable automated bug filing for network3g_pseudomodem
-# suite once de-duplication logic works (crbug.com/241510).
 args_dict['max_runtime_mins'] = 20
 args_dict['job'] = job
 args_dict['add_experimental'] = True
-args_dict['name'] = 'network3g_tmobile'
+args_dict['name'] = 'cellular_ota_tmobile'
 args_dict['suite_dependencies'] = 'carrier:tmobile,modem_repair'
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['bug_template'] = _BUG_TEMPLATE

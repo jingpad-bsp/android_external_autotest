@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:network3g_tmobile"
+ATTRIBUTES = "suite:cellular_ota_tmobile"
 DEPENDENCIES = "modem:icera-y3300"
 DOC = """
   Tests that 3G modem can connect to the network
