@@ -1,16 +1,16 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network3g_att"
+NAME = "cellular_ota_verizon"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-Run automated cellular tests on devices using AT&T as the carrier.
+Run automated 3g tests to ensure that 3g has not regressed.
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
 @param board: The board to test on.  Ex: x86-mario
@@ -37,8 +37,8 @@ _BUG_TEMPLATE = {
 }
 
 args_dict['max_runtime_mins'] = 20
-args_dict['name'] = 'network3g_att'
-args_dict['suite_dependencies'] = 'carrier:att,modem_repair'
+args_dict['name'] = 'cellular_ota_verizon'
+args_dict['suite_dependencies'] = 'carrier:verizon,modem_repair'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
