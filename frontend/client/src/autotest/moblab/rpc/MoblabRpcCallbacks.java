@@ -58,7 +58,7 @@ public class MoblabRpcCallbacks {
   }
 
   public interface FetchConnectedBoardsCallback {
-    public void onFetchConnectedBoardsSubmitted(List<String> boards);
+    public void onFetchConnectedBoardsSubmitted(List<ConnectedBoard> boards);
   }
 
   public interface FetchConnectedPoolsCallback {
