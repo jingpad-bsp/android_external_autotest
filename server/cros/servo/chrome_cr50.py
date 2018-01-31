@@ -12,14 +12,14 @@ from autotest_lib.client.common_lib.cros import cr50_utils
 from autotest_lib.server.cros.servo import chrome_ec
 
 
-def ccd_command(func):
-    """Decorator for methods only relevant to devices using CCD."""
+def servo_v4_command(func):
+    """Decorator for methods only relevant to tests running with servo v4."""
     @functools.wraps(func)
     def wrapper(instance, *args, **kwargs):
-        """Ignore ccd functions if we aren't using ccd"""
-        if instance.using_ccd():
+        """Ignore servo v4 functions it's not being used."""
+        if instance.using_servo_v4():
             return func(instance, *args, **kwargs)
-        logging.info("not using ccd. ignoring %s", func.func_name)
+        logging.info("not using servo v4. ignoring %s", func.func_name)
     return wrapper
 
 
@@ -277,18 +277,26 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return 'ccd_cr50' in self._servo.get_servo_version()
 
 
-    @ccd_command
-    def get_ccd_state(self):
-        """Get the CCD state from servo
+    def ccd_is_enabled(self):
+        """Return True if ccd is enabled.
+
+        If the test is running through ccd, return the ccd_state value. If
+        a flex cable is being used, use the CCD_MODE_L gpio setting to determine
+        if Cr50 has ccd enabled.
 
         Returns:
             'off' or 'on' based on whether the cr50 console is working.
         """
-        return self._servo.get('ccd_state')
+        if self.using_ccd():
+            return self._servo.get('ccd_state') == 'on'
+        else:
+            result = self.send_command_get_output('gpioget',
+                    ['(0|1)..CCD_MODE_L'])
+            return not bool(int(result[0][1]))
 
 
-    @ccd_command
-    def wait_for_ccd_state(self, state, timeout, raise_error=True):
+    @servo_v4_command
+    def wait_for_ccd_state(self, state, timeout, raise_error):
         """Wait up to timeout seconds for CCD to be 'on' or 'off'
         Args:
             state: a string either 'on' or 'off'.
@@ -298,44 +306,48 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         Raises
             TestFail if ccd never reaches the specified state
         """
+        wait_for_enable = state == 'on'
         logging.info("Wait until ccd is '%s'", state)
-        value = utils.wait_for_value(self.get_ccd_state, state,
+        value = utils.wait_for_value(self.ccd_is_enabled, wait_for_enable,
                                      timeout_sec=timeout)
-        if value != state:
+        if value != wait_for_enable:
             error_msg = "timed out before detecting ccd '%s'" % state
             if raise_error:
                 raise error.TestFail(error_msg)
             logging.warning(error_msg)
-        logging.info("ccd is '%s'", value)
+        logging.info("ccd is '%s'", state)
 
 
-    @ccd_command
+    @servo_v4_command
     def wait_for_ccd_disable(self, timeout=60, raise_error=True):
         """Wait for the cr50 console to stop working"""
         self.wait_for_ccd_state('off', timeout, raise_error)
 
 
-    @ccd_command
-    def wait_for_ccd_enable(self, timeout=60):
+    @servo_v4_command
+    def wait_for_ccd_enable(self, timeout=60, raise_error=False):
         """Wait for the cr50 console to start working"""
-        self.wait_for_ccd_state('on', timeout)
+        self.wait_for_ccd_state('on', timeout, raise_error)
 
 
-    def ccd_disable(self):
+    @servo_v4_command
+    def ccd_disable(self, raise_error=True):
         """Change the values of the CC lines to disable CCD"""
-        if self.using_servo_v4():
-            logging.info("disable ccd")
-            self._servo.set_nocheck('servo_v4_dts_mode', 'off')
-            self.wait_for_ccd_disable()
+        logging.info("disable ccd")
+        self._servo.set_nocheck('servo_v4_dts_mode', 'off')
+        self.wait_for_ccd_disable(raise_error=raise_error)
 
 
-    @ccd_command
-    def ccd_enable(self):
+    @servo_v4_command
+    def ccd_enable(self, raise_error=False):
         """Reenable CCD and reset servo interfaces"""
         logging.info("reenable ccd")
         self._servo.set_nocheck('servo_v4_dts_mode', 'on')
-        self._servo.set_nocheck('power_state', 'ccd_reset')
-        self.wait_for_ccd_enable()
+        # If the test is actually running with ccd, reset usb and wait for
+        # communication to come up.
+        if self.using_ccd():
+            self._servo.set_nocheck('power_state', 'ccd_reset')
+        self.wait_for_ccd_enable(raise_error=raise_error)
 
 
     def _level_change_req_pp(self, level):
@@ -494,6 +506,30 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """Get the current cr50 system time"""
         result = self.send_command_get_output('gettime', [' = (.*) s'])
         return float(result[0][1])
+
+
+    def servo_v4_supports_dts_mode(self):
+        """Returns True if cr50 registers changes in servo v4 dts mode."""
+        # This is to test that Cr50 actually recognizes the change in ccd state
+        # We cant do that with tests using ccd, because the cr50 communication
+        # goes down once ccd is enabled.
+        if 'servo_v4_with_servo_micro' != self._servo.get_servo_version():
+            return False
+
+        start_val = self._servo.get('servo_v4_dts_mode')
+        try:
+            # Verify both ccd enable and disable
+            self.ccd_disable(raise_error=True)
+            self.ccd_enable(raise_error=True)
+            rv = True
+        except Exception, e:
+            logging.info(e)
+            rv = False
+        self._servo.set_nocheck('servo_v4_dts_mode', start_val)
+        self.wait_for_ccd_state(start_val, 60, True)
+        logging.info('Test setup does%s support servo DTS mode',
+                '' if rv else 'n\'t')
+        return rv
 
 
     def wait_until_update_is_allowed(self):
