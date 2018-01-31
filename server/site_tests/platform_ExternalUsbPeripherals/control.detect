@@ -53,7 +53,7 @@ def run(machine):
 
     usb_list = ["\"Kingston Technology Company Inc.\"",
                 "\"Alcor Micro Corp.\"",
-                "\"USB PnP Sound Device: USB Audio|C-Media Electronics, Inc. Audio\"",
+                "\"USB PnP Sound Device: USB Audio|C-Media Electronics, Inc.* Audio\"",
                ]
     usb_checks = {
         # USB Audio Output devices
