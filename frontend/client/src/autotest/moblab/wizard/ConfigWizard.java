@@ -132,7 +132,8 @@ public class ConfigWizard extends Composite {
           @Override
           public void onClick(ClickEvent event) {
             String windowText = "If an update is available, the device will be "
-              + "rebooted and all running jobs will be halted. Proceed?";
+              + "rebooted and all running jobs will be halted. "
+              + "This may take 5-10 minutes based on network speed. Proceed?";
             if (Window.confirm(windowText)) {
               MoblabRpcHelper.updateMoblab(new JsonRpcCallback() {
                 @Override
