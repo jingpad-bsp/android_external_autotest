@@ -75,6 +75,13 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         if self.cr50.using_ccd():
             raise error.TestNAError('Reboot deep sleep tests can only be run '
                     'with a servo flex')
+        # This test may be running on servo v4 with servo micro. That servo v4
+        # may have a type A cable or type C cable for data communication with
+        # the DUT. If it is using a type C cable, that cable will look like a
+        # debug accessory. Run ccd_disable, to stop debug accessory mode and
+        # prevent CCD from interfering with deep sleep. Running ccd_disable on
+        # a type A servo v4 or any other servo version isn't harmful.
+        self.cr50.ccd_disable()
 
         for i in range(suspend_count):
             # Power off the device
