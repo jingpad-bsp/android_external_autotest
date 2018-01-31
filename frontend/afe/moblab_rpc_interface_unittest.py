@@ -540,6 +540,53 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         moblab_rpc_interface._check_for_system_update()
 
+    def testGetConnectedDutBoardModels(self):
+        # setting up mocks for 2 duts with different boards and models
+        mock_minnie_labels = [
+            self.mox.CreateMockAnything(),
+            self.mox.CreateMockAnything(),
+        ]
+        mock_minnie_labels[0].name = 'board:veyron_minnie'
+        mock_minnie_labels[1].name = 'model:veyron_minnie'
+        mock_minnie = self.mox.CreateMockAnything()
+        mock_minnie.label_list = mock_minnie_labels
+
+        mock_bruce_labels = [
+            self.mox.CreateMockAnything(),
+            self.mox.CreateMockAnything()
+        ]
+        mock_bruce_labels[0].name = 'board:carl'
+        mock_bruce_labels[1].name = 'model:bruce'
+        mock_bruce = self.mox.CreateMockAnything()
+        mock_bruce.label_list = mock_bruce_labels
+        hosts = [mock_minnie, mock_bruce]
+
+        # stub out the host query calls
+        self.mox.StubOutWithMock(moblab_rpc_interface.rpc_utils,
+                'get_host_query')
+        moblab_rpc_interface.rpc_utils.get_host_query(
+                (), False, True, {}).AndReturn(hosts)
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.models.Host.objects,
+                'populate_relationships'),
+        moblab_rpc_interface.models.Host.objects.populate_relationships(hosts,
+                moblab_rpc_interface.models.Label, 'label_list')
+
+        expected = [{
+            'model': 'bruce',
+            'board': 'carl'
+        },
+        {
+            'model': 'veyron_minnie',
+            'board': 'veyron_minnie'
+        }]
+
+        self.mox.ReplayAll()
+        output = moblab_rpc_interface._get_connected_dut_board_models()
+        self.assertEquals(output, expected)
+        # test sorting
+        self.assertEquals(output[0]['model'], 'bruce')
+
 
 if __name__ == '__main__':
     unittest.main()
