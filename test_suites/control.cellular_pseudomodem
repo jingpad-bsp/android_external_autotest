@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network3g_pseudomodem"
+NAME = "cellular_pseudomodem"
 PURPOSE = "Cellular tests that use a pseudomodem and are able to run in VMs"
 
 TIME = "SHORT"
@@ -33,16 +33,14 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
     'components': ['OS>Systems>Mobile'],
-    'owner': 'armansito@chromium.org',
+    'owner': 'benchan@chromium.org',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['benchan@chromium.org', 'krisr@chromium.org',
-           'pprabhu@chromium.org', 'rpius@chromium.org',
-           'thieule@chromium.org']
+    'cc': ['benchan@chromium.org', 'ejcaruso@chromium.org']
 }
 
-args_dict['name'] = 'network3g_pseudomodem'
+args_dict['name'] = 'cellular_pseudomodem'
 args_dict['max_runtime_mins'] = 10
 args_dict['job'] = job
 args_dict['add_experimental'] = True

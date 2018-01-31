@@ -20,12 +20,12 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import datetime
 import logging
 import sys
 import time
 
 from lucifer import autotest
+from lucifer import handoffs
 from lucifer import leasing
 from lucifer import loglib
 
@@ -91,13 +91,13 @@ def _mark_expired_jobs_failed(active_leases):
     """
     logger.debug('Looking for expired jobs')
     job_ids = []
-    for handoff in _incomplete_handoffs_queryset():
+    for handoff in handoffs.incomplete():
         logger.debug('Found handoff: %d', handoff.job_id)
         if handoff.job_id not in active_leases:
             logger.debug('Handoff %d is missing active lease', handoff.job_id)
             job_ids.append(handoff.job_id)
-    _clean_up_failed(job_ids)
-    _mark_handoffs_complete(job_ids)
+    handoffs.clean_up(job_ids)
+    handoffs.mark_complete(job_ids)
 
 
 def _abort_timed_out_jobs(active_leases):
@@ -138,27 +138,6 @@ def _clean_up_expired_leases(jobdir):
             lease.cleanup()
 
 
-_JOB_GRACE_SECS = 10
-
-
-def _incomplete_handoffs_queryset():
-    """Return a QuerySet of incomplete JobHandoffs.
-
-    JobHandoff created within a cutoff period are exempt to allow the
-    job the chance to acquire its lease file; otherwise, incomplete jobs
-    without an active lease are considered dead.
-
-    @returns: Django QuerySet
-    """
-    models = autotest.load('frontend.afe.models')
-    # Time ---*---------|---------*-------|--->
-    #    incomplete   cutoff   newborn   now
-    cutoff = (datetime.datetime.now()
-              - datetime.timedelta(seconds=_JOB_GRACE_SECS))
-    return models.JobHandoff.objects.filter(
-            completed=False, created__lt=cutoff)
-
-
 def _timed_out_jobs_queryset():
     """Return a QuerySet of timed out Jobs.
 
@@ -185,67 +164,6 @@ def _aborting_jobs_queryset():
             .filter(hostqueueentry__complete=False)
             .distinct()
     )
-
-
-def _filter_leased(jobdir, dbjobs):
-    """Filter Job models for leased jobs.
-
-    Yields pairs of Job model and Lease instances.
-
-    @param jobdir: job lease file directory
-    @param dbjobs: iterable of Django model Job instances
-    @returns: iterator of Leases
-    """
-    our_jobs = {job.id: job for job in leasing.leases_iter(jobdir)}
-    for dbjob in dbjobs:
-        if dbjob.id in our_jobs:
-            yield dbjob, our_jobs[dbjob.id]
-
-
-def _clean_up_failed(job_ids):
-    """Clean up failed jobs failed in database.
-
-    This brings the database into a clean state, which includes marking
-    the job, HQEs, and hosts.
-    """
-    if not job_ids:
-        return
-    models = autotest.load('frontend.afe.models')
-    transaction = autotest.deps_load('django.db.transaction')
-    logger.info('Cleaning up failed jobs: %r', job_ids)
-    hqes = models.HostQueueEntry.objects.filter(job_id__in=job_ids)
-    logger.debug('Cleaning up HQEs: %r', hqes.values_list('id', flat=True))
-
-    hqes.update(complete=True,
-                active=False,
-                status=models.HostQueueEntry.Status.FAILED)
-    (hqes.exclude(started_on=None)
-     .update(finished_on=datetime.datetime.now()))
-    hosts = {id for id in hqes.values_list('host_id', flat=True)
-             if id is not None}
-    logger.debug('Found Hosts associated with jobs: %r', hosts)
-    with transaction.commit_on_success():
-        active_hosts = {
-            id for id in (models.HostQueueEntry.objects
-                          .filter(active=True, complete=False)
-                          .values_list('host_id', flat=True))
-            if id is not None}
-        logger.debug('Found active Hosts: %r', active_hosts)
-        (models.Host.objects
-         .filter(id__in=hosts)
-         .exclude(id__in=active_hosts)
-         .update(status=None))
-
-
-def _mark_handoffs_complete(job_ids):
-    """Mark the corresponding JobHandoffs as completed."""
-    if not job_ids:
-        return
-    models = autotest.load('frontend.afe.models')
-    logger.info('Marking job handoffs complete: %r', job_ids)
-    (models.JobHandoff.objects
-     .filter(job_id__in=job_ids)
-     .update(completed=True))
 
 
 if __name__ == '__main__':

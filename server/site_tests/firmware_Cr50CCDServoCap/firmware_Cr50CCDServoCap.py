@@ -111,16 +111,8 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
 
         self._orignal_ccdstate = self.get_ccdstate()
 
-        try:
-            self.verify_servo_v4_dts()
-        except error.TestFail, e:
+        if not self.cr50.servo_v4_supports_dts_mode():
             raise error.TestNAError('Need working servo v4 DTS control')
-
-
-    def verify_servo_v4_dts(self):
-        """Verify servo v4 dts enable/disable works."""
-        self.reset_ccd()
-        self.run_steps('rdd attach')
 
 
     def cleanup(self):

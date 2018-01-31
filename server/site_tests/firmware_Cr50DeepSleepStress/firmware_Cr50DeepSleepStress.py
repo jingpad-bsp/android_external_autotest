@@ -75,6 +75,13 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         if self.cr50.using_ccd():
             raise error.TestNAError('Reboot deep sleep tests can only be run '
                     'with a servo flex')
+        # This test may be running on servo v4 with servo micro. That servo v4
+        # may have a type A cable or type C cable for data communication with
+        # the DUT. If it is using a type C cable, that cable will look like a
+        # debug accessory. Run ccd_disable, to stop debug accessory mode and
+        # prevent CCD from interfering with deep sleep. Running ccd_disable on
+        # a type A servo v4 or any other servo version isn't harmful.
+        self.cr50.ccd_disable()
 
         for i in range(suspend_count):
             # Power off the device
@@ -113,6 +120,11 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         self.cr50.ccd_enable()
 
 
+    def is_arm_family(self, host):
+        """Returns true if the test is running on an ARM device"""
+        return host.run('arch').stdout.strip() in ['aarch64', 'armv7l']
+
+
     def run_once(self, host, suspend_count, reset_type):
         """Verify deep sleep after suspending for the given number of cycles
 
@@ -147,4 +159,9 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         else:
             raise error.TestNAError('Invalid reset_type. Use "mem" or "reboot"')
 
-        self.check_cr50_state(suspend_count, self.original_cr50_version)
+        # Cr50 should enter deep sleep once per suspend cycle if deep sleep is
+        # supported
+        #
+        # TODO(mruthven): remove ARM check once ARM devices support deep sleep
+        expected_ds_count = 0 if self.is_arm_family(host) else suspend_count
+        self.check_cr50_state(expected_ds_count, self.original_cr50_version)

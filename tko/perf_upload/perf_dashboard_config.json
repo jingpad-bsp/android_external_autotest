@@ -1,5 +1,9 @@
 [
   {
+    "autotest_name": "audio_LoopbackLatency",
+    "master_name": "ChromeOS_Audio"
+  },
+  {
     "autotest_name": "audio_PlaybackPower",
     "master_name": "ChromeOS_Audio"
   },

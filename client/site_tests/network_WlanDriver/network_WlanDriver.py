@@ -50,12 +50,12 @@ class network_WlanDriver(test.test):
                     '3.8': 'wireless-3.4/ath/ath9k_btcoex/ath9k_btcoex.ko'
             },
             'Qualcomm Atheros QCA6174': {
-                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_core.ko',
-                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko'
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko',
+                    '4.4': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko',
             },
             'Qualcomm Atheros NFA344A/QCA6174': {
-                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_core.ko',
-                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko'
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko',
+                    '4.4': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko',
             },
             'Marvell 88W8797 SDIO': {
                     '3.4': 'wireless/mwifiex/mwifiex_sdio.ko',
@@ -96,10 +96,19 @@ class network_WlanDriver(test.test):
         logging.info('Kernel base is %s', base_revision)
 
         proxy = shill_proxy.ShillProxy()
+
+        uninit = proxy.get_proxy().get_dbus_property(proxy.manager,
+                 shill_proxy.ShillProxy.MANAGER_PROPERTY_UNINITIALIZED_TECHNOLOGIES)
+        logging.info("Uninitialized technologies: %s", uninit)
+        # If Wifi support is not enabled for shill, it will be uninitialized.
+        # Don't fail the test if Wifi was intentionally disabled.
+        if "wifi" in uninit:
+            raise error.TestNAError('Wireless support not enabled')
+
         device_obj = proxy.find_object('Device',
                                        {'Type': proxy.TECHNOLOGY_WIFI})
         if device_obj is None:
-            raise error.TestNAError('Found no recognized wireless device')
+            raise error.TestFail('Found no recognized wireless device')
 
         device = device_obj.GetProperties()['Interface']
         net_if = interface.Interface(device)

@@ -54,6 +54,11 @@ suite:cell_emulator
 suite:cellular_endtoend
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
+suite:cellular_ota
+suite:cellular_ota_att
+suite:cellular_ota_tmobile
+suite:cellular_ota_verizon
+suite:cellular_pseudomodem
 suite:cellular_qual
 suite:chameleon_audio
 suite:chameleon_audio_nightly
@@ -137,11 +142,6 @@ suite:memory_qual_quick
 suite:mmc_qual
 suite:moblab
 suite:moblab_quick
-suite:network3g
-suite:network3g_att
-suite:network3g_pseudomodem
-suite:network3g_tmobile
-suite:network3g_verizon
 suite:network_nightly
 suite:network_ui
 suite:partners

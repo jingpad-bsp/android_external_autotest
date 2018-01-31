@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "network3g_tmobile"
+NAME = "cellular_ota"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"
@@ -29,22 +29,18 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
     'components': ['OS>Systems>Mobile'],
-    'owner': '',
+    'owner': 'benchan@chromium.org',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['benchan@chromium.org', 'krisr@chromium.org',
-           'pprabhu@chromium.org', 'rpius@chromium.org',
-           'thieule@chromium.org']
+    'cc': ['benchan@chromium.org', 'ejcaruso@chromium.org']
 }
 
-# TODO(benchan): Re-enable automated bug filing for network3g_pseudomodem
-# suite once de-duplication logic works (crbug.com/241510).
+args_dict['suite_dependencies'] = 'modem_repair'
 args_dict['max_runtime_mins'] = 20
 args_dict['job'] = job
 args_dict['add_experimental'] = True
-args_dict['name'] = 'network3g_tmobile'
-args_dict['suite_dependencies'] = 'carrier:tmobile,modem_repair'
+args_dict['name'] = 'cellular_ota'
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['bug_template'] = _BUG_TEMPLATE
 
