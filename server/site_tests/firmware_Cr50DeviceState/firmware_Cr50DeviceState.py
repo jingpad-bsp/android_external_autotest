@@ -53,6 +53,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         191 : 'EC_RX_CR50_TX',
         193 : 'USB',
     }
+    SLEEP_KEYS = [ KEY_REGULAR_SLEEP, KEY_DEEP_SLEEP ]
     # Cr50 won't enable any form of sleep until it has been up for 20 seconds.
     SLEEP_DELAY = 20
     # The time in seconds to wait in each state
@@ -100,7 +101,10 @@ class firmware_Cr50DeviceState(FirmwareTest):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.get_taskinfo_output()
         irq_list = output.split('\n')
-        irq_counts = {}
+        # Make sure the regular sleep irq is in the dictionary, even if cr50
+        # hasn't seen any interrupts. It's important the test sees that there's
+        # never an interrupt.
+        irq_counts = { self.KEY_REGULAR_SLEEP : 0 }
         for irq_info in irq_list:
             num, count = irq_info.split()
             irq_counts[int(num)] = int(count)
@@ -120,6 +124,9 @@ class firmware_Cr50DeviceState(FirmwareTest):
         Returns:
             A list with the expected irq count range [min, max]
         """
+        # CCD will prevent sleep
+        if self.ccd_enabled and irq_key in self.SLEEP_KEYS:
+            return [0, 0]
         if irq_key == self.KEY_REGULAR_SLEEP:
             min_count = max(cr50_time - self.SLEEP_DELAY, 0)
             # Just checking there is not a lot of extra sleep wakeups. Add 1 to
@@ -175,7 +182,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
     def check_for_errors(self, state):
         """Check for unexpected IRQ counts at each step.
 
-        Find the irq count errors and add them to all_errors.
+        Find the irq count errors and add them to run_errors.
 
         Args:
             state: The power state: S0, S0ix, S3, or G3.
@@ -250,7 +257,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
         if errors:
             logging.info('ERRORS %s IRQ Counts:\n%s', state,
                     pprint.pformat(errors))
-            self.all_errors.append(errors)
+            self.run_errors.update(errors)
 
 
     def enter_state(self, state):
@@ -296,9 +303,6 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
         Args:
             state: the power state: S0ix, S3, or G3
-
-        Returns:
-            A list of errors or an empty list if there were none
         """
         self.reset_irq_counts()
 
@@ -314,13 +318,18 @@ class firmware_Cr50DeviceState(FirmwareTest):
         # Check that the progress of the irq counts seems reasonable
         self.check_for_errors(state)
 
-    def is_arm_family(self, arch):
+
+    def is_arm_family(self):
+        """Returns True if the DUT is an ARM device."""
+        arch = self.host.run('arch').stdout.strip()
         return arch in ['aarch64', 'armv7l']
 
-    def run_once(self, host):
+
+    def run_through_power_states(self):
         """Go through S0ix, S3, and G3. Verify there are no interrupt storms"""
-        self.all_errors = []
-        self.is_arm = self.is_arm_family(host.run('arch').stdout.strip())
+        self.run_errors = {}
+        self.ccd_str = 'ccd ' + ('enabled' if self.ccd_enabled else 'disabled')
+        logging.info('Running through states with %s', self.ccd_str)
 
         # Initialize the Test IRQ counts
         self.reset_irq_counts()
@@ -330,7 +339,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
         # Login before entering S0ix so cr50 will be able to enter regular sleep
         if not self.is_arm:
-            client_at = autotest.Autotest(host)
+            client_at = autotest.Autotest(self.host)
             client_at.run_test('login_LoginSuccess')
             self.run_transition('S0ix')
 
@@ -339,6 +348,29 @@ class firmware_Cr50DeviceState(FirmwareTest):
 
         # Enter G3
         self.run_transition('G3')
+        if self.run_errors:
+            self.all_errors[self.ccd_str] = self.run_errors
+
+
+    def run_once(self, host):
+        """Go through S0ix, S3, and G3. Verify there are no interrupt storms"""
+        self.all_errors = {}
+        self.host = host
+        self.is_arm = self.is_arm_family()
+        self.cr50.ccd_disable(raise_error=False)
+        self.ccd_enabled = self.cr50.ccd_is_enabled()
+        self.run_through_power_states()
+
+        ccd_was_enabled = self.ccd_enabled
+        self.cr50.ccd_enable(raise_error=False)
+        self.ccd_enabled = self.cr50.ccd_is_enabled()
+        # If the first run had ccd disabled, and the test was able to enable
+        # ccd, run through the states again to make sure there are no issues
+        # come up when ccd is enabled.
+        if not ccd_was_enabled and self.ccd_enabled:
+            # Reboot the EC to reset the device
+            self.ec.reboot()
+            self.run_through_power_states()
 
         if self.all_errors:
             raise error.TestFail('Unexpected IRQ counts: %s' % self.all_errors)
