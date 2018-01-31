@@ -21,6 +21,7 @@ The script uses latest gandof stable build as test build by default.
 import argparse
 import ast
 from contextlib import contextmanager
+import datetime
 import getpass
 import multiprocessing
 import os
@@ -137,6 +138,9 @@ _all_suite_ids = []
 UPDATED_REPOS = {'autotest': AUTOTEST_DIR,
                  'chromite': '%s/site-packages/chromite/' % AUTOTEST_DIR}
 PUSH_USER = 'chromeos-test-lab'
+
+DEFAULT_SERVICE_RESPAWN_LIMIT = 2
+
 
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
@@ -259,6 +263,10 @@ def parse_arguments():
     parser.add_argument('-c', '--continue_on_failure', action='store_true',
                         dest='continue_on_failure',
                         help='All tests continue to run when there is failure')
+    parser.add_argument('-sl', '--service_respawn_limit', type=int,
+                        default=DEFAULT_SERVICE_RESPAWN_LIMIT,
+                        help='If a service crashes more than this, the test '
+                             'push is considered failed.')
 
     arguments = parser.parse_args(sys.argv[1:])
 
@@ -599,6 +607,45 @@ def _run_test_suites(arguments):
     asynchronous_suite.join()
 
 
+def check_service_crash(respawn_limit, start_time):
+  """Check whether scheduler or host_scheduler crash during testing.
+
+  Since the testing push is kicked off at the beginning of a given hour, the way
+  to check whether a service is crashed is to check whether the times of the
+  service being respawn during testing push is over the respawn_limit.
+
+  @param respawn_limit: The maximum number of times the service is allowed to
+                        be respawn.
+  @param start_time: The time that testing push is kicked off.
+  """
+  def _parse(filename_prefix, filename):
+    """Helper method to parse the time of the log.
+
+    @param filename_prefix: The prefix of the filename.
+    @param filename: The name of the log file.
+    """
+    return datetime.datetime.strptime(filename[len(filename_prefix):],
+                                      "%Y-%m-%d-%H.%M.%S")
+
+  services = ['scheduler', 'host_scheduler']
+  logs = os.listdir('%s/logs/' % AUTOTEST_DIR)
+  curr_time = datetime.datetime.now()
+
+  error_msg = ''
+  for service in services:
+    log_prefix = '%s.log.' % service
+    respawn_count = sum(1 for l in logs if l.startswith(log_prefix)
+                        and start_time <= _parse(log_prefix, l) <= curr_time)
+
+    if respawn_count > respawn_limit:
+      error_msg += ('%s has been respawned %s times during testing push at %s. '
+                    'It is very likely crashed. Please check!\n' %
+                    (service, respawn_count,
+                     start_time.strftime("%Y-%m-%d-%H")))
+  if error_msg:
+    raise TestPushException(error_msg)
+
+
 def _promote_prod_next_refs():
     """Updates prod-next branch on relevant repos."""
     updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
@@ -634,10 +681,12 @@ def _main(arguments):
     _all_suite_ids = mpmanager.list()
 
     try:
+        start_time = datetime.datetime.now()
         reverify_all_push_duts()
         time.sleep(15) # Wait for the verify test to start.
         check_dut_inventory(arguments.num_duts, arguments.pool)
         _run_test_suites(arguments)
+        check_service_crash(arguments.respawn_limit, start_time)
         updated_repo_heads = _promote_prod_next_refs()
         updated_repos_msg = '\n'.join(
                 ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
