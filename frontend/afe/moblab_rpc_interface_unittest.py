@@ -496,9 +496,8 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'check_call')
         moblab_rpc_interface.subprocess.check_call(['sudo',
                 update_engine_client, '--update'])
-        error = moblab_rpc_interface.subprocess.CalledProcessError(2, '')
         moblab_rpc_interface.subprocess.check_call(['sudo',
-                update_engine_client, '--is_reboot_needed']).AndRaise(error)
+                update_engine_client, '--is_reboot_needed'])
 
         self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'call')
         moblab_rpc_interface.subprocess.call(['sudo', update_engine_client,
