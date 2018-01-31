@@ -518,14 +518,10 @@ def _install_system_update():
     # then check if a reboot is needed
     try:
         subprocess.check_call(['sudo', _UPDATE_ENGINE_CLIENT, '--update'])
-        try:
-            # --is_reboot_needed returns 2 if a reboot is required, which
-            # technically is an error
-            subprocess.check_call(
-                ['sudo', _UPDATE_ENGINE_CLIENT, '--is_reboot_needed'])
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
+        # --is_reboot_needed returns 0 if a reboot is required
+        subprocess.check_call(
+            ['sudo', _UPDATE_ENGINE_CLIENT, '--is_reboot_needed'])
+        subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
 
     except subprocess.CalledProcessError as e:
         pass
