@@ -5,7 +5,6 @@
 import dbus
 import logging
 import os
-import shutil
 import tempfile
 from threading import Thread
 
@@ -153,13 +152,14 @@ class platform_AddPrinter(test.test):
         """
         logging.info('delete component:' + component);
 
-        # TODO (xiaochu) use dbus_send wrapper here: crbug.com/804485
-        stdout=utils.system_output(
-            'dbus-send --system --type=method_call --print-reply '
-            '--dest=org.chromium.ComponentUpdaterService '
-            '/org/chromium/ComponentUpdaterService '
-            'org.chromium.ComponentUpdaterService.UnloadComponent '
-            '"string:%s"' % (component))
+        dbus_send.dbus_send(
+            'org.chromium.ComponentUpdaterService',
+            'org.chromium.ComponentUpdaterService',
+            '/org/chromium/ComponentUpdaterService',
+            'UnloadComponent',
+            timeout_seconds=20,
+            user='root',
+            args=[dbus.String(component)])
 
     def download_component(self, component):
         """
