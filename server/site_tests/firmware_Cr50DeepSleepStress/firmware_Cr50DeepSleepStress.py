@@ -113,6 +113,11 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         self.cr50.ccd_enable()
 
 
+    def is_arm_family(self, host):
+        """Returns true if the test is running on an ARM device"""
+        return host.run('arch').stdout.strip() in ['aarch64', 'armv7l']
+
+
     def run_once(self, host, suspend_count, reset_type):
         """Verify deep sleep after suspending for the given number of cycles
 
@@ -147,4 +152,9 @@ class firmware_Cr50DeepSleepStress(FirmwareTest):
         else:
             raise error.TestNAError('Invalid reset_type. Use "mem" or "reboot"')
 
-        self.check_cr50_state(suspend_count, self.original_cr50_version)
+        # Cr50 should enter deep sleep once per suspend cycle if deep sleep is
+        # supported
+        #
+        # TODO(mruthven): remove ARM check once ARM devices support deep sleep
+        expected_ds_count = 0 if self.is_arm_family(host) else suspend_count
+        self.check_cr50_state(expected_ds_count, self.original_cr50_version)
