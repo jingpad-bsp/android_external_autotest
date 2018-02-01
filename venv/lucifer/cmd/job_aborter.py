@@ -58,19 +58,22 @@ def _main_loop(jobdir):
         """Flush transaction https://stackoverflow.com/questions/3346124/"""
         transaction.commit()
 
+    metrics = _Metrics()
+    metrics.send_starting()
     while True:
         logger.debug('Tick')
-        _main_loop_body(jobdir)
+        metrics.send_tick()
+        _main_loop_body(metrics, jobdir)
         flush_transaction()
         time.sleep(20)
 
 
-def _main_loop_body(jobdir):
+def _main_loop_body(metrics, jobdir):
     active_leases = {
             lease.id: lease for lease in leasing.leases_iter(jobdir)
             if not lease.expired()
     }
-    _mark_expired_jobs_failed(active_leases)
+    _mark_expired_jobs_failed(metrics, active_leases)
     _abort_timed_out_jobs(active_leases)
     _abort_jobs_marked_aborting(active_leases)
     _abort_special_tasks_marked_aborted()
@@ -79,7 +82,7 @@ def _main_loop_body(jobdir):
     # lucifer_run_job
 
 
-def _mark_expired_jobs_failed(active_leases):
+def _mark_expired_jobs_failed(metrics, active_leases):
     """Mark expired jobs failed.
 
     Expired jobs are jobs that have an incomplete JobHandoff and that do
@@ -87,6 +90,7 @@ def _mark_expired_jobs_failed(active_leases):
     job_reporter, but that job_reporter has crashed.  These jobs are
     marked failed in the database.
 
+    @param metrics: _Metrics instance.
     @param active_leases: dict mapping job ids to Leases.
     """
     logger.debug('Looking for expired jobs')
@@ -98,6 +102,7 @@ def _mark_expired_jobs_failed(active_leases):
             job_ids.append(handoff.job_id)
     handoffs.clean_up(job_ids)
     handoffs.mark_complete(job_ids)
+    metrics.send_expired_jobs(len(job_ids))
 
 
 def _abort_timed_out_jobs(active_leases):
@@ -164,6 +169,30 @@ def _aborting_jobs_queryset():
             .filter(hostqueueentry__complete=False)
             .distinct()
     )
+
+
+class _Metrics(object):
+
+    """Class for sending job_aborter metrics."""
+
+    def __init__(self):
+        metrics = autotest.chromite_load('metrics')
+        prefix = 'chromeos/lucifer/job_aborter'
+        self._starting_m = metrics.Counter(prefix + '/start')
+        self._tick_m = metrics.Counter(prefix + '/tick')
+        self._expired_m = metrics.Counter(prefix + '/expired_jobs')
+
+    def send_starting(self):
+        """Send starting metric."""
+        self._starting_m.increment()
+
+    def send_tick(self):
+        """Send tick metric."""
+        self._tick_m.increment()
+
+    def send_expired_jobs(self, count):
+        """Send expired_jobs metric."""
+        self._expired_m.increment_by(count)
 
 
 if __name__ == '__main__':
