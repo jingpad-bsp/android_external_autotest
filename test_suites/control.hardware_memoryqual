@@ -37,10 +37,10 @@ args_dict['job'] = job
 # Don't wait for results, just kick off child job.
 args_dict['wait_for_results'] = False
 
-if suite_args:
-    avl_keyval = dict()
-    avl_keyval['bug_id'] = suite_args.get("bug_id", "")
-    avl_keyval['part_id'] = suite_args.get("part_id", "")
-    utils.write_keyval(job.resultdir, avl_keyval)
+# Retrieve bug_id, part_id for the avl process.
+avl_keyval = dict()
+avl_keyval['bug_id'] = args_dict.get("bug_id", "")
+avl_keyval['part_id'] = args_dict.get("part_id", "")
+utils.write_keyval(job.resultdir, avl_keyval)
 
 dynamic_suite.reimage_and_run(**args_dict)
