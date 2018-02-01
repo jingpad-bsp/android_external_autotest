@@ -12,8 +12,15 @@ from autotest_lib.client.cros import dbus_util
 
 
 class ShillProxyError(Exception):
-    """Exceptions raised by ShillProxy and it's children."""
+    """Exceptions raised by ShillProxy and its children."""
     pass
+
+
+class ShillProxyTimeoutError(ShillProxyError):
+    """Timeout exception raised by ShillProxy and its children."""
+    def __init__(self, desc):
+        super(ShillProxyTimeoutError, self).__init__(
+                'Timed out waiting for condition %s.' % desc)
 
 
 class ShillProxy(object):
@@ -69,6 +76,7 @@ class ShillProxy(object):
         'AnyService': ( DBUS_TYPE_SERVICE, MANAGER_PROPERTY_ALL_SERVICES )
     }
 
+    DEVICE_ENUMERATION_TIMEOUT = 30
     DEVICE_ENABLE_DISABLE_TIMEOUT = 60
     SERVICE_DISCONNECT_TIMEOUT = 5
 

@@ -518,14 +518,10 @@ def _install_system_update():
     # then check if a reboot is needed
     try:
         subprocess.check_call(['sudo', _UPDATE_ENGINE_CLIENT, '--update'])
-        try:
-            # --is_reboot_needed returns 2 if a reboot is required, which
-            # technically is an error
-            subprocess.check_call(
-                ['sudo', _UPDATE_ENGINE_CLIENT, '--is_reboot_needed'])
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
+        # --is_reboot_needed returns 0 if a reboot is required
+        subprocess.check_call(
+            ['sudo', _UPDATE_ENGINE_CLIENT, '--is_reboot_needed'])
+        subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
 
     except subprocess.CalledProcessError as e:
         pass
@@ -710,6 +706,45 @@ def _get_connected_dut_labels(requested_label, only_first_label=True):
                     break
     return list(labels)
 
+def _get_connected_dut_board_models():
+    """ Get the boards and their models of attached DUTs
+
+    @return: A de-duped list of dut board/model attached to the moblab
+    format: [
+        {
+            "board": "carl",
+            "model": "bruce"
+        },
+        {
+            "board": "veyron_minnie",
+            "model": "veyron_minnie"
+        }
+    ]
+    """
+    hosts = list(rpc_utils.get_host_query((), False, True, {}))
+    if not hosts:
+        return []
+    models.Host.objects.populate_relationships(hosts, models.Label,
+                                               'label_list')
+    model_board_map = dict()
+    for host in hosts:
+        model = ''
+        board = ''
+        for label in host.label_list:
+            if 'model:' in label.name:
+                model = label.name.replace('model:', '')
+            elif 'board:' in label.name:
+                board = label.name.replace('board:', '')
+        model_board_map[model] = board
+
+    board_models_list = []
+    for model in sorted(model_board_map.keys()):
+        board_models_list.append({
+            'model': model,
+            'board': model_board_map[model]
+        })
+    return board_models_list
+
 
 @rpc_utils.moblab_only
 def get_connected_boards():
@@ -717,9 +752,7 @@ def get_connected_boards():
 
     @return: A de-duped list of board types attached to the moblab.
     """
-    boards = _get_connected_dut_labels("board:")
-    boards.sort()
-    return boards
+    return _get_connected_dut_board_models()
 
 
 @rpc_utils.moblab_only
@@ -863,13 +896,15 @@ def _run_bucket_performance_test(key_id, key_secret, bucket_name,
 # TODO(haddowk) Change suite_args name to "test_filter_list" or similar. May
 # also need to make changes at MoblabRpcHelper.java
 @rpc_utils.moblab_only
-def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
-              pool=None, suite_args=None, bug_id=None, part_id=None):
+def run_suite(board, build, suite, model=None, ro_firmware=None,
+              rw_firmware=None, pool=None, suite_args=None, bug_id=None,
+              part_id=None):
     """ RPC handler to run a test suite.
 
     @param board: a board name connected to the moblab.
     @param build: a build name of a build in the GCS.
     @param suite: the name of a suite to run
+    @param model: a board model name connected to the moblab.
     @param ro_firmware: Optional ro firmware build number to use.
     @param rw_firmware: Optional rw firmware build number to use.
     @param pool: Optional pool name to run the suite in.
@@ -910,7 +945,8 @@ def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None,
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
             pool=pool, run_prod_code=False, test_source_build=build,
             wait_for_results=True, suite_args=processed_suite_args,
-            test_args=test_args, job_retry=True, max_retries=sys.maxint)
+            test_args=test_args, job_retry=True, max_retries=sys.maxint,
+            model=model)
 
 
 def _enable_notification_using_credentials_in_bucket():

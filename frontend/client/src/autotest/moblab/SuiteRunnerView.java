@@ -4,6 +4,7 @@ import autotest.common.ui.TabView;
 import autotest.moblab.rpc.MoblabRpcCallbacks;
 import autotest.moblab.rpc.MoblabRpcCallbacks.RunSuiteCallback;
 import autotest.moblab.rpc.MoblabRpcHelper;
+import autotest.moblab.rpc.ConnectedBoard;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -21,6 +22,7 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
 import java.util.Arrays;
 import java.util.List;
+import java.util.HashMap;
 
 
 /**
@@ -44,6 +46,8 @@ public class SuiteRunnerView extends TabView {
 
   private TextBox partIdTextBox;
   private HorizontalPanel fifthOptionalLine;
+
+  private HashMap<String, String> modelBoardMap;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq",
       "bvt-inline", "cts_N", "gts",
@@ -176,7 +180,8 @@ public class SuiteRunnerView extends TabView {
           if (roFirmwareSelection != 0) {
             roFirmware = roFirmwareSelector.getItemText(roFirmwareSelection);
           }
-          runSuite(boardSelector.getItemText(boardSelection),
+          runSuite(getSelectedBoard(),
+              boardSelector.getItemText(boardSelection),
               buildSelector.getItemText(buildSelection),
               suiteSelector.getItemText(suiteSelection),
               poolLabel,
@@ -231,7 +236,7 @@ public class SuiteRunnerView extends TabView {
     if (listIndex  == suiteNames.indexOf("faft_setup") ||
       listIndex == suiteNames.indexOf("faft_bios") ||
       listIndex == suiteNames.indexOf("faft_ec")) {
-      loadFirmwareBuilds(boardSelector.getItemText(boardSelector.getSelectedIndex()));
+      loadFirmwareBuilds(getSelectedBoard());
     } else {
       rwFirmwareSelector.setEnabled(false);
       roFirmwareSelector.setEnabled(false);
@@ -267,10 +272,20 @@ public class SuiteRunnerView extends TabView {
   private void boardSelected() {
     suiteSelector.setEnabled(false);
     actionButton.setEnabled(false);
+    String selectedBoard = getSelectedBoard();
+    if (selectedBoard != null) {
+      loadBuilds(selectedBoard);
+    }
+  }
+
+  private String getSelectedBoard() {
     int selectedIndex = boardSelector.getSelectedIndex();
-    // Ignore if user select the instruction label.
     if (selectedIndex != 0) {
-      loadBuilds(boardSelector.getItemText(boardSelector.getSelectedIndex()));
+      String model = boardSelector.getItemText(selectedIndex);
+      return modelBoardMap.get(model);
+    }
+    else {
+      return null;
     }
   }
 
@@ -284,9 +299,14 @@ public class SuiteRunnerView extends TabView {
     boardSelector.addItem("Select the board");
     MoblabRpcHelper.fetchConnectedBoards(new MoblabRpcCallbacks.FetchConnectedBoardsCallback() {
       @Override
-      public void onFetchConnectedBoardsSubmitted(List<String> connectedBoards) {
-        for (String connectedBoard : connectedBoards) {
-          boardSelector.addItem(connectedBoard);
+      public void onFetchConnectedBoardsSubmitted(
+          List<ConnectedBoard> connectedBoards) {
+        modelBoardMap = new HashMap<String, String>();
+        for (ConnectedBoard connectedBoard : connectedBoards) {
+          // remember the board that goes with this model
+          modelBoardMap.put(
+              connectedBoard.getModel(), connectedBoard.getBoard());
+          boardSelector.addItem(connectedBoard.getModel());
         }
         boardSelector.setEnabled(true);
       }
@@ -366,6 +386,7 @@ public class SuiteRunnerView extends TabView {
    * For the selection option of board, build, suite and pool make a RPC call that will instruct
    * AFE to run the suite selected.
    * @param board, a string that specified a device connected to the moblab.
+   * @param model, a string that specifies a device model connected to moblab.
    * @param build, a string that is a valid build for the specified board available in GCS.
    * @param suite, a string that specifies the name of a suite selected to run.
    * @param pool, an optional name of a pool to run the suite in.
@@ -377,14 +398,16 @@ public class SuiteRunnerView extends TabView {
    * @param partId, an optional param identifies the component involved for
    * memory/hardare avl process.
    */
-  private void runSuite(String board, String build, String suite, String pool, String rwFirmware,
-      String roFirmware, String suiteArgs, String bugId, String partId) {
+  private void runSuite(String board, String model, String build, String suite,
+      String pool, String rwFirmware, String roFirmware, String suiteArgs,
+      String bugId, String partId) {
     String realPoolLabel = pool;
     if (pool != null && !pool.isEmpty()) {
       realPoolLabel = pool.trim();
     }
-    MoblabRpcHelper.runSuite(board, build, suite, realPoolLabel, rwFirmware, roFirmware,
-        suiteArgs, bugId, partId, new RunSuiteCallback() {
+    MoblabRpcHelper.runSuite(board, model, build, suite, realPoolLabel,
+        rwFirmware, roFirmware, suiteArgs, bugId, partId,
+        new RunSuiteCallback() {
       @Override
       public void onRunSuiteComplete() {
         Window.Location.assign("/afe");

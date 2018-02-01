@@ -325,10 +325,12 @@ public class MoblabRpcHelper {
     rpcProxy.rpcCall("get_connected_boards", null, new JsonRpcCallback() {
       @Override
       public void onSuccess(JSONValue result) {
-        List<String> boards = new LinkedList<String>();
+        List<ConnectedBoard> boards = new LinkedList<ConnectedBoard>();
         int boardListSize = result.isArray().size();
         for (int i = 0; i < boardListSize; i++) {
-          boards.add(result.isArray().get(i).isString().stringValue());
+          ConnectedBoard board = new ConnectedBoard();
+          board.fromJson(result.isArray().get(i).isObject());
+          boards.add(board);
         }
         callback.onFetchConnectedBoardsSubmitted(boards);
       }
@@ -385,13 +387,14 @@ public class MoblabRpcHelper {
     });
   }
 
-  public static void runSuite(String board, String build, String suite,
-      String pool, String rwFirmware, String roFirmware, String suiteArgs,
-      String bugId, String partId,
+  public static void runSuite(String board, String model,
+      String build, String suite, String pool, String rwFirmware,
+      String roFirmware, String suiteArgs, String bugId, String partId,
       final MoblabRpcCallbacks.RunSuiteCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
     JSONObject params = new JSONObject();
     params.put("board", new JSONString(board));
+    params.put("model", new JSONString(model));
     params.put("build", new JSONString(build));
     params.put("suite", new JSONString(suite));
     params.put("pool", new JSONString(pool));

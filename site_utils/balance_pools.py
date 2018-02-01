@@ -667,9 +667,9 @@ def infer_balancer_targets(afe, arguments, pools):
                     labels['model'] = board_or_model
                 else:
                     labels['board'] = board_or_model
-            if arguments.sku:
-                labels['sku'] = arguments.sku
-            balancer_targets.append((pool, labels.getlabels()))
+                if arguments.sku:
+                    labels['sku'] = arguments.sku
+                balancer_targets.append((pool, labels.getlabels()))
     return balancer_targets
 
 
