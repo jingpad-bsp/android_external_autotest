@@ -73,9 +73,7 @@ class firmware_DevBootUSB(FirmwareTest):
                           True,
                           "Not USB boot, Ctrl-U not work"))
         self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.switcher.bypass_dev_mode()
-        self.switcher.wait_for_client()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check and done.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))
