@@ -33,7 +33,14 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import frontend
 
 
-ROLES_REQUIRE_TKO_ACCESS = {'scheduler', 'drone', 'shard', 'database', 'afe'}
+ROLES_REQUIRE_TKO_ACCESS = {
+        'afe',
+        'database',
+        'drone',
+        'scheduler',
+        'sentinel',
+        'shard',
+}
 
 def gcloud_login(project):
     """Login to Google Cloud service for gcloud command to run.
