@@ -536,6 +536,15 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         moblab_rpc_interface.subprocess.call(['sudo', update_engine_client,
                 '--check_for_update'])
 
+        self.mox.StubOutWithMock(moblab_rpc_interface,
+                '_get_system_update_status')
+        for i in range(0,4):
+            moblab_rpc_interface._get_system_update_status().AndReturn(
+                    dict({'CURRENT_OP': 'UPDATE_STATUS_CHECKING_FOR_UPDATE'})
+            )
+        moblab_rpc_interface._get_system_update_status().AndReturn(
+                dict({'CURRENT_OP': 'UPDATE_STATUS_DOWNLOADING'})
+        )
         self.mox.ReplayAll()
         moblab_rpc_interface._check_for_system_update()
 

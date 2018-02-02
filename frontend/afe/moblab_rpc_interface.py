@@ -17,6 +17,7 @@ import shutil
 import socket
 import StringIO
 import subprocess
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -487,7 +488,12 @@ def _check_for_system_update():
     """
     # sudo is required to run the update client
     subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--check_for_update'])
-
+    # wait for update engine to finish checking
+    tries = 0
+    while ('CHECKING_FOR_UPDATE' in _get_system_update_status()['CURRENT_OP']
+            and tries < 10):
+        time.sleep(.1)
+        tries = tries + 1
 
 def _get_system_update_status():
     """ Run the ChromeOS update client to check status on a
