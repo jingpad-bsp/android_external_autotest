@@ -7,6 +7,7 @@
 import os
 import logging
 import pipes
+import socket
 
 import common
 from autotest_lib.client.bin import local_host
@@ -54,10 +55,11 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
     Pass all arguments by keyword.
 
-    @param manager: DroneManager instance
+    @param manager: scheduler.drone_manager.DroneManager instance
     @param job: Job instance
     @param autoserv_exit: autoserv exit status
     @param pidfile_id: PidfileId instance
+    @returns: Drone instance
     """
     manager = _DroneManager(manager)
     if pidfile_id is None:
@@ -83,6 +85,7 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+    return drone
 
 
 # TODO(crbug.com/748234): This is temporary to enable toggling
@@ -92,10 +95,11 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
     Pass all arguments by keyword.
 
-    @param manager: DroneManager instance
+    @param manager: scheduler.drone_manager.DroneManager instance
     @param job: Job instance
     @param autoserv_exit: autoserv exit status
     @param pidfile_id: PidfileId instance
+    @returns: Drone instance
     """
     manager = _DroneManager(manager)
     if pidfile_id is None:
@@ -118,6 +122,7 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+    return drone
 
 
 def _get_jobdir():
@@ -227,6 +232,9 @@ def _get_consistent_execution_path(execution_entries):
 class Drone(object):
     """Simplified drone API."""
 
+    def hostname(self):
+        """Return the hostname of the drone."""
+
     def spawn(self, path, args, output_file):
         """Spawn an independent process.
 
@@ -247,6 +255,9 @@ class Drone(object):
 class LocalDrone(Drone):
     """Local implementation of Drone."""
 
+    def hostname(self):
+        return socket.gethostname()
+
     def spawn(self, path, args, output_file):
         _spawn(path, [path] + args, output_file)
 
@@ -258,6 +269,9 @@ class RemoteDrone(Drone):
         if not isinstance(host, ssh_host.SSHHost):
             raise TypeError('RemoteDrone must be passed an SSHHost')
         self._host = host
+
+    def hostname(self):
+        return self._host.hostname
 
     def spawn(self, path, args, output_file):
         cmd_parts = [path] + args
