@@ -17,4 +17,4 @@ DOC = """
 The test checks hammerd upstart job is triggered on boot and exits normally.
 """
 
-job.run_test('detachablebase_FirmwareUpdate')
+job.run_test('detachablebase_TriggerHammerd')
