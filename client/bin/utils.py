@@ -1928,7 +1928,8 @@ def get_ec_version():
 
     @returns a string representing this host's ec version.
     """
-    return utils.run('mosys ec info -s fw_version').stdout.strip()
+    command = 'mosys ec info -s fw_version'
+    return utils.run(command, ignore_status=True).stdout.strip()
 
 
 def get_firmware_version():
@@ -1944,7 +1945,8 @@ def get_hardware_revision():
 
     @returns a string representing this host's hardware revision.
     """
-    return utils.run('mosys platform version').stdout.strip()
+    command = 'mosys platform version'
+    return utils.run(command, ignore_status=True).stdout.strip()
 
 
 def get_kernel_version():
