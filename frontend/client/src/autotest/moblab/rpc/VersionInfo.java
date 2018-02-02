@@ -99,11 +99,11 @@ public class VersionInfo extends JsonRpcEntity {
     else if(status.contains("CHECKING_FOR_UPDATE")) {
       return UPDATE_STATUS.CHECKING_FOR_UPDATE;
     }
-    else if(status.contains("UPDATE_AVAILABLE")) {
+    else if(status.contains("UPDATE_AVAILABLE") || status.contains("VERIFYING")
+        || status.contains("FINALIZING")) {
       return UPDATE_STATUS.UPDATE_AVAILABLE;
     }
-    else if(status.contains("DOWNLOADING") || status.contains("VERIFYING") ||
-        status.contains("FINALIZING")) {
+    else if(status.contains("DOWNLOADING")) {
       return UPDATE_STATUS.DOWNLOADING;
     }
     else if(status.contains("NEED_REBOOT")) {
@@ -130,7 +130,21 @@ public class VersionInfo extends JsonRpcEntity {
       case IDLE:
       case UNKNOWN:
       default:
-        return "";
+        return "No update found";
+    }
+  }
+
+  public String getUpdateAction() {
+    switch(moblabUpdateStatus){
+      case CHECKING_FOR_UPDATE:
+      case UPDATE_AVAILABLE:
+      case DOWNLOADING:
+      case UPDATED_NEED_REBOOT:
+        return "Update Now";
+      case IDLE:
+      case UNKNOWN:
+      default:
+        return "Force Update";
     }
   }
 
