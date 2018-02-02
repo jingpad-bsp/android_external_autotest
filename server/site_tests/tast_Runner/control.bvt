@@ -7,6 +7,11 @@ NAME = 'tast_Runner.bvt'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
+# Disable server-side packaging, which incurs additional setup overhead and
+# causes tests to run within containers that don't automatically have access to
+# the required Tast-related files in /opt/infra-tools.
+REQUIRE_SSP = False
+
 DOC = """
 Run the Tast BVT suite.
 
@@ -19,7 +24,7 @@ any tests (that haven't been marked flaky) fail.
 """
 
 def run(machine):
-    job.run_test("tast_Runner",
+    job.run_test('tast_Runner',
                  host=hosts.create_host(machine),
                  test_exprs=['(bvt && !arc)'])
 
