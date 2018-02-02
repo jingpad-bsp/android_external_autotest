@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "mzhuo@chromium.org"
-NAME = "enterprise_CFM_Test.test"
+NAME = "enterprise_CFM_Test.sanity"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
@@ -121,12 +121,12 @@ test_config = {
                'puts': "",
                'is_meeting': 1,
                'meeting_code': 'otg-dkps-ovj', # this works for crosprq4.com
-               'repeat': 10,
+               'repeat': 5,
                'reboot_timeout': 60,
                'loop_timeout': 30,
                'action_timeout': 20,
                'min_timeout': 10,
-               'debug_timeout': 9999,
+               'debug_timeout': 5,
                'vol_change_step': 6,
                'vol_change_mode': 1,
                'reboot_after_min_meets': 1,
@@ -142,11 +142,11 @@ test_config = {
 #one meeting.
 action_config = {
                  'meeting_test': 1,
-                 'mute_unmute_camera_test': 10,
-                 'mute_unmute_mic_test': 10,
-                 'speaker_volume_test': 10,
-                 'gpio_test': 5,
-                 'reboot_test': 5,
+                 'mute_unmute_camera_test': 4,
+                 'mute_unmute_mic_test': 4,
+                 'speaker_volume_test': 4,
+                 'gpio_test': 2,
+                 'reboot_test': 2,
                  'reset_usb_test': 0,
                  'flap_monitor_test': 0
 }
@@ -156,7 +156,7 @@ verification_config = {
                       'check_usb_enumeration':True,
                       'check_usb_inf_init': True,
                       'check_v4l2_interface': True,
-                      'check_audio_card':  True,
+                      'check_audio_card':  False,
                       'check_cras_speaker': True,
                       'check_cras_mic': True,
                       'check_cras_pspeaker': True,
@@ -176,13 +176,13 @@ verification_config = {
                       'check_hotrod_speaker_vol': False,
                       'check_hotrod_mic_state': False,
                       'check_hotrod_camera_state': False,
-                      'check_usb_errorlog':  True,
-                      'check_kernel_errorlog': True,
-                      'check_video_errorlog': True,
-                      'check_audio_errorlog': True,
-                      'check_chrome_errorlog': True,
-                      'check_atrus_errorlog': True,
-                      'check_usb_stability': True,
+                      'check_usb_errorlog': False,
+                      'check_kernel_errorlog': False,
+                      'check_video_errorlog': False,
+                      'check_audio_errorlog': False,
+                      'check_chrome_errorlog': False,
+                      'check_atrus_errorlog': False,
+                      'check_usb_stability': False,
                       'check_process_crash': True,
                       'check_kernel_panic': False,
                       'check_chrome_restarted': True,
@@ -191,13 +191,13 @@ verification_config = {
 
 
 test_flow_control = {
-                     'reboot_before_start': False,
+                     'reboot_before_start': True,
                      'run_test_only': True,
                      'setup_cleanup': True,
                      'abort_on_failure': True,
                      'random_mode': True,
                      'recovery_on_fatal_failure': True,
-                     'skip_cfm_check': True,
+                     'skip_cfm_check': False,
                      'report': True
 }
 
@@ -214,7 +214,7 @@ def run_test(machine):
                   verification_config=verification_config,
                   error_key_words=error_key_words,
                   test_flow_control=test_flow_control,
-                  tag='test')
+                  tag='sanity')
 
 
 parallel_simple(run_test, machines)
