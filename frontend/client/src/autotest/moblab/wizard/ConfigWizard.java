@@ -127,7 +127,7 @@ public class ConfigWizard extends Composite {
         layoutTable.setWidget(row, 0, new Label("Update"));
         FlowPanel updatePanel = new FlowPanel();
         updatePanel.add(new InlineLabel(info.getUpdateString()));
-        Button btnUpdate = new Button("Update Now");
+        Button btnUpdate = new Button(info.getUpdateAction());
         btnUpdate.addClickHandler(new ClickHandler() {
           @Override
           public void onClick(ClickEvent event) {
@@ -138,7 +138,7 @@ public class ConfigWizard extends Composite {
               MoblabRpcHelper.updateMoblab(new JsonRpcCallback() {
                 @Override
                 public void onSuccess(JSONValue result) {
-                  String messageText = "Update command has been issued";
+                  String messageText = "Device is rebooting";
                   NotifyManager.getInstance().showMessage(messageText);
                 }
               });
