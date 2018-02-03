@@ -49,16 +49,22 @@ class crosvm_Sanity(test.test):
     def run_once(self):
         """Run the test."""
         errors = ''
-        errors += self.test_cpu()
-        errors += self.test_gpu()
-        errors += self.test_mem()
+        warnings = ''
+        funcs = [self.test_cpu, self.test_gpu, self.test_mem]
+        for func in funcs:
+            error, warning = func()
+            errors += error
+            warning += warning
 
         if errors:
-            raise error.TestFail('Failed: %s' % errors)
+            raise error.TestFail('Failed: %s' % (errors + warnings))
+        if warnings:
+            raise error.TestWarn('Warning: %s' % warnings)
 
     def test_cpu(self):
         """Test the CPU configuration."""
         errors = ''
+        warning = ''
         if self.cpu_cores != utils.count_cpus():
             errors += 'Expecting %d CPU cores but found %d cores\n' % (
                 self.cpu_cores, utils.count_cpus())
@@ -70,21 +76,25 @@ class crosvm_Sanity(test.test):
 
             flags = sorted(cpu_info['flags'].split(' '))
             if flags != self.cpu_flags:
-                errors += 'Expecting CPU flags %s but found %s\n' % (
+                # TODO(pwang): convert warning to error once VM got better
+                # infra support.
+                warning += 'Expecting CPU flags %s but found %s\n' % (
                     self.cpu_flags, flags)
-        return errors
+        return errors, warning
 
     def test_gpu(self):
         """Test the GPU configuration."""
 
         # TODO(pwang): Add check once virgl is fully introduced to VM.
         errors = ''
-        return errors
+        warning = ''
+        return errors, warning
 
     def test_mem(self):
         """Test the RAM configuration."""
         errors = ''
+        warning = ''
         if self.min_memory_kb > utils.memtotal():
             errors += 'Expecting at least %dKB memory but found %sKB\n' % (
                 self.min_memory_kb, utils.memtotal())
-        return errors
+        return errors, warning
