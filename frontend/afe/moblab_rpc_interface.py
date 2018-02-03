@@ -421,8 +421,8 @@ def submit_wizard_config_info(cloud_storage_info, wifi_info):
         (_RESULT_STORAGE_SERVER, cloud_storage_info[_RESULT_STORAGE_SERVER])
     ]
     config_update['MOBLAB'] = [
-        (_WIFI_AP_NAME, wifi_info.get(_WIFI_AP_NAME)),
-        (_WIFI_AP_PASS, wifi_info.get(_WIFI_AP_PASS)),
+        (_WIFI_AP_NAME, wifi_info.get(_WIFI_AP_NAME) or ''),
+        (_WIFI_AP_PASS, wifi_info.get(_WIFI_AP_PASS) or '')
     ]
     _update_partial_config(config_update)
 
