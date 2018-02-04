@@ -590,6 +590,15 @@ class HWIDLabel(base_label.StringLabel):
         return all_hwid_labels, all_hwid_labels
 
 
+class DetachableBaseLabel(base_label.BaseLabel):
+    """Label indicating if device has detachable keyboard."""
+
+    _NAME = 'detachablebase'
+
+    def exists(self, host):
+        return host.run('which hammerd', ignore_status=True).exit_status == 0
+
+
 CROS_LABELS = [
     AccelsLabel(),
     ArcLabel(),
@@ -602,6 +611,7 @@ CROS_LABELS = [
     ChameleonPeripheralsLabel(),
     common_label.OSLabel(),
     CtsArchLabel(),
+    DetachableBaseLabel(),
     ECLabel(),
     HWIDLabel(),
     InternalDisplayLabel(),
