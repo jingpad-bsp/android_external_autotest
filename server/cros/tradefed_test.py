@@ -18,14 +18,12 @@
 # _ChromeLogin and _TradefedLogCollector have no public methods.
 # pylint: disable=too-few-public-methods
 
-import contextlib
 import errno
 import glob
 import hashlib
 import logging
 import os
 import pipes
-import random
 import re
 import shutil
 import stat
@@ -40,7 +38,9 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 from autotest_lib.server.cros import cts_expected_failure_parser
-from autotest_lib.server.cros import lockfile
+from autotest_lib.server.cros import tradefed_chromelogin as login
+from autotest_lib.server.cros import tradefed_constants as constants
+from autotest_lib.server.cros import tradefed_utils
 
 # TODO(ihf): If akeshet doesn't fix crbug.com/691046 delete metrics again.
 try:
@@ -48,425 +48,9 @@ try:
 except ImportError:
     metrics = utils.metrics_mock
 
-# TODO(ihf): Find a home for all these paths. This is getting out of hand.
-_SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
-_SDK_TOOLS_FILES = ['aapt']
-
-# To stabilize adb behavior, we use dynamically linked adb.
-_ADB_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-cheets_arm-user/3544738'
-_ADB_FILES = ['adb']
-
-_ADB_POLLING_INTERVAL_SECONDS = 1
-_ADB_READY_TIMEOUT_SECONDS = 60
-_ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
-
-_ARC_POLLING_INTERVAL_SECONDS = 1
-_ARC_READY_TIMEOUT_SECONDS = 60
-
-_TRADEFED_PREFIX = 'autotest-tradefed-install_'
-# While running CTS tradefed creates state in the installed location (there is
-# currently no way to specify a dedicated result directory for all changes).
-# For this reason we start each test with a clean copy of the CTS/GTS bundle.
-_TRADEFED_CACHE_LOCAL = '/tmp/autotest-tradefed-cache'
-# On lab servers and moblab all server tests run inside of lxc instances
-# isolating file systems from each other. To avoid downloading CTS artifacts
-# repeatedly for each test (or lxc instance) we share a common location
-# /usr/local/autotest/results/shared which is visible to all lxc instances on
-# that server. It needs to be writable as the cache is maintained jointly by
-# all CTS/GTS tests. Currently both read and write access require taking the
-# lock. Writes happen rougly monthly while reads are many times a day. If this
-# becomes a bottleneck we could examine allowing concurrent reads.
-_TRADEFED_CACHE_CONTAINER = '/usr/local/autotest/results/shared/cache'
-_TRADEFED_CACHE_CONTAINER_LOCK = '/usr/local/autotest/results/shared/lock'
-# The maximum size of the shared global cache. It needs to be able to hold
-# N, M, x86, arm CTS bundles (500MB), the GTS bundle and media stress videos
-# (2GB) zipped to not thrash. In addition it needs to be able to hold one
-# different revision per Chrome OS branch. While this sounds  like a lot,
-# only a single bundle is copied into each lxc instance (500MB), hence the
-# impact of running say 100 CTS tests in parallel is acceptable (quarter
-# servers have 500GB of disk, while full servers have 2TB).
-_TRADEFED_CACHE_MAX_SIZE = (20 * 1024 * 1024 * 1024)
-
-# It looks like the GCE builder can be very slow and login on VMs take much
-# longer than on hardware or bare metal.
-_LOGIN_BOARD_TIMEOUT = {'betty': 300}
-_LOGIN_DEFAULT_TIMEOUT = 90
-
-
-class _ChromeLogin(object):
-    """Context manager to handle Chrome login state."""
-
-    def need_reboot(self):
-        """Marks state as "dirty" - reboot needed during/after test."""
-        logging.info('Will reboot DUT when Chrome stops.')
-        self._need_reboot = True
-
-    def need_restart(self):
-        """Marks state as "dirty" - restart needed after test."""
-        self._need_restart = True
-
-    def __init__(self, host, kwargs):
-        """Initializes the _ChromeLogin object.
-
-        @param reboot: indicate if a reboot before destruction is required.
-        @param restart: indicate if a restart before destruction is required.
-        @param board: optional parameter to extend timeout for login for slow
-                      DUTs. Used in particular for virtual machines.
-        """
-        self._host = host
-        self._cts_helper_kwargs = kwargs
-        # We will override reboot/restart options to some degree. Keep track
-        # of them in a local copy.
-        self._need_reboot = False
-        if kwargs.get('reboot'):
-            self.need_reboot()
-        self._need_restart = False
-        if kwargs.get('restart'):
-            self.need_restart()
-        self._timeout = _LOGIN_DEFAULT_TIMEOUT
-        board = kwargs.get('board')
-        if board in _LOGIN_BOARD_TIMEOUT:
-            self._timeout = _LOGIN_BOARD_TIMEOUT[board]
-
-    def _cmd_builder(self, verbose=False):
-        """Gets remote command to start browser with ARC enabled."""
-        # If autotest is not installed on the host, as with moblab at times,
-        # getting the autodir will raise an exception.
-        cmd = autotest.Autotest.get_installed_autodir(self._host)
-        cmd += '/bin/autologin.py --arc'
-        if self._cts_helper_kwargs.get('dont_override_profile'):
-            logging.info('Using --dont_override_profile to start Chrome.')
-            cmd += ' --dont_override_profile'
-        else:
-            logging.info('Not using --dont_override_profile to start Chrome.')
-        if not verbose:
-            cmd += ' > /dev/null 2>&1'
-        return cmd
-
-    def login(self, timeout=None, raise_exception=False, verbose=False):
-        """Logs into Chrome."""
-        if not timeout:
-            timout = self._timeout
-        try:
-            # We used to call cheets_StartAndroid, but it is a little faster to
-            # call a script on the DUT. This also saves CPU time on the server.
-            self._host.run(
-                self._cmd_builder(),
-                ignore_status=False,
-                verbose=verbose,
-                timeout=timeout)
-            return True
-        except autotest.AutodirNotFoundError:
-            # Autotest is not installed (can happen on moblab after image
-            # install). Fall back to logging in via client test, which as a side
-            # effect installs autotest in the right place, so we should not hit
-            # this slow path repeatedly.
-            logging.warning('Autotest not installed, fallback to slow path...')
-            try:
-                autotest.Autotest(self._host).run_timed_test(
-                    'cheets_StartAndroid',
-                    timeout=2 * timeout,
-                    check_client_result=True,
-                    **self._cts_helper_kwargs)
-                return True
-            except:
-                # We were unable to start the browser/Android. Maybe we can
-                # salvage the DUT by rebooting. This can hide some failures.
-                self.reboot()
-                if raise_exception:
-                    raise
-        except:
-            # We were unable to start the browser/Android. Maybe we can
-            # salvage the DUT by rebooting. This can hide some failures.
-            self.reboot()
-            if raise_exception:
-                raise
-        return False
-
-    def __enter__(self):
-        """Logs into Chrome with retry."""
-        timeout = self._timeout
-        logging.info('Ensure Android is running (timeout=%d)...', timeout)
-        if not self.login(timeout=timeout):
-            timeout *= 2
-            # The DUT reboots after unsuccessful login, try with more time again.
-            logging.info('Retrying failed login (timeout=%d)...', timeout)
-            self.login(timeout=timeout, raise_exception=True, verbose=True)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """On exit restart the browser or reboot the machine.
-
-        @param exc_type: Exception type if an exception is raised from the
-                         with-block.
-        @param exc_value: Exception instance if an exception is raised from
-                          the with-block.
-        @param traceback: Stack trace info if an exception is raised from
-                          the with-block.
-        @return None, indicating not to ignore an exception from the with-block
-                if raised.
-        """
-        if not self._need_reboot:
-            logging.info('Skipping reboot, restarting browser.')
-            try:
-                self.restart()
-            except:
-                logging.error('Restarting browser has failed.')
-                self.need_reboot()
-        if self._need_reboot:
-            self.reboot(exc_type, exc_value, traceback)
-
-    def restart(self):
-        # We clean up /tmp (which is memory backed) from crashes and
-        # other files. A reboot would have cleaned /tmp as well.
-        # TODO(ihf): Remove "start ui" which is a nicety to non-ARC tests (i.e.
-        # now we wait on login screen, but login() above will 'stop ui' again
-        # before launching Chrome with ARC enabled).
-        script = 'stop ui'
-        script += '&& find /tmp/ -mindepth 1 -delete '
-        script += '&& start ui'
-        self._host.run(script, ignore_status=False, verbose=False, timeout=120)
-
-    def reboot(self, exc_type=None, exc_value=None, traceback=None):
-        """Reboot the machine.
-
-        @param exc_type: Exception type if an exception is raised from the
-                         with-block.
-        @param exc_value: Exception instance if an exception is raised from
-                          the with-block.
-        @param traceback: Stack trace info if an exception is raised from
-                          the with-block.
-        @return None, indicating not to ignore an exception from the with-block
-                if raised.
-        """
-        logging.info('Rebooting...')
-        try:
-            self._host.reboot()
-            self._need_reboot = False
-        except Exception:
-            if exc_type is None:
-                raise
-            # If an exception is raise from the with-block, just record the
-            # exception for the rebooting to avoid ignoring the original
-            # exception.
-            logging.exception('Rebooting failed.')
-
-
-@contextlib.contextmanager
-def lock(filename):
-    """Prevents other autotest/tradefed instances from accessing cache.
-
-    @param filename: The file to be locked.
-    """
-    filelock = lockfile.FileLock(filename)
-    # It is tempting just to call filelock.acquire(3600). But the implementation
-    # has very poor temporal granularity (timeout/10), which is unsuitable for
-    # our needs. See /usr/lib64/python2.7/site-packages/lockfile/
-    attempts = 0
-    while not filelock.i_am_locking():
-        try:
-            attempts += 1
-            logging.info('Waiting for cache lock...')
-            # We must not use a random integer as the filelock implementations
-            # may underflow an integer division.
-            filelock.acquire(random.uniform(0.0, pow(2.0, attempts)))
-        except (lockfile.AlreadyLocked, lockfile.LockTimeout):
-            # Our goal is to wait long enough to be sure something very bad
-            # happened to the locking thread. 11 attempts is between 15 and
-            # 30 minutes.
-            if attempts > 11:
-                # Normally we should aqcuire the lock immediately. Once we
-                # wait on the order of 10 minutes either the dev server IO is
-                # overloaded or a lock didn't get cleaned up. Take one for the
-                # team, break the lock and report a failure. This should fix
-                # the lock for following tests. If the failure affects more than
-                # one job look for a deadlock or dev server overload.
-                logging.error('Permanent lock failure. Trying to break lock.')
-                # TODO(ihf): Think how to do this cleaner without having a
-                # recursive lock breaking problem. We may have to kill every
-                # job that is currently waiting. The main goal though really is
-                # to have a cache that does not corrupt. And cache updates
-                # only happen once a month or so, everything else are reads.
-                filelock.break_lock()
-                raise error.TestFail('Error: permanent cache lock failure.')
-        else:
-            logging.info('Acquired cache lock after %d attempts.', attempts)
-    try:
-        yield
-    finally:
-        filelock.release()
-        logging.info('Released cache lock.')
-
-
-@contextlib.contextmanager
-def adb_keepalive(target, extra_paths):
-    """A context manager that keeps the adb connection alive.
-
-    AdbKeepalive will spin off a new process that will continuously poll for
-    adb's connected state, and will attempt to reconnect if it ever goes down.
-    This is the only way we can currently recover safely from (intentional)
-    reboots.
-
-    @param target: the hostname and port of the DUT.
-    @param extra_paths: any additional components to the PATH environment
-                        variable.
-    """
-    from autotest_lib.client.common_lib.cros import adb_keepalive as module
-    # |__file__| returns the absolute path of the compiled bytecode of the
-    # module. We want to run the original .py file, so we need to change the
-    # extension back.
-    script_filename = module.__file__.replace('.pyc', '.py')
-    job = common_utils.BgJob(
-        [script_filename, target],
-        nickname='adb_keepalive',
-        stderr_level=logging.DEBUG,
-        stdout_tee=common_utils.TEE_TO_LOGS,
-        stderr_tee=common_utils.TEE_TO_LOGS,
-        extra_paths=extra_paths)
-
-    try:
-        yield
-    finally:
-        # The adb_keepalive.py script runs forever until SIGTERM is sent.
-        common_utils.nuke_subprocess(job.sp)
-        common_utils.join_bg_jobs([job])
-
-
-@contextlib.contextmanager
-def pushd(d):
-    """Defines pushd.
-    @param d: the directory to change to.
-    """
-    current = os.getcwd()
-    os.chdir(d)
-    try:
-        yield
-    finally:
-        os.chdir(current)
-
-
-def parse_tradefed_result(result, waivers=None):
-    """Check the result from the tradefed output.
-
-    @param result: The result stdout string from the tradefed command.
-    @param waivers: a set() of tests which are permitted to fail.
-    @return 5-tuple (tests, passed, failed, notexecuted, waived)
-    """
-    # Regular expressions for start/end messages of each test-run chunk.
-    abi_re = r'arm\S*|x86\S*'
-    # TODO(kinaba): use the current running module name.
-    module_re = r'\S+'
-    start_re = re.compile(r'(?:Start|Continu)ing (%s) %s with'
-                          r' (\d+(?:,\d+)?) test' % (abi_re, module_re))
-    end_re = re.compile(r'(%s) %s (?:complet|fail)ed in .*\.'
-                        r' (\d+) passed, (\d+) failed, (\d+) not executed' %
-                        (abi_re, module_re))
-
-    # Records the result per each ABI.
-    total_test = dict()
-    total_pass = dict()
-    total_fail = dict()
-    last_notexec = dict()
-
-    # ABI and the test count for the current chunk.
-    abi = None
-    ntest = None
-    prev_npass = prev_nfail = prev_nnotexec = None
-
-    for line in result.splitlines():
-        # Beginning of a chunk of tests.
-        match = start_re.search(line)
-        if match:
-            if abi:
-                raise error.TestFail('Error: Unexpected test start: ' + line)
-            abi = match.group(1)
-            ntest = int(match.group(2).replace(',', ''))
-            prev_npass = prev_nfail = prev_nnotexec = None
-        else:
-            # End of the current chunk.
-            match = end_re.search(line)
-            if not match:
-                continue
-
-            npass, nfail, nnotexec = map(int, match.group(2, 3, 4))
-            if abi != match.group(1):
-                # When the last case crashed during teardown, tradefed emits two
-                # end-messages with possibly increased fail count. Ignore it.
-                if (prev_npass == npass and
-                    (prev_nfail == nfail or prev_nfail == nfail - 1) and
-                        prev_nnotexec == nnotexec):
-                    continue
-                raise error.TestFail('Error: Unexpected test end: ' + line)
-            prev_npass, prev_nfail, prev_nnotexec = npass, nfail, nnotexec
-
-            # When the test crashes too ofen, tradefed seems to finish the
-            # iteration by running "0 tests, 0 passed, ...". Do not count
-            # that in.
-            if ntest > 0:
-                total_test[abi] = (
-                    total_test.get(abi, 0) + ntest - last_notexec.get(abi, 0))
-                total_pass[abi] = total_pass.get(abi, 0) + npass
-                total_fail[abi] = total_fail.get(abi, 0) + nfail
-                last_notexec[abi] = nnotexec
-            abi = None
-
-    if abi:
-        # When tradefed crashes badly, it may exit without printing the counts
-        # from the last chunk. Regard them as not executed and retry (rather
-        # than aborting the test cycle at this point.)
-        if ntest > 0:
-            total_test[abi] = (
-                total_test.get(abi, 0) + ntest - last_notexec.get(abi, 0))
-            last_notexec[abi] = ntest
-        logging.warning('No result reported for the last chunk. ' +
-                        'Assuming all not executed.')
-
-    # TODO(rohitbm): make failure parsing more robust by extracting the list
-    # of failing tests instead of searching in the result blob. As well as
-    # only parse for waivers for the running ABI.
-    waived = 0
-    if waivers:
-        abis = total_test.keys()
-        for testname in waivers:
-            # TODO(dhaddock): Find a more robust way to apply waivers.
-            fail_count = (
-                result.count(testname + ' FAIL') +
-                result.count(testname + ' fail'))
-            if fail_count:
-                if fail_count > len(abis):
-                    # This should be an error.TestFail, but unfortunately
-                    # tradefed has a bug that emits "fail" twice when a
-                    # test failed during teardown. It will anyway causes
-                    # a test count inconsistency and visible on the dashboard.
-                    logging.error('Found %d failures for %s '
-                                  'but there are only %d abis: %s', fail_count,
-                                  testname, len(abis), abis)
-                waived += fail_count
-                logging.info('Waived failure for %s %d time(s)', testname,
-                             fail_count)
-    counts = tuple(
-        sum(count_per_abi.values())
-        for count_per_abi in (total_test, total_pass, total_fail,
-                              last_notexec)) + (waived,)
-    msg = (
-        'tests=%d, passed=%d, failed=%d, not_executed=%d, waived=%d' % counts)
-    logging.info(msg)
-    if counts[2] - waived < 0:
-        raise error.TestFail('Error: Internal waiver bookkeeping has '
-                             'become inconsistent (%s)' % msg)
-    return counts
-
-
-def select_32bit_java():
-    """Switches to 32 bit java if installed (like in lab lxc images) to save
-    about 30-40% server/shard memory during the run."""
-    if utils.is_in_container() and not client_utils.is_moblab():
-        java = '/usr/lib/jvm/java-8-openjdk-i386'
-        if os.path.exists(java):
-            logging.info('Found 32 bit java, switching to use it.')
-            os.environ['JAVA_HOME'] = java
-            os.environ['PATH'] = (
-                os.path.join(java, 'bin') + os.pathsep + os.environ['PATH'])
+# For convenience, add to our scope.
+parse_tradefed_result = tradefed_utils.parse_tradefed_result
+adb_keepalive = tradefed_utils.adb_keepalive
 
 
 class TradefedTest(test.test):
@@ -502,9 +86,9 @@ class TradefedTest(test.test):
         self._warn_on_test_retry = warn_on_test_retry
         # Tests in the lab run within individual lxc container instances.
         if utils.is_in_container():
-            cache_root = _TRADEFED_CACHE_CONTAINER
+            cache_root = constants.TRADEFED_CACHE_CONTAINER
         else:
-            cache_root = _TRADEFED_CACHE_LOCAL
+            cache_root = constants.TRADEFED_CACHE_LOCAL
 
         # TODO(ihf): reevaluate this again when we run out of memory. We could
         # for example use 32 bit java on the first run but not during retries.
@@ -522,7 +106,8 @@ class TradefedTest(test.test):
         # is isolated (by using a unique path)_against other autotest instances.
         # This is not needed for the lab, but if somebody wants to run multiple
         # TradedefTest instance.
-        self._tradefed_install = tempfile.mkdtemp(prefix=_TRADEFED_PREFIX)
+        self._tradefed_install = tempfile.mkdtemp(
+            prefix=constants.TRADEFED_PREFIX)
         # Under lxc the cache is shared between multiple autotest/tradefed
         # instances. We need to synchronize access to it. All binaries are
         # installed through the (shared) cache into the local (unshared)
@@ -533,8 +118,9 @@ class TradefedTest(test.test):
         permission = (
             stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
             | stat.S_IXOTH)
-        self._install_files(_ADB_DIR, _ADB_FILES, permission)
-        self._install_files(_SDK_TOOLS_DIR, _SDK_TOOLS_FILES, permission)
+        self._install_files(constants.ADB_DIR, constants.ADB_FILES, permission)
+        self._install_files(constants.SDK_TOOLS_DIR, constants.SDK_TOOLS_FILES,
+                            permission)
 
         # Install the tradefed bundle.
         bundle_install_path = self._install_bundle(
@@ -562,7 +148,7 @@ class TradefedTest(test.test):
 
         Please see also cheets_StartAndroid for details about how this works.
         """
-        return _ChromeLogin(self._host, cts_helper_kwargs)
+        return login.ChromeLogin(self._host, cts_helper_kwargs)
 
     def _get_adb_target(self):
         return '{}:{}'.format(self._host.hostname, self._host.port)
@@ -622,8 +208,9 @@ class TradefedTest(test.test):
         pubkey_path = key_path + '.pub'
         self._run('adb', verbose=True, args=('keygen', pipes.quote(key_path)))
         with open(pubkey_path, 'r') as f:
-            self._write_android_file(_ANDROID_ADB_KEYS_PATH, f.read())
-        self._android_shell('restorecon ' + pipes.quote(_ANDROID_ADB_KEYS_PATH))
+            self._write_android_file(constants.ANDROID_ADB_KEYS_PATH, f.read())
+        self._android_shell(
+            'restorecon ' + pipes.quote(constants.ANDROID_ADB_KEYS_PATH))
         os.environ['ADB_VENDOR_KEYS'] = key_path
 
         # Kill existing adb server to ensure that the env var is picked up.
@@ -639,8 +226,8 @@ class TradefedTest(test.test):
         utils.poll_for_condition(
             lambda: self._try_adb_connect(),
             exception=error.TestFail('Error: Failed to set up adb connection'),
-            timeout=_ADB_READY_TIMEOUT_SECONDS,
-            sleep_interval=_ADB_POLLING_INTERVAL_SECONDS)
+            timeout=constants.ADB_READY_TIMEOUT_SECONDS,
+            sleep_interval=constants.ADB_POLLING_INTERVAL_SECONDS)
 
         logging.info('Successfully setup adb connection.')
 
@@ -661,8 +248,8 @@ class TradefedTest(test.test):
             _intent_helper_running,
             exception=error.TestFail(
                 'Error: Timed out waiting for intent helper.'),
-            timeout=_ARC_READY_TIMEOUT_SECONDS,
-            sleep_interval=_ARC_POLLING_INTERVAL_SECONDS)
+            timeout=constants.ARC_READY_TIMEOUT_SECONDS,
+            sleep_interval=constants.ARC_POLLING_INTERVAL_SECONDS)
 
     def _disable_adb_install_dialog(self):
         """Disables a dialog shown on adb install execution.
@@ -767,9 +354,9 @@ class TradefedTest(test.test):
         # delete everything without thrashing.
         # TODO(ihf): Investigate strategies like LRU.
         clean = force
-        with lock(self._tradefed_cache_lock):
+        with tradefed_utils.lock(self._tradefed_cache_lock):
             size = self._dir_size(self._tradefed_cache)
-            if size > _TRADEFED_CACHE_MAX_SIZE:
+            if size > constants.TRADEFED_CACHE_MAX_SIZE:
                 logging.info(
                     'Current cache size=%d got too large. Clearing %s.', size,
                     self._tradefed_cache)
@@ -816,7 +403,7 @@ class TradefedTest(test.test):
             # and leave a bad state permanently.
             if os.listdir(output_dir):
                 logging.info('Skipping download of %s, reusing content of %s.',
-                         uri, output_dir)
+                             uri, output_dir)
                 return output
             logging.error('Empty cache entry detected %s', output_dir)
 
@@ -904,7 +491,7 @@ class TradefedTest(test.test):
         if not gs_uri.endswith('.zip'):
             raise error.TestFail('Error: Not a .zip file %s.', gs_uri)
         # Atomic write through of file.
-        with lock(self._tradefed_cache_lock):
+        with tradefed_utils.lock(self._tradefed_cache_lock):
             # Atomic operations.
             self._invalidate_download_cache()
             # Download is lazy (cache_path may not actually exist if
@@ -934,7 +521,7 @@ class TradefedTest(test.test):
         for filename in files:
             gs_uri = os.path.join(gs_dir, filename)
             # Atomic write through of file.
-            with lock(self._tradefed_cache_lock):
+            with tradefed_utils.lock(self._tradefed_cache_lock):
                 # We don't want to leave a corrupt cache for other jobs.
                 self._invalidate_download_cache()
                 cache_path = self._download_to_cache(gs_uri)
@@ -951,7 +538,7 @@ class TradefedTest(test.test):
         """Calls copy_media to push media files to DUT via adb."""
         logging.info('Copying media to device. This can take a few minutes.')
         copy_media = os.path.join(media, 'copy_media.sh')
-        with pushd(media):
+        with tradefed_utils.pushd(media):
             try:
                 self._run(
                     'file',
@@ -1264,13 +851,14 @@ class TradefedTest(test.test):
         subplans_tf_dir = os.path.join(self._repository, 'subplans')
         if not os.path.exists(subplans_tf_dir):
             os.makedirs(subplans_tf_dir)
-        test_subplan_file = os.path.join(self.bindir, 'subplans', '%s.xml' % subplan)
+        test_subplan_file = os.path.join(self.bindir, 'subplans',
+                                         '%s.xml' % subplan)
         try:
             shutil.copy(test_subplan_file, subplans_tf_dir)
         except (shutil.Error, OSError, IOError) as e:
             raise error.TestFail(
-                   'Error: failed to copy test subplan %s to CTS bundle. %s' %
-                    test_subplan_file, e)
+                'Error: failed to copy test subplan %s to CTS bundle. %s' %
+                test_subplan_file, e)
 
     def _should_skip_test(self):
         """Some tests are expected to fail and are skipped.
@@ -1308,8 +896,9 @@ class TradefedTest(test.test):
         lastmatch = None
         for m in re.finditer(r'^(\d+)\s+(\d+)\s+(\d+)\s+(\d+) of (\d+)',
                              output.stdout, re.MULTILINE):
-            session, passed, failed, done, total = map(int, m.group(1,2,3,4,5))
-            lastmatch = (session, passed, failed, done==total)
+            session, passed, failed, done, total = map(int,
+                                                       m.group(1, 2, 3, 4, 5))
+            lastmatch = (session, passed, failed, done == total)
         return lastmatch
 
     def _run_tradefed_with_retries(self,
@@ -1341,7 +930,8 @@ class TradefedTest(test.test):
             self._run_precondition_scripts(self._host,
                                            login_precondition_commands, steps)
             with self._login_chrome(
-                    board=board, reboot=self._should_reboot(steps),
+                    board=board,
+                    reboot=self._should_reboot(steps),
                     dont_override_profile=pushed_media) as current_login:
                 self._ready_arc()
                 self._run_precondition_scripts(self._host,
@@ -1419,4 +1009,4 @@ class TradefedTest(test.test):
         raise error.TestFail(
             'Failed: after %d retries giving up. '
             'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
-             (steps, passed, failed, lnotexecuted, lwaived, self.summary))
+            (steps, passed, failed, lnotexecuted, lwaived, self.summary))
