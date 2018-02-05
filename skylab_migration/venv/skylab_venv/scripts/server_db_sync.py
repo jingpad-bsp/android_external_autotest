@@ -18,7 +18,9 @@ import collections
 import contextlib
 import logging
 import optparse
+import signal
 import sys
+import time
 
 from skylab_venv import sso_discovery
 
@@ -53,6 +55,7 @@ API = 'infrastructure'
 VERSION = 'v1'
 DISCOVERY_URL = '%s/discovery/v1/apis/%s/%s/rest' % (API_ROOT, API, VERSION)
 
+_shutdown = False
 
 class SyncUpExpection(Exception):
   """Raised when failed to sync up server db."""
@@ -241,6 +244,9 @@ def parse_options():
   parser.add_option('-e', '--environment', default='prod',
                     help='Environment of the server_db, prod or staging. '
                          'Default is prod')
+  parser.add_option('-s', '--sleep', type=int, default=300,
+                    help='Time to sleep between two server db sync. '
+                         'Default is 300s')
   options, args = parser.parse_args()
   return parser, options, args
 
@@ -323,6 +329,13 @@ def _cursor(conn):
     cursor.close()
 
 
+def handle_signal(signum, frame):
+  """Register signal handler."""
+  global _shutdown
+  _shutdown = True
+  logging.info("Shutdown request received.")
+
+
 def _main(options):
   """Main entry.
 
@@ -364,7 +377,6 @@ def main(argv):
                       format="%(asctime)s - %(name)s - " +
                       "%(levelname)s - %(message)s")
   parser, options, args = parse_options()
-  sync_succeed = False
   if not verify_options_and_args(options, args):
     parser.print_help()
     sys.exit(1)
@@ -372,13 +384,19 @@ def main(argv):
   with ts_mon_config.SetupTsMonGlobalState(service_name='sync_server_db',
                                            indirect=True):
     try:
-      _main(options)
-      sync_succeed = True
+      logging.info("Setting signal handler")
+      signal.signal(signal.SIGINT, handle_signal)
+      signal.signal(signal.SIGTERM, handle_signal)
+
+      while not _shutdown:
+        _main(options)
+        metrics.Counter(_METRICS_PREFIX + '/tick').increment(
+          fields={'success': True})
+        time.sleep(options.sleep)
     except:
-      raise
-    finally:
       metrics.Counter(_METRICS_PREFIX + '/tick').increment(
-          fields={'success': sync_succeed})
+          fields={'success': False})
+      raise
 
 
 if __name__ == '__main__':
