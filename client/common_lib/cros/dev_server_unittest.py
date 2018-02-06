@@ -656,6 +656,25 @@ class DevServerTest(mox.MoxTestBase):
                           self.dev_server.auto_update,
                           '', '')
 
+    def testBadBuildInAutoUpdate(self):
+        """Devsever raises BadBuildException when DUT raises RootfsUpdateError.
+        """
+        kwargs = {
+            'cros_au_error': False, 'get_au_status_error': True,
+            'handler_cleanup_error': False,
+            'kill_au_proc_error': False,
+            'raised_error': urllib2.HTTPError(
+                code=httplib.INTERNAL_SERVER_ERROR, msg='', url='', hdrs=None,
+                fp=StringIO.StringIO(
+                    'RootfsUpdateError: Build xyz failed to boot on dut.'))
+        }
+        for _ in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+        self.mox.ReplayAll()
+        self.assertRaises(
+            dev_server.BadBuildException,
+            self.dev_server.auto_update, '100.0.0.0', ''
+        )
 
     def testGetAUStatusErrorInAutoUpdate(self):
         """Verify devserver's auto_update() logics for handling get_au_status
