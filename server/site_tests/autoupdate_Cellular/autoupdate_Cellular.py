@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import logging
-import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -29,27 +28,6 @@ class autoupdate_Cellular(update_engine_test.UpdateEngineTest):
         retry_util.RetryException(error.AutoservRunError, 2, self._host.run,
                                   cmd)
         self._host.reboot()
-
-
-    def _check_for_cellular_entries_in_update_log(self, update_engine_log):
-        """
-        Check update_engine.log for log entries about cellular.
-
-        @param update_engine_log: The text of an update_engine.log file.
-
-        """
-        logging.info('Making sure we have cellular entries in update_engine '
-                     'log.')
-        line1 = "Allowing updates over cellular as permission preference is " \
-                "set to true."
-        line2 = "We are connected via cellular, Updates allowed: Yes"
-        for line in [line1, line2]:
-            ue = re.compile(line)
-            if ue.search(update_engine_log) is None:
-                raise error.TestFail('We did not find cellular string "%s" in '
-                                     'the update_engine log. Please check the '
-                                     'update_engine logs in the results '
-                                     'directory.' % line)
 
 
     def run_once(self, host, job_repo_url=None, full_payload=True):
