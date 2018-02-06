@@ -131,18 +131,20 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @return: The result object from utils.run.
         """
         cts_tradefed = os.path.join(self._repository, 'tools', 'cts-tradefed')
-        for command in commands:
-            logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
-            output = self._run(
-                cts_tradefed,
-                args=tuple(command),
-                timeout=self._timeout * self._get_timeout_factor(),
-                verbose=True,
-                ignore_status=False,
-                # Make sure to tee tradefed stdout/stderr to autotest logs
-                # continuously during the test run.
-                stdout_tee=utils.TEE_TO_LOGS,
-                stderr_tee=utils.TEE_TO_LOGS)
+        with tradefed_test.adb_keepalive(self._get_adb_target(),
+                                         self._install_paths):
+            for command in commands:
+                logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
+                output = self._run(
+                    cts_tradefed,
+                    args=tuple(command),
+                    timeout=self._timeout * self._get_timeout_factor(),
+                    verbose=True,
+                    ignore_status=False,
+                    # Make sure to tee tradefed stdout/stderr to autotest logs
+                    # continuously during the test run.
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
             logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
         return output
 
