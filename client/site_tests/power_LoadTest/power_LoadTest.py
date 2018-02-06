@@ -227,6 +227,7 @@ class power_LoadTest(arc.ArcTest):
 
 
     def run_once(self):
+        """Test main loop."""
         t0 = time.time()
 
         # record the PSR related info.
@@ -342,6 +343,7 @@ class power_LoadTest(arc.ArcTest):
 
 
     def postprocess_iteration(self):
+        """Postprocess: write keyvals / log and send data to power dashboard."""
         def _log_stats(prefix, stats):
             if not len(stats):
                 return
