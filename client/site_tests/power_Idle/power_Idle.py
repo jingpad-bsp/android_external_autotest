@@ -8,7 +8,10 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.bluetooth import bluetooth_device_xmlrpc_server
-from autotest_lib.client.cros.power import power_rapl, power_status, power_utils
+from autotest_lib.client.cros.power import power_dashboard
+from autotest_lib.client.cros.power import power_rapl
+from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_utils
 
 
 class power_Idle(test.test):
@@ -100,7 +103,7 @@ class power_Idle(test.test):
             bt_device.stop_bluetoothd()
 
 
-    def _publish_power_dashboard(self, measurements):
+    def _publish_chromeperf_dashboard(self, measurements):
         """Report to chromeperf dashboard."""
         publish = {key: measurements[key]
                    for key in measurements.keys() if key.endswith('pwr')}
@@ -139,13 +142,17 @@ class power_Idle(test.test):
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
 
         plog_keyvals = self._plog.calc()
-        self._publish_power_dashboard(plog_keyvals)
+        self._publish_chromeperf_dashboard(plog_keyvals)
         keyvals.update(plog_keyvals)
         keyvals.update(self._tlog.calc())
         keyvals.update(self._psr.get_keyvals())
         logging.debug("keyvals = %s", keyvals)
 
         self.write_perf_keyval(keyvals)
+
+        pdash = power_dashboard.PowerLoggerDashboard(
+                self._plog, self.tagged_testname, self.resultsdir)
+        pdash.upload()
 
 
     def cleanup(self):
