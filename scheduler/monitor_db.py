@@ -580,7 +580,11 @@ class Dispatcher(object):
                 if entry in used_queue_entries:
                     # already picked up by a synchronous job
                     continue
-                agent_task = self._get_agent_task_for_queue_entry(entry)
+                try:
+                    agent_task = self._get_agent_task_for_queue_entry(entry)
+                except scheduler_lib.SchedulerError:
+                    # Probably being handled by lucifer crbug.com/809773
+                    continue
                 agent_tasks.append(agent_task)
                 used_queue_entries.update(agent_task.queue_entries)
             except scheduler_lib.MalformedRecordError as e:
