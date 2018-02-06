@@ -30,7 +30,7 @@ class chromedriver(object):
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
                  extension_paths=[], username=None, password=None,
                  server_port=None, skip_cleanup=False, url_base=None,
-                 extra_chromedriver_args=None, *args, **kwargs):
+                 extra_chromedriver_args=None, gaia_login=False, *args, **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -48,6 +48,7 @@ class chromedriver(object):
         @param url_base: Optional base url for chromedriver.
         @param extra_chromedriver_args: List of extra arguments to forward to
                                         the chromedriver binary, if any.
+        @param gaia_login: Logs in to real gaia.
         """
         self._cleanup = not skip_cleanup
         assert os.geteuid() == 0, 'Need superuser privileges'
@@ -56,7 +57,8 @@ class chromedriver(object):
         self._chrome = chrome.Chrome(extension_paths=extension_paths,
                                      username=username,
                                      password=password,
-                                     extra_browser_args=extra_chrome_flags)
+                                     extra_browser_args=extra_chrome_flags,
+                                     gaia_login=gaia_login)
         self._browser = self._chrome.browser
         # Close all tabs owned and opened by Telemetry, as these cannot be
         # transferred to ChromeDriver.
