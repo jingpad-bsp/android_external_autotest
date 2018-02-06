@@ -27,8 +27,7 @@ logger = logging.getLogger(__name__)
 
 def is_lucifer_enabled():
     """Return True if lucifer is enabled in the config."""
-    return _config.get_config_value(_SECTION, 'send_jobs_to_lucifer',
-                                    type=bool)
+    return True
 
 
 def is_enabled_for(level):
