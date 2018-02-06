@@ -484,6 +484,15 @@ class Dispatcher(object):
 
         @param agent_task: A SpecialTask for the agent to manage.
         """
+        # TODO(crbug.com/748234): This is temporary to enable
+        # toggling lucifer rollouts with an option.
+        if (luciferlib.is_enabled_for('GATHERING')
+            and isinstance(agent_task, (postjob_task.GatherLogsTask,
+                                        postjob_task.FinalReparseTask))):
+            return
+        if (luciferlib.is_enabled_for('PARSING')
+            and isinstance(agent_task, postjob_task.FinalReparseTask)):
+            return
         agent = Agent(agent_task)
         self._agents.append(agent)
         agent.dispatcher = self
@@ -539,7 +548,7 @@ class Dispatcher(object):
                 + self._get_special_task_agent_tasks(is_active=True))
 
 
-    def _get_queue_entry_agent_tasks(self, to_schedule=False):
+    def _get_queue_entry_agent_tasks(self):
         """
         Get agent tasks for all hqe in the specified states.
 
@@ -549,32 +558,15 @@ class Dispatcher(object):
         one agent task at a time, but there might be multiple queue entries in
         the group.
 
-        @param to_schedule: Whether to get agent tasks for scheduling
         @return: A list of AgentTasks.
         """
-        if to_schedule:
-            # TODO(crbug.com/748234): This is temporary to enable
-            # toggling lucifer rollouts with an option.
-            if luciferlib.is_enabled_for('GATHERING'):
-                statuses = (models.HostQueueEntry.Status.STARTING,
-                            models.HostQueueEntry.Status.RUNNING)
-            elif luciferlib.is_enabled_for('PARSING'):
-                statuses = (models.HostQueueEntry.Status.STARTING,
-                            models.HostQueueEntry.Status.RUNNING,
-                            models.HostQueueEntry.Status.GATHERING)
-            else:
-                statuses = (models.HostQueueEntry.Status.STARTING,
-                            models.HostQueueEntry.Status.RUNNING,
-                            models.HostQueueEntry.Status.GATHERING,
-                            models.HostQueueEntry.Status.PARSING)
-        else:
-            # host queue entry statuses handled directly by AgentTasks
-            # (Verifying is handled through SpecialTasks, so is not
-            # listed here)
-            statuses = (models.HostQueueEntry.Status.STARTING,
-                        models.HostQueueEntry.Status.RUNNING,
-                        models.HostQueueEntry.Status.GATHERING,
-                        models.HostQueueEntry.Status.PARSING)
+        # host queue entry statuses handled directly by AgentTasks
+        # (Verifying is handled through SpecialTasks, so is not
+        # listed here)
+        statuses = (models.HostQueueEntry.Status.STARTING,
+                    models.HostQueueEntry.Status.RUNNING,
+                    models.HostQueueEntry.Status.GATHERING,
+                    models.HostQueueEntry.Status.PARSING)
         status_list = ','.join("'%s'" % status for status in statuses)
         queue_entries = scheduler_models.HostQueueEntry.fetch(
                 where='status IN (%s)' % status_list)
@@ -1047,7 +1039,7 @@ class Dispatcher(object):
         gathering, parsing) states, and adds it to the dispatcher so
         it is handled by _handle_agents.
         """
-        for agent_task in self._get_queue_entry_agent_tasks(to_schedule=True):
+        for agent_task in self._get_queue_entry_agent_tasks():
             self.add_agent_task(agent_task)
 
 
