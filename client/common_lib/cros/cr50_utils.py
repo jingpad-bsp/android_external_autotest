@@ -192,9 +192,13 @@ def GetRLZ(client):
         client: the object to run commands on
 
     Returns:
-        The current RLZ code
+        The current RLZ code or '' if the space doesn't exist
     """
-    return client.run('vpd -g rlz_brand_code').stdout.strip()
+    result = client.run('vpd -g rlz_brand_code', ignore_status=True)
+    if (result.exit_status and (result.exit_status != 3 or
+        "Vpd data 'rlz_brand_code' was not found." not in result.stderr)):
+        raise error.TestFail(result)
+    return result.stdout.strip()
 
 
 def SetRLZ(client, rlz):

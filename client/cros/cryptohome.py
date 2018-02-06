@@ -551,6 +551,17 @@ def do_dircrypto_migration(user, password, timeout=600):
                 'Timeout waiting for dircrypto migration to finish'))
 
 
+def change_password(user, password, new_password):
+    args = [
+            CRYPTOHOME_CMD,
+            '--action=migrate_key',
+            '--async',
+            '--user=%s' % user,
+            '--old_password=%s' % password,
+            '--password=%s' % new_password]
+    logging.info(__run_cmd(' '.join(args)))
+
+
 class CryptohomeProxy(DBusClient):
     """A DBus proxy client for testing the Cryptohome DBus server.
     """

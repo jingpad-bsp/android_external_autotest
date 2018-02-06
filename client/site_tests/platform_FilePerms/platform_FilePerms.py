@@ -201,6 +201,12 @@ class platform_FilePerms(test.test):
             'device': loop_device,
             'type': ['squashfs'],
             'options': ['ro']},
+        '/run/containers/android/root/default.prop': {
+            'type': ['tmpfs'],
+            'options': standard_rw_options + ['mode=755']},
+        '/run/containers/android/root/system/build.prop': {
+            'type': ['tmpfs'],
+            'options': standard_rw_options + ['mode=755']},
         '/proc': { 'type': ['proc'], 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
             'type': ['tmpfs'],
