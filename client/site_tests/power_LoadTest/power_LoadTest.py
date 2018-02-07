@@ -107,8 +107,12 @@ class power_LoadTest(arc.ArcTest):
         self._gaia_login = gaia_login
 
         if not power_utils.has_battery():
-            rsp = "Device designed without battery. Skipping test."
-            raise error.TestNAError(rsp)
+            if ac_ok and (power_utils.has_powercap_support() or
+                          power_utils.has_rapl_support()):
+                logging.info("Device has no battery but has powercap data.")
+            else:
+                rsp = "Skipping test for device without battery and powercap."
+                raise error.TestNAError(rsp)
         self._power_status = power_status.get_status()
         self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
 
@@ -222,11 +226,13 @@ class power_LoadTest(arc.ArcTest):
                          min_low_batt_p)
             self._test_low_batt_p = min_low_batt_p
 
-        self._ah_charge_start = self._power_status.battery[0].charge_now
-        self._wh_energy_start = self._power_status.battery[0].energy
+        if self._power_status.battery:
+            self._ah_charge_start = self._power_status.battery[0].charge_now
+            self._wh_energy_start = self._power_status.battery[0].energy
 
 
     def run_once(self):
+        """Test main loop."""
         t0 = time.time()
 
         # record the PSR related info.
@@ -239,8 +245,10 @@ class power_LoadTest(arc.ArcTest):
             logging.info("Assuming no keyboard backlight due to :: %s", str(e))
             self._keyboard_backlight = None
 
-        measurements = \
-            [power_status.SystemPower(self._power_status.battery_path)]
+        measurements = []
+        if self._power_status.battery:
+            measurements += \
+                    [power_status.SystemPower(self._power_status.battery_path)]
         if power_utils.has_powercap_support():
             measurements += power_rapl.create_powercap()
         elif power_utils.has_rapl_support():
@@ -342,6 +350,7 @@ class power_LoadTest(arc.ArcTest):
 
 
     def postprocess_iteration(self):
+        """Postprocess: write keyvals / log and send data to power dashboard."""
         def _log_stats(prefix, stats):
             if not len(stats):
                 return
@@ -383,23 +392,25 @@ class power_LoadTest(arc.ArcTest):
         _log_per_loop_stats()
 
         # record battery stats
-        keyvals['a_current_now'] = self._power_status.battery[0].current_now
-        keyvals['ah_charge_full'] = self._power_status.battery[0].charge_full
-        keyvals['ah_charge_full_design'] = \
-                             self._power_status.battery[0].charge_full_design
-        keyvals['ah_charge_start'] = self._ah_charge_start
-        keyvals['ah_charge_now'] = self._power_status.battery[0].charge_now
-        keyvals['ah_charge_used'] = keyvals['ah_charge_start'] - \
-                                    keyvals['ah_charge_now']
-        keyvals['wh_energy_start'] = self._wh_energy_start
-        keyvals['wh_energy_now'] = self._power_status.battery[0].energy
-        keyvals['wh_energy_used'] = keyvals['wh_energy_start'] - \
-                                    keyvals['wh_energy_now']
-        keyvals['v_voltage_min_design'] = \
-                             self._power_status.battery[0].voltage_min_design
-        keyvals['wh_energy_full_design'] = \
-                             self._power_status.battery[0].energy_full_design
-        keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
+        if self._power_status.battery:
+            keyvals['a_current_now'] = self._power_status.battery[0].current_now
+            keyvals['ah_charge_full'] = \
+                    self._power_status.battery[0].charge_full
+            keyvals['ah_charge_full_design'] = \
+                    self._power_status.battery[0].charge_full_design
+            keyvals['ah_charge_start'] = self._ah_charge_start
+            keyvals['ah_charge_now'] = self._power_status.battery[0].charge_now
+            keyvals['ah_charge_used'] = keyvals['ah_charge_start'] - \
+                                        keyvals['ah_charge_now']
+            keyvals['wh_energy_start'] = self._wh_energy_start
+            keyvals['wh_energy_now'] = self._power_status.battery[0].energy
+            keyvals['wh_energy_used'] = keyvals['wh_energy_start'] - \
+                                        keyvals['wh_energy_now']
+            keyvals['v_voltage_min_design'] = \
+                    self._power_status.battery[0].voltage_min_design
+            keyvals['wh_energy_full_design'] = \
+                    self._power_status.battery[0].energy_full_design
+            keyvals['v_voltage_now'] = self._power_status.battery[0].voltage_now
 
         keyvals.update(self._tmp_keyvals)
 
@@ -412,7 +423,7 @@ class power_LoadTest(arc.ArcTest):
         keyvals['wh_energy_powerlogger'] = \
                              self._energy_use_from_powerlogger(keyvals)
 
-        if keyvals['ah_charge_used'] > 0 and not self._power_status.on_ac():
+        if not self._power_status.on_ac() and keyvals['ah_charge_used'] > 0:
             # For full runs, we should use charge to scale for battery life,
             # since the voltage swing is accounted for.
             # For short runs, energy will be a better estimate.
@@ -497,18 +508,19 @@ class power_LoadTest(arc.ArcTest):
             if not self._ac_ok and self._power_status.on_ac():
                 raise error.TestError('Running on AC power now.')
 
-            charge_now = self._power_status.battery[0].charge_now
-            energy_rate = self._power_status.battery[0].energy_rate
-            voltage_now = self._power_status.battery[0].voltage_now
-            self._stats['w_energy_rate'].append(energy_rate)
-            self._stats['v_voltage_now'].append(voltage_now)
-            if verbose:
-                logging.debug('ah_charge_now %f', charge_now)
-                logging.debug('w_energy_rate %f', energy_rate)
-                logging.debug('v_voltage_now %f', voltage_now)
+            if self._power_status.battery:
+                charge_now = self._power_status.battery[0].charge_now
+                energy_rate = self._power_status.battery[0].energy_rate
+                voltage_now = self._power_status.battery[0].voltage_now
+                self._stats['w_energy_rate'].append(energy_rate)
+                self._stats['v_voltage_now'].append(voltage_now)
+                if verbose:
+                    logging.debug('ah_charge_now %f', charge_now)
+                    logging.debug('w_energy_rate %f', energy_rate)
+                    logging.debug('v_voltage_now %f', voltage_now)
 
-            low_battery = (self._power_status.percent_current_charge() <
-                           self._test_low_batt_p)
+                low_battery = (self._power_status.percent_current_charge() <
+                               self._test_low_batt_p)
 
             latched = latch.is_set()
 
