@@ -222,6 +222,11 @@ def create_mysql_updates(api_output, db_output, table,
                (server_id, entry.role))
       mysql_cmds.append(cmd)
 
+  metrics.Counter(_METRICS_PREFIX + '/inconsistency').increment_by(
+      len(delete_entries), fields={'table': table, 'action': 'to_delete'})
+  metrics.Counter(_METRICS_PREFIX + '/inconsistency').increment_by(
+      len(insert_entries), fields={'table': table, 'action': 'to_add'})
+
   return mysql_cmds
 
 
