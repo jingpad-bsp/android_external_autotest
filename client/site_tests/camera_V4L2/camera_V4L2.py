@@ -26,12 +26,18 @@ class camera_V4L2(test.test):
         utils.make()
 
     def run_once(self, test_list=None):
+        # Enable USB camera HW timestamp
+        path = "/sys/module/uvcvideo/parameters/hwtimestamps"
+        if os.path.exists(path):
+            utils.system("echo 1 > %s" % path)
+
         self.test_list = test_list
         if self.test_list is None:
             if os.path.exists('/usr/bin/arc_camera3_service'):
                 self.test_list = "halv3"
             else:
                 self.test_list = "default"
+
         self.find_video_capture_devices()
 
         for device in self.v4l2_devices:
