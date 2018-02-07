@@ -20,6 +20,7 @@ class enterprise_PowerManagement(test.test):
     version = 1
 
     def setup(self):
+        """Standard autotest setup."""
         os.chdir(self.srcdir)
         utils.make('OUT_DIR=.')
 
@@ -47,6 +48,7 @@ class enterprise_PowerManagement(test.test):
         self.fake_dm_server.start(self.tmpdir, self.debugdir)
 
     def cleanup(self):
+        """Close out anything used by this test."""
         self.fake_dm_server.stop()
 
     @property
@@ -127,7 +129,8 @@ class enterprise_PowerManagement(test.test):
                 disable_gaia_services=False,
                 gaia_login=False,
                 username=self.username,
-                password=self.password)
+                password=self.password,
+                expect_policy_fetch=True)
 
     def run_once(self):
         """Run the power management policy tests."""
