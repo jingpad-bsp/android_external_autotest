@@ -51,8 +51,7 @@ public class SuiteRunnerView extends TabView {
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq",
       "bvt-inline", "cts_N", "gts",
-      "hardware_storagequal", "hardware_memoryqual", "faft_setup", "faft_ec",
-      "faft_bios", "usb-camera");
+      "hardware_storagequal", "hardware_memoryqual", "usb-camera");
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
 
