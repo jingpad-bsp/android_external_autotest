@@ -1364,6 +1364,7 @@ def main(argv):
             with site_utils.SetupTsMonGlobalState(
                     'repair_loops', short_lived=True, auto_flush=False):
                 _perform_inventory_reports(arguments)
+            metrics.Flush()
         else:
             _perform_inventory_reports(arguments)
     except KeyboardInterrupt:
