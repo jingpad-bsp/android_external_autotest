@@ -6,19 +6,19 @@
 """Create e-mail reports of the Lab's DUT inventory.
 
 Gathers a list of all DUTs of interest in the Lab, segregated by
-board and pool, and determines whether each DUT is working or
+model and pool, and determines whether each DUT is working or
 broken.  Then, send one or more e-mail reports summarizing the
 status to e-mail addresses provided on the command line.
 
-usage:  lab_inventory.py [ options ] [ board ... ]
+usage:  lab_inventory.py [ options ] [ model ... ]
 
 Options:
 --duration / -d <hours>
     How far back in time to search job history to determine DUT
     status.
 
---board-notify <address>[,<address>]
-    Send the "board status" e-mail to all the specified e-mail
+--model-notify <address>[,<address>]
+    Send the "model status" e-mail to all the specified e-mail
     addresses.
 
 --pool-notify <address>[,<address>]
@@ -26,7 +26,7 @@ Options:
     addresses.
 
 --recommend <number>
-    When generating the "board status" e-mail, included a list of
+    When generating the "model status" e-mail, include a list of
     <number> specific DUTs to be recommended for repair.
 
 --repair-loops
@@ -42,10 +42,10 @@ Options:
     Suppress all logging, metrics reporting, and sending e-mail.
     Instead, write the output that would be generated onto stdout.
 
-<board> arguments:
-    With no arguments, gathers the status for all boards in the lab.
-    With one or more named boards on the command line, restricts
-    reporting to just those boards.
+<model> arguments:
+    With no arguments, gathers the status for all models in the lab.
+    With one or more named models on the command line, restricts
+    reporting to just those models.
 
 """
 
@@ -68,7 +68,6 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import gmail_lib
-from autotest_lib.utils import labellib
 from chromite.lib import metrics
 
 
@@ -116,10 +115,6 @@ _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 _HOSTNAME_PATTERN = re.compile(
         r'(chromeos\d+)-row(\d+)-rack(\d+)-host(\d+)')
 
-# Default entry for managed pools.
-
-_MANAGED_POOL_DEFAULT = 'all_pools'
-
 # _REPAIR_LOOP_THRESHOLD:
 #    The number of repeated Repair tasks that must be seen to declare
 #    that a DUT is stuck in a repair loop.
@@ -127,12 +122,12 @@ _MANAGED_POOL_DEFAULT = 'all_pools'
 _REPAIR_LOOP_THRESHOLD = 4
 
 
-class _CachedHostJobHistories(object):
-    """Maintains a set of `HostJobHistory` objects for a pool.
+class _HostSetInventory(object):
+    """Maintains a set of related `HostJobHistory` objects.
 
-    The collected history objects are nominally all part of a single
-    scheduling pool of DUTs.  The collection maintains a list of
-    working DUTs, a list of broken DUTs, and a list of all DUTs.
+    The collection is segregated into disjoint categories of "working",
+    "broken", and "idle" DUTs.  Accessor methods allow finding both the
+    list of DUTs in each category, as well as counts of each category.
 
     Performance note:  Certain methods in this class are potentially
     expensive:
@@ -150,15 +145,18 @@ class _CachedHostJobHistories(object):
 
     Additionally, `get_working_list()`, `get_broken_list()` and
     `get_idle_list()` cache their return values to avoid recalculating
-    lists at every call; this caching is separate from the caching of RPC
-    results described above.
+    lists at every call; this caching is separate from the caching of
+    RPC results described above.
 
-    This class is deliberately constructed to delay the RPC cost
-    until the accessor methods are called (rather than to query in
+    This class is deliberately constructed to delay the RPC cost until
+    the accessor methods are called (rather than to query in
     `record_host()`) so that it's possible to construct a complete
     `_LabInventory` without making the expensive queries at creation
-    time.  `_populate_board_counts()`, below, assumes this behavior.
+    time.  `_populate_model_counts()`, below, assumes this behavior.
 
+    Current usage of this class is that all DUTs are part of a single
+    scheduling pool of DUTs; however, this class make no assumptions
+    about the actual relationship among the DUTs.
     """
 
     def __init__(self):
@@ -236,10 +234,10 @@ class _CachedHostJobHistories(object):
         @return A list of HostJobHistory objects.
 
         """
-        idle_list = [status_history.UNUSED, status_history.UNKNOWN]
+        idle_statuses = {status_history.UNUSED, status_history.UNKNOWN}
         if self._idle_list is None:
             self._idle_list = [h for h in self._histories
-                    if h.last_diagnosis()[0] in idle_list]
+                    if h.last_diagnosis()[0] in idle_statuses]
         return self._idle_list
 
 
@@ -253,25 +251,24 @@ class _CachedHostJobHistories(object):
         return len(self._histories)
 
 
-class _ManagedPoolsHostJobHistories(object):
-    """Maintains a set of `HostJobHistory`s per managed pool.
+class _PoolSetInventory(object):
+    """Maintains a set of `HostJobHistory`s for a set of pools.
 
-    The collection maintains a count of working DUTs, a count of broken DUTs,
-    and a total count.  The counts can be obtained either for a single pool, or
-    as a total across all pools.
+    The collection is segregated into disjoint categories of "working",
+    "broken", and "idle" DUTs.  Accessor methods allow finding both the
+    list of DUTs in each category, as well as counts of each category.
+    Accessor queries can be for an individual pool, or against all
+    pools.
 
-    DUTs in the collection must be assigned to one of the pools in
-    `_MANAGED_POOLS`.
-
-    The `get_working()` and `get_broken()` methods rely on the
-    methods of the same name in _CachedHostJobHistories, so the performance
-    note in _CachedHostJobHistories applies here as well.
-
+    Performance note:  This class relies on `_HostSetInventory`.  Public
+    methods in this class generally rely on methods of the same name in
+    the underlying class, and so will have the same underlying
+    performance characteristics.
     """
 
-    def __init__(self):
+    def __init__(self, pools):
         self._histories_by_pool = {
-            pool: _CachedHostJobHistories() for pool in MANAGED_POOLS
+            pool: _HostSetInventory() for pool in pools
         }
 
     def record_host(self, host_history):
@@ -328,7 +325,7 @@ class _ManagedPoolsHostJobHistories(object):
         @return The total number of working DUTs in the selected
                 pool(s).
         """
-        return self._count_pool(_CachedHostJobHistories.get_working, pool)
+        return self._count_pool(_HostSetInventory.get_working, pool)
 
 
     def get_broken_list(self):
@@ -354,7 +351,7 @@ class _ManagedPoolsHostJobHistories(object):
 
         @return The total number of broken DUTs in the selected pool(s).
         """
-        return self._count_pool(_CachedHostJobHistories.get_broken, pool)
+        return self._count_pool(_HostSetInventory.get_broken, pool)
 
 
     def get_idle_list(self, pool=None):
@@ -371,12 +368,11 @@ class _ManagedPoolsHostJobHistories(object):
         """
         if pool is None:
             l = []
-            for p in self._histories_by_pool.values():
+            for p in self._histories_by_pool.itervalues():
                 l.extend(p.get_idle_list())
             return l
         else:
-            return _CachedHostJobHistories.get_idle_list(
-                    self._histories_by_pool[pool])
+            return self._histories_by_pool[pool].get_idle_list()
 
 
     def get_idle(self, pool=None):
@@ -387,10 +383,10 @@ class _ManagedPoolsHostJobHistories(object):
 
         @return The total number of idle DUTs in the selected pool(s).
         """
-        return self._count_pool(_CachedHostJobHistories.get_idle, pool)
+        return self._count_pool(_HostSetInventory.get_idle, pool)
 
 
-    def get_spares_buffer(self):
+    def get_spares_buffer(self, spare_pool=SPARE_POOL):
         """Return the the nominal number of working spares.
 
         Calculates and returns how many working spares there would
@@ -401,7 +397,7 @@ class _ManagedPoolsHostJobHistories(object):
         @return The total number DUTs in the spares pool, less the total
                 number of broken DUTs in all pools.
         """
-        return self.get_total(SPARE_POOL) - self.get_broken()
+        return self.get_total(spare_pool) - self.get_broken()
 
 
     def get_total(self, pool=None):
@@ -412,159 +408,118 @@ class _ManagedPoolsHostJobHistories(object):
 
         @return The total number of DUTs in the selected pool(s).
         """
-        return self._count_pool(_CachedHostJobHistories.get_total, pool)
+        return self._count_pool(_HostSetInventory.get_total, pool)
 
 
-class _LabInventory(object):
+def _eligible_host(afehost):
+    """Return whether this host is eligible for monitoring.
+
+    A host is eligible if it has a (unique) 'model' label, it's in
+    exactly one pool, and it has no labels from the
+    `_EXCLUDED_LABELS` set.
+
+    @param afehost  The host to be tested for eligibility.
+    """
+    # DUTs without an existing, unique 'model' or 'pool' label
+    # aren't meant to exist in the managed inventory; their presence
+    # generally indicates an error in the database.  Unfortunately
+    # such errors have been seen to occur from time to time.
+    #
+    # The _LabInventory constructor requires hosts to conform to the
+    # label restrictions, and may fail if they don't.  Failing an
+    # inventory run for a single bad entry is the wrong thing, so we
+    # ignore the problem children here, to keep them out of the
+    # inventory.
+    models = [l for l in afehost.labels
+                 if l.startswith(constants.Labels.MODEL_PREFIX)]
+    pools = [l for l in afehost.labels
+                 if l.startswith(constants.Labels.POOL_PREFIX)]
+    excluded = _EXCLUDED_LABELS.intersection(afehost.labels)
+    return len(models) == 1 and len(pools) == 1 and not excluded
+
+
+class _LabInventory(collections.Mapping):
     """Collection of `HostJobHistory` objects for the Lab's inventory.
 
-    Important attributes:
-      by_board: A dict mapping board to ManagedPoolsHostJobHistories
-
+    This is a dict-like collection indexed by model.  Indexing returns
+    the _PoolSetInventory object associated with the model.
     """
 
-    @staticmethod
-    def _eligible_host(afehost):
-        """Return whether this host is eligible for monitoring.
-
-        A host is eligible if it's in exactly one pool and it has no
-        labels from the `_EXCLUDED_LABELS` set.
-
-        @param afehost  The host to be tested for eligibility.
-        """
-        pools = [l for l in afehost.labels
-                     if l.startswith(constants.Labels.POOL_PREFIX)]
-        excluded = _EXCLUDED_LABELS.intersection(afehost.labels)
-        return len(pools) == 1 and not excluded
-
-
     @classmethod
-    def create_inventory(cls, afe, start_time, end_time, boardlist=[]):
+    def create_inventory(cls, afe, start_time, end_time, modellist=[]):
         """Return a Lab inventory with specified parameters.
 
-        By default, gathers inventory from `HostJobHistory` objects
-        for all DUTs in the `MANAGED_POOLS` list.  If `boardlist`
-        is supplied, the inventory will be restricted to only the
-        given boards.
+        By default, gathers inventory from `HostJobHistory` objects for
+        all DUTs in the `MANAGED_POOLS` list.  If `modellist` is
+        supplied, the inventory will be restricted to only the given
+        models.
 
-        @param afe         AFE object for constructing the
-                           `HostJobHistory` objects.
-        @param start_time  Start time for the `HostJobHistory`
-                           objects.
-        @param end_time    End time for the `HostJobHistory`
-                           objects.
-        @param boardlist   List of boards to include.  If empty,
-                           include all available boards.
-        @return A `_LabInventory` object for the specified boards.
+        @param afe          AFE object for constructing the
+                            `HostJobHistory` objects.
+        @param start_time   Start time for the `HostJobHistory` objects.
+        @param end_time     End time for the `HostJobHistory` objects.
+        @param modellist    List of models to include.  If empty,
+                            include all available models.
+        @return A `_LabInventory` object for the specified models.
 
         """
-        label_list = [constants.Labels.POOL_PREFIX + l
-                          for l in MANAGED_POOLS]
+        target_pools = MANAGED_POOLS
+        label_list = [constants.Labels.POOL_PREFIX + l for l in target_pools]
         afehosts = afe.get_hosts(labels__name__in=label_list)
-        if boardlist:
+        if modellist:
             # We're deliberately not checking host eligibility in this
             # code path.  This is a debug path, not used in production;
             # it may be useful to include ineligible hosts here.
-            boardhosts = []
-            for board in boardlist:
-                board_label = constants.Labels.BOARD_PREFIX + board
+            modelhosts = []
+            for model in modellist:
+                model_label = constants.Labels.MODEL_PREFIX + model
                 host_list = [h for h in afehosts
-                                  if board_label in h.labels]
-                boardhosts.extend(host_list)
-            afehosts = boardhosts
+                                  if model_label in h.labels]
+                modelhosts.extend(host_list)
+            afehosts = modelhosts
         else:
             afehosts = [h for h in afehosts if cls._eligible_host(h)]
         create = lambda host: (
                 status_history.HostJobHistory(afe, host,
                                               start_time, end_time))
-        return cls([create(host) for host in afehosts])
+        return cls([create(host) for host in afehosts], target_pools)
 
 
-    def __init__(self, histories):
-        # N.B. The query that finds our hosts is restricted to those
-        # with a valid pool: label, but doesn't check for a valid
-        # board: label.  In some (insufficiently) rare cases, the
-        # AFE hosts table has been known to (incorrectly) have DUTs
-        # with a pool: but no board: label.  We explicitly exclude
-        # those here.
-        histories = [h for h in histories
-                     if h.host_board is not None]
-        self.histories = histories
+    def __init__(self, histories, pools):
+        models = {h.host_model for h in histories}
+        self._modeldata = {model: _PoolSetInventory(pools) for model in models}
         self._dut_count = len(histories)
-        self._managed_boards = {}
-        self._managed_models = {}
-        self.by_board = self._classify_by_label_type('board')
-        self.by_model = self._classify_by_label_type('model')
+        for h in histories:
+            self[h.host_model].record_host(h)
+        self._boards = {h.host_board for h in histories}
 
 
-    def _classify_by_label_type(self, label_key):
-        """Classify histories by labels with the given key.
+    def __getitem__(self, key):
+        return self._modeldata.__getitem__(key)
 
-        @returns a dict mapping labels with the given key to
-        _ManagedPoolsHostJobHistories for DUTs with that label.
+
+    def __len__(self):
+        return self._modeldata.__len__()
+
+
+    def __iter__(self):
+        return self._modeldata.__iter__()
+
+
+    def reportable_items(self, spare_pool=SPARE_POOL):
+        """Iterate over  all items subject to reporting.
+
+        Yields the contents of `self.iteritems()` filtered to include
+        only reportable models.  A model is reportable if it has DUTs in
+        both `spare_pool` and at least one other pool.
+
+        @param spare_pool  The spare pool to be tested for reporting.
         """
-        classified = collections.defaultdict(_ManagedPoolsHostJobHistories)
-        for h in self.histories:
-            labels = labellib.LabelsMapping(h.host.labels)
-            if label_key in labels:
-                classified[labels[label_key]].record_host(h)
-        return dict(classified)
-
-
-    def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
-        """Return the set of "managed" boards.
-
-        @param pool: The specified pool for managed boards.
-        @return A set of all the boards that have both spare and
-                non-spare pools, unless the pool is specified,
-                then the set of boards in that pool.
-        """
-        if self._managed_boards.get(pool) is None:
-            self._managed_boards[pool] = set()
-            for board, counts in self.by_board.iteritems():
-                if self._is_managed(pool, counts):
-                    self._managed_boards[pool].add(board)
-        return self._managed_boards[pool]
-
-
-    def get_managed_models(self, pool=_MANAGED_POOL_DEFAULT):
-        """Return the set of "managed" models.
-
-        @param pool: The specified pool for managed models.
-        @return A set of all the models that have both spare and
-                non-spare pools, unless the pool is specified,
-                then the set of models in that pool.
-        """
-        if self._managed_models.get(pool) is None:
-            self._managed_models[pool] = set()
-            for board, counts in self.by_model.iteritems():
-                if self._is_managed(pool, counts):
-                    self._managed_models[pool].add(board)
-        return self._managed_models[pool]
-
-
-    def _is_managed(self, pool, histories):
-        """Deterime if the given histories contain DUTs to be managed for pool.
-
-        Operationally, saying a board is "managed" means that the
-        board will be included in the "board" and "repair
-        recommendations" reports.  That is, if there are failures in
-        the board's inventory then lab techs will be asked to fix
-        them without a separate ticket.
-
-        For purposes of implementation, a board is "managed" if it
-        has DUTs in both the spare and a non-spare (i.e. critical)
-        pool.
-
-        """
-        # Get the counts for all pools, otherwise get it for the
-        # specified pool.
-        if pool == _MANAGED_POOL_DEFAULT:
-            spares = histories.get_total(SPARE_POOL)
+        for model, histories in self.iteritems():
+            spares = histories.get_total(spare_pool)
             total = histories.get_total()
-            return spares != 0 and spares != total
-        else:
-            return histories.get_total(pool) != 0
+            if spares != 0 and spares != total:
+                yield model, histories
 
 
     def get_num_duts(self):
@@ -572,14 +527,21 @@ class _LabInventory(object):
         return self._dut_count
 
 
-    def get_num_boards(self):
-        """Return the total number of boards in the inventory."""
-        return len(self.by_board)
-
-
     def get_num_models(self):
         """Return the total number of models in the inventory."""
-        return len(self.by_model)
+        return len(self)
+
+
+    def get_pool_models(self, pool):
+        """Return all models in `pool`.
+
+        @param pool The pool to be inventoried for models.
+        """
+        return {m for m, h in self.iteritems() if h.get_total(pool)}
+
+
+    def get_boards(self):
+        return self._boards
 
 
 def _sort_by_location(inventory_list):
@@ -622,38 +584,39 @@ def _sort_by_location(inventory_list):
 def _score_repair_set(buffer_counts, repair_list):
     """Return a numeric score rating a set of DUTs to be repaired.
 
-    `buffer_counts` is a dictionary mapping board names to the
-    size of the board's spares buffer.
+    `buffer_counts` is a dictionary mapping model names to the size of
+    the model's spares buffer.
 
-    `repair_list` is a list of DUTs to be repaired.
+    `repair_list` is a list of `HostJobHistory` objects for the DUTs to
+    be repaired.
 
     This function calculates the new set of buffer counts that would
-    result from the proposed repairs, and scores the new set using
-    two numbers:
-      * Worst case buffer count for any board (higher is better).
-        This is the more siginficant number for comparison.
-      * Number of boards at the worst case (lower is better).  This
-        is the less significant number.
+    result from the proposed repairs, and scores the new set using two
+    numbers:
+      * Worst case buffer count for any model (higher is better).  This
+        is the more significant number for comparison.
+      * Number of models at the worst case (lower is better).  This is
+        the less significant number.
 
-    Implementation note:  The score could fail to reflect the
-    intended criteria if there are more than 1000 boards in the
-    inventory.
+    Implementation note:  The score could fail to reflect the intended
+    criteria if there are more than 1000 models in the inventory.
 
-    @param spare_counts A dictionary mapping boards to buffer counts.
-    @param repair_list  A list of boards to be repaired.
+    @param spare_counts   A dictionary mapping models to buffer counts.
+    @param repair_list    A list of `HostJobHistory` objects for the
+                          DUTs to be repaired.
     @return A numeric score.
-
     """
     # Go through `buffer_counts`, and create a list of new counts
-    # that records the buffer count for each board after repair.
-    # The new list of counts discards the board names, as they don't
+    # that records the buffer count for each model after repair.
+    # The new list of counts discards the model names, as they don't
     # contribute to the final score.
-    _NBOARDS = 1000
-    repair_inventory = _LabInventory(repair_list)
+    _NMODELS = 1000
+    pools = {h.host_pool for h in repair_list}
+    repair_inventory = _LabInventory(repair_list, pools)
     new_counts = []
-    for b, c in buffer_counts.items():
-        if b in repair_inventory.by_board:
-            newcount = repair_inventory.by_board[b].get_total()
+    for m, c in buffer_counts.iteritems():
+        if m in repair_inventory:
+            newcount = repair_inventory[m].get_total()
         else:
             newcount = 0
         new_counts.append(c + newcount)
@@ -668,40 +631,38 @@ def _score_repair_set(buffer_counts, repair_list):
             worst_count = c
             num_worst = 1
     # Return the calculated score
-    return _NBOARDS * worst_count - num_worst
+    return _NMODELS * worst_count - num_worst
 
 
 def _generate_repair_recommendation(inventory, num_recommend):
     """Return a summary of selected DUTs needing repair.
 
-    Returns a message recommending a list of broken DUTs to be
-    repaired.  The list of DUTs is selected based on these
-    criteria:
+    Returns a message recommending a list of broken DUTs to be repaired.
+    The list of DUTs is selected based on these criteria:
       * No more than `num_recommend` DUTs will be listed.
       * All DUTs must be in the same lab.
-      * DUTs should be selected for some degree of physical
-        proximity.
-      * DUTs for boards with a low spares buffer are more important
-        than DUTs with larger buffers.
+      * DUTs should be selected for some degree of physical proximity.
+      * DUTs for models with a low spares buffer are more important than
+        DUTs with larger buffers.
 
-    The algorithm used will guarantee that at least one DUT from a
-    board with the smallest spares buffer will be recommended.  If
-    the worst spares buffer number is shared by more than one board,
-    the algorithm will tend to prefer repair sets that include more
-    of those boards over sets that cover fewer boards.
+    The algorithm used will guarantee that at least one DUT from a model
+    with the lowest spares buffer will be recommended.  If the worst
+    spares buffer number is shared by more than one model, the algorithm
+    will tend to prefer repair sets that include more of those models
+    over sets that cover fewer models.
 
-    @param inventory      Inventory for generating recommendations.
+    @param inventory      `_LabInventory` object from which to generate
+                          recommendations.
     @param num_recommend  Number of DUTs to recommend for repair.
 
     """
     logging.debug('Creating DUT repair recommendations')
-    board_buffer_counts = {}
+    model_buffer_counts = {}
     broken_list = []
-    for board in inventory.get_managed_boards():
-        logging.debug('Listing failed DUTs for %s', board)
-        counts = inventory.by_board[board]
+    for model, counts in inventory.reportable_items():
+        logging.debug('Listing failed DUTs for %s', model)
         if counts.get_broken() != 0:
-            board_buffer_counts[board] = counts.get_spares_buffer()
+            model_buffer_counts[model] = counts.get_spares_buffer()
             broken_list.extend(counts.get_broken_list())
     # N.B. The logic inside this loop may seem complicated, but
     # simplification is hard:
@@ -717,72 +678,69 @@ def _generate_repair_recommendation(inventory, num_recommend):
         start = 0
         end = num_recommend
         lab_slice = lab_duts[start : end]
-        lab_score = _score_repair_set(board_buffer_counts,
-                                      lab_slice)
+        lab_score = _score_repair_set(model_buffer_counts, lab_slice)
         while end < len(lab_duts):
             start += 1
             end += 1
             new_slice = lab_duts[start : end]
-            new_score = _score_repair_set(board_buffer_counts,
-                                          new_slice)
+            new_score = _score_repair_set(model_buffer_counts, new_slice)
             if new_score > lab_score:
                 lab_slice = new_slice
                 lab_score = new_score
         if recommendation is None or lab_score > best_score:
             recommendation = lab_slice
             best_score = lab_score
-    # N.B. The trailing space here is manadatory:  Without it, Gmail
-    # will parse the URL wrong.  Don't ask.  If you simply _must_
+    # N.B. The trailing space in `line_fmt` is manadatory:  Without it,
+    # Gmail will parse the URL wrong.  Don't ask.  If you simply _must_
     # know more, go try it yourself...
     line_fmt = '%-30s %-16s %-6s\n    %s '
     message = ['Repair recommendations:\n',
-               line_fmt % ( 'Hostname', 'Board', 'Servo?', 'Logs URL')]
+               line_fmt % ( 'Hostname', 'Model', 'Servo?', 'Logs URL')]
     for h in recommendation:
         servo_name = servo_host.make_servo_hostname(h.host.hostname)
         servo_present = utils.host_is_in_lab_zone(servo_name)
         _, event = h.last_diagnosis()
         line = line_fmt % (
-                h.host.hostname, h.host_board,
+                h.host.hostname, h.host_model,
                 'Yes' if servo_present else 'No', event.job_url)
         message.append(line)
     return '\n'.join(message)
 
 
-def _generate_board_inventory_message(inventory):
-    """Generate the "board inventory" e-mail message.
+def _generate_model_inventory_message(inventory):
+    """Generate the "model inventory" e-mail message.
 
-    The board inventory is a list by board summarizing the number
-    of working and broken DUTs, and the total shortfall or surplus
+    The model inventory is a list by model summarizing the number of
+    working, broken, and idle DUTs, and the total shortfall or surplus
     of working devices relative to the minimum critical pool
     requirement.
 
-    The report omits boards with no DUTs in the spare pool or with
-    no DUTs in a critical pool.
+    The report omits models with no DUTs in the spare pool or with no
+    DUTs in a critical pool.
 
     N.B. For sample output text formattted as users can expect to
     see it in e-mail and log files, refer to the unit tests.
 
-    @param inventory  _LabInventory object with the inventory to
-                      be reported on.
+    @param inventory  `_LabInventory` object to be reported on.
     @return String with the inventory message to be sent.
-
     """
-    logging.debug('Creating board inventory')
+    logging.debug('Creating model inventory')
     nworking = 0
     nbroken = 0
     nidle = 0
-    nbroken_boards = 0
-    ntotal_boards = 0
+    nbroken_models = 0
+    ntotal_models = 0
     summaries = []
-    for board in inventory.get_managed_boards():
-        counts = inventory.by_board[board]
-        logging.debug('Counting %2d DUTS for board %s',
-                      counts.get_total(), board)
-        # Summary elements laid out in the same order as the text
+    column_names = (
+        'Model', 'Avail', 'Bad', 'Idle', 'Good', 'Spare', 'Total')
+    for model, counts in inventory.reportable_items():
+        logging.debug('Counting %2d DUTS for model %s',
+                      counts.get_total(), model)
+        # Summary elements laid out in the same order as the column
         # headers:
-        #     Board Avail   Bad  Idle  Good  Spare Total
+        #     Model Avail   Bad  Idle  Good  Spare Total
         #      e[0]  e[1]  e[2]  e[3]  e[4]  e[5]  e[6]
-        element = (board,
+        element = (model,
                    counts.get_spares_buffer(),
                    counts.get_broken(),
                    counts.get_idle(),
@@ -791,8 +749,8 @@ def _generate_board_inventory_message(inventory):
                    counts.get_total())
         if element[2]:
             summaries.append(element)
-            nbroken_boards += 1
-        ntotal_boards += 1
+            nbroken_models += 1
+        ntotal_models += 1
         nbroken += element[2]
         nidle += element[3]
         nworking += element[4]
@@ -809,20 +767,18 @@ def _generate_board_inventory_message(inventory):
                    nworking, working_percent,
                    ntotal),
                '',
-               'Boards with failures: %d' % nbroken_boards,
-               'Boards in inventory:  %d' % ntotal_boards,
+               'Models with failures: %d' % nbroken_models,
+               'Models in inventory:  %d' % ntotal_models,
                '', '',
-               'Full board inventory:\n',
-               '%-22s %5s %5s %5s %5s %5s %5s' % (
-                   'Board', 'Avail', 'Bad', 'Idle', 'Good',
-                   'Spare', 'Total')]
+               'Full model inventory:\n',
+               '%-22s %5s %5s %5s %5s %5s %5s' % column_names]
     message.extend(
             ['%-22s %5d %5d %5d %5d %5d %5d' % e for e in summaries])
     return '\n'.join(message)
 
 
 _POOL_INVENTORY_HEADER = '''\
-Notice to Infrastructure deputies:  All boards shown below are at
+Notice to Infrastructure deputies:  All models shown below are at
 less than full strength, please take action to resolve the issues.
 Once you're satisified that failures won't recur, failed DUTs can
 be replaced with spares by running `balance_pool`.  Detailed
@@ -834,45 +790,43 @@ instructions can be found here:
 def _generate_pool_inventory_message(inventory):
     """Generate the "pool inventory" e-mail message.
 
-    The pool inventory is a list by pool and board summarizing the
-    number of working and broken DUTs in the pool.  Only boards with
+    The pool inventory is a list by pool and model summarizing the
+    number of working and broken DUTs in the pool.  Only models with
     at least one broken DUT are included in the list.
 
-    N.B. For sample output text formattted as users can expect to
-    see it in e-mail and log files, refer to the unit tests.
+    N.B. For sample output text formattted as users can expect to see it
+    in e-mail and log files, refer to the unit tests.
 
-    @param inventory  _LabInventory object with the inventory to
-                      be reported on.
+    @param inventory  `_LabInventory` object to be reported on.
     @return String with the inventory message to be sent.
-
     """
     logging.debug('Creating pool inventory')
     message = [_POOL_INVENTORY_HEADER]
     newline = ''
     for pool in CRITICAL_POOLS:
         message.append(
-            '%sStatus for pool:%s, by board:' % (newline, pool))
+            '%sStatus for pool:%s, by model:' % (newline, pool))
         message.append(
             '%-20s   %5s %5s %5s %5s' % (
-                'Board', 'Bad', 'Idle', 'Good', 'Total'))
+                'Model', 'Bad', 'Idle', 'Good', 'Total'))
         data_list = []
-        for board, counts in inventory.by_board.iteritems():
+        for model, counts in inventory.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
-                          counts.get_total(pool), board, pool)
+                          counts.get_total(pool), model, pool)
             broken = counts.get_broken(pool)
             idle = counts.get_idle(pool)
-            # boards at full strength are not reported
-            if broken == 0 and idle == 0:
+            # models at full strength are not reported
+            if not broken and not idle:
                 continue
             working = counts.get_working(pool)
             total = counts.get_total(pool)
-            data_list.append((board, broken, idle, working, total))
+            data_list.append((model, broken, idle, working, total))
         if data_list:
             data_list = sorted(data_list, key=lambda d: -d[1])
             message.extend(
                 ['%-20s   %5d %5d %5d %5d' % t for t in data_list])
         else:
-            message.append('(All boards at full strength)')
+            message.append('(All models at full strength)')
         newline = '\n'
     return '\n'.join(message)
 
@@ -888,27 +842,26 @@ aborted.
 def _generate_idle_inventory_message(inventory):
     """Generate the "idle inventory" e-mail message.
 
-    The idle inventory is a host list with corresponding pool and board,
+    The idle inventory is a host list with corresponding pool and model,
     where the hosts are idle (`UNKWOWN` or `UNUSED`).
 
     N.B. For sample output text format as users can expect to
     see it in e-mail and log files, refer to the unit tests.
 
-    @param inventory  _LabInventory object with the inventory to
-                      be reported on.
+    @param inventory  `_LabInventory` object to be reported on.
     @return String with the inventory message to be sent.
 
     """
     logging.debug('Creating idle inventory')
     message = [_IDLE_INVENTORY_HEADER]
     message.append('Idle Host List:')
-    message.append('%-30s %-20s %s' % ('Hostname', 'Board', 'Pool'))
+    message.append('%-30s %-20s %s' % ('Hostname', 'Model', 'Pool'))
     data_list = []
     for pool in MANAGED_POOLS:
-        for board, counts in inventory.by_board.iteritems():
+        for model, counts in inventory.iteritems():
             logging.debug('Counting %2d DUTs for %s, %s',
-                          counts.get_total(pool), board, pool)
-            data_list.extend([(dut.host.hostname, board, pool)
+                          counts.get_total(pool), model, pool)
+            data_list.extend([(dut.host.hostname, model, pool)
                                   for dut in counts.get_idle_list(pool)])
     if data_list:
         message.extend(['%-30s %-20s %s' % t for t in data_list])
@@ -920,11 +873,11 @@ def _generate_idle_inventory_message(inventory):
 def _send_email(arguments, tag, subject, recipients, body):
     """Send an inventory e-mail message.
 
-    The message is logged in the selected log directory using `tag`
-    for the file name.
+    The message is logged in the selected log directory using `tag` for
+    the file name.
 
-    If the --debug option was requested, the message is neither
-    logged nor sent, but merely printed on stdout.
+    If the --debug option was requested, the message is neither logged
+    nor sent, but merely printed on stdout.
 
     @param arguments   Parsed command-line options.
     @param tag         Tag identifying the inventory for logging
@@ -932,7 +885,6 @@ def _send_email(arguments, tag, subject, recipients, body):
     @param subject     E-mail Subject: header line.
     @param recipients  E-mail addresses for the To: header line.
     @param body        E-mail message body.
-
     """
     logging.debug('Generating email: "%s"', subject)
     all_recipients = ', '.join(recipients)
@@ -957,25 +909,23 @@ def _send_email(arguments, tag, subject, recipients, body):
                           all_recipients, e)
 
 
-def _populate_board_counts(inventory):
-    """Gather board counts while providing interactive feedback.
+def _populate_model_counts(inventory):
+    """Gather model counts while providing interactive feedback.
 
     Gathering the status of all individual DUTs in the lab can take
     considerable time (~30 minutes at the time of this writing).
-
     Normally, we pay that cost by querying as we go.  However, with
     the `--debug` option, we expect a human being to be watching the
-    progress in real time.  So, we force the first (expensive)
-    queries to happen up front, and provide simple ASCII output
-    (without using logging) to show a progress bar and results.
+    progress in real time.  So, we force the first (expensive) queries
+    to happen up front, and provide simple ASCII output on sys.stdout
+    to show a progress bar and results.
 
-    @param inventory  _LabInventory object with the inventory to
-                      be gathered.
-
+    @param inventory  `_LabInventory` object from which to gather
+                      counts.
     """
     n = 0
     total_broken = 0
-    for counts in inventory.by_board.itervalues():
+    for counts in inventory.itervalues():
         n += 1
         if n % 10 == 5:
             c = '+'
@@ -985,28 +935,27 @@ def _populate_board_counts(inventory):
             c = '.'
         sys.stdout.write(c)
         sys.stdout.flush()
-        # This next call is where all the time goes - it forces all
-        # of a board's HostJobHistory objects to query the database
-        # and cache their results.
+        # This next call is where all the time goes - it forces all of a
+        # model's `HostJobHistory` objects to query the database and
+        # cache their results.
         total_broken += counts.get_broken()
     sys.stdout.write('\n')
     sys.stdout.write('Found %d broken DUTs\n' % total_broken)
 
 
-def _perform_board_inventory(arguments, inventory, timestamp):
-    """Perform the board inventory report.
+def _perform_model_inventory(arguments, inventory, timestamp):
+    """Perform the model inventory report.
 
-    The board inventory report consists of the following:
-      * A list of DUTs that are recommended to be repaired.
-        This list is optional, and only appears if the `--recommend`
-        option is present.
-      * A list of all boards that have failed DUTs, with counts
+    The model inventory report consists of the following:
+      * A list of DUTs that are recommended to be repaired.  This list
+        is optional, and only appears if the `--recommend` option is
+        present.
+      * A list of all models that have failed DUTs, with counts
         of working, broken, and spare DUTs, among others.
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
-    @param inventory  _LabInventory object with the inventory to
-                      be reported.
+    @param inventory  `_LabInventory` object to be reported on.
     @param timestamp  A string used to identify this run's timestamp
                       in logs and email output.
     """
@@ -1015,12 +964,12 @@ def _perform_board_inventory(arguments, inventory, timestamp):
                 inventory, arguments.recommend) + '\n\n\n'
     else:
         recommend_message = ''
-    board_message = _generate_board_inventory_message(inventory)
+    model_message = _generate_model_inventory_message(inventory)
     _send_email(arguments,
-                'boards-%s.txt' % timestamp,
-                'DUT board inventory %s' % timestamp,
-                arguments.board_notify,
-                recommend_message + board_message)
+                'models-%s.txt' % timestamp,
+                'DUT model inventory %s' % timestamp,
+                arguments.model_notify,
+                recommend_message + model_message)
 
 
 def _perform_pool_inventory(arguments, inventory, timestamp):
@@ -1029,13 +978,12 @@ def _perform_pool_inventory(arguments, inventory, timestamp):
     The pool inventory report consists of the following:
       * A list of all critical pools that have failed DUTs, with counts
         of working, broken, and idle DUTs.
-      * A list of all idle DUTs by hostname including the board and
+      * A list of all idle DUTs by hostname including the model and
         pool.
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
-    @param inventory  _LabInventory object with the inventory to be
-                      reported.
+    @param inventory  `_LabInventory` object to be reported on.
     @param timestamp  A string used to identify this run's timestamp in
                       logs and email output.
     """
@@ -1103,14 +1051,13 @@ def _perform_repair_loop_report(arguments, inventory):
 
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
-    @param inventory  _LabInventory object with the inventory to be
-                      reported.
+    @param inventory  `_LabInventory` object to be reported on.
     """
     loop_presence = metrics.BooleanMetric(
         'chromeos/autotest/inventory/repair_loops',
         'DUTs stuck in repair loops')
     logging.info('Scanning for DUTs in repair loops.')
-    for counts in inventory.by_board.itervalues():
+    for counts in inventory.itervalues():
         for history in counts.get_working_list():
             # Managed DUTs with names that don't match
             # _HOSTNAME_PATTERN shouldn't be possible.  However, we
@@ -1121,10 +1068,10 @@ def _perform_repair_loop_report(arguments, inventory):
                 continue
             if _dut_in_repair_loop(history):
                 fields = {'dut_hostname': history.hostname,
-                          'board': history.host_board,
+                          'model': history.host_model,
                           'pool': history.host_pool}
                 logging.info('Looping DUT: %(dut_hostname)s, '
-                             'board: %(board)s, pool: %(pool)s',
+                             'model: %(model)s, pool: %(pool)s',
                              fields)
                 loop_presence.set(True, fields=fields)
 
@@ -1144,10 +1091,10 @@ def _log_startup(arguments, startup_time):
     timestamp = time.strftime('%Y-%m-%d.%H',
                               time.localtime(startup_time))
     logging.debug('Starting lab inventory for %s', timestamp)
-    if arguments.board_notify:
+    if arguments.model_notify:
         if arguments.recommend:
             logging.debug('Will include repair recommendations')
-        logging.debug('Will include board inventory')
+        logging.debug('Will include model inventory')
     if arguments.pool_notify:
         logging.debug('Will include pool inventory')
     return timestamp
@@ -1162,10 +1109,10 @@ def _create_inventory(arguments, end_time):
     start_time = end_time - arguments.duration * 60 * 60
     afe = frontend_wrappers.RetryingAFE(server=None)
     inventory = _LabInventory.create_inventory(
-            afe, start_time, end_time, arguments.boardnames)
-    logging.info('Found %d hosts across %d boards',
+            afe, start_time, end_time, arguments.modelnames)
+    logging.info('Found %d hosts across %d models',
                      inventory.get_num_duts(),
-                     inventory.get_num_boards())
+                     inventory.get_num_models())
     return inventory
 
 
@@ -1182,9 +1129,9 @@ def _perform_inventory_reports(arguments):
     timestamp = _log_startup(arguments, startup_time)
     inventory = _create_inventory(arguments, startup_time)
     if arguments.debug:
-        _populate_board_counts(inventory)
-    if arguments.board_notify:
-        _perform_board_inventory(arguments, inventory, timestamp)
+        _populate_model_counts(inventory)
+    if arguments.model_notify:
+        _perform_model_inventory(arguments, inventory, timestamp)
     if arguments.pool_notify:
         _perform_pool_inventory(arguments, inventory, timestamp)
     if arguments.repair_loops:
@@ -1208,7 +1155,7 @@ def _separate_email_addresses(address_list):
 def _verify_arguments(arguments):
     """Validate command-line arguments.
 
-    Join comma separated e-mail addresses for `--board-notify` and
+    Join comma separated e-mail addresses for `--model-notify` and
     `--pool-notify` in separate option arguments into a single list.
 
     For non-debug uses, require that notification be requested for
@@ -1224,20 +1171,20 @@ def _verify_arguments(arguments):
             if the arguments don't meet requirements.
 
     """
-    arguments.board_notify = _separate_email_addresses(
-            arguments.board_notify)
+    arguments.model_notify = _separate_email_addresses(
+            arguments.model_notify)
     arguments.pool_notify = _separate_email_addresses(
             arguments.pool_notify)
-    if not arguments.board_notify and not arguments.pool_notify:
+    if not arguments.model_notify and not arguments.pool_notify:
         if not arguments.debug:
             sys.stderr.write('Must specify at least one of '
-                             '--board-notify or --pool-notify\n')
+                             '--model-notify or --pool-notify\n')
             return False
         else:
             # We want to run all the reports.  An empty notify list
             # will cause a report to be skipped, so make sure the
             # lists are non-empty.
-            arguments.board_notify = ['']
+            arguments.model_notify = ['']
             arguments.pool_notify = ['']
     return True
 
@@ -1276,9 +1223,9 @@ def _parse_command(argv):
                         default=_DEFAULT_DURATION, metavar='HOURS',
                         help='number of hours back to search for status'
                              ' (default: %d)' % _DEFAULT_DURATION)
-    parser.add_argument('--board-notify', action='append',
+    parser.add_argument('--model-notify', action='append',
                         default=[], metavar='ADDRESS',
-                        help='Generate board inventory message, '
+                        help='Generate model inventory message, '
                         'and send it to the given e-mail address(es)')
     parser.add_argument('--pool-notify', action='append',
                         default=[], metavar='ADDRESS',
@@ -1298,10 +1245,10 @@ def _parse_command(argv):
                              'without sending them.')
     parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
-    parser.add_argument('boardnames', nargs='*',
-                        metavar='BOARD',
-                        help='names of boards to report on '
-                             '(default: all boards)')
+    parser.add_argument('modelnames', nargs='*',
+                        metavar='MODEL',
+                        help='names of models to report on '
+                             '(default: all models)')
     arguments = parser.parse_args(argv[1:])
     if not _verify_arguments(arguments):
         return None
@@ -1388,7 +1335,7 @@ def get_inventory(afe):
 
 
 def get_managed_boards(afe):
-    return get_inventory(afe).get_managed_boards()
+    return get_inventory(afe).get_boards()
 
 
 if __name__ == '__main__':
