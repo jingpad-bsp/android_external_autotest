@@ -582,9 +582,14 @@ class BasePackageManager(object):
                     logging.error("Error uploading to repository %s",
                                   upload_path)
             else:
+                # Delete any older version of the package that might exist.
+                orig_file = os.path.join(upload_path,
+                                         os.path.basename(file_path))
+                if os.path.exists(orig_file):
+                    os.remove(orig_file)
+
                 shutil.copy(file_path, upload_path)
-                os.chmod(os.path.join(upload_path,
-                                      os.path.basename(file_path)), 0644)
+                os.chmod(orig_file, 0644)
         except (IOError, os.error), why:
             logging.error("Upload of %s to %s failed: %s", file_path,
                           upload_path, why)
