@@ -660,7 +660,7 @@ class Dispatcher(object):
         """
         if self.host_has_agent(entry.host):
             agent = tuple(self._host_agents.get(entry.host.id))[0]
-            raise scheduler_lib.SchedulerError(
+            raise scheduler_lib.MalformedRecordError(
                     'While scheduling %s, host %s already has a host agent %s'
                     % (entry, entry.host, agent.task))
 
@@ -693,7 +693,7 @@ class Dispatcher(object):
             if agent_task_class.TASK_TYPE == special_task.task:
                 return agent_task_class(task=special_task)
 
-        raise scheduler_lib.SchedulerError(
+        raise scheduler_lib.MalformedRecordError(
                 'No AgentTask class for task', str(special_task))
 
 
