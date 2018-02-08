@@ -22,12 +22,12 @@ if [ $# -eq 0 ]; then
     chromeos-infra-eng@grotations.appspotmail.com
     chromeos-build-alerts+dut-pool@google.com
   )
-  BOARD_INTEREST=(
+  MODEL_INTEREST=(
     englab-sys-cros@google.com
     chromeos-build-alerts+dut-pool@google.com
   )
 else
-  BOARD_INTEREST=( "$@" )
+  MODEL_INTEREST=( "$@" )
   POOL_INTEREST=( "$@" )
   OPTIONS=--debug
 fi
@@ -38,21 +38,21 @@ fi
 #   + REPAIR_LOOP_DETECT happens with every run.  It looks for
 #     and reports DUTs that do no work other than to fail, then repair
 #     successfully.
-#   + BOARD_NOTIFY happens less often.  This adds a full board
+#   + MODEL_NOTIFY happens less often.  This adds a full model
 #     inventory count to REPAIR_LOOP_DETECT.
 #   + POOL_NOTIFY happens least often.  It adds per-pool inventory
 #     counts, as well as individual DUT repair recommendations to
-#     BOARD_NOTIFY.
+#     MODEL_NOTIFY.
 
 REPAIR_LOOP_DETECT=( --repair-loops )
 
-BOARD_NOTIFY=(
+MODEL_NOTIFY=(
   "${REPAIR_LOOP_DETECT[@]}"
-  --board-notify $(echo "${BOARD_INTEREST[@]}" | sed 's/ /,/g')
+  --model-notify $(echo "${MODEL_INTEREST[@]}" | sed 's/ /,/g')
 )
 
 POOL_NOTIFY=(
-  "${BOARD_NOTIFY[@]}"
+  "${MODEL_NOTIFY[@]}"
   --recommend=40
   --pool-notify $(echo "${POOL_INTEREST[@]}" | sed 's/ /,/g')
 )
