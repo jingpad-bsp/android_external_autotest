@@ -478,7 +478,7 @@ class _LabInventory(collections.Mapping):
                 modelhosts.extend(host_list)
             afehosts = modelhosts
         else:
-            afehosts = [h for h in afehosts if cls._eligible_host(h)]
+            afehosts = [h for h in afehosts if _eligible_host(h)]
         create = lambda host: (
                 status_history.HostJobHistory(afe, host,
                                               start_time, end_time))
