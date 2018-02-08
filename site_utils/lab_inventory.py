@@ -1290,6 +1290,9 @@ def _parse_command(argv):
                               'recommendation)'))
     parser.add_argument('--repair-loops', action='store_true',
                         help='Check for devices stuck in repair loops.')
+    parser.add_argument('--debug-metrics', action='store_true',
+                        help='Include debug information about the metrics '
+                             'that would be reported ')
     parser.add_argument('--debug', action='store_true',
                         help='Print e-mail messages on stdout '
                              'without sending them.')
@@ -1360,9 +1363,12 @@ def main(argv):
         sys.exit(1)
     _configure_logging(arguments)
     try:
-        if not arguments.debug:
+        if arguments.debug_metrics or not arguments.debug:
+            metrics_file = None if not arguments.debug_metrics else '/dev/null'
             with site_utils.SetupTsMonGlobalState(
-                    'repair_loops', short_lived=True, auto_flush=False):
+                    'repair_loops', short_lived=True,
+                    debug_file=metrics_file,
+                    auto_flush=False):
                 _perform_inventory_reports(arguments)
             metrics.Flush()
         else:
