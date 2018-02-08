@@ -506,6 +506,30 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         moblab_rpc_interface._install_system_update()
 
+    def testInstallSystemUpdateError(self):
+        update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
+
+        error_message = ('ERROR_CODE=37\n'
+            'ERROR_MESSAGE=ErrorCode::kOmahaErrorInHTTPResponse')
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'check_call')
+        moblab_rpc_interface.subprocess.check_call(['sudo',
+                update_engine_client, '--update']).AndRaise(
+                    moblab_rpc_interface.subprocess.CalledProcessError(1,
+                        'sudo'))
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess,
+                'check_output')
+        moblab_rpc_interface.subprocess.check_output(['sudo',
+                update_engine_client, '--last_attempt_error']).AndReturn(
+                error_message)
+
+        self.mox.ReplayAll()
+        try:
+            moblab_rpc_interface._install_system_update()
+        except moblab_rpc_interface.error.RPCException as e:
+            self.assertEquals(str(e), error_message)
+
 
     def testGetSystemUpdateStatus(self):
         update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
