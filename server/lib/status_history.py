@@ -559,6 +559,13 @@ class HostJobHistory(object):
 
 
     @property
+    def host_model(self):
+        """Return the model name for this history's DUT."""
+        prefix = constants.Labels.MODEL_PREFIX
+        return self._extract_prefixed_label(prefix)
+
+
+    @property
     def host_board(self):
         """Return the board name for this history's DUT."""
         prefix = constants.Labels.BOARD_PREFIX
