@@ -596,5 +596,27 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(output[0]['model'], 'bruce')
 
 
+    def testDutSshConnection(self):
+        good_ip = '192.168.0.20'
+        bad_ip = '192.168.0.30'
+        cmd = ('ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no '
+                "root@%s 'timeout 2 cat /etc/lsb-release'")
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess,
+                'check_output')
+        moblab_rpc_interface.subprocess.check_output(
+                cmd % good_ip, shell=True).AndReturn('CHROMEOS_RELEASE_APPID')
+
+        moblab_rpc_interface.subprocess.check_output(
+                cmd % bad_ip, shell=True).AndRaise(
+                moblab_rpc_interface.subprocess.CalledProcessError(1, cmd))
+
+        self.mox.ReplayAll()
+        self.assertEquals(
+            moblab_rpc_interface._test_dut_ssh_connection(good_ip), True)
+        self.assertEquals(
+            moblab_rpc_interface._test_dut_ssh_connection(bad_ip), False)
+
+
 if __name__ == '__main__':
     unittest.main()
