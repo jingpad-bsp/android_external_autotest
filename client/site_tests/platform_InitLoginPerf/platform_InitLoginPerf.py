@@ -9,6 +9,7 @@ import shutil
 import time
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
@@ -17,34 +18,13 @@ RE_OWNERSHIP = 'Taking TPM ownership took (\d+)ms'
 BOOT_TIMES_CMD = 'bootstat_summary'
 BOOT_TIMES_DUMP_NAME = 'bootstat_summary'
 
-def run_cmd(cmd):
-    """Run command in shell and capture output (stdin and stderr).
-
-    @param cmd: Command to run.
-
-    @return: Output of the command.
-
-    """
-    return utils.system_output(cmd + ' 2>&1', retain_output=True,
-                               ignore_status=True).strip()
-
-def cryptohome_action(action):
-    """Perform cryptohome utility action.
-
-    @param action: Name of the action.
-
-    @return: Output of the command.
-
-    """
-    return run_cmd('/usr/sbin/cryptohome --action=' + action)
-
 def is_attestation_prepared():
     """Checks if attestation is prepared on the device.
 
     @return: Attestation readiness status - True/False.
 
     """
-    return 'attestation_prepared: true' in cryptohome_action('tpm_more_status')
+    return cryptohome.get_tpm_more_status().get('attestation_prepared', False)
 
 def uptime_from_timestamp(name, occurence=-1):
     """Extract the uptime in seconds for the captured timestamp.
@@ -155,7 +135,7 @@ class platform_InitLoginPerf(test.test):
         self.wait_for_cryptohome_readiness()
         if self.shall_init():
             time.sleep(self.pre_init_delay)
-            cryptohome_action('tpm_take_ownership')
+            cryptohome.take_tpm_ownership(wait_for_ownership=False)
 
     def get_login_duration(self):
         """Extract login duration from recorded timestamps."""
@@ -175,7 +155,7 @@ class platform_InitLoginPerf(test.test):
                                     expected_value=True,
                                     timeout_sec=timeout):
             logging.debug('tpm_more_status: %r',
-                          cryptohome_action('tpm_more_status'))
+                          cryptohome.get_tpm_more_status())
             raise error.TestFail('Timeout waiting for attestation_prepared')
 
     def get_init_durations(self):
