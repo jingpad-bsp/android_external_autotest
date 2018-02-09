@@ -28,9 +28,10 @@ class crosvm_Sanity(test.test):
         # The current GCE offering is a stripped Haswell. This is similar to
         # Z840. Matching CPU arch and flags are requested by
         # crosutils/lib/cros_vm_lib.sh.
-        self.cpu_arch = 'Haswell, no TSX'
+        # TODO(pwang): Replace with 'Haswell, no TSX' once lab is ready.
+        self.cpu_arch = 'Sandy Bridge'
 
-        # This are the flags that used in cros lab for VM test.
+        # These are flags that sampled from GCE builders on cros lab.
         self.cpu_flags = [
             'abm', 'aes', 'apic', 'arat', 'avx', 'avx2', 'bmi1', 'bmi2',
             'clflush', 'cmov', 'constant_tsc', 'cx16', 'cx8', 'de', 'eagerfpu',
@@ -52,9 +53,9 @@ class crosvm_Sanity(test.test):
         warnings = ''
         funcs = [self.test_cpu, self.test_gpu, self.test_mem]
         for func in funcs:
-            error, warning = func()
-            errors += error
-            warning += warning
+            error_msg, warning_msg = func()
+            errors += error_msg
+            warnings += warning_msg
 
         if errors:
             raise error.TestFail('Failed: %s' % (errors + warnings))
