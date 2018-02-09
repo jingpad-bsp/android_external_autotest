@@ -530,8 +530,9 @@ def _install_system_update():
         subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
 
     except subprocess.CalledProcessError as e:
-        pass
-        #TODO(crbug/806311) surface error to UI
+        update_error = subprocess.check_output(
+            ['sudo', _UPDATE_ENGINE_CLIENT, '--last_attempt_error'])
+        raise error.RPCException(update_error)
 
 
 @rpc_utils.moblab_only
