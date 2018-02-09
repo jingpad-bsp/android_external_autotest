@@ -738,6 +738,10 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         if first_time:
             everyone = AclGroup.objects.get(name='Everyone')
             everyone.hosts.add(self)
+            # remove attributes that may have lingered from an old host and
+            # should not be associated with a new host
+            for host_attribute in self.hostattribute_set.all():
+                self.delete_attribute(host_attribute.attribute)
         self._check_for_updated_attributes()
 
 
@@ -746,6 +750,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         for queue_entry in self.hostqueueentry_set.all():
             queue_entry.deleted = True
             queue_entry.abort()
+        for host_attribute in self.hostattribute_set.all():
+            self.delete_attribute(host_attribute.attribute)
         super(Host, self).delete()
 
 
