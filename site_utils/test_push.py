@@ -686,7 +686,7 @@ def _main(arguments):
         time.sleep(15) # Wait for the verify test to start.
         check_dut_inventory(arguments.num_duts, arguments.pool)
         _run_test_suites(arguments)
-        check_service_crash(arguments.respawn_limit, start_time)
+        check_service_crash(arguments.service_respawn_limit, start_time)
         updated_repo_heads = _promote_prod_next_refs()
         updated_repos_msg = '\n'.join(
                 ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
