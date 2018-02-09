@@ -1,5 +1,5 @@
 AUTHOR = "dhaddock, Chromium OS"
-NAME = "autoupdate_P2P"
+NAME = "autoupdate_P2P.delta"
 PURPOSE = "Test autoupdate via peer to peer(P2P)."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
