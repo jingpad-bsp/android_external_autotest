@@ -33,6 +33,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import ast
 import collections
+import contextlib
 import datetime
 import logging
 import os
@@ -2269,7 +2270,31 @@ def delete_shard(hostname):
 
     # Remove shard information.
     models.Host.objects.filter(shard=shard).update(shard=None)
-    models.Job.objects.filter(shard=shard).update(shard=None)
+
+    # Note: The original job-cleanup query was performed with django call
+    #   models.Job.objects.filter(shard=shard).update(shard=None)
+    #
+    # But that started becoming unreliable due to the large size of afe_jobs.
+    #
+    # We don't need atomicity here, so the new cleanup method is iterative, in
+    # chunks of 100k jobs.
+    QUERY = ('UPDATE afe_jobs SET shard_id = NULL WHERE shard_id = %s '
+             'LIMIT 100000')
+    try:
+        with contextlib.closing(db_connection.cursor()) as cursor:
+            clear_jobs = True
+            assert shard.id is not None
+            while clear_jobs:
+                res = cursor.execute(QUERY % shard.id)
+                clear_jobs = res > 0
+    # Unit tests use sqlite backend instead of MySQL. sqlite does not support
+    # UPDATE ... LIMIT, so fall back to the old behavior.
+    except DatabaseError as e:
+        if 'syntax error' in str(e):
+            models.Job.objects.filter(shard=shard).update(shard=None)
+        else:
+            raise
+
     shard.labels.clear()
     shard.delete()
 
