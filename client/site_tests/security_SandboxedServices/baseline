@@ -70,11 +70,13 @@ avahi-daemon,avahi,avahi,No,Yes,No,No
 upstart-udev-br,root,root,No,No,No,No
 midis,midis,midis,Yes,Yes,Yes,Yes
 
+# Chrome OS camera services.
+cros_camera_service,arc-camera,arc-camera,Yes,Yes,Yes,Yes
+cros_camera_algo,arc-camera,arc-camera,Yes,Yes,Yes,Yes
+
 # ARC-related services running on Chrome OS.
 # exe,euser,egroup,pidns,caps,nonewprivs,filter
 arc_camera_serv,arc-camera,arc-camera,No,Yes,No,No
-arc_camera3_ser,arc-camera,arc-camera,Yes,Yes,Yes,Yes
-arc_camera_algo,arc-camera,arc-camera,Yes,Yes,Yes,Yes
 arc-networkd,root,root,No,No,No,No
 arc-obb-mounter,root,root,Yes,No,No,No
 arc-oemcrypto,arc-oemcrypto,arc-oemcrypto,Yes,Yes,Yes,Yes
