@@ -65,6 +65,7 @@ def ensure_clean_cryptohome_for(user, password=None):
     """
     if not password:
         password = ''.join(random.sample(string.ascii_lowercase, 6))
+    unmount_vault(user)
     remove_vault(user)
     mount_vault(user, password, create=True)
 
