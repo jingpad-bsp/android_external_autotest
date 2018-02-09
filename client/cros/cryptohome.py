@@ -235,13 +235,15 @@ def get_tpm_attestation_status():
     return status
 
 
-def take_tpm_ownership():
+def take_tpm_ownership(wait_for_ownership=True):
     """Take TPM owernship.
 
-    Blocks until TPM is owned.
+    Args:
+        wait_for_ownership: block until TPM is owned if true
     """
     __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
-    __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
+    if wait_for_ownership:
+        __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
 
 
 def verify_ek():
