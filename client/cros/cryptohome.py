@@ -559,7 +559,10 @@ def change_password(user, password, new_password):
             '--user=%s' % user,
             '--old_password=%s' % password,
             '--password=%s' % new_password]
-    logging.info(__run_cmd(' '.join(args)))
+    out = __run_cmd(' '.join(args))
+    logging.info(out)
+    if 'Key migration succeeded.' not in out:
+        raise ChromiumOSError('Key migration failed.')
 
 
 class CryptohomeProxy(DBusClient):
