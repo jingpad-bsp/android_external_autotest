@@ -54,9 +54,9 @@ class Chrome(object):
 
     def __init__(self, logged_in=True, extension_paths=None, autotest_ext=False,
                  num_tries=3, extra_browser_args=None,
-                 clear_enterprise_policy=True, dont_override_profile=False,
-                 disable_gaia_services=True, disable_default_apps = True,
-                 auto_login=True, gaia_login=False,
+                 clear_enterprise_policy=True, expect_policy_fetch=False,
+                 dont_override_profile=False, disable_gaia_services=True,
+                 disable_default_apps = True, auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
                  arc_mode=None, disable_arc_opt_in=True,
                  init_network_controller=False, login_delay=0):
@@ -72,6 +72,8 @@ class Chrome(object):
                                    browser. It can be a string or a list.
         @param clear_enterprise_policy: Clear enterprise policy before
                                         logging in.
+        @param expect_policy_fetch: Expect that chrome can reach the device
+                                    management server and download policy.
         @param dont_override_profile: Don't delete cryptohome before login.
                                       Telemetry will output a warning with this
                                       option.
@@ -135,6 +137,7 @@ class Chrome(object):
         b_options.disable_default_apps = disable_default_apps
         b_options.disable_component_extensions_with_background_pages = disable_default_apps
         b_options.disable_background_networking = False
+        b_options.expect_policy_fetch = expect_policy_fetch
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
