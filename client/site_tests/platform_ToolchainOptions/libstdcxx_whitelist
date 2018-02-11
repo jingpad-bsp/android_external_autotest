@@ -1,0 +1,4 @@
+# All these files are delivered as binaries in Chrome OS.
+/opt/google/chrome/libwidevinecdm.so
+/opt/google/chrome/pepper/libpepflashplayer.so
+/usr/sbin/hdcpd
