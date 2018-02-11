@@ -65,6 +65,7 @@ def ensure_clean_cryptohome_for(user, password=None):
     """
     if not password:
         password = ''.join(random.sample(string.ascii_lowercase, 6))
+    unmount_vault(user)
     remove_vault(user)
     mount_vault(user, password, create=True)
 
@@ -234,13 +235,15 @@ def get_tpm_attestation_status():
     return status
 
 
-def take_tpm_ownership():
+def take_tpm_ownership(wait_for_ownership=True):
     """Take TPM owernship.
 
-    Blocks until TPM is owned.
+    Args:
+        wait_for_ownership: block until TPM is owned if true
     """
     __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
-    __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
+    if wait_for_ownership:
+        __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
 
 
 def verify_ek():
@@ -276,12 +279,16 @@ def remove_all_vaults():
             shutil.rmtree(abs_item)
 
 
-def mount_vault(user, password, create=False):
-    """Mount the given user's vault."""
-    args = [CRYPTOHOME_CMD, '--action=mount', '--user=%s' % user,
+def mount_vault(user, password, create=False, key_label='bar'):
+    """Mount the given user's vault. Mounts should be created by calling this
+    function with create=True, and can be used afterwards with create=False.
+    Only try to mount existing vaults created with this function.
+
+    """
+    args = [CRYPTOHOME_CMD, '--action=mount_ex', '--user=%s' % user,
             '--password=%s' % password, '--async']
     if create:
-        args.append('--create')
+        args += ['--key_label=%s' % key_label, '--create']
     logging.info(__run_cmd(' '.join(args)))
     # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
@@ -559,7 +566,10 @@ def change_password(user, password, new_password):
             '--user=%s' % user,
             '--old_password=%s' % password,
             '--password=%s' % new_password]
-    logging.info(__run_cmd(' '.join(args)))
+    out = __run_cmd(' '.join(args))
+    logging.info(out)
+    if 'Key migration succeeded.' not in out:
+        raise ChromiumOSError('Key migration failed.')
 
 
 class CryptohomeProxy(DBusClient):

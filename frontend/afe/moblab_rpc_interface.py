@@ -530,8 +530,9 @@ def _install_system_update():
         subprocess.call(['sudo', _UPDATE_ENGINE_CLIENT, '--reboot'])
 
     except subprocess.CalledProcessError as e:
-        pass
-        #TODO(crbug/806311) surface error to UI
+        update_error = subprocess.check_output(
+            ['sudo', _UPDATE_ENGINE_CLIENT, '--last_attempt_error'])
+        raise error.RPCException(update_error)
 
 
 @rpc_utils.moblab_only
@@ -542,6 +543,14 @@ def get_connected_dut_info():
     """
     # Make a list of the connected DUT's
     leases = _get_dhcp_dut_leases()
+
+    connected_duts = {}
+    for ip in leases:
+        ssh_connection_ok = _test_dut_ssh_connection(ip)
+        connected_duts[ip] = {
+            'mac_address': leases[ip],
+            'ssh_connection_ok': ssh_connection_ok
+        }
 
     # Get a list of the AFE configured DUT's
     hosts = list(rpc_utils.get_host_query((), False, True, {}))
@@ -558,7 +567,7 @@ def get_connected_dut_info():
 
     return rpc_utils.prepare_for_serialization(
             {'configured_duts': configured_duts,
-             'connected_duts': leases})
+             'connected_duts': connected_duts})
 
 
 def _get_dhcp_dut_leases():
@@ -579,6 +588,20 @@ def _get_dhcp_dut_leases():
              if mac_address_search:
                  leases[ipaddress] = mac_address_search.group(1)
      return leases
+
+def _test_dut_ssh_connection(ip):
+    """ Test if a connected dut is accessible via ssh.
+    The primary use case is to verify that the dut has a test image.
+
+    @return: True if the ssh connection is good False else
+    """
+    cmd = ('ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no '
+            "root@%s 'timeout 2 cat /etc/lsb-release'") % ip
+    try:
+        release = subprocess.check_output(cmd, shell=True)
+        return 'CHROMEOS_RELEASE_APPID' in release
+    except:
+        return False
 
 
 @rpc_utils.moblab_only

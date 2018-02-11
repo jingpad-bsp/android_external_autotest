@@ -522,7 +522,8 @@ class EnterprisePolicyTest(test.test):
 
         if enroll:
             self.cr = chrome.Chrome(auto_login=False,
-                                    extra_browser_args=extra_flags)
+                                    extra_browser_args=extra_flags,
+                                    expect_policy_fetch=True)
             if self.dms_is_fake:
                 enrollment.EnterpriseFakeEnrollment(
                     self.cr.browser, self.username, self.password, self.gaia_id,
@@ -538,12 +539,14 @@ class EnterprisePolicyTest(test.test):
                                     password=self.password,
                                     gaia_login=not self.dms_is_fake,
                                     disable_gaia_services=self.dms_is_fake,
-                                    autotest_ext=True)
+                                    autotest_ext=True,
+                                    expect_policy_fetch=True)
         else:
             self.cr = chrome.Chrome(auto_login=False,
                                     extra_browser_args=extra_flags,
                                     disable_gaia_services=self.dms_is_fake,
-                                    autotest_ext=True)
+                                    autotest_ext=True,
+                                    expect_policy_fetch=True)
 
         if auto_login:
             if not cryptohome.is_vault_mounted(user=self.username,

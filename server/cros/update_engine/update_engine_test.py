@@ -4,7 +4,9 @@
 
 import json
 import logging
+import os
 import update_engine_event as uee
+import urllib2
 import urlparse
 
 from autotest_lib.client.common_lib import error
@@ -47,6 +49,8 @@ class UpdateEngineTest(test.test):
     # The names of the two hostlog files we will be verifying
     _DEVSERVER_HOSTLOG_ROOTFS = 'devserver_hostlog_rootfs'
     _DEVSERVER_HOSTLOG_REBOOT = 'devserver_hostlog_reboot'
+
+    _CELLULAR_BUCKET = 'gs://chromeos-throw-away-bucket/CrOSPayloads/Cellular/'
 
 
     def initialize(self):
@@ -334,32 +338,84 @@ class UpdateEngineTest(test.test):
             raise error.TestError('Failed to stage payload: %s' % e)
 
 
-    def _get_delta_payload(self, build):
+    def _get_payload_url(self, build=None, full_payload=True):
         """
-        Gets the GStorage URL of the N-to-N payload to use for the update.
+        Gets the GStorage URL of the full or delta payload for this build.
 
         @param build: build string e.g samus-release/R65-10225.0.0.
+        @param full_payload: True for full payload. False for delta.
 
-        @returns the delta payload URL.
+        @returns the payload URL.
 
         """
-        # TODO(dhaddock): Use 'delta_payloads' artifact when crbug.com/793434
-        # is fixed: stage_artifacts(build, ['delta_payloads']).
-        # This will make retrieving and staging the delta payload a one line
-        # operation. It will also mean we can use a lab devserver to serve
-        # the payload on update requests. For now we need to find the payload
-        # ourselves on GStorage.
+        if build is None:
+            if self._job_repo_url is None:
+                self._job_repo_url = self._get_job_repo_url()
+            _, build = tools.get_devserver_build_from_package_url(
+                self._job_repo_url)
+
         gs = dev_server._get_image_storage_server()
-        # Sample regex: chromeos_R65-10225.0.0_R65-10225.0.0_samus_delta_dev.bin
-        delta_regex = 'chromeos_%s*_delta_*' % build.rpartition('/')[2]
-        delta_payload_url_regex = gs + build + '/' + delta_regex
-        logging.debug('Trying to find payloads at %s', delta_payload_url_regex)
-        delta_payloads = utils.gs_ls(delta_payload_url_regex)
-        if len(delta_payloads) < 1:
-            raise error.TestFail('Could not find delta payload for %s', build)
-        logging.debug('Delta payloads found: %s', delta_payloads)
-        logging.info('Found delta payload for test: %s', delta_payloads[0])
-        return delta_payloads[0]
+        if full_payload:
+            # Example: chromeos_R65-10225.0.0_samus_full_dev.bin
+            regex = 'chromeos_%s*_full_*' % build.rpartition('/')[2]
+        else:
+            # Example: chromeos_R65-10225.0.0_R65-10225.0.0_samus_delta_dev.bin
+            regex = 'chromeos_%s*_delta_*' % build.rpartition('/')[2]
+        payload_url_regex = gs + build + '/' + regex
+        logging.debug('Trying to find payloads at %s', payload_url_regex)
+        payloads = utils.gs_ls(payload_url_regex)
+        if not payloads:
+            raise error.TestFail('Could not find payload for %s', build)
+        logging.debug('Payloads found: %s', payloads)
+        return payloads[0]
+
+
+    def _get_staged_file_info(self, staged_url):
+        """
+        Gets the staged files info that includes SHA256 and size.
+
+        @param staged_url: the staged file url.
+
+        @returns file info (SHA256 and size).
+
+        """
+        split_url = staged_url.rpartition('/static/')
+        file_info_url = os.path.join(split_url[0], 'api/fileinfo', split_url[2])
+        logging.info('file info url: %s', file_info_url)
+        try:
+            conn = urllib2.urlopen(file_info_url)
+            file_info = conn.read()
+            conn.close()
+            return json.loads(file_info)
+        except urllib2.URLError, e:
+            logging.warning('Failed to read file info: %s', e)
+            return None
+
+
+    def _get_job_repo_url(self):
+        """Gets the job_repo_url argument supplied to the test by the lab."""
+        if self._hosts is not None:
+            self._host = self._hosts[0]
+        if self._host is None:
+            raise error.TestFail('No host specified by AU test.')
+        info = self._host.host_info_store.get()
+        return info.attributes.get(self._host.job_repo_url_attribute, '')
+
+
+    def _copy_payload_to_public_bucket(self, payload_url):
+        """
+        Copy payload and make link public.
+
+        @param payload_url: Payload URL on Google Storage.
+
+        @returns The payload URL that is now publicly accessible.
+
+        """
+        payload_filename = payload_url.rpartition('/')[2]
+        utils.run('gsutil cp %s %s' % (payload_url, self._CELLULAR_BUCKET))
+        new_gs_url = self._CELLULAR_BUCKET + payload_filename
+        utils.run('gsutil acl ch -u AllUsers:R %s' % new_gs_url)
+        return new_gs_url.replace('gs://', 'https://storage.googleapis.com/')
 
 
     def verify_update_events(self, source_release, hostlog_filename,
@@ -395,7 +451,8 @@ class UpdateEngineTest(test.test):
 
 
     def get_update_url_for_test(self, job_repo_url, full_payload=True,
-                                critical_update=False, max_updates=1):
+                                critical_update=False, max_updates=1,
+                                cellular=False):
         """
         Get the correct update URL for autoupdate tests to use.
 
@@ -418,25 +475,31 @@ class UpdateEngineTest(test.test):
         @param max_updates: int number of updates the test will perform. This
                             is passed to src/platform/dev/devserver.py if we
                             create our own deverver.
+        @param cellular: update will be done over cellular connection.
 
         @returns an update url string.
 
         """
         if job_repo_url is None:
-            if self._hosts is not None:
-                self._host = self._hosts[0]
-            if self._host is None:
-                raise error.TestFail('No _host specified by AU test.')
-            info = self._host.host_info_store.get()
-            job_repo_url = info.attributes.get(
-                self._host.job_repo_url_attribute, '')
-        if not job_repo_url:
+            self._job_repo_url = self._get_job_repo_url()
+        else:
+            self._job_repo_url = job_repo_url
+        if not self._job_repo_url:
             raise error.TestFail('There was no job_repo_url so we cannot get '
                                  'a payload to use.')
-        ds_url, build = tools.get_devserver_build_from_package_url(job_repo_url)
+        ds_url, build = tools.get_devserver_build_from_package_url(
+            self._job_repo_url)
 
         # We always stage the payloads on the existing lab devservers.
         self._autotest_devserver = dev_server.ImageServer(ds_url)
+
+        if cellular:
+            # Get the google storage url of the payload. We will be copying
+            # the payload to a public google storage bucket (similar location
+            # to updates via autest command).
+            payload_url = self._get_payload_url(build,
+                                                full_payload=full_payload)
+            return self._copy_payload_to_public_bucket(payload_url)
 
         if full_payload:
             self._autotest_devserver.stage_artifacts(build, ['full_payload'])
@@ -447,7 +510,7 @@ class UpdateEngineTest(test.test):
                 staged_url = self._autotest_devserver._get_image_url(build)
         else:
             # We need to stage delta ourselves due to crbug.com/793434.
-            delta_payload = self._get_delta_payload(build)
+            delta_payload = self._get_payload_url(build, full_payload=False)
             staged_url = self._stage_payload_by_uri(delta_payload)
 
         # We need to start our own devserver for the rest of the cases.

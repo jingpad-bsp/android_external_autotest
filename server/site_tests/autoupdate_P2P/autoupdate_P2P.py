@@ -1,3 +1,7 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import logging
 import os
 import re
@@ -180,6 +184,12 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         @param job_repo_url: URL to work out the current build.
 
         """
+        lab1 = self._hosts[0].hostname.partition('-')[0]
+        lab2 = self._hosts[1].hostname.partition('-')[0]
+        if lab1 != lab2:
+            raise error.TestNAError('Test was given DUTs in different labs so '
+                                    'P2P will not work. See crbug.com/807495.')
+
         logging.info('Making sure hosts can ping each other.')
         result = self._hosts[1].run('ping -c5 %s' % self._hosts[0].ip,
                                     ignore_status=True)
@@ -189,8 +199,8 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         # Get the current build. e.g samus-release/R65-10200.0.0
         if job_repo_url is None:
             logging.info('Making sure hosts have the same build.')
-            url, build1 = self._get_build_from_job_repo_url(self._hosts[0])
-            url, build2 = self._get_build_from_job_repo_url(self._hosts[1])
+            _, build1 = self._get_build_from_job_repo_url(self._hosts[0])
+            _, build2 = self._get_build_from_job_repo_url(self._hosts[1])
             if build1 != build2:
                 raise error.TestFail('The builds on the hosts did not match. '
                                      'Host one: %s, Host two: %s' % (build1,

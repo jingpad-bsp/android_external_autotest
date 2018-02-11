@@ -506,6 +506,30 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         moblab_rpc_interface._install_system_update()
 
+    def testInstallSystemUpdateError(self):
+        update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
+
+        error_message = ('ERROR_CODE=37\n'
+            'ERROR_MESSAGE=ErrorCode::kOmahaErrorInHTTPResponse')
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess, 'check_call')
+        moblab_rpc_interface.subprocess.check_call(['sudo',
+                update_engine_client, '--update']).AndRaise(
+                    moblab_rpc_interface.subprocess.CalledProcessError(1,
+                        'sudo'))
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess,
+                'check_output')
+        moblab_rpc_interface.subprocess.check_output(['sudo',
+                update_engine_client, '--last_attempt_error']).AndReturn(
+                error_message)
+
+        self.mox.ReplayAll()
+        try:
+            moblab_rpc_interface._install_system_update()
+        except moblab_rpc_interface.error.RPCException as e:
+            self.assertEquals(str(e), error_message)
+
 
     def testGetSystemUpdateStatus(self):
         update_engine_client = moblab_rpc_interface._UPDATE_ENGINE_CLIENT
@@ -594,6 +618,28 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(output, expected)
         # test sorting
         self.assertEquals(output[0]['model'], 'bruce')
+
+
+    def testDutSshConnection(self):
+        good_ip = '192.168.0.20'
+        bad_ip = '192.168.0.30'
+        cmd = ('ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no '
+                "root@%s 'timeout 2 cat /etc/lsb-release'")
+
+        self.mox.StubOutWithMock(moblab_rpc_interface.subprocess,
+                'check_output')
+        moblab_rpc_interface.subprocess.check_output(
+                cmd % good_ip, shell=True).AndReturn('CHROMEOS_RELEASE_APPID')
+
+        moblab_rpc_interface.subprocess.check_output(
+                cmd % bad_ip, shell=True).AndRaise(
+                moblab_rpc_interface.subprocess.CalledProcessError(1, cmd))
+
+        self.mox.ReplayAll()
+        self.assertEquals(
+            moblab_rpc_interface._test_dut_ssh_connection(good_ip), True)
+        self.assertEquals(
+            moblab_rpc_interface._test_dut_ssh_connection(bad_ip), False)
 
 
 if __name__ == '__main__':
