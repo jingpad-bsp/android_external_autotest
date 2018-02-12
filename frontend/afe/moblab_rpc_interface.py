@@ -859,9 +859,16 @@ def _get_builds_for_in_directory(directory_name, milestone_limit=3,
     """
     output = StringIO.StringIO()
     gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
-    utils.run(GsUtil.get_gsutil_cmd(),
-              args=('ls', gs_image_location + directory_name),
-              stdout_tee=output)
+    try:
+        utils.run(GsUtil.get_gsutil_cmd(),
+                  args=('ls', gs_image_location + directory_name),
+                  stdout_tee=output)
+    except error.CmdError as e:
+        error_text = ('Failed to list builds from %s.\n'
+                'Did you configure your boto key? Try running the config '
+                'wizard again.\n\n%s') % ((gs_image_location + directory_name),
+                    e.result_obj.stderr)
+        raise error.RPCException(error_text)
     lines = output.getvalue().split('\n')
     output.close()
     builds = [line.replace(gs_image_location,'').strip('/ ')
