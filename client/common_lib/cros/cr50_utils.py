@@ -13,6 +13,7 @@ RO = 'ro'
 RW = 'rw'
 BID = 'bid'
 CR50_PROD = '/opt/google/cr50/firmware/cr50.bin.prod'
+CR50_PREPVT = '/opt/google/cr50/firmware/cr50.bin.prepvt'
 CR50_STATE = '/var/cache/cr50*'
 GET_CR50_VERSION = 'cat /var/cache/cr50-version'
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
@@ -315,6 +316,31 @@ def GetRunningVersion(client):
     AssertVersionsAreEqual('Running', GetVersionString(running_ver),
                            'Saved', GetVersionString(saved_ver))
     return running_ver
+
+
+def GetActiveCr50ImagePath(client):
+    """Get the path the device uses to update cr50
+
+    Extract the active cr50 path from the cr50-update messages. This path is
+    determined by cr50-get-name based on the board id flag value.
+
+    Args:
+        client: the object to run commands on
+
+    Raises:
+        TestFail
+            - If cr50-update uses more than one path or if the path we find
+              is not a known cr50 update path.
+    """
+    ClearUpdateStateAndReboot(client)
+    messages = client.run(GET_CR50_MESSAGES).stdout.strip()
+    paths = set(re.findall('/opt/google/cr50/firmware/cr50.bin.*', messages))
+    if not paths:
+        raise error.TestFail('Could not determine cr50-update path')
+    path = paths.pop()
+    if len(paths) > 1 or (path != CR50_PROD and path != CR50_PREPVT):
+        raise error.TestFail('cannot determine cr50 path')
+    return path
 
 
 def CheckForFailures(client, last_message):
