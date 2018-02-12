@@ -640,7 +640,7 @@ class Dispatcher(object):
         if queue_entry.status == models.HostQueueEntry.Status.PARSING:
             return postjob_task.FinalReparseTask(queue_entries=task_entries)
 
-        raise scheduler_lib.SchedulerError(
+        raise scheduler_lib.MalformedRecordError(
                 '_get_agent_task_for_queue_entry got entry with '
                 'invalid status %s: %s' % (queue_entry.status, queue_entry))
 
