@@ -77,6 +77,10 @@ class firmware_ECWakeSource(FirmwareTest):
         if boot_id != original_boot_id:
             raise error.TestFail('Different boot_id. Unexpected reboot.')
 
-        logging.info("EC hibernate and wake by power button.")
-        self.hibernate_and_wake_by_power_button()
-        self.switcher.wait_for_client()
+        use_ccd = 'ccd_cr50' in self.servo.get_servo_version()
+        if use_ccd:
+            logging.info("Using CCD, ignore waking by power button.")
+        else:
+            logging.info("EC hibernate and wake by power button.")
+            self.hibernate_and_wake_by_power_button()
+            self.switcher.wait_for_client()
