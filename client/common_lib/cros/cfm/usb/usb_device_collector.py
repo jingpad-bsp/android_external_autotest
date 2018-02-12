@@ -94,11 +94,12 @@ class UsbDeviceCollector(object):
         usbdata = self._collect_usb_device_data()
         return [self._create_usb_device(d) for d in usbdata]
 
-    def get_devices_by_spec(self, spec):
+    def get_devices_by_spec(self, *specs):
         """
-        Returns all UsbDevices that match the given spec.
-        @param spec instance of UsbDeviceSpec
+        Returns all UsbDevices that match the any of the given specs.
+        @param specs instances of UsbDeviceSpec.
         @returns a list UsbDevice instances.
         """
+        spec_vid_pids = [spec.vid_pid for spec in specs]
         return [d for d in self.get_usb_devices()
-                if d.vid_pid == spec.vid_pid]
+                if d.vid_pid in spec_vid_pids]
