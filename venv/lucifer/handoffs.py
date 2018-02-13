@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import datetime
 import logging
+import socket
 
 from lucifer import autotest
 
@@ -29,12 +30,14 @@ def incomplete():
     @returns: Django QuerySet
     """
     models = autotest.load('frontend.afe.models')
+    Q = autotest.deps_load('django.db.models').Q
     # Time ---*---------|---------*-------|--->
     #    incomplete   cutoff   newborn   now
     cutoff = (datetime.datetime.now()
               - datetime.timedelta(seconds=_JOB_GRACE_SECS))
-    return models.JobHandoff.objects.filter(
-            completed=False, created__lt=cutoff)
+    return (models.JobHandoff.objects
+            .filter(completed=False, created__lt=cutoff)
+            .filter(Q(hostname=socket.gethostname()) | Q(hostname=None)))
 
 
 def clean_up(job_ids):
