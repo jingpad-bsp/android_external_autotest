@@ -81,6 +81,7 @@ class firmware_Cr50Update(Cr50Test):
             logging.info('No chip board id is set. This test will not attempt '
                 'to restore anything during rollback.')
 
+        self.device_update_path = cr50_utils.GetActiveCr50ImagePath(self.host)
         # Update to the dev image
         self.run_update(self.DEV_NAME)
 
@@ -115,7 +116,8 @@ class firmware_Cr50Update(Cr50Test):
         # Get the current update information
         image_ver, image_ver_str, image_path = self.images[image_name]
 
-        dest, ver = cr50_utils.InstallImage(self.host, image_path)
+        dest, ver = cr50_utils.InstallImage(self.host, image_path,
+                self.device_update_path)
         assert ver == image_ver, "Install failed"
         image_rw = image_ver[1]
 
