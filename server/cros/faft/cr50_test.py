@@ -204,7 +204,9 @@ class Cr50Test(FirmwareTest):
         cr50_utils.SetRLZ(self.host, self._original_state['rlz'])
 
         # Verify everything is still the same
-        self._check_original_state()
+        mismatch = self._check_original_state()
+        if mismatch:
+            raise error.TestError('Could not restore state: %s' % mismatch)
 
         logging.info('Successfully restored the original cr50 state')
 
