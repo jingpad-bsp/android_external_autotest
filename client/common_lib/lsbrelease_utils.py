@@ -76,6 +76,20 @@ def get_chromeos_release_version(lsb_release_content=None):
                               lsb_release_content=lsb_release_content)
 
 
+def get_chromeos_release_builder_path(lsb_release_content=None):
+    """Get chromeos builder path from device under test as string.
+
+    @param lsb_release_content: A string representing the content of
+            lsb-release. If the caller is from drone, it can pass in the file
+            content here.
+
+    @return chromeos builder path in device under test as string. None on fail.
+    """
+    return _lsbrelease_search(r'^CHROMEOS_RELEASE_BUILDER_PATH=(.+)$',
+                              group_id=1,
+                              lsb_release_content=lsb_release_content)
+
+
 def get_chromeos_release_milestone(lsb_release_content=None):
     """Get chromeos milestone in device under test as string. None on fail.
 

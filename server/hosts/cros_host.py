@@ -1414,6 +1414,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 lsb_release_content=self._get_lsb_release_content())
 
 
+    def get_release_builder_path(self):
+        """Get the value of CHROMEOS_RELEASE_BUILDER_PATH from lsb-release.
+
+        @returns The version string in lsb-release, under attribute
+                 CHROMEOS_RELEASE_BUILDER_PATH.
+        """
+        return lsbrelease_utils.get_chromeos_release_builder_path(
+                lsb_release_content=self._get_lsb_release_content())
+
+
     def get_chromeos_release_milestone(self):
         """Get the value of attribute CHROMEOS_RELEASE_BUILD_TYPE
         from lsb-release.
@@ -1445,16 +1455,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Note that it's different from cros-version label, which has
             # builder and branch info, e.g.,
             # cros-version:peppy-release/R43-6908.0.0
-            release_version = self.get_release_version()
+            release_builder_path = self.get_release_builder_path()
             host_list = [self.hostname]
             for label in labels:
                 # Remove any cros-version label that does not match
                 # release_version.
                 build_version = label.name[len(ds_constants.VERSION_PREFIX):]
-                if not utils.version_match(build_version, release_version):
-                    logging.warn('cros-version label "%s" does not match '
-                                 'release version %s. Removing the label.',
-                                 label.name, release_version)
+                if build_version != release_builder_path:
+                    logging.warn(
+                        'cros-version label "%s" does not match '
+                        'release_builder_path %s. Removing the label.',
+                        label.name, release_builder_path)
                     label.remove_hosts(hosts=host_list)
                     mismatch_found = True
         if mismatch_found:
