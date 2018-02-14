@@ -10,7 +10,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:bluestreak"
+# TODO(crbug/763474) Disabled since it is currently failing constantly.
+# ATTRIBUTES = "suite:bluestreak"
 JOB_RETRIES = 3
 DEPENDENCIES = "huddly"
 
