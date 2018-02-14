@@ -264,18 +264,34 @@ class firmware_Cr50BID(Cr50Test):
            self.universal_path, universal_ver = release_info
 
         logging.info('Running test with universal image %s', universal_ver)
-        dut_ver = cr50_utils.GetBinVersion(self.host)[1]
 
+        self.replace_image_if_newer(universal_ver[1], cr50_utils.CR50_PROD)
+        self.replace_image_if_newer(universal_ver[1], cr50_utils.CR50_PREPVT)
+
+        self.image_versions[self.UNIVERSAL] = universal_ver
+
+
+    def replace_image_if_newer(self, universal_rw_ver, path):
+        """Replace the image at path if it is newer than the universal image
+
+        Copy the universal image to path, if the universal image is older than
+        the image at path.
+
+        Args:
+            universal_rw_ver: The rw version string of the universal image
+            path: The path of the image that may need to be replaced.
+        """
+        dut_ver = cr50_utils.GetBinVersion(self.host, path)[1]
         # If the universal version is lower than the DUT image, install the
         # universal image. It has the lowest version of any image in the test,
         # so cr50-update won't try to update cr50 at any point during the test.
-        if cr50_utils.GetNewestVersion(dut_ver, universal_ver[1]) == dut_ver:
+        if cr50_utils.GetNewestVersion(dut_ver, universal_rw_ver) == dut_ver:
             # Disable rootfs verification so we can copy the image to the DUT
             self.rootfs_verification_disable()
             # Copy the universal image onto the DUT.
-            dest, ver = cr50_utils.InstallImage(self.host, self.universal_path)
+            dest, ver = cr50_utils.InstallImage(self.host, self.universal_path,
+                    path)
             logging.info('Copied %s to %s', ver, dest)
-        self.image_versions[self.UNIVERSAL] = universal_ver
 
 
     def save_board_id_locked_image(self, original_version, bid_path,
