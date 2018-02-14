@@ -55,15 +55,15 @@ def get_stable_cros_image_name(board):
     return _CROS_VERSION_MAP.get_image_name(board)
 
 
-def get_stable_firmware_version(board):
-    """Retrieve the stable firmware version for a given board.
+def get_stable_firmware_version(model):
+    """Retrieve the stable firmware version for a given model.
 
-    @param board: Board to lookup.
+    @param model: Model to lookup.
 
     @returns A version of firmware to be installed via
              `chromeos-firmwareupdate` from a repair build.
     """
-    return _FIRMWARE_VERSION_MAP.get_version(board)
+    return _FIRMWARE_VERSION_MAP.get_version(model)
 
 
 def get_stable_faft_version(board):
