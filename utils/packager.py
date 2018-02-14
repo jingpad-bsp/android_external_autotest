@@ -183,6 +183,9 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
                 # match then we don't need to perform the upload.
                 if not pkgmgr.compare_checksum(tarball_path):
                     pkgmgr.upload_pkg(tarball_path, update_checksum=True)
+                else:
+                    logging.warning('Checksum not changed for %s, not copied '
+                                    'in packages/ directory.', tarball_path)
             finally:
                 # remove the temporary directory
                 shutil.rmtree(temp_dir)
