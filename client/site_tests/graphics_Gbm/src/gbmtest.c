@@ -479,7 +479,10 @@ static int test_alloc_free_usage()
 			uint32_t format = format_list[j];
 			if (gbm_device_is_format_supported(gbm, format, usage)) {
 				struct gbm_bo *bo;
-				bo = gbm_bo_create(gbm, 1024, 1024, format, usage);
+				if (usage == GBM_BO_USE_CURSOR_64X64)
+					bo = gbm_bo_create(gbm, 64, 64, format, usage);
+				else
+					bo = gbm_bo_create(gbm, 1024, 1024, format, usage);
 				CHECK(check_bo(bo));
 				found = 1;
 				gbm_bo_destroy(bo);
