@@ -11,7 +11,7 @@ from autotest_lib.server.cros.cfm.configurable_test import scenario
 USB_DEVICE_SPEC = usb_device_spec.UsbDeviceSpec(
         'vid', 'pid', 'product', ['iface'])
 
-USB_DEVICE = usb_device.UsbDevice('v', 'p', 'prod', ['if'], 1, 2)
+USB_DEVICE = usb_device.UsbDevice('v', 'p', 'prod', ['if'], 1, 2, 1)
 
 
 # Test, disable missing-docstring
@@ -71,36 +71,36 @@ class TestActions(unittest.TestCase):
     def test_assert_usb_device_collector(self):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
-        action = actions.AssertUsbDevices(spec, lambda x: True)
+        action = actions.AssertUsbDevices([spec], lambda x: True)
         action.execute(self.context_with_mocks)
 
     def test_assert_usb_device_collector_matching_predicate(self):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
         device = usb_device.UsbDevice(
-                'v', 'p', 'prod', ['if'], 1, 2)
+                'v', 'p', 'prod', ['if'], 1, 2, 1)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[device])
         action = actions.AssertUsbDevices(
-                spec, lambda x: x[0].product_id == 'p')
+                [spec], lambda x: x[0].product_id == 'p')
         action.execute(self.context_with_mocks)
 
     def test_assert_usb_device_collector_non_matching_predicate(self):
         spec = usb_device_spec.UsbDeviceSpec(
                 'vid', 'pid', 'product', ['iface'])
         device = usb_device.UsbDevice(
-                'v', 'p', 'prod', ['if'], 1, 2)
+                'v', 'p', 'prod', ['if'], 1, 2, 1)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[device])
         action = actions.AssertUsbDevices(
-                spec, lambda x: x[0].product_id == 'r')
+                [spec], lambda x: x[0].product_id == 'r')
         self.assertRaises(AssertionError, lambda: action.execute(
                 self.context_with_mocks))
 
     def test_assert_usb_device_collector_default_predicate(self):
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[USB_DEVICE])  # Default checks list is of size 1
-        action = actions.AssertUsbDevices(USB_DEVICE_SPEC)
+        action = actions.AssertUsbDevices([USB_DEVICE_SPEC])
         action.execute(self.context_with_mocks)
 
     def test_select_scenario_at_random(self):
@@ -139,10 +139,11 @@ class TestActions(unittest.TestCase):
 
     def test_power_cycle_usb_port(self):
         device = usb_device.UsbDevice(
-                'v', 'p', 'prod', ['if'], 1, 2)
+                'v', 'p', 'prod', ['if'], 1, 2, 1)
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 side_effect=[[device, device], [device], [device, device]])
-        action = actions.PowerCycleUsbPort(USB_DEVICE_SPEC, 0, lambda x: [x[0]])
+        action = actions.PowerCycleUsbPort(
+                [USB_DEVICE_SPEC], 0, lambda x: [x[0]])
         action.execute(self.context_with_mocks)
         self.usb_port_manager_mock.set_port_power.assert_has_calls(
                 [mock.call([(1, 2)], False), mock.call([(1, 2)], True)])
@@ -151,7 +152,7 @@ class TestActions(unittest.TestCase):
         # Return the same device all the time - i.e., it does not turn off.
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 return_value=[USB_DEVICE])
-        action = actions.PowerCycleUsbPort(USB_DEVICE_SPEC, 0)
+        action = actions.PowerCycleUsbPort([USB_DEVICE_SPEC], 0)
         self.assertRaises(
                 actions.TimeoutError,
                 lambda: action.execute(self.context_with_mocks))
@@ -159,7 +160,7 @@ class TestActions(unittest.TestCase):
     def test_power_cycle_usb_port_device_does_not_turn_on(self):
         self.usb_device_collector_mock.get_devices_by_spec = mock.Mock(
                 side_effect=[[USB_DEVICE, USB_DEVICE], [], [USB_DEVICE]])
-        action = actions.PowerCycleUsbPort(USB_DEVICE_SPEC, 0)
+        action = actions.PowerCycleUsbPort([USB_DEVICE_SPEC], 0)
         self.assertRaises(
                 actions.TimeoutError,
                 lambda: action.execute(self.context_with_mocks))
