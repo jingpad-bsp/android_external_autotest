@@ -80,6 +80,7 @@ EMPTY_IMAGE_BID = '00000000:00000000:00000000'
 SYMBOLIC_BID_LENGTH = 4
 
 usb_update = argparse.ArgumentParser()
+usb_update.add_argument('-a', '--any', dest='universal', action='store_true')
 # use /dev/tpm0 to send the command
 usb_update.add_argument('-s', '--systemdev', dest='systemdev',
                         action='store_true')
@@ -251,8 +252,8 @@ def UsbUpdater(client, args):
     # status so we should ignore it.
     ignore_status = not options.info_cmd
     # immediate reboots are only honored if the command is sent using /dev/tpm0
-    expect_reboot = (options.systemdev and not options.post_reset and
-                     not options.info_cmd)
+    expect_reboot = ((options.systemdev or options.universal) and
+            not options.post_reset and not options.info_cmd)
 
     result = client.run('usb_updater %s' % ' '.join(args),
                         ignore_status=ignore_status,
@@ -275,7 +276,7 @@ def GetVersionFromUpdater(client, args):
 
 def GetFwVersion(client):
     """Get the running version using 'usb_updater --fwver'"""
-    return GetVersionFromUpdater(client, ['--fwver', '-s'])
+    return GetVersionFromUpdater(client, ['--fwver', '-a'])
 
 
 def GetBinVersion(client, image=CR50_FILE):
@@ -534,7 +535,7 @@ def GetChipBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ['-s', '-i']).stdout.strip()
+    result = UsbUpdater(client, ['-a', '-i']).stdout.strip()
     board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
@@ -593,6 +594,6 @@ def SetChipBoardId(client, board_id, flags=None):
         board_id_arg += ':' + hex(flags)
 
     # Set the board id using the given board id and flags
-    result = UsbUpdater(client, ['-s', '-i', board_id_arg]).stdout.strip()
+    result = UsbUpdater(client, ['-a', '-i', board_id_arg]).stdout.strip()
 
     CheckChipBoardId(client, board_id, flags)
