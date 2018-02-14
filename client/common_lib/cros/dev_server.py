@@ -290,6 +290,28 @@ def _get_storage_server_for_artifacts(artifacts=None):
     return _get_image_storage_server()
 
 
+def _gs_or_local_archive_url_args(archive_url):
+    """Infer the devserver call arguments to use with the given archive_url.
+
+    @param archive_url: The archive url to include the in devserver RPC. This
+            can either e a GS path or a local path.
+    @return: A dict of arguments to include in the devserver call.
+    """
+    if not archive_url:
+        return {}
+    elif archive_url.startswith('gs://'):
+        return {'archive_url': archive_url}
+    else:
+        # For a local path, we direct the devserver to move the files while
+        # staging. This is the fastest way to stage local files, but deletes the
+        # files from the source. This is OK because the files are available on
+        # the devserver once staged.
+        return {
+                'local_path': archive_url,
+                'delete_source': True,
+        }
+
+
 def _reverse_lookup_from_config(address):
     """Look up hostname for the given IP address.
 
@@ -606,6 +628,12 @@ class DevServer(object):
         @param kwargs: a dict mapping arg names to arg values.
         @return the URL string.
         """
+        # If the archive_url is a local path, the args expected by the devserver
+        # are a little different.
+        archive_url_args = _gs_or_local_archive_url_args(
+                kwargs.pop('archive_url', None))
+        kwargs.update(archive_url_args)
+
         argstr = '&'.join(map(lambda x: "%s=%s" % x, kwargs.iteritems()))
         return "%(host)s/%(method)s?%(argstr)s" % dict(
                 host=host, method=method, argstr=argstr)
