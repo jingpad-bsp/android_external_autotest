@@ -5,8 +5,10 @@
 """A test which verifies the camera function with HAL3 interface."""
 
 import os, logging
+import xml.etree.ElementTree
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.cros import service_stopper
+from sets import Set
 
 class camera_HAL3(test.test):
     """
@@ -18,6 +20,10 @@ class camera_HAL3(test.test):
     dep = 'camera_hal3'
     adapter_service = 'camera-halv3-adapter'
     timeout = 600
+    media_profiles_path = os.path.join(os.path.sep, 'opt', 'google',
+                                       'containers', 'android', 'rootfs',
+                                       'root', 'vendor', 'etc',
+                                       'media_profiles.xml')
 
     def setup(self):
         """
@@ -34,5 +40,17 @@ class camera_HAL3(test.test):
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
         with service_stopper.ServiceStopper([self.adapter_service]):
-            binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
-            utils.system(binary_path, timeout=self.timeout)
+            cmd = [ os.path.join(self.dep_dir, 'bin', self.test_binary) ]
+            tree = xml.etree.ElementTree.parse(self.media_profiles_path)
+            root = tree.getroot()
+            recording_params = Set()
+            for camcorder_profiles in root.findall('CamcorderProfiles'):
+                for encoder_profile in camcorder_profiles.findall('EncoderProfile'):
+                    video = encoder_profile.find('Video')
+                    recording_params.add('%s:%s:%s:%s' % (
+                        camcorder_profiles.get('cameraId'), video.get('width'),
+                        video.get('height'), video.get('frameRate')))
+            if recording_params:
+                cmd.append('--recording_params=' + ','.join(recording_params))
+
+            utils.system(' '.join(cmd), timeout=self.timeout)
