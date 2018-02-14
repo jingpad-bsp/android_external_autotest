@@ -91,12 +91,14 @@ def update_allowed_networks(project, instance, afe=None, extra_servers=None):
             raise
     print '...Done: %s' % ips
 
+    cidr_ips = [str(ip) + '/32' for ip in ips]
+
     login = False
     while True:
         try:
             utils.run('gcloud config set project %s -q' % project)
             cmd = ('gcloud sql instances patch %s --authorized-networks %s '
-                   '-q' % (instance, ','.join(ips)))
+                   '-q' % (instance, ','.join(cidr_ips)))
             print 'Running command to update whitelists: "%s"' % cmd
             utils.run(cmd, stdout_tee=sys.stdout, stderr_tee=sys.stderr)
             return
