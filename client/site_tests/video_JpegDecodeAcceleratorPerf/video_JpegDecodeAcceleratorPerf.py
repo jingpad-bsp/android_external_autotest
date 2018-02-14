@@ -7,6 +7,7 @@ import threading
 import time
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.power import power_status
@@ -114,6 +115,9 @@ class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
         if not power_utils.charge_control_by_ectool(is_charge=False):
             logging.warning('Can\'t stop charging')
             return {}
+
+        if not self._power_status.battery:
+            raise error.TestFail('No valid battery')
 
         # Verify that the battery is sufficiently charged.
         percent_initial_charge = self._power_status.percent_current_charge()
