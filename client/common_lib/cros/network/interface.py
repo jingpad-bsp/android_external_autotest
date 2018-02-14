@@ -430,6 +430,16 @@ class Interface:
         return None
 
 
+def get_interfaces():
+    """
+    Retrieve the list of network interfaces found on the system.
+
+    @return List of interfaces.
+
+    """
+    return [Interface(nic.strip()) for nic in os.listdir(DEVICE_INFO_ROOT)]
+
+
 def get_prioritized_default_route(host=None, interface_name_regex=None):
     """
     Query a local or remote host for its prioritized default interface
