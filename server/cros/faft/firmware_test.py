@@ -471,8 +471,11 @@ class FirmwareTest(FAFTBase):
             logging.info('Changing GBB flags from 0x%x to 0x%x.',
                          gbb_flags, new_flags)
             self.faft_client.bios.set_gbb_flags(new_flags)
-            # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
-            if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+            # If changing FORCE_DEV_SWITCH_ON or DISABLE_EC_SOFTWARE_SYNC flag,
+            # reboot to get a clear state
+            if ((gbb_flags ^ new_flags) &
+                (vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
+                 vboot.GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC)):
                 self.switcher.mode_aware_reboot()
         else:
             logging.info('Current GBB flags look good for test: 0x%x.',
