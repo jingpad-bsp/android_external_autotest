@@ -529,6 +529,11 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     @param suite_job_id: Job id that will act as parent id to all sub jobs.
                          Default: None
     """
+    # We can't create the suite until the devserver has finished downloading
+    # control_files and test_suites packages so that we can get the control
+    # files to schedule.
+    if not spec.run_prod_code:
+        _stage_artifacts_for_build(spec.devserver, spec.test_source_build)
     suite = Suite.create_from_predicates(
             predicates=[spec.predicate],
             name=spec.name,
@@ -568,9 +573,6 @@ def _run_suite_with_spec(suite, spec):
     _run_suite(
         suite=suite,
         job=spec.job,
-        run_prod_code=spec.run_prod_code,
-        devserver=spec.devserver,
-        build=spec.test_source_build,
         delay_minutes=spec.delay_minutes,
         bug_template=spec.bug_template)
 
@@ -578,9 +580,6 @@ def _run_suite_with_spec(suite, spec):
 def _run_suite(
         suite,
         job,
-        run_prod_code,
-        devserver,
-        build,
         delay_minutes,
         bug_template):
     """
@@ -589,20 +588,11 @@ def _run_suite(
     @param suite: _BaseSuite instance.
     @param job: an instance of client.common_lib.base_job representing the
                 currently running suite job.
-    @param run_prod_code: whether to use prod test code.
-    @param devserver: devserver for staging artifacts.
-    @param build: the build to install e.g. 'x86-alex-release/R18-1655.0.0'
     @param delay_minutes: Delay the creation of test jobs for a given number
                           of minutes.
     @param bug_template: A template dictionary specifying the default bug
                          filing options for failures in this suite.
     """
-    # We can't do anything else until the devserver has finished downloading
-    # control_files and test_suites packages so that we can get the control
-    # files we should schedule.
-    if not run_prod_code:
-        _stage_artifacts_for_build(devserver, build)
-
     timestamp = datetime.datetime.now().strftime(time_utils.TIME_FMT)
     utils.write_keyval(
         job.resultdir,

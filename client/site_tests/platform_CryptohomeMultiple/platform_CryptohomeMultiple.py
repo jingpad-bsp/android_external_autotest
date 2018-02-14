@@ -20,5 +20,4 @@ class platform_CryptohomeMultiple(test.test):
 
 
     def run_once(self):
-        self.cryptohome_proxy = cryptohome.CryptohomeProxy()
         self.test_mount_single()

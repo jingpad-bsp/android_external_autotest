@@ -12,7 +12,8 @@ from autotest_lib.client.common_lib import error
 RO = 'ro'
 RW = 'rw'
 BID = 'bid'
-CR50_FILE = '/opt/google/cr50/firmware/cr50.bin.prod'
+CR50_PROD = '/opt/google/cr50/firmware/cr50.bin.prod'
+CR50_PREPVT = '/opt/google/cr50/firmware/cr50.bin.prepvt'
 CR50_STATE = '/var/cache/cr50*'
 GET_CR50_VERSION = 'cat /var/cache/cr50-version'
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
@@ -80,6 +81,7 @@ EMPTY_IMAGE_BID = '00000000:00000000:00000000'
 SYMBOLIC_BID_LENGTH = 4
 
 usb_update = argparse.ArgumentParser()
+usb_update.add_argument('-a', '--any', dest='universal', action='store_true')
 # use /dev/tpm0 to send the command
 usb_update.add_argument('-s', '--systemdev', dest='systemdev',
                         action='store_true')
@@ -251,8 +253,8 @@ def UsbUpdater(client, args):
     # status so we should ignore it.
     ignore_status = not options.info_cmd
     # immediate reboots are only honored if the command is sent using /dev/tpm0
-    expect_reboot = (options.systemdev and not options.post_reset and
-                     not options.info_cmd)
+    expect_reboot = ((options.systemdev or options.universal) and
+            not options.post_reset and not options.info_cmd)
 
     result = client.run('usb_updater %s' % ' '.join(args),
                         ignore_status=ignore_status,
@@ -275,10 +277,10 @@ def GetVersionFromUpdater(client, args):
 
 def GetFwVersion(client):
     """Get the running version using 'usb_updater --fwver'"""
-    return GetVersionFromUpdater(client, ['--fwver', '-s'])
+    return GetVersionFromUpdater(client, ['--fwver', '-a'])
 
 
-def GetBinVersion(client, image=CR50_FILE):
+def GetBinVersion(client, image=CR50_PROD):
     """Get the image version using 'usb_updater --binvers image'"""
     # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
     # is fixed
@@ -314,6 +316,31 @@ def GetRunningVersion(client):
     AssertVersionsAreEqual('Running', GetVersionString(running_ver),
                            'Saved', GetVersionString(saved_ver))
     return running_ver
+
+
+def GetActiveCr50ImagePath(client):
+    """Get the path the device uses to update cr50
+
+    Extract the active cr50 path from the cr50-update messages. This path is
+    determined by cr50-get-name based on the board id flag value.
+
+    Args:
+        client: the object to run commands on
+
+    Raises:
+        TestFail
+            - If cr50-update uses more than one path or if the path we find
+              is not a known cr50 update path.
+    """
+    ClearUpdateStateAndReboot(client)
+    messages = client.run(GET_CR50_MESSAGES).stdout.strip()
+    paths = set(re.findall('/opt/google/cr50/firmware/cr50.bin.*', messages))
+    if not paths:
+        raise error.TestFail('Could not determine cr50-update path')
+    path = paths.pop()
+    if len(paths) > 1 or (path != CR50_PROD and path != CR50_PREPVT):
+        raise error.TestFail('cannot determine cr50 path')
+    return path
 
 
 def CheckForFailures(client, last_message):
@@ -379,7 +406,7 @@ def ClearUpdateStateAndReboot(client):
     client.reboot()
 
 
-def InstallImage(client, src, dest=CR50_FILE):
+def InstallImage(client, src, dest=CR50_PROD):
     """Copy the image at src to dest on the dut
 
     Args:
@@ -534,7 +561,7 @@ def GetChipBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ['-s', '-i']).stdout.strip()
+    result = UsbUpdater(client, ['-a', '-i']).stdout.strip()
     board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
@@ -593,6 +620,6 @@ def SetChipBoardId(client, board_id, flags=None):
         board_id_arg += ':' + hex(flags)
 
     # Set the board id using the given board id and flags
-    result = UsbUpdater(client, ['-s', '-i', board_id_arg]).stdout.strip()
+    result = UsbUpdater(client, ['-a', '-i', board_id_arg]).stdout.strip()
 
     CheckChipBoardId(client, board_id, flags)
