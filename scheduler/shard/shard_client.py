@@ -94,6 +94,7 @@ On the client side, this will happen:
 
 
 HEARTBEAT_AFE_ENDPOINT = 'shard_heartbeat'
+_METRICS_PREFIX  = 'chromeos/autotest/shard_client/heartbeat/'
 
 RPC_TIMEOUT_MIN = 5
 RPC_DELAY_SEC = 5
@@ -309,6 +310,16 @@ class ShardClient(object):
                 'jobs': jobs, 'hqes': hqes}
 
 
+    def _report_packet_metrics(self, packet):
+        """Report stats about outgoing packet to monarch."""
+        metrics.Gauge(_METRICS_PREFIX + 'known_job_ids_count').set(
+            len(packet['known_job_ids']))
+        metrics.Gauge(_METRICS_PREFIX + 'jobs_upload_count').set(
+            len(packet['jobs']))
+        metrics.Gauge(_METRICS_PREFIX + 'known_host_ids_count').set(
+            len(packet['known_host_ids']))
+
+
     def _heartbeat_failure(self, log_message, failure_type_str=''):
         logging.error("Heartbeat failed. %s", log_message)
         metrics.Counter('chromeos/autotest/shard_client/heartbeat_failure'
@@ -326,11 +337,11 @@ class ShardClient(object):
 
         Returns: True if the heartbeat ran successfully, False otherwise.
         """
-        heartbeat_metrics_prefix  = 'chromeos/autotest/shard_client/heartbeat/'
 
         logging.info("Performing heartbeat.")
         packet = self._heartbeat_packet()
-        metrics.Gauge(heartbeat_metrics_prefix + 'request_size').set(
+        self._report_packet_metrics(packet)
+        metrics.Gauge(_METRICS_PREFIX + 'request_size').set(
             len(str(packet)))
 
         try:
@@ -356,7 +367,7 @@ class ShardClient(object):
                                     'JSONRPCException')
             return False
 
-        metrics.Gauge(heartbeat_metrics_prefix + 'response_size').set(
+        metrics.Gauge(_METRICS_PREFIX + 'response_size').set(
             len(str(response)))
         self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
         self.process_heartbeat_response(response)
