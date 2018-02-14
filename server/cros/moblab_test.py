@@ -14,7 +14,7 @@ from autotest_lib.server.hosts import moblab_host
 
 DEFAULT_IMAGE_STORAGE_SERVER = global_config.global_config.get_config_value(
         'CROS', 'image_storage_server')
-STORAGE_SERVER_REGEX = 'gs://.*/'
+STORAGE_SERVER_REGEX = '(gs://|/).*/'
 DEFAULT_SERVICES_INIT_TIMEOUT_M = 5
 
 
@@ -74,11 +74,10 @@ class MoblabTest(test.test):
         """
         if not re.match(STORAGE_SERVER_REGEX, image_storage_server):
             raise error.TestError(
-                    'Image Storage Server supplied is not in the correct '
-                    'format. Must start with gs:// and end with a trailing '
-                    'slash: %s' % image_storage_server)
-        logging.debug('Setting image_storage_server to %s',
-                      image_storage_server)
+                    'Image Storage Server supplied (%s) is not in the correct '
+                    'format. Remote paths must be of the form "gs://.*/" and '
+                    'local paths of the form "/.*/"' % image_storage_server)
+        logging.info('Setting image_storage_server to %s', image_storage_server)
         # If the image_storage_server is already set, delete it.
         self._host.run('sed -i /image_storage_server/d %s' %
                        moblab_host.SHADOW_CONFIG_PATH, ignore_status=True)
