@@ -73,12 +73,6 @@ def is_adb_connected():
     return output.strip() == 'device'
 
 
-def is_run_oci_build():
-    """Return true if the container is managed by run_oci"""
-    # TODO(yusukes): Remove the function once b/69266495 is fixed.
-    return os.path.dirname(get_container_pid_path()).endswith('-run_oci')
-
-
 def is_partial_boot_enabled():
     """Return true if partial boot is enabled.
 
@@ -211,9 +205,7 @@ def adb_root():
 
 def get_container_root():
     """Returns path to Android container root directory."""
-    if is_run_oci_build():
-      return _ANDROID_CONTAINER_ROOT_PATH
-    return os.path.dirname(get_container_pid_path())
+    return _ANDROID_CONTAINER_ROOT_PATH
 
 
 def get_container_pid_path():
@@ -222,8 +214,8 @@ def get_container_pid_path():
     Raises:
       TestError if no PID file is found, or more than one files are found.
     """
-    # Find the PID file rather than the android_XXXXXX/ directory to ignore
-    # stale and empty android_XXXXXX/ directories when they exist.
+    # Find the PID file rather than the android-XXXXXX/ directory to ignore
+    # stale and empty android-XXXXXX/ directories when they exist.
     arc_container_pid_files = glob.glob(_ANDROID_CONTAINER_PID_PATH)
 
     if len(arc_container_pid_files) == 0:
