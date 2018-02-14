@@ -46,15 +46,32 @@ class vm_CrosVmStart(test.test):
             raise error.TestError('Component Updater LoadComponent failed')
         kernel_path = mnt_path + '/vm_kernel'
         rootfs_path = mnt_path + '/vm_rootfs.img'
+        crosvm_socket_path = '/tmp/vm_CrosVmStart.sock'
+
         # Running /bin/ls as init causes the VM to exit immediately, crosvm
         # will have a successful exit code.
         cmd = ['/usr/bin/crosvm', 'run', '-c', '1', '-m', '1024',
                 '--disk', rootfs_path,
-                '-p', 'init=/bin/ls root=/dev/vda ro',
+                '--socket',  crosvm_socket_path,
+                '-p', 'init=/bin/bash root=/dev/vda ro',
                 kernel_path]
         proc = subprocess.Popen(cmd)
         if proc.pid <= 0:
             raise error.TestFail('Failed: crosvm did not start.')
+
+        # Tell the VM to stop.
+        stop_cmd = ['/usr/bin/crosvm', 'stop', '--socket', crosvm_socket_path]
+        stop_proc = subprocess.Popen(cmd)
+        if stop_proc.pid <= 0:
+            raise error.TestFail('Failed: crosvm stop command failed.')
+        stop_proc.wait();
+        if stop_proc.returncode == None:
+            raise error.TestFail('Failed: crosvm stop did not exit.')
+        if stop_proc.returncode != 0:
+            raise error.TestFail('Failed: crosvm stop returned an error %d.' %
+                                 stop_proc.returncode)
+
+        # Wait for the VM to exit.
         proc.wait()
         if proc.returncode == None:
             raise error.TestFail('Failed: crosvm did not exit.')
