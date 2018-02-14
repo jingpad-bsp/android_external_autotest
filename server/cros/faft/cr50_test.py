@@ -78,7 +78,7 @@ class Cr50Test(FirmwareTest):
         # Copy the image from the DUT
         filename = 'device_image_' + dut_rw
         self._original_device_image = os.path.join(self.resultsdir, filename)
-        self.host.get_file(cr50_utils.CR50_FILE, self._original_device_image)
+        self.host.get_file(cr50_utils.CR50_PROD, self._original_device_image)
 
         # If the running cr50 image version matches the image on the DUT use
         # the DUT image as the original image. If the versions don't match

@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import error
 RO = 'ro'
 RW = 'rw'
 BID = 'bid'
-CR50_FILE = '/opt/google/cr50/firmware/cr50.bin.prod'
+CR50_PROD = '/opt/google/cr50/firmware/cr50.bin.prod'
 CR50_STATE = '/var/cache/cr50*'
 GET_CR50_VERSION = 'cat /var/cache/cr50-version'
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
@@ -279,7 +279,7 @@ def GetFwVersion(client):
     return GetVersionFromUpdater(client, ['--fwver', '-a'])
 
 
-def GetBinVersion(client, image=CR50_FILE):
+def GetBinVersion(client, image=CR50_PROD):
     """Get the image version using 'usb_updater --binvers image'"""
     # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
     # is fixed
@@ -380,7 +380,7 @@ def ClearUpdateStateAndReboot(client):
     client.reboot()
 
 
-def InstallImage(client, src, dest=CR50_FILE):
+def InstallImage(client, src, dest=CR50_PROD):
     """Copy the image at src to dest on the dut
 
     Args:
