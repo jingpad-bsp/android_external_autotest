@@ -82,7 +82,13 @@ def update_allowed_networks(project, instance, afe=None, extra_servers=None):
     print 'Adding servers %s to access list for projects %s' % (servers,
                                                                 instance)
     print 'Fetching their IP addresses...'
-    ips = [socket.gethostbyname(name) for name in servers]
+    ips = []
+    for name in servers:
+        try:
+            ips.append(socket.gethostbyname(name))
+        except socket.gaierror:
+            print 'Failed to resolve IP address for name %s' % name
+            raise
     print '...Done: %s' % ips
 
     login = False
