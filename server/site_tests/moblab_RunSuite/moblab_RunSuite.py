@@ -11,6 +11,7 @@ from autotest_lib.utils import labellib
 
 
 _CLEANUP_TIME_M = 5
+_MOBLAB_IMAGE_STORAGE = '/mnt/moblab/static'
 
 class moblab_RunSuite(moblab_test.MoblabTest):
     """
@@ -22,7 +23,8 @@ class moblab_RunSuite(moblab_test.MoblabTest):
 
 
     def run_once(self, host, suite_name, moblab_suite_max_retries,
-                 target_build='', test_timeout_hint_m=None):
+                 target_build='', clear_devserver_cache=True,
+                 test_timeout_hint_m=None):
         """Runs a suite on a Moblab Host against its test DUTS.
 
         @param host: Moblab Host that will run the suite.
@@ -33,6 +35,9 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                 call on moblab. This argument is passed as is to run_suite. It
                 must be a sensible build target for the board of the sub-DUTs
                 attached to the moblab.
+        @param clear_devserver_cache: If True, image cache of the devserver
+                running on moblab is cleared before running the test to validate
+                devserver imaging staging flow.
         @param test_timeout_hint_m: (int) Optional overall timeout for the test.
                 For this test, it is very important to collect post failure data
                 from the moblab device. If the overall timeout is provided, the
@@ -41,6 +46,9 @@ class moblab_RunSuite(moblab_test.MoblabTest):
 
         @raises AutoservRunError if the suite does not complete successfully.
         """
+        self._host = host
+
+        self._maybe_clear_devserver_cache(clear_devserver_cache)
         # Fetch the board of the DUT's assigned to this Moblab. There should
         # only be one type.
         try:
@@ -107,6 +115,13 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                 'the suite to run.', _CLEANUP_TIME_M, run_suite_timeout_m)
         cmd += ' --timeout_mins %d' % run_suite_timeout_m
         return cmd, run_suite_timeout_m * 60
+
+    def _maybe_clear_devserver_cache(self, clear_devserver_cache):
+        # When passed in via test_args, all arguments are str
+        if not isinstance(clear_devserver_cache, bool):
+            clear_devserver_cache = (clear_devserver_cache.lower() == 'true')
+        if clear_devserver_cache:
+            self._host.run('rm -rf %s/*' % _MOBLAB_IMAGE_STORAGE)
 
 
 def _is_run_suite_error_critical(return_code):
