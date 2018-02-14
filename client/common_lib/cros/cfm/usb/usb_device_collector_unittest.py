@@ -2,13 +2,14 @@ import mock
 import unittest
 
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
+from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 
 
+# pylint: disable=missing-docstring
 class UsbDeviceCollectorTest(unittest.TestCase):
     """Unit test for the class UsbDeviceCollector."""
 
-    def test_get_usb_devices(self):
-        """Unit test for get_usb_devices."""
+    def setUp(self):
         # Sample stdout from `usb-devices`.
         usb_devices = (
             '\n'
@@ -42,8 +43,11 @@ class UsbDeviceCollectorTest(unittest.TestCase):
 
         mock_host = mock.Mock()
         mock_host.run.return_value.stdout = usb_devices
-        collector = usb_device_collector.UsbDeviceCollector(mock_host)
-        usb_data = collector.get_usb_devices()
+        self.collector = usb_device_collector.UsbDeviceCollector(mock_host)
+
+    def test_get_usb_devices(self):
+        """Unit test for get_usb_devices."""
+        usb_data = self.collector.get_usb_devices()
         self.assertEqual(2, len(usb_data))
 
         foo_device = usb_data[0]
@@ -62,7 +66,22 @@ class UsbDeviceCollectorTest(unittest.TestCase):
         self.assertEqual(bar_device.bus, 2)
         self.assertEqual(bar_device.port, 4)
 
+    def test_get_devices_by_spec(self):
+        spec = usb_device_spec.UsbDeviceSpec('0a0a', '9f9f', 'PRODUCT', [])
+        devices = self.collector.get_devices_by_spec(spec)
+        self.assertEquals(len(devices), 1)
 
+    def test_get_devices_by_specs(self):
+        specs = (usb_device_spec.UsbDeviceSpec('0a0a', '9f9f', 'PRODUCT', []),
+                 usb_device_spec.UsbDeviceSpec('0000', 'aaaa', 'PRODUCT', []))
+        devices = self.collector.get_devices_by_spec(*specs)
+        self.assertEquals(len(devices), 2)
+
+    def test_get_devices_by_not_matching_specs(self):
+        specs = (usb_device_spec.UsbDeviceSpec('no', 'match', 'PRODUCT', []),
+                 usb_device_spec.UsbDeviceSpec('nono', 'match', 'PRODUCT', []))
+        devices = self.collector.get_devices_by_spec(*specs)
+        self.assertEquals(devices, [])
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:bluestreak"
-DEPENDENCIES = "mimo, meet_app"
+DEPENDENCIES = "mimo, meet_app, atrus, huddly"
 JOB_RETRIES = 3
 
 DOC = """
