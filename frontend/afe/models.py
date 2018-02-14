@@ -757,7 +757,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     def on_attribute_changed(self, attribute, old_value):
         assert attribute == 'status'
-        logging.info(self.hostname + ' -> ' + self.status)
+        logging.info('%s -> %s', self.hostname, self.status)
 
 
     def enqueue_job(self, job, is_template=False):
