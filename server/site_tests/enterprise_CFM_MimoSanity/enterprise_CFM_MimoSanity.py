@@ -15,11 +15,6 @@ from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_collector
 
 LONG_TIMEOUT = 20
 SHORT_TIMEOUT = 5
-JABRA = cfm_usb_devices.JABRA_SPEAK_410
-HUDDLY_GO = cfm_usb_devices.HUDDLY_GO
-MIMO_VUE_HD_DISPLAY = cfm_usb_devices.MIMO_VUE_HD_DISPLAY
-MIMO_VUE_HID_TOUCH_CONTROLLER = cfm_usb_devices.MIMO_VUE_HID_TOUCH_CONTROLLER
-
 
 class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
     """Tests the following fuctionality works on CFM enrolled devices:
@@ -37,17 +32,17 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         try:
             power_cycle_usb_util.power_cycle_usb_vidpid(
                 self._host, self._board,
-                MIMO_VUE_HD_DISPLAY.vendor_id, MIMO_VUE_HD_DISPLAY.product_id)
+                self._mimo.vendor_id, self._mimo.product_id)
         except KeyError:
            raise error.TestFail('Could not find target device: %s',
-                                MIMO_VUE_HD_DISPLAY.product)
+                                self._mimo.product)
 
 
     def _test_power_cycle_mimo(self):
         """Power Cycle Mimo device for multiple times"""
         self._power_cycle_mimo_device()
         logging.info('Powercycle done for %s (%s)',
-                     MIMO_VUE_HD_DISPLAY.product, MIMO_VUE_HD_DISPLAY.vid_pid)
+                     self._mimo.product, self._mimo.vid_pid)
         time.sleep(LONG_TIMEOUT)
         self._kernel_usb_sanity_test()
 
@@ -57,29 +52,37 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         Check CfM has camera, speaker and MiMO connected.
         @returns list of peripherals found.
         """
-        if not self.device_collector.get_devices_by_spec(JABRA):
+        atruses = self.device_collector.get_devices_by_spec(
+                cfm_usb_devices.ATRUS)
+        if not atruses:
             raise error.TestFail('Expected to find connected speakers.')
+        self._atrus = atruses[0]
 
-        if not self.device_collector.get_devices_by_spec(HUDDLY_GO):
+        huddlys = self.device_collector.get_devices_by_spec(
+                cfm_usb_devices.HUDDLY_GO)
+        if not huddlys:
             raise error.TestFail('Expected to find a connected camera.')
+        self._huddly = huddlys[0]
 
 
         displays = self.device_collector.get_devices_by_spec(
-            MIMO_VUE_HD_DISPLAY)
+                *cfm_usb_devices.ALL_MIMO_DISPLAYS)
         if not displays:
             raise error.TestFail('Expected a MiMO display to be connected.')
         if len(displays) != 1:
             raise error.TestFail('Expected exactly one MiMO display to be '
                                  'connected. Found %d' % len(displays))
+        self._mimo = displays[0]
 
 
         controllers = self.device_collector.get_devices_by_spec(
-            MIMO_VUE_HID_TOUCH_CONTROLLER)
+            cfm_usb_devices.MIMO_VUE_HID_TOUCH_CONTROLLER)
         if not controllers:
             raise error.TestFail('Expected a MiMO controller to be connected.')
         if len(controllers) != 1:
             raise error.TestFail('Expected exactly one MiMO controller to be '
                                  'connected. Found %d' % len(controllers))
+        self._touch_controller = controllers[0]
 
     def _check_device_interfaces_match_spec(self, spec):
         for device in self.device_collector.get_devices_by_spec(spec):
@@ -93,10 +96,10 @@ class enterprise_CFM_MimoSanity(cfm_base_test.CfmBaseTest):
         """
         Check connected camera, speaker and Mimo have expected usb interfaces.
         """
-        self._check_device_interfaces_match_spec(JABRA)
-        self._check_device_interfaces_match_spec(HUDDLY_GO)
-        self._check_device_interfaces_match_spec(MIMO_VUE_HD_DISPLAY)
-        self._check_device_interfaces_match_spec(MIMO_VUE_HID_TOUCH_CONTROLLER)
+        self._check_device_interfaces_match_spec(self._atrus)
+        self._check_device_interfaces_match_spec(self._huddly)
+        self._check_device_interfaces_match_spec(self._mimo)
+        self._check_device_interfaces_match_spec(self._touch_controller)
 
     def _test_reboot(self):
         """Reboot testing for Mimo."""
