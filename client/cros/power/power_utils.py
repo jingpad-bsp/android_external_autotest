@@ -21,6 +21,10 @@ DISPLAY_POWER_INTERNAL_ON_EXTERNAL_OFF = 3
 # for bounds checking
 DISPLAY_POWER_MAX = 4
 
+# Retry times for ectool chargecontrol
+ECTOOL_CHARGECONTROL_RETRY_TIMES = 3
+ECTOOL_CHARGECONTROL_TIMEOUT_SECS = 3
+
 
 def get_x86_cpu_arch():
     """Identify CPU architectural type.
@@ -172,8 +176,8 @@ def has_battery():
     return rv
 
 
-def charge_control_by_ectool(is_charge):
-    """Force the battery behavior by the is_charge paremeter.
+def _charge_control_by_ectool(is_charge):
+    """execute ectool command.
 
     Args:
       is_charge: Boolean, True for charging, False for discharging.
@@ -183,18 +187,38 @@ def charge_control_by_ectool(is_charge):
     """
     ec_cmd_discharge = 'ectool chargecontrol discharge'
     ec_cmd_normal = 'ectool chargecontrol normal'
-    if is_charge:
-        utils.run(ec_cmd_normal)
-    else:
-        utils.run(ec_cmd_discharge)
+    try:
+       if is_charge:
+           utils.run(ec_cmd_normal)
+       else:
+           utils.run(ec_cmd_discharge)
+    except error.CmdError as e:
+        logging.warning('Unable to use ectool: %s', e)
+        return False
 
     success = utils.wait_for_value(lambda: (
         is_charge != bool(re.search(r'Flags.*DISCHARGING',
                                     utils.run('ectool battery',
                                               ignore_status=True).stdout,
                                     re.MULTILINE))),
-        expected_value=True)
+        expected_value=True, timeout_sec=ECTOOL_CHARGECONTROL_TIMEOUT_SECS)
     return success
+
+
+def charge_control_by_ectool(is_charge):
+    """Force the battery behavior by the is_charge paremeter.
+
+    Args:
+      is_charge: Boolean, True for charging, False for discharging.
+
+    Returns:
+      Boolean, True if the command success, False otherwise.
+    """
+    for i in xrange(ECTOOL_CHARGECONTROL_RETRY_TIMES):
+        if _charge_control_by_ectool(is_charge):
+            return True
+
+    return False
 
 
 class BacklightException(Exception):
