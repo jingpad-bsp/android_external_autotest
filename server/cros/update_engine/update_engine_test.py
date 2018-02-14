@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import re
 import update_engine_event as uee
 import urllib2
 import urlparse
@@ -400,6 +401,27 @@ class UpdateEngineTest(test.test):
             raise error.TestFail('No host specified by AU test.')
         info = self._host.host_info_store.get()
         return info.attributes.get(self._host.job_repo_url_attribute, '')
+
+
+    def _check_for_cellular_entries_in_update_log(self, update_engine_log):
+        """
+        Check update_engine.log for log entries about cellular.
+
+        @param update_engine_log: The text of an update_engine.log file.
+
+        """
+        logging.info('Making sure we have cellular entries in update_engine '
+                     'log.')
+        line1 = "Allowing updates over cellular as permission preference is " \
+                "set to true."
+        line2 = "We are connected via cellular, Updates allowed: Yes"
+        for line in [line1, line2]:
+            ue = re.compile(line)
+            if ue.search(update_engine_log) is None:
+                raise error.TestFail('We did not find cellular string "%s" in '
+                                     'the update_engine log. Please check the '
+                                     'update_engine logs in the results '
+                                     'directory.' % line)
 
 
     def _copy_payload_to_public_bucket(self, payload_url):
