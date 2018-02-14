@@ -484,14 +484,10 @@ class Dispatcher(object):
 
         @param agent_task: A SpecialTask for the agent to manage.
         """
-        # TODO(crbug.com/748234): This is temporary to enable
-        # toggling lucifer rollouts with an option.
+        # These are owned by lucifer; don't manage these tasks.
         if (luciferlib.is_enabled_for('GATHERING')
             and isinstance(agent_task, (postjob_task.GatherLogsTask,
                                         postjob_task.FinalReparseTask))):
-            return
-        if (luciferlib.is_enabled_for('PARSING')
-            and isinstance(agent_task, postjob_task.FinalReparseTask)):
             return
         agent = Agent(agent_task)
         self._agents.append(agent)
@@ -962,10 +958,7 @@ class Dispatcher(object):
         """
         Hand off ownership of a job to lucifer component.
         """
-        # TODO(crbug.com/748234): This is temporary to enable toggling
-        # lucifer rollouts with an option.
-        if luciferlib.is_enabled_for('GATHERING'):
-            self._send_gathering_to_lucifer()
+        self._send_gathering_to_lucifer()
         self._send_parsing_to_lucifer()
 
 
