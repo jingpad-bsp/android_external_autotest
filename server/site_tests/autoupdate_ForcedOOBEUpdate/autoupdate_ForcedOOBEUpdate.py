@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.update_engine import update_engine_test
-
+from chromite.lib import retry_util
 
 class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
     """Runs a forced autoupdate during OOBE."""
@@ -35,6 +35,9 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         for i in range(2):
             self._host.get_file('/var/log/update_engine/%s' % files[i],
                                 self.resultsdir)
+        cmd = 'update_engine_client --update_over_cellular=no'
+        retry_util.RetryException(error.AutoservRunError, 2, self._host.run,
+                                  cmd)
         super(autoupdate_ForcedOOBEUpdate, self).cleanup()
 
     def _get_chromeos_version(self):
@@ -85,7 +88,8 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             time.sleep(1)
 
 
-    def run_once(self, host, full_payload=True, job_repo_url=None):
+    def run_once(self, host, full_payload=True, cellular=False,
+                 job_repo_url=None):
         self._host = host
 
         # veyron_rialto is a medical device with a different OOBE that auto
@@ -95,20 +99,53 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         update_url = self.get_update_url_for_test(job_repo_url,
                                                   full_payload=full_payload,
-                                                  critical_update=True)
+                                                  critical_update=True,
+                                                  cellular=cellular)
         logging.info('Update url: %s', update_url)
         before = self._get_chromeos_version()
+        payload_info = None
+        if cellular:
+            cmd = 'update_engine_client --update_over_cellular=yes'
+            retry_util.RetryException(error.AutoservRunError, 2, self._host.run,
+                                      cmd)
+            # Get the payload's information (size, SHA256 etc) since we will be
+            # setting up our own omaha instance on the DUT. We pass this to
+            # the client test.
+            payload = self._get_payload_url(full_payload=full_payload)
+            staged_url = self._stage_payload_by_uri(payload)
+            payload_info = self._get_staged_file_info(staged_url)
 
         # Call client test to start the forced OOBE update.
         client_at = autotest.Autotest(self._host)
-        client_at.run_test('autoupdate_StartOOBEUpdate',
-                           image_url=update_url)
+        client_at.run_test('autoupdate_StartOOBEUpdate', image_url=update_url,
+                           cellular=cellular, payload_info=payload_info,
+                           full_payload=full_payload)
 
         # Don't continue the test if the client failed for any reason.
         client_at._check_client_test_result(self._host,
                                             'autoupdate_StartOOBEUpdate')
 
         self._wait_for_update_to_complete()
+
+        if cellular:
+            # We didn't have a devserver so we cannot check the hostlog to
+            # ensure the update completed successfully. Instead we can check
+            # that the second-to-last update engine log has the successful
+            # update message. Second to last because its the one before OOBE
+            # rebooted.
+            update_engine_files_cmd = 'ls -t -1 /var/log/update_engine/'
+            files = self._host.run(update_engine_files_cmd).stdout.splitlines()
+            before_reboot_file = self._host.run('cat /var/log/update_engine/%s'
+                                                % files[1]).stdout
+            self._check_for_cellular_entries_in_update_log(before_reboot_file)
+
+            success = 'Update successfully applied, waiting to reboot.'
+            update_ec = self._host.run('cat /var/log/update_engine/%s | grep '
+                                       '"%s"' % (files[1], success)).exit_status
+            if update_ec != 0:
+                raise error.TestFail('We could not verify that the update '
+                                     'completed successfully. Check the logs.')
+            return
 
         # Verify that the update completed successfully by checking hostlog.
         rootfs_hostlog, reboot_hostlog = self._create_hostlog_files()

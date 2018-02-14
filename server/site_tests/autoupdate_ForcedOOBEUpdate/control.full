@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "dhaddock, Chromium OS"
-NAME = "autoupdate_ForcedOOBEUpdate"
+NAME = "autoupdate_ForcedOOBEUpdate.full"
 PURPOSE = "Test forced update at OOBE."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
