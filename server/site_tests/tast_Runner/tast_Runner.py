@@ -35,8 +35,8 @@ class tast_Runner(test.test):
 
     # Default paths where Tast files are installed.
     _TAST_PATH = '/usr/bin/tast'
-    _REMOTE_BUNDLE_DIR = '/usr/libexec/tast/bundles'
-    _REMOTE_DATA_DIR = '/usr/share/tast/data'
+    _REMOTE_BUNDLE_DIR = '/usr/libexec/tast/bundles/remote'
+    _REMOTE_DATA_DIR = '/usr/share/tast/data/remote'
     _REMOTE_TEST_RUNNER_PATH = '/usr/bin/remote_test_runner'
 
     # When Tast is deployed from CIPD packages in the lab, it's installed under
