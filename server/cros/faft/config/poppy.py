@@ -11,7 +11,7 @@ class Values(object):
     mode_switcher_type = 'tablet_detachable_switcher'
     fw_bypasser_type = 'tablet_detachable_bypasser'
 
-    confirm_screen = 4
+    confirm_screen = 1
 
     has_lid = True
     has_keyboard = False
