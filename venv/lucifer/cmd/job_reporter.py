@@ -50,18 +50,26 @@ def main(args):
 def _parse_args_and_configure_logging(args):
     parser = argparse.ArgumentParser(prog='job_reporter', description=__doc__)
     loglib.add_logging_options(parser)
-    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
-                        help='Path to lucifer_run_job binary')
+
+    # General configuration
     parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='Path to job leases directory.')
+    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
+                        help='Path to lucifer_run_job binary')
+    parser.add_argument('--watcher-path', default='/usr/bin/lucifer_watcher',
+                        help='Path to lucifer_watcher binary')
+
+    # Job specific
     parser.add_argument('--job-id', type=int, default=None, required=True,
                         help='Autotest Job ID')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
+    parser.add_argument('--results-dir', default=None,
+                        help='Path to job leases directory.')
     parser.add_argument('run_job_args', nargs='*',
-                        help='Arguments to pass to lucifer_run_job')
+                        help='Deprecated, arguments to pass to lucifer_run_job')
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
@@ -120,13 +128,21 @@ def _run_lucifer_job(event_handler, args):
     command_args = [args.run_job_path]
     job = models.Job.objects.get(id=args.job_id)
     command_args.extend([
+            '-autotestdir', autotest.AUTOTEST_DIR,
+            '-watcherpath', args.watcher_path,
+
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
             '-hosts', ','.join(jobx.hostnames(job)),
+
             '-x-autoserv-exit', str(args.autoserv_exit),
     ])
+    if args.results_dir is not None:
+        command_args.extend([
+                '-resultsdir', args.results_dir,
+        ])
     command_args.extend(args.run_job_args)
-    return eventlib.run_event_command(event_handler=event_handler,
-                                      args=command_args)
+    return eventlib.run_event_command(
+            event_handler=event_handler, args=command_args)
 
 
 def _mark_handoff_completed(job_id):
