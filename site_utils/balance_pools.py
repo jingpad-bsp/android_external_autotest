@@ -635,7 +635,7 @@ def main(argv):
     if arguments.production:
         metrics_manager = site_utils.SetupTsMonGlobalState(
                 'balance_pools',
-                indirect=True,
+                indirect=False,
                 auto_flush=False,
         )
     else:
@@ -669,6 +669,8 @@ def main(argv):
             )
         except KeyboardInterrupt:
             pass
+        finally:
+            metrics.Flush()
 
 
 if __name__ == '__main__':
