@@ -122,10 +122,10 @@ def download_extract(url, target, extract_dir):
                                      delete=False) as tmp_file:
         if remote_url in dev_server.ImageServerBase.servers():
             # TODO(xixuan): Better to only ssh to devservers in lab, and
-            # continue using wget for ganeti devservers.
+            # continue using curl for ganeti devservers.
             _download_via_devserver(url, tmp_file.name)
         else:
-            _download_via_wget(url, tmp_file.name)
+            _download_via_curl(url, tmp_file.name)
         common_utils.run('sudo mv %s %s' % (tmp_file.name, target))
     common_utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
@@ -135,12 +135,11 @@ def download_extract(url, target, extract_dir):
              blacklist=[error.CmdTimeoutError],
              timeout_min=3*2,
              delay_sec=10)
-def _download_via_wget(url, target_file_path):
+def _download_via_curl(url, target_file_path):
     # We do not want to retry on CmdTimeoutError but still retry on
-    # CmdError. Hence we can't use wget --timeout=...
-    common_utils.run('sudo wget -nv %s -O %s' % (url, target_file_path),
+    # CmdError. Hence we can't use curl --timeout=...
+    common_utils.run('sudo curl -s %s -o %s' % (url, target_file_path),
                      stderr_tee=common_utils.TEE_TO_LOGS, timeout=3*60)
-
 
 
 # Make sure retries only happen in the non-timeout case.
