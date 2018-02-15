@@ -185,6 +185,13 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('EXT4_USE_FOR_EXT23')
 
+        if utils.compare_versions(kernel_ver, "4.4") >= 0 and \
+            utils.compare_versions(kernel_ver, "4.12") < 0:
+            for entry in self.IS_EXCLUSIVE:
+                if entry['regex'] == '.*_FS$':
+                    entry['builtin'].append('ESD_FS')
+                    entry['builtin'].append('CONFIGFS_FS')
+
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MISSING.remove('INET_DIAG')
 
