@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team, chromeos-video@google.com"
-NAME = "video_JpegDecodeAcceleratorPerf.power"
+NAME = "video_JDAPerf.power"
 PURPOSE = "Test the power consumption of jpeg decoding"
 CRITERIA = """
 The test outputs the power consumption of jpeg decoding.
@@ -25,4 +25,4 @@ jpeg decoding for hardware decode and software decode.
 """
 
 
-job.run_test('video_JpegDecodeAcceleratorPerf', power_test=True)
+job.run_test('video_JDAPerf', power_test=True)

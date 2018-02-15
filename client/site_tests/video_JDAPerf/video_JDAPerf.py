@@ -34,7 +34,7 @@ CPU_IDLE_USAGE = 0.1
 BATTERY_INITIAL_CHARGED_MIN = 10
 
 
-class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
+class video_JDAPerf(chrome_binary_test.ChromeBinaryTest):
     """
     The test outputs the cpu usage and the power consumption for jpeg decoding
     to performance dashboard.
@@ -49,7 +49,8 @@ class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
     sw_filter = 'JpegDecodeAcceleratorTest.PerfSW'
 
     def initialize(self):
-        super(video_JpegDecodeAcceleratorPerf, self).initialize()
+        """Initialize this test."""
+        super(video_JDAPerf, self).initialize()
         self._service_stopper = None
         self._original_governors = None
         self._backlight = None
@@ -58,7 +59,7 @@ class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
     @chrome_binary_test.nuke_chrome
     def run_once(self, power_test=False):
         """
-        Runs the video_JpegDecodeAcceleratorPerf test.
+        Runs the video_JDAPerf test.
 
         @param power_test: True for power consumption test.
                            False for cpu usage test.
@@ -205,7 +206,10 @@ class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
                     units=units, higher_is_better=False)
 
     def cleanup(self):
-        # cleanup() is run by common_lib/test.py.
+        """Autotest cleanup function
+
+        It is run by common_lib/test.py.
+        """
         if self._backlight:
             self._backlight.restore()
         if self._service_stopper:
@@ -214,4 +218,4 @@ class video_JpegDecodeAcceleratorPerf(chrome_binary_test.ChromeBinaryTest):
             utils.restore_scaling_governor_states(self._original_governors)
         if self._use_ec:
             power_utils.charge_control_by_ectool(is_charge=True)
-        super(video_JpegDecodeAcceleratorPerf, self).cleanup()
+        super(video_JDAPerf, self).cleanup()
