@@ -3,11 +3,13 @@
 # found in the LICENSE file.
 import logging
 import shutil
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-
+from autotest_lib.client.cros.cellular import test_environment
+from autotest_lib.client.cros.update_engine import nano_omaha_devserver
 
 class autoupdate_StartOOBEUpdate(test.test):
     """Starts a forced update at OOBE.
@@ -65,11 +67,31 @@ class autoupdate_StartOOBEUpdate(test.test):
                                                 'UPDATE_STATUS_FINALIZING'])
 
 
-    def run_once(self, image_url):
-        utils.run('restart update-engine')
+    def _wait_for_update_to_complete(self):
+        """Checks if the update has got to FINALIZING status."""
+        while True:
+            status = utils.run('update_engine_client --status',
+                               ignore_timeout=True, timeout=10)
 
-        self._setup_custom_lsb_release(image_url)
+            # During reboot, status will be None
+            if status is not None:
+                status = status.stdout.splitlines()
+                logging.debug(status)
+                statuses = ['UPDATE_STATUS_FINALIZING',
+                            'UPDATE_STATUS_UPDATED_NEED_REBOOT']
+                if any(arg in status[2] for arg in statuses):
+                    break
+            time.sleep(1)
 
+
+    def _start_oobe_update(self, url):
+        """
+        Jump to the update check screen at OOBE and wait for update to start.
+
+        @param url: The omaha update URL we expect to call.
+
+        """
+        self._setup_custom_lsb_release(url)
         # Start chrome instance to interact with OOBE.
         self._chrome = chrome.Chrome(auto_login=False)
         self._oobe = self._chrome.browser.oobe
@@ -78,4 +100,65 @@ class autoupdate_StartOOBEUpdate(test.test):
         utils.poll_for_condition(self._is_update_started,
                                  error.TestFail('Update did not start.'),
                                  timeout=30)
+
+
+    def run_once(self, image_url, cellular=False, payload_info=None,
+                 full_payload=True):
+        """
+        Test that will start a forced update at OOBE.
+
+        @param image_url: The omaha URL to call. It contains the payload url
+                          for cellular tests.
+        @param cellular: True if we should run this test using a sim card.
+        @payload_payload_info: For cellular tests we need to have our own
+                               omaha instance and this is a dictionary of
+                               payload information to be used in the omaha
+                               response.
+        @full_payload: True for full payloads, False for delta.
+
+        """
+        utils.run('restart update-engine')
+
+        if cellular:
+            test_env = test_environment.CellularOTATestEnvironment()
+            CONNECT_TIMEOUT = 120
+            with test_env:
+                service = test_env.shill.wait_for_cellular_service_object()
+                if not service:
+                    raise error.TestError('No cellular service found.')
+                test_env.shill.connect_service_synchronous(
+                    service, CONNECT_TIMEOUT)
+
+                # Setup an omaha instance on the DUT because we cant reach
+                # devservers over cellular.
+                self._omaha = nano_omaha_devserver.NanoOmahaDevserver()
+                self._omaha.set_image_params(image_url, payload_info['size'],
+                                             payload_info['sha256'],
+                                             is_delta=not full_payload,
+                                             critical=True)
+                self._omaha.start()
+
+                # We will tell OOBE to call localhost for update requests.
+                url = 'http://127.0.0.1:%d/update' % self._omaha.get_port()
+                self._start_oobe_update(url)
+
+                # Remove the custom omaha server from lsb release because
+                # after we reboot it will no longer be running.
+                utils.run('rm %s' % self._CUSTOM_LSB_RELEASE,
+                          ignore_status=True)
+
+                # We need to return from the client test before OOBE reboots or
+                # the server side test will hang. But we cannot return right
+                # away when the OOBE update starts because all of the code
+                # from using a cellular connection is in client side and we
+                # will switch back to ethernet. So we need to wait for the
+                # update to get as close to the end as possible so that we
+                # are done downloading the payload via cellular and don't
+                # need to ping omaha again. When the DUT reboots it will send
+                # a final update ping to production omaha and then move to
+                # the sign in screen.
+                self._wait_for_update_to_complete()
+        else:
+            self._start_oobe_update(image_url)
+
 

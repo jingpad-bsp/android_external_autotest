@@ -1,0 +1,8 @@
+/opt/google/chrome/nacl_helper
+# These files are delivered as binaries in Chrome OS.
+/opt/google/chrome/libwidevinecdm.so
+/opt/google/chrome/pepper/libpepflashplayer.so
+/usr/sbin/hdcpd
+# Remove these after perf is built with clang (https://crbug.com/797835).
+/usr/bin/perf
+/usr/bin/trace

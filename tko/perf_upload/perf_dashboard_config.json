@@ -510,6 +510,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "platform_InitLoginPerfServer",
+    "master_name": "ChromeOSPerf"
+  },
+  {
     "autotest_name": "platform_LogoutPerf",
     "master_name": "ChromeOSPerf"
   },

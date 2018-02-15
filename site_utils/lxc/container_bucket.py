@@ -97,7 +97,7 @@ class ContainerBucket(object):
         info_collection = lxc.get_container_info(self.container_path)
         containers = {} if force_update else self.container_cache
         for info in info_collection:
-            if containers[info["name"]]:
+            if info["name"] in containers:
                 continue
             container = Container.create_from_existing_dir(self.container_path,
                                                            **info)
