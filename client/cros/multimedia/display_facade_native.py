@@ -63,7 +63,7 @@ class DisplayFacadeNative(object):
         @return array of dict for display info.
         """
         extension = self._resource.get_extension(
-                constants.MULTIMEDIA_TEST_EXTENSION)
+                constants.DISPLAY_TEST_EXTENSION)
         extension.ExecuteJavaScript('window.__display_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.system.display.getInfo(function(info) {"
@@ -137,7 +137,7 @@ class DisplayFacadeNative(object):
         """
         time.sleep(delay_before_rotation)
         extension = self._resource.get_extension(
-                constants.MULTIMEDIA_TEST_EXTENSION)
+                constants.DISPLAY_TEST_EXTENSION)
         extension.ExecuteJavaScript(
                 """
                 window.__set_display_rotation_has_error = null;
@@ -212,7 +212,7 @@ class DisplayFacadeNative(object):
         """
 
         extension = self._resource.get_extension(
-                constants.MULTIMEDIA_TEST_EXTENSION)
+                constants.DISPLAY_TEST_EXTENSION)
         extension.ExecuteJavaScript(
                 """
                 window.__set_resolution_progress = null;
