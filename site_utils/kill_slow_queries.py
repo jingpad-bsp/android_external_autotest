@@ -153,13 +153,9 @@ def main():
                     metrics.Counter(m).increment_by(count)
                 time.sleep(options.timeout)
         except Exception as e:
+            m = 'chromeos/autotest/afe_db/failed_to_kill_query'
+            metrics.Counter(m).increment()
             logging.error('Failed to kill slow db queries.\n%s', e)
-            gmail_lib.send_email(
-                options.mail,
-                'Failed to kill slow autotest db queries.',
-                ('Error occurred during killing slow db queries:\n%s\n'
-                 'Detailed logs can be found in /var/log/slow_queries.log on db'
-                 ' backup server.\nTo avoid db crash, please check ASAP.') % e)
             raise
 
 
