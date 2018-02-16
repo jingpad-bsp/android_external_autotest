@@ -26,7 +26,7 @@ class UsbDeviceCollectorTest(unittest.TestCase):
             'I:  If#= 1 Alt= 0 #EPs= 0 Cls=fe(app. ) Sub=01 Prot=01 '
                 'Driver=(none)\n'
             '\n'
-            'T:  Bus=02 Lev=01 Prnt=01 Port=03 Cnt=01 Dev#=  4 Spd=5000 '
+            'T:  Bus=01 Lev=02 Prnt=08 Port=03 Cnt=01 Dev#=  4 Spd=5000 '
                 'MxCh= 0\n'
             'D:  Ver= 3.10 Cls=ef(misc ) Sub=02 Prot=01 MxPS= 9 #Cfgs=  1\n'
             'P:  Vendor=0a0a ProdID=9f9f Rev=06.00\n'
@@ -57,14 +57,17 @@ class UsbDeviceCollectorTest(unittest.TestCase):
         self.assertEqual(foo_device.interfaces, ['int-a', '(none)'])
         self.assertEqual(foo_device.bus, 1)
         self.assertEqual(foo_device.port, 2)
+        self.assertIsNone(foo_device.parent)
 
         bar_device = usb_data[1]
         self.assertEqual(bar_device.vendor_id, '0a0a')
         self.assertEqual(bar_device.product_id, '9f9f')
         self.assertEqual(bar_device.product, 'BAR')
         self.assertEqual(bar_device.interfaces, ['int-a', 'int-a', 'int-b'])
-        self.assertEqual(bar_device.bus, 2)
+        self.assertEqual(bar_device.bus, 1)
         self.assertEqual(bar_device.port, 4)
+
+        self.assertEqual(bar_device.parent, foo_device)
 
     def test_get_devices_by_spec(self):
         spec = usb_device_spec.UsbDeviceSpec('0a0a', '9f9f', 'PRODUCT', [])
