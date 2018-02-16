@@ -37,7 +37,7 @@ def incomplete():
               - datetime.timedelta(seconds=_JOB_GRACE_SECS))
     return (models.JobHandoff.objects
             .filter(completed=False, created__lt=cutoff)
-            .filter(Q(hostname=socket.gethostname()) | Q(hostname=None)))
+            .filter(Q(drone=socket.gethostname()) | Q(drone=None)))
 
 
 def clean_up(job_ids):
