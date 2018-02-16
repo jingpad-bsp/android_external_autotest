@@ -486,8 +486,11 @@ class Dispatcher(object):
         """
         # These are owned by lucifer; don't manage these tasks.
         if (luciferlib.is_enabled_for('GATHERING')
-            and isinstance(agent_task, (postjob_task.GatherLogsTask,
-                                        postjob_task.FinalReparseTask))):
+            and (isinstance(agent_task, postjob_task.GatherLogsTask)
+                 # TODO(crbug.com/811877): Don't skip split HQE parsing.
+                 or (isinstance(agent_task, postjob_task.FinalReparseTask)
+                     and not luciferlib.is_split_job(
+                             agent_task.queue_entries[0].id)))):
             return
         agent = Agent(agent_task)
         self._agents.append(agent)
@@ -1004,9 +1007,11 @@ class Dispatcher(object):
             # owning it.
             if self.get_agents_for_entry(queue_entry):
                 continue
-
             job = queue_entry.job
             if luciferlib.is_lucifer_owned(job):
+                continue
+            # TODO(crbug.com/811877): Ignore split HQEs.
+            if luciferlib.is_split_job(queue_entry.id):
                 continue
             task = postjob_task.PostJobTask(
                     [queue_entry], log_file_name='/dev/null')
