@@ -13,6 +13,9 @@ class UsbDeviceCollector(object):
         'Value Required prev ([0-9a-fA-Z.]+)\n'
         'Value Required Bus ([0-9.]+)\n'
         'Value Required Port ([0-9.]+)\n'
+        'Value Required Lev ([0-9.]+)\n'
+        'Value Required Dev ([0-9.]+)\n'
+        'Value Required Prnt ([0-9.]+)\n'
         'Value Manufacturer (.+)\n'
         'Value Product (.+)\n'
         'Value serialnumber ([0-9a-fA-Z\:\-]+)\n'
@@ -21,7 +24,8 @@ class UsbDeviceCollector(object):
         'Value List intdriver ([A-Za-z-\(\)]+)\n\n'
         'Start\n'
         '  ^USB-Device -> Continue.Record\n'
-        '  ^T:\s+Bus=${Bus}\s+.*Port=${Port}.*\n'
+        '  ^T:\s+Bus=${Bus}\s+Lev=${Lev}\s+Prnt=${Prnt}'
+        '\s+Port=${Port}.*Dev#=\s*${Dev}.*\n'
         '  ^P:\s+Vendor=${Vendor}\s+ProdID=${ProdID}\sRev=${prev}\n'
         '  ^S:\s+Manufacturer=${Manufacturer}\n'
         '  ^S:\s+Product=${Product}\n'
@@ -81,6 +85,7 @@ class UsbDeviceCollector(object):
             product=usbdata.get('Product', 'Not available'),
             interfaces=usbdata['intdriver'],
             bus=int(usbdata['Bus']),
+            level=int(usbdata['Lev']),
             # We increment here by 1 because usb-devices reports 0-indexed port
             # numbers where as lsusb reports 1-indexed. We opted to follow the
             # the lsusb standard.
@@ -92,7 +97,28 @@ class UsbDeviceCollector(object):
         @returns A list of UsbDevice instances.
         """
         usbdata = self._collect_usb_device_data()
-        return [self._create_usb_device(d) for d in usbdata]
+        data_and_devices = []
+        for data in usbdata:
+            usb_device = self._create_usb_device(data)
+            data_and_devices.append((data, usb_device))
+        # Make a pass to populate parents of the UsbDevices.
+        # We need parent ID and Device ID from the raw data since we do not
+        # care about storing those in a UsbDevice. That's why we bother
+        # iterating through the (data,UsbDevice) pairs.
+        for data, usb_device in data_and_devices:
+            parent_id = int(data['Prnt'])
+            bus = usb_device.bus
+            # Device IDs are not unique across busses. When finding a device's
+            # parent we look for a device with the parent ID on the same bus.
+            usb_device.parent = self._find_device_on_same_bus(
+                    data_and_devices, parent_id, bus)
+        return [x[1] for x in data_and_devices]
+
+    def _find_device_on_same_bus(self, data_and_devices, device_id, bus):
+        for data, usb_device in data_and_devices:
+            if int(data['Dev']) == device_id and usb_device.bus == bus:
+                return usb_device
+        return None
 
     def get_devices_by_spec(self, *specs):
         """
