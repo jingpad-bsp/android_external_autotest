@@ -64,6 +64,7 @@ class tast_Runner(test.test):
 
     def run_once(self):
         """Runs the test suite once."""
+        self._log_version()
         self._run_tast()
         self._parse_results()
 
@@ -91,6 +92,19 @@ class tast_Runner(test.test):
         if allow_missing:
             return ''
         raise error.TestFail('Neither %s nor %s exists' % (path, cipd_path))
+
+    def _log_version(self):
+        """Runs the tast command locally to log its version."""
+        try:
+            utils.run([self._tast_path, '-version'],
+                      timeout=self._EXEC_TIMEOUT_SEC,
+                      stdout_tee=utils.TEE_TO_LOGS,
+                      stderr_tee=utils.TEE_TO_LOGS,
+                      stderr_is_expected=True,
+                      stdout_level=logging.INFO,
+                      stderr_level=logging.ERROR)
+        except error.CmdError as e:
+            logging.error('Failed to log tast version: %s' % str(e))
 
     def _run_tast(self):
         """Runs the tast command locally to perform testing against the DUT.
