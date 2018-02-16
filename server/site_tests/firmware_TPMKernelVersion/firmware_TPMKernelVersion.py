@@ -62,8 +62,8 @@ class firmware_TPMKernelVersion(FirmwareTest):
         self.switcher.wait_for_client()
 
         # Check that DUT is booted from USB.
-        self.check_state((self.checkers.crossystem_checker,
-                          {'kernkey_vfy': 'hash'}))
+        self.check_state((self.checkers.dev_boot_usb_checker, (True, True),
+                          'Device not booted from USB image properly.'))
 
         out = self.dut_run_cmd('crossystem tpm_kernver tpm_fwver')
         (kernver, fwver) = out[0].split(' ')

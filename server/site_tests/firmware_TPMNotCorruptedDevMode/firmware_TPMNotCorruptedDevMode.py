@@ -66,9 +66,8 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
             self.switcher.bypass_dev_boot_usb()
             self.switcher.wait_for_client()
 
-        self.check_state((self.checkers.dev_boot_usb_checker,
-                          True,
-                          'Did not boot from USB.'))
+        self.check_state((self.checkers.dev_boot_usb_checker, (True, True),
+                          'Device not booted from USB image properly.'))
 
     def check_tpmc(self, tpmc_output):
         """Checks that the kern and fw version from the tpmc read command is one
