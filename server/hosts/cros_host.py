@@ -1451,16 +1451,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 host__hostname=self.hostname)
         mismatch_found = False
         if labels:
-            # Get CHROMEOS_RELEASE_VERSION from lsb-release, e.g., 6908.0.0.
-            # Note that it's different from cros-version label, which has
-            # builder and branch info, e.g.,
-            # cros-version:peppy-release/R43-6908.0.0
+            # Ask the DUT for its canonical image name.  This will be in
+            # a form like this:  kevin-release/R66-10405.0.0
             release_builder_path = self.get_release_builder_path()
             host_list = [self.hostname]
             for label in labels:
                 # Remove any cros-version label that does not match
-                # release_version.
+                # the DUT's installed image.
+                #
+                # TODO(jrbarnette):  Tests sent to the `arc-presubmit`
+                # pool install images matching the format above, but
+                # then apply a label with `-cheetsth` appended.  Probably,
+                # it's wrong for ARC presubmit testing to make that change,
+                # but until it's fixed, this code specifically excuses that
+                # behavior.
                 build_version = label.name[len(ds_constants.VERSION_PREFIX):]
+                if build_version.endswith('-cheetsth'):
+                    build_version = build_version[:-len('-cheetsth')]
                 if build_version != release_builder_path:
                     logging.warn(
                         'cros-version label "%s" does not match '
