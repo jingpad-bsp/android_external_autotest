@@ -13,6 +13,7 @@ import common
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.hosts import ssh_host
+from autotest_lib.frontend.afe import models
 
 _config = global_config.global_config
 _SECTION = 'LUCIFER'
@@ -45,6 +46,27 @@ def is_enabled_for(level):
 def is_lucifer_owned(job):
     """Return True if job is already sent to lucifer."""
     return hasattr(job, 'jobhandoff')
+
+
+def is_split_job(hqe_id):
+    """Return True if HQE is part of a job with HQEs in a different group.
+
+    For examples if the given HQE have execution_subdir=foo and the job
+    has an HQE with execution_subdir=bar, then return True.  The only
+    situation where this happens is if provisioning in a multi-DUT job
+    fails, the HQEs will each be in their own group.
+
+    See https://bugs.chromium.org/p/chromium/issues/detail?id=811877
+
+    @param hqe_id: HQE id
+    """
+    hqe = models.HostQueueEntry.objects.get(id=hqe_id)
+    hqes = hqe.job.hostqueueentry_set.all()
+    try:
+        _get_consistent_execution_path(hqes)
+    except _ExecutionPathError:
+        return True
+    return False
 
 
 # TODO(crbug.com/748234): This is temporary to enable toggling
@@ -220,12 +242,18 @@ def _working_directory(job):
 def _get_consistent_execution_path(execution_entries):
     first_execution_path = execution_entries[0].execution_path()
     for execution_entry in execution_entries[1:]:
-        assert execution_entry.execution_path() == first_execution_path, (
-            '%s (%s) != %s (%s)' % (execution_entry.execution_path(),
-                                    execution_entry,
-                                    first_execution_path,
-                                    execution_entries[0]))
+        if execution_entry.execution_path() != first_execution_path:
+            raise _ExecutionPathError(
+                    '%s (%s) != %s (%s)'
+                    % (execution_entry.execution_path(),
+                       execution_entry,
+                       first_execution_path,
+                       execution_entries[0]))
     return first_execution_path
+
+
+class _ExecutionPathError(Exception):
+    """Raised by _get_consistent_execution_path()."""
 
 
 class Drone(object):
