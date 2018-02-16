@@ -112,8 +112,10 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.switcher.wait_for_client()
 
         logging.info("Expected USB boot.")
-        self.check_state((self.checkers.dev_boot_usb_checker, True,
-                          'Not USB boot, Ctrl-U not work'))
+        # After signing USB image with SSD developer keys, kernkey_vfy value
+        # is expected as 'sig' when booted in USB image.
+        self.check_state((self.checkers.dev_boot_usb_checker, (True, False),
+                          'Device not booted from USB image properly.'))
         self.switcher.mode_aware_reboot()
 
         logging.info("Check and done.")
