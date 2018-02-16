@@ -78,7 +78,7 @@ def _main(args):
         atexit.register(metrics.Flush)
         handler = _make_handler(args)
         _add_run_job_args(args)
-        ret = _run_job(args.run_job_path, handler, args)
+        ret = _run_job(handler, args)
         if handler.completed:
             _mark_handoff_completed(args.job_id)
         return ret
@@ -108,17 +108,16 @@ def _add_run_job_args(args):
     ])
 
 
-def _run_job(path, event_handler, args):
+def _run_job(event_handler, args):
     """Run lucifer_run_job.
 
     Issued events will be handled by event_handler.
 
-    @param path: path to lucifer_run_job binary
     @param event_handler: callable that takes an Event
     @param args: parsed arguments
     @returns: exit status of lucifer_run_job
     """
-    command_args = [path]
+    command_args = [args.run_job_path]
     command_args.extend(
             ['-abortsock', _abort_sock_path(args.jobdir, args.job_id)])
     command_args.extend(args.run_job_args)
