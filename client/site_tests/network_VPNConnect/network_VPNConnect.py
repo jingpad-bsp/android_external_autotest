@@ -250,11 +250,12 @@ class network_VPNConnect(test.test):
 
                 with self.get_vpn_server() as server:
                     self.connect_vpn()
-                    res = utils.ping(server.SERVER_IP_ADDRESS, tries=3)
+                    res = utils.ping(server.SERVER_IP_ADDRESS, tries=3,
+                                     user='chronos')
                     if res != 0:
                         raise error.TestFail('Error pinging server IP')
 
                     # IPv6 should be blackholed, so ping returns "other error"
-                    res = utils.ping("2001:db8::1", tries=1)
+                    res = utils.ping("2001:db8::1", tries=1, user='chronos')
                     if res != 2:
                         raise error.TestFail('IPv6 ping should have aborted')
