@@ -15,7 +15,8 @@ BID = 'bid'
 CR50_PROD = '/opt/google/cr50/firmware/cr50.bin.prod'
 CR50_PREPVT = '/opt/google/cr50/firmware/cr50.bin.prepvt'
 CR50_STATE = '/var/cache/cr50*'
-GET_CR50_VERSION = 'cat /var/cache/cr50-version'
+CR50_VERSION = '/var/cache/cr50-version'
+GET_CR50_VERSION = 'cat %s' % CR50_VERSION
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
 UPDATE_FAILURE = 'unexpected cr50-update exit code'
 DUMMY_VER = '-1.-1.-1'
@@ -182,7 +183,18 @@ def FindVersion(output, arg):
 
 
 def GetSavedVersion(client):
-    """Return the saved version from /var/cache/cr50-version"""
+    """Return the saved version from /var/cache/cr50-version
+
+    Some boards dont have cr50.bin.prepvt. They may still have prepvt flags.
+    It is possible that cr50-update wont successfully run in this case.
+    Return None if the file doesn't exist.
+
+    Returns:
+        the version saved in cr50-version or None if cr50-version doesn't exist
+    """
+    if not client.path_exists(CR50_VERSION):
+        return None
+
     result = client.run(GET_CR50_VERSION).stdout.strip()
     return FindVersion(result, '--fwver')
 
@@ -311,8 +323,9 @@ def GetRunningVersion(client):
     running_ver = GetFwVersion(client)
     saved_ver = GetSavedVersion(client)
 
-    AssertVersionsAreEqual('Running', GetVersionString(running_ver),
-                           'Saved', GetVersionString(saved_ver))
+    if saved_ver:
+        AssertVersionsAreEqual('Running', GetVersionString(running_ver),
+                               'Saved', GetVersionString(saved_ver))
     return running_ver
 
 
@@ -332,7 +345,7 @@ def GetActiveCr50ImagePath(client):
     """
     ClearUpdateStateAndReboot(client)
     messages = client.run(GET_CR50_MESSAGES).stdout.strip()
-    paths = set(re.findall('/opt/google/cr50/firmware/cr50.bin.*', messages))
+    paths = set(re.findall('/opt/google/cr50/firmware/cr50.bin[\S]+', messages))
     if not paths:
         raise error.TestFail('Could not determine cr50-update path')
     path = paths.pop()
@@ -398,9 +411,22 @@ def VerifyUpdate(client, ver='', last_message=''):
     return new_ver, last_message
 
 
+def HasPrepvtImage(client):
+    """Returns True if cr50.bin.prepvt exists on the dut"""
+    return client.path_exists(CR50_PREPVT)
+
+
 def ClearUpdateStateAndReboot(client):
     """Removes the cr50 status files in /var/cache and reboots the AP"""
-    client.run('rm %s' % CR50_STATE)
+    # If any /var/cache/cr50* files exist, remove them.
+    result = client.run('ls %s' % CR50_STATE, ignore_status=True)
+    if not result.exit_status:
+        client.run('rm %s' % ' '.join(result.stdout.split()))
+    elif result.exit_status != 2:
+        # Exit status 2 means the file didn't exist. If the command fails for
+        # some other reason, raise an error.
+        logging.debug(result)
+        raise error.TestFail(result.stderr)
     client.reboot()
 
 
