@@ -170,9 +170,14 @@ class DisplayFacadeNative(object):
 
         @return a list of (width, height) tuples.
         """
-        modes = self.get_display_modes(display_id)
+        display = self._get_display_by_id(display_id)
+        modes = display['modes']
         if 'widthInNativePixels' not in modes[0]:
             raise RuntimeError('Cannot find widthInNativePixels attribute')
+        if display['isInternal']:
+            logging.info("Getting resolutions of internal display")
+            return list(set([(mode['width'], mode['height']) for mode in
+                             modes]))
         return list(set([(mode['widthInNativePixels'],
                           mode['heightInNativePixels']) for mode in modes]))
 
