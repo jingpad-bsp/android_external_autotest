@@ -15,6 +15,7 @@ class UsbDeviceTest(unittest.TestCase):
           product='product',
           interfaces=['a', 'b'],
           bus=1,
+          level=1,
           port=2)
 
   def test_vendor_id(self):
@@ -34,6 +35,24 @@ class UsbDeviceTest(unittest.TestCase):
 
   def test_port(self):
       self.assertEqual(self._usb_device.port, 2)
+
+  def test_level(self):
+     self.assertEqual(self._usb_device.level, 1)
+
+  def test_get_parent(self):
+      child = usb_device.UsbDevice(
+          vid='vid1',
+          pid='pid1',
+          product='product',
+          interfaces=['a', 'b'],
+          bus=1,
+          level=2,
+          port=2,
+          parent=self._usb_device)
+      self.assertEquals(child.get_parent(1).vid_pid, 'vid:pid')
+
+  def test_get_parent_error(self):
+      self.assertRaises(ValueError, lambda: self._usb_device.get_parent(2))
 
   def test_interfaces_matches_spec(self):
       device_spec = usb_device_spec.UsbDeviceSpec(
