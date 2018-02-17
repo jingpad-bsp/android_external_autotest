@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import update_engine_event as uee
-import urllib2
 import urlparse
 
 from autotest_lib.client.common_lib import error
@@ -383,14 +382,15 @@ class UpdateEngineTest(test.test):
         split_url = staged_url.rpartition('/static/')
         file_info_url = os.path.join(split_url[0], 'api/fileinfo', split_url[2])
         logging.info('file info url: %s', file_info_url)
+        devserver_hostname = urlparse.urlparse(file_info_url).hostname
+        cmd = 'ssh %s \'curl "%s"\'' % (devserver_hostname,
+                                        utils.sh_escape(file_info_url))
         try:
-            conn = urllib2.urlopen(file_info_url)
-            file_info = conn.read()
-            conn.close()
-            return json.loads(file_info)
-        except urllib2.URLError, e:
-            logging.warning('Failed to read file info: %s', e)
-            return None
+            result = utils.run(cmd).stdout
+            return json.loads(result)
+        except error.CmdError as e:
+            logging.error('Failed to read file info: %s', e)
+            raise error.TestFail('Could not reach fileinfo API on devserver.')
 
 
     def _get_job_repo_url(self):
