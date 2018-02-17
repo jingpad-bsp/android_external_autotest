@@ -77,7 +77,6 @@ def _main(args):
             'autotest_scheduler', short_lived=True):
         atexit.register(metrics.Flush)
         handler = _make_handler(args)
-        _add_run_job_args(args)
         ret = _run_job(handler, args)
         if handler.completed:
             _mark_handoff_completed(args.job_id)
@@ -98,16 +97,6 @@ def _make_handler(args):
     )
 
 
-def _add_run_job_args(args):
-    """Add extra args to run_job_args."""
-    models = autotest.load('frontend.afe.models')
-    job = models.Job.objects.get(id=args.job_id)
-    args.run_job_args.extend([
-            '-x-autoserv-exit', str(args.autoserv_exit),
-            '-x-hosts', ','.join(_job_hostnames(job))
-    ])
-
-
 def _run_job(event_handler, args):
     """Run lucifer_run_job.
 
@@ -117,9 +106,14 @@ def _run_job(event_handler, args):
     @param args: parsed arguments
     @returns: exit status of lucifer_run_job
     """
+    models = autotest.load('frontend.afe.models')
     command_args = [args.run_job_path]
-    command_args.extend(
-            ['-abortsock', _abort_sock_path(args.jobdir, args.job_id)])
+    job = models.Job.objects.get(id=args.job_id)
+    command_args.extend([
+            '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
+            '-x-autoserv-exit', str(args.autoserv_exit),
+            '-x-hosts', ','.join(_job_hostnames(job)),
+    ])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler,
                                       args=command_args)
