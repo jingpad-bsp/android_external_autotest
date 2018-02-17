@@ -51,6 +51,8 @@ suite:bvt-inline
 suite:bvt-installer
 suite:bvt-perbuild
 suite:cell_emulator
+suite:cellular_au
+suite:cellular_au_nightly
 suite:cellular_endtoend
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
