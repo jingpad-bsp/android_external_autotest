@@ -104,8 +104,10 @@ class BaseImage(object):
                     container.destroy()
                 except error.CmdError as e:
                     logging.error(e)
-            # Raise the cached exception with original backtrace.
-            raise exc_info[0], exc_info[1], exc_info[2]
+                # Raise the cached exception with original backtrace.
+                raise exc_info[0], exc_info[1], exc_info[2]
+            else:
+                raise
         else:
             self.base_container = Container.create_from_existing_dir(
                     self.container_path, self.base_name)
