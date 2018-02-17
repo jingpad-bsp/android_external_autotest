@@ -89,7 +89,7 @@ class camera_HAL3Perf(test.test):
                 'Camera3SimpleStillCaptureTest.PerformanceTest/*',
                 '--output_log=%s' % test_log_file]
             ret = utils.system(' '.join([binary_path, ' '.join(args)]),
-                               timeout=self.timeout)
+                               timeout=self.timeout, ignore_status=True)
             self._analyze_log(test_log_file)
             if ret != 0:
                 msg = 'Failed to execute command: ' + ' '.join([binary_path,
