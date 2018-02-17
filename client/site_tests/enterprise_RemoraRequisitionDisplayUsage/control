@@ -8,7 +8,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Enterprise"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "client"
-DEPENDENCIES='mimo, cleanup-reboot'
+DEPENDENCIES='mimo'
 ATTRIBUTES="suite:bluestreak"
 
 DOC = """
