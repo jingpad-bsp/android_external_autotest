@@ -282,9 +282,7 @@ def GetFwVersion(client):
 
 def GetBinVersion(client, image=CR50_PROD):
     """Get the image version using 'usb_updater --binvers image'"""
-    # TODO(mruthven) b/37958867: change to ["--binvers", image] when usb_updater
-    # is fixed
-    return GetVersionFromUpdater(client, ['--binvers', image, image])
+    return GetVersionFromUpdater(client, ['--binvers', image])
 
 
 def GetVersionString(ver):
