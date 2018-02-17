@@ -322,9 +322,11 @@ def mount_guest():
 
 
 def test_auth(user, password):
-    cmd = [CRYPTOHOME_CMD, '--action=test_auth', '--user=%s' % user,
+    cmd = [CRYPTOHOME_CMD, '--action=check_key_ex', '--user=%s' % user,
            '--password=%s' % password, '--async']
-    return 'Authentication succeeded' in utils.system_output(cmd)
+    out = __run_cmd(' '.join(cmd))
+    logging.info(out)
+    return 'Key authenticated.' in out
 
 
 def unmount_vault(user):
