@@ -77,9 +77,8 @@ class EventHandler(object):
 
     def _handle_parsing(self, _event, _msg):
         models = autotest.load('frontend.afe.models')
-        PARSING = models.HostQueueEntry.Status.PARSING
-        hqes = self._job.hostqueueentry_set.all()
-        hqes.update(status=PARSING)
+        self._job.hostqueueentry_set.all().update(
+                status=models.HostQueueEntry.Status.PARSING)
 
     def _handle_completed(self, _event, _msg):
         models = autotest.load('frontend.afe.models')
