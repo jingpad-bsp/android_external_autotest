@@ -76,11 +76,20 @@ def _main(args):
     with ts_mon_config.SetupTsMonGlobalState(
             'job_reporter', short_lived=True):
         atexit.register(metrics.Flush)
-        handler = _make_handler(args)
-        ret = _run_job(handler, args)
-        if handler.completed:
-            _mark_handoff_completed(args.job_id)
-        return ret
+        return _run_autotest_job(args)
+
+
+def _run_autotest_job(args):
+    """Run a job as seen from Autotest.
+
+    This include some Autotest setup and cleanup around lucifer starting
+    proper.
+    """
+    handler = _make_handler(args)
+    ret = _run_lucifer_job(handler, args)
+    if handler.completed:
+        _mark_handoff_completed(args.job_id)
+    return ret
 
 
 def _make_handler(args):
@@ -97,7 +106,7 @@ def _make_handler(args):
     )
 
 
-def _run_job(event_handler, args):
+def _run_lucifer_job(event_handler, args):
     """Run lucifer_run_job.
 
     Issued events will be handled by event_handler.
