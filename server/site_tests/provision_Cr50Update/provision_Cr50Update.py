@@ -215,8 +215,10 @@ class provision_Cr50Update(Cr50Test):
             failed.append('cr50 image board id')
         if self.image_rw != state['running_ver'][1]:
             failed.append('cr50 image version')
-        if self.image_ver != state['device_image_ver']:
-            failed.append('device image')
+        if self.image_ver != state['device_prod_ver']:
+            failed.append('device prod image')
+        if self.image_ver != state['device_prepvt_ver']:
+            failed.append('device prepvt image')
         if len(failed):
             raise error.TestFail('Update failures: %s', ', '.join(failed))
 

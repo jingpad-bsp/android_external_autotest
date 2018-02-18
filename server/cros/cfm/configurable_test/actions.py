@@ -163,16 +163,17 @@ class AssertFileDoesNotContain(Action):
 
 class AssertUsbDevices(Action):
     """
-    Asserts that USB devices with a given spec matches a predicate.
+    Asserts that USB devices with given specs matches a predicate.
     """
     def __init__(
             self,
-            usb_device_spec,
+            usb_device_specs,
             predicate=lambda usb_device_list: len(usb_device_list) == 1):
         """
         Initializes with a spec to assert and a predicate.
 
-        @param usb_device_spec an UsbDeviceSpec for the device to check.
+        @param usb_device_specs a list of UsbDeviceSpecs for the devices to
+                check.
         @param predicate A function that accepts a list of UsbDevices
                 and returns true if the list is as expected or false otherwise.
                 If the method returns false an AssertionError is thrown.
@@ -180,20 +181,20 @@ class AssertUsbDevices(Action):
                 in the list.
         """
         super(AssertUsbDevices, self).__init__()
-        self._usb_device_spec = usb_device_spec
+        self._usb_device_specs = usb_device_specs
         self._predicate = predicate
 
     def do_execute(self, context):
         usb_devices = context.usb_device_collector.get_devices_by_spec(
-                self._usb_device_spec)
+                *self._usb_device_specs)
         if not self._predicate(usb_devices):
             raise AssertionError(
-                    'Assertion failed for usb device spec %s. '
+                    'Assertion failed for usb device specs %s. '
                     'Usb devices were: %s'
-                    % (self._usb_device_spec, usb_devices))
+                    % (self._usb_device_specs, usb_devices))
 
     def __str__(self):
-        return 'AssertUsbDevices for spec %s' % self._usb_device_spec
+        return 'AssertUsbDevices for specs %s' % str(self._usb_device_specs)
 
 class SelectScenarioAtRandom(Action):
     """
@@ -239,14 +240,14 @@ class PowerCycleUsbPort(Action):
     """
     def __init__(
             self,
-            usb_device_spec,
+            usb_device_specs,
             wait_for_change_timeout=10,
             filter_function=lambda x: x):
         """
         Initializes.
 
-        @param usb_device_spec UsbDeviceSpec for the device to power cycle
-            the port for.
+        @param usb_device_specs List of UsbDeviceSpecs of the devices to power
+            cycle the port for.
         @param wait_for_change_timeout The timeout in seconds for waiting
             for devices to disappeard/appear after turning power off/on.
             If the devices do not disappear/appear within the timeout an
@@ -254,21 +255,29 @@ class PowerCycleUsbPort(Action):
         @param filter_function Function accepting a list of UsbDevices and
             returning a list of UsbDevices that should be power cycled. The
             default is to return the original list, i.e. power cycle all
-            devices matching the usb_device_spec.
+            devices matching the usb_device_specs.
 
         @raises TimeoutError if the devices do not turn off/on within
             wait_for_change_timeout seconds.
         """
-        self._usb_device_spec = usb_device_spec
+        self._usb_device_specs = usb_device_specs
         self._filter_function = filter_function
         self._wait_for_change_timeout = wait_for_change_timeout
 
     def do_execute(self, context):
         def _get_devices():
             return context.usb_device_collector.get_devices_by_spec(
-                    self._usb_device_spec)
+                    *self._usb_device_specs)
         devices = _get_devices()
         devices_to_cycle = self._filter_function(devices)
+        # If we are asked to power cycle a device connected to a USB hub (for
+        # example a Mimo which has an internal hub) the devices's bus and port
+        # cannot be used. Those values represent the bus and port of the hub.
+        # Instead we must locate the device that is actually connected to the
+        # physical USB port. This device is the parent at level 1 of the current
+        # device. If the device is not connected to a hub, device.get_parent(1)
+        # will return the device itself.
+        devices_to_cycle = [device.get_parent(1) for device in devices_to_cycle]
         port_ids = [(d.bus, d.port) for d in devices_to_cycle]
         context.usb_port_manager.set_port_power(port_ids, False)
         # TODO(kerl): We should do a better check than counting devices.
@@ -284,9 +293,9 @@ class PowerCycleUsbPort(Action):
                 self._wait_for_change_timeout)
 
     def __repr__(self):
-        return ('PowerCycleUsbPort[usb_device_spec=%s, '
+        return ('PowerCycleUsbPort[usb_device_specs=%s, '
                 'wait_for_change_timeout=%s]'
-                % (self._usb_device_spec, self._wait_for_change_timeout))
+                % (str(self._usb_device_specs), self._wait_for_change_timeout))
 
 
 class Sleep(Action):

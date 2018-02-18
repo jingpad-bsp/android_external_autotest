@@ -46,7 +46,9 @@ def main(args):
     logger.info('Starting with args: %r', args)
 
     autotest.monkeypatch()
-    _main_loop(jobdir=args.jobdir)
+    ts_mon_config = autotest.chromite_load('ts_mon_config')
+    with ts_mon_config.SetupTsMonGlobalState('job_aborter'):
+        _main_loop(jobdir=args.jobdir)
     assert False  # cannot exit normally
 
 

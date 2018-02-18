@@ -120,9 +120,8 @@ class firmware_EmmcWriteLoad(FirmwareTest):
         self.switcher.wait_for_client()
 
         logging.info('Expected USB boot, set dev_boot_usb to the original.')
-        self.check_state((self.checkers.dev_boot_usb_checker,
-                          True,
-                          'Not USB boot, Ctrl-U not work'))
+        self.check_state((self.checkers.dev_boot_usb_checker, (True, True),
+                          'Device not booted from USB image properly.'))
         stressor = stress.ControlledStressor(self.install_chrome_os)
 
         dmesg_filename = os.path.join(self.resultsdir, 'dmesg')

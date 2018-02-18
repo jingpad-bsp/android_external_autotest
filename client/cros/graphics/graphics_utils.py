@@ -349,7 +349,12 @@ UINPUT_DEVICE_EVENTS_KEYBOARD = [
     uinput.KEY_UP,
     uinput.KEY_DOWN,
     uinput.KEY_LEFT,
-    uinput.KEY_RIGHT
+    uinput.KEY_RIGHT,
+    uinput.KEY_RIGHTSHIFT,
+    uinput.KEY_LEFTALT,
+    uinput.KEY_A,
+    uinput.KEY_M,
+    uinput.KEY_V
 ]
 # TODO(ihf): Find an ABS sequence that actually works.
 UINPUT_DEVICE_EVENTS_TOUCH = [

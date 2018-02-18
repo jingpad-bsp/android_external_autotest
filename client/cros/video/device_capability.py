@@ -17,7 +17,7 @@ class DeviceCapability(object):
     Answer from the capabilities whether some capability is satisfied on DUT.
     """
 
-    def __init__(self, settings_path='/etc/autotest-capability'):
+    def __init__(self, settings_path='/usr/local/etc/autotest-capability'):
         """
         @param settings_path: string, the base directory for autotest
                               capability. There should be yaml files.
