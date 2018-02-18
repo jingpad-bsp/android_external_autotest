@@ -27,7 +27,14 @@ class DeployConfigTest(unittest.TestCase):
         with open(global_deploy_config_file) as f:
             deploy_configs = json.load(f)
         for config in deploy_configs:
-            lxc_config.DeployConfigManager.validate(config)
+            if 'append' in config:
+                lxc_config.DeployConfigManager.validate(config)
+            elif 'mount' in config:
+                # validate_mount checks that the path exists, so we can't call
+                # it from tests.
+                pass
+            else:
+                self.fail('Non-deploy/mount config %s' % config)
 
 
     def testPreStart(self):
