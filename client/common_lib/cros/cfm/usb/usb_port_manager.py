@@ -1,4 +1,5 @@
 import collections
+import logging
 
 
 PortId = collections.namedtuple('PortId', ['bus', 'port_number'])
@@ -62,15 +63,20 @@ class UsbPortManager(object):
         did_export = False
         if not self._host.path_exists(gpio_path):
             did_export = True
-            self._host.run('echo {} > /sys/class/gpio/export'.format(
+            self._run('echo {} > /sys/class/gpio/export'.format(
                     gpio_index))
         try:
-            self._host.run('echo out > {}/direction'.format(gpio_path))
+            self._run('echo out > {}/direction'.format(gpio_path))
             value_string = '1' if power_on else '0'
-            self._host.run('echo {} > {}/value'.format(
+            self._run('echo {} > {}/value'.format(
                     value_string, gpio_path))
         finally:
             if did_export:
-                self._host.run('echo {} > /sys/class/gpio/unexport'.format(
+                self._run('echo {} > /sys/class/gpio/unexport'.format(
                         gpio_index))
+
+    def _run(self, command):
+        logging.debug('Running: "%s"', command)
+        res = self._host.run(command)
+        logging.debug('Result: "%s"', res)
 
