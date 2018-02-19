@@ -44,16 +44,17 @@ class video_VideoCapability(test.test):
         for cap in video_VideoCapability.avtest_label_to_capability.values():
             if dc_results[cap] == 'yes' and cap not in avtest_detected_labels:
                 logging.error('Static capability claims %s is available. '
-                              "But avtest_label_detect doesn't detect", label)
+                              "But avtest_label_detect doesn't detect", cap)
                 test_failure = True
 
             if dc_results[cap] == 'no' and cap in avtest_detected_labels:
                 logging.error("Static capability claims %s isn't available. "
-                              'But avtest_label_detect detects', label)
+                              'But avtest_label_detect detects', cap)
                 test_failure = True
 
         if test_failure:
-            raise error.TestFail
+            raise error.TestFail("Dynamic capability detection results did not "
+                                 "match static capability configuration.")
 
 
     def run_once(self):
