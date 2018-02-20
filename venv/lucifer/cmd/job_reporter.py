@@ -121,8 +121,8 @@ def _run_lucifer_job(event_handler, args):
     job = models.Job.objects.get(id=args.job_id)
     command_args.extend([
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
+            '-hosts', ','.join(jobx.hostnames(job)),
             '-x-autoserv-exit', str(args.autoserv_exit),
-            '-x-hosts', ','.join(jobx.hostnames(job)),
     ])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler,
