@@ -278,6 +278,7 @@ class PowerCycleUsbPort(Action):
         # device. If the device is not connected to a hub, device.get_parent(1)
         # will return the device itself.
         devices_to_cycle = [device.get_parent(1) for device in devices_to_cycle]
+        logging.debug('Power cycling devices: %s', devices_to_cycle)
         port_ids = [(d.bus, d.port) for d in devices_to_cycle]
         context.usb_port_manager.set_port_power(port_ids, False)
         # TODO(kerl): We should do a better check than counting devices.
