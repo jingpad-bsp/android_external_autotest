@@ -22,6 +22,7 @@ appear.
 """
 
 cfm_test = CfmTest(
+    configuration=Configuration(skip_enrollment=True),
     scenario=Scenario(
         AssertUsbDevices(ALL_MIMO_DISPLAYS),
         RepeatTimes(10, Scenario(
