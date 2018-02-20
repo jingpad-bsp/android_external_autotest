@@ -35,25 +35,6 @@ def hostnames(job):
     return [hqe.host.hostname for hqe in hqes if hqe.host is not None]
 
 
-def working_directory(job):
-    """Return the working directory for a job.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    return _get_consistent_execution_path(job.hostqueueentry_set.all())
-
-
-def _get_consistent_execution_path(execution_entries):
-    first_execution_path = execution_entries[0].execution_path()
-    for execution_entry in execution_entries[1:]:
-        assert execution_entry.execution_path() == first_execution_path, (
-            '%s (%s) != %s (%s)' % (execution_entry.execution_path(),
-                                    execution_entry,
-                                    first_execution_path,
-                                    execution_entries[0]))
-    return first_execution_path
-
-
 def is_aborted(job):
     """Return if the job is aborted.
 
