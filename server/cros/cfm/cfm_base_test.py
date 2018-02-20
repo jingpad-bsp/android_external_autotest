@@ -22,7 +22,7 @@ class CfmBaseTest(test.test):
     for both flavors.
     """
 
-    def initialize(self, host, run_test_only=False):
+    def initialize(self, host, run_test_only=False, skip_enrollment=False):
         """
         Initializes common test properties.
 
@@ -31,10 +31,13 @@ class CfmBaseTest(test.test):
             deprovisioning, enrollment and system reboot. If set to 'True',
             the DUT must already be enrolled and past the OOB screen to be able
             to execute the test.
+        @param skip_enrollment: Whether to skip the enrollment step. Cleanup
+            at the end of the test is done regardless.
         """
         super(CfmBaseTest, self).initialize()
         self._host = host
         self._run_test_only = run_test_only
+        self._skip_enrollment = skip_enrollment
         self._facade_factory = remote_facade_factory.RemoteFacadeFactory(
             self._host, no_chrome = True)
         self.cfm_facade = self._facade_factory.create_cfm_facade()
@@ -51,7 +54,7 @@ class CfmBaseTest(test.test):
         if self._host.servo:
             self._setup_servo()
 
-        if self._run_test_only:
+        if self._run_test_only or self._skip_enrollment:
             # We need to restart the browser to obtain the handle for it when
             # running in test_only mode.
             self.cfm_facade.restart_chrome_for_cfm()
