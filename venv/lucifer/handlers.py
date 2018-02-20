@@ -8,10 +8,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import logging
 import datetime
+import logging
 
 from lucifer import autotest
+from lucifer import jobx
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +68,13 @@ class EventHandler(object):
         reset_after_failure = not self._job.run_reset and not success
         if self._should_reboot_duts(autoserv_exit, failures,
                                     reset_after_failure):
-            _create_cleanup_for_job_hosts(self._job)
+            jobx.create_cleanup_for_job_hosts(self._job)
         else:
-            _mark_job_hosts_ready(self._job)
+            jobx.mark_hosts_ready(self._job)
         if not reset_after_failure:
             return
         self._metrics.send_reset_after_failure(autoserv_exit, failures)
-        _create_reset_for_job_hosts(self._job)
+        jobx.create_reset_for_job_hosts(self._job)
 
     def _handle_parsing(self, _event, _msg):
         models = autotest.load('frontend.afe.models')
@@ -108,7 +109,7 @@ class EventHandler(object):
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
         Status = models.HostQueueEntry.Status
-        if _job_aborted(self._job):
+        if jobx.is_aborted(self._job):
             return Status.ABORTED
         if self._autoserv_exit == 0:
             return Status.COMPLETED
@@ -182,13 +183,6 @@ class Metrics(object):
                         'num_tests_failed': failures > 0})
 
 
-def _job_aborted(job):
-    for hqe in job.hostqueueentry_set.all():
-        if hqe.aborted:
-            return True
-    return False
-
-
 def _stop_prejob_hqes(job):
     """Stop pending HQEs for a job (for synch_count)."""
     models = autotest.load('frontend.afe.models')
@@ -215,44 +209,3 @@ def _get_prejob_hqes(job, include_active=True):
         statuses = list(models.HostQueueEntry.IDLE_PRE_JOB_STATUSES)
     return models.HostQueueEntry.objects.filter(
             job=job, status__in=statuses)
-
-
-def _create_reset_for_job_hosts(job):
-    """Create reset tasks for a job's hosts.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    User = models.User
-    SpecialTask = models.SpecialTask
-    for entry in job.hostqueueentry_set.all():
-        SpecialTask.objects.create(
-                host_id=entry.host.id,
-                task=SpecialTask.Task.RESET,
-                requested_by=User.objects.get(login=job.owner))
-
-
-def _create_cleanup_for_job_hosts(job):
-    """Create cleanup tasks for a job's hosts.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    User = models.User
-    SpecialTask = models.SpecialTask
-    for entry in job.hostqueueentry_set.all():
-        SpecialTask.objects.create(
-                host_id=entry.host.id,
-                task=SpecialTask.Task.CLEANUP,
-                requested_by=User.objects.get(login=job.owner))
-
-
-def _mark_job_hosts_ready(job):
-    """Mark job's hosts READY.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    hosts = set(job.hostqueueentry_set.all().values_list('host_id', flat=True))
-    (models.Host.objects.filter(id__in=hosts)
-     .update(status=models.Host.Status.READY))
