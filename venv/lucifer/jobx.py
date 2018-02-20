@@ -52,6 +52,8 @@ def is_aborted(job):
 def create_reset_for_job_hosts(job):
     """Create reset tasks for a job's hosts.
 
+    See postjob_task.py:GatherLogsTask.epilog
+
     @param job: frontend.afe.models.Job instance
     """
     models = autotest.load('frontend.afe.models')
@@ -66,6 +68,8 @@ def create_reset_for_job_hosts(job):
 
 def create_cleanup_for_job_hosts(job):
     """Create cleanup tasks for a job's hosts.
+
+    See postjob_task.py:GatherLogsTask.epilog
 
     @param job: frontend.afe.models.Job instance
     """
