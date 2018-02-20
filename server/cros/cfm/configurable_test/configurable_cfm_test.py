@@ -62,7 +62,9 @@ class ConfigurableCfmTest(cfm_base_test.CfmBaseTest):
         @param cfm_test CfmTest instance to execute.
         """
         (super(ConfigurableCfmTest, self)
-            .initialize(host, cfm_test.configuration.run_test_only))
+            .initialize(host,
+                        cfm_test.configuration.run_test_only,
+                        cfm_test.configuration.skip_enrollment))
         self.cfm_test = cfm_test
         device_collector = usb_device_collector.UsbDeviceCollector(host)
         port_manager = usb_port_manager.UsbPortManager(host)
