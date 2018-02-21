@@ -122,6 +122,8 @@ def inventory_api_response_parse(response, environment):
     # cname has unique constraint in DB, empty value should be set to None.
     if not sub_dict_for_server['cname']:
       sub_dict_for_server['cname'] = None
+    if not sub_dict_for_server['note']:
+      sub_dict_for_server['note'] = None
     servers.append(Server(**sub_dict_for_server))
 
   # Parse server_attrs tuples
@@ -389,6 +391,7 @@ def main(argv):
   with ts_mon_config.SetupTsMonGlobalState(service_name='sync_server_db',
                                            indirect=True):
     try:
+      metrics.Counter(_METRICS_PREFIX + '/start').increment()
       logging.info("Setting signal handler")
       signal.signal(signal.SIGINT, handle_signal)
       signal.signal(signal.SIGTERM, handle_signal)
