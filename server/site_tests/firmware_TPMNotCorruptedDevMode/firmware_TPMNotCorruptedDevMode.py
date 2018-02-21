@@ -37,25 +37,10 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
 
     def cleanup(self):
         try:
-            self.ensure_internal_device_boot()
+            self.ensure_dev_internal_boot(self.original_dev_boot_usb)
         except Exception as e:
             logging.error("Caught exception: %s", str(e))
         super(firmware_TPMNotCorruptedDevMode, self).cleanup()
-
-    def ensure_internal_device_boot(self):
-        """Ensure internal device boot; if not, reboot into it.
-
-        If not, it may be a test failure during step 2 or 3, try to reboot
-        and press Ctrl-D to internal device boot.
-        """
-        if self.faft_client.system.is_removable_device_boot():
-            logging.info('Reboot into internal disk...')
-            self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-            self.switcher.mode_aware_reboot()
-
-        self.check_state((self.checkers.dev_boot_usb_checker,
-                          False,
-                          'Did not boot from internal disk.'))
 
     def ensure_usb_device_boot(self):
         """Ensure USB device boot and if not reboot into USB."""
@@ -74,7 +59,7 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
         Then stops the tcsd then reads the value of `tpmc read 0x1008 0x0d` then
         checks if the output of that command is what is expected.
         """
-        self.ensure_internal_device_boot()
+        self.ensure_dev_internal_boot(self.original_dev_boot_usb)
         logging.info('Reading tpmc data.')
         self.faft_client.tpm.stop_daemon()
         tpmc_output = self.faft_client.system.run_shell_command_get_output(
