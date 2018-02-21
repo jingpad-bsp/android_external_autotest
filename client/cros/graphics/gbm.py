@@ -100,6 +100,10 @@ class GBMBuffer(object):
         self._l = library
         self._buffer = buffer
 
+    def __del__(self):
+        if self._l:
+            self._l.gbm_bo_destroy(self._buffer)
+
     @classmethod
     def fromFD(cls, device, fd, width, height, stride, bo_format, usage):
         """Create/import a GBM Buffer Object from a file descriptor.
@@ -223,6 +227,7 @@ def crtcScreenshot(crtc_id=None):
                 'RGB', (framebuffer.width, framebuffer.height), buffer_bytes,
                 'raw', 'BGRX', stride_bytes.value, 1)
         bo.unmap(bo._map_p)
+	del bo
         return image
 
     raise RuntimeError(
