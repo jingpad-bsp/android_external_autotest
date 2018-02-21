@@ -10,8 +10,8 @@ from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 class firmware_TPMNotCorruptedDevMode(FirmwareTest):
     """
-    Checks the firmware and kernel verion stored in TPMC and boots to USB and
-    checks the firmware verion and kernel version in crossystem.
+    Checks the firmware and kernel version stored in TPMC and boots to USB and
+    checks the firmware version and kernel version in crossystem.
 
     This test requires a USB disk plugged-in, which contains a Chrome OS test
     image (built by "build_image test").
@@ -69,17 +69,6 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
         self.check_state((self.checkers.dev_boot_usb_checker, (True, True),
                           'Device not booted from USB image properly.'))
 
-    def check_tpmc(self, tpmc_output):
-        """Checks that the kern and fw version from the tpmc read command is one
-        of the expected values.
-        """
-        if len(tpmc_output) != 1:
-          return False
-
-        tpmc_fw_kern_version = tpmc_output[0]
-
-        return (tpmc_fw_kern_version in self.TPMC_KNOWN_VALUES)
-
     def read_tmpc(self):
         """First checks if internal device boot and if not reboots into it.
         Then stops the tcsd then reads the value of `tpmc read 0x1008 0x0d` then
@@ -99,7 +88,7 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
                   (tpmc_output, self.TPMC_KNOWN_VALUES))
 
     def read_kern_fw_ver(self):
-        """First ensures that we are botted on a USB device. Then checks the
+        """First ensures that we are booted on a USB device. Then checks the
         firmware and kernel version reported by crossystem.
         """
         self.ensure_usb_device_boot()
