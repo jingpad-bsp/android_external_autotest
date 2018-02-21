@@ -89,7 +89,7 @@ class DeviceCapability(object):
                     caps = [rule]
 
                 for capability in caps:
-                    m = re.match(r'(?:(disable|no)\s+)?([\w|\-]+)$', capability)
+                    m = re.match(r'(?:(disable|no)\s+)?([\w\-]+)$', capability)
                     prefix, capability = m.groups()
                     if capability in managed_caps:
                         autotest_caps[capability] = prefix or 'yes'
