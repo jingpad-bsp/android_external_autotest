@@ -76,12 +76,6 @@ job.run_test('graphics_SanAngeles', creds='$backdoor')
 job.run_test('camera_V4L2')
 
 # Communications
-job.run_test('network_DisableInterface',
-             iface_name='wlan0', tag='wlan0')  # WiFi
-job.run_test('network_DisableInterface',
-             iface_name='eth0', tag='eth0')  # Ethernet
-job.run_test('network_DisableInterface',
-             iface_name='hci0', tag='hci0')  # Bluetooth
 job.run_test('network_WiFiCaps')
 
 # Extra Requirements
