@@ -26,6 +26,7 @@ import sys
 from lucifer import autotest
 from lucifer import eventlib
 from lucifer import handlers
+from lucifer import jobx
 from lucifer import leasing
 from lucifer import loglib
 
@@ -120,8 +121,8 @@ def _run_lucifer_job(event_handler, args):
     job = models.Job.objects.get(id=args.job_id)
     command_args.extend([
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
+            '-hosts', ','.join(jobx.hostnames(job)),
             '-x-autoserv-exit', str(args.autoserv_exit),
-            '-x-hosts', ','.join(_job_hostnames(job)),
     ])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(event_handler=event_handler,
@@ -133,15 +134,6 @@ def _mark_handoff_completed(job_id):
     handoff = models.JobHandoff.objects.get(job_id=job_id)
     handoff.completed = True
     handoff.save()
-
-
-def _job_hostnames(job):
-    """Return a list of hostnames for a Job.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    hqes = job.hostqueueentry_set.all().prefetch_related('host')
-    return [hqe.host.hostname for hqe in hqes if hqe.host is not None]
 
 
 def _abort_sock_path(jobdir, job_id):
