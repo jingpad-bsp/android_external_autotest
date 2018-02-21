@@ -52,7 +52,9 @@ SPEAKER_MAP = {'18d1:8001':'Hangouts Meet speakermic',
 TOUCH_DISPLAY_LIST = ['17e9:016b']
 TOUCH_CONTROLLER_LIST = ['266e:0110']
 
-DISPLAY_PANEL_MAP = {'17e9:016b':'DisplayLink'}
+DISPLAY_PANEL_MAP = {'17e9:016b':'DisplayLink',
+                     '17e9:416d':'DisplayLink'}
+
 TOUCH_PANEL_MAP = {'266e:0110':'SiS HID Touch Controller'}
 
 
@@ -68,6 +70,7 @@ INTERFACES_LIST = {'2bd9:0011':['uvcvideo', 'uvcvideo',
                    '18d1:8001':['snd-usb-audio', 'snd-usb-audio',
                                 'snd-usb-audio', 'usbhid'],
                    '17e9:016b':['udl'],
+                   '17e9:416d':['udl'],
                    '266e:0110':['usbhid'],
                    '046d:0853':['uvcvideo', 'uvcvideo','usbhid'],
                    '064e:9405':['uvcvideo', 'uvcvideo'],
