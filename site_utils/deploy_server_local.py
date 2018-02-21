@@ -33,8 +33,8 @@ SERVICE_STABILITY_TIMER = 60
 # A dict to map update_commands defined in config file to repos or files that
 # decide whether need to update these commands. E.g. if no changes under
 # frontend repo, no need to update afe.
-COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
-                          'tko': 'tko/'}
+COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/client/',
+                          'tko': 'frontend/client/'}
 BUILD_EXTERNALS_COMMAND = 'build_externals'
 
 _RESTART_SERVICES_FILE = os.path.join(os.environ['HOME'],
