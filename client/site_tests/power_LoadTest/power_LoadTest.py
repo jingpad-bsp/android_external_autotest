@@ -169,8 +169,6 @@ class power_LoadTest(arc.ArcTest):
 
         else:
             # Find all wired ethernet interfaces.
-            # TODO: combine this with code in network_DisableInterface, in a
-            # common library somewhere.
             ifaces = [ nic.strip() for nic in os.listdir('/sys/class/net/')
                 if ((not os.path.exists('/sys/class/net/' + nic + '/phy80211'))
                     and nic.find('eth') != -1) ]
