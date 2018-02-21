@@ -2066,7 +2066,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns a string representing this host's ec version.
         """
         command = 'mosys ec info -s fw_version'
-        return self.run(command, ignore_status=True).stdout.strip()
+        result = self.run(command, ignore_status=True)
+        if result.exit_status != 0:
+            return ''
+        return result.stdout.strip()
 
 
     def get_firmware_version(self):
@@ -2085,7 +2088,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns a string representing this host's hardware revision.
         """
         command = 'mosys platform version'
-        return self.run(command, ignore_status=True).stdout.strip()
+        result = self.run(command, ignore_status=True)
+        if result.exit_status != 0:
+            return ''
+        return result.stdout.strip()
 
 
     def get_kernel_version(self):
