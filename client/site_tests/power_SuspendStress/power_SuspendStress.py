@@ -6,6 +6,7 @@ import logging, numpy, random, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.cros.power import power_suspend, sys_power
 
 class power_SuspendStress(test.test):
@@ -71,21 +72,14 @@ class power_SuspendStress(test.test):
                     if fields[1] != '00000000' or not int(fields[3], 16) & 2:
                         continue
                     interface_choices[fields[0]] = fields[6]
-            interface = min(interface_choices)
+            iface = interface.Interface(min(interface_choices))
 
         while not self._done():
             time.sleep(self._min_resume +
                        random.randint(0, self._max_resume_window))
             # Check the network interface to the caller is still available
             if self._check_connection:
-                link_status = None
-                try:
-                    with open('/sys/class/net/' + interface +
-                              '/operstate') as link_file:
-                        link_status = link_file.readline().strip()
-                except Exception:
-                    pass
-                if link_status != 'up':
+                if not iface.is_link_operational():
                     logging.error('Link to the server gone, reboot')
                     utils.system('reboot')
 
