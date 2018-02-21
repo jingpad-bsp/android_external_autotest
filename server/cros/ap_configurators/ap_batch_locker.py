@@ -18,6 +18,7 @@ from autotest_lib.server.cros.ap_configurators import ap_cartridge
 
 # Max number of retry attempts to lock an ap.
 MAX_RETRIES = 3
+CHAOS_URL = 'https://chaos-188802.appspot.com'
 
 
 class ApLocker(object):
@@ -161,8 +162,9 @@ class ApBatchLocker(object):
             return True
 
         # Begin locking device in datastore.
-        locked_device = requests.put(CHAOS_URL + '/lock', \
-                        json={"hostname":[ap_locker.configurator.host_name]})
+        locked_device = requests.put(CHAOS_URL + '/devices/lock', \
+                        json={"hostname":[ap_locker.configurator.host_name], \
+                        "locked_by":"TestRun"})
         if locked_device.json()['result']:
             self._locked_aps.append(ap_locker)
             logging.info('locked %s', ap_locker.configurator.host_name)
@@ -247,7 +249,7 @@ class ApBatchLocker(object):
         for ap_locker in self._locked_aps:
             if host_name == ap_locker.configurator.host_name:
                 # Unlock in datastore
-                unlocked_device = requests.put(CHAOS_URL + '/unlock', \
+                unlocked_device = requests.put(CHAOS_URL + '/devices/unlock', \
                                   json={"hostname":host_name})
                 # TODO: Raise error if unable to unlock.
                 if !unlocked_device.json()['result']:
