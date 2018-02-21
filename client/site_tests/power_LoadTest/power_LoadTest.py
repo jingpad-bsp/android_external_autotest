@@ -14,6 +14,7 @@ from autotest_lib.client.common_lib.cros import arc
 from autotest_lib.client.common_lib.cros import arc_common
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import power_load_util
+from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.cros import backchannel, httpd
@@ -169,12 +170,12 @@ class power_LoadTest(arc.ArcTest):
 
         else:
             # Find all wired ethernet interfaces.
-            ifaces = [ nic.strip() for nic in os.listdir('/sys/class/net/')
-                if ((not os.path.exists('/sys/class/net/' + nic + '/phy80211'))
-                    and nic.find('eth') != -1) ]
-            logging.debug(str(ifaces))
+            ifaces = [ iface for iface in interface.get_interfaces()
+                if (not iface.is_wifi_device() and
+                    iface.name.find('eth') != -1) ]
+            logging.debug(str([iface.name for iface in ifaces]))
             for iface in ifaces:
-                if check_network and self._is_network_iface_running(iface):
+                if check_network and iface.is_lower_up:
                     raise error.TestError('Ethernet interface is active. ' +
                                           'Please remove Ethernet cable')
 
@@ -609,27 +610,6 @@ class power_LoadTest(arc.ArcTest):
             return False
         logging.debug('Ambient light sensor present')
         return True
-
-
-    def _is_network_iface_running(self, name):
-        """
-        Checks to see if the interface is running.
-
-        Args:
-          name: name of the interface to check.
-
-        Returns:
-          True if the interface is running.
-
-        """
-        try:
-            # TODO: Switch to 'ip' (crbug.com/410601).
-            out = utils.system_output('ifconfig %s' % name)
-        except error.CmdError, e:
-            logging.info(e)
-            return False
-
-        return out.find('RUNNING') >= 0
 
 
     def _energy_use_from_powerlogger(self, keyval):
