@@ -15,8 +15,6 @@ they are specialized and the Job class already suffers from method
 bloat.
 """
 
-from lucifer import autotest
-
 
 def is_hostless(job):
     """Return True if the job is hostless.
@@ -47,57 +45,3 @@ def is_aborted(job):
         if hqe.aborted:
             return True
     return False
-
-
-def create_reset_for_job_hosts(job):
-    """Create reset tasks for a job's hosts.
-
-    See postjob_task.py:GatherLogsTask.epilog
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    User = models.User
-    SpecialTask = models.SpecialTask
-    for entry in job.hostqueueentry_set.all():
-        SpecialTask.objects.create(
-                host_id=entry.host.id,
-                task=SpecialTask.Task.RESET,
-                requested_by=User.objects.get(login=job.owner))
-
-
-def create_cleanup_for_job_hosts(job):
-    """Create cleanup tasks for a job's hosts.
-
-    See postjob_task.py:GatherLogsTask.epilog
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    User = models.User
-    SpecialTask = models.SpecialTask
-    for entry in job.hostqueueentry_set.all():
-        SpecialTask.objects.create(
-                host_id=entry.host.id,
-                task=SpecialTask.Task.CLEANUP,
-                requested_by=User.objects.get(login=job.owner))
-
-
-def mark_hosts_ready(job):
-    """Mark a job's hosts READY.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    _hosts(job).update(status=models.Host.Status.READY)
-
-
-def _hosts(job):
-    """Return a QuerySet for the job's hosts.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    models = autotest.load('frontend.afe.models')
-    host_ids = set(job.hostqueueentry_set.all()
-                   .values_list('host_id', flat=True))
-    return models.Host.objects.filter(id__in=host_ids)
