@@ -62,6 +62,8 @@ def _parse_args_and_configure_logging(args):
     # Job specific
     parser.add_argument('--job-id', type=int, required=True,
                         help='Autotest Job ID')
+    parser.add_argument('--lucifer-level', default='GATHERING',
+                        help='Lucifer level')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
@@ -134,6 +136,7 @@ def _run_lucifer_job(event_handler, args):
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
             '-hosts', ','.join(jobx.hostnames(job)),
 
+            '-x-level', args.lucifer_level,
             '-resultsdir', args.results_dir,
             '-x-autoserv-exit', str(args.autoserv_exit),
     ])
