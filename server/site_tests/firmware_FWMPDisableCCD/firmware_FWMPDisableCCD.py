@@ -17,7 +17,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
     version = 1
 
     FWMP_DEV_DISABLE_CCD_UNLOCK = (1 << 6)
-
+    GSCTOOL_ERR = 'Error: rv 7, response 7'
 
     def initialize(self, host, cmdline_args):
         """Initialize servo check if cr50 exists"""
@@ -33,22 +33,46 @@ class firmware_FWMPDisableCCD(FirmwareTest):
             'Not ')
 
 
-    def try_ccd_level_change(self, level, fwmp_disabled_unlock):
-        """Try changing the ccd privilege level
+    def try_ccd_unlock(self, fwmp_disabled_unlock):
+        """Try unlocking cr50 using gsctool
 
         The FWMP flags may disable ccd. If they do, unlocking or opening CCD
         should fail.
 
-        @param level: the ccd privilege level: open or unlock.
+        Unlocking has a lot of extra restrictions using the cr50 console, so
+        run it using tpm vendor commands.
+
         @param fwmp_disabled_unlock: True if the unlock process should fail
         """
-        response = 'Console unlock%s allowed.*>' % (' not' if fwmp_disabled_unlock
-                                                 else '')
         self.cr50.send_command('ccd lock')
-        logging.info(self.cr50.send_command_get_output('ccd %s' % level,
-                [response]))
 
-        # Wait long enough for any ccd commands to time out.
+        result = self.host.run('gsctool -U -a',
+                ignore_status=fwmp_disabled_unlock)
+
+        if fwmp_disabled_unlock and result.stderr.strip() != self.GSCTOOL_ERR:
+            raise error.TestFail('Unexpected gsctool response %r' % result)
+
+        state = self.cr50.get_ccd_level()
+        expected_state = 'lock' if fwmp_disabled_unlock else 'unlock'
+        if state != expected_state:
+            raise error.TestFail('Unexpected ccd state after unlock. expected '
+                    '%s got %s' % (expected_state, state))
+
+
+    def try_ccd_open(self, fwmp_disabled_unlock):
+        """Try opening cr50 using the console
+
+        The FWMP flags may disable ccd. If they do, unlocking or opening CCD
+        should fail.
+
+        @param fwmp_disabled_unlock: True if open should fail
+        """
+        self.cr50.send_command('ccd lock')
+        response = 'Console unlock%s allowed.*>' % (
+                ' not' if fwmp_disabled_unlock else '')
+        logging.info(self.cr50.send_command_get_output('ccd open', [response]))
+
+        # Wait long enough for ccd open to timeout
         time.sleep(10)
 
 
@@ -73,8 +97,8 @@ class firmware_FWMPDisableCCD(FirmwareTest):
 
         # The ccd privilege level can be changed to unlock or open. Make sure
         # that the fwmp setting affects both the same.
-        self.try_ccd_level_change('unlock', fwmp_disabled_unlock)
-        self.try_ccd_level_change('open', fwmp_disabled_unlock)
+        self.try_ccd_unlock(fwmp_disabled_unlock)
+        self.try_ccd_open(fwmp_disabled_unlock)
 
 
 
