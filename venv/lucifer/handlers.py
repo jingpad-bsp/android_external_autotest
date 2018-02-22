@@ -63,16 +63,23 @@ class EventHandler(object):
         pass
 
     def _handle_x_tests_done(self, _event, msg):
-        autoserv_exit, failures = msg.split(',')
+        """Taken from GatherLogsTask.epilog."""
+        autoserv_exit, failures = (int(x) for x in msg.split(','))
+        logger.debug('Got autoserv_exit=%d, failures=%d',
+                     autoserv_exit, failures)
         success = (autoserv_exit == 0 and failures == 0)
         reset_after_failure = not self._job.run_reset and not success
         if self._should_reboot_duts(autoserv_exit, failures,
                                     reset_after_failure):
+            logger.debug('Creating cleanup jobs for hosts')
             jobx.create_cleanup_for_job_hosts(self._job)
         else:
+            logger.debug('Not creating cleanup jobs for hosts')
             jobx.mark_hosts_ready(self._job)
         if not reset_after_failure:
+            logger.debug('Skipping reset because reset_after_failure is False')
             return
+        logger.debug('Creating reset jobs for hosts')
         self._metrics.send_reset_after_failure(autoserv_exit, failures)
         jobx.create_reset_for_job_hosts(self._job)
 
@@ -98,11 +105,16 @@ class EventHandler(object):
         models = autotest.load('frontend.afe.models')
         reboot_after = self._job.reboot_after
         if self._final_status() == models.HostQueueEntry.Status.ABORTED:
+            logger.debug('Should reboot because reboot_after=ABORTED')
             return True
         elif reboot_after == models.Job.RebootAfter.ALWAYS:
+            logger.debug('Should reboot because reboot_after=ALWAYS')
             return True
-        elif reboot_after == models.Job.RebootAfter.IF_ALL_TESTS_PASSED:
-            return autoserv_exit == 0 and failures == 0
+        elif (reboot_after == models.Job.RebootAfter.IF_ALL_TESTS_PASSED
+              and autoserv_exit == 0 and failures == 0):
+            logger.debug('Should reboot because'
+                         ' reboot_after=IF_ALL_TESTS_PASSED')
+            return True
         else:
             return failures > 0 and not reset_after_failure
 
