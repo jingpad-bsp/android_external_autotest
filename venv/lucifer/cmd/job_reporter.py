@@ -76,8 +76,6 @@ as the caller has presumably already run it.
                         ' (only with --need-gather)')
     parser.add_argument('--results-dir', required=True,
                         help='Path to job leases directory.')
-    parser.add_argument('run_job_args', nargs='*',
-                        help='Deprecated, arguments to pass to lucifer_run_job')
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
@@ -151,7 +149,6 @@ def _run_lucifer_job(event_handler, args):
                 '-x-need-gather',
                 '-x-num-tests-failed', str(args.num_tests_failed),
         ])
-    command_args.extend(args.run_job_args)
     return eventlib.run_event_command(
             event_handler=event_handler, args=command_args)
 
