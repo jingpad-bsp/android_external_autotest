@@ -94,10 +94,14 @@ def set_volume_levels(volume, capture):
         utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
         utils.system('/usr/bin/cras_test_client --dump_server_info')
         utils.system('/usr/bin/cras_test_client --mute 0')
-        utils.system('amixer -c 0 contents')
-    except error.CmdError, e:
+    except error.CmdError as e:
         raise error.TestError(
                 '*** Can not tune volume through CRAS. *** (' + str(e) + ')')
+
+    try:
+        utils.system('amixer -c 0 contents')
+    except error.CmdError as e:
+        logging.info('amixer command failed: %s', str(e))
 
 def loopback_latency_check(**args):
     """Checks loopback latency.
