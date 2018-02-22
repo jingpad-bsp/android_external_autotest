@@ -176,6 +176,24 @@ def has_battery():
     return rv
 
 
+def get_low_battery_shutdown_percent():
+    """Get the percent-based low-battery shutdown threshold.
+
+    Returns:
+        Float, percent-based low-battery shutdown threshold. 0 if error.
+    """
+    ret = 0.0
+    try:
+        command = 'check_powerd_config --low_battery_shutdown_percent'
+        ret = float(utils.run(command).stdout)
+    except error.CmdError:
+        logging.debug("Can't run %s", command)
+    except ValueError:
+        logging.debug("Didn't get number from %s", command)
+
+    return ret
+
+
 def _charge_control_by_ectool(is_charge):
     """execute ectool command.
 
