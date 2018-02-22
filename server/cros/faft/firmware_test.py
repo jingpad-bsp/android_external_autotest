@@ -573,6 +573,22 @@ class FirmwareTest(FAFTBase):
             self.reset_and_prioritize_kernel(part)
             self.switcher.mode_aware_reboot()
 
+    def ensure_dev_internal_boot(self, original_dev_boot_usb):
+        """Ensure internal device boot in developer mode.
+
+        If not internal device boot, it will try to reboot the device and
+        bypass dev mode to boot into internal device.
+
+        @param original_dev_boot_usb: Original dev_boot_usb value.
+        """
+        logging.info('Checking internal device boot.')
+        if self.faft_client.system.is_removable_device_boot():
+            logging.info('Reboot into internal disk...')
+            self.faft_client.system.set_dev_boot_usb(original_dev_boot_usb)
+            self.switcher.mode_aware_reboot()
+        self.check_state((self.checkers.dev_boot_usb_checker, False,
+                          'Device not booted from internal disk properly.'))
+
     def set_hardware_write_protect(self, enable):
         """Set hardware write protect pin.
 
