@@ -1963,6 +1963,52 @@ def get_kernel_version():
     return utils.run('uname -r').stdout.strip()
 
 
+def get_cpu_name():
+    """Get the cpu name as strings.
+
+    @returns a string representing this host's cpu name.
+    """
+
+    # Try get cpu name from device tree first
+    if os.path.exists("/proc/device-tree/compatible"):
+        command = "sed -e 's/\\x0/\\n/g' /proc/device-tree/compatible | tail -1"
+        return utils.run(command).stdout.strip().replace(',', ' ')
+
+
+    # Get cpu name from uname -p
+    command = "uname -p"
+    ret = utils.run(command).stdout.strip()
+
+    # 'uname -p' return variant of unknown or amd64 or x86_64 or i686
+    # Try get cpu name from /proc/cpuinfo instead
+    if re.match("unknown|amd64|[ix][0-9]?86(_64)?", ret, re.IGNORECASE):
+        command = "grep model.name /proc/cpuinfo | cut -f 2 -d: | head -1"
+        ret = utils.run(command).stdout.strip()
+
+    # Remove bloat from CPU name, for example
+    # 'Intel(R) Core(TM) i5-7Y57 CPU @ 1.20GHz'       -> 'Intel Core i5-7Y57'
+    # 'Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz'     -> 'Intel Xeon E5-2690 v4'
+    # 'AMD A10-7850K APU with Radeon(TM) R7 Graphics' -> 'AMD A10-7850K'
+    # 'AMD GX-212JC SOC with Radeon(TM) R2E Graphics' -> 'AMD GX-212JC'
+    trim_re = " (@|processor|apu|soc|radeon).*|\(.*?\)| cpu"
+    return re.sub(trim_re, '', ret, flags=re.IGNORECASE)
+
+
+def get_screen_resolution():
+    """Get the screen(s) resolution as strings.
+    In case of more than 1 monitor, return resolution for each monitor separate
+    with plus sign.
+
+    @returns a string representing this host's screen(s) resolution.
+    """
+    command = 'for f in /sys/class/drm/*/*/modes; do head -1 $f; done'
+    ret = utils.run(command, ignore_status=True)
+    # We might have Chromebox without a screen
+    if ret.exit_status != 0:
+        return ''
+    return ret.stdout.strip().replace('\n', '+')
+
+
 def get_board_with_frequency_and_memory():
     """
     Returns a board name modified with CPU frequency and memory size to
@@ -1973,8 +2019,7 @@ def get_board_with_frequency_and_memory():
     if is_virtual_machine():
         board = '%s_VM' % board_name
     else:
-        # Rounded to nearest GB and GHz.
-        memory = int(round(get_mem_total() / 1024.0))
+        memory = get_mem_total_gb()
         # Convert frequency to GHz with 1 digit accuracy after the
         # decimal point.
         frequency = int(round(get_cpu_max_frequency() * 1e-8)) * 0.1
@@ -1990,6 +2035,13 @@ def get_mem_total():
     # Sanity check, all Chromebooks have at least 1GB of memory.
     assert mem_total > 256 * 1024, 'Unreasonable amount of memory.'
     return mem_total / 1024
+
+
+def get_mem_total_gb():
+    """
+    Returns the total memory available in the system in GBytes.
+    """
+    return int(round(get_mem_total() / 1024.0))
 
 
 def get_mem_free():
