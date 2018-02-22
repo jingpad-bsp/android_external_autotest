@@ -349,7 +349,8 @@ class DroneManager(object):
 
     def _get_drone_for_pidfile_id(self, pidfile_id):
         pidfile_contents = self.get_pidfile_contents(pidfile_id)
-        assert pidfile_contents.process is not None
+        if pidfile_contents.process is None:
+          raise DroneManagerError('Fail to get a drone due to empty pidfile')
         return self._get_drone_for_process(pidfile_contents.process)
 
 
