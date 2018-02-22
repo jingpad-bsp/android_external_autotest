@@ -81,12 +81,18 @@ class Cr50Test(FirmwareTest):
         self.host.get_file(cr50_utils.CR50_PROD,
                 self._device_prod_image)
 
-        _, prepvt_rw, prepvt_bid = self._original_state['device_prepvt_ver']
-        filename = 'prepvt_device_image_' + prepvt_rw
-        self._device_prepvt_image = os.path.join(self.resultsdir,
-                filename)
-        self.host.get_file(cr50_utils.CR50_PREPVT,
-                self._device_prepvt_image)
+        if cr50_utils.HasPrepvtImage(self.host):
+            _, prepvt_rw, prepvt_bid = self._original_state['device_prepvt_ver']
+            filename = 'prepvt_device_image_' + prepvt_rw
+            self._device_prepvt_image = os.path.join(self.resultsdir,
+                    filename)
+            self.host.get_file(cr50_utils.CR50_PREPVT,
+                    self._device_prepvt_image)
+            prepvt_bid = cr50_utils.GetBoardIdInfoString(prepvt_bid)
+        else:
+            self._device_prepvt_image = None
+            prepvt_rw = None
+            prepvt_bid = None
 
         # If the running cr50 image version matches the image on the DUT use
         # the DUT image as the original image. If the versions don't match
@@ -95,7 +101,6 @@ class Cr50Test(FirmwareTest):
 
         # Make sure prod_bid and running_bid are in the same format
         prod_bid = cr50_utils.GetBoardIdInfoString(prod_bid)
-        prepvt_bid = cr50_utils.GetBoardIdInfoString(prepvt_bid)
         running_bid = cr50_utils.GetBoardIdInfoString(running_bid)
         if running_rw == prod_rw and running_bid == prod_bid:
             logging.info('Using device cr50 prod image %s %s', prod_rw,
@@ -203,13 +208,19 @@ class Cr50Test(FirmwareTest):
             logging.warning('Did not save the original images. Cannot restore '
                             'state')
             return
+        # Remove the prepvt image if the test installed one.
+        if (not self._original_state['has_prepvt'] and
+            cr50_utils.HasPrepvtImage(self.host)):
+            self.host.run('rm %s' % cr50_utils.CR50_PREPVT)
         # If rootfs verification has been disabled, copy the cr50 device image
         # back onto the DUT.
         if self._rootfs_verification_is_disabled():
             cr50_utils.InstallImage(self.host, self._device_prod_image,
                     cr50_utils.CR50_PROD)
-            cr50_utils.InstallImage(self.host, self._device_prepvt_image,
-                    cr50_utils.CR50_PREPVT)
+            # Install the prepvt image if there was one.
+            if self._device_prepvt_image:
+                cr50_utils.InstallImage(self.host, self._device_prepvt_image,
+                        cr50_utils.CR50_PREPVT)
 
         chip_bid_info = self._original_state['chip_bid']
         bid_is_erased = chip_bid_info == cr50_utils.ERASED_CHIP_BID
@@ -241,8 +252,12 @@ class Cr50Test(FirmwareTest):
             ignore_status=True).stdout.strip()
         state['device_prod_ver'] = cr50_utils.GetBinVersion(self.host,
                 cr50_utils.CR50_PROD)
-        state['device_prepvt_ver'] = cr50_utils.GetBinVersion(self.host,
-                cr50_utils.CR50_PREPVT)
+        state['has_prepvt'] = cr50_utils.HasPrepvtImage(self.host)
+        if state['has_prepvt']:
+            state['device_prepvt_ver'] = cr50_utils.GetBinVersion(self.host,
+                    cr50_utils.CR50_PREPVT)
+        else:
+            state['device_prepvt_ver'] = None
         state['rlz'] = cr50_utils.GetRLZ(self.host)
         state['chip_bid'] = cr50_utils.GetChipBoardId(self.host)
         state['chip_bid_str'] = '%08x:%08x:%08x' % state['chip_bid']
