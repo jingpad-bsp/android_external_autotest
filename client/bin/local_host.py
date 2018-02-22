@@ -196,7 +196,7 @@ class LocalHost(hosts.Host):
         if excludes:
             raise error.AutotestHostRunError(
                     '--exclude is not supported in LocalHost.send_file method. '
-                    'excludes: %s' % ','.join(excludes))
+                    'excludes: %s' % ','.join(excludes), None)
         self._copy_file(source, dest, delete_dest=delete_dest,
                         preserve_symlinks=preserve_symlinks)
 
