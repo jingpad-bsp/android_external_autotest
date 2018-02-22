@@ -307,6 +307,25 @@ class RpcInterfaceTestWithStaticAttribute(
                            'test_attribute2': 'test_value2',
                            'static_attribute1': 'static_value2'})
 
+    def test_get_host_attribute_with_static(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        self._set_static_attribute(host1, 'test_attribute1', 'static_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+        host2.set_attribute('test_attribute2', 'test_value2')
+
+        attributes = rpc_interface.get_host_attribute(
+                'test_attribute1',
+                hostname__in=['test_host1', 'test_host2'])
+        hosts = [attr['host'] for attr in attributes]
+        values = [attr['value'] for attr in attributes]
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
+        self.assertEquals(set(values),
+                          set(['test_value1', 'static_value1']))
+
+
     def test_get_hosts_by_attribute_without_static(self):
         host1 = models.Host.objects.create(hostname='test_host1')
         host1.set_attribute('test_attribute1', 'test_value1')
@@ -742,6 +761,22 @@ class RpcInterfaceTest(unittest.TestCase,
                 'test_attribute1', 'test_value1')
         self.assertEquals(set(hosts),
                           set(['test_host1', 'test_host2']))
+
+
+    def test_get_host_attribute(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+
+        attributes = rpc_interface.get_host_attribute(
+                'test_attribute1',
+                hostname__in=['test_host1', 'test_host2'])
+        hosts = [attr['host'] for attr in attributes]
+        values = [attr['value'] for attr in attributes]
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
+        self.assertEquals(set(values), set(['test_value1']))
 
 
     def test_get_hosts(self):
