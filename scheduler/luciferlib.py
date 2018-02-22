@@ -87,20 +87,25 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
         drone = manager.pick_drone_to_use()
     else:
         drone = manager.get_drone_for_pidfile(pidfile_id)
+    results_dir = _results_dir(manager, job)
     args = [
-            '--run-job-path', _get_run_job_path(),
+            # General configuration
             '--jobdir', _get_jobdir(),
+            '--run-job-path', _get_run_job_path(),
+            '--watcher-path', _get_watcher_path(),
+
+            # Job specific
             '--job-id', str(job.id),
             '--autoserv-exit', str(autoserv_exit),
+            '--results-dir', results_dir,
     ]
     # lucifer_run_job arguments
-    results_dir = _results_dir(manager, job)
     num_tests_failed = manager.get_num_tests_failed(pidfile_id)
     args.extend([
             '--',
-            '-resultsdir', results_dir,
-            '-autotestdir', _AUTOTEST_DIR,
-            '-watcherpath', _get_watcher_path(),
+            '-resultsdir', results_dir,  # TODO(ayatane): Deprecated
+            '-autotestdir', _AUTOTEST_DIR,  # TODO(ayatane): Deprecated
+            '-watcherpath', _get_watcher_path(),  # TODO(ayatane): Deprecated
             '-x-need-gather',
             '-x-num-tests-failed', str(num_tests_failed),
     ])
@@ -127,19 +132,24 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
         drone = manager.pick_drone_to_use()
     else:
         drone = manager.get_drone_for_pidfile(pidfile_id)
+    results_dir = _results_dir(manager, job)
     args = [
-            '--run-job-path', _get_run_job_path(),
+            # General configuration
             '--jobdir', _get_jobdir(),
+            '--run-job-path', _get_run_job_path(),
+            '--watcher-path', _get_watcher_path(),
+
+            # Job specific
             '--job-id', str(job.id),
             '--autoserv-exit', str(autoserv_exit),
+            '--results-dir', results_dir,
     ]
     # lucifer_run_job arguments
-    results_dir = _results_dir(manager, job)
     args.extend([
             '--',
-            '-resultsdir', results_dir,
-            '-autotestdir', _AUTOTEST_DIR,
-            '-watcherpath', _get_watcher_path(),
+            '-resultsdir', results_dir,  # TODO(ayatane): Deprecated
+            '-autotestdir', _AUTOTEST_DIR,  # TODO(ayatane): Deprecated
+            '-watcherpath', _get_watcher_path(),  # TODO(ayatane): Deprecated
     ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
