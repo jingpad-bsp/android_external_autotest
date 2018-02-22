@@ -81,11 +81,13 @@ class network_VPNConnect(test.test):
     def get_vpn_server(self):
         """Returns a VPN server instance."""
         if self._vpn_type.startswith('l2tpipsec-psk'):
-            return vpn_server.L2TPIPSecVPNServer('psk',
-                                                 self.SERVER_INTERFACE_NAME,
-                                                 self.SERVER_ADDRESS,
-                                                 self.NETWORK_PREFIX,
-                                                 'xauth' in self._vpn_type)
+            return vpn_server.L2TPIPSecVPNServer(
+                'psk',
+                self.SERVER_INTERFACE_NAME,
+                self.SERVER_ADDRESS,
+                self.NETWORK_PREFIX,
+                perform_xauth_authentication = 'xauth' in self._vpn_type,
+                local_ip_is_public_ip = 'evil' in self._vpn_type)
         elif self._vpn_type.startswith('l2tpipsec-cert'):
             return vpn_server.L2TPIPSecVPNServer('cert',
                                                  self.SERVER_INTERFACE_NAME,

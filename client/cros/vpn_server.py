@@ -152,11 +152,18 @@ class L2TPIPSecVPNServer(VPNServer):
 
     """Implementation of an L2TP/IPSec server instance."""
     def __init__(self, auth_type, interface_name, address, network_prefix,
-                 perform_xauth_authentication=False):
+                 perform_xauth_authentication=False,
+                 local_ip_is_public_ip=False):
         self._auth_type = auth_type
         self._chroot = network_chroot.NetworkChroot(interface_name,
                                                     address, network_prefix)
         self._perform_xauth_authentication = perform_xauth_authentication
+
+        if local_ip_is_public_ip:
+            self.IPSEC_COMMON_CONFIGS[self.XL2TPD_CONFIG_FILE] = \
+                self.IPSEC_COMMON_CONFIGS[self.XL2TPD_CONFIG_FILE].replace(
+                    self.SERVER_IP_ADDRESS, address)
+            self.SERVER_IP_ADDRESS = address
 
 
     def start_server(self):
