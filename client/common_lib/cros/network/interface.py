@@ -259,6 +259,17 @@ class Interface:
         return 'LOWER_UP' in self.get_ip_flags()
 
 
+    def is_link_operational(self):
+        """@return True if RFC 2683 IfOperStatus is UP (i.e., is able to pass
+        packets).
+        """
+        command = 'ip link show %s' % self._name
+        result = self._run(command, ignore_status=True)
+        if result.exit_status:
+            return False
+        return result.stdout.find('state UP') >= 0
+
+
     @property
     def mac_address(self):
         """@return the (first) MAC address, e.g., "00:11:22:33:44:55"."""
