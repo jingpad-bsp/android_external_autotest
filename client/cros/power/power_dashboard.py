@@ -6,6 +6,8 @@ import json, numpy, os, time, urllib, urllib2
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_utils
 
 
 class BaseDashboard(object):
@@ -40,7 +42,7 @@ class BaseDashboard(object):
             A dictionary of powerlog.
         """
         powerlog_dict = {
-            'format_version': 1,
+            'format_version': 2,
             'timestamp': time.time(),
             'test': self._testname,
             'dut': {
@@ -48,12 +50,19 @@ class BaseDashboard(object):
                 'version': {
                     'hw': utils.get_hardware_revision(),
                     'milestone':
-                          lsbrelease_utils.get_chromeos_release_milestone(),
+                            lsbrelease_utils.get_chromeos_release_milestone(),
                     'os': lsbrelease_utils.get_chromeos_release_version(),
                     'channel': lsbrelease_utils.get_chromeos_channel(),
                     'firmware': utils.get_firmware_version(),
                     'ec': utils.get_ec_version(),
                     'kernel': utils.get_kernel_version(),
+                },
+                'sku' : {
+                    'cpu': utils.get_cpu_name(),
+                    'memory_size': utils.get_mem_total_gb(),
+                    'storage_size':
+                            utils.get_disk_size_gb(utils.get_root_device()),
+                    'display_resolution': utils.get_screen_resolution(),
                 },
                 'ina': {
                     'version': 0,
@@ -63,6 +72,14 @@ class BaseDashboard(object):
             },
             'power': raw_measurement
         }
+
+        if power_utils.has_battery():
+            # Round the battery size to nearest tenth because it is fluctuated
+            # for platform without battery norminal voltage data.
+            powerlog_dict['dut']['sku']['battery_size'] = round(
+                    power_status.get_status().battery[0].energy_full_design, 1)
+            powerlog_dict['dut']['sku']['battery_shutdown_percent'] = \
+                    power_utils.get_low_battery_shutdown_percent()
         return powerlog_dict
 
 
