@@ -1852,7 +1852,7 @@ def get_built_in_ethernet_nic_name():
     return _MOBLAB_ETH_0
 
 
-def ping(host, deadline=None, tries=None, timeout=60):
+def ping(host, deadline=None, tries=None, timeout=60, user=None):
     """Attempt to ping |host|.
 
     Shell out to 'ping' if host is an IPv4 addres or 'ping6' if host is an
@@ -1875,14 +1875,18 @@ def ping(host, deadline=None, tries=None, timeout=60):
     @return exit code of ping command.
     """
     args = [host]
-    ping_cmd = 'ping6' if re.search(r':.*:', host) else 'ping'
+    cmd = 'ping6' if re.search(r':.*:', host) else 'ping'
 
     if deadline:
         args.append('-w%d' % deadline)
     if tries:
         args.append('-c%d' % tries)
 
-    return run(ping_cmd, args=args, verbose=True,
+    if user != None:
+        args = [user, '-c', ' '.join([cmd] + args)]
+        cmd = 'su'
+
+    return run(cmd, args=args, verbose=True,
                           ignore_status=True, timeout=timeout,
                           stdout_tee=TEE_TO_LOGS,
                           stderr_tee=TEE_TO_LOGS).exit_status

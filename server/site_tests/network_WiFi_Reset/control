@@ -11,7 +11,8 @@ ATTRIBUTES = 'suite:wifi_matfunc, suite:wifi_matfunc_noservo'
 
 DOC = """
 This test verifies that if a network device can be reset from user space, that
-it will connect to the network correctly after being reset a few times.
+it will connect to the network correctly after being reset a few times. We also
+run through a few system suspend/resume cycles in between, for completeness.
 Only supports Marvell (mwifiex) at the moment, but will report TestNA for
 unsupported devices.
 """

@@ -75,14 +75,6 @@ class platform_FilePerms(test.test):
             'device': loop_device,
             'type': ['squashfs'],
             'options': ['ro', 'nosuid', 'nodev']},
-        '/opt/google/containers/android/rootfs/root/system/fonts/chromeos': {
-            'device': root_device,
-            'type': ['ext2'],
-            'options': ['ro']},
-        '/opt/google/containers/android/rootfs/root/vendor': {
-            'device': loop_device,
-            'type': ['squashfs'],
-            'options': ['ro', 'nosuid', 'nodev']},
         '/opt/google/containers/arc-sdcard/mountpoints/container-root': {
             'device': loop_device,
             'type': ['squashfs'],

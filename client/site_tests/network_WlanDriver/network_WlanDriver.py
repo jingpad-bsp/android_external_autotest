@@ -59,8 +59,7 @@ class network_WlanDriver(test.test):
             },
             'Marvell 88W8797 SDIO': {
                     '3.4': 'wireless/mwifiex/mwifiex_sdio.ko',
-                    '3.8': 'wireless-3.4/mwifiex/mwifiex_sdio.ko',
-                    '3.8': 'wireless/mwifiex/mwifiex_sdio.ko',
+                    '3.8': 'wireless-3.4/mwifiex/mwifiex_sdio.ko'
             },
             'Marvell 88W8887 SDIO': {
                      '3.14': 'wireless-3.8/mwifiex/mwifiex_sdio.ko'
@@ -106,16 +105,25 @@ class network_WlanDriver(test.test):
         if "wifi" in uninit:
             raise error.TestNAError('Wireless support not enabled')
 
+        wlan_ifs = [nic for nic in interface.get_interfaces()
+                        if nic.is_wifi_device()]
+        if wlan_ifs:
+            net_if = wlan_ifs[0]
+        else:
+            raise error.TestFail('Found no recognized wireless device')
+
+        # Some systems (e.g., moblab) might blacklist certain devices. We don't
+        # rely on shill for most of this test, but it can be a helpful clue if
+        # we see shill barfing.
         device_obj = proxy.find_object('Device',
                                        {'Type': proxy.TECHNOLOGY_WIFI})
         if device_obj is None:
-            raise error.TestFail('Found no recognized wireless device')
+            logging.warning("Shill couldn't find wireless device; "
+                            "did someone blacklist it?")
 
-        device = device_obj.GetProperties()['Interface']
-        net_if = interface.Interface(device)
         device_description = net_if.device_description
         if not device_description:
-            raise error.TestFail('Device %s is not supported' % device)
+            raise error.TestFail('Device %s is not supported' % net_if.name)
 
         device_name, module_path = device_description
         logging.info('Device name %s, module path %s', device_name, module_path)
