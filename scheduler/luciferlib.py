@@ -96,6 +96,7 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
             # Job specific
             '--job-id', str(job.id),
+            '--lucifer-level', 'GATHERING',
             '--autoserv-exit', str(autoserv_exit),
             '--results-dir', results_dir,
     ]
@@ -141,6 +142,7 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
             # Job specific
             '--job-id', str(job.id),
+            '--lucifer-level', 'GATHERING',
             '--autoserv-exit', str(autoserv_exit),
             '--results-dir', results_dir,
     ]
