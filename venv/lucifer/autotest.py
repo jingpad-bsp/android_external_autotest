@@ -31,8 +31,8 @@ import sys
 
 import autotest_lib
 
-_AUTOTEST_DIR = autotest_lib.__path__[0]
-_SITEPKG_DIR = os.path.join(_AUTOTEST_DIR, 'site-packages')
+AUTOTEST_DIR = autotest_lib.__path__[0]
+_SITEPKG_DIR = os.path.join(AUTOTEST_DIR, 'site-packages')
 _SYSTEM_PYTHON = '/usr/bin/python2.7'
 
 _setup_done = False
@@ -105,7 +105,7 @@ Could not find chromite; adding system packages and retrying \
 
     # drone_utility uses this.
     common = importlib.import_module('autotest_lib.scheduler.common')
-    common.autotest_dir = _AUTOTEST_DIR
+    common.autotest_dir = AUTOTEST_DIR
 
 
 def _system_site_packages():
