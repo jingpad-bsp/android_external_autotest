@@ -11,13 +11,16 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 
 class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
     """Test that the WiFi interface can be reset successfully, and that WiFi
-    comes back up properly. Supports only Marvell (mwifiex) Wifi drivers.
+    comes back up properly. Also run a few suspend/resume cycles along the way.
+    Supports only Marvell (mwifiex) Wifi drivers.
     """
 
     version = 1
 
     _MWIFIEX_RESET_PATH = "/sys/kernel/debug/mwifiex/%s/reset"
     _NUM_RESETS = 15
+    _NUM_SUSPENDS = 5
+    _SUSPEND_DELAY = 10
 
 
     @property
@@ -96,14 +99,23 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
         router = self.context.router
         ssid = router.get_ssid()
 
-        logging.info("Running %d resets", self._NUM_RESETS)
-        for i in range(self._NUM_RESETS):
-            if not self.mwifiex_reset(client):
-                raise error.TestFail('Failed to reset device %s' %
-                                     client.wifi_if)
+        boot_id = client.host.get_boot_id()
 
+        logging.info("Running %d suspends", self._NUM_SUSPENDS)
+        for i in range(self._NUM_SUSPENDS):
+            logging.info("Running %d resets", self._NUM_RESETS)
+
+            for j in range(self._NUM_RESETS):
+                if not self.mwifiex_reset(client):
+                    raise error.TestFail('Failed to reset device %s' %
+                                         client.wifi_if)
+
+                client.wait_for_connection(ssid)
+                self.context.assert_ping_from_dut()
+
+            client.do_suspend(self._SUSPEND_DELAY)
+            client.host.test_wait_for_resume(boot_id)
             client.wait_for_connection(ssid)
-            self.context.assert_ping_from_dut()
 
 
     def cleanup(self):
