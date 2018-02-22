@@ -550,7 +550,7 @@ class AbstractSSHHost(remote.RemoteHost):
             if excludes:
                 raise error.AutotestHostRunError(
                         '--exclude is not supported in scp, try to use rsync. '
-                        'excludes: %s' % ','.join(excludes))
+                        'excludes: %s' % ','.join(excludes), None)
             # scp has no equivalent to --delete, just drop the entire dest dir
             if delete_dest:
                 is_dir = self.run("ls -d %s/" % dest,
