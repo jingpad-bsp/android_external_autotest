@@ -10,7 +10,7 @@ DEPENDENCIES = 'arc'
 JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
-
+PRIORITY = 70
 DOC = ('Run tradefed to collect all of the available CTS tests for this device/abi.')
 
 

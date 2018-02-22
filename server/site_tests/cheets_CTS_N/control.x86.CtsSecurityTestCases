@@ -11,6 +11,7 @@ DEPENDENCIES = 'arc, cts_abi_x86'
 JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
+PRIORITY = 50
 MAX_RESULT_SIZE_KB = 307200
 
 DOC = ('Run module CtsSecurityTestCases of the '
