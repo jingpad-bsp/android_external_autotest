@@ -60,13 +60,13 @@ def _parse_args_and_configure_logging(args):
                         help='Path to lucifer_watcher binary')
 
     # Job specific
-    parser.add_argument('--job-id', type=int, default=None, required=True,
+    parser.add_argument('--job-id', type=int, required=True,
                         help='Autotest Job ID')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
-    parser.add_argument('--results-dir', default=None,
+    parser.add_argument('--results-dir', required=True,
                         help='Path to job leases directory.')
     parser.add_argument('run_job_args', nargs='*',
                         help='Deprecated, arguments to pass to lucifer_run_job')
@@ -134,12 +134,9 @@ def _run_lucifer_job(event_handler, args):
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
             '-hosts', ','.join(jobx.hostnames(job)),
 
+            '-resultsdir', args.results_dir,
             '-x-autoserv-exit', str(args.autoserv_exit),
     ])
-    if args.results_dir is not None:
-        command_args.extend([
-                '-resultsdir', args.results_dir,
-        ])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(
             event_handler=event_handler, args=command_args)
