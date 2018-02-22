@@ -459,6 +459,10 @@ class UnmodifiableLabelException(RPCException):
     """Raised when an RPC tries to modify static labels."""
 
 
+class UnmodifiableAttributeException(RPCException):
+    """Raised when an RPC tries to modify static attributes."""
+
+
 class InvalidBgJobCall(Exception):
     """Raised when an invalid call is made to a BgJob object."""
 

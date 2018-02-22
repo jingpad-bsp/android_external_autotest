@@ -69,6 +69,23 @@ class FrontendTestMixin(object):
         self.god.unstub_all()
 
 
+    def _set_static_attribute(self, host, attribute, value):
+        """Set static attribute for a host.
+
+        It ensures that all static attributes have a corresponding
+        entry in afe_host_attributes.
+        """
+        # Get or create the reference object in afe_host_attributes.
+        model, args = host._get_attribute_model_and_args(attribute)
+        model.objects.get_or_create(**args)
+
+        attribute_model, get_args = host._get_static_attribute_model_and_args(
+            attribute)
+        attribute_object, _ = attribute_model.objects.get_or_create(**get_args)
+        attribute_object.value = value
+        attribute_object.save()
+
+
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
                     synchronous=False, hostless=False,
                     drone_set=None, control_file='control',
