@@ -54,7 +54,7 @@ class firmware_LegacyRecovery(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         logging.info('Wait to ensure DUT doesnt Boot on USB at Remove screen.')
         try:
-            self.switcher.wait_for_client()
+            self.switcher.wait_for_client(timeout=self.faft_config.usb_image_boot_timeout)
             raise error.TestFail('Unexpected USB boot at Remove Screen.')
         except ConnectionError:
             logging.info('Done, Waited till timeout and no USB boot occured.')
