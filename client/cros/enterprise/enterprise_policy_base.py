@@ -561,6 +561,7 @@ class EnterprisePolicyTest(test.test):
         @param url: URL of web page to load.
         @param tab: browser tab to load (if any).
         @returns: browser tab loaded with web page.
+        @raises: telemetry TimeoutException if document ready state times out.
         """
         logging.info('Navigating to URL: %r', url)
         if not tab:
