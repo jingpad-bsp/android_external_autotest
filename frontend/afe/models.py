@@ -747,12 +747,20 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     def delete(self):
         AclGroup.check_for_acl_violation_hosts([self])
+        logging.info('Preconditions for deleting host %s...', self.hostname)
         for queue_entry in self.hostqueueentry_set.all():
+            logging.info('  Deleting and aborting hqe %s...', queue_entry)
             queue_entry.deleted = True
             queue_entry.abort()
+            logging.info('  ... done with hqe %s.', queue_entry)
         for host_attribute in self.hostattribute_set.all():
+            logging.info('  Deleting attribute %s...', host_attribute)
             self.delete_attribute(host_attribute.attribute)
+            logging.info('  ... done with attribute %s.', host_attribute)
+        logging.info('... preconditions done for host %s.', self.hostname)
+        logging.info('Deleting host %s...', self.hostname)
         super(Host, self).delete()
+        logging.info('... done.')
 
 
     def on_attribute_changed(self, attribute, old_value):
