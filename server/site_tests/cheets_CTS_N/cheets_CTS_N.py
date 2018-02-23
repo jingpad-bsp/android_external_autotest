@@ -231,7 +231,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
-        if self._get_release_channel == 'stable':
+        if self._get_release_channel(self._host) == 'stable':
             self._timeout += 3600
         # Retries depend on channel.
         self._timeoutfactor = None
