@@ -338,7 +338,9 @@ def _spawn(path, argv, output_file):
     """
     logger.info('Spawning %r, %r, %r', path, argv, output_file)
     assert all(isinstance(arg, basestring) for arg in argv)
-    if os.fork():
+    pid = os.fork()
+    if pid:
+        os.waitpid(pid, 0)
         return
     # Double fork to reparent to init since monitor_db does not reap.
     if os.fork():
