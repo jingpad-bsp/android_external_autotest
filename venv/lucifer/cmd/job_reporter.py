@@ -137,7 +137,7 @@ def _run_lucifer_job(event_handler, args):
             '-hosts', ','.join(jobx.hostnames(job)),
 
             '-x-level', args.lucifer_level,
-            '-resultsdir', args.results_dir,
+            '-x-resultsdir', args.results_dir,
             '-x-autoserv-exit', str(args.autoserv_exit),
     ])
     command_args.extend(args.run_job_args)
