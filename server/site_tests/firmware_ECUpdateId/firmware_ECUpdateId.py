@@ -99,19 +99,9 @@ class firmware_ECUpdateId(FirmwareTest):
         else:
             time.sleep(self.faft_config.software_sync_update)
 
-    def is_type_c_charger(self):
-        """Return True if it uses a Type-C charger."""
-        command = 'ectool usbpdpower'
-        output = self.faft_client.system.run_shell_command_get_output(command)
-        # Check if the string 'SNK Charger' appears in one of the PD ports.
-        return 'SNK Charger' in '\n'.join(output)
-
     def run_once(self):
         if not self.faft_client.ec.is_efs():
             raise error.TestNAError("Nothing needs to be tested for non-EFS")
-
-        type_c = self.is_type_c_charger()
-        logging.info("Type-C charger is %sused", "" if type_c else "not ")
 
         logging.info("Check the current state and record hash.")
         self.check_state((self.active_copy_checker, 'RW'))
@@ -144,26 +134,18 @@ class firmware_ECUpdateId(FirmwareTest):
                 lambda:self.set_ec_write_protect_and_reboot(True))
 
         logging.info("Expect EC recovered.")
-        # For the case of using Type-C charger,
-        #  * EC performs EC-EFS, jumps to A, and boots AP.
-        #  * AP software-sync's to EC B. Reboots.
-        #  * EC performs EC-EFS and jumps to B.
-        # For the case of using barrel jack charger,
-        #  * EC does not perform EC-EFS, stays in RO, and boots AP.
-        #  * AP software-sync's to EC A and EC jumps to A.
-        self.check_state((self.active_copy_checker, 'RW_B' if type_c else 'RW'))
+        # * EC performs EC-EFS, jumps to A, and boots AP.
+        # * AP software-sync's to EC B. Reboots.
+        # * EC performs EC-EFS and jumps to B.
+        self.check_state((self.active_copy_checker, 'RW_B'))
         self.check_state((self.active_hash_checker, modified_hash))
 
         logging.info("Restore the original AP firmware and reboot.")
         self.restore_firmware(restore_ec=False)
 
         logging.info("Expect EC restored back (the original hash).")
-        # For the case of using Type-C charger,
-        #  * EC performs EC-EFS, jumps to B, and boots AP.
-        #  * AP software-sync's to EC A. Reboots.
-        #  * EC performs EC-EFS and jumps to A.
-        # For the case of using barrel jack charger,
-        #  * EC does not perform EC-EFS, stays in RO, and boots AP.
-        #  * AP software-sync's to EC B and EC jumps to B.
-        self.check_state((self.active_copy_checker, 'RW' if type_c else 'RW_B'))
+        # * EC performs EC-EFS, jumps to B, and boots AP.
+        # * AP software-sync's to EC A. Reboots.
+        # * EC performs EC-EFS and jumps to A.
+        self.check_state((self.active_copy_checker, 'RW'))
         self.check_state((self.active_hash_checker, original_hash))
