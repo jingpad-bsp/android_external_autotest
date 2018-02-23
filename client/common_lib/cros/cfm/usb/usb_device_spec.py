@@ -56,4 +56,7 @@ class UsbDeviceSpec(object):
       return self._interfaces
 
   def __str__(self):
+      return self.__repr__()
+
+  def __repr__(self):
       return "%s (%s)" % (self._product, self.vid_pid)
