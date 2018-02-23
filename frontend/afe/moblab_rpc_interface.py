@@ -974,7 +974,7 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
 
     ap_name =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME, default=None)
     test_args['ssid'] = ap_name
-    ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS, default=None)
+    ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS, default='')
     test_args['wifipass'] = ap_pass
 
     afe = frontend.AFE(user='moblab')
