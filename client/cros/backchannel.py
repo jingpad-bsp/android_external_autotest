@@ -10,6 +10,7 @@ import time
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 
 # Flag file used to tell backchannel script it's okay to run.
 BACKCHANNEL_FILE = '/mnt/stateful_partition/etc/enable_backchannel_network'
@@ -177,11 +178,7 @@ class Backchannel(object):
 
     def _is_test_iface_running(self):
         """Checks whether the test interface is running."""
-        command = 'ip link show %s' % BACKCHANNEL_IFACE_NAME
-        result = self._run(command, ignore_status=True)
-        if result.exit_status:
-            return False
-        return result.stdout.find('state UP') >= 0
+        return interface.Interface(BACKCHANNEL_IFACE_NAME).is_link_operational()
 
 
     def _is_route_ready(self):
