@@ -205,13 +205,12 @@ def is_network_iface_running(name):
 
     """
     try:
-        # TODO: Switch to 'ip' (crbug.com/410601).
-        out = utils.system_output('ifconfig %s' % name)
+        out = utils.system_output('ip link show dev %s' % name)
     except error.CmdError, e:
         logging.info(e)
         return False
 
-    return out.find('RUNNING') >= 0
+    return out.find('state UP') >= 0
 
 
 def _is_ethernet_port(port):
