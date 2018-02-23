@@ -376,7 +376,7 @@ class AssertNoNewCrashes(Action):
         new_crash_files = context.crash_detector.get_new_crash_files()
         if new_crash_files:
             raise AssertionError(
-                    'New crash files detected: %s', new_crash_files)
+                    'New crash files detected: %s' % str(new_crash_files))
 
 
 class TimeoutError(RuntimeError):
