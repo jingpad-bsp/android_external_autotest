@@ -126,7 +126,8 @@ class firmware_Cr50DeviceState(FirmwareTest):
             A list with the expected irq count range [min, max]
         """
         # CCD will prevent sleep
-        if self.ccd_enabled and irq_key in self.SLEEP_KEYS:
+        if self.ccd_enabled and (irq_key in self.SLEEP_KEYS or
+            self.DEEP_SLEEP_STEP_SUFFIX in str(irq_key)):
             return [0, 0]
         if irq_key == self.KEY_REGULAR_SLEEP:
             min_count = max(cr50_time - self.SLEEP_DELAY, 0)
