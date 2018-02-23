@@ -224,9 +224,9 @@ def create_mysql_updates(api_output, db_output, table,
                (server_id, entry.role))
       mysql_cmds.append(cmd)
 
-  metrics.Counter(_METRICS_PREFIX + '/inconsistency').increment_by(
+  metrics.Gauge(_METRICS_PREFIX + '/inconsistency_found').set(
       len(delete_entries), fields={'table': table, 'action': 'to_delete'})
-  metrics.Counter(_METRICS_PREFIX + '/inconsistency').increment_by(
+  metrics.Gauge(_METRICS_PREFIX + '/inconsistency_found').set(
       len(insert_entries), fields={'table': table, 'action': 'to_add'})
 
   return mysql_cmds
@@ -299,10 +299,12 @@ def _modify_table(cursor, mysql_cmds, table):
   finally:
     num_deletes = len([cmd.startswith('DELETE') for cmd in mysql_cmds])
     num_inserts = len([cmd.startswith('INSERT') for cmd in mysql_cmds])
-    metrics.Counter(_METRICS_PREFIX + '/deletion').increment_by(
-        num_deletes, fields={'table': table, 'succeed': succeed})
-    metrics.Counter(_METRICS_PREFIX + '/inserts').increment_by(
-        num_inserts, fields={'table': table, 'succeed': succeed})
+    metrics.Gauge(_METRICS_PREFIX + '/inconsistency_fixed').set(
+        num_deletes,
+        fields={'table': table, 'action': 'delete', 'succeed': succeed})
+    metrics.Gauge(_METRICS_PREFIX + '/inconsistency_fixed').set(
+        num_inserts,
+        fields={'table': table, 'action': 'insert', 'succeed': succeed})
 
 
 @contextlib.contextmanager
