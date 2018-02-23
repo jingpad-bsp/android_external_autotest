@@ -14,9 +14,6 @@
 #
 # _parse_result() and _dir_size() don't access self and could be functions.
 # pylint: disable=no-self-use
-#
-# _ChromeLogin and _TradefedLogCollector have no public methods.
-# pylint: disable=too-few-public-methods
 
 import errno
 import glob
@@ -31,10 +28,8 @@ import tempfile
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
-from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 from autotest_lib.server.cros import cts_expected_failure_parser
