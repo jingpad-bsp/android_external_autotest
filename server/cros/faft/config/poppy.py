@@ -14,6 +14,9 @@ class Values(object):
     confirm_screen = 1
 
     has_lid = True
+
+    usb_image_boot_timeout = 60
+
     has_keyboard = False
 
     chrome_ec = True
