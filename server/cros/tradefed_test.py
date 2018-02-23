@@ -803,12 +803,13 @@ class TradefedTest(test.test):
         """
         try:
             output = self._run_tradefed(commands)
-        except:
-            logging.error('Failed to run tradefed! Cleaning up now.')
+        except Exception as e:
             self._log_java_version()
-            # In case this happened due to file corruptions, try to force to
-            # recreate the cache.
-            self._clean_download_cache_if_needed(force=True)
+            if not isinstance(e, error.CmdTimeoutError):
+                # In case this happened due to file corruptions, try to force to
+                # recreate the cache.
+                logging.error('Failed to run tradefed! Cleaning up now.')
+                self._clean_download_cache_if_needed(force=True)
             raise
 
         result_destination = os.path.join(self.resultsdir,
