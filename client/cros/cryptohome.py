@@ -243,7 +243,8 @@ def take_tpm_ownership(wait_for_ownership=True):
     """
     __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
     if wait_for_ownership:
-        __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_wait_ownership')
+        while not get_tpm_status()['Owned']:
+            time.sleep(0.1)
 
 
 def verify_ek():
