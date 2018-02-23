@@ -171,6 +171,9 @@ class platform_FilePerms(test.test):
         '/usr/share/oem': {
             'type': ['ext4'],
             'options': standard_ro_options},
+        '/run/imageloader': {
+            'type': ['tmpfs'],
+            'options': standard_rw_options},
     }
 
     # /var/run and /var/lock are bind mounts of /run and /run/lock,
