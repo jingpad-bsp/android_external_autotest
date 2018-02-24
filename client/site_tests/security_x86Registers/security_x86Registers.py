@@ -133,9 +133,9 @@ class security_x86Registers(test.test):
         if not cpu_arch:
             cpu_arch = utils.get_cpu_arch()
             if cpu_arch == "arm":
-                logging.debug('ok: skipping x86-only test on %s.', cpu_arch)
+                logging.info('OK: skipping x86-only test on %s.', cpu_arch)
                 return
-            raise error.TestNAError('Unsupported CPU: %s' % (cpu_arch))
+            raise error.TestNAError('Unknown CPU with arch "%s".' % (cpu_arch))
 
         if cpu_arch == 'Stoney':
             self._cpu_type = 'Stoney'
@@ -158,4 +158,4 @@ class security_x86Registers(test.test):
         errors += self._check_all()
 
         if errors > 0:
-            raise error.TestFail("x86 register mismatch detected")
+            raise error.TestFail('x86 register mismatch detected')
