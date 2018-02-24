@@ -47,11 +47,17 @@ class Event(enum.Enum):
 
     https://chromium.googlesource.com/chromiumos/infra/lucifer
     """
+    # Job status
     STARTING = 'starting'
     GATHERING = 'gathering'
     X_TESTS_DONE = 'x_tests_done'
     PARSING = 'parsing'
     COMPLETED = 'completed'
+
+    # Host status
+    HOST_READY = 'host_ready'
+    HOST_NEEDS_CLEANUP = 'host_needs_cleanup'
+    HOST_NEEDS_RESET = 'host_needs_reset'
 
 
 def run_event_command(event_handler, args):
