@@ -14,7 +14,7 @@ class power_SuspendStress(test.test):
     version = 1
 
     def initialize(self, duration, idle=False, init_delay=0, min_suspend=0,
-                   min_resume=0, max_resume_window=3, check_connection=False,
+                   min_resume=5, max_resume_window=3, check_connection=True,
                    iterations=None, suspend_state=''):
         """
         Entry point.
@@ -79,7 +79,11 @@ class power_SuspendStress(test.test):
                        random.randint(0, self._max_resume_window))
             # Check the network interface to the caller is still available
             if self._check_connection:
-                if not iface.is_link_operational():
+                # Give a 10 second window for the network to come back.
+                try:
+                    utils.poll_for_condition(iface.is_link_operational,
+                                             desc='Link is operational')
+                except utils.TimeoutError:
                     logging.error('Link to the server gone, reboot')
                     utils.system('reboot')
 
