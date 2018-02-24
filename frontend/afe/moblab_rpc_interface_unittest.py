@@ -619,6 +619,89 @@ class MoblabRpcInterfaceTest(mox.MoxTestBase,
         # test sorting
         self.assertEquals(output[0]['model'], 'bruce')
 
+    def testAllDutConnections(self):
+        leases = {
+            '192.168.0.20': '3c:52:82:5f:15:20',
+            '192.168.0.30': '3c:52:82:5f:15:21'
+        }
+
+        # stub out all of the multiprocessing
+        mock_value = self.mox.CreateMockAnything()
+        mock_value.value = True
+        mock_process = self.mox.CreateMockAnything()
+
+        for key in leases:
+            mock_process.start()
+        for key in leases:
+            mock_process.join()
+
+        self.mox.StubOutWithMock(
+                moblab_rpc_interface, 'multiprocessing')
+
+        for key in leases:
+            moblab_rpc_interface.multiprocessing.Value(
+                    mox.IgnoreArg()).AndReturn(mock_value)
+            moblab_rpc_interface.multiprocessing.Process(
+                    target=mox.IgnoreArg(), args=mox.IgnoreArg()).AndReturn(
+                        mock_process)
+
+        self.mox.ReplayAll()
+
+        expected = {
+            '192.168.0.20': {
+                'mac_address': '3c:52:82:5f:15:20',
+                'ssh_connection_ok': True
+            },
+            '192.168.0.30': {
+                'mac_address': '3c:52:82:5f:15:21',
+                'ssh_connection_ok': True
+            }
+        }
+
+        connected_duts = moblab_rpc_interface._test_all_dut_connections(leases)
+        self.assertDictEqual(expected, connected_duts)
+
+    def testAllDutConnectionsFailure(self):
+        leases = {
+            '192.168.0.20': '3c:52:82:5f:15:20',
+            '192.168.0.30': '3c:52:82:5f:15:21'
+        }
+
+        # stub out all of the multiprocessing
+        mock_value = self.mox.CreateMockAnything()
+        mock_value.value = False
+        mock_process = self.mox.CreateMockAnything()
+
+        for key in leases:
+            mock_process.start()
+        for key in leases:
+            mock_process.join()
+
+        self.mox.StubOutWithMock(
+                moblab_rpc_interface, 'multiprocessing')
+
+        for key in leases:
+            moblab_rpc_interface.multiprocessing.Value(
+                    mox.IgnoreArg()).AndReturn(mock_value)
+            moblab_rpc_interface.multiprocessing.Process(
+                    target=mox.IgnoreArg(), args=mox.IgnoreArg()).AndReturn(
+                        mock_process)
+
+        self.mox.ReplayAll()
+
+        expected = {
+            '192.168.0.20': {
+                'mac_address': '3c:52:82:5f:15:20',
+                'ssh_connection_ok': False
+            },
+            '192.168.0.30': {
+                'mac_address': '3c:52:82:5f:15:21',
+                'ssh_connection_ok': False
+            }
+        }
+
+        connected_duts = moblab_rpc_interface._test_all_dut_connections(leases)
+        self.assertDictEqual(expected, connected_duts)
 
     def testDutSshConnection(self):
         good_ip = '192.168.0.20'
