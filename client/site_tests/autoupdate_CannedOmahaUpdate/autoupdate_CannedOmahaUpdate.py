@@ -30,6 +30,12 @@ class autoupdate_CannedOmahaUpdate(test.test):
 
 
     def run_canned_update(self, allow_failure):
+        """
+        Performs the update.
+
+        @param allow_failure: True if we dont raise an error on failure.
+
+        """
         utils.run('restart update-engine')
         self._omaha.start()
         try:
@@ -56,14 +62,20 @@ class autoupdate_CannedOmahaUpdate(test.test):
         if use_cellular:
             # Setup DUT so that we have ssh over ethernet but DUT uses
             # cellular as main connection.
-            test_env = test_environment.CellularOTATestEnvironment()
-            CONNECT_TIMEOUT = 120
-            with test_env:
-                service = test_env.shill.wait_for_cellular_service_object()
-                if not service:
-                    raise error.TestError('No cellular service found.')
-                test_env.shill.connect_service_synchronous(
-                        service, CONNECT_TIMEOUT)
-                self.run_canned_update(allow_failure)
+            try:
+                test_env = test_environment.CellularOTATestEnvironment()
+                CONNECT_TIMEOUT = 120
+                with test_env:
+                    service = test_env.shill.wait_for_cellular_service_object()
+                    if not service:
+                        raise error.TestError('No cellular service found.')
+                    test_env.shill.connect_service_synchronous(
+                            service, CONNECT_TIMEOUT)
+                    self.run_canned_update(allow_failure)
+            except error.TestError as e:
+                # Raise as test failure so it is propagated to server test
+                # failure message.
+                logging.error('Failed setting up cellular connection.')
+                raise error.TestFail(e)
         else:
             self.run_canned_update(allow_failure)
