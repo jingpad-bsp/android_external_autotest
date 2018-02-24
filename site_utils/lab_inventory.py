@@ -1313,8 +1313,7 @@ def main(argv):
         if arguments.debug_metrics or not arguments.debug:
             metrics_file = None if not arguments.debug_metrics else '/dev/null'
             with site_utils.SetupTsMonGlobalState(
-                    'repair_loops', short_lived=True,
-                    debug_file=metrics_file,
+                    'repair_loops', debug_file=metrics_file,
                     auto_flush=False):
                 _perform_inventory_reports(arguments)
             metrics.Flush()
