@@ -66,3 +66,22 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
                     self._host.get_low_battery_shutdown_percent()
         return dut_info_dict
 
+class PowerTelemetryLoggerDashboard(ServerTestDashboard):
+    """Dashboard class for power_telemetry_logger.PowerTelemetryLogger class.
+    """
+
+    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None):
+        if uploadurl is None:
+            uploadurl = 'http://chrome-power.appspot.com'
+        super(PowerTelemetryLoggerDashboard, self).__init__(
+                logger, testname, host, resultsdir, uploadurl)
+
+    def _convert(self):
+        """
+        self._logger is already in correct format, so just return it.
+
+        Returns:
+            raw measurement dictionary
+        """
+
+        return self._logger
