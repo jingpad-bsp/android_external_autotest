@@ -62,7 +62,7 @@ def _parse_args_and_configure_logging(args):
     # Job specific
     parser.add_argument('--job-id', type=int, required=True,
                         help='Autotest Job ID')
-    parser.add_argument('--lucifer-level', default='GATHERING',
+    parser.add_argument('--lucifer-level', required=True,
                         help='Lucifer level')
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
