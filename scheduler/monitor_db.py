@@ -492,6 +492,23 @@ class Dispatcher(object):
                      and not luciferlib.is_split_job(
                              agent_task.queue_entries[0].id)))):
             return
+        if luciferlib.is_enabled_for('STARTING'):
+            # TODO(crbug.com/810141): Transition code.  After running at
+            # STARTING for a while, these tasks should no longer exist.
+            if (isinstance(agent_task, postjob_task.GatherLogsTask)
+                # TODO(crbug.com/811877): Don't skip split HQE parsing.
+                or (isinstance(agent_task, postjob_task.FinalReparseTask)
+                    and not luciferlib.is_split_job(
+                            agent_task.queue_entries[0].id))):
+                return
+            # If this AgentTask is already started (i.e., recovered from
+            # the scheduler running previously not at STARTING lucifer
+            # level), we want to use the AgentTask to run the test to
+            # completion.
+            if (isinstance(agent_task, postjob_task.AbstractQueueTask)
+                and not agent_task.started):
+                return
+
         agent = Agent(agent_task)
         self._agents.append(agent)
         agent.dispatcher = self
@@ -868,7 +885,8 @@ class Dispatcher(object):
 
         @param queue_entry: The queue_entry representing the hostless job.
         """
-        self.add_agent_task(HostlessQueueTask(queue_entry))
+        if not luciferlib.is_enabled_for('STARTING'):
+            self.add_agent_task(HostlessQueueTask(queue_entry))
 
         # Need to set execution_subdir before setting the status:
         # After a restart of the scheduler, agents will be restored for HQEs in
@@ -965,8 +983,31 @@ class Dispatcher(object):
         """
         Hand off ownership of a job to lucifer component.
         """
+        if luciferlib.is_enabled_for('starting'):
+            self._send_starting_to_lucifer()
+        # TODO(crbug.com/810141): Older states need to be supported when
+        # STARTING is toggled; some jobs may be in an intermediate state
+        # at that moment.
         self._send_gathering_to_lucifer()
         self._send_parsing_to_lucifer()
+
+
+    # TODO(crbug.com/748234): This is temporary to enable toggling
+    # lucifer rollouts with an option.
+    def _send_starting_to_lucifer(self):
+        Status = models.HostQueueEntry.Status
+        queue_entries_qs = (models.HostQueueEntry.objects
+                            .filter(status=Status.STARTING))
+        for queue_entry in queue_entries_qs:
+            if self.get_agents_for_entry(queue_entry):
+                continue
+            job = queue_entry.job
+            if luciferlib.is_lucifer_owned(job):
+                continue
+            drone = luciferlib.spawn_starting_job_handler(
+                    manager=_drone_manager,
+                    job=job)
+            models.JobHandoff.objects.create(job=job, drone=drone.hostname())
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling

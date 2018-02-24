@@ -71,6 +71,20 @@ def is_split_job(hqe_id):
 
 # TODO(crbug.com/748234): This is temporary to enable toggling
 # lucifer rollouts with an option.
+def spawn_starting_job_handler(manager, job):
+    """Spawn job_reporter to handle a job.
+
+    Pass all arguments by keyword.
+
+    @param manager: scheduler.drone_manager.DroneManager instance
+    @param job: Job instance
+    @returns: Drone instance
+    """
+    raise NotImplementedError
+
+
+# TODO(crbug.com/748234): This is temporary to enable toggling
+# lucifer rollouts with an option.
 def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     """Spawn job_reporter to handle a job.
 
