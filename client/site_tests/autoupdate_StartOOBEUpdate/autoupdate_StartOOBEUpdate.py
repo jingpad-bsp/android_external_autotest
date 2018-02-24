@@ -120,44 +120,50 @@ class autoupdate_StartOOBEUpdate(test.test):
         utils.run('restart update-engine')
 
         if cellular:
-            test_env = test_environment.CellularOTATestEnvironment()
-            CONNECT_TIMEOUT = 120
-            with test_env:
-                service = test_env.shill.wait_for_cellular_service_object()
-                if not service:
-                    raise error.TestError('No cellular service found.')
-                test_env.shill.connect_service_synchronous(
-                    service, CONNECT_TIMEOUT)
+            try:
+                test_env = test_environment.CellularOTATestEnvironment()
+                CONNECT_TIMEOUT = 120
+                with test_env:
+                    service = test_env.shill.wait_for_cellular_service_object()
+                    if not service:
+                        raise error.TestError('No cellular service found.')
+                    test_env.shill.connect_service_synchronous(
+                        service, CONNECT_TIMEOUT)
 
-                # Setup an omaha instance on the DUT because we cant reach
-                # devservers over cellular.
-                self._omaha = nano_omaha_devserver.NanoOmahaDevserver()
-                self._omaha.set_image_params(image_url, payload_info['size'],
-                                             payload_info['sha256'],
-                                             is_delta=not full_payload,
-                                             critical=True)
-                self._omaha.start()
+                    # Setup an omaha instance on the DUT because we cant reach
+                    # devservers over cellular.
+                    self._omaha = nano_omaha_devserver.NanoOmahaDevserver()
+                    self._omaha.set_image_params(image_url,
+                                                 payload_info['size'],
+                                                 payload_info['sha256'],
+                                                 is_delta=not full_payload,
+                                                 critical=True)
+                    self._omaha.start()
 
-                # We will tell OOBE to call localhost for update requests.
-                url = 'http://127.0.0.1:%d/update' % self._omaha.get_port()
-                self._start_oobe_update(url)
+                    # We will tell OOBE to call localhost for update requests.
+                    url = 'http://127.0.0.1:%d/update' % self._omaha.get_port()
+                    self._start_oobe_update(url)
 
-                # Remove the custom omaha server from lsb release because
-                # after we reboot it will no longer be running.
-                utils.run('rm %s' % self._CUSTOM_LSB_RELEASE,
-                          ignore_status=True)
+                    # Remove the custom omaha server from lsb release because
+                    # after we reboot it will no longer be running.
+                    utils.run('rm %s' % self._CUSTOM_LSB_RELEASE,
+                              ignore_status=True)
 
-                # We need to return from the client test before OOBE reboots or
-                # the server side test will hang. But we cannot return right
-                # away when the OOBE update starts because all of the code
-                # from using a cellular connection is in client side and we
-                # will switch back to ethernet. So we need to wait for the
-                # update to get as close to the end as possible so that we
-                # are done downloading the payload via cellular and don't
-                # need to ping omaha again. When the DUT reboots it will send
-                # a final update ping to production omaha and then move to
-                # the sign in screen.
-                self._wait_for_update_to_complete()
+                    # We need to return from the client test before OOBE
+                    # reboots or the server side test will hang. But we cannot
+                    # return right away when the OOBE update starts because
+                    # all of the code from using a cellular connection is in
+                    # client side and we will switch back to ethernet. So we
+                    # need to wait for the update to get as close to the end as
+                    # possible so that we are done downloading the payload
+                    # via cellular and don't  need to ping omaha again. When
+                    # the DUT reboots it will send a final update ping to
+                    # production omaha and then move to the sign in screen.
+                    self._wait_for_update_to_complete()
+            except error.TestError as e:
+                logging.error('Failure setting up sim card.')
+                raise error.TestFail(e)
+
         else:
             self._start_oobe_update(image_url)
 
