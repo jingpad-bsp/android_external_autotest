@@ -52,6 +52,11 @@ def get_x86_cpu_arch():
         return 'Celeron N3000'
     if re.search(r'Intel.*Celeron.*[0-9]{3,4}', cpuinfo):
         return 'Celeron'
+    # https://ark.intel.com/products/series/94028/5th-Generation-Intel-Core-M-Processors
+    # https://ark.intel.com/products/series/94025/6th-Generation-Intel-Core-m-Processors
+    # https://ark.intel.com/products/series/95542/7th-Generation-Intel-Core-m-Processors
+    if re.search(r'Intel.*Core.*[mM][357]-[567][Y0-9][0-9][0-9]', cpuinfo):
+        return 'Core M'
     if re.search(r'Intel.*Core.*i[357]-[234][0-9][0-9][0-9]', cpuinfo):
         return 'Core'
 
