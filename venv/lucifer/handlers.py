@@ -52,17 +52,17 @@ class EventHandler(object):
         except AttributeError:
             raise NotImplementedError('%s is not implemented for handling %s',
                                       method_name, event.name)
-        handler(event, msg)
+        handler(msg)
 
-    def _handle_starting(self, event, msg):
+    def _handle_starting(self, msg):
         # TODO(crbug.com/748234): No event update needed yet.
         pass
 
-    def _handle_gathering(self, event, msg):
+    def _handle_gathering(self, msg):
         # TODO(crbug.com/794779): monitor_db leaves HQEs in GATHERING
         pass
 
-    def _handle_x_tests_done(self, _event, msg):
+    def _handle_x_tests_done(self, msg):
         """Taken from GatherLogsTask.epilog."""
         autoserv_exit, failures = (int(x) for x in msg.split(','))
         logger.debug('Got autoserv_exit=%d, failures=%d',
@@ -83,12 +83,12 @@ class EventHandler(object):
         self._metrics.send_reset_after_failure(autoserv_exit, failures)
         jobx.create_reset_for_job_hosts(self._job)
 
-    def _handle_parsing(self, _event, _msg):
+    def _handle_parsing(self, _msg):
         models = autotest.load('frontend.afe.models')
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.PARSING)
 
-    def _handle_completed(self, _event, _msg):
+    def _handle_completed(self, _msg):
         models = autotest.load('frontend.afe.models')
         final_status = self._final_status()
         for hqe in self._job.hostqueueentry_set.all():
