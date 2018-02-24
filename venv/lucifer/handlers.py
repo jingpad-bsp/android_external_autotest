@@ -69,19 +69,23 @@ class EventHandler(object):
                      autoserv_exit, failures)
         success = (autoserv_exit == 0 and failures == 0)
         reset_after_failure = not self._job.run_reset and not success
+        hqes = self._job.hostqueueentry_set.all().prefetch_related('host')
         if self._should_reboot_duts(autoserv_exit, failures,
                                     reset_after_failure):
             logger.debug('Creating cleanup jobs for hosts')
-            jobx.create_cleanup_for_job_hosts(self._job)
+            for entry in hqes:
+                self._handle_host_needs_cleanup(entry.host.hostname)
         else:
             logger.debug('Not creating cleanup jobs for hosts')
-            jobx.mark_hosts_ready(self._job)
+            for entry in hqes:
+                self._handle_host_ready(entry.host.hostname)
         if not reset_after_failure:
             logger.debug('Skipping reset because reset_after_failure is False')
             return
         logger.debug('Creating reset jobs for hosts')
         self._metrics.send_reset_after_failure(autoserv_exit, failures)
-        jobx.create_reset_for_job_hosts(self._job)
+        for entry in hqes:
+            self._handle_host_needs_reset(entry.host.hostname)
 
     def _handle_parsing(self, _msg):
         models = autotest.load('frontend.afe.models')
@@ -100,6 +104,27 @@ class EventHandler(object):
             self._job.shard_id = None
             self._job.save()
         self.completed = True
+
+    def _handle_host_ready(self, msg):
+        models = autotest.load('frontend.afe.models')
+        (models.Host.objects.filter(hostname=msg)
+         .update(status=models.Host.Status.READY))
+
+    def _handle_host_needs_cleanup(self, msg):
+        models = autotest.load('frontend.afe.models')
+        host = models.Host.objects.get(hostname=msg)
+        models.SpecialTask.objects.create(
+                host_id=host.id,
+                task=models.SpecialTask.Task.CLEANUP,
+                requested_by=models.User.objects.get(login=self._job.owner))
+
+    def _handle_host_needs_reset(self, msg):
+        models = autotest.load('frontend.afe.models')
+        host = models.Host.objects.get(hostname=msg)
+        models.SpecialTask.objects.create(
+                host_id=host.id,
+                task=models.SpecialTask.Task.RESET,
+                requested_by=models.User.objects.get(login=self._job.owner))
 
     def _should_reboot_duts(self, autoserv_exit, failures, reset_after_failure):
         models = autotest.load('frontend.afe.models')
