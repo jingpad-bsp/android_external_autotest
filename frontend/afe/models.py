@@ -747,12 +747,20 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     def delete(self):
         AclGroup.check_for_acl_violation_hosts([self])
+        logging.info('Preconditions for deleting host %s...', self.hostname)
         for queue_entry in self.hostqueueentry_set.all():
+            logging.info('  Deleting and aborting hqe %s...', queue_entry)
             queue_entry.deleted = True
             queue_entry.abort()
+            logging.info('  ... done with hqe %s.', queue_entry)
         for host_attribute in self.hostattribute_set.all():
+            logging.info('  Deleting attribute %s...', host_attribute)
             self.delete_attribute(host_attribute.attribute)
+            logging.info('  ... done with attribute %s.', host_attribute)
+        logging.info('... preconditions done for host %s.', self.hostname)
+        logging.info('Deleting host %s...', self.hostname)
         super(Host, self).delete()
+        logging.info('... done.')
 
 
     def on_attribute_changed(self, attribute, old_value):
@@ -868,6 +876,10 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         return HostAttribute, dict(host=self, attribute=attribute)
 
 
+    def _get_static_attribute_model_and_args(self, attribute):
+        return StaticHostAttribute, dict(host=self, attribute=attribute)
+
+
     @classmethod
     def get_attribute_model(cls):
         """Return the attribute model.
@@ -931,6 +943,50 @@ class HostAttribute(dbmodels.Model, model_logic.ModelExtensions):
         if data:
             data.pop('id')
         return super(HostAttribute, cls).deserialize(data)
+
+
+class StaticHostAttribute(dbmodels.Model, model_logic.ModelExtensions):
+    """Static arbitrary keyvals associated with hosts."""
+
+    SERIALIZATION_LINKS_TO_KEEP = set(['host'])
+    SERIALIZATION_LOCAL_LINKS_TO_UPDATE = set(['value'])
+    host = dbmodels.ForeignKey(Host)
+    attribute = dbmodels.CharField(max_length=90)
+    value = dbmodels.CharField(max_length=300)
+
+    objects = model_logic.ExtendedManager()
+
+    class Meta:
+        """Metadata for the StaticHostAttribute class."""
+        db_table = 'afe_static_host_attributes'
+
+
+    @classmethod
+    def get_record(cls, data):
+        """Check the database for an identical record.
+
+        Use host_id and attribute to search for a existing record.
+
+        @raises: DoesNotExist, if no record found
+        @raises: MultipleObjectsReturned if multiple records found.
+        """
+        return cls.objects.get(host_id=data['host_id'],
+                               attribute=data['attribute'])
+
+
+    @classmethod
+    def deserialize(cls, data):
+        """Override deserialize in parent class.
+
+        Do not deserialize id as id is not kept consistent on master and shards.
+
+        @param data: A dictionary of data to deserialize.
+
+        @returns: A StaticHostAttribute object.
+        """
+        if data:
+            data.pop('id')
+        return super(StaticHostAttribute, cls).deserialize(data)
 
 
 class Test(dbmodels.Model, model_logic.ModelExtensions):

@@ -123,7 +123,7 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
 
     setup_adb_host()
     if is_adb_connected():
-      return
+        return
 
     # Push keys for adb.
     pubkey_path = os.environ[_ADB_VENDOR_KEYS] + '.pub'
@@ -172,7 +172,7 @@ def adb_shell(cmd, **kwargs):
     output = adb_cmd('shell %s' % pipes.quote(cmd), **kwargs)
     # Some android commands include a trailing CRLF in their output.
     if kwargs.pop('strip_trailing_whitespace', True):
-      output = output.rstrip()
+        output = output.rstrip()
     return output
 
 
@@ -271,8 +271,8 @@ def get_obb_mounter_pid():
 def is_android_booted():
     """Return whether Android has completed booting."""
     # We used to check sys.boot_completed system property to detect Android has
-    # booted in Android M, but in Android N it is set long before BOOT_COMPLETED
-    # intent is broadcast. So we read event logs instead.
+    # booted in Android M, but in Android N it is set long before
+    # BOOT_COMPLETED intent is broadcast. So we read event logs instead.
     log = _android_shell(
         'logcat -d -b events *:S arc_system_event', ignore_status=True)
     return 'ArcAppLauncher:started' in log
@@ -368,8 +368,8 @@ def wait_for_android_process(process_name,
 def _android_shell(cmd, **kwargs):
     """Execute cmd instead the Android container.
 
-    This function is strictly for internal use only, as commands do not run in a
-    fully consistent Android environment. Prefer adb_shell instead.
+    This function is strictly for internal use only, as commands do not run in
+    a fully consistent Android environment. Prefer adb_shell instead.
     """
     return utils.system_output('android-sh -c {}'.format(pipes.quote(cmd)),
                                **kwargs)
@@ -481,6 +481,33 @@ def get_android_sdk_version():
         return int(values['CHROMEOS_ARC_ANDROID_SDK_VERSION'])
     except (KeyError, ValueError):
         raise error.TestError('Could not determine Android SDK version')
+
+
+def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
+    """Sets the device in either Clamshell or Tablet mode.
+
+    "inject_powerd_input_event" might fail if the DUT does not support Tablet
+    mode, and it will raise an |error.CmdError| exception. To prevent that, use
+    the |use_fake_sensor_with_lifetime_secs| parameter.
+
+    @param device_mode: string with either 'clamshell' or 'tablet'
+    @param use_fake_sensor_with_lifetime_secs: if > 0, it will create the
+           input device with the given lifetime in seconds
+    @raise ValueError: if passed invalid parameters
+    @raise error.CmdError: if inject_powerd_input_event fails
+    """
+    valid_value = ('tablet', 'clamshell')
+    if device_mode not in valid_value:
+        raise ValueError('Invalid device_mode parameter: %s' % device_mode)
+
+    value = 1 if device_mode == 'tablet' else 0
+
+    args = ['--code=tablet', '--value=%d' % value]
+
+    if use_fake_sensor_with_lifetime_secs > 0:
+        args.extend(['--create_dev', '--dev_lifetime=%d' %
+                     use_fake_sensor_with_lifetime_secs])
+    utils.run('inject_powerd_input_event', args=args)
 
 
 class ArcTest(test.test):
@@ -618,7 +645,7 @@ class ArcTest(test.test):
 
         logging.error("Variable %s nested level is not fixable: "
                       "Expecting %d, seeing %d",
-                      var_name, expected_level, level);
+                      var_name, expected_level, level)
         raise error.TestError('Format error with variable %s' % var_name)
 
     def arc_setup(self, dep_packages=None, apks=None, full_pkg_names=None,

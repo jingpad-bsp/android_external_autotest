@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_ECUpdateId"
+NAME = "firmware_ECUpdateId.dev"
 PURPOSE = "Servo based EC test for updating EC ID for verifying EC EFS"
 CRITERIA = "This test will fail if EC EFS misbehaves"
 ATTRIBUTES = "suite:faft, suite:faft_ec, suite:faft_ec_au_1, suite:faft_ec_au_2, suite:faft_ec_au_3, suite:faft_ec_tot"

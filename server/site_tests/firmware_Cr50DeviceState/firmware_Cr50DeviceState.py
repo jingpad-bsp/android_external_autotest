@@ -63,7 +63,7 @@ class firmware_Cr50DeviceState(FirmwareTest):
     # Cr50 should wake up twice per second while in regular sleep
     SLEEP_RATE = 2
 
-    DEEP_SLEEP_MAX = 1
+    DEEP_SLEEP_MAX = 2
     ARM = 'ARM '
 
     # If there are over 100,000 interrupts, it is an interrupt storm.
@@ -75,12 +75,13 @@ class firmware_Cr50DeviceState(FirmwareTest):
         KEY_DEEP_SLEEP : [0, DEEP_SLEEP_MAX],
         KEY_TIME : [0, CONSERVATIVE_WAIT_TIME],
         'S0ix ' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
-        'S3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
-        'G3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 1],
-        # Cr50 may or may not enter deep sleep on ARM devices. We have separate
-        # tests for that jus make sure it is 0 or 1.
-        ARM + 'S3' + DEEP_SLEEP_STEP_SUFFIX : [0, 1],
-        ARM + 'G3' + DEEP_SLEEP_STEP_SUFFIX : [0, 1],
+        # Cr50 may enter deep sleep an extra time, because of how the test
+        # collects taskinfo counts. Just verify that it does enter deep sleep
+        'S3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        'G3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        # ARM devices don't enter deep sleep in S3
+        ARM + 'S3' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
+        ARM + 'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
         # Regular sleep is calculated based on the cr50 time
     }
 
@@ -125,7 +126,8 @@ class firmware_Cr50DeviceState(FirmwareTest):
             A list with the expected irq count range [min, max]
         """
         # CCD will prevent sleep
-        if self.ccd_enabled and irq_key in self.SLEEP_KEYS:
+        if self.ccd_enabled and (irq_key in self.SLEEP_KEYS or
+            self.DEEP_SLEEP_STEP_SUFFIX in str(irq_key)):
             return [0, 0]
         if irq_key == self.KEY_REGULAR_SLEEP:
             min_count = max(cr50_time - self.SLEEP_DELAY, 0)

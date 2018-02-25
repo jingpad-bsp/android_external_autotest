@@ -52,6 +52,11 @@ def get_x86_cpu_arch():
         return 'Celeron N3000'
     if re.search(r'Intel.*Celeron.*[0-9]{3,4}', cpuinfo):
         return 'Celeron'
+    # https://ark.intel.com/products/series/94028/5th-Generation-Intel-Core-M-Processors
+    # https://ark.intel.com/products/series/94025/6th-Generation-Intel-Core-m-Processors
+    # https://ark.intel.com/products/series/95542/7th-Generation-Intel-Core-m-Processors
+    if re.search(r'Intel.*Core.*[mM][357]-[567][Y0-9][0-9][0-9]', cpuinfo):
+        return 'Core M'
     if re.search(r'Intel.*Core.*i[357]-[234][0-9][0-9][0-9]', cpuinfo):
         return 'Core'
 
@@ -174,6 +179,24 @@ def has_battery():
         rv = False
 
     return rv
+
+
+def get_low_battery_shutdown_percent():
+    """Get the percent-based low-battery shutdown threshold.
+
+    Returns:
+        Float, percent-based low-battery shutdown threshold. 0 if error.
+    """
+    ret = 0.0
+    try:
+        command = 'check_powerd_config --low_battery_shutdown_percent'
+        ret = float(utils.run(command).stdout)
+    except error.CmdError:
+        logging.debug("Can't run %s", command)
+    except ValueError:
+        logging.debug("Didn't get number from %s", command)
+
+    return ret
 
 
 def _charge_control_by_ectool(is_charge):
