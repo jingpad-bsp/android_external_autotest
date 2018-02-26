@@ -102,6 +102,7 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     else:
         drone = manager.get_drone_for_pidfile(pidfile_id)
     results_dir = _results_dir(manager, job)
+    num_tests_failed = manager.get_num_tests_failed(pidfile_id)
     args = [
             # General configuration
             '--jobdir', _get_jobdir(),
@@ -112,13 +113,16 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
             '--job-id', str(job.id),
             '--lucifer-level', 'GATHERING',
             '--autoserv-exit', str(autoserv_exit),
+            '--need-gather',
+            '--num-tests-failed', str(num_tests_failed),
             '--results-dir', results_dir,
     ]
     # lucifer_run_job arguments
-    num_tests_failed = manager.get_num_tests_failed(pidfile_id)
     args.extend([
             '--',
+            # TODO(ayatane): Deprecated.
             '-x-need-gather',
+            # TODO(ayatane): Deprecated.
             '-x-num-tests-failed', str(num_tests_failed),
     ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
