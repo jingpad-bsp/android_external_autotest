@@ -117,14 +117,6 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
             '--num-tests-failed', str(num_tests_failed),
             '--results-dir', results_dir,
     ]
-    # lucifer_run_job arguments
-    args.extend([
-            '--',
-            # TODO(ayatane): Deprecated.
-            '-x-need-gather',
-            # TODO(ayatane): Deprecated.
-            '-x-num-tests-failed', str(num_tests_failed),
-    ])
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
     return drone
