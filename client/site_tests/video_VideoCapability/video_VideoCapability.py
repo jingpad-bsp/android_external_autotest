@@ -27,7 +27,7 @@ class video_VideoCapability(test.test):
         'hw_video_acc_enc_h264': 'hw_enc_h264_1080_30',
         'hw_video_acc_enc_vp8' : 'hw_enc_vp8_1080_30',
         'hw_video_acc_enc_vp9' : 'hw_enc_vp9_1080_30',
-        'webcam'               : 'webcam',
+        'webcam'               : 'usb_camera',
     }
 
 
