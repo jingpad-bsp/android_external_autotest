@@ -9,7 +9,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-DEPENDENCIES = "servo, use_lid"
+DEPENDENCIES = "servo"
 ATTRIBUTES = "suite:bvt-perbuild"
 DOC = """
 This tests the forced autoupdate flow at OOBE with interruptions.
