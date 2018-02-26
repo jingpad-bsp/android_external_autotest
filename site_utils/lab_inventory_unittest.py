@@ -1075,7 +1075,9 @@ class IdleInventoryTests(_PoolInventoryTestBase):
 class CommandParsingTests(unittest.TestCase):
     """Tests for command line argument parsing in `_parse_command()`."""
 
-    _NULL_NOTIFY = ['--model-notify=', '--pool-notify=']
+    # At least one of these options must be specified on every command
+    # line; otherwise, the command line parsing will fail.
+    _REPORT_OPTIONS = ['--model-notify=', '--pool-notify=', '--repair-loops']
 
     def setUp(self):
         dirpath = '/usr/local/fubar'
@@ -1085,17 +1087,22 @@ class CommandParsingTests(unittest.TestCase):
         self._logdir = os.path.join(dirpath, lab_inventory._LOGDIR)
 
 
-    def _parse_arguments(self, argv, notify=_NULL_NOTIFY):
-        full_argv = [self._command_path] + argv + notify
+    def _parse_arguments(self, argv):
+        """Test parsing with explictly passed report options."""
+        full_argv = [self._command_path] + argv
         return lab_inventory._parse_command(full_argv)
 
 
-    def _check_non_notify_defaults(self, notify_option):
-        arguments = self._parse_arguments([], notify=[notify_option])
+    def _parse_non_report_arguments(self, argv):
+        """Test parsing for non-report command-line options."""
+        return self._parse_arguments(argv + self._REPORT_OPTIONS)
+
+
+    def _check_non_report_defaults(self, report_option):
+        arguments = self._parse_arguments([report_option])
         self.assertEqual(arguments.duration,
                          lab_inventory._DEFAULT_DURATION)
         self.assertIsNone(arguments.recommend)
-        self.assertFalse(arguments.repair_loops)
         self.assertFalse(arguments.debug)
         self.assertEqual(arguments.logdir, self._logdir)
         self.assertEqual(arguments.modelnames, [])
@@ -1103,25 +1110,45 @@ class CommandParsingTests(unittest.TestCase):
 
 
     def test_empty_arguments(self):
-        """Test that an empty argument list is an error."""
-        arguments = self._parse_arguments([], notify=[])
+        """Test that no reports requested is an error."""
+        arguments = self._parse_arguments([])
         self.assertIsNone(arguments)
 
 
     def test_argument_defaults(self):
         """Test that option defaults match expectations."""
-        arguments = self._check_non_notify_defaults(self._NULL_NOTIFY[0])
+        for report in self._REPORT_OPTIONS:
+            arguments = self._check_non_report_defaults(report)
+
+
+    def test_model_notify_defaults(self):
+        """Test defaults when `--model-notify` is specified alone."""
+        arguments = self._parse_arguments(['--model-notify='])
         self.assertEqual(arguments.model_notify, [''])
         self.assertEqual(arguments.pool_notify, [])
-        arguments = self._check_non_notify_defaults(self._NULL_NOTIFY[1])
+        self.assertFalse(arguments.repair_loops)
+
+
+    def test_pool_notify_defaults(self):
+        """Test defaults when `--pool-notify` is specified alone."""
+        arguments = self._parse_arguments(['--pool-notify='])
         self.assertEqual(arguments.model_notify, [])
         self.assertEqual(arguments.pool_notify, [''])
+        self.assertFalse(arguments.repair_loops)
+
+
+    def test_repair_loop_defaults(self):
+        """Test defaults when `--repair-loops` is specified alone."""
+        arguments = self._parse_arguments(['--repair-loops'])
+        self.assertEqual(arguments.model_notify, [])
+        self.assertEqual(arguments.pool_notify, [])
+        self.assertTrue(arguments.repair_loops)
 
 
     def test_model_arguments(self):
         """Test that non-option arguments are returned in `modelnames`."""
         modellist = ['aardvark', 'echidna']
-        arguments = self._parse_arguments(modellist)
+        arguments = self._parse_non_report_arguments(modellist)
         self.assertEqual(arguments.modelnames, modellist)
 
 
@@ -1129,19 +1156,13 @@ class CommandParsingTests(unittest.TestCase):
         """Test parsing of the `--recommend` option."""
         for opt in ['-r', '--recommend']:
             for recommend in ['5', '55']:
-                arguments = self._parse_arguments([opt, recommend])
+                arguments = self._parse_non_report_arguments([opt, recommend])
                 self.assertEqual(arguments.recommend, int(recommend))
-
-
-    def test_repair_loop_option(self):
-        """Test parsing of the `--repair-loops` option."""
-        arguments = self._parse_arguments(['--repair-loops'], notify=[])
-        self.assertTrue(arguments.repair_loops)
 
 
     def test_debug_option(self):
         """Test parsing of the `--debug` option."""
-        arguments = self._parse_arguments(['--debug'])
+        arguments = self._parse_non_report_arguments(['--debug'])
         self.assertTrue(arguments.debug)
 
 
@@ -1149,7 +1170,7 @@ class CommandParsingTests(unittest.TestCase):
         """Test parsing of the `--duration` option."""
         for opt in ['-d', '--duration']:
             for duration in ['1', '11']:
-                arguments = self._parse_arguments([opt, duration])
+                arguments = self._parse_non_report_arguments([opt, duration])
                 self.assertEqual(arguments.duration, int(duration))
 
 
@@ -1171,19 +1192,17 @@ class CommandParsingTests(unittest.TestCase):
         """
         a1 = 'mumble@mumbler.com'
         a2 = 'bumble@bumbler.org'
-        arguments = self._parse_arguments([option, a1], notify=[])
+        arguments = self._parse_arguments([option, a1])
         self.assertEqual(getlist(arguments), [a1])
-        arguments = self._parse_arguments([option, ' ' + a1 + ' '],
-                                          notify=[])
+        arguments = self._parse_arguments([option, ' ' + a1 + ' '])
         self.assertEqual(getlist(arguments), [a1])
-        arguments = self._parse_arguments([option, a1, option, a2],
-                                          notify=[])
+        arguments = self._parse_arguments([option, a1, option, a2])
         self.assertEqual(getlist(arguments), [a1, a2])
         arguments = self._parse_arguments(
-                [option, ','.join([a1, a2])], notify=[])
+                [option, ','.join([a1, a2])])
         self.assertEqual(getlist(arguments), [a1, a2])
         arguments = self._parse_arguments(
-                [option, ', '.join([a1, a2])], notify=[])
+                [option, ', '.join([a1, a2])])
         self.assertEqual(getlist(arguments), [a1, a2])
 
 
@@ -1202,7 +1221,7 @@ class CommandParsingTests(unittest.TestCase):
     def test_logdir_option(self):
         """Test parsing of the `--logdir` option."""
         logdir = '/usr/local/whatsis/logs'
-        arguments = self._parse_arguments(['--logdir', logdir])
+        arguments = self._parse_non_report_arguments(['--logdir', logdir])
         self.assertEqual(arguments.logdir, logdir)
 
 
