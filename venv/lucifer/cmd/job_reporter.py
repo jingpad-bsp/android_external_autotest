@@ -68,6 +68,12 @@ def _parse_args_and_configure_logging(args):
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
 ''')
+    parser.add_argument('--need-gather', action='store_true',
+                        help='Whether to gather logs'
+                        ' (only with --lucifer-level GATHERING)')
+    parser.add_argument('--num-tests-failed', type=int, default=-1,
+                        help='Number of tests failed'
+                        ' (only with --need-gather)')
     parser.add_argument('--results-dir', required=True,
                         help='Path to job leases directory.')
     parser.add_argument('run_job_args', nargs='*',
@@ -140,6 +146,11 @@ def _run_lucifer_job(event_handler, args):
             '-x-resultsdir', args.results_dir,
             '-x-autoserv-exit', str(args.autoserv_exit),
     ])
+    if args.need_gather:
+        command_args.extend([
+                '-x-need-gather',
+                '-x-num-tests-failed', str(args.num_tests_failed),
+        ])
     command_args.extend(args.run_job_args)
     return eventlib.run_event_command(
             event_handler=event_handler, args=command_args)
