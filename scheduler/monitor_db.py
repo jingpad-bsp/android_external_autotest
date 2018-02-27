@@ -1029,12 +1029,18 @@ class Dispatcher(object):
                     [queue_entry], log_file_name='/dev/null')
             pidfile_id = task._autoserv_monitor.pidfile_id
             autoserv_exit = task._autoserv_monitor.exit_code()
-            drone = luciferlib.spawn_gathering_job_handler(
-                    manager=_drone_manager,
-                    job=job,
-                    autoserv_exit=autoserv_exit,
-                    pidfile_id=pidfile_id)
-            models.JobHandoff.objects.create(job=job, drone=drone.hostname())
+            try:
+                drone = luciferlib.spawn_gathering_job_handler(
+                        manager=_drone_manager,
+                        job=job,
+                        autoserv_exit=autoserv_exit,
+                        pidfile_id=pidfile_id)
+                models.JobHandoff.objects.create(job=job,
+                                                 drone=drone.hostname())
+            except drone_manager.DroneManagerError as e:
+                logging.warning(
+                    'Fail to get drone for job %s, skipping lucifer. Error: %s',
+                    job.id, e)
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling
@@ -1058,12 +1064,19 @@ class Dispatcher(object):
                     [queue_entry], log_file_name='/dev/null')
             pidfile_id = task._autoserv_monitor.pidfile_id
             autoserv_exit = task._autoserv_monitor.exit_code()
-            drone = luciferlib.spawn_parsing_job_handler(
-                    manager=_drone_manager,
-                    job=job,
-                    autoserv_exit=autoserv_exit,
-                    pidfile_id=pidfile_id)
-            models.JobHandoff.objects.create(job=job, drone=drone.hostname())
+            try:
+                drone = luciferlib.spawn_parsing_job_handler(
+                        manager=_drone_manager,
+                        job=job,
+                        autoserv_exit=autoserv_exit,
+                        pidfile_id=pidfile_id)
+                models.JobHandoff.objects.create(job=job,
+                                                 drone=drone.hostname())
+            except drone_manager.DroneManagerError as e:
+                logging.warning(
+                    'Fail to get drone for job %s, skipping lucifer. Error: %s',
+                    job.id, e)
+
 
 
     @_calls_log_tick_msg
