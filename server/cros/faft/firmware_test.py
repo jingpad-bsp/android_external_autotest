@@ -1134,6 +1134,12 @@ class FirmwareTest(FAFTBase):
                     'Should shut the device down after calling %s.' %
                     shutdown_action.__name__)
         except ConnectionError:
+            if self.check_ec_capability(['x86'], suppress_warning=True):
+                PWR_RETRIES=5
+                if not self.wait_power_state("G3", PWR_RETRIES):
+                    raise error.TestFail("System not shutdown properly and EC"
+                                         "fails to enter into G3 state.")
+                logging.info('System entered into G3 state..')
             logging.info(
                 'DUT is surely shutdown. We are going to power it on again...')
 
