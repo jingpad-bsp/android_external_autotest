@@ -236,7 +236,8 @@ class TradefedTest(test.test):
         def _intent_helper_running():
             result = self._run(
                 'adb',
-                args=('shell', 'pgrep', '-f', 'org.chromium.arc.intent_helper'))
+                args=('shell', 'pgrep', '-f', 'org.chromium.arc.intent_helper'),
+                ignore_status=True)
             return bool(result.stdout)
 
         utils.poll_for_condition(
