@@ -1135,7 +1135,7 @@ class CommandParsingTests(unittest.TestCase):
 
     def test_repair_loop_option(self):
         """Test parsing of the `--repair-loops` option."""
-        arguments = self._parse_arguments(['--repair-loops'])
+        arguments = self._parse_arguments(['--repair-loops'], notify=[])
         self.assertTrue(arguments.repair_loops)
 
 
