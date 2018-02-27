@@ -1158,9 +1158,9 @@ def _verify_arguments(arguments):
     Join comma separated e-mail addresses for `--model-notify` and
     `--pool-notify` in separate option arguments into a single list.
 
-    For non-debug uses, require that notification be requested for
-    at least one report.  For debug, if notification isn't specified,
-    treat it as "run all the reports."
+    For non-debug uses, require that at least one inventory report be
+    requested.  For debug, if a report isn't specified, treat it as "run
+    all the reports."
 
     The return value indicates success or failure; in the case of
     failure, we also write an error message to stderr.
@@ -1175,14 +1175,16 @@ def _verify_arguments(arguments):
             arguments.model_notify)
     arguments.pool_notify = _separate_email_addresses(
             arguments.pool_notify)
-    if not arguments.model_notify and not arguments.pool_notify:
+    if not any([arguments.model_notify, arguments.pool_notify,
+                arguments.repair_loops]):
         if not arguments.debug:
-            sys.stderr.write('Must specify at least one of '
-                             '--model-notify or --pool-notify\n')
+            sys.stderr.write('Must request at least one report via '
+                             '--model-notify, --pool-notify, or '
+                             '--repair-loops\n')
             return False
         else:
-            # We want to run all the reports.  An empty notify list
-            # will cause a report to be skipped, so make sure the
+            # We want to run all the e-mail reports.  An empty notify
+            # list will cause a report to be skipped, so make sure the
             # lists are non-empty.
             arguments.model_notify = ['']
             arguments.pool_notify = ['']
