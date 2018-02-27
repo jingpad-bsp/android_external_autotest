@@ -39,9 +39,13 @@ class firmware_CorruptBothFwSigAB(FirmwareTest):
                           'mainfw_type': 'developer' if dev_mode else 'normal',
                           }))
         self.faft_client.bios.corrupt_sig(('a', 'b'),)
+
+        # Older devices (without BROKEN screen) didn't wait for removal in
+        # dev mode. Make sure the USB key is not plugged in so they won't
+        # start booting immediately and get interrupted by unplug/replug.
+        self.servo.switch_usbkey('host')
         self.switcher.simple_reboot()
-        if not dev_mode:
-            self.switcher.bypass_rec_mode()
+        self.switcher.bypass_rec_mode()
         self.switcher.wait_for_client()
 
         logging.info("Expected recovery boot and set fwb_tries flag.")
@@ -52,9 +56,10 @@ class firmware_CorruptBothFwSigAB(FirmwareTest):
                               vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                           }))
         self.faft_client.system.set_try_fw_b()
-        self.switcher.simple_reboot()
-        if not dev_mode:
-            self.switcher.bypass_rec_mode()
+
+        self.servo.switch_usbkey('host')
+        self.switcher.simple_reboot(sync_before_boot=False)
+        self.switcher.bypass_rec_mode()
         self.switcher.wait_for_client()
 
         logging.info("Still expected recovery boot and restore firmware.")
