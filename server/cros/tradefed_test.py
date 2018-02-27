@@ -636,32 +636,6 @@ class TradefedTest(test.test):
         self._safe_makedirs(dest)
         shutil.copy(os.path.join('/tmp', name), os.path.join(dest, name))
 
-    def _parse_tradefed_datetime(self, result, summary=None):
-        """Get the tradefed provided result ID consisting of a datetime stamp.
-
-        Unfortunately we are unable to tell tradefed where to store the results.
-        In the lab we have multiple instances of tradefed running in parallel
-        writing results and logs to the same base directory. This function
-        finds the identifier which tradefed used during the current run and
-        returns it for further processing of result files.
-
-        @param result: The result object from utils.run.
-        @param summary: Test result summary from runs so far.
-        @return datetime_id: The result ID chosen by tradefed.
-                             Example: '2016.07.14_00.34.50'.
-        """
-        # This string is show for both 'run' and 'continue' after all tests.
-        match = re.search(r'(\d\d\d\d.\d\d.\d\d_\d\d.\d\d.\d\d)', result.stdout)
-        if not (match and match.group(1)):
-            error_msg = 'Error: Test did not complete. (Chrome or ARC crash?)'
-            if summary:
-                error_msg += (' Test summary from previous runs: %s' % summary)
-            raise error.TestFail(error_msg)
-        datetime_id = match.group(1)
-        logging.info('Tradefed identified results and logs with %s.',
-                     datetime_id)
-        return datetime_id
-
     def _parse_result(self, result, waivers=None):
         """Check the result from the tradefed output.
 
@@ -672,49 +646,6 @@ class TradefedTest(test.test):
         @param waivers: a set[] of tests which are permitted to fail.
         """
         return parse_tradefed_result(result.stdout, waivers)
-
-    def _collect_logs(self, datetime, destination):
-        """Collects the tradefed logs.
-
-        It is legal to collect the same logs multiple times. This is normal
-        after 'tradefed continue' updates existing logs with new results.
-
-        @param datetime: The identifier which tradefed assigned to the run.
-                         Currently this looks like '2016.07.14_00.34.50'.
-        @param destination: Autotest result directory (destination of logs).
-        """
-        logging.info('Collecting tradefed testResult.xml and logs to %s.',
-                     destination)
-        repository_results = os.path.join(self._repository, 'results')
-        repository_logs = os.path.join(self._repository, 'logs')
-        # Because other tools rely on the currently chosen Google storage paths
-        # we need to keep destination_results in
-        # cheets_CTS.*/results/android-cts/2016.mm.dd_hh.mm.ss(/|.zip)
-        # and destination_logs in
-        # cheets_CTS.*/results/android-cts/logs/2016.mm.dd_hh.mm.ss/
-        destination_results = destination
-        destination_results_datetime = os.path.join(destination_results,
-                                                    datetime)
-        destination_results_datetime_zip = destination_results_datetime + '.zip'
-        destination_logs = os.path.join(destination, 'logs')
-        destination_logs_datetime = os.path.join(destination_logs, datetime)
-        # We may have collected the same logs before, clean old versions.
-        if os.path.exists(destination_results_datetime_zip):
-            os.remove(destination_results_datetime_zip)
-        if os.path.exists(destination_results_datetime):
-            shutil.rmtree(destination_results_datetime)
-        if os.path.exists(destination_logs_datetime):
-            shutil.rmtree(destination_logs_datetime)
-        shutil.copytree(
-            os.path.join(repository_results, datetime),
-            destination_results_datetime)
-        # Copying the zip file has to happen after the tree so the destination
-        # directory is available.
-        shutil.copy(
-            os.path.join(repository_results, datetime) + '.zip',
-            destination_results_datetime_zip)
-        shutil.copytree(
-            os.path.join(repository_logs, datetime), destination_logs_datetime)
 
     def _get_expected_failures(self, *directories):
         """Return a list of expected failures or no test module.
@@ -818,26 +749,39 @@ class TradefedTest(test.test):
         # Gather the global log first. Datetime parsing below can abort the test
         # if tradefed startup had failed. Even then the global log is useful.
         self._collect_tradefed_global_log(output, result_destination)
-        # Parse stdout to obtain datetime of the session. This is needed to
-        # locate result xml files and logs.
-        datetime_id = self._parse_tradefed_datetime(output, self.summary)
-        # Collect tradefed logs for autotest.
-        self._collect_logs(datetime_id, result_destination)
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
         return self._parse_result(output, waivers=self._waivers)
 
-    def _clean_repository(self):
-        """Ensures all old logs, results and plans are deleted.
+    def _setup_result_directories(self):
+        """Sets up the results and logs directories for tradefed.
 
-        This function should be called at the start of each autotest iteration.
+        Tradefed saves the logs and results at:
+          self._repository/results/$datetime/
+          self._repository/results/$datetime.zip
+          self._repository/logs/$datetime/
+        Because other tools rely on the currently chosen Google storage paths
+        we need to keep destination_results in:
+          self.resultdir/android-cts/results/$datetime/
+          self.resultdir/android-cts/results/$datetime.zip
+          self.resultdir/android-cts/results/logs/$datetime/
+        To bridge between them, create symlinks from the former to the latter.
         """
-        logging.info('Cleaning up repository.')
-        for directory in ['logs', 'subplans', 'results']:
-            path = os.path.join(self._repository, directory)
-            if os.path.exists(path):
-                shutil.rmtree(path)
-            self._safe_makedirs(path)
+        logging.info('Setting up tradefed results and logs directories.')
+
+        results_destination = os.path.join(self.resultsdir,
+                                           self._get_tradefed_base_dir())
+        logs_destination = os.path.join(results_destination, 'logs')
+        directory_mapping = [
+            (os.path.join(self._repository, 'results'), results_destination),
+            (os.path.join(self._repository, 'logs'), logs_destination),
+        ]
+
+        for (tradefed_path, final_path) in directory_mapping:
+            if os.path.exists(tradefed_path):
+                shutil.rmtree(tradefed_path)
+            self._safe_makedirs(final_path)
+            os.symlink(final_path, tradefed_path)
 
     def _install_plan(self, subplan):
         """Copy test subplan to CTS-TF.
@@ -922,6 +866,8 @@ class TradefedTest(test.test):
         board = self._get_board_name(self._host)
         session_id = None
 
+        self._setup_result_directories()
+
         while steps < self._max_retry:
             steps += 1
             self._run_precondition_scripts(self._host,
@@ -942,9 +888,6 @@ class TradefedTest(test.test):
 
                 # Run tradefed.
                 if session_id == None:
-                    # Start each valid iteration with a clean repository. This
-                    # allows us to track session_id blindly.
-                    self._clean_repository()
                     if target_plan is not None:
                         self._install_plan(target_plan)
 
