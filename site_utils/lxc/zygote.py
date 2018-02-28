@@ -221,12 +221,14 @@ class Zygote(Container):
             mount.cleanup()
         # The SSP and other "real" content gets copied into the host dir.  Use
         # rm -r to clear it out.
+        commands = []
         if lxc_utils.path_exists(self.host_path):
-            utils.run('sudo rm -r "%s"' % self.host_path)
+            commands.append('rm -r "%s"' % self.host_path)
         # The host_path_ro directory only contains intermediate bind points,
         # which should all have been cleared out.  Use rmdir.
         if lxc_utils.path_exists(self.host_path_ro):
-            utils.run('sudo rmdir "%s"' % self.host_path_ro)
+            commands.append('rmdir "%s"' % self.host_path_ro)
+        lxc_utils.sudo_commands(commands)
 
 
     def _find_existing_host_dir(self):
