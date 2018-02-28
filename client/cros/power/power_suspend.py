@@ -506,6 +506,8 @@ class Suspender(object):
             iteration = len(self.failures) + len(self.successes) + 1
             # Retry suspend in case we hit a known (whitelisted) bug
             for _ in xrange(10):
+                # Clear powerd_suspend RTC timestamp, to avoid stale results.
+                utils.open_write_close(self.HWCLOCK_FILE, '')
                 self._reset_logs()
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(self._get_board(),
