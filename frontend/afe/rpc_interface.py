@@ -89,6 +89,9 @@ LabHealthIndicator = collections.namedtuple(
 RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
         'SKYLAB', 'respect_static_labels', type=bool, default=False)
 
+RESPECT_STATIC_ATTRIBUTES = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_attributes', type=bool, default=False)
+
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 # labels
@@ -637,14 +640,40 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
                                                'acl_list')
     models.Host.objects.populate_relationships(hosts, models.HostAttribute,
                                                'attribute_list')
+    models.Host.objects.populate_relationships(hosts,
+                                               models.StaticHostAttribute,
+                                               'staticattribute_list')
     host_dicts = []
     for host_obj in hosts:
         host_dict = host_obj.get_object_dict()
-        host_dict['labels'] = [label.name for label in host_obj.label_list]
-        host_dict['platform'] = rpc_utils.find_platform(host_obj)
         host_dict['acls'] = [acl.name for acl in host_obj.acl_list]
         host_dict['attributes'] = dict((attribute.attribute, attribute.value)
                                        for attribute in host_obj.attribute_list)
+        if RESPECT_STATIC_LABELS:
+            label_list = []
+            # Only keep static labels which has a corresponding entries in
+            # afe_labels.
+            for label in host_obj.label_list:
+                if label.is_replaced_by_static():
+                    static_label = models.StaticLabel.smart_get(label.name)
+                    label_list.append(static_label)
+                else:
+                    label_list.append(label)
+
+            host_dict['labels'] = [label.name for label in label_list]
+            host_dict['platform'] = rpc_utils.find_platform(
+                    host_obj.hostname, label_list)
+        else:
+            host_dict['labels'] = [label.name for label in host_obj.label_list]
+            host_dict['platform'] = rpc_utils.find_platform(
+                    host_obj.hostname, host_obj.label_list)
+
+        if RESPECT_STATIC_ATTRIBUTES:
+            # Overwrite attribute with values in afe_static_host_attributes.
+            for attr in host_obj.staticattribute_list:
+                if attr.attribute in host_dict['attributes']:
+                    host_dict['attributes'][attr.attribute] = attr.value
+
         if include_current_job:
             host_dict['current_job'] = None
             host_dict['current_special_task'] = None
@@ -660,6 +689,7 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
                         '%d-%s' % (tasks[0].get_object_dict()['id'],
                                    tasks[0].get_object_dict()['task'].lower()))
         host_dicts.append(host_dict)
+
     return rpc_utils.prepare_for_serialization(host_dicts)
 
 

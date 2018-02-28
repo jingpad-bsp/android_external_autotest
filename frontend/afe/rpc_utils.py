@@ -557,21 +557,26 @@ def _ensure_label_exists(name):
     return False
 
 
-def find_platform(host):
+def find_platform(hostname, label_list):
     """
     Figure out the platform name for the given host
     object.  If none, the return value for either will be None.
 
+    @param hostname: The hostname to find platform.
+    @param label_list: The label list to find platform.
+
     @returns platform name for the given host.
     """
-    platforms = [label.name for label in host.label_list if label.platform]
+    platforms = [label.name for label in label_list if label.platform]
     if not platforms:
         platform = None
     else:
         platform = platforms[0]
+
     if len(platforms) > 1:
         raise ValueError('Host %s has more than one platform: %s' %
-                         (host.hostname, ', '.join(platforms)))
+                         (hostname, ', '.join(platforms)))
+
     return platform
 
 
