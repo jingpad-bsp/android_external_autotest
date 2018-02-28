@@ -246,6 +246,68 @@ class ShardHeartbeatTest(mox.MoxTestBase, unittest.TestCase):
         self._do_heartbeat_and_assert_response(known_hosts=[host1])
 
 
+class RpcInterfaceTestWithStaticAttribute(
+        mox.MoxTestBase, unittest.TestCase,
+        frontend_test_utils.FrontendTestMixin):
+
+    def setUp(self):
+        super(RpcInterfaceTestWithStaticAttribute, self).setUp()
+        self._frontend_common_setup()
+        self.god = mock.mock_god()
+        self.old_respect_static_config = rpc_interface.RESPECT_STATIC_ATTRIBUTES
+        rpc_interface.RESPECT_STATIC_ATTRIBUTES = True
+        models.RESPECT_STATIC_ATTRIBUTES = True
+
+
+    def tearDown(self):
+        self.god.unstub_all()
+        self._frontend_common_teardown()
+        global_config.global_config.reset_config_values()
+        rpc_interface.RESPECT_STATIC_ATTRIBUTES = self.old_respect_static_config
+        models.RESPECT_STATIC_ATTRIBUTES = self.old_respect_static_config
+
+
+    def _set_static_attribute(self, host, attribute, value):
+        """Set static attribute for a host.
+
+        It ensures that all static attributes have a corresponding
+        entry in afe_host_attributes.
+        """
+        # Get or create the reference object in afe_host_attributes.
+        model, args = host._get_attribute_model_and_args(attribute)
+        model.objects.get_or_create(**args)
+
+        attribute_model, get_args = host._get_static_attribute_model_and_args(
+            attribute)
+        attribute_object, _ = attribute_model.objects.get_or_create(**get_args)
+        attribute_object.value = value
+        attribute_object.save()
+
+
+    def _fake_host_with_static_attributes(self):
+        host1 = models.Host.objects.create(hostname='test_host')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        host1.set_attribute('test_attribute2', 'test_value2')
+        self._set_static_attribute(host1, 'test_attribute1', 'static_value1')
+        self._set_static_attribute(host1, 'static_attribute1', 'static_value2')
+        host1.save()
+        return host1
+
+
+    def test_get_hosts(self):
+        host1 = self._fake_host_with_static_attributes()
+        hosts = rpc_interface.get_hosts(hostname=host1.hostname)
+        host = hosts[0]
+
+        self.assertEquals(host['hostname'], 'test_host')
+        self.assertEquals(host['acls'], ['Everyone'])
+        # Respect the value of static attributes.
+        self.assertEquals(host['attributes'],
+                          {'test_attribute1': 'static_value1',
+                           'test_attribute2': 'test_value2',
+                           'static_attribute1': 'static_value2'})
+
+
 class RpcInterfaceTestWithStaticLabel(ShardHeartbeatTest,
                                       frontend_test_utils.FrontendTestMixin):
 
@@ -266,6 +328,44 @@ class RpcInterfaceTestWithStaticLabel(ShardHeartbeatTest,
         global_config.global_config.reset_config_values()
         rpc_interface.RESPECT_STATIC_LABELS = self.old_respect_static_config
         models.RESPECT_STATIC_LABELS = self.old_respect_static_config
+
+
+    def _fake_host_with_static_labels(self):
+        host1 = models.Host.objects.create(hostname='test_host')
+        label1 = models.Label.objects.create(
+                name='non_static_label1', platform=False)
+        non_static_platform = models.Label.objects.create(
+                name='static_platform', platform=False)
+        static_platform = models.StaticLabel.objects.create(
+                name='static_platform', platform=True)
+        models.ReplacedLabel.objects.create(label_id=non_static_platform.id)
+        host1.static_labels.add(static_platform)
+        host1.labels.add(non_static_platform)
+        host1.labels.add(label1)
+        host1.save()
+        return host1
+
+
+    def test_get_hosts(self):
+        host1 = self._fake_host_with_static_labels()
+        hosts = rpc_interface.get_hosts(hostname=host1.hostname)
+        host = hosts[0]
+
+        self.assertEquals(host['hostname'], 'test_host')
+        self.assertEquals(host['acls'], ['Everyone'])
+        # Respect all labels in afe_hosts_labels.
+        self.assertEquals(host['labels'],
+                          ['non_static_label1', 'static_platform'])
+        # Respect static labels.
+        self.assertEquals(host['platform'], 'static_platform')
+
+
+    def test_get_hosts_multiple_labels(self):
+        self._fake_host_with_static_labels()
+        hosts = rpc_interface.get_hosts(
+                multiple_labels=['non_static_label1', 'static_platform'])
+        host = hosts[0]
+        self.assertEquals(host['hostname'], 'test_host')
 
 
     def test_delete_static_label(self):
