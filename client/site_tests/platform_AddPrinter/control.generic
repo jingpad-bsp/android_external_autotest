@@ -12,7 +12,8 @@ cupstestppd, cups filters).
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-ATTRIBUTES = "suite:bvt-cq"
+# TODO(skau): Add back to bvt-cq when crbug.com/814340 is fixed.
+ATTRIBUTES = "suite:bvt-perbuild"
 JOB_RETRIES = 2
 
 DOC = """
