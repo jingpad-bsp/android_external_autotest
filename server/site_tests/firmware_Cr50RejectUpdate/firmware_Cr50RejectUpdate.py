@@ -65,20 +65,16 @@ class firmware_Cr50RejectUpdate(Cr50Test):
         Raises:
             TestFail if there is an unexpected result.
         """
-
-        # Make sure trunskd isn't running
-        cr50_utils.StopTrunksd(self.host)
+        # Copy the image to the DUT
+        self.host.send_file(path, self.TEST_PATH)
 
         # Wait for cr50 to have been up for 60 seconds, so it won't
         # automatically reject the image.
         if wait:
             self.cr50.wait_until_update_is_allowed()
 
-        # Copy the image to the DUT
-        self.host.send_file(path, self.TEST_PATH)
-
         # Try to update
-        result = self.host.run('gsctool -s %s %s' % (arg, self.TEST_PATH),
+        result = self.host.run('gsctool -a %s %s' % (arg, self.TEST_PATH),
                 ignore_status=True, ignore_timeout=True, timeout=60)
 
         # Check the result
