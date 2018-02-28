@@ -18,6 +18,10 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
 
     version = 1
 
+    _P2P_ATTEMPTS_FILE = '/var/lib/update_engine/prefs/p2p-num-attempts'
+    _P2P_FIRST_ATTEMPT_FILE = '/var/lib/update_engine/prefs/p2p-first-attempt' \
+                              '-timestamp'
+
     def setup(self):
         self._omaha_devserver = None
 
@@ -44,8 +48,17 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
             except Exception:
                 raise error.TestFail('Failed to enable p2p on %s' % host)
 
-            host.run('rm /var/lib/update_engine/prefs/p2p-num-attempts',
-                     ignore_status=True)
+            if self._too_many_attempts:
+                host.run('echo 11 > %s' % self._P2P_ATTEMPTS_FILE)
+            else:
+                host.run('rm %s' % self._P2P_ATTEMPTS_FILE, ignore_status=True)
+
+            if self._deadline_expired:
+                host.run('echo 1 > %s' % self._P2P_FIRST_ATTEMPT_FILE)
+            else:
+                host.run('rm %s' % self._P2P_FIRST_ATTEMPT_FILE,
+                         ignore_status=True)
+
             host.reboot()
 
 
@@ -149,10 +162,20 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                 "since p2p is enabled." % self._hosts[0].ip
         errline = "Forcibly disabling use of p2p for downloading because no " \
                   "suitable peer could be found."
+        too_many_attempts_err_str = "Forcibly disabling use of p2p for " \
+                                    "downloading because of previous " \
+                                    "failures when using p2p."
 
         if re.compile(errline).search(update_engine_log) is not None:
             raise error.TestFail('P2P update was disabled because no suitable '
                                  'peer DUT was found.')
+        if self._too_many_attempts or self._deadline_expired:
+            ue = re.compile(too_many_attempts_err_str)
+            if ue.search(update_engine_log) is None:
+                raise error.TestFail('We expected update_engine to complain '
+                                     'that there were too many p2p attempts '
+                                     'but it did not. Check the logs.')
+            return
         for line in [line1, line2, line3]:
             ue = re.compile(line)
             if ue.search(update_engine_log) is None:
@@ -207,10 +230,13 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                                                      build2))
 
 
-    def run_once(self, hosts, job_repo_url=None):
+    def run_once(self, hosts, job_repo_url=None, too_many_attempts=False,
+                 deadline_expired=False):
         self._hosts = hosts
         logging.info('Hosts for this test: %s', self._hosts)
 
+        self._too_many_attempts = too_many_attempts
+        self._deadline_expired = deadline_expired
         self._verify_hosts(job_repo_url)
         self._enable_p2p_update_on_hosts()
 
