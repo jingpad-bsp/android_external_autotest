@@ -281,11 +281,19 @@ class firmware_Cr50BID(Cr50Test):
             universal_rw_ver: The rw version string of the universal image
             path: The path of the image that may need to be replaced.
         """
-        dut_ver = cr50_utils.GetBinVersion(self.host, path)[1]
-        # If the universal version is lower than the DUT image, install the
-        # universal image. It has the lowest version of any image in the test,
-        # so cr50-update won't try to update cr50 at any point during the test.
-        if cr50_utils.GetNewestVersion(dut_ver, universal_rw_ver) == dut_ver:
+        if self.host.path_exists(path):
+            dut_ver = cr50_utils.GetBinVersion(self.host, path)[1]
+            # If the universal version is lower than the DUT image, install the
+            # universal image. It has the lowest version of any image in the
+            # test, so cr50-update won't try to update cr50 at any point during
+            # the test.
+            install_image = (cr50_utils.GetNewestVersion(dut_ver,
+                    universal_rw_ver) == dut_ver)
+        else:
+            # If the DUT doesn't have a file at path, install the image.
+            install_image = True
+
+        if install_image:
             # Disable rootfs verification so we can copy the image to the DUT
             self.rootfs_verification_disable()
             # Copy the universal image onto the DUT.
