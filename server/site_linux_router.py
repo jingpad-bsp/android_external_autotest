@@ -450,7 +450,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         interface = self.hostapd_instances[-1].interface
         self.iw_runner.set_tx_power(interface, 'auto')
         self.set_beacon_footer(interface, configuration.beacon_footer)
-        self.start_local_server(interface)
+        self.start_local_server(interface, bridge=configuration.bridge)
         logging.info('AP configured.')
 
 
@@ -504,6 +504,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """
         return '%d.%d.%d.%d' % (self.SUBNET_PREFIX_OCTETS + (index, 253))
 
+    def local_bridge_address(self, index):
+        """Get the bridge address for an interface.
+
+        This address is assigned to a local bridge device.
+
+        @param index int describing which local server this is for.
+
+        """
+        return '%d.%d.%d.%d' % (self.SUBNET_PREFIX_OCTETS + (index, 252))
 
     def local_peer_mac_address(self):
         """Get the MAC address of the peer interface.
@@ -550,12 +559,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     def start_local_server(self,
                            interface,
                            ap_num=None,
-                           server_address_index=None):
+                           server_address_index=None,
+                           bridge=None):
         """Start a local server on an interface.
 
         @param interface string (e.g. wlan0)
         @param ap_num int the ap instance to start the server for
         @param server_address_index int server address index
+        @param bridge string (e.g. br0)
 
         """
         logging.info('Starting up local server...')
@@ -582,6 +593,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             (server_addr.get_addr_in_block(1),
              server_addr.get_addr_in_block(128)))
         params['interface'] = interface
+        params['bridge'] = bridge
         params['ip_params'] = ('%s broadcast %s dev %s' %
                                (server_addr.netblock,
                                 server_addr.broadcast,
@@ -598,6 +610,12 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_ip, params['ip_params']))
         self.router.run('%s link set %s up' %
                         (self.cmd_ip, interface))
+        if params['bridge']:
+            bridge_addr = netblock.from_addr(
+                    self.local_bridge_address(server_address_index),
+                    prefix_len=24)
+            self.router.run("ifconfig %s %s" %
+                           (params['bridge'], bridge_addr.netblock))
         self.start_dhcp_server(interface)
 
 
@@ -636,7 +654,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             'log-dhcp',
             'dhcp-range=%s' % ','.join((server_addr.get_addr_in_block(1),
                                         server_addr.get_addr_in_block(128))),
-            'interface=%s' % params['interface'],
+            'interface=%s' % (params['bridge'] or params['interface']),
             'dhcp-leasefile=%s' % self.dhcpd_leases])
         self.router.run('cat <<EOF >%s\n%s\nEOF\n' %
             (dhcpd_conf_file, dhcp_conf))

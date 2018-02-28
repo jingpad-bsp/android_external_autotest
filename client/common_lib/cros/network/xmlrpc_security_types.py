@@ -34,6 +34,7 @@ class SecurityConfig(xmlrpc_types.XmlRpcStruct):
 
     """
     SERVICE_PROPERTY_PASSPHRASE = 'Passphrase'
+    SERVICE_PROPERTY_FT_ENABLED = 'WiFi.FTEnabled'
 
     def __init__(self, security='none'):
         super(SecurityConfig, self).__init__()
@@ -193,7 +194,7 @@ class WPAConfig(SecurityConfig):
     def __init__(self, psk='', wpa_mode=MODE_DEFAULT, wpa_ciphers=[],
                  wpa2_ciphers=[], wpa_ptk_rekey_period=None,
                  wpa_gtk_rekey_period=None, wpa_gmk_rekey_period=None,
-                 use_strict_rekey=None):
+                 use_strict_rekey=None, use_ft=False):
         """Construct a WPAConfig.
 
         @param psk string a passphrase (64 hex characters or an ASCII phrase up
@@ -221,6 +222,7 @@ class WPAConfig(SecurityConfig):
         self.wpa_gtk_rekey_period = wpa_gtk_rekey_period
         self.wpa_gmk_rekey_period = wpa_gmk_rekey_period
         self.use_strict_rekey = use_strict_rekey
+        self.use_ft = use_ft
         if len(psk) > 64:
             raise error.TestFail('WPA passphrases can be no longer than 63 '
                                  'characters (or 64 hex digits).')
@@ -247,6 +249,8 @@ class WPAConfig(SecurityConfig):
 
         ret = {'wpa': self.wpa_mode,
                'wpa_key_mgmt': 'WPA-PSK'}
+        if self.use_ft:
+            ret['wpa_key_mgmt'] = 'FT-PSK'
         if len(self.psk) == 64:
            ret['wpa_psk'] = self.psk
         else:
@@ -269,7 +273,8 @@ class WPAConfig(SecurityConfig):
 
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
-        return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk}
+        return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk,
+                self.SERVICE_PROPERTY_FT_ENABLED: self.use_ft}
 
 
     def get_wpa_cli_properties(self):
@@ -283,6 +288,8 @@ class WPAConfig(SecurityConfig):
         properties.update({'psk': '\\"%s\\"' % self.psk,
                            'key_mgmt': 'WPA-PSK',
                            'proto': ' '.join(protos)})
+        if self.use_ft:
+            properties['key_mgmt'] = 'FT-PSK'
         return properties
 
 
@@ -426,6 +433,8 @@ class EAPConfig(SecurityConfig):
                     '%s:%s' % (self.client_key_slot_id, self.client_key_id))
         if self.use_system_cas is not None:
             ret[self.SERVICE_PROPERTY_USE_SYSTEM_CAS] = self.use_system_cas
+        if self.use_ft is not None:
+            ret[self.SERVICE_PROPERTY_FT_ENABLED] = self.use_ft
         return ret
 
 
@@ -507,7 +516,7 @@ class WPAEAPConfig(EAPConfig):
                  client_ca_cert=None, client_cert=None, client_key=None,
                  client_cert_id=None, client_key_id=None,
                  eap_identity=None, server_eap_users=None,
-                 wpa_mode=WPAConfig.MODE_PURE_WPA):
+                 wpa_mode=WPAConfig.MODE_PURE_WPA, use_ft=False):
         """Construct a DynamicWEPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -532,6 +541,7 @@ class WPAEAPConfig(EAPConfig):
                 client_cert_id=client_cert_id, client_key_id=client_key_id,
                 eap_identity=eap_identity, server_eap_users=server_eap_users)
         self.wpa_mode = wpa_mode
+        self.use_ft = use_ft
 
 
     def get_hostapd_config(self):
@@ -543,6 +553,8 @@ class WPAEAPConfig(EAPConfig):
         ret.update({'wpa': self.wpa_mode,
                     'wpa_pairwise': WPAConfig.CIPHER_CCMP,
                     'wpa_key_mgmt':'WPA-EAP'})
+        if self.use_ft:
+            ret['wpa_key_mgmt'] = 'FT-EAP'
         return ret
 
 
