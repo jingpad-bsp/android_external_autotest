@@ -34,7 +34,11 @@ class firmware_Cr50Unlock(FirmwareTest):
 
     def gsctool_unlock(self, unlock_allowed):
         """Unlock cr50 using the gsctool command"""
-        self.host.run('gsctool -a -U')
+        result = self.host.run('gsctool -a -U',
+                ignore_status=not unlock_allowed)
+        if not unlock_allowed and (result.exit_status != 3 or
+            'Error: rv 7, response 7' not in result.stderr):
+            raise error.TestFail('unexpected lockout result %r', result)
         self.check_unlock(unlock_allowed)
 
 
@@ -83,11 +87,15 @@ class firmware_Cr50Unlock(FirmwareTest):
         # no matter how it is being set.
 
 
-    def run_once(self):
+    def run_once(self, ccd_lockout):
         """Verify cr50 lock behavior on v1 images and v0 images"""
+        logging.info('ccd should %sbe locked out',
+                '' if ccd_lockout else 'not ')
         if self.cr50.has_command('ccdstate'):
-            self.unlock_test(self.gsctool_unlock, True)
+            self.unlock_test(self.gsctool_unlock, not ccd_lockout)
             self.unlock_test(self.console_unlock, False)
+            logging.info('ccd unlock is %s', 'locked out' if ccd_lockout else
+                    'accessible')
         else:
             # pre-v1, cr50 cannot be unlocked. Make sure that's true
             logging.info(self.cr50.send_command_get_output('lock disable',
