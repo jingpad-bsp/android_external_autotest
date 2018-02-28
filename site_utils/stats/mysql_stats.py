@@ -19,16 +19,10 @@ import time
 import common
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 
-try:
-    from chromite.lib import metrics
-    from chromite.lib import ts_mon_config
-except ImportError:
-    metrics = utils.metrics_mock
-    ts_mon_config = utils.metrics_mock
-
+from chromite.lib import metrics
+from chromite.lib import ts_mon_config
 
 AT_DIR='/usr/local/autotest'
 DEFAULT_USER = global_config.global_config.get_config_value(
