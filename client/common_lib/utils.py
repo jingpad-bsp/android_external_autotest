@@ -1832,24 +1832,21 @@ _setup_restricted_subnets()
 WIRELESS_SSID_PATTERN = 'wireless_ssid_(.*)/(\d+)'
 
 
-def get_built_in_ethernet_nic_name():
+def get_moblab_serial_number():
     """Gets the moblab public network interface.
 
     If the eth0 is an USB interface, try to use eth1 instead. Otherwise
     use eth0 by default.
     """
     try:
-        cmd_result = run('readlink -f /sys/class/net/eth0')
-        if cmd_result.exit_status == 0 and 'usb' in cmd_result.stdout:
-            cmd_result = run('readlink -f /sys/class/net/eth1')
-            if cmd_result.exit_status == 0 and not ('usb' in cmd_result.stdout):
-                logging.info('Eth0 is a USB dongle, use eth1 as moblab nic.')
-                return _MOBLAB_ETH_1
-    except error.CmdError:
-        # readlink is not supported.
-        logging.info('No readlink available, use eth0 as moblab nic.')
+        cmd_result = run('sudo vpd -g serial_number')
+        if cmd_result.stdout:
+          return cmd_result.stdout
+    except error.CmdError as e:
+        logging.error(str(e))
+        logging.info('Serial number ')
         pass
-    return _MOBLAB_ETH_0
+    return 'NoSerialNumber'
 
 
 def ping(host, deadline=None, tries=None, timeout=60, user=None):
@@ -1957,24 +1954,6 @@ def get_chrome_version(job_views):
     return None
 
 
-def get_default_interface_mac_address():
-    """Returns the default moblab MAC address."""
-    return get_interface_mac_address(
-            get_built_in_ethernet_nic_name())
-
-
-def get_interface_mac_address(interface):
-    """Return the MAC address of a given interface.
-
-    @param interface: Interface to look up the MAC address of.
-    """
-    interface_link = run(
-            'ip addr show %s | grep link/ether' % interface).stdout
-    # The output will be in the format of:
-    # 'link/ether <mac> brd ff:ff:ff:ff:ff:ff'
-    return interface_link.split()[1]
-
-
 def get_moblab_id():
     """Gets the moblab random id.
 
@@ -2024,9 +2003,7 @@ def get_offload_gsuri():
     if not gsuri:
         gsuri = "%sresults/" % CONFIG.get_config_value('CROS', 'image_storage_server')
 
-    return '%s%s/%s/' % (
-            gsuri, get_interface_mac_address(get_built_in_ethernet_nic_name()),
-            get_moblab_id())
+    return '%s%s/%s/' % (gsuri, get_moblab_serial_number(), get_moblab_id())
 
 
 # TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
