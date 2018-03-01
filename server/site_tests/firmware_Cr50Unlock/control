@@ -24,8 +24,9 @@ def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     iterations = int(args_dict.get("iterations", 1))
+    ccd_lockout = args_dict.get("ccd_lockout", "false").lower() == "true"
 
     job.run_test("firmware_Cr50Unlock", host=host, cmdline_args=args,
-                 iterations=iterations)
+                 ccd_lockout=ccd_lockout, iterations=iterations)
 
 parallel_simple(run, machines)

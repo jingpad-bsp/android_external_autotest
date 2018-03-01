@@ -237,24 +237,21 @@ class Suspender(object):
         raise error.TestError('Could not find %s entry.' % name)
 
 
-    def _hwclock_ts(self, not_before, retries=3):
+    def _hwclock_ts(self, not_before):
         """Read the RTC resume timestamp saved by powerd_suspend."""
-        for retry in xrange(retries + 1):
-            early_wakeup = False
-            if os.path.exists(self.HWCLOCK_FILE):
-                # TODO(crbug.com/733773): Still fragile see bug.
-                match = re.search(r'(.+)(\.\d+)[+-]\d+:?\d+$',
-                                  utils.read_file(self.HWCLOCK_FILE), re.DOTALL)
-                if match:
-                    timeval = time.strptime(match.group(1),
-                                            "%Y-%m-%d %H:%M:%S")
-                    seconds = time.mktime(timeval)
-                    seconds += float(match.group(2))
-                    logging.debug('RTC resume timestamp read: %f', seconds)
-                    if seconds >= not_before:
-                        return seconds
-                    early_wakeup = True
-            time.sleep(0.05 * retry)
+        early_wakeup = False
+        if os.path.exists(self.HWCLOCK_FILE):
+            # TODO(crbug.com/733773): Still fragile see bug.
+            match = re.search(r'(.+)(\.\d+)[+-]\d+:?\d+$',
+                              utils.read_file(self.HWCLOCK_FILE), re.DOTALL)
+            if match:
+                timeval = time.strptime(match.group(1), "%Y-%m-%d %H:%M:%S")
+                seconds = time.mktime(timeval)
+                seconds += float(match.group(2))
+                logging.debug('RTC resume timestamp read: %f', seconds)
+                if seconds >= not_before:
+                    return seconds
+                early_wakeup = True
         if early_wakeup:
             logging.debug('Early wakeup, dumping eventlog if it exists:\n')
             elog = utils.system_output('mosys eventlog list | tail -n %d' %
@@ -509,6 +506,8 @@ class Suspender(object):
             iteration = len(self.failures) + len(self.successes) + 1
             # Retry suspend in case we hit a known (whitelisted) bug
             for _ in xrange(10):
+                # Clear powerd_suspend RTC timestamp, to avoid stale results.
+                utils.open_write_close(self.HWCLOCK_FILE, '')
                 self._reset_logs()
                 utils.system('sync')
                 board_delay = self._SUSPEND_DELAY.get(self._get_board(),

@@ -19,7 +19,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
     FWMP_DEV_DISABLE_CCD_UNLOCK = (1 << 6)
     GSCTOOL_ERR = 'Error: rv 7, response 7'
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, ccd_lockout):
         """Initialize servo check if cr50 exists"""
         super(firmware_FWMPDisableCCD, self).initialize(host, cmdline_args)
 
@@ -27,7 +27,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         # Test CCD if servo has access to Cr50, is running with CCD v1, and has
         # testlab mode enabled.
         self.test_ccd_unlock = (hasattr(self, 'cr50') and
-            self.cr50.has_command('ccdstate'))
+            self.cr50.has_command('ccdstate') and not ccd_lockout)
 
         logging.info('%sTesting CCD Unlock', '' if self.test_ccd_unlock else
             'Not ')
@@ -122,7 +122,7 @@ class firmware_FWMPDisableCCD(FirmwareTest):
         self.cr50_check_lock_control(flags)
 
 
-    def run_once(self):
+    def run_once(self, ccd_lockout):
         """Verify FWMP disable with different flag values"""
         self.check_fwmp('0xaa00', True)
         # Verify that the flags can be changed on the same boot
