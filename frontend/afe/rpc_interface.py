@@ -566,10 +566,20 @@ def get_host_attribute(attribute, **host_filter_data):
     models.Host.objects.populate_relationships(hosts, models.HostAttribute,
                                                'attribute_list')
     host_attr_dicts = []
+    host_objs = []
     for host_obj in hosts:
         for attr_obj in host_obj.attribute_list:
             if attr_obj.attribute == attribute:
                 host_attr_dicts.append(attr_obj.get_object_dict())
+                host_objs.append(host_obj)
+
+    if RESPECT_STATIC_ATTRIBUTES:
+        for host_attr, host_obj in zip(host_attr_dicts, host_objs):
+            static_attrs = models.StaticHostAttribute.query_objects(
+                    {'host_id': host_obj.id, 'attribute': attribute})
+            if len(static_attrs) > 0:
+                host_attr['value'] = static_attrs[0].value
+
     return rpc_utils.prepare_for_serialization(host_attr_dicts)
 
 
