@@ -307,6 +307,48 @@ class RpcInterfaceTestWithStaticAttribute(
                            'test_attribute2': 'test_value2',
                            'static_attribute1': 'static_value2'})
 
+    def test_get_hosts_by_attribute_without_static(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+
+        hosts = rpc_interface.get_hosts_by_attribute(
+                'test_attribute1', 'test_value1')
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
+
+
+    def test_get_hosts_by_attribute_with_static(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        self._set_static_attribute(host1, 'test_attribute1', 'test_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+        self._set_static_attribute(host2, 'test_attribute1', 'static_value1')
+        host3 = models.Host.objects.create(hostname='test_host3')
+        self._set_static_attribute(host3, 'test_attribute1', 'test_value1')
+        host4 = models.Host.objects.create(hostname='test_host4')
+        host4.set_attribute('test_attribute1', 'test_value1')
+        host5 = models.Host.objects.create(hostname='test_host5')
+        host5.set_attribute('test_attribute1', 'temp_value1')
+        self._set_static_attribute(host5, 'test_attribute1', 'test_value1')
+
+        hosts = rpc_interface.get_hosts_by_attribute(
+                'test_attribute1', 'test_value1')
+        # host1: matched, it has the same value for test_attribute1.
+        # host2: not matched, it has a new value in
+        #        afe_static_host_attributes for test_attribute1.
+        # host3: matched, it has a corresponding entry in
+        #        afe_host_attributes for test_attribute1.
+        # host4: matched, test_attribute1 is not replaced by static
+        #        attribute.
+        # host5: matched, it has an updated & matched value for
+        #        test_attribute1 in afe_static_host_attributes.
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host3',
+                               'test_host4', 'test_host5']))
+
 
 class RpcInterfaceTestWithStaticLabel(ShardHeartbeatTest,
                                       frontend_test_utils.FrontendTestMixin):
@@ -688,6 +730,18 @@ class RpcInterfaceTest(unittest.TestCase,
 
     def test_ping_db(self):
         self.assertEquals(rpc_interface.ping_db(), [True])
+
+
+    def test_get_hosts_by_attribute(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+
+        hosts = rpc_interface.get_hosts_by_attribute(
+                'test_attribute1', 'test_value1')
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
 
 
     def test_get_hosts(self):
