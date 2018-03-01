@@ -171,7 +171,8 @@ class BindMount(object):
     def cleanup(self):
         """Cleans up the bind-mount.
 
-        Unmounts the destination, and deletes it.
+        Unmounts the destination, and deletes it if possible. If it was mounted
+        alongside important files, it will not be deleted.
         """
         full_dst = os.path.join(*list(self.spec))
         utils.run('sudo umount %s' % full_dst)
@@ -179,8 +180,8 @@ class BindMount(object):
         # alongside actual file content (e.g. SSPs install into
         # /usr/local/autotest so rmdir -p will fail for any mounts located in
         # /usr/local/autotest).
-        utils.run('sudo bash -c "cd %s; rmdir -p %s"' % self.spec,
-                  ignore_status=True)
+        utils.run('sudo bash -c "cd %s; rmdir -p --ignore-fail-on-non-empty %s"'
+                  % self.spec)
 
 
 MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])
