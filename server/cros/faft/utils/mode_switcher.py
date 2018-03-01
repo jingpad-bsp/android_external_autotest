@@ -530,21 +530,28 @@ class _BaseModeSwitcher(object):
 
         logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
-        is_dev = False
+        is_dev = is_rec = is_devsw_boot = False
         if sync_before_boot:
             is_dev = self.checkers.mode_checker('dev')
+            is_rec = self.checkers.mode_checker('rec')
+            is_devsw_boot = self.checkers.crossystem_checker(
+                                               {'devsw_boot': '1'}, True)
             boot_id = self.faft_framework.get_bootid()
             self.faft_framework.blocking_sync()
-        logging.info("-[mode_aware_reboot]-[ is_dev=%s ]-", is_dev);
+        if is_rec:
+            logging.info("-[mode_aware_reboot]-[ is_rec=%s is_dev_switch=%s ]-",
+                         is_rec, is_devsw_boot)
+        else:
+            logging.info("-[mode_aware_reboot]-[ is_dev=%s ]-", is_dev)
         reboot_method()
         if sync_before_boot:
             self.wait_for_client_offline(orig_boot_id=boot_id)
         # Encapsulating the behavior of skipping dev firmware screen,
         # hitting ctrl-D
-        # Note that if booting from recovery mode, will not
-        # call bypass_dev_mode because can't determine prior to
-        # reboot if we're going to boot up in dev or normal mode.
-        if is_dev:
+        # Note that if booting from recovery mode, we can predict the next
+        # boot based on the developer switch position at boot (devsw_boot).
+        # If devsw_boot is True, we will call bypass_dev_mode after reboot.
+        if is_dev or is_devsw_boot:
             self.bypass_dev_mode()
         if wait_for_dut_up:
             self.wait_for_client()
