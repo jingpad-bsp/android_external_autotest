@@ -21,6 +21,7 @@ class camera_HAL3(test.test):
     adapter_service = 'camera-halv3-adapter'
     timeout = 600
     media_profiles_path = os.path.join('vendor', 'etc', 'media_profiles.xml')
+    tablet_board_list = ['scarlet']
 
     def setup(self):
         """
@@ -51,5 +52,7 @@ class camera_HAL3(test.test):
                         video.get('height'), video.get('frameRate')))
             if recording_params:
                 cmd.append('--recording_params=' + ','.join(recording_params))
+            if utils.get_current_board() in self.tablet_board_list:
+                cmd.append('--gtest_filter=-*SensorOrientationTest/*')
 
             utils.system(' '.join(cmd), timeout=self.timeout)
