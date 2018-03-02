@@ -29,6 +29,7 @@ PERF_PER_BUILD_TESTS = (
 )
 
 PERF_DAILY_RUN_TESTS = (
+    'cros_ui_smoothness',
     'dromaeo.domcoreattr',
     'dromaeo.domcoremodify',
     'dromaeo.domcorequery',
@@ -61,7 +62,7 @@ ALL_TESTS = (PERF_PER_BUILD_TESTS +
              PERF_NO_SUITE)
 
 CONTROLFILE_TEMPLATE = (
-"""# Copyright 2017 The Chromium OS Authors. All rights reserved.
+"""# Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
