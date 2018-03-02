@@ -18,6 +18,16 @@ def _split_url(url):
 class NanoOmahaDevserver(object):
     """A simple Omaha instance that can be setup on a DUT in client tests."""
 
+    def __init__(self, eol=False):
+        """
+        Create a nano omaha devserver.
+
+        @param eol: True if we should return a response with _eol flag
+
+        """
+        self._eol = eol
+
+
     class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         """Inner class for handling HTTP requests."""
 
@@ -40,7 +50,7 @@ class NanoOmahaDevserver(object):
               sha256=\"%s\"
               needsadmin=\"false\"
               IsDeltaPayload=\"%s\"
-"""
+        """
 
         _OMAHA_RESPONSE_TEMPLATE_TAIL = """ />
                   </actions>
@@ -48,32 +58,46 @@ class NanoOmahaDevserver(object):
               </updatecheck>
             </app>
           </response>
-"""
+        """
+
+        _OMAHA_RESPONSE_EOL = """
+          <response protocol=\"3.0\">
+            <daystart elapsed_seconds=\"44801\"/>
+            <app appid=\"{87efface-864d-49a5-9bb3-4b050a7c227a}\" status=\"ok\">
+              <ping status=\"ok\"/>
+              <updatecheck _eol=\"eol\" status=\"noupdate\"/>
+            </app>
+          </response>
+        """
 
         def do_POST(self):
             """Handler for POST requests."""
             if self.path == '/update':
-                (base, name) = _split_url(self.server._devserver._image_url)
-                response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
-                        base + '/',
-                        name,
-                        self.server._devserver._image_size,
-                        self.server._devserver._sha256,
-                        str(self.server._devserver._is_delta).lower())
-                if self.server._devserver._is_delta:
-                    response += '              IsDelta="true"\n'
-                if self.server._devserver._critical:
-                    response += '              deadline="now"\n'
-                if self.server._devserver._metadata_size:
-                    response += '              MetadataSize="%d"\n' % (
-                            self.server._devserver._metadata_size)
-                if self.server._devserver._metadata_signature:
-                    response += '              MetadataSignatureRsa="%s"\n' % (
-                            self.server._devserver._metadata_signature)
-                if self.server._devserver._public_key:
-                    response += '              PublicKeyRsa="%s"\n' % (
-                            self.server._devserver._public_key)
-                response += self._OMAHA_RESPONSE_TEMPLATE_TAIL
+                if self.server._devserver._eol:
+                    response = self._OMAHA_RESPONSE_EOL
+                else:
+                    (base, name) = _split_url(self.server._devserver._image_url)
+                    response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
+                            base + '/',
+                            name,
+                            self.server._devserver._image_size,
+                            self.server._devserver._sha256,
+                            str(self.server._devserver._is_delta).lower())
+                    if self.server._devserver._is_delta:
+                        response += '              IsDelta="true"\n'
+                    if self.server._devserver._critical:
+                        response += '              deadline="now"\n'
+                    if self.server._devserver._metadata_size:
+                        response += '              MetadataSize="%d"\n' % (
+                                self.server._devserver._metadata_size)
+                    if self.server._devserver._metadata_signature:
+                        response += '              ' \
+                                    'MetadataSignatureRsa="%s"\n' % (
+                                self.server._devserver._metadata_signature)
+                    if self.server._devserver._public_key:
+                        response += '              PublicKeyRsa="%s"\n' % (
+                                self.server._devserver._public_key)
+                    response += self._OMAHA_RESPONSE_TEMPLATE_TAIL
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/xml')
                 self.end_headers()
