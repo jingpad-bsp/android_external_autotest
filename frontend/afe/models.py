@@ -29,6 +29,9 @@ DEFAULT_REBOOT_AFTER = model_attributes.RebootBefore.NEVER
 RESPECT_STATIC_LABELS = global_config.global_config.get_config_value(
         'SKYLAB', 'respect_static_labels', type=bool, default=False)
 
+RESPECT_STATIC_ATTRIBUTES = global_config.global_config.get_config_value(
+        'SKYLAB', 'respect_static_attributes', type=bool, default=False)
+
 
 class AclAccessViolation(Exception):
     """\
@@ -878,6 +881,18 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     def _get_static_attribute_model_and_args(self, attribute):
         return StaticHostAttribute, dict(host=self, attribute=attribute)
+
+
+    def _is_replaced_by_static_attribute(self, attribute):
+        if RESPECT_STATIC_ATTRIBUTES:
+            model, args = self._get_static_attribute_model_and_args(attribute)
+            try:
+                static_attr = model.objects.get(**args)
+                return True
+            except StaticHostAttribute.DoesNotExist:
+                return False
+
+        return False
 
 
     @classmethod
