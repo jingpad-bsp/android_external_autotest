@@ -88,6 +88,8 @@ suite:dummy_server
 suite:dummy_server_nossp
 suite:dummyclientretries
 suite:dummyflake
+suite:ent-nightly
+suite:ent-perbuild
 suite:experimental
 suite:factory
 suite:faft
