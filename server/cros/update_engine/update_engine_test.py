@@ -538,7 +538,7 @@ class UpdateEngineTest(test.test):
         # We need to start our own devserver for the rest of the cases.
         self._omaha_devserver = omaha_devserver.OmahaDevserver(
             self._autotest_devserver.hostname, staged_url,
-            max_updates=max_updates)
+            max_updates=max_updates, critical_update=critical_update)
         self._omaha_devserver.start_devserver()
         return self._omaha_devserver.get_update_url()
 
