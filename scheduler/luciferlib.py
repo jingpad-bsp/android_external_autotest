@@ -20,6 +20,7 @@ _SECTION = 'LUCIFER'
 
 # TODO(crbug.com/748234): Move these to shadow_config.ini
 # See also drones.AUTOTEST_INSTALL_DIR
+_ENV = '/usr/bin/env'
 _AUTOTEST_DIR = '/usr/local/autotest'
 _JOB_REPORTER_PATH = os.path.join(_AUTOTEST_DIR, 'bin', 'job_reporter')
 
@@ -104,6 +105,8 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     results_dir = _results_dir(manager, job)
     num_tests_failed = manager.get_num_tests_failed(pidfile_id)
     args = [
+            _JOB_REPORTER_PATH,
+
             # General configuration
             '--jobdir', _get_jobdir(),
             '--run-job-path', _get_run_job_path(),
@@ -117,8 +120,13 @@ def spawn_gathering_job_handler(manager, job, autoserv_exit, pidfile_id=None):
             '--num-tests-failed', str(num_tests_failed),
             '--results-dir', results_dir,
     ]
+    if _get_gcp_creds():
+        args = [
+                'GOOGLE_APPLICATION_CREDENTIALS=%s'
+                % pipes.quote(_get_gcp_creds()),
+        ] + args
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
-    drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+    drone.spawn(_ENV, args, output_file=output_file)
     return drone
 
 
@@ -142,6 +150,8 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
         drone = manager.get_drone_for_pidfile(pidfile_id)
     results_dir = _results_dir(manager, job)
     args = [
+            _JOB_REPORTER_PATH,
+
             # General configuration
             '--jobdir', _get_jobdir(),
             '--run-job-path', _get_run_job_path(),
@@ -153,13 +163,18 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
             '--autoserv-exit', str(autoserv_exit),
             '--results-dir', results_dir,
     ]
+    if _get_gcp_creds():
+        args = [
+                'GOOGLE_APPLICATION_CREDENTIALS=%s'
+                % pipes.quote(_get_gcp_creds()),
+        ] + args
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
-    drone.spawn(_JOB_REPORTER_PATH, args, output_file=output_file)
+    drone.spawn(_ENV, args, output_file=output_file)
     return drone
 
 
 def _get_jobdir():
-    return _config.get_config_value(_SECTION, 'jobdir', type=str)
+    return _config.get_config_value(_SECTION, 'jobdir')
 
 
 def _get_run_job_path():
@@ -172,7 +187,15 @@ def _get_watcher_path():
 
 def _get_binaries_path():
     """Get binaries dir path from config.."""
-    return _config.get_config_value(_SECTION, 'binaries_path', type=str)
+    return _config.get_config_value(_SECTION, 'binaries_path')
+
+
+def _get_gcp_creds():
+  """Return path to GCP service account credentials.
+
+  This is the empty string by default, if no credentials will be used.
+  """
+  return _config.get_config_value(_SECTION, 'gcp_creds', default='')
 
 
 class _DroneManager(object):
