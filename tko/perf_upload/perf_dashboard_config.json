@@ -546,6 +546,11 @@
     "master_name": "ChromeOSPower"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.cros_ui_smoothness",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "cros_ui_smoothness"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "dromaeo.domcoreattr"
