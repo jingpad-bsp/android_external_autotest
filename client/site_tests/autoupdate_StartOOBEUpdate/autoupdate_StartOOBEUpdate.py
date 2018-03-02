@@ -97,13 +97,17 @@ class autoupdate_StartOOBEUpdate(test.test):
         self._oobe = self._chrome.browser.oobe
 
         self._skip_to_oobe_update_screen()
-        utils.poll_for_condition(self._is_update_started,
-                                 error.TestFail('Update did not start.'),
-                                 timeout=30)
+        try:
+            utils.poll_for_condition(self._is_update_started,
+                                     error.TestFail('Update did not start.'),
+                                     timeout=30)
+        except error.TestFail as e:
+            if self._critical_update:
+                raise e
 
 
     def run_once(self, image_url, cellular=False, payload_info=None,
-                 full_payload=True):
+                 full_payload=True, critical_update=True):
         """
         Test that will start a forced update at OOBE.
 
@@ -118,6 +122,7 @@ class autoupdate_StartOOBEUpdate(test.test):
 
         """
         utils.run('restart update-engine')
+        self._critical_update = critical_update
 
         if cellular:
             try:
