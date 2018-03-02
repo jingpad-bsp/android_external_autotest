@@ -267,23 +267,6 @@ class RpcInterfaceTestWithStaticAttribute(
         models.RESPECT_STATIC_ATTRIBUTES = self.old_respect_static_config
 
 
-    def _set_static_attribute(self, host, attribute, value):
-        """Set static attribute for a host.
-
-        It ensures that all static attributes have a corresponding
-        entry in afe_host_attributes.
-        """
-        # Get or create the reference object in afe_host_attributes.
-        model, args = host._get_attribute_model_and_args(attribute)
-        model.objects.get_or_create(**args)
-
-        attribute_model, get_args = host._get_static_attribute_model_and_args(
-            attribute)
-        attribute_object, _ = attribute_model.objects.get_or_create(**get_args)
-        attribute_object.value = value
-        attribute_object.save()
-
-
     def _fake_host_with_static_attributes(self):
         host1 = models.Host.objects.create(hostname='test_host')
         host1.set_attribute('test_attribute1', 'test_value1')
