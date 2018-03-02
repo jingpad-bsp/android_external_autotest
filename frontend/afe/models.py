@@ -1414,7 +1414,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     #     - a job whose hqe has a host
     #     - one of the host's labels matches the shard's label.
     # Non-aborted known jobs, completed jobs, active jobs, jobs
-    # without hqe are excluded as we do with SQL_SHARD_JOBS.
+    # without hqe are exluded as we do with SQL_SHARD_JOBS.
     SQL_SHARD_JOBS_WITH_HOSTS = (
         'SELECT DISTINCT(t1.id) FROM afe_jobs t1 '
         'INNER JOIN afe_host_queue_entries t2 ON '
@@ -1660,18 +1660,10 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             check_known_jobs_exclude = 'AND NOT ' + check_known_jobs
             check_known_jobs_include = 'OR ' + check_known_jobs
 
-        #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
-        #correct usage would be .raw(..., using='readonly')
-        old_db = Job.objects._db
-        Job.objects._db = 'readonly'
-        raw_sql = cls.SQL_SHARD_JOBS % {
-            'check_known_jobs': check_known_jobs_exclude,
-            'shard_id': shard.id}
-        job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
-        Job.objects._db = old_db
-        if not job_ids:
-            #If the replica is down or we're in a test, fetch from master.
-            job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
+        query = Job.objects.raw(cls.SQL_SHARD_JOBS % {
+                'check_known_jobs': check_known_jobs_exclude,
+                'shard_id': shard.id})
+        job_ids |= set([j.id for j in query])
 
         static_labels, non_static_labels = Host.classify_label_objects(
                 shard.labels.all())
