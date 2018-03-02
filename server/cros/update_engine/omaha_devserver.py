@@ -46,19 +46,22 @@ class OmahaDevserver(object):
     _DEVSERVER_TIMELIMIT_SECONDS = 12 * 60 * 60
 
 
-    def __init__(self, omaha_host, update_payload_staged_url, max_updates=1):
+    def __init__(self, omaha_host, update_payload_staged_url, max_updates=1,
+                 critical_update=True):
         """Starts a private devserver instance, operating at Omaha capacity.
 
         @param omaha_host: host address where the devserver is spawned.
         @param update_payload_staged_url: URL to provision for update requests.
         @param max_updates: int number of updates this devserver will handle.
                             This is passed to src/platform/dev/devserver.py.
+        @param critical_update: Whether to set a deadline in responses.
         """
         self._devserver_dir = '/home/chromeos-test/chromiumos/src/platform/dev'
 
         if not update_payload_staged_url:
             raise error.TestError('Missing update payload url')
 
+        self._critical_update = critical_update
         self._max_updates = max_updates
         self._omaha_host = omaha_host
         self._devserver_pid = 0
@@ -221,9 +224,12 @@ class OmahaDevserver(object):
                 '--urlbase=%s' % update_payload_url_base,
                 '--max_updates=%s' % self._max_updates,
                 '--host_log',
-                '--static_dir=%s' % self._devserver_static_dir,
-                '--critical_update',
+                '--static_dir=%s' % self._devserver_static_dir
         ]
+
+        if self._critical_update:
+            cmdlist.append('--critical_update')
+
         remote_cmd = '( %s ) </dev/null >%s 2>&1 &' % (
                 ' '.join(cmdlist), self._devserver_stdoutfile)
 
