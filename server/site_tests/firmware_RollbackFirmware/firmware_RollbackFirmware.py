@@ -41,9 +41,13 @@ class firmware_RollbackFirmware(FirmwareTest):
         logging.info("Expected firmware B boot and rollback firmware B.")
         self.check_state((self.checkers.fw_tries_checker, ('B', False)))
         self.faft_client.bios.move_version_backward('b')
+
+        # Older devices (without BROKEN screen) didn't wait for removal in
+        # dev mode. Make sure the USB key is not plugged in so they won't
+        # start booting immediately and get interrupted by unplug/replug.
+        self.servo.switch_usbkey('host')
         self.switcher.simple_reboot()
-        if not dev_mode:
-            self.switcher.bypass_rec_mode()
+        self.switcher.bypass_rec_mode()
         self.switcher.wait_for_client()
 
         logging.info("Expected recovery boot and restores firmware A and B.")
