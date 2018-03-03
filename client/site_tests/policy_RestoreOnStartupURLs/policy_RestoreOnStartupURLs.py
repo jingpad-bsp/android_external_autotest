@@ -51,19 +51,16 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
         # Get list of open tab urls from browser; Convert unicode to text;
         # Strip any trailing '/' character reported by devtools.
         tab_urls = [tab.url.encode('utf8').rstrip('/')
-                    for tab in reversed(self.cr.browser.tabs)]
+                    for tab in self.cr.browser.tabs]
 
         # Telemetry always opens a 'newtab' tab if no startup tabs are opened.
-        # If the only open tab is 'newtab', or a tab with the termporary url
-        # www.google.com/_/chrome/newtab..., then set tab URLs to None.
-        if len(tab_urls) == 1:
-            for newtab_url in self.NEWTAB_URLS:
-                if newtab_url in tab_urls:
-                    tab_urls = None
-                    break
+        if policy_value is None:
+            if len(tab_urls) != 1 or tab_urls[0] not in self.NEWTAB_URLS:
+                raise error.TestFail('Unexpected tabs: %s (expected: NEWTAB)' %
+                                     tab_urls)
 
         # Compare open tabs with expected tabs by |policy_value|.
-        if tab_urls != policy_value:
+        elif set(tab_urls) != set(policy_value):
             raise error.TestFail('Unexpected tabs: %s (expected: %s)' %
                                  (tab_urls, policy_value))
 
