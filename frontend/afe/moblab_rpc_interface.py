@@ -467,8 +467,8 @@ def get_version_info():
     version_response = {
         x.split('=')[0]: x.split('=')[1] for x in lines if '=' in x}
     version_response['MOBLAB_ID'] = utils.get_moblab_id();
-    version_response['MOBLAB_MAC_ADDRESS'] = (
-        utils.get_default_interface_mac_address())
+    version_response['MOBLAB_SERIAL_NUMBER'] = (
+        utils.get_moblab_serial_number())
     _check_for_system_update()
     update_status = _get_system_update_status()
     version_response['MOBLAB_UPDATE_VERSION'] = update_status['NEW_VERSION']
