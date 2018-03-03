@@ -33,9 +33,9 @@ class PubSubBasedClientTests(mox.MoxTestBase):
         """Tests the test result notification message."""
         self._console_client = cloud_console_client.PubSubBasedClient()
         self.mox.StubOutWithMock(utils,
-                                 'get_default_interface_mac_address')
-        utils.get_default_interface_mac_address().AndReturn(
-            '1c:dc:d1:11:01:e1')
+                                 'get_moblab_serial_number')
+        utils.get_moblab_serial_number().AndReturn(
+            'PV120BB8JAC01E')
         self.mox.StubOutWithMock(utils, 'get_moblab_id')
         utils.get_moblab_id().AndReturn(
             'c8386d92-9ad1-11e6-80f5-111111111111')
