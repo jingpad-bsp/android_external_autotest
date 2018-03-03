@@ -28,16 +28,16 @@ def allow_multiple_section_input(image_operator):
     @param image_operator: Method accepting one section as its argument.
     """
     @functools.wraps(image_operator)
-    def wrapper(self, section):
+    def wrapper(self, section, *args, **dargs):
         """Wrapper method to support multiple sections.
 
         @param section: A list of sections of just a section.
         """
         if type(section) in (tuple, list):
             for sec in section:
-                image_operator(self, sec)
+                image_operator(self, sec, *args, **dargs)
         else:
-            image_operator(self, section)
+            image_operator(self, section, *args, **dargs)
     return wrapper
 
 
@@ -403,12 +403,12 @@ class RPCFunctions(object):
         self._bios_handler.restore_firmware(section)
 
     @allow_multiple_section_input
-    def _bios_corrupt_body(self, section):
+    def _bios_corrupt_body(self, section, corrupt_all=False):
         """Corrupt the requested firmware section body.
 
         @param section: A firmware section, either 'a' or 'b'.
         """
-        self._bios_handler.corrupt_firmware_body(section)
+        self._bios_handler.corrupt_firmware_body(section, corrupt_all)
 
     @allow_multiple_section_input
     def _bios_restore_body(self, section):
