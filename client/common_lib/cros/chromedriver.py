@@ -31,7 +31,8 @@ class chromedriver(object):
                  extension_paths=[], username=None, password=None,
                  server_port=None, skip_cleanup=False, url_base=None,
                  extra_chromedriver_args=None, gaia_login=False,
-                 disable_default_apps=True, *args, **kwargs):
+                 disable_default_apps=True, dont_override_profile=False, *args,
+                 **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -51,6 +52,9 @@ class chromedriver(object):
                                         the chromedriver binary, if any.
         @param gaia_login: Logs in to real gaia.
         @param disable_default_apps: For tests that exercise default apps.
+        @param dont_override_profile: Don't delete cryptohome before login.
+                                      Telemetry will output a warning with this
+                                      option.
         """
         self._cleanup = not skip_cleanup
         assert os.geteuid() == 0, 'Need superuser privileges'
@@ -61,7 +65,9 @@ class chromedriver(object):
                                      password=password,
                                      extra_browser_args=extra_chrome_flags,
                                      gaia_login=gaia_login,
-                                     disable_default_apps=disable_default_apps)
+                                     disable_default_apps=disable_default_apps,
+                                     dont_override_profile=dont_override_profile
+                                     )
         self._browser = self._chrome.browser
         # Close all tabs owned and opened by Telemetry, as these cannot be
         # transferred to ChromeDriver.

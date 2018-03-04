@@ -85,9 +85,25 @@ class network_WlanDriver(test.test):
                      '4.4': 'wireless/marvell/mwifiex/mwifiex_pcie.ko',
             },
     }
+    EXCEPTION_BOARDS = [
+            # Exhibits very similar symptoms to http://crbug.com/693724,
+            # b/65858242, b/36264732.
+            'nyan_kitty',
+    ]
 
 
-    def run_once(self):
+    def NoDeviceFailure(self, forgive_flaky, message):
+        """
+        No WiFi device found. Forgiveable in some suites, for some boards.
+        """
+        board = utils.get_board()
+        if forgive_flaky and board in self.EXCEPTION_BOARDS:
+            return error.TestWarn('Exception (%s): %s' % (board, message))
+        else:
+            return error.TestFail(message)
+
+
+    def run_once(self, forgive_flaky=False):
         """Test main loop"""
         # full_revision looks like "3.4.0".
         full_revision = utils.system_output('uname -r')
@@ -110,7 +126,8 @@ class network_WlanDriver(test.test):
         if wlan_ifs:
             net_if = wlan_ifs[0]
         else:
-            raise error.TestFail('Found no recognized wireless device')
+            raise self.NoDeviceFailure(forgive_flaky,
+                                       'Found no recognized wireless device')
 
         # Some systems (e.g., moblab) might blacklist certain devices. We don't
         # rely on shill for most of this test, but it can be a helpful clue if

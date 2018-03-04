@@ -119,7 +119,7 @@ class DeviceCapability(object):
         try:
             return self.capabilities[cap]
         except KeyError:
-            raise error.TestFail("Unexpected capability: %s" % capability)
+            raise error.TestFail("Unexpected capability: %s" % cap)
 
 
     def ensure_capability(self, cap):
@@ -128,3 +128,10 @@ class DeviceCapability(object):
         """
         if self.get_capability(cap) != 'yes':
             raise error.TestNAError("Missing Capability: %s" % cap)
+
+
+    def have_capability(self, cap):
+        """
+        Return whether cap is available.
+        """
+        return self.get_capability(cap) == 'yes'

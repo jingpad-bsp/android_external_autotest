@@ -267,23 +267,6 @@ class RpcInterfaceTestWithStaticAttribute(
         models.RESPECT_STATIC_ATTRIBUTES = self.old_respect_static_config
 
 
-    def _set_static_attribute(self, host, attribute, value):
-        """Set static attribute for a host.
-
-        It ensures that all static attributes have a corresponding
-        entry in afe_host_attributes.
-        """
-        # Get or create the reference object in afe_host_attributes.
-        model, args = host._get_attribute_model_and_args(attribute)
-        model.objects.get_or_create(**args)
-
-        attribute_model, get_args = host._get_static_attribute_model_and_args(
-            attribute)
-        attribute_object, _ = attribute_model.objects.get_or_create(**get_args)
-        attribute_object.value = value
-        attribute_object.save()
-
-
     def _fake_host_with_static_attributes(self):
         host1 = models.Host.objects.create(hostname='test_host')
         host1.set_attribute('test_attribute1', 'test_value1')
@@ -306,6 +289,25 @@ class RpcInterfaceTestWithStaticAttribute(
                           {'test_attribute1': 'static_value1',
                            'test_attribute2': 'test_value2',
                            'static_attribute1': 'static_value2'})
+
+    def test_get_host_attribute_with_static(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        self._set_static_attribute(host1, 'test_attribute1', 'static_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+        host2.set_attribute('test_attribute2', 'test_value2')
+
+        attributes = rpc_interface.get_host_attribute(
+                'test_attribute1',
+                hostname__in=['test_host1', 'test_host2'])
+        hosts = [attr['host'] for attr in attributes]
+        values = [attr['value'] for attr in attributes]
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
+        self.assertEquals(set(values),
+                          set(['test_value1', 'static_value1']))
+
 
     def test_get_hosts_by_attribute_without_static(self):
         host1 = models.Host.objects.create(hostname='test_host1')
@@ -742,6 +744,22 @@ class RpcInterfaceTest(unittest.TestCase,
                 'test_attribute1', 'test_value1')
         self.assertEquals(set(hosts),
                           set(['test_host1', 'test_host2']))
+
+
+    def test_get_host_attribute(self):
+        host1 = models.Host.objects.create(hostname='test_host1')
+        host1.set_attribute('test_attribute1', 'test_value1')
+        host2 = models.Host.objects.create(hostname='test_host2')
+        host2.set_attribute('test_attribute1', 'test_value1')
+
+        attributes = rpc_interface.get_host_attribute(
+                'test_attribute1',
+                hostname__in=['test_host1', 'test_host2'])
+        hosts = [attr['host'] for attr in attributes]
+        values = [attr['value'] for attr in attributes]
+        self.assertEquals(set(hosts),
+                          set(['test_host1', 'test_host2']))
+        self.assertEquals(set(values), set(['test_value1']))
 
 
     def test_get_hosts(self):

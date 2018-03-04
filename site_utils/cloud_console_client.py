@@ -173,7 +173,7 @@ class PubSubBasedClient(CloudConsoleClient):
         msg_attributes[_get_attribute_name(cpcon.ATTR_MESSAGE_VERSION)] = (
                 CURRENT_MESSAGE_VERSION)
         msg_attributes[_get_attribute_name(cpcon.ATTR_MOBLAB_MAC_ADDRESS)] = (
-                utils.get_default_interface_mac_address())
+                utils.get_moblab_serial_number())
         msg_attributes[_get_attribute_name(cpcon.ATTR_MOBLAB_ID)] = (
                 utils.get_moblab_id())
         return msg_attributes
@@ -190,7 +190,7 @@ class PubSubBasedClient(CloudConsoleClient):
         msg_attributes = {}
         msg_attributes[LEGACY_ATTR_VERSION] = CURRENT_MESSAGE_VERSION
         msg_attributes[LEGACY_ATTR_MOBLAB_MAC] = (
-                utils.get_default_interface_mac_address())
+                utils.get_moblab_serial_number())
         msg_attributes[LEGACY_ATTR_MOBLAB_ID] = utils.get_moblab_id()
         msg_attributes[LEGACY_ATTR_GCS_URI] = gcs_uri
 

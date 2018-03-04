@@ -1118,10 +1118,10 @@ class GetOffloaderUriTest(unittest.TestCase):
                 'CROS', 'image_storage_server').and_return(
                         self._IMAGE_STORAGE_SERVER)
         self.god.stub_function_to_return(utils,
-                'get_interface_mac_address', 'test_mac')
+                'get_moblab_serial_number', 'test_serial_number')
         self.god.stub_function_to_return(utils, 'get_moblab_id', 'test_id')
         expected_gsuri = '%sresults/%s/%s/' % (
-                self._IMAGE_STORAGE_SERVER, 'test_mac', 'test_id')
+                self._IMAGE_STORAGE_SERVER, 'test_serial_number', 'test_id')
         cached_gsuri = utils.DEFAULT_OFFLOAD_GSURI
         utils.DEFAULT_OFFLOAD_GSURI = None
         gsuri = utils.get_offload_gsuri()
@@ -1135,65 +1135,14 @@ class GetOffloaderUriTest(unittest.TestCase):
         self.god.mock_up(utils.CONFIG, 'CONFIG')
         self.god.stub_function_to_return(utils, 'is_moblab', True)
         self.god.stub_function_to_return(utils,
-                'get_interface_mac_address', 'test_mac')
+                'get_moblab_serial_number', 'test_serial_number')
         self.god.stub_function_to_return(utils, 'get_moblab_id', 'test_id')
         gsuri = '%s%s/%s/' % (
-                utils.DEFAULT_OFFLOAD_GSURI, 'test_mac', 'test_id')
+                utils.DEFAULT_OFFLOAD_GSURI, 'test_serial_number', 'test_id')
         self.assertEqual(gsuri, utils.get_offload_gsuri())
 
         self.god.check_playback()
 
-
-class GetBuiltinEthernetNicNameTest(unittest.TestCase):
-    """Test get moblab public network interface name."""
-
-    def setUp(self):
-        self.god = mock.mock_god()
-
-    def tearDown(self):
-        self.god.unstub_all()
-
-    def test_is_eth0(self):
-        """Test when public network interface is eth0."""
-        run_func = self.god.create_mock_function('run_func')
-        self.god.stub_with(utils, 'run', run_func)
-        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
-                utils.CmdResult(exit_status=0, stdout='not_u_s_b'))
-        eth = utils.get_built_in_ethernet_nic_name()
-        self.assertEqual('eth0', eth)
-        self.god.check_playback()
-
-    def test_readlin_fails(self):
-        """Test when readlink does not work."""
-        run_func = self.god.create_mock_function('run_func')
-        self.god.stub_with(utils, 'run', run_func)
-        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
-                utils.CmdResult(exit_status=-1, stdout='blah'))
-        eth = utils.get_built_in_ethernet_nic_name()
-        self.assertEqual('eth0', eth)
-        self.god.check_playback()
-
-    def test_no_readlink(self):
-        """Test when readlink does not exist."""
-        run_func = self.god.create_mock_function('run_func')
-        self.god.stub_with(utils, 'run', run_func)
-        run_func.expect_call('readlink -f /sys/class/net/eth0').and_raises(
-                error.CmdError('readlink', 'no such command'))
-        eth = utils.get_built_in_ethernet_nic_name()
-        self.assertEqual('eth0', eth)
-        self.god.check_playback()
-
-    def test_is_eth1(self):
-        """Test when public network interface is eth1."""
-        run_func = self.god.create_mock_function('run_func')
-        self.god.stub_with(utils, 'run', run_func)
-        run_func.expect_call('readlink -f /sys/class/net/eth0').and_return(
-                utils.CmdResult(exit_status=0, stdout='is usb'))
-        run_func.expect_call('readlink -f /sys/class/net/eth1').and_return(
-                utils.CmdResult(exit_status=0, stdout='not_u_s_b'))
-        eth = utils.get_built_in_ethernet_nic_name()
-        self.assertEqual('eth1', eth)
-        self.god.check_playback()
 
 
 class  MockMetricsTest(unittest.TestCase):
