@@ -62,6 +62,12 @@ class EventHandler(object):
         # TODO(crbug.com/794779): monitor_db leaves HQEs in GATHERING
         pass
 
+    def _handle_running(self, _msg):
+        models = autotest.load('frontend.afe.models')
+        self._job.hostqueueentry_set.all().update(
+                status=models.HostQueueEntry.Status.RUNNING,
+                started_on=datetime.datetime.now())
+
     def _handle_x_tests_done(self, msg):
         """Taken from GatherLogsTask.epilog."""
         autoserv_exit, failures = (int(x) for x in msg.split(','))
@@ -104,6 +110,11 @@ class EventHandler(object):
             self._job.shard_id = None
             self._job.save()
         self.completed = True
+
+    def _handle_host_running(self, msg):
+        models = autotest.load('frontend.afe.models')
+        (models.Host.objects.filter(hostname=msg)
+         .update(status=models.Host.Status.RUNNING, dirty=1))
 
     def _handle_host_ready(self, msg):
         models = autotest.load('frontend.afe.models')
