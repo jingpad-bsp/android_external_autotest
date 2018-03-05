@@ -1,55 +1,92 @@
 #!/usr/bin/python
 
+import contextlib
+import sys
 import unittest
 
 import common
 from autotest_lib.site_utils.deployment import cmdparse
 
 
-class ArgumentPairTestCase(unittest.TestCase):
+@contextlib.contextmanager
+def _suppress_error_output():
+    stderr_save = sys.stderr
+    try:
+        with open('/dev/null', 'w') as sys.stderr:
+            yield
+    finally:
+        sys.stderr = stderr_save
 
-    """Tests for parsing and adding argument pairs."""
 
-    def test_missing_dest(self):
-        """Test for error when missing dest argument."""
+class BooleanArgumentTestCase(unittest.TestCase):
+    """Tests for parsing and adding boolean arguments."""
+
+    def _make_parser(self, option, default):
         parser = cmdparse._ArgumentParser()
-        with self.assertRaisesRegexp(ValueError, r'\bdest\b'):
-            parser.add_argument_pair('--yes', '--no', default=True)
+        parser.add_boolean_argument(option, default)
+        return parser
 
-    def test_missing_dest_and_default(self):
-        """Test for error when missing dest and default arguments."""
-        parser = cmdparse._ArgumentParser()
-        with self.assertRaises(ValueError) as context:
-            parser.add_argument_pair('--yes', '--no')
-        message = str(context.exception)
-        self.assertIn('dest', message)
-        self.assertIn('default', message)
+    def test_conflicting_options_raises_error_with_false_default(self):
+        """Test handling when both the true and false options are used."""
+        # By default, when there's a command line syntax error,
+        # `argparse.ArgumentParser` prints messages on sys.stderr and
+        # then calls `sys.exit()`.  So, take the time to catch/suppress
+        # those behaviors.
+        with _suppress_error_output():
+            parser = self._make_parser('option', False)
+            with self.assertRaises(SystemExit):
+                parser.parse_args(['--option', '--nooption'])
+            with self.assertRaises(SystemExit):
+                parser.parse_args(['--nooption', '--option'])
 
-    def test_default_value(self):
-        """Test the default value for an option pair."""
-        parser = cmdparse._ArgumentParser()
-        parser.add_argument_pair('--yes', '--no', dest='option',
-                                 default=False)
-        args = parser.parse_args([])
-        self.assertIs(args.option, False)
+    def test_conflicting_options_raises_error_with_true_default(self):
+        """Test handling when both the true and false options are used."""
+        # By default, when there's a command line syntax error,
+        # `argparse.ArgumentParser` prints messages on sys.stderr and
+        # then calls `sys.exit()`.  So, take the time to catch/suppress
+        # those behaviors.
+        with _suppress_error_output():
+            parser = self._make_parser('option', True)
+            with self.assertRaises(SystemExit):
+                parser.parse_args(['--option', '--nooption'])
+            with self.assertRaises(SystemExit):
+                parser.parse_args(['--nooption', '--option'])
 
-    def test_parsing_flag(self):
-        """Test parsing an option flag of an option pair."""
-        parser = cmdparse._ArgumentParser()
-        parser.add_argument_pair('--yes', '--no', dest='option',
-                                 default=False)
-        args = parser.parse_args(['--yes'])
-        self.assertIs(args.option, True)
+    def test_no_option_wth_false_default(self):
+        """Test option handling when no option is provided."""
+        parser = self._make_parser('option', False)
+        arguments = parser.parse_args([])
+        self.assertFalse(arguments.option)
 
-    def test_duplicate_flag_precedence(self):
-        """Test precedence when passing multiple flags."""
-        parser = cmdparse._ArgumentParser()
-        parser.add_argument_pair('--yes', '--no', dest='option',
-                                 default=False)
-        args = parser.parse_args(['--no', '--yes'])
-        self.assertIs(args.option, True)
-        args = parser.parse_args(['--yes', '--no'])
-        self.assertIs(args.option, False)
+    def test_no_option_wth_true_default(self):
+        """Test option handling when no option is provided."""
+        parser = self._make_parser('option', True)
+        arguments = parser.parse_args([])
+        self.assertTrue(arguments.option)
+
+    def test_true_option_returns_true_with_false_default(self):
+        """Test option handling when only the true option is provided."""
+        parser = self._make_parser('option', False)
+        arguments = parser.parse_args(['--option'])
+        self.assertTrue(arguments.option)
+
+    def test_true_option_returns_true_with_true_default(self):
+        """Test option handling when only the true option is provided."""
+        parser = self._make_parser('option', True)
+        arguments = parser.parse_args(['--option'])
+        self.assertTrue(arguments.option)
+
+    def test_false_option_returns_false_with_false_default(self):
+        """Test option handling when only the false option is provided."""
+        parser = self._make_parser('option', False)
+        arguments = parser.parse_args(['--nooption'])
+        self.assertFalse(arguments.option)
+
+    def test_false_option_returns_false_with_true_default(self):
+        """Test option handling when only the false option is provided."""
+        parser = self._make_parser('option', True)
+        arguments = parser.parse_args(['--nooption'])
+        self.assertFalse(arguments.option)
 
 
 def _test_parse_command(argv, full_deploy):
