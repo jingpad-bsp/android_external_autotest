@@ -60,10 +60,19 @@ def _parse_args_and_configure_logging(args):
                         help='Path to lucifer_watcher binary')
 
     # Job specific
-    parser.add_argument('--job-id', type=int, required=True,
-                        help='Autotest Job ID')
+
+    # General
     parser.add_argument('--lucifer-level', required=True,
                         help='Lucifer level')
+    parser.add_argument('--job-id', type=int, required=True,
+                        help='Autotest Job ID')
+    parser.add_argument('--results-dir', required=True,
+                        help='Path to job leases directory.')
+
+    # STARTING flags
+    # TODO(ayatane): Will be added later
+
+    # GATHERING flags
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
 autoserv exit status.  If this is passed, then autoserv will not be run
 as the caller has presumably already run it.
@@ -74,8 +83,7 @@ as the caller has presumably already run it.
     parser.add_argument('--num-tests-failed', type=int, default=-1,
                         help='Number of tests failed'
                         ' (only with --need-gather)')
-    parser.add_argument('--results-dir', required=True,
-                        help='Path to job leases directory.')
+
     args = parser.parse_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
