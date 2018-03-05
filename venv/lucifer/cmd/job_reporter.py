@@ -150,15 +150,47 @@ def _run_lucifer_job(event_handler, args):
 
             '-x-level', args.lucifer_level,
             '-x-resultsdir', args.results_dir,
-            '-x-autoserv-exit', str(args.autoserv_exit),
+    ])
+    _add_level_specific_args(command_args, args)
+    return eventlib.run_event_command(
+            event_handler=event_handler, args=command_args)
+
+
+def _add_level_specific_args(command_args, args):
+    """Add level specific arguments for lucifer_run_job.
+
+    command_args is modified in place.
+    """
+    if args.lucifer_level == 'STARTING':
+        _add_starting_args(command_args, args)
+    elif args.lucifer_level == 'GATHERING':
+        _add_gathering_args(command_args, args)
+    else:
+        raise Exception('Invalid lucifer level %s' % args.lucifer_level)
+
+
+def _add_starting_args(command_args, args):
+    """Add STARTING level arguments for lucifer_run_job.
+
+    command_args is modified in place.
+    """
+    del command_args, args
+    raise NotImplementedError('Lucifer STARTING not implemented yet')
+
+
+def _add_gathering_args(command_args, args):
+    """Add GATHERING level arguments for lucifer_run_job.
+
+    command_args is modified in place.
+    """
+    command_args.extend([
+        '-x-autoserv-exit', str(args.autoserv_exit),
     ])
     if args.need_gather:
         command_args.extend([
                 '-x-need-gather',
                 '-x-num-tests-failed', str(args.num_tests_failed),
         ])
-    return eventlib.run_event_command(
-            event_handler=event_handler, args=command_args)
 
 
 def _mark_handoff_completed(job_id):
