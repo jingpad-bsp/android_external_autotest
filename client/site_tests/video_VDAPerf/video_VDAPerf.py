@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 
 from contextlib import closing
@@ -291,13 +292,18 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
     def run_once(self, test_cases):
         self._perf_keyvals = {}
         last_error = None
+        dc = device_capability.DeviceCapability()
         for (path, width, height, frame_num, frag_num, profile,
-             fps)  in test_cases:
-            name = self._get_test_case_name(path)
-            video_path = os.path.join(self.bindir, '%s.download' % name)
-            test_video_data = '%s:%s:%s:%s:%s:%s:%s:%s' % (
-                video_path, width, height, frame_num, frag_num, 0, 0, profile)
+             fps, required_cap)  in test_cases:
             try:
+                name = self._get_test_case_name(path)
+                if not dc.have_capability(required_cap):
+                    logging.info("%s is unavailable. Skip %s",
+                                 required_cap, name)
+                    continue
+                video_path = os.path.join(self.bindir, '%s.download' % name)
+                test_video_data = '%s:%s:%s:%s:%s:%s:%s:%s' % (video_path,
+                    width, height, frame_num, frag_num, 0, 0, profile)
                 self._download_video(path, video_path)
                 self._run_test_case(name, test_video_data, frame_num, fps)
             except Exception as last_error:
@@ -306,7 +312,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
             finally:
                 _remove_if_exists(video_path)
 
+        self.write_perf_keyval(self._perf_keyvals)
+
         if last_error:
             raise # the last error
-
-        self.write_perf_keyval(self._perf_keyvals)
