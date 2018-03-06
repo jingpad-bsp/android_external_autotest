@@ -112,6 +112,16 @@ class EventHandler(object):
             self._job.save()
         self.completed = True
 
+    def _handle_test_passed(self, msg):
+        # TODO(ayatane): Only autoserv as a single test is supported currently.
+        assert msg == 'autoserv'
+        self._autoserv_exit = 0
+
+    def _handle_test_failed(self, msg):
+        # TODO(ayatane): Only autoserv as a single test is supported currently.
+        assert msg == 'autoserv'
+        self._autoserv_exit = 1
+
     def _handle_host_running(self, msg):
         models = autotest.load('frontend.afe.models')
         (models.Host.objects.filter(hostname=msg)
