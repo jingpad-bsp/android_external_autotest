@@ -679,7 +679,8 @@ class ReportGenerator(object):
     def Run(self):
         """Runs report generation."""
         self._CollectAllResults()
-        self._GenerateReportText()
+        if not self._options.just_status_code:
+            self._GenerateReportText()
         for d in self._results:
             if d['experimental'] and self._options.ignore_experimental_tests:
                 continue
@@ -731,6 +732,10 @@ def main():
                       action='store_true', default=False,
                       help='If set, experimental test results will not '
                            'influence the exit code.')
+    parser.add_option('--just_status_code',
+                      dest='just_status_code',
+                      action='store_true', default=False,
+                      help='Skip generating a report, just return status code.')
 
     (options, args) = parser.parse_args()
 
@@ -742,6 +747,13 @@ def main():
         Warning('Forcing --no-debug --no-crash-detection')
         options.print_debug = False
         options.crash_detection = False
+
+    report_options = ['color', 'csv', 'info', 'escape_error', 'perf', 'attr',
+                      'sort_chron', 'print_debug']
+    if options.just_status_code and any(
+        getattr(options, opt) for opt in report_options):
+        Warning('Passed --just_status_code and incompatible options %s' %
+                ' '.join(opt for opt in report_options if getattr(options,opt)))
 
     generator = ReportGenerator(options, args)
     generator.Run()
