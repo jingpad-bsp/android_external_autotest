@@ -33,13 +33,14 @@ from lucifer import loglib
 logger = logging.getLogger(__name__)
 
 
-def main(args):
+def main(argv):
     """Main function
 
-    @param args: list of command line args
+    @param argv: command line args
     """
-    args = _parse_args_and_configure_logging(args)
-    logger.info('Starting with args: %r', args)
+    print('job_reporter: Running with argv: %r' % argv, file=sys.stderr)
+    args = _parse_args_and_configure_logging(argv[1:])
+    logger.info('Running with parsed args: %r', args)
     with leasing.obtain_lease(_lease_path(args.jobdir, args.job_id)):
         autotest.monkeypatch()
         ret = _main(args)
@@ -208,4 +209,4 @@ def _lease_path(jobdir, job_id):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv))
