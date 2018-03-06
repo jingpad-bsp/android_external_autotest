@@ -505,7 +505,7 @@ class Dispatcher(object):
             # the scheduler running previously not at STARTING lucifer
             # level), we want to use the AgentTask to run the test to
             # completion.
-            if (isinstance(agent_task, postjob_task.AbstractQueueTask)
+            if (isinstance(agent_task, AbstractQueueTask)
                 and not agent_task.started):
                 return
 
