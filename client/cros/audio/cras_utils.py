@@ -361,6 +361,18 @@ def get_selected_output_device_name():
     return None
 
 
+def get_selected_output_device_type():
+    """Returns the device type of the active output node.
+
+    @returns: device type string. E.g. INTERNAL_SPEAKER
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active'] and not node['IsInput']:
+            return node['Type']
+    return None
+
+
 def get_plugged_node_types():
     """Returns the pair of plugged output node types and input node types.
 
