@@ -111,6 +111,8 @@ class RetryHandler(object):
             if test.job_retries > 0:
                 self._add_job(new_job_id=job_id,
                               retry_max=test.job_retries)
+            else:
+                logging.debug("Test %s has no retries", test.name)
 
 
     def _add_job(self, new_job_id, retry_max):
@@ -238,6 +240,50 @@ class RetryHandler(object):
             and self._retry_map[result.id]['state'] == self.States.NOT_ATTEMPTED
             and self._retry_map[result.id]['retry_max'] > 0
         )
+
+    def _should_retry_local_job(self, job_id):
+        """Check whether we should retry a job based on information available
+        for a local job without a Result object.
+
+        We will retry the job that corresponds to the result
+        when all of the following are true.
+        a) The test requires retry, i.e. the job has an entry in the retry map.
+        b) We haven't made any retry attempt yet for this job, i.e.
+           state == NOT_ATTEMPTED
+           If the job is aborted,  we will give up on all following retries,
+           regardless of max_retries.
+        c) The job has not reached its retry max, i.e. retry_max > 0
+
+        @param job_id: the id for the job, to look up relevant information.
+
+        @returns: True if we should retry the job.
+
+        """
+        if self._suite_max_reached():
+            logging.debug('suite max_retries reached, not retrying.')
+            return False
+        if job_id not in self._retry_map:
+            logging.debug('job_id not in retry map, not retrying.')
+            return False
+        if self._retry_map[job_id]['state'] != self.States.NOT_ATTEMPTED:
+            logging.debug("job state was %s not 'Not Attempted', not retrying",
+                          self._retry_map[job_id]['state'])
+            return False
+        if self._retry_map[job_id]['retry_max'] <= 0:
+            logging.debug('test-level retries exhausted, not retrying')
+            return False
+        return True
+
+
+    def job_present(self, job_id):
+        """Check whether a job id present in the retry map.
+
+        @param job_id: afe_job_id of a job.
+
+        @returns: A True if the job is present, False if not.
+        """
+        return bool(self._retry_map.get(job_id))
+
 
 
     def get_retry_max(self, job_id):
@@ -1021,7 +1067,7 @@ class _BaseSuite(object):
         @param wait_for_results: Set to False to run the suite job without
                                  waiting for test jobs to finish. Default is
                                  True.
-        @param job_retry: A bool value indicating whether jobs should be retired
+        @param job_retry: A bool value indicating whether jobs should be retried
                           on failure. If True, the field 'JOB_RETRIES' in
                           control files will be respected. If False, do not
                           retry.
@@ -1139,6 +1185,7 @@ class _BaseSuite(object):
         except (error.RPCException, proxy.JSONRPCException):
             if retry_for:
                 # Mark that we've attempted to retry the old job.
+                logging.debug("RPC exception occurred")
                 self._retry_handler.set_attempted(job_id=retry_for)
             raise
         else:
@@ -1155,7 +1202,6 @@ class _BaseSuite(object):
                               job.id, retry_for, retry_count)
             self._remember_job_keyval(job)
             return job
-
 
     def schedule(self, record):
         """
@@ -1199,9 +1245,16 @@ class _BaseSuite(object):
                    'Exception while scheduling suite').record_result(record)
 
         if self._job_retry:
+            logging.debug("Initializing RetryHandler for suite %s.", self._tag)
             self._retry_handler = RetryHandler(
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
+            logging.debug("jobs_to_tests being passed: %s.",
+                          self._jobs_to_tests)
+            logging.debug("retry map created: %s ",
+                          self._retry_handler._retry_map)
+        else:
+            logging.debug("Will not retry jobs from suite %s.", self._tag)
         return len(scheduled_test_names)
 
 
@@ -1299,7 +1352,8 @@ class _BaseSuite(object):
                  prototype:
                    record(base_job.status_log_entry)
         @param waiter: JobResultsWaiter instance.
-        @param reporter: _ResultReporter instance.
+
+        @instance_param _result_reporter: _ResultReporter instance.
         """
         self._record_result(result, record)
         rescheduled = False
@@ -1313,7 +1367,6 @@ class _BaseSuite(object):
 
         if self._should_report(result):
             self._result_reporter.report(result)
-
 
     def _record_result(self, result, record):
         """
@@ -1355,6 +1408,13 @@ class _BaseSuite(object):
         else:
             waiter.add_job(new_job)
             return bool(new_job)
+
+    @property
+    def jobs(self):
+        """Give a copy of the associated jobs
+
+        @returns: array of jobs"""
+        return [job for job in self._jobs]
 
 
     @property
@@ -1577,7 +1637,7 @@ class Suite(_BaseSuite):
         @param wait_for_results: Set to False to run the suite job without
                                  waiting for test jobs to finish. Default is
                                  True.
-        @param job_retry: A bool value indicating whether jobs should be retired
+        @param job_retry: A bool value indicating whether jobs should be retried
                           on failure. If True, the field 'JOB_RETRIES' in
                           control files will be respected. If False, do not
                           retry.
