@@ -238,6 +238,10 @@ class AudioFacadeRemoteAdapter(object):
         """
         self._audio_proxy.set_chrome_mute(mute)
 
+    def check_audio_stream_at_selected_device(self):
+        """Checks the audio output is at expected node"""
+        self._audio_proxy.check_audio_stream_at_selected_device()
+
 
     def get_chrome_active_volume_mute(self):
         """Gets the volume state of active audio output using chrome.audio API.
