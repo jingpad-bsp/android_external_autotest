@@ -786,16 +786,16 @@ def install_duts(argv, full_deploy):
         results_list = install_pool.map(install_function, arguments.hostnames)
         _report_results(afe, report_log, arguments.hostnames, results_list)
 
-        gspath = _get_upload_log_path(arguments)
-        report_log.write('Logs will be uploaded to %s\n' % (gspath,))
-
-    try:
-        _upload_logs(arguments.logdir, gspath)
-    except Exception as e:
-        upload_failure_log_path = os.path.join(arguments.logdir,
-                                               'gs_upload_failure.log')
-        with open(upload_failure_log_path, 'w') as file:
-            traceback.print_exc(limit=None, file=file)
-        sys.stderr.write('Failed to upload logs;'
-                         ' failure details are stored in {}.\n'
-                         .format(upload_failure_log_path))
+    if arguments.upload:
+        try:
+            gspath = _get_upload_log_path(arguments)
+            sys.stderr.write('Logs will be uploaded to %s\n' % (gspath,))
+            _upload_logs(arguments.logdir, gspath)
+        except Exception as e:
+            upload_failure_log_path = os.path.join(arguments.logdir,
+                                                   'gs_upload_failure.log')
+            with open(upload_failure_log_path, 'w') as file:
+                traceback.print_exc(limit=None, file=file)
+            sys.stderr.write('Failed to upload logs;'
+                             ' failure details are stored in {}.\n'
+                             .format(upload_failure_log_path))
