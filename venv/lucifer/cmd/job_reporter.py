@@ -118,9 +118,8 @@ def _run_autotest_job(args):
 def _make_handler(args):
     """Make event handler for lucifer_run_job."""
     models = autotest.load('frontend.afe.models')
-    if args.autoserv_exit is None:
-        # TODO(crbug.com/748234): autoserv not implemented yet.
-        raise NotImplementedError('not implemented yet (crbug.com/748234)')
+    assert not (args.lucifer_level == 'GATHERING'
+                and args.autoserv_exit is None)
     job = models.Job.objects.get(id=args.job_id)
     return handlers.EventHandler(
             metrics=handlers.Metrics(),
