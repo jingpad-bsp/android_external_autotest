@@ -21,7 +21,7 @@ def is_hostless(job):
 
     @param job: frontend.afe.models.Job instance
     """
-    return bool(hostnames(job))
+    return not bool(hostnames(job))
 
 
 def hostnames(job):
