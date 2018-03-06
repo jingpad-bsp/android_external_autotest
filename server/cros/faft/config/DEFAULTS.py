@@ -97,7 +97,7 @@ class Values(object):
     software_sync_update = 2
 
     # Duration of holding power button to power off DUT normally
-    hold_pwr_button_poweroff = 2
+    hold_pwr_button_poweroff = 5
 
     # Duration of holding power button to power on DUT normally
     # (also known as SHORT_DELAY in hdctools)
