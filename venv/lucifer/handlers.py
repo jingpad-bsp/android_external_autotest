@@ -58,16 +58,16 @@ class EventHandler(object):
         # TODO(crbug.com/748234): No event update needed yet.
         pass
 
-    def _handle_gathering(self, _msg):
-        models = autotest.load('frontend.afe.models')
-        self._job.hostqueueentry_set.all().update(
-                status=models.HostQueueEntry.Status.GATHERING)
-
     def _handle_running(self, _msg):
         models = autotest.load('frontend.afe.models')
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.RUNNING,
                 started_on=datetime.datetime.now())
+
+    def _handle_gathering(self, _msg):
+        models = autotest.load('frontend.afe.models')
+        self._job.hostqueueentry_set.all().update(
+                status=models.HostQueueEntry.Status.GATHERING)
 
     def _handle_x_tests_done(self, msg):
         """Taken from GatherLogsTask.epilog."""
