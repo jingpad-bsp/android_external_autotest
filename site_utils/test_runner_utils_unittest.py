@@ -8,9 +8,14 @@ import os, unittest
 import mox
 import common
 import subprocess
+import shutil
+import tempfile
 import types
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import suite as suite_module
 from autotest_lib.site_utils import test_runner_utils
 
 
@@ -46,12 +51,74 @@ class ContainsSublist(mox.Comparator):
         return any((self._sublist == rhs[i:i+n])
                    for i in xrange(len(rhs) - n + 1))
 
+class DummyJob(object):
+    def __init__(self, id=1):
+        self.id = id
 
-class TestRunnerUnittests(unittest.TestCase):
+class TestRunnerUnittests(mox.MoxTestBase):
+
+    def setUp(self):
+        mox.MoxTestBase.setUp(self)
+
 
     def test_fetch_local_suite(self):
         # Deferred until fetch_local_suite knows about non-local builds.
         pass
+
+
+    def test_handle_local_result_for_good_test(self):
+        getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
+        getter.get_control_file_list(suite_name=mox.IgnoreArg()).AndReturn([])
+        job = DummyJob()
+        test = self.mox.CreateMock(control_data.ControlData)
+        test.job_retries = 5
+        self.mox.StubOutWithMock(test_runner_utils.LocalSuite,
+                                 '_retry_local_result')
+        self.mox.ReplayAll()
+        suite = test_runner_utils.LocalSuite([], "tag", [], None, getter,
+                                             job_retry=True)
+        suite._retry_handler = suite_module.RetryHandler({job.id: test})
+        #No calls, should not be retried
+        directory = tempfile.mkdtemp()
+        try:
+            os.mkdir('%s/debug' % directory)
+            with open("%s/status.log" % directory, mode='w+') as status:
+                status.write("GOOD: nonexistent test completed successfully")
+                status.flush()
+                new_id = suite.handle_local_result(
+                    job.id, directory,
+                    lambda log_entry, log_in_subdir=False: None)
+        finally:
+            shutil.rmtree(directory)
+
+
+    def test_handle_local_result_for_bad_test(self):
+        getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
+        getter.get_control_file_list(suite_name=mox.IgnoreArg()).AndReturn([])
+        job = DummyJob()
+        test = self.mox.CreateMock(control_data.ControlData)
+        test.job_retries = 5
+        self.mox.StubOutWithMock(test_runner_utils.LocalSuite,
+                                 '_retry_local_result')
+        test_runner_utils.LocalSuite._retry_local_result(
+            job.id, mox.IgnoreArg()).AndReturn(42)
+        self.mox.ReplayAll()
+        suite = test_runner_utils.LocalSuite([], "tag", [], None, getter,
+                                             job_retry=True)
+        suite._retry_handler = suite_module.RetryHandler({job.id: test})
+        directory = tempfile.mkdtemp()
+        try:
+            os.mkdir('%s/debug' % directory)
+            with open("%s/status.log" % directory, mode='w+') as status:
+                status.write("FAIL")
+                status.flush()
+                new_id = suite.handle_local_result(
+                    job.id, directory,
+                    lambda log_entry, log_in_subdir=False: None)
+                self.assertIsNotNone(new_id)
+        finally:
+            shutil.rmtree(directory)
+
 
     def test_get_predicate_for_test_arg(self):
         # Assert the type signature of get_predicate_for_test(...)
@@ -79,7 +146,6 @@ class TestRunnerUnittests(unittest.TestCase):
         args = 'matey'
         expected_args_sublist = ['--args', args]
         experimental_keyval = {constants.JOB_EXPERIMENTAL_KEY: False}
-        self.mox = mox.Mox()
 
         # Create some dummy job objects.
         job1 = Object()
@@ -154,8 +220,6 @@ class TestRunnerUnittests(unittest.TestCase):
 
         self.assertEqual(job_res, job2_results_dir)
         self.assertEqual(code, 0)
-        self.mox.UnsetStubs()
-        self.mox.VerifyAll()
         self.mox.ResetAll()
 
     def test_perform_local_run(self):
@@ -180,14 +244,41 @@ class TestRunnerUnittests(unittest.TestCase):
             def __init__(self, suite_control_files, hosts):
                 self._suite_control_files = suite_control_files
                 self._hosts = hosts
+                self._jobs = []
+                self._jobs_to_tests = {}
+                self.retry_hack = True
 
             def schedule(self, *args, **kwargs):
                 for control_file in self._suite_control_files:
-                    afe.create_job(control_file, hosts=self._hosts)
+                    job_id = afe.create_job(control_file, hosts=self._hosts)
+                    self._jobs.append(job_id)
+                    self._jobs_to_tests[job_id] = control_file
+
+            def handle_local_result(self, job_id, results_dir, logger,
+                                    **kwargs):
+                if results_dir == "success_directory":
+                    return None
+                retries = True
+                if 'retries' in kwargs:
+                    retries = kwargs['retries']
+                if retries and self.retry_hack:
+                    self.retry_hack = False
+                else:
+                    return None
+                control_file = self._jobs_to_tests.get(job_id)
+                job_id = afe.create_job(control_file, hosts=self._hosts)
+                self._jobs.append(job_id)
+                self._jobs_to_tests[job_id] = control_file
+                return job_id
+
+            @property
+            def jobs(self):
+                return self._jobs
+
+            def test_name_from_job(self, id):
+                return ""
 
         # Mock out scheduling of suite and running of jobs.
-        self.mox = mox.Mox()
-
         self.mox.StubOutWithMock(test_runner_utils, 'fetch_local_suite')
         test_runner_utils.fetch_local_suite(autotest_path, mox.IgnoreArg(),
                 afe, test_arg=test_arg, remote=remote, build=build,
@@ -220,8 +311,6 @@ class TestRunnerUnittests(unittest.TestCase):
                 build=build, board=board, ignore_deps=False,
                 ssh_verbosity=ssh_verbosity, ssh_options=ssh_options,
                 args=args, results_directory=results_dir)
-        self.mox.UnsetStubs()
-        self.mox.VerifyAll()
 
 
 if __name__ == '__main__':
