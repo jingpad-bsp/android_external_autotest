@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import datetime
 import unittest
 
 import common
@@ -51,26 +50,6 @@ class ArgumentPairTestCase(unittest.TestCase):
         self.assertIs(args.option, True)
         args = parser.parse_args(['--yes', '--no'])
         self.assertIs(args.option, False)
-
-
-class _NamespaceStub:
-
-    def __init__(self, **kwargs):
-        for key, val in kwargs.iteritems():
-            setattr(self, key, val)
-
-
-class DefaultLogdirNameTestCase(unittest.TestCase):
-
-    """Test getting default logdir name."""
-
-    def test_happy_path(self):
-        """Test everything working correctly."""
-        arguments = _NamespaceStub(
-            start_time=datetime.datetime(2016, 5, 4, 3),
-            board='shana')
-        got = commandline.get_default_logdir_name(arguments)
-        self.assertEqual(got, '2016-05-04T03:00:00-shana')
 
 
 if __name__ == '__main__':
