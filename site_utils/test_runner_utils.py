@@ -695,7 +695,7 @@ def create_results_directory(results_directory=None):
 
 def generate_report(directory,
                     whitelist_chrome_crashes=False,
-                    just_status_code=False):
+                    just_status_code=False, html_report=False):
     """Parse the test result files in the given directory into a report
 
     @param directory: string, the absolute path of the directory to look in
@@ -708,6 +708,9 @@ def generate_report(directory,
                                         'generate_test_report')]
     # Experimental test results do not influence the exit code.
     test_report_command.append('--ignore_experimental_tests')
+    if html_report:
+        test_report_command.append('--html')
+        test_report_command.append('--html-report-dir=%s' % directory)
     if whitelist_chrome_crashes:
         test_report_command.append('--whitelist_chrome_crashes')
     if just_status_code:
@@ -801,7 +804,7 @@ def perform_run_from_autotest_root(autotest_path, argv, tests, remote,
 
     final_result = generate_report(
         results_directory,
-        whitelist_chrome_crashes=whitelist_chrome_crashes)
+        whitelist_chrome_crashes=whitelist_chrome_crashes, html_report=True)
     try:
         os.unlink(_LATEST_RESULTS_DIRECTORY)
     except OSError:
