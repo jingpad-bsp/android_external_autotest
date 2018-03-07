@@ -116,8 +116,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         """Returns the factor to be multiplied to the timeout parameter.
         The factor is determined by the number of ABIs to run."""
         if self._timeoutfactor is None:
-            abilist = self._run('adb', args=('shell', 'getprop',
-                'ro.product.cpu.abilist')).stdout.split(',')
+            abilist = self._get_abilist()
             prefix = {'x86': 'x86', 'arm': 'armeabi-'}.get(self._abi)
             self._timeoutfactor = (1 if prefix is None else
                 sum(1 for abi in abilist if abi.startswith(prefix)))
@@ -131,7 +130,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @return: The result object from utils.run.
         """
         cts_tradefed = os.path.join(self._repository, 'tools', 'cts-tradefed')
-        with tradefed_test.adb_keepalive(self._get_adb_target(),
+        with tradefed_test.adb_keepalive(self._get_adb_targets(),
                                          self._install_paths):
             for command in commands:
                 logging.info('RUN: ./cts-tradefed %s', ' '.join(command))
@@ -145,7 +144,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                     # continuously during the test run.
                     stdout_tee=utils.TEE_TO_LOGS,
                     stderr_tee=utils.TEE_TO_LOGS)
-            logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
+                logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
         return output
 
     def _should_skip_test(self):
@@ -153,7 +152,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         # newbie and novato are x86 VMs without binary translation. Skip the ARM
         # tests.
         no_ARM_ABI_test_boards = ('newbie', 'novato', 'novato-arc64')
-        if self._get_board_name(self._host) in no_ARM_ABI_test_boards:
+        if self._get_board_name() in no_ARM_ABI_test_boards:
             if self._abi == 'arm':
                 return True
         return False
@@ -231,7 +230,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
-        if self._get_release_channel(self._host) == 'stable':
+        if self._get_release_channel() == 'stable':
             self._timeout += 3600
         # Retries depend on channel.
         self._timeoutfactor = None

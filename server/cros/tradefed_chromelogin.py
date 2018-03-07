@@ -98,7 +98,7 @@ class ChromeLogin(object):
                 raise
         return False
 
-    def __enter__(self):
+    def enter(self):
         """Logs into Chrome with retry."""
         timeout = self._timeout
         logging.info('Ensure Android is running (timeout=%d)...', timeout)
@@ -109,7 +109,11 @@ class ChromeLogin(object):
             self.login(timeout=timeout, raise_exception=True, verbose=True)
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __enter__(self):
+        """Logs into Chrome with retry."""
+        return self.enter()
+
+    def exit(self, exc_type=None, exc_value=None, traceback=None):
         """On exit restart the browser or reboot the machine.
 
         @param exc_type: Exception type if an exception is raised from the
@@ -131,7 +135,22 @@ class ChromeLogin(object):
         if self._need_reboot:
             self.reboot(exc_type, exc_value, traceback)
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        """On exit restart the browser or reboot the machine.
+
+        @param exc_type: Exception type if an exception is raised from the
+                         with-block.
+        @param exc_value: Exception instance if an exception is raised from
+                          the with-block.
+        @param traceback: Stack trace info if an exception is raised from
+                          the with-block.
+        @return None, indicating not to ignore an exception from the with-block
+                if raised.
+        """
+        self.exit(exc_type, exc_value, traceback)
+
     def restart(self):
+        """Restart Chrome browser."""
         # We clean up /tmp (which is memory backed) from crashes and
         # other files. A reboot would have cleaned /tmp as well.
         # TODO(ihf): Remove "start ui" which is a nicety to non-ARC tests (i.e.

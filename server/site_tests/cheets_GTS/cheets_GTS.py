@@ -56,7 +56,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
         @return: The result object from utils.run.
         """
         gts_tradefed = os.path.join(self._repository, 'tools', 'gts-tradefed')
-        with tradefed_test.adb_keepalive(self._get_adb_target(),
+        with tradefed_test.adb_keepalive(self._get_adb_targets(),
                                          self._install_paths):
             for command in commands:
                 logging.info('RUN: ./gts-tradefed %s', ' '.join(command))
