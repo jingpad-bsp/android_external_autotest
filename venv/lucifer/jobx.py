@@ -21,7 +21,7 @@ def is_hostless(job):
 
     @param job: frontend.afe.models.Job instance
     """
-    return not bool(hostnames(job))
+    return not hostnames(job)
 
 
 def hostnames(job):
@@ -41,7 +41,4 @@ def is_aborted(job):
 
     @param job: frontend.afe.models.Job instance
     """
-    for hqe in job.hostqueueentry_set.all():
-        if hqe.aborted:
-            return True
-    return False
+    return job.hostqueueentry_set.filter(aborted=True).exists()
