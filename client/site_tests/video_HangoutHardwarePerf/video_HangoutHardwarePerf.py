@@ -53,9 +53,6 @@ MEASUREMENT_DURATION = 30
 # Time to exclude from calculation after playing a video [seconds].
 STABILIZATION_DURATION = 10
 
-# The number of frames used to warm up the rendering.
-RENDERING_WARM_UP = 15
-
 # A big number, used to keep the [vda|vea]_unittest running during the
 # measurement.
 MAX_INT = 2 ** 31 - 1
@@ -207,7 +204,6 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             self.get_chrome_binary_path(VDA_BINARY),
             '--gtest_filter=DecodeVariations/*/0',
             '--test_video_data=%s' % ';'.join(test_video_data),
-            '--rendering_warm_up=%d' % RENDERING_WARM_UP,
             '--rendering_fps=%f' % RENDERING_FPS,
             '--num_play_throughs=%d' % MAX_INT,
             helper_logger.chrome_vmodule_flag(),
