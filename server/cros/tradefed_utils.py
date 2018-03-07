@@ -62,7 +62,7 @@ def lock(filename):
 
 
 @contextlib.contextmanager
-def adb_keepalive(target, extra_paths):
+def adb_keepalive(targets, extra_paths):
     """A context manager that keeps the adb connection alive.
 
     AdbKeepalive will spin off a new process that will continuously poll for
@@ -79,20 +79,21 @@ def adb_keepalive(target, extra_paths):
     # module. We want to run the original .py file, so we need to change the
     # extension back.
     script_filename = module.__file__.replace('.pyc', '.py')
-    job = common_utils.BgJob(
+    jobs = [common_utils.BgJob(
         [script_filename, target],
         nickname='adb_keepalive',
         stderr_level=logging.DEBUG,
         stdout_tee=common_utils.TEE_TO_LOGS,
         stderr_tee=common_utils.TEE_TO_LOGS,
-        extra_paths=extra_paths)
+        extra_paths=extra_paths) for target in targets]
 
     try:
         yield
     finally:
         # The adb_keepalive.py script runs forever until SIGTERM is sent.
-        common_utils.nuke_subprocess(job.sp)
-        common_utils.join_bg_jobs([job])
+        for job in jobs:
+            common_utils.nuke_subprocess(job.sp)
+        common_utils.join_bg_jobs(jobs)
 
 
 @contextlib.contextmanager
