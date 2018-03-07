@@ -91,9 +91,8 @@ def verify_repo_clean():
     @raises DirtyTreeException if the repo is still not clean.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    subprocess.check_output(['git', 'reset', '--hard'])
-    # Forcefully blow away any non-gitignored files in the tree.
-    subprocess.check_output(['git', 'clean', '-fd'])
+    subprocess.check_output(['git', 'stash', '-u'])
+    subprocess.check_output(['git', 'stash', 'clear'])
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
     out = strip_terminal_codes(out).strip()
 
