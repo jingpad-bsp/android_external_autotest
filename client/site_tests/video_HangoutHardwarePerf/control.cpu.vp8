@@ -11,7 +11,7 @@ like scenario.
 CRITERIA = """
 The test fails if the vda_unittest or the vea_unittest fails or crashes.
 """
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-perbuild, suite:crosbolt_perf_nightly"
 TIME = 'SHORT'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'video'
