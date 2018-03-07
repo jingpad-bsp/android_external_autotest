@@ -68,7 +68,7 @@ def _parse_args_and_configure_logging(args):
     parser.add_argument('--job-id', type=int, required=True,
                         help='Autotest Job ID')
     parser.add_argument('--results-dir', required=True,
-                        help='Path to job leases directory.')
+                        help='Path to job results directory.')
 
     # STARTING flags
     # TODO(ayatane): Will be added later
