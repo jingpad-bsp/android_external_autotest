@@ -46,9 +46,9 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
         alsa_output = alsa_utils.convert_device_name(cras_output)
 
         (output_type, input_type) = cras_utils.get_selected_node_types()
-        if 'MIC' not in input_type:
+        if not any(t in input_type for t in ['MIC', 'USB']):
             raise error.TestFail("Wrong input type=%s", input_type)
-        if 'HEADPHONE' not in output_type:
+        if not any(t in output_type for t in ['HEADPHONE', 'USB']):
             raise error.TestFail("Wrong output type=%s", output_type)
 
         p = cmd_utils.popen(alsa_utils.playback_cmd(wav_file.path, device=alsa_output))
@@ -68,4 +68,3 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
         rms_value = audio_helper.get_rms(recorded_file)[0]
 
         self.write_perf_keyval({'rms_value': rms_value})
-
