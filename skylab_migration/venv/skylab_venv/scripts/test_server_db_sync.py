@@ -72,8 +72,7 @@ class ServerDbSyncTest(unittest.TestCase):
     expect_servers = [sds.Server('foo', None, 'primary',
                                  'autotest database slave')]
     expect_server_attrs = [
-        sds.ServerAttribute('foo', 'mysql_server_id', '2'),
-        sds.ServerAttribute('foo', 'max_processes', '0'),
+        sds.ServerAttribute('foo', 'mysql_server_id', '2')
     ]
     expect_server_roles = [
         sds.ServerRole('foo', 'database_slave'),
@@ -89,10 +88,9 @@ class ServerDbSyncTest(unittest.TestCase):
     results = sds.inventory_api_response_parse(self.INVENTORY_RESPONSE,
                                                'staging')
 
-    expect_servers = [sds.Server('bar', None, 'backup', '')]
+    expect_servers = [sds.Server('bar', None, 'backup', None)]
     expect_server_attrs = [
-        sds.ServerAttribute('bar', 'ip', '1.2.3.4'),
-        sds.ServerAttribute('bar', 'max_processes', '0'),
+        sds.ServerAttribute('bar', 'ip', '1.2.3.4')
     ]
     expect_server_roles = [
         sds.ServerRole('bar', 'crash_server')
