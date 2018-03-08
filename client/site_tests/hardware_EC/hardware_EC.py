@@ -10,11 +10,13 @@
 # checks basic EC functionality, such as FAN and temperature sensor.
 
 
+import logging
 import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import ec as cros_ec
+from autotest_lib.client.cros.power import power_utils
 
 
 class hardware_EC(test.test):
@@ -26,7 +28,7 @@ class hardware_EC(test.test):
                  temp_sensor_to_test=None,
                  test_fan=False,
                  fan_rpm_error_margin=200,
-                 test_battery=False,
+                 test_battery=None,
                  test_lightbar=False,
                  fan_delay_secs=3):
 
@@ -37,6 +39,9 @@ class hardware_EC(test.test):
 
         if not ec.hello():
             raise error.TestError('EC communication failed')
+
+        if test_battery is None:
+            test_battery = power_utils.has_battery()
 
         if test_fan:
             try:
@@ -69,8 +74,12 @@ class hardware_EC(test.test):
                 raise error.TestError(
                         'Abnormal temperature reading on sensor %d' % idx)
 
-        if test_battery and not ec.get_battery():
-            raise error.TestError('Battery communication failed')
+        if test_battery:
+            logging.info('Battery temperature %d K',
+                         ec.get_temperature(name='Battery'))
+
+            if not ec.get_battery():
+                raise error.TestError('Battery communication failed')
 
         if test_lightbar and not ec.get_lightbar():
             raise error.TestError('Lightbar communication failed')

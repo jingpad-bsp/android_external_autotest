@@ -80,12 +80,18 @@ class EC(EC_Common):
     HELLO_RE = "EC says hello"
     GET_FANSPEED_RE = "Current fan RPM: ([0-9]*)"
     SET_FANSPEED_RE = "Fan target RPM set."
-    TEMP_SENSOR_RE = "Reading temperature...([0-9]*)"
+    TEMP_SENSOR_TEMP_RE = "Reading temperature...([0-9]*)"
+    # <sensor idx>: <sensor type> <sensor name>
+    TEMP_SENSOR_INFO_RE = "(\d+):\s+(\d+)\s+([a-zA-Z_0-9]+)"
     TOGGLE_AUTO_FAN_RE = "Automatic fan control is now on"
     # For battery, check we can see a non-zero capacity value.
     BATTERY_RE = "Design capacity:\s+[1-9]\d*\s+mAh"
     LIGHTBAR_RE = "^ 05\s+3f\s+3f$"
 
+    def __init__(self):
+        """Constructor."""
+        super(EC, self).__init__()
+        self._temperature_dict = None
 
     def hello(self):
         """Test EC hello command.
@@ -131,19 +137,51 @@ class EC(EC_Common):
         logging.info('Set fan speed: %d', rpm)
         return (re.search(self.SET_FANSPEED_RE, response) is not None)
 
-    def get_temperature(self, idx):
+    def _get_temperature_dict(self):
+        """Read EC temperature name and idx into a dict.
+
+        @returns dict where key=<sensor name>, value =<sensor idx>
+        """
+        # The sensor (name, idx) mapping does not change.
+        if self._temperature_dict:
+            return self._temperature_dict
+
+        temperature_dict = {}
+        response = self.ec_command('tempsinfo all')
+        for rline in response.split('\n'):
+            match = re.search(self.TEMP_SENSOR_INFO_RE, rline)
+            if match:
+                temperature_dict[match.group(3)] = int(match.group(1))
+
+        self._temperature_dict = temperature_dict
+        return temperature_dict
+
+    def get_temperature(self, idx=None, name=None):
         """Gets temperature from idx sensor.
 
-        @param idx: integer of temp sensor to read.
+        Reads temperature either directly if idx is provided or by discovering
+        idx using name.
 
-        @raises error.TestError if fails to read sensor.
+        @param idx:  integer of temp sensor to read.  Default=None
+        @param name: string of temp sensor to read.  Default=None.
+            For example: Battery, Ambient, Charger, DRAM, eMMC, Gyro
+
+        @raises error.TestError if fails to read sensor or fails to identify
+        sensor to read from idx & name param.
 
         @returns integer of temperature reading in degrees Kelvin.
         """
+        if idx is None:
+            temperature_dict = self._get_temperature_dict()
+            if name in temperature_dict:
+                idx = temperature_dict[name]
+            else:
+                raise error.TestError('Reading temperature name %s' % name)
+
         response = self.ec_command('temps %d' % idx)
-        match = re.search(self.TEMP_SENSOR_RE, response)
+        match = re.search(self.TEMP_SENSOR_TEMP_RE, response)
         if not match:
-            raise error.TestError('Unable to read temperature sensor %d' % idx)
+            raise error.TestError('Reading temperature idx %d' % idx)
 
         return int(match.group(1))
 
@@ -395,7 +433,6 @@ class EC_USBPD_Port(EC_Common):
         return self.is_amode_entered(svid, opos) == enter
 
     def get_flash_info(self):
-        mat0_re = r'has no discovered device'
         mat1_re = r'.*ptype:(\d+)\s+vid:(\w+)\s+pid:(\w+).*'
         mat2_re = r'.*DevId:(\d+)\.(\d+)\s+Hash:\s*(\w+.*)\s*CurImg:(\w+).*'
         flash_dict = dict.fromkeys(['ptype', 'vid', 'pid', 'dev_major',

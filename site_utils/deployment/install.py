@@ -74,7 +74,7 @@ from autotest_lib.server import hosts
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import servo_host
-from autotest_lib.site_utils.deployment import commandline
+from autotest_lib.site_utils.deployment import cmdvalidate
 from autotest_lib.site_utils.stable_images import assign_stable_images
 
 
@@ -123,7 +123,7 @@ class _MultiFileWriter(object):
 def _get_upload_log_path(arguments):
     return 'gs://{bucket}/{name}'.format(
         bucket=_LOG_BUCKET_NAME,
-        name=commandline.get_default_logdir_name(arguments))
+        name=arguments.upload_basename)
 
 
 def _upload_logs(dirpath, gspath):
@@ -739,7 +739,7 @@ def _get_host_attributes(host_info_list, afe):
     return host_attributes
 
 
-def install_duts(argv, full_deploy):
+def install_duts(arguments):
     """Install a test image on DUTs, and deploy them.
 
     This handles command line parsing for both the repair and
@@ -748,25 +748,20 @@ def install_duts(argv, full_deploy):
     dev-signed firmware on the DUT prior to installing the test
     image.
 
-    @param argv         Command line arguments to be parsed.
-    @param full_deploy  If true, do the full deployment that includes
-                        flashing dev-signed RO firmware onto the DUT.
+    @param arguments    Command line arguments with options, as
+                        returned by `argparse.Argparser`.
     """
+    arguments = cmdvalidate.validate_arguments(arguments)
+    if arguments is None:
+        sys.exit(1)
+    sys.stderr.write('Installation output logs in %s\n' % arguments.logdir)
+
     # Override tempfile.tempdir.  Some of the autotest code we call
     # will create temporary files that don't get cleaned up.  So, we
     # put the temp files in our results directory, so that we can
-    # clean up everything in one fell swoop.
+    # clean up everything at one fell swoop.
     tempfile.tempdir = tempfile.mkdtemp()
-    # MALCOLM:
-    #   Be comforted.
-    #   Let's make us med'cines of our great revenge,
-    #   To cure this deadly grief.
     atexit.register(shutil.rmtree, tempfile.tempdir)
-
-    arguments = commandline.parse_command(argv, full_deploy)
-    if not arguments:
-        sys.exit(1)
-    sys.stderr.write('Installation output logs in %s\n' % arguments.logdir)
 
     # We don't want to distract the user with logging output, so we catch
     # logging output in a file.

@@ -162,7 +162,8 @@ class EnterprisePolicyTest(test.test):
     def setup_case(self, user_policies={}, suggested_user_policies={},
                    device_policies={}, skip_policy_value_verification=False,
                    enroll=False, auto_login=True, auto_logout=True,
-                   extra_chrome_flags=[], init_network_controller=False):
+                   init_network_controller=False, extension_paths=[],
+                   extra_chrome_flags=[]):
         """Set up DMS, log in, and verify policy values.
 
         If the AutoTest fake DM Server is used, make a JSON policy blob
@@ -182,8 +183,9 @@ class EnterprisePolicyTest(test.test):
         @param enroll: True for enrollment instead of login.
         @param auto_login: Sign in to chromeos.
         @param auto_logout: Sign out of chromeos when test is complete.
-        @param extra_chrome_flags: list of flags to add to Chrome.
         @param init_network_controller: whether to init network controller.
+        @param extension_paths: list of extensions to install.
+        @param extra_chrome_flags: list of flags to add to Chrome.
 
         @raises error.TestError if cryptohome vault is not mounted for user.
         @raises error.TestFail if |policy_name| and |policy_value| are not
@@ -196,9 +198,9 @@ class EnterprisePolicyTest(test.test):
                 user_policies, suggested_user_policies, device_policies))
 
         self._create_chrome(enroll=enroll, auto_login=auto_login,
-                            extra_chrome_flags=extra_chrome_flags,
-                            init_network_controller=init_network_controller)
-
+                            init_network_controller=init_network_controller,
+                            extension_paths=extension_paths,
+                            extra_chrome_flags=extra_chrome_flags)
         # Skip policy check upon request or if we enroll but don't log in.
         skip_policy_value_verification = (
                 skip_policy_value_verification or not auto_login)
@@ -504,7 +506,8 @@ class EnterprisePolicyTest(test.test):
 
 
     def _create_chrome(self, enroll=False, auto_login=True,
-                       extra_chrome_flags=[], init_network_controller=False):
+                       init_network_controller=False,
+                       extension_paths=[], extra_chrome_flags=[]):
         """
         Create a Chrome object. Enroll and/or sign in.
 
@@ -512,8 +515,9 @@ class EnterprisePolicyTest(test.test):
 
         @param enroll: enroll the device.
         @param auto_login: sign in to chromeos.
-        @param extra_chrome_flags: list of flags to add.
+        @param extension_paths: list of extensions to install.
         @param init_network_controller: whether to init network controller.
+        @param extra_chrome_flags: list of flags to add.
         """
         extra_flags = self._initialize_chrome_extra_flags() + extra_chrome_flags
 
@@ -544,7 +548,8 @@ class EnterprisePolicyTest(test.test):
                                     disable_gaia_services=self.dms_is_fake,
                                     autotest_ext=True,
                                     init_network_controller=init_network_controller,
-                                    expect_policy_fetch=True)
+                                    expect_policy_fetch=True,
+                                    extension_paths=extension_paths)
         else:
             self.cr = chrome.Chrome(auto_login=False,
                                     extra_browser_args=extra_flags,
