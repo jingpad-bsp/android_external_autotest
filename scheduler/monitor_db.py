@@ -838,13 +838,16 @@ class Dispatcher(object):
 
     def _reverify_hosts_where(self, where,
                               print_message='Reverifying host %s'):
-        full_where='locked = 0 AND invalid = 0 AND ' + where
+        full_where = 'locked = 0 AND invalid = 0 AND %s' % where
         for host in scheduler_models.Host.fetch(where=full_where):
             if self.host_has_agent(host):
                 # host has already been recovered in some way
                 continue
             if self._host_has_scheduled_special_task(host):
                 # host will have a special task scheduled on the next cycle
+                continue
+            if host.shard_id is not None and not server_utils.is_shard():
+                # I am master and host is owned by a shard, ignore it.
                 continue
             if print_message:
                 logging.error(print_message, host.hostname)
