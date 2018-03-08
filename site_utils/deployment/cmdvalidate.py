@@ -2,26 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Argument processing for the DUT deployment tool.
+"""Argument validation for the DUT deployment tool.
 
-The argument processing is mostly a conventional client of
-`argparse`, except that if the command is invoked without required
-arguments, code here will start a line-oriented text dialog with the
-user to get the arguments.
+Arguments for the DUT deployment commands require more processing than
+can readily be done by `ArgumentParser.parse_args()`.  The post-parsing
+validation process not only checks that arguments have allowable values,
+but also may perform a dialog with the user to ask for missing arguments.
+Finally, it adds in information needed by `install.install_duts()`.
 
-These are the arguments:
+The interactive dialog is invoked if the board and hostnames are omitted
+from the command line.  The dialog, if invoked, will get the following
+information from the user:
   * (required) Board of the DUTs to be deployed.
   * (required) Hostnames of the DUTs to be deployed.
   * (optional) Version of the test image to be made the stable
     repair image for the board to be deployed.  If omitted, the
     existing setting is retained.
-
-The interactive dialog is invoked if the board and hostnames
-are omitted from the command line.
-
 """
 
-import argparse
 import collections
 import csv
 import datetime
@@ -411,80 +409,6 @@ def _read_arguments(input, arguments):
     arguments.hostnames = _read_hostnames(input)
 
 
-class _ArgumentParser(argparse.ArgumentParser):
-    """ArgumentParser extended with boolean option pairs."""
-
-    # Arguments required when adding an option pair.
-    _REQUIRED_PAIR_ARGS = {'dest', 'default'}
-
-    def add_argument_pair(self, yes_flags, no_flags, **kwargs):
-        """Add a pair of argument flags for a boolean option.
-
-        @param yes_flags  Iterable of flags to turn option on.
-                          May also be a single string.
-        @param no_flags   Iterable of flags to turn option off.
-                          May also be a single string.
-        @param *kwargs    Other arguments to pass to add_argument()
-        """
-        missing_args = self._REQUIRED_PAIR_ARGS - set(kwargs)
-        if missing_args:
-            raise ValueError("Argument pair must have explicit %s"
-                             % (', '.join(missing_args),))
-
-        if isinstance(yes_flags, (str, unicode)):
-            yes_flags = [yes_flags]
-        if isinstance(no_flags, (str, unicode)):
-            no_flags = [no_flags]
-
-        self.add_argument(*yes_flags, action='store_true', **kwargs)
-        self.add_argument(*no_flags, action='store_false', **kwargs)
-
-
-def _make_common_parser(command_name):
-    """Create argument parser for common arguments.
-
-    @param command_name The command name.
-    @return ArgumentParser instance.
-    """
-    parser = _ArgumentParser(
-            prog=command_name,
-            description='Install a test image on newly deployed DUTs')
-    # frontend.AFE(server=None) will use the default web server,
-    # so default for --web is `None`.
-    parser.add_argument('-w', '--web', metavar='SERVER', default=None,
-                        help='specify web server')
-    parser.add_argument('-d', '--dir', dest='logdir',
-                        help='directory for logs')
-    parser.add_argument('-i', '--build',
-                        help='select stable test build version')
-    parser.add_argument('-n', '--noinstall', action='store_true',
-                        help='skip install (for script testing)')
-    parser.add_argument('-s', '--nostage', action='store_true',
-                        help='skip staging test image (for script testing)')
-    parser.add_argument('-t', '--nostable', action='store_true',
-                        help='skip changing stable test image '
-                             '(for script testing)')
-    parser.add_argument('-f', '--hostname_file',
-                        help='CSV file that contains a list of hostnames and '
-                             'their details to install with.')
-    parser.add_argument('board', nargs='?', metavar='BOARD',
-                        help='board for DUTs to be installed')
-    parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
-                        help='host names of DUTs to be installed')
-    return parser
-
-
-def _add_upload_argument_pair(parser, default):
-    """Add option pair for uploading logs.
-
-    @param parser   _ArgumentParser instance.
-    @param default  Default option value.
-    """
-    parser.add_argument_pair('--upload', '--noupload', dest='upload',
-                             default=default,
-                             help='upload logs to GS bucket',)
-
-
 def _parse_hostname_file_line(hostname_file_row):
     """
     Parse a line from the hostname_file and return a dict of the info.
@@ -525,7 +449,7 @@ def _get_upload_basename(arguments):
     return '{time}-{board}'.format(time=timestamp, board=arguments.board)
 
 
-def parse_hostname_file(hostname_file):
+def _parse_hostname_file(hostname_file):
     """
     Parse the hostname_file and return a list of dicts for each line.
 
@@ -546,30 +470,22 @@ def parse_hostname_file(hostname_file):
 
     return host_info_list
 
-def parse_command(argv, full_deploy):
-    """Get arguments for install from `argv` or the user.
 
-    Create an argument parser for this command's syntax, parse the
-    command line, and return the result of the ArgumentParser
-    parse_args() method.
+def validate_arguments(arguments):
+    """Validate parsed arguments for a repair or deployment command.
 
-    If mandatory arguments are missing, execute a dialog with the
-    user to read the arguments from `sys.stdin`.  Fill in the
-    return value with the values read prior to returning.
+    The `arguments` parameter represents a `Namespace` object returned
+    by `cmdparse.parse_command()`.  Check this for mandatory arguments;
+    if they're missing, execute a dialog with the user to read them from
+    `sys.stdin`.
 
-    @param argv         Standard command line argument vector;
-                        argv[0] is assumed to be the command name.
-    @param full_deploy  Whether this is for full deployment or
-                        repair.
+    Once all arguments are known to be filled in, validate the values,
+    and fill in additional information that couldn't be processed at
+    parsing time.
 
-    @return Result, as returned by ArgumentParser.parse_args().
+    @param arguments  Standard `Namespace` object as returned by
+                      `cmdparse.parse_command()`.
     """
-    command_name = os.path.basename(argv[0])
-    parser = _make_common_parser(command_name)
-    _add_upload_argument_pair(parser, default=full_deploy)
-
-    arguments = parser.parse_args(argv[1:])
-    arguments.full_deploy = full_deploy
     if arguments.board is None:
         _read_arguments(sys.stdin, arguments)
     elif not _validate_arguments(arguments):
@@ -586,7 +502,7 @@ def parse_command(argv, full_deploy):
 
     if arguments.hostname_file:
         # Populate arguments.hostnames with the hostnames from the file.
-        hostname_file_info_list = parse_hostname_file(arguments.hostname_file)
+        hostname_file_info_list = _parse_hostname_file(arguments.hostname_file)
         arguments.hostnames = [host_info.hostname
                                for host_info in hostname_file_info_list]
         arguments.host_info_list = hostname_file_info_list
