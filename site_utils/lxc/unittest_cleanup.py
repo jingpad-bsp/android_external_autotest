@@ -22,10 +22,10 @@ def main():
         for host_dir in os.listdir(TEST_HOST_PATH):
             host_dir = os.path.realpath(os.path.join(TEST_HOST_PATH, host_dir))
             try:
-                utils.run('sudo umount %s' % host_dir)
+                lxc_utils.sudo_commands(
+                    ['umount "%s"' % host_dir, 'rm -r "%s"' % host_dir])
             except error.CmdError:
-                pass
-            utils.run('sudo rm -r %s' % host_dir)
+                utils.run('sudo rm -r "%s"' % host_dir)
 
     # Utilize the container_bucket to clear out old test containers.
     bucket = lxc.ContainerBucket(TEST_CONTAINER_PATH, TEST_HOST_PATH)
