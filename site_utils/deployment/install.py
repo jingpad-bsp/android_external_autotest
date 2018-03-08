@@ -123,7 +123,7 @@ class _MultiFileWriter(object):
 def _get_upload_log_path(arguments):
     return 'gs://{bucket}/{name}'.format(
         bucket=_LOG_BUCKET_NAME,
-        name=commandline.get_default_logdir_name(arguments))
+        name=arguments.upload_basename)
 
 
 def _upload_logs(dirpath, gspath):
