@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+
+  "name": "Screenshooter",
+  "description": "Take screenshots with ALL the APIs",
+  "version": "1.0",
+
+  "background": {
+      "scripts": ["background.js"],
+      "persistent": false
+  },
+
+  "options_page": "options.html",
+
+  "commands": {
+      "activeTab": {
+          "suggested_key": {
+              "default": "Ctrl+Shift+Y"
+          },
+          "description": "Enable activeTab permission for tabCapture"
+      }
+  },
+
+  "permissions": [
+      "desktopCapture",
+      "tabCapture",
+      "<all_urls>"
+  ]
+}
