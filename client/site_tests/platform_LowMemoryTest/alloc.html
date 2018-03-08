@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+<head>
+  <title>Alloc memory</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</head>
+<body>
+<div id="display">
+  Allocating memory...
+</div>
+<script>
+  function alloc(sizeMB) {
+    var FLOAT64_BYTES = 8;
+    var MB = 1024 * 1024;
+    var count = sizeMB* MB / FLOAT64_BYTES;
+    // Random content is uncompressable.
+    var content = new Float64Array(count);
+    for (var i = 0; i < content.length; i++) {
+      content[i] = Math.random();
+    }
+    return content;
+    document.out = arr;
+  }
+  $(document).ready(function() {
+    var url = new URL(window.location.href);
+    var allocMB = parseInt(url.searchParams.get("alloc"));
+    if (isNaN(allocMB))
+      allocMB = 800;
+
+    var startTime = new Date();
+    // Assigns the content to docuement to avoid optimization of unused data.
+    document.out = alloc(allocMB);
+    var ellapse = (new Date() - startTime) / 1000;
+    $("#display").text("Allocating " + allocMB + " MB takes " + ellapse + " seconds");
+  });
+</script>
+</body>
+</html>
