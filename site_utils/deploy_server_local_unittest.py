@@ -11,6 +11,7 @@ import mock
 import subprocess
 import unittest
 
+import common
 import deploy_server_local as dsl
 
 
@@ -167,19 +168,20 @@ a1598f7
             dsl.update_command('Unknown Command')
         self.assertFalse(run_cmd.called)
 
-        # Call with a valid command name.
+        # Call with a couple valid command names.
         dsl.update_command('apache')
         run_cmd.assert_called_with('sudo service apache2 reload', shell=True,
+                                   cwd=common.autotest_dir,
                                    stderr=subprocess.STDOUT)
 
-        # Call with a valid command name that uses AUTOTEST_REPO expansion.
         dsl.update_command('build_externals')
-        expanded_cmd = dsl.common.autotest_dir+'/utils/build_externals.py'
-        run_cmd.assert_called_with(expanded_cmd, shell=True,
+        expected_cmd = './utils/build_externals.py'
+        run_cmd.assert_called_with(expected_cmd, shell=True,
+                                   cwd=common.autotest_dir,
                                    stderr=subprocess.STDOUT)
 
         # Test a failed command.
-        failure = subprocess.CalledProcessError(10, expanded_cmd, 'output')
+        failure = subprocess.CalledProcessError(10, expected_cmd, 'output')
 
         run_cmd.side_effect = failure
         with self.assertRaises(subprocess.CalledProcessError) as unstable:
