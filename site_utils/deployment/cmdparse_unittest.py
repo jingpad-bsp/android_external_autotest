@@ -3,7 +3,7 @@
 import unittest
 
 import common
-from autotest_lib.site_utils.deployment import commandline
+from autotest_lib.site_utils.deployment import cmdparse
 
 
 class ArgumentPairTestCase(unittest.TestCase):
@@ -12,13 +12,13 @@ class ArgumentPairTestCase(unittest.TestCase):
 
     def test_missing_dest(self):
         """Test for error when missing dest argument."""
-        parser = commandline._ArgumentParser()
+        parser = cmdparse._ArgumentParser()
         with self.assertRaisesRegexp(ValueError, r'\bdest\b'):
             parser.add_argument_pair('--yes', '--no', default=True)
 
     def test_missing_dest_and_default(self):
         """Test for error when missing dest and default arguments."""
-        parser = commandline._ArgumentParser()
+        parser = cmdparse._ArgumentParser()
         with self.assertRaises(ValueError) as context:
             parser.add_argument_pair('--yes', '--no')
         message = str(context.exception)
@@ -27,7 +27,7 @@ class ArgumentPairTestCase(unittest.TestCase):
 
     def test_default_value(self):
         """Test the default value for an option pair."""
-        parser = commandline._ArgumentParser()
+        parser = cmdparse._ArgumentParser()
         parser.add_argument_pair('--yes', '--no', dest='option',
                                  default=False)
         args = parser.parse_args([])
@@ -35,7 +35,7 @@ class ArgumentPairTestCase(unittest.TestCase):
 
     def test_parsing_flag(self):
         """Test parsing an option flag of an option pair."""
-        parser = commandline._ArgumentParser()
+        parser = cmdparse._ArgumentParser()
         parser.add_argument_pair('--yes', '--no', dest='option',
                                  default=False)
         args = parser.parse_args(['--yes'])
@@ -43,7 +43,7 @@ class ArgumentPairTestCase(unittest.TestCase):
 
     def test_duplicate_flag_precedence(self):
         """Test precedence when passing multiple flags."""
-        parser = commandline._ArgumentParser()
+        parser = cmdparse._ArgumentParser()
         parser.add_argument_pair('--yes', '--no', dest='option',
                                  default=False)
         args = parser.parse_args(['--no', '--yes'])

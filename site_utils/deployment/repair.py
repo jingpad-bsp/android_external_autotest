@@ -19,6 +19,7 @@ from USB.
 import sys
 
 import common
+from autotest_lib.site_utils.deployment import cmdparse
 from autotest_lib.site_utils.deployment import install
 
 
@@ -27,7 +28,8 @@ def main(argv):
 
     @param argv  Command line arguments including `sys.argv[0]`.
     """
-    install.install_duts(argv, full_deploy=False)
+    install.install_duts(
+        cmdparse.parse_command(argv, full_deploy=False))
 
 
 if __name__ == '__main__':
