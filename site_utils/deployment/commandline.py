@@ -411,17 +411,6 @@ def _read_arguments(input, arguments):
     arguments.hostnames = _read_hostnames(input)
 
 
-def get_default_logdir_name(arguments):
-    """Get default log directory name.
-
-    @param arguments  Namespace object returned from argument parsing.
-    @return  A filename as a string.
-    """
-    return '{time}-{board}'.format(
-        time=arguments.start_time.isoformat(),
-        board=arguments.board)
-
-
 class _ArgumentParser(argparse.ArgumentParser):
     """ArgumentParser extended with boolean option pairs."""
 
@@ -526,6 +515,16 @@ def _parse_hostname_file_line(hostname_file_row):
                             servo_host.SERVO_SERIAL_ATTR: hostname_file_row[5]})
 
 
+def _get_upload_basename(arguments):
+    """Get base name for logs upload.
+
+    @param arguments  Namespace object returned from argument parsing.
+    @return  A filename as a string.
+    """
+    timestamp = datetime.datetime.now(dateutil.tz.tzlocal()).isoformat()
+    return '{time}-{board}'.format(time=timestamp, board=arguments.board)
+
+
 def parse_hostname_file(hostname_file):
     """
     Parse the hostname_file and return a list of dicts for each line.
@@ -576,11 +575,11 @@ def parse_command(argv, full_deploy):
     elif not _validate_arguments(arguments):
         return None
 
-    arguments.start_time = datetime.datetime.now(dateutil.tz.tzlocal())
+    arguments.upload_basename = _get_upload_basename(arguments)
     if not arguments.logdir:
-        basename = get_default_logdir_name(arguments)
         arguments.logdir = os.path.join(os.environ['HOME'],
-                                     'Documents', basename)
+                                        'Documents',
+                                        arguments.upload_basename)
         os.makedirs(arguments.logdir)
     elif not os.path.isdir(arguments.logdir):
         os.mkdir(arguments.logdir)
