@@ -232,7 +232,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         cmd_line_list = [
             '--test_video_data="%s"' % test_video_data,
             '--gtest_filter=DecodeVariations/*/0',
-            '--disable_rendering',
+            '--rendering_fps=0',
             '--output_log="%s"' % test_log_file,
             '--ozone-platform=gbm',
             helper_logger.chrome_vmodule_flag(),
