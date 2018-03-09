@@ -33,7 +33,7 @@ class camera_V4L2(test.test):
 
         self.test_list = test_list
         if self.test_list is None:
-            if os.path.exists('/usr/bin/arc_camera3_service'):
+            if os.path.exists('/usr/bin/cros_camera_service'):
                 self.test_list = "halv3"
             else:
                 self.test_list = "default"
