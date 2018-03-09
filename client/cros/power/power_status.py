@@ -246,6 +246,7 @@ class BatteryStat(DevStat):
         'energy_full':          ['energy_full', float],
         'energy_full_design':   ['energy_full_design', float],
         'power_now':            ['power_now', float],
+        'present':              ['present', int],
         'energy_rate':          ['', ''],
         'remaining_time':       ['', '']
         }
