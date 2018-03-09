@@ -93,12 +93,14 @@ class EC(EC_Common):
         super(EC, self).__init__()
         self._temperature_dict = None
 
-    def hello(self):
+    def hello(self, **kwargs):
         """Test EC hello command.
+
+        @param kwargs: optional params passed to utils.system_output
 
         @returns True if success False otherwise.
         """
-        response = self.ec_command('hello')
+        response = self.ec_command('hello', **kwargs)
         return (re.search(self.HELLO_RE, response) is not None)
 
     def auto_fan_ctrl(self):
