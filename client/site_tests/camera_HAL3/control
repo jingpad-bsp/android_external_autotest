@@ -6,8 +6,8 @@ AUTHOR = "Chrome OS Team, chromeos-video@google.com"
 NAME = "camera_HAL3"
 PURPOSE = "Verify Chromium camera function with HAL3 interface."
 CRITERIA = """
-This test will fail if any of the tests in arc_camera3_test
-fails. Running arc_camera3_test is skipped on machines that are
+This test will fail if any of the tests in cros_camera_test
+fails. Running cros_camera_test is skipped on machines that are
 known to not support ARC++.
 """
 ATTRIBUTES = "suite:bvt-perbuild"
@@ -22,7 +22,7 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This is a wrapper test for arc_camera3_test.
+This is a wrapper test for cros_camera_test.
 For more information on HAL3 see:
 https://source.android.com/devices/camera/camera3.html
 https://android.googlesource.com/platform/hardware/libhardware/+/master/include/hardware/camera3.h
