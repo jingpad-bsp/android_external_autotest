@@ -34,11 +34,8 @@ class hardware_EC(test.test):
 
         ec = cros_ec.EC()
 
-        if not cros_ec.has_ectool():
+        if not cros_ec.has_ectool() or not ec.hello(ignore_status=True):
             raise error.TestNAError('No support for Google EC')
-
-        if not ec.hello():
-            raise error.TestError('EC communication failed')
 
         if test_battery is None:
             test_battery = power_utils.has_battery()
