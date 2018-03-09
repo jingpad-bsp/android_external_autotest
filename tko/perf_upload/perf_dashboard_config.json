@@ -621,11 +621,6 @@
     "dashboard_test_name": "session_restore.cold.typical_25"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.smoothness.top_25_smooth",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "smoothness.top_25_smooth"
-  },
-  {
     "autotest_name": "telemetry_Benchmarks.smoothness.tough_animation_cases",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "smoothness.tough_animation_cases"
