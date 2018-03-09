@@ -37,8 +37,6 @@ TIME_LOG = 'time.log'
 TIME_BINARY = '/usr/local/bin/time'
 MICROSECONDS_PER_SECOND = 1000000
 
-RENDERING_WARM_UP_ITERS = 30
-
 UNIT_MILLISECOND = 'milliseconds'
 UNIT_MICROSECOND = 'us'
 UNIT_RATIO = 'ratio'
@@ -255,7 +253,6 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         cmd_line_list = [
             '--test_video_data="%s"' % test_video_data,
             '--gtest_filter=DecodeVariations/*/0',
-            '--rendering_warm_up=%d' % RENDERING_WARM_UP_ITERS,
             '--rendering_fps=%s' % rendering_fps,
             '--output_log="%s"' % test_log_file,
             '--ozone-platform=gbm',
