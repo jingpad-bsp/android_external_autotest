@@ -18,16 +18,16 @@ from autotest_lib.client.cros import service_stopper
 class camera_HAL3Perf(test.test):
     """
     This test monitors several performance metrics reported by the test binary
-    arc_camera3_test.
+    cros_camera_test.
     """
 
     version = 1
-    test_binary = 'arc_camera3_test'
+    test_binary = 'cros_camera_test'
     dep = 'camera_hal3'
     timeout = 60
     test_name = 'camera_HAL3Perf'
     test_log_suffix = 'test.log'
-    adapter_service = 'camera-halv3-adapter'
+    cros_camera_service = 'cros-camera'
 
     def _logperf(self, name, key, value, units, higher_is_better=False):
         description = '%s.%s' % (name, key)
@@ -79,7 +79,7 @@ class camera_HAL3Perf(test.test):
         """
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        with service_stopper.ServiceStopper([self.adapter_service]):
+        with service_stopper.ServiceStopper([self.cros_camera_service]):
             binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
             test_log_file = os.path.join(self.resultsdir,
                                          '%s_%s' % (self.test_name,
