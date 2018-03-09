@@ -20,7 +20,7 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
                       'Using data from RECOVERY_MRC_CACHE')
     REBUILD_CACHE_MSG = "MRC: cache data 'RECOVERY_MRC_CACHE' needs update."
     RECOVERY_CACHE_SECTION = 'RECOVERY_MRC_CACHE'
-    FIRMWARE_LOG_CMD = 'cbmem -c'
+    FIRMWARE_LOG_CMD = 'cbmem -1' + ' | grep ' + REBUILD_CACHE_MSG[:3]
     FMAP_CMD = 'mosys eeprom map'
     RECOVERY_REASON_REBUILD_CMD = 'crossystem recovery_request=0xC4'
     APSHUTDOWN_DELAY = 5
