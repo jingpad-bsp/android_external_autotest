@@ -24,6 +24,7 @@ _ANDROID_CONTAINER_ROOT_PATH = '/opt/google/containers/android/rootfs'
 _SCREENSHOT_DIR_PATH = '/var/log/arc-screenshots'
 _SCREENSHOT_BASENAME = 'arc-screenshot'
 _MAX_SCREENSHOT_NUM = 10
+_ADBD_PID_PATH = '/run/arc/adbd.pid'
 _SDCARD_PID_PATH = '/run/arc/sdcard.pid'
 _ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
 _PROCESS_CHECK_INTERVAL_SECONDS = 1
@@ -247,6 +248,14 @@ def get_job_pid(job_name):
 def get_container_pid():
     """Returns the PID of the container."""
     return utils.read_one_line(get_container_pid_path())
+
+
+def get_adbd_pid():
+    """Returns the PID of the adbd proxy container."""
+    if not os.path.exists(_ADBD_PID_PATH):
+        # The adbd proxy does not run on all boards.
+        return None
+    return utils.read_one_line(_ADBD_PID_PATH)
 
 
 def get_sdcard_pid():
