@@ -24,12 +24,11 @@ PERF_PER_BUILD_TESTS = (
     'jetstream',
     'kraken',
     'octane',
-    'smoothness.top_25_smooth',
+    'cros_ui_smoothness',
     'speedometer',
 )
 
 PERF_DAILY_RUN_TESTS = (
-    'cros_ui_smoothness',
     'dromaeo.domcoreattr',
     'dromaeo.domcoremodify',
     'dromaeo.domcorequery',
