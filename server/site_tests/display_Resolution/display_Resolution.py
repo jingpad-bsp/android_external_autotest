@@ -139,3 +139,8 @@ class display_Resolution(test.test):
 
         if errors:
             raise error.TestFail('; '.join(set(errors)))
+
+    def cleanup(self):
+        """Test cleanup"""
+        # Keep device in lid open sate.
+        self.open_lid()
