@@ -1487,6 +1487,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     DEFAULT_PARSE_FAILED_REPAIR = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool,
         default=False)
+    FETCH_READONLY_JOBS = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB','shard_heartbeat_use_readonly_slave', default=False)
 
     owner = dbmodels.CharField(max_length=255)
     name = dbmodels.CharField(max_length=255)
@@ -1660,10 +1662,22 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             check_known_jobs_exclude = 'AND NOT ' + check_known_jobs
             check_known_jobs_include = 'OR ' + check_known_jobs
 
-        query = Job.objects.raw(cls.SQL_SHARD_JOBS % {
-                'check_known_jobs': check_known_jobs_exclude,
-                'shard_id': shard.id})
-        job_ids |= set([j.id for j in query])
+        raw_sql = cls.SQL_SHARD_JOBS % {
+            'check_known_jobs': check_known_jobs_exclude,
+            'shard_id': shard.id
+        }
+        if cls.FETCH_READONLY_JOBS:
+            #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
+            #correct usage would be .raw(..., using='readonly')
+            old_db = Job.objects._db
+            try:
+                Job.objects._db = 'readonly'
+                job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
+            finally:
+                Job.objects._db = old_db
+        if not job_ids:
+            #If the replica is down or we're in a test, fetch from master.
+            job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
 
         static_labels, non_static_labels = Host.classify_label_objects(
                 shard.labels.all())
