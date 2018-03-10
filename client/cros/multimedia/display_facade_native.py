@@ -126,6 +126,18 @@ class DisplayFacadeNative(object):
         return display['rotation']
 
 
+    def get_display_notifications(self):
+        """Gets the display notifications
+
+        @return: Returns a list of display related notifications only.
+        """
+        display_notifications = []
+        for notification in self._resource.get_visible_notifications():
+            if notification['id'] == 'chrome://settings/display':
+                display_notifications.append(notification)
+        return display_notifications
+
+
     def set_display_rotation(self, display_id, rotation,
                              delay_before_rotation=0, delay_after_rotation=0):
         """Sets the display rotation for the specified display.
