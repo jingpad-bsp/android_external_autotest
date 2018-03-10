@@ -54,6 +54,10 @@ class Event(enum.Enum):
     PARSING = 'parsing'
     COMPLETED = 'completed'
 
+    # Test status
+    TEST_PASSED = 'test_passed'
+    TEST_FAILED = 'test_failed'
+
     # Host status
     HOST_RUNNING = 'host_running'
     HOST_READY = 'host_ready'
