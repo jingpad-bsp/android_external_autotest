@@ -221,6 +221,15 @@ class FacadeResource(object):
         return extension
 
 
+    def get_visible_notifications(self):
+        """Gets the visible notifications
+
+        @return: Returns all visible notifications in list format. Ex:
+                [{title:'', message:'', prority:'', id:''}]
+        """
+        return self._chrome.get_visible_notifications()
+
+
     @retry_chrome_call
     def load_url(self, url):
         """Loads the given url in a new tab. The new tab will be active.
