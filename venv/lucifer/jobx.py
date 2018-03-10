@@ -15,6 +15,12 @@ they are specialized and the Job class already suffers from method
 bloat.
 """
 
+import os
+import time
+import urllib
+
+from lucifer import autotest
+
 
 def is_hostless(job):
     """Return True if the job is hostless.
@@ -42,3 +48,150 @@ def is_aborted(job):
     @param job: frontend.afe.models.Job instance
     """
     return job.hostqueueentry_set.filter(aborted=True).exists()
+
+
+def is_server_job(job):
+    """Return whether the job is a server job.
+
+    @param job: frontend.afe.models.Job instance
+    """
+    return not is_client_job(job)
+
+
+def is_client_job(job):
+    """Return whether the job is a client job.
+
+    If the job is not a client job, it is a server job.
+
+    (In theory a job can be neither.  I have no idea what you should do
+    in that case.)
+
+    @param job: frontend.afe.models.Job instance
+    """
+    CONTROL_TYPE = autotest.load('client.common_lib.control_data').CONTROL_TYPE
+    return CONTROL_TYPE.get_value(job.control_type) == CONTROL_TYPE.CLIENT
+
+
+def needs_ssp(job):
+    """Return whether the job needs SSP.
+
+    This also looks up the config for jobs that do not have a value
+    specified.
+
+    @param job: frontend.afe.models.Job instance
+    """
+    return (_ssp_enabled()
+            and is_server_job(job)
+            # None is the same as True.
+            and job.require_ssp != False)
+
+
+def _ssp_enabled():
+    """Return whether SSP is enabled in the config."""
+    global_config = autotest.load('client.common_lib.global_config')
+    return global_config.global_config.get_config_value(
+            'AUTOSERV', 'enable_ssp_container', type=bool,
+            default=True)
+
+
+def control_file_path(workdir):
+    """Path to control file for a job.
+
+    This makes more sense in the old Autotest drone world.  The
+    scheduler has to copy the control file to the drone.  It goes to a
+    temporary path `drone_tmp/attach.N`.
+
+    The drone is then able to run `autoserv <args> drone_tmp/attach.N`.
+
+    But in the Lucifer world, we are already running on the drone, so we
+    don't need to rendezvous with a temporary directory through
+    drone_manager first.
+
+    So pick an arbitrary filename to plop into the workdir.  autoserv
+    will later copy this back to the standard control/control.srv.
+    """
+    return os.path.join(workdir, 'lucifer', 'control_attach')
+
+
+def prepare_control_file(job, workdir):
+    """Prepare control file for a job."""
+    with open(control_file_path(workdir), 'w') as f:
+        f.write(job.control_file)
+
+
+_KEYVAL_FILE = 'keyval'
+
+
+def prepare_keyvals_files(job, workdir):
+    """Prepare Autotest keyvals files for a job."""
+    keyvals = job.keyval_dict()
+    keyvals['job_queued'] = \
+            int(time.mktime(job.created_on.timetuple()))
+    with open(os.path.join(workdir, _KEYVAL_FILE), 'w') as f:
+        f.write(_format_keyvals(keyvals))
+    if is_hostless(job):
+        return
+    _prepare_host_keyvals_files(job, workdir)
+
+
+def _prepare_host_keyvals_files(job, workdir):
+    keyvals_dir = os.path.join(workdir, 'host_keyvals')
+    try:
+        os.makedirs(keyvals_dir)
+    except OSError:
+        pass
+    for hqe in job.hostqueueentry_set.all().prefetch_related('host'):
+        keyvals_path = os.path.join(keyvals_dir, hqe.host.hostname)
+        with open(keyvals_path, 'w') as f:
+            f.write(_format_keyvals(_host_keyvals(hqe.host)))
+
+
+def _format_keyvals(keyvals):
+    """Format a dict of keyvals as a string."""
+    return ''.join('%s=%s\n' % (k, v) for k, v in keyvals.iteritems())
+
+
+def _host_keyvals(host):
+    """Return keyvals dict for a host.
+
+    @param host: frontend.afe.models.Host instance
+    """
+    labels = list(_host_labels(host))
+    platform = None
+    for label in labels:
+        if label.platform:
+            platform = label.name
+    return {
+            'platform': platform,
+            'labels': ','.join(urllib.quote(label.name) for label in labels),
+    }
+
+
+def _host_labels(host):
+    """Return an iterable of labels for a host.
+
+    @param host: frontend.afe.models.Host instance
+    """
+    if autotest.load('scheduler.scheduler_models').RESPECT_STATIC_LABELS:
+        return _host_labels_with_static(host)
+    else:
+        return host.labels.all()
+
+
+def _host_labels_with_static(host):
+    """Return a generator of labels for a host, respecting static labels.
+
+    @param host: frontend.afe.models.Host instance
+    """
+    models = autotest.load('frontend.afe.models')
+    replaced_label_ids = frozenset(models.ReplacedLabel.objects.all()
+                                   .values_list('label_id', flat=True))
+    shadowed_labels = set()
+    for label in host.labels.all():
+        if label.id in replaced_label_ids:
+            shadowed_labels.add(label.name)
+        else:
+            yield label
+    for label in host.static_labels.all():
+        if label.name in shadowed_labels:
+            yield label
