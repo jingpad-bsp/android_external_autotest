@@ -59,6 +59,13 @@ class DisplayFacadeRemoteAdapter(object):
         return self._display_proxy.get_internal_connector_name()
 
 
+    def get_display_notifications(self):
+        """Gets the display notifications
+
+        @return: Returns a list of display related notifications only.
+        """
+        return self._display_proxy.get_display_notifications()
+
     def move_to_display(self, display_id):
         """Moves the current window to the indicated display.
 
