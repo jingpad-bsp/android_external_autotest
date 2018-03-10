@@ -2102,6 +2102,121 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return self.run('uname -r').stdout.strip()
 
 
+    def get_cpu_name(self):
+        """Get the cpu name as strings.
+
+        @returns a string representing this host's cpu name.
+        """
+
+        # Try get cpu name from device tree first
+        if self.path_exists('/proc/device-tree/compatible'):
+            command = ' | '.join(
+                    ["sed -e 's/\\x0/\\n/g' /proc/device-tree/compatible",
+                     'tail -1'])
+            return self.run(command).stdout.strip().replace(',', ' ')
+
+        # Get cpu name from uname -p
+        command = 'uname -p'
+        ret = self.run(command).stdout.strip()
+
+        # 'uname -p' return variant of unknown or amd64 or x86_64 or i686
+        # Try get cpu name from /proc/cpuinfo instead
+        if re.match("unknown|amd64|[ix][0-9]?86(_64)?", ret, re.IGNORECASE):
+            command = "grep model.name /proc/cpuinfo | cut -f 2 -d: | head -1"
+            self = self.run(command).stdout.strip()
+
+        # Remove bloat from CPU name, for example
+        # Intel(R) Core(TM) i5-7Y57 CPU @ 1.20GHz       -> Intel Core i5-7Y57
+        # Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz     -> Intel Xeon E5-2690 v4
+        # AMD A10-7850K APU with Radeon(TM) R7 Graphics -> AMD A10-7850K
+        # AMD GX-212JC SOC with Radeon(TM) R2E Graphics -> AMD GX-212JC
+        trim_re = r' (@|processor|apu|soc|radeon).*|\(.*?\)| cpu'
+        return re.sub(trim_re, '', ret, flags=re.IGNORECASE)
+
+
+    def get_screen_resolution(self):
+        """Get the screen(s) resolution as strings.
+        In case of more than 1 monitor, return resolution for each monitor
+        separate with plus sign.
+
+        @returns a string representing this host's screen(s) resolution.
+        """
+        command = 'for f in /sys/class/drm/*/*/modes; do head -1 $f; done'
+        ret = self.run(command, ignore_status=True)
+        # We might have Chromebox without a screen
+        if ret.exit_status != 0:
+            return ''
+        return ret.stdout.strip().replace('\n', '+')
+
+
+    def get_mem_total_gb(self):
+        """Get total memory available in the system in GiB (2^20).
+
+        @returns an integer representing total memory
+        """
+        mem_total_kb = self.read_from_meminfo('MemTotal')
+        kb_in_gb = float(2 ** 20)
+        return int(round(mem_total_kb / kb_in_gb))
+
+
+    def get_disk_size_gb(self):
+        """Get size of disk in GB (10^9)
+
+        @returns an integer representing  size of disk, 0 in Error Case
+        """
+        command = 'grep $(rootdev -s -d | cut -f3 -d/)$ /proc/partitions'
+        result = self.run(command, ignore_status=True)
+        if result.exit_status != 0:
+            return 0
+        _, _, block, _ = re.split(r' +', result.stdout.strip())
+        byte_per_block = 1024.0
+        disk_kb_in_gb = 1e9
+        return int(int(block) * byte_per_block / disk_kb_in_gb + 0.5)
+
+
+    def get_battery_size(self):
+        """Get size of battery in Watt-hour via sysfs
+
+        This method assumes that battery support voltage_min_design and
+        charge_full_design sysfs.
+
+        @returns a float representing Battery size, 0 if error.
+        """
+        # sysfs report data in micro scale
+        battery_scale = 1e6
+
+        command = 'cat /sys/class/power_supply/*/voltage_min_design'
+        result = self.run(command, ignore_status=True)
+        if result.exit_status != 0:
+            return 0
+        voltage = float(result.stdout.strip()) / battery_scale
+
+        command = 'cat /sys/class/power_supply/*/charge_full_design'
+        result = self.run(command, ignore_status=True)
+        if result.exit_status != 0:
+            return 0
+        amphereHour = float(result.stdout.strip()) / battery_scale
+
+        return voltage * amphereHour
+
+
+    def get_low_battery_shutdown_percent(self):
+        """Get the percent-based low-battery shutdown threshold.
+
+        @returns a float representing low-battery shutdown percent, 0 if error.
+        """
+        ret = 0.0
+        try:
+            command = 'check_powerd_config --low_battery_shutdown_percent'
+            ret = float(self.run(command).stdout)
+        except error.CmdError:
+            logging.debug("Can't run %s", command)
+        except ValueError:
+            logging.debug("Didn't get number from %s", command)
+
+        return ret
+
+
     def is_chrome_switch_present(self, switch):
         """Returns True if the specified switch was provided to Chrome.
 
@@ -2267,6 +2382,30 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return None
 
         return 'power:%s' % psu_str
+
+
+    def has_battery(self):
+        """Determine if DUT has a battery.
+
+        Returns:
+            Boolean, False if known not to have battery, True otherwise.
+        """
+        rv = True
+        power_supply = self.get_power_supply()
+        if power_supply == 'power:battery':
+            _NO_BATTERY_BOARD_TYPE = ['CHROMEBOX', 'CHROMEBIT', 'CHROMEBASE']
+            board_type = self.get_board_type()
+            if board_type in _NO_BATTERY_BOARD_TYPE:
+                logging.warn('Do NOT believe type %s has battery. '
+                             'See debug for mosys details', board_type)
+                psu = self.system_output('mosys -vvvv psu type',
+                                         ignore_status=True)
+                logging.debug(psu)
+                rv = False
+        elif power_supply == 'power:AC_only':
+            rv = False
+
+        return rv
 
 
     def get_storage(self):
