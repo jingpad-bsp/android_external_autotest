@@ -81,7 +81,44 @@ def spawn_starting_job_handler(manager, job):
     @param job: Job instance
     @returns: Drone instance
     """
-    raise NotImplementedError
+    manager = _DroneManager(manager)
+    drone = manager.pick_drone_to_use()
+    results_dir = _results_dir(manager, job)
+    args = [
+            _JOB_REPORTER_PATH,
+
+            # General configuration
+            '--jobdir', _get_jobdir(),
+            '--run-job-path', _get_run_job_path(),
+            '--watcher-path', _get_watcher_path(),
+
+            # Job specific
+            '--lucifer-level', 'STARTING',
+            '--job-id', str(job.id),
+            '--results-dir', results_dir,
+
+            # STARTING specific
+            '--execution-tag', _working_directory(job),
+    ]
+    if _get_gcp_creds():
+        args = [
+                'GOOGLE_APPLICATION_CREDENTIALS=%s'
+                % pipes.quote(_get_gcp_creds()),
+        ] + args
+    drone.spawn(_ENV, args, output_file=_prepare_output_file(results_dir))
+    return drone
+
+
+_LUCIFER_DIR = 'lucifer'
+
+
+def _prepare_output_file(results_dir):
+    logdir = os.path.join(results_dir, _LUCIFER_DIR)
+    try:
+        os.makedirs(logdir)
+    except OSError:
+        logging.info('Could not make lucifer output dir %s', logdir)
+    return os.path.join(logdir, 'job_reporter_output.log')
 
 
 # TODO(crbug.com/748234): This is temporary to enable toggling
