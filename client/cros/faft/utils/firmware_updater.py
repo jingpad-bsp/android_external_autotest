@@ -106,18 +106,19 @@ class FirmwareUpdater(object):
         self.os_if.run_shell_command(cmd)
 
     def retrieve_fwid(self):
-        """Retrieve shellball's fwid.
+        """Retrieve shellball's fwid tuple.
 
         This method should be called after _setup_temp_dir.
 
         Returns:
-            Shellball's fwid.
+            Shellball's fwid tuple (ro_fwid, rw_fwid).
         """
         self._bios_handler.new_image(
                 os.path.join(self._work_path, self._bios_path))
-        fwid = self._bios_handler.get_section_fwid('a')
         # Remove the tailing null characters
-        return fwid.rstrip('\0')
+        ro_fwid = self._bios_handler.get_section_fwid('ro').rstrip('\0')
+        rw_fwid = self._bios_handler.get_section_fwid('a').rstrip('\0')
+        return (ro_fwid, rw_fwid)
 
     def retrieve_ecid(self):
         """Retrieve shellball's ecid.
@@ -238,12 +239,12 @@ class FirmwareUpdater(object):
             setvars_path = os.path.join(
                 self._work_path, 'models', model, 'setvars.sh')
             if self.os_if.path_exists(setvars_path):
-                fwid = self.retrieve_fwid()
+                ro_fwid, rw_fwid = self.retrieve_fwid()
                 ecid = self.retrieve_ecid()
                 args = ['-i']
                 args.append(
                     '"s/TARGET_FWID=\\".*\\"/TARGET_FWID=\\"%s\\"/g"'
-                    % fwid)
+                    % rw_fwid)
                 args.append(setvars_path)
                 cmd = 'sed %s' % ' '.join(args)
                 self.os_if.run_shell_command(cmd)
@@ -251,7 +252,7 @@ class FirmwareUpdater(object):
                 args = ['-i']
                 args.append(
                     '"s/TARGET_RO_FWID=\\".*\\"/TARGET_RO_FWID=\\"%s\\"/g"'
-                    % fwid)
+                    % ro_fwid)
                 args.append(setvars_path)
                 cmd = 'sed %s' % ' '.join(args)
                 self.os_if.run_shell_command(cmd)
