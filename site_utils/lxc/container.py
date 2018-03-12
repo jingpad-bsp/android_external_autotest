@@ -544,8 +544,6 @@ class Container(object):
         self._id = new_id;
         # Persist the ID so other container objects can pick it up.
         self._id.save(os.path.join(self.container_path, self.name))
-        # Also save it to the host directory, for tracking that dir.
-        self._id.save(self.rootfs)
 
 
     def _do_copy(self, src, dst):

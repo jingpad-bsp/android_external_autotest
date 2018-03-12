@@ -81,15 +81,14 @@ class firmware_DevScreenTimeout(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_DevScreenTimeout, self).initialize(host, cmdline_args)
+        # NA error check point for this test
+        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+            raise error.TestNAError("This test is only valid on devices with screens.")
         # This test is run on developer mode only.
         self.switcher.setup_mode('dev')
         self.setup_usbkey(usbkey=False)
 
     def run_once(self):
-        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
-            raise error.TestNAError("This test is only valid on devices with "
-                                    "screens.")
-
         logging.info("Always expected developer mode firmware A boot.")
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '1',

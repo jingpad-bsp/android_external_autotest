@@ -12,13 +12,13 @@ from sets import Set
 
 class camera_HAL3(test.test):
     """
-    This test is a wrapper of the test binary arc_camera3_test.
+    This test is a wrapper of the test binary cros_camera_test.
     """
 
     version = 1
-    test_binary = 'arc_camera3_test'
+    test_binary = 'cros_camera_test'
     dep = 'camera_hal3'
-    adapter_service = 'camera-halv3-adapter'
+    cros_camera_service = 'cros-camera'
     timeout = 600
     media_profiles_path = os.path.join('vendor', 'etc', 'media_profiles.xml')
     tablet_board_list = ['scarlet']
@@ -37,7 +37,7 @@ class camera_HAL3(test.test):
         """
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        with service_stopper.ServiceStopper([self.adapter_service]):
+        with service_stopper.ServiceStopper([self.cros_camera_service]):
             cmd = [ os.path.join(self.dep_dir, 'bin', self.test_binary) ]
             xml_content = utils.system_output(
                 ' '.join(['android-sh', '-c', '\"cat',

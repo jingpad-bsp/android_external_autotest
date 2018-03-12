@@ -71,7 +71,8 @@ def _parse_args_and_configure_logging(args):
                         help='Path to job results directory.')
 
     # STARTING flags
-    # TODO(ayatane): Will be added later
+    parser.add_argument('--execution-tag', default=None,
+                        help='Autotest execution tag.')
 
     # GATHERING flags
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
@@ -86,8 +87,20 @@ as the caller has presumably already run it.
                         ' (only with --need-gather)')
 
     args = parser.parse_args(args)
+    _validate_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
+
+
+# TODO(crbug.com/810141): These options are optional to support
+# GATHERING, so validation is done here rather than making them required
+# during argument parsing.  Can be removed and the arguments made
+# required after GATHERING is removed.
+def _validate_args(args):
+    if args.lucifer_level != 'STARTING':
+        return
+    if args.execution_tag is None:
+        raise Exception('--execution-tag must be provided for STARTING')
 
 
 def _main(args):
@@ -109,19 +122,26 @@ def _run_autotest_job(args):
     This include some Autotest setup and cleanup around lucifer starting
     proper.
     """
-    handler = _make_handler(args)
-    ret = _run_lucifer_job(handler, args)
+    models = autotest.load('frontend.afe.models')
+    job = models.Job.objects.get(id=args.job_id)
+    if args.lucifer_level == 'STARTING':
+        _prepare_autotest_job_files(args, job)
+    handler = _make_handler(args, job)
+    ret = _run_lucifer_job(handler, args, job)
     if handler.completed:
         _mark_handoff_completed(args.job_id)
     return ret
 
 
-def _make_handler(args):
+def _prepare_autotest_job_files(args, job):
+    jobx.prepare_control_file(job, args.results_dir)
+    jobx.prepare_keyvals_files(job, args.results_dir)
+
+
+def _make_handler(args, job):
     """Make event handler for lucifer_run_job."""
-    models = autotest.load('frontend.afe.models')
     assert not (args.lucifer_level == 'GATHERING'
                 and args.autoserv_exit is None)
-    job = models.Job.objects.get(id=args.job_id)
     return handlers.EventHandler(
             metrics=handlers.Metrics(),
             job=job,
@@ -129,7 +149,7 @@ def _make_handler(args):
     )
 
 
-def _run_lucifer_job(event_handler, args):
+def _run_lucifer_job(event_handler, args, job):
     """Run lucifer_run_job.
 
     Issued events will be handled by event_handler.
@@ -138,9 +158,7 @@ def _run_lucifer_job(event_handler, args):
     @param args: parsed arguments
     @returns: exit status of lucifer_run_job
     """
-    models = autotest.load('frontend.afe.models')
     command_args = [args.run_job_path]
-    job = models.Job.objects.get(id=args.job_id)
     command_args.extend([
             '-autotestdir', autotest.AUTOTEST_DIR,
             '-watcherpath', args.watcher_path,
@@ -151,38 +169,59 @@ def _run_lucifer_job(event_handler, args):
             '-x-level', args.lucifer_level,
             '-x-resultsdir', args.results_dir,
     ])
-    _add_level_specific_args(command_args, args)
+    _add_level_specific_args(command_args, args, job)
     return eventlib.run_event_command(
             event_handler=event_handler, args=command_args)
 
 
-def _add_level_specific_args(command_args, args):
+def _add_level_specific_args(command_args, args, job):
     """Add level specific arguments for lucifer_run_job.
 
     command_args is modified in place.
     """
     if args.lucifer_level == 'STARTING':
-        _add_starting_args(command_args, args)
+        _add_starting_args(command_args, args, job)
     elif args.lucifer_level == 'GATHERING':
-        _add_gathering_args(command_args, args)
+        _add_gathering_args(command_args, args, job)
     else:
         raise Exception('Invalid lucifer level %s' % args.lucifer_level)
 
 
-def _add_starting_args(command_args, args):
+def _add_starting_args(command_args, args, job):
     """Add STARTING level arguments for lucifer_run_job.
 
     command_args is modified in place.
     """
-    del command_args, args
-    raise NotImplementedError('Lucifer STARTING not implemented yet')
+    RebootAfter = autotest.load('frontend.afe.model_attributes').RebootAfter
+    command_args.extend([
+        '-x-control-file', jobx.control_file_path(args.results_dir),
+    ])
+    command_args.extend(['-x-execution-tag', args.execution_tag])
+    command_args.extend(['-x-job-owner', job.owner])
+    command_args.extend(['-x-job-name', job.name])
+    command_args.extend(
+            ['-x-reboot-after',
+             RebootAfter.get_string(job.reboot_after).lower()])
+    if job.run_reset:
+        command_args.append('-x-run-reset')
+    command_args.extend(['-x-test-retries', str(job.test_retry)])
+    if jobx.is_client_job(job):
+        command_args.append('-x-client-test')
+    if jobx.needs_ssp(job):
+        command_args.append('-x-require-ssp')
+        test_source_build = job.keyval_dict().get('test_source_build', None)
+        if test_source_build:
+            command_args.extend(['-x-test-source-build', test_source_build])
+    if job.parent_job_id:
+        command_args.extend(['-x-parent-job-id', str(job.parent_job_id)])
 
 
-def _add_gathering_args(command_args, args):
+def _add_gathering_args(command_args, args, job):
     """Add GATHERING level arguments for lucifer_run_job.
 
     command_args is modified in place.
     """
+    del job
     command_args.extend([
         '-x-autoserv-exit', str(args.autoserv_exit),
     ])
