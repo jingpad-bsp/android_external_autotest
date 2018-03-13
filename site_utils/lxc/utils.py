@@ -6,7 +6,6 @@
 """
 
 import collections
-import logging
 import os
 import shutil
 import tempfile
@@ -143,16 +142,13 @@ class BindMount(object):
         """
         spec = (dst, (rename if rename else src).lstrip(os.path.sep))
         full_dst = os.path.join(*list(spec))
-        commands = []
 
         if not path_exists(full_dst):
-            commands.append('mkdir -p %s' % full_dst)
+            utils.run('sudo mkdir -p %s' % full_dst)
 
-        commands.append('mount --bind %s %s' % (src, full_dst))
+        utils.run('sudo mount --bind %s %s' % (src, full_dst))
         if readonly:
-            commands.append('mount -o remount,ro,bind %s' % full_dst)
-
-        sudo_commands(commands)
+            utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
 
         return cls(spec)
 
@@ -178,13 +174,14 @@ class BindMount(object):
         Unmounts the destination, and deletes it if possible. If it was mounted
         alongside important files, it will not be deleted.
         """
-        # Bind mount locations are sometimes nested alongside actual file
-        # content (e.g. SSPs install into /usr/local/autotest.)
         full_dst = os.path.join(*list(self.spec))
-        commands = ["umount '%s'" % full_dst,
-                    "cd %s" % self.spec,
-                    "rmdir -p --ignore-fail-on-non-empty %s" % self.spec]
-        sudo_commands(commands)
+        utils.run('sudo umount %s' % full_dst)
+        # Ignore errors because bind mount locations are sometimes nested
+        # alongside actual file content (e.g. SSPs install into
+        # /usr/local/autotest so rmdir -p will fail for any mounts located in
+        # /usr/local/autotest).
+        utils.run('sudo bash -c "cd %s; rmdir -p --ignore-fail-on-non-empty %s"'
+                  % self.spec)
 
 
 MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])
@@ -238,18 +235,3 @@ def is_subdir(parent, subdir):
     # performs a prefix string comparison.
     parent = os.path.join(parent, '')
     return os.path.commonprefix([parent, subdir]) == parent
-
-
-def sudo_commands(commands):
-    """Takes a list of bash commands and executes them all with one invocation
-    of sudo. Saves ~400 ms per command.
-
-    @param commands: The bash commands, as strings.
-
-    @return The return code of the sudo call.
-    """
-    with tempfile.NamedTemporaryFile() as temp:
-        temp.write("set -e\n")
-        temp.writelines([command+"\n" for command in commands])
-        logging.info("Commands to run: %s", str(commands))
-        return utils.run("sudo bash %s" % temp.name)
