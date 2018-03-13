@@ -50,8 +50,9 @@ public class SuiteRunnerView extends TabView {
   private HashMap<String, String> modelBoardMap;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq",
-      "bvt-inline", "cts_N", "gts",
-      "hardware_storagequal", "hardware_memoryqual", "usb-camera");
+      "bvt-inline", "cts_N", "gts", "hardware_storagequal",
+      "hardware_memoryqual", "usb-camera","power_loadtest_fast",
+      "power_loadtest_1hour", "power_loadtest", "power_idle");
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
 

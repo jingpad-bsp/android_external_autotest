@@ -157,6 +157,10 @@ suite:perfalerts
 suite:policy
 suite:power_build
 suite:power_daily
+suite:power_idle
+suite:power_loadtest
+suite:power_loadtest_1hour
+suite:power_loadtest_fast
 suite:power_requirements
 suite:powerplay
 suite:push_to_prod
