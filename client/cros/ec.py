@@ -39,6 +39,11 @@ def has_ectool():
     return (utils.system(cmd, ignore_status=True) == 0)
 
 
+class ECError(Exception):
+    """Base class for a failure when communicating with EC."""
+    pass
+
+
 class EC_Common(object):
     """Class for EC common.
 
@@ -69,8 +74,8 @@ class EC_Common(object):
         @returns: string of results from ec command.
         """
         full_cmd = 'ectool --name=%s %s' % (self._target, cmd)
-        result = utils.system_output(full_cmd, **kwargs)
         logging.debug('Command: %s', full_cmd)
+        result = utils.system_output(full_cmd, **kwargs)
         logging.debug('Result: %s', result)
         return result
 
@@ -168,6 +173,7 @@ class EC(EC_Common):
         @param name: string of temp sensor to read.  Default=None.
             For example: Battery, Ambient, Charger, DRAM, eMMC, Gyro
 
+        @raises ECError if fails to find idx of name.
         @raises error.TestError if fails to read sensor or fails to identify
         sensor to read from idx & name param.
 
@@ -178,7 +184,7 @@ class EC(EC_Common):
             if name in temperature_dict:
                 idx = temperature_dict[name]
             else:
-                raise error.TestError('Reading temperature name %s' % name)
+                raise ECError('Finding temp idx for name %s' % name)
 
         response = self.ec_command('temps %d' % idx)
         match = re.search(self.TEMP_SENSOR_TEMP_RE, response)
@@ -192,7 +198,11 @@ class EC(EC_Common):
 
         @returns True if success False otherwise.
         """
-        response = self.ec_command('battery')
+        try:
+            response = self.ec_command('battery')
+        except error.CmdError:
+            raise ECError('calling EC battery command')
+
         return (re.search(self.BATTERY_RE, response) is not None)
 
     def get_lightbar(self):
