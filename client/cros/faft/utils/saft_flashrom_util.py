@@ -42,6 +42,7 @@ class LayoutScraper(object):
         # New layout in Chrome OS Main Processor Firmware Specification,
         # used by all newer (>2011) platforms except Mario.
         "BOOT_STUB": "FV_BSTUB",
+        "RO_FRID": "RO_FRID",
         "GBB": "FV_GBB",
         "RECOVERY": "FVDEV",
         "VBLOCK_A": "VBOOTA",

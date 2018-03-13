@@ -710,11 +710,11 @@ class RPCFunctions(object):
         return self._updater.start_daemon()
 
     def _updater_get_fwid(self):
-        """Retrieve shellball's fwid.
+        """Retrieve shellball's RW fwid.
 
-        @return: Shellball's fwid.
+        @return: Shellball's RW fwid.
         """
-        return self._updater.retrieve_fwid()
+        return self._updater.retrieve_fwid()[1]
 
     def _updater_get_ecid(self):
         """Retrieve shellball's ecid.
