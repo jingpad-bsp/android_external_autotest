@@ -1488,7 +1488,8 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool,
         default=False)
     FETCH_READONLY_JOBS = global_config.global_config.get_config_value(
-        'AUTOTEST_WEB','shard_heartbeat_use_readonly_slave', default=False)
+        'AUTOTEST_WEB','shard_heartbeat_use_readonly_slave', type=bool,
+        default=False)
 
     owner = dbmodels.CharField(max_length=255)
     name = dbmodels.CharField(max_length=255)
