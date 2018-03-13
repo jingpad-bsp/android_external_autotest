@@ -42,7 +42,7 @@ def get_x86_cpu_arch():
     """
     cpuinfo = utils.read_file('/proc/cpuinfo')
 
-    if re.search(r'AMD.*A6-92[0-9][0-9].*RADEON.*R[245]', cpuinfo):
+    if re.search(r'AMD.*[AE][269]-9[0-9][0-9][0-9].*RADEON.*R[245]', cpuinfo):
         return 'Stoney'
     if re.search(r'Intel.*Atom.*[NZ][2-6]', cpuinfo):
         return 'Atom'
