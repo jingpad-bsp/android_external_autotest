@@ -460,8 +460,12 @@ class SysStat(object):
 
     def battery_discharging(self):
         """
-        Returns true if battery is currently discharging.
+        Returns true if battery is currently discharging or false otherwise.
         """
+        if not self.battery_path:
+            logging.warn('Unable to determine battery discharge status')
+            return False
+
         return(self.battery[0].status.rstrip() == 'Discharging')
 
     def percent_current_charge(self):
