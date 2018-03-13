@@ -54,7 +54,6 @@ See the best practices guide, existing tests, and comments in the code.
 
 `git clone https://chromium.googlesource.com/chromiumos/third_party/autotest`
 
-
 ## Hacking and submitting patches
 
 See the coding style guide for guidance on submitting patches.
