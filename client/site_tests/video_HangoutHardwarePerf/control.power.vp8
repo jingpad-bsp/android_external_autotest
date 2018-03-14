@@ -25,6 +25,9 @@ DOC = """
 This test utilizes the vda_unittest and vea_unittest to measure the
 performance of using the hardware Video Decode/Encode Accelerator
 concurrently.
+This test is redundant with respect to calls made within server test
+video_PowerConsumption.
+This control file is to measure those power consumptions locally.
 """
 
 # Used resources. They will be downloaded in the beginning of the test.
