@@ -146,13 +146,16 @@ class BindMount(object):
         """
         spec = (dst, (rename if rename else src).lstrip(os.path.sep))
         full_dst = os.path.join(*list(spec))
+        commands = []
 
         if not path_exists(full_dst):
-            utils.run('sudo mkdir -p %s' % full_dst)
+            commands.append('mkdir -p %s' % full_dst)
 
-        utils.run('sudo mount --bind %s %s' % (src, full_dst))
+        commands.append('mount --bind %s %s' % (src, full_dst))
         if readonly:
-            utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
+            commands.append('mount -o remount,ro,bind %s' % full_dst)
+
+        sudo_commands(commands)
 
         return cls(spec)
 
@@ -178,14 +181,14 @@ class BindMount(object):
         Unmounts the destination, and deletes it if possible. If it was mounted
         alongside important files, it will not be deleted.
         """
-        full_dst = os.path.join(*list(self.spec))
-        utils.run('sudo umount %s' % full_dst)
-        # Ignore errors because bind mount locations are sometimes nested
-        # alongside actual file content (e.g. SSPs install into
-        # /usr/local/autotest so rmdir -p will fail for any mounts located in
-        # /usr/local/autotest).
-        utils.run('sudo bash -c "cd %s; rmdir -p --ignore-fail-on-non-empty %s"'
-                  % self.spec)
+        # Bind mount locations are sometimes nested alongside actual file
+        # content (e.g. SSPs install into /usr/local/autotest.)
+        d, mount = self.spec
+        full_dst = os.path.join(d, mount)
+        commands = ["umount '%s'" % full_dst,
+                    "cd %s" % d,
+                    "rmdir -p --ignore-fail-on-non-empty %s" % mount]
+        sudo_commands(commands)
 
 
 MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])
