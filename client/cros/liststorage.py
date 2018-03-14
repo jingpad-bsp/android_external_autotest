@@ -101,14 +101,13 @@ def get_udev_info(blockdev, method='udev', host=None):
     return ret
 
 
-def get_usbdevice_type_and_serial(device, host=None):
-    """Get USB device type and Serial number
+def get_lsusb_info(host=None):
+    """Get lsusb info in list format
 
-    @param device: USB device mount point Example: /dev/sda or /dev/sdb
     @param host: DUT object
-    @return: Returns the information about USB type and the serial number
-            of the device
+    @return: Returns lsusb output in list format
     """
+
     usb_info_list = []
     # Getting the USB type and Serial number info using 'lsusb -v'. Sample
     # output is shown in below
@@ -135,6 +134,19 @@ def get_usbdevice_type_and_serial(device, host=None):
             usb_info['iSerial'] = iserial_matched.group(1)
             usb_info_list.append(usb_info)
     logging.debug('lsusb output is %s', usb_info_list)
+    return usb_info_list
+
+
+def get_usbdevice_type_and_serial(device, lsusb_info, host=None):
+    """Get USB device type and Serial number
+
+    @param device: USB device mount point Example: /dev/sda or /dev/sdb
+    @param lsusb_info: lsusb info
+    @param host: DUT object
+    @return: Returns the information about USB type and the serial number
+            of the device
+    """
+
     # Comparing the lsusb serial number with udev output serial number
     # Both serial numbers should be same. Sample udev command output is
     # shown in below.
@@ -145,13 +157,14 @@ def get_usbdevice_type_and_serial(device, host=None):
     if udev_serial_matched:
         udev_serial = udev_serial_matched.group(1)
         logging.debug("udev serial number is %s", udev_serial)
-        for usb_details in usb_info_list:
+        for usb_details in lsusb_info:
             if usb_details['iSerial'] == udev_serial:
                 return usb_details.get('bcdUSB'), udev_serial
     return None, None
 
 def get_partition_info(part_path, bus, model, partid=None, fstype=None,
-                       label=None, block_size=0, is_removable=False, host=None):
+                       label=None, block_size=0, is_removable=False,
+                       lsusb_info=[], host=None):
     """Return information about a device as a list of dictionaries
 
     Normally a single device described by the passed parameters will match a
@@ -170,6 +183,7 @@ def get_partition_info(part_path, bus, model, partid=None, fstype=None,
     @param block_size: filesystem block size
     @param is_removable: whether it is a removable device
     @param host: DUT object
+    @param lsusb_info: lsusb info
 
     @return a list of dictionaries contaning each a partition info.
             An empty list can be returned if no matching device is found
@@ -219,6 +233,7 @@ def get_partition_info(part_path, bus, model, partid=None, fstype=None,
                     dev['mountpoint'] = mount
                     dev['usb_type'], dev['serial'] = \
                             get_usbdevice_type_and_serial(dev['device'],
+                                                          lsusb_info=lsusb_info,
                                                           host=host)
                     ret.append(dev)
 
@@ -244,18 +259,21 @@ def get_partition_info(part_path, bus, model, partid=None, fstype=None,
                 dev['is_mounted'] = False
                 dev['mountpoint'] = "/media/removable/%s" % label
                 dev['usb_type'], dev['serial'] = \
-                        get_usbdevice_type_and_serial(dev['device'], host=host)
+                        get_usbdevice_type_and_serial(dev['device'],
+                                                      lsusb_info=lsusb_info,
+                                                      host=host)
                 ret.append(dev)
         return ret
 
 
-def get_device_info(blockdev, host=None):
+def get_device_info(blockdev, lsusb_info, host=None):
     """Retrieve information about |blockdev|
 
     @see |get_partition_info()| doc for the dictionary format
 
     @param blockdev: a block device name, e.g., "sda".
     @param host: DUT object
+    @param lsusb_info: lsusb info
     @return a list of dictionary, with each item representing a found device
     """
     ret = []
@@ -285,13 +303,15 @@ def get_device_info(blockdev, host=None):
         has_partitions = True
         devs = get_partition_info(partition_path, dev_bus, dev_model,
                                   block_size=block_size,
-                                  is_removable=is_removable, host=host)
+                                  is_removable=is_removable,
+                                  lsusb_info=lsusb_info, host=host)
         ret.extend(devs)
 
     if not has_partitions:
         devs = get_partition_info(spath, dev_bus, dev_model, dev_uuid, dev_fs,
                                   dev_label, block_size=block_size,
-                                  is_removable=is_removable, host=host)
+                                  is_removable=is_removable,
+                                  lsusb_info=lsusb_info, host=host)
         ret.extend(devs)
 
     return ret
@@ -304,11 +324,12 @@ def get_all(host=None):
     @return a list of dictionaries, each list element describing a device
     """
     ret = []
+    lsusb_info = get_lsusb_info(host)
     for dev in system_output('ls %s' % INFO_PATH, host).splitlines():
         # Among block devices we need to filter out what are virtual
         if re.match("s[a-z]+", dev):
             # for each of them try to obtain some info
-            ret.extend(get_device_info(dev, host=host))
+            ret.extend(get_device_info(dev, lsusb_info, host=host))
     return ret
 
 
