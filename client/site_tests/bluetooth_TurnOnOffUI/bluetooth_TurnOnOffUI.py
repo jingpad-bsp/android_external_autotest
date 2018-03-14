@@ -5,11 +5,11 @@
 import logging
 import os
 import time
-from commands import getstatusoutput
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chromedriver
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.bluetooth import bluetooth_device_xmlrpc_server
 
 
 class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
@@ -27,6 +27,7 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
 
     def initialize(self):
         """Autotest initialize function"""
+        self.xmlrpc_delegate = bluetooth_device_xmlrpc_server.BluetoothDeviceXmlRpcDelegate()
         super(bluetooth_TurnOnOffUI, self).initialize(raise_error_on_hang=True)
 
     def cleanup(self):
@@ -89,12 +90,9 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
         return driver.execute_script(self.SHADOW_ROOT_JS, bt_device_page)
 
     def is_bluetooth_enabled(self):
-        """Returns True if BT is enabled otherwise False"""
+        """Returns True if bluetoothd is powered on, otherwise False"""
 
-        status, output = getstatusoutput('hciconfig hci0')
-        if status:
-            raise error.TestError("Failed execute hciconfig")
-        return 'UP RUNNING' in output
+        return self.xmlrpc_delegate._is_powered_on()
 
     def turn_on_bluetooth(self, bt_page):
         """Turn on BT through UI
