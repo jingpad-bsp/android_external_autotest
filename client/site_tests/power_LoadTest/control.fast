@@ -10,7 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:power_build"
+ATTRIBUTES = "suite:power_build, suite:power_loadtest_fast"
 
 DOC = """
 This test runs a load test consisting of cycling though web pages, playing
