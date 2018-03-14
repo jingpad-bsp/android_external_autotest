@@ -72,11 +72,19 @@ class hardware_EC(test.test):
                         'Abnormal temperature reading on sensor %d' % idx)
 
         if test_battery:
-            logging.info('Battery temperature %d K',
-                         ec.get_temperature(name='Battery'))
+            try:
+                logging.info('Battery temperature %d K',
+                             ec.get_temperature(name='Battery'))
+            except cros_ec.ECError as e:
+                logging.debug('ECError: %s', e)
+                logging.warning('No battery temperature via EC.')
 
-            if not ec.get_battery():
-                raise error.TestError('Battery communication failed')
+            try:
+                if not ec.get_battery():
+                    raise error.TestError('Battery communication failed')
+            except cros_ec.ECError as e:
+                logging.debug('ECError: %s', e)
+                logging.warning('No battery info via EC.')
 
         if test_lightbar and not ec.get_lightbar():
             raise error.TestError('Lightbar communication failed')
