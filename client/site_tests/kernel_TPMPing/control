@@ -15,11 +15,12 @@ JOB_RETRIES = 2
 
 DOC = """
     Checks that there is a TPM, that the driver can talk to it, and that the
-    TCS daemon can talk to the driver.  Assumes that the firmware has started
-    the TPM, but makes no other assumptions on the TPM state (activated or not,
-    owned or not, etc.)
+    tcs/trunks daemon can talk to the driver.  Assumes that the firmware has
+    started the TPM, but makes no other assumptions on the TPM state (activated
+    or not, owned or not, etc.)
 
-    Also checks that the driver contains an important patch (gentle shutdown).
+    For TPM 1.2 chips and kernels >= 3.8, also checks that the driver contains
+    an important patch (gentle shutdown).
 """
 
 job.run_test('kernel_TPMPing')
