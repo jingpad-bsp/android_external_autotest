@@ -236,6 +236,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_version_info(self.ACTIVE_VERSION)
 
 
+    def using_prod_rw_keys(self):
+        """Returns True if the RW keyid is prod"""
+        rv = self.send_command_get_output('sysinfo',
+                ['RW keyid:.*\(([a-z]+)\)'])
+        logging.info(rv)
+        return rv[0][1] == 'prod'
+
+
     def get_active_board_id_str(self):
         """Get the running image board id.
 
