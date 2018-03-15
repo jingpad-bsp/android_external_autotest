@@ -6,6 +6,7 @@
 """
 
 import collections
+import logging
 import os
 import shutil
 import tempfile
@@ -15,6 +16,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.site_utils.lxc import constants
 
 
@@ -235,3 +237,26 @@ def is_subdir(parent, subdir):
     # performs a prefix string comparison.
     parent = os.path.join(parent, '')
     return os.path.commonprefix([parent, subdir]) == parent
+
+
+def sudo_commands(commands):
+    """Takes a list of bash commands and executes them all with one invocation
+    of sudo. Saves ~400 ms per command.
+
+    @param commands: The bash commands, as strings.
+
+    @return The return code of the sudo call.
+    """
+
+    combine = global_config.global_config.get_config_value(
+        'LXC_POOL','combine_sudos', type=bool, default=False)
+
+    if combine:
+        with tempfile.NamedTemporaryFile() as temp:
+            temp.write("set -e\n")
+            temp.writelines([command+"\n" for command in commands])
+            logging.info("Commands to run: %s", str(commands))
+            return utils.run("sudo bash %s" % temp.name)
+    else:
+        for command in commands:
+            result = utils.run("sudo %s" % command)
