@@ -39,6 +39,7 @@ suite:bluestreak-perbuild
 suite:bluestreak-pre-cq
 suite:bluestreak-release
 suite:bluetooth
+suite:bluetooth_chameleon
 suite:bluetooth_qualification
 suite:bluetooth_sanity
 suite:brillo-bvt
