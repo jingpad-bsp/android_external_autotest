@@ -10,7 +10,7 @@ ATTRIBUTES = 'suite:cts_N'
 DEPENDENCIES = 'arc, noloopback'
 JOB_RETRIES = 2
 TEST_TYPE = 'server'
-TIME = 'LENGTHY'
+TIME = 'LONG'
 PRIORITY = 50
 MAX_RESULT_SIZE_KB = 307200
 
