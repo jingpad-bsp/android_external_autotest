@@ -14,10 +14,9 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils.lxc import unittest_setup
 
 
-class SharedHostDirTests(unittest.TestCase):
+class SharedHostDirTests(lxc.utils.LXCTests):
     """Unit tests for the ContainerBucket class."""
 
     def setUp(self):
@@ -94,7 +93,7 @@ class SharedHostDirTests(unittest.TestCase):
             host_dir.cleanup()
 
 
-class TimeoutTests(unittest.TestCase):
+class TimeoutTests(lxc.utils.LXCTests):
     """Test the timeouts on the shared host dir class."""
 
     def setUp(self):
@@ -137,5 +136,4 @@ class TimeoutTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest_setup.setup()
     unittest.main()

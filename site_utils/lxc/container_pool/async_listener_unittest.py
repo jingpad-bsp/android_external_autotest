@@ -12,16 +12,16 @@ from multiprocessing import connection
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.site_utils.lxc import unittest_setup
 from autotest_lib.site_utils.lxc.container_pool import async_listener
 from autotest_lib.site_utils.lxc.container_pool import unittest_client
+from autotest_lib.site_utils.lxc import utils
 
 
 # Namespace object for parsing cmd line options.
 options = None
 
 
-class AsyncListenerTests(unittest.TestCase):
+class AsyncListenerTests(utils.LXCTests):
     """Unit tests for the AsyncListener class."""
 
     def setUp(self):
@@ -147,5 +147,4 @@ class AsyncListenerTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest_setup.setup()
     unittest.main()
