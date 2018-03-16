@@ -302,19 +302,23 @@ class platform_BootPerf(test.test):
 
         # Not all 'uptime-network-*-ready' files necessarily exist;
         # probably there's only one.  We go through a list of
-        # possibilities and pick the first one we find.  We're not
+        # possibilities and pick the earliest one we find.  We're not
         # looking for 3G here, so we're not guaranteed to find any
         # file.
         network_ready_events = [
             'network-wifi-ready',
             'network-ethernet-ready'
         ]
-
+        network_ready_timestamp = float('inf')
         for event_name in network_ready_events:
+            metric_name = ('seconds_kernel_to_' +
+                           event_name.replace('-', '_'))
             try:
                 network_time = self._parse_uptime(event_name)
-                results['seconds_kernel_to_network'] = network_time
-                break
+                results[metric_name] = network_time
+                if network_time < network_ready_timestamp:
+                    network_ready_timestamp = network_time
+                    results['seconds_kernel_to_network'] = network_time
             except error.TestFail:
                 pass
 
