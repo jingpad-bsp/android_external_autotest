@@ -874,20 +874,23 @@ class TradefedTest(test.test):
         @raise TestFail: when a test failure is detected.
         @return: tuple of (tests, pass, fail, notexecuted) counts.
         """
-        # TODO(pwang): We should use tradefed shard feature here.
+        target_argument = []
         for host in self._hosts:
-            try:
-                test_commands = [command + ['-s', self._get_adb_target(host)]
-                                 for command in commands]
-                output = self._run_tradefed(test_commands)
-            except Exception as e:
-                self._log_java_version()
-                if not isinstance(e, error.CmdTimeoutError):
-                    # In case this happened due to file corruptions, try to
-                    # force to recreate the cache.
-                    logging.error('Failed to run tradefed! Cleaning up now.')
-                    self._clean_download_cache_if_needed(force=True)
-                raise
+            target_argument += ['-s', self._get_adb_target(host)]
+        shard_argument = ['--shards', str(len(self._hosts))]
+        commands = [command + target_argument + shard_argument
+                    for command in commands]
+
+        try:
+            output = self._run_tradefed(commands)
+        except Exception as e:
+            self._log_java_version()
+            if not isinstance(e, error.CmdTimeoutError):
+                # In case this happened due to file corruptions, try to
+                # force to recreate the cache.
+                logging.error('Failed to run tradefed! Cleaning up now.')
+                self._clean_download_cache_if_needed(force=True)
+            raise
 
         result_destination = os.path.join(self.resultsdir,
                                           self._get_tradefed_base_dir())
