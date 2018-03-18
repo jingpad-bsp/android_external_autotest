@@ -5,7 +5,7 @@
 import dbus, grp, os, pwd, stat
 from dbus.mainloop.glib import DBusGMainLoop
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import policy, session_manager
 from autotest_lib.client.cros import cros_ui, cryptohome, ownership
@@ -61,13 +61,9 @@ class login_UserPolicyKeys(test.test):
                                      (current, oct(info.st_mode)))
 
 
-    def setup(self):
-        os.chdir(self.srcdir)
-        utils.make('OUT_DIR=.')
-
-
     def initialize(self):
         super(login_UserPolicyKeys, self).initialize()
+        policy.install_protobufs(self.autodir, self.job)
         self._bus_loop = DBusGMainLoop(set_as_default=True)
         self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
 
@@ -103,9 +99,8 @@ class login_UserPolicyKeys(test.test):
         # outer PolicyFetchResponse that contains the public_key.
         public_key = ownership.known_pubkey()
         private_key = ownership.known_privkey()
-        policy_data = policy.build_policy_data(self.srcdir)
-        policy_response = policy.generate_policy(self.srcdir,
-                                                 private_key,
+        policy_data = policy.build_policy_data()
+        policy_response = policy.generate_policy(private_key,
                                                  public_key,
                                                  policy_data)
         try:
