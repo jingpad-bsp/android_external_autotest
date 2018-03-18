@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import gobject, os
+import gobject
 from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
@@ -19,15 +19,12 @@ class login_OwnershipRetaken(test.test):
     _got_new_key = False
     _got_new_policy = False
 
-    def setup(self):
-        os.chdir(self.srcdir)
-        utils.make('OUT_DIR=.')
-
 
     def initialize(self):
         super(login_OwnershipRetaken, self).initialize()
         # Start clean, wrt ownership and the desired user.
         ownership.restart_ui_to_clear_ownership_files()
+        policy.install_protobufs(self.autodir, self.job)
 
         bus_loop = DBusGMainLoop(set_as_default=True)
         self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
@@ -41,17 +38,13 @@ class login_OwnershipRetaken(test.test):
         pubkey = ownership.known_pubkey()
 
         # Pre-configure some owner settings, including initial key.
-        poldata = policy.build_policy_data(self.srcdir,
-                                           owner=ownership.TESTUSER,
+        poldata = policy.build_policy_data(owner=ownership.TESTUSER,
                                            guests=False,
                                            new_users=True,
                                            roaming=True,
                                            whitelist=(ownership.TESTUSER,
                                                       'a@b.c'))
-        policy_string = policy.generate_policy(self.srcdir,
-                                               pkey,
-                                               pubkey,
-                                               poldata)
+        policy_string = policy.generate_policy(pkey, pubkey, poldata)
         policy.push_policy_and_verify(policy_string, self._sm)
 
         # grab key, ensure that it's the same as the known key.
@@ -76,8 +69,7 @@ class login_OwnershipRetaken(test.test):
         retrieved_policy = self._sm.RetrievePolicy(byte_arrays=True)
         if retrieved_policy is None:
             raise error.TestError('Policy not found')
-        policy.compare_policy_response(self.srcdir,
-                                       retrieved_policy,
+        policy.compare_policy_response(retrieved_policy,
                                        owner=ownership.TESTUSER,
                                        guests=False,
                                        new_users=True,

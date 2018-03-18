@@ -8,10 +8,10 @@ import logging
 import os
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import enrollment
+from autotest_lib.client.common_lib.cros import policy
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
@@ -63,11 +63,6 @@ class EnterprisePolicyTest(test.test):
     WEB_HOST = 'http://localhost:%d' % WEB_PORT
     CHROME_POLICY_PAGE = 'chrome://policy'
 
-    def setup(self):
-        """Make the files needed for fake-dms."""
-        os.chdir(self.srcdir)
-        utils.make()
-
 
     def initialize(self, **kwargs):
         """Initialize test parameters."""
@@ -95,14 +90,16 @@ class EnterprisePolicyTest(test.test):
         self.dms_is_fake = (env == 'dm-fake')
         self._enforce_variable_restrictions()
 
+        # Install protobufs and add import path.
+        policy.install_protobufs(self.autodir, self.job)
+
         # Initialize later variables to prevent error after an early failure.
         self._web_server = None
         self.cr = None
 
         # Start AutoTest DM Server if using local fake server.
         if self.dms_is_fake:
-            self.fake_dm_server = enterprise_fake_dmserver.FakeDMServer(
-                self.srcdir)
+            self.fake_dm_server = enterprise_fake_dmserver.FakeDMServer()
             self.fake_dm_server.start(self.tmpdir, self.debugdir)
 
         # Get enterprise directory of shared resources.
