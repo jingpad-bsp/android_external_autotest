@@ -354,6 +354,7 @@ UINPUT_DEVICE_EVENTS_KEYBOARD = [
     uinput.KEY_LEFTALT,
     uinput.KEY_A,
     uinput.KEY_M,
+    uinput.KEY_Q,
     uinput.KEY_V
 ]
 # TODO(ihf): Find an ABS sequence that actually works.
