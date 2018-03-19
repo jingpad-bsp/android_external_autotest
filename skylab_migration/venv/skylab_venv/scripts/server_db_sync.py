@@ -131,10 +131,11 @@ def inventory_api_response_parse(response, environment):
   for nest_dict in summaries:
     hostname = nest_dict['hostname']
     for k, v in nest_dict.get('attributes', {}).iteritems():
-      # Skip the entry whose attribute's value is null
-      if v:
-        flat_dict = {'hostname':hostname, 'attribute':k, 'value':v.lower()}
-        server_attrs.append(ServerAttribute(**flat_dict))
+      # Skip the entry whose attribute's value is null or max_processes=0
+      if not v or (k == 'max_processes' and int(v) == 0):
+        continue
+      flat_dict = {'hostname':hostname, 'attribute':k, 'value':v.lower()}
+      server_attrs.append(ServerAttribute(**flat_dict))
 
   # Parse server_roles tuples
   server_roles = []
