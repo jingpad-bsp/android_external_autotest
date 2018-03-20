@@ -27,6 +27,8 @@ Requirements for a test to be in this suite:
     release on any channel.
  3. A test failure must reliably indicate a bug in the product, and
     not a bug in the test.
+ 4. The test must be hermetic.  That is, the test should have no
+    dependencies on external network resources.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
