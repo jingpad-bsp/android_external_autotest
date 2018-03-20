@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import time
 
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
@@ -39,3 +40,29 @@ class firmware_DevMode(FirmwareTest):
                               'devsw_boot': '0',
                               'mainfw_type': 'normal',
                               }))
+
+        if (self.check_ec_capability() and
+            self.faft_config.mode_switcher_type in
+                ['keyboard_dev_switcher', 'tablet_detachable_switcher']):
+            logging.info("Rebooting into fake recovery mode (EC still in RW).")
+            self.ec.send_command_get_output('apshutdown',
+                    ['power state \d+ = (S5|G3)'])
+            self.ec.send_command_get_output('hostevent set 0x00004000',
+                    ['event set 0x0+4000'])
+            time.sleep(1)
+            self.ec.send_command('powerbtn')
+
+            logging.info("Trying to transition to dev mode with EC_IN_RW=1.")
+            self.switcher.trigger_rec_to_dev()
+            self.switcher.bypass_dev_mode()
+            if not self._client.ping_wait_up(
+                    timeout=self.faft_config.delay_reboot_to_ping):
+                logging.info("DUT didn't come back up (expected!), rebooting.")
+                self.switcher.simple_reboot(sync_before_boot=False)
+            self.switcher.wait_for_client()
+
+            logging.info("DUT is back up, should still be in normal mode now.")
+            self.check_state((self.checkers.crossystem_checker, {
+                                'devsw_boot': '0',
+                                'mainfw_type': 'normal',
+                            }))
