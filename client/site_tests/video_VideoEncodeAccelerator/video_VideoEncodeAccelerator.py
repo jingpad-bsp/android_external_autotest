@@ -12,6 +12,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
@@ -110,7 +111,8 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
-    def run_once(self, in_cloud, streams, profile, gtest_filter=None):
+    def run_once(self, in_cloud, streams, profile, capability,
+                 gtest_filter=None):
         """Runs video_encode_accelerator_unittest on the streams.
 
         @param in_cloud: Input file needs to be downloaded first.
@@ -120,6 +122,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
         @raises error.TestFail for video_encode_accelerator_unittest failures.
         """
+        device_capability.DeviceCapability().ensure_capability(capability)
 
         last_test_failure = None
         for path, width, height, bit_rate in streams:

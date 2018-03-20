@@ -15,7 +15,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = 'hw_video_acc_enc_h264'
 
 DOC = """
 This is a wrapper test for Chrome video_encode_accelerator_unittest.
@@ -37,4 +36,4 @@ streams = [
 
 args_dict = utils.args_to_dict(args)
 job.run_test('video_VideoEncodeAccelerator', in_cloud=True, streams=streams,
-        profile=1, tag='h264', **args_dict)
+        profile=1, tag='h264', capability='hw_enc_h264_1080_30', **args_dict)

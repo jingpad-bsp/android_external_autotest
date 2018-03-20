@@ -15,7 +15,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = 'hw_video_acc_enc_vp8'
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
@@ -30,4 +29,4 @@ streams = [('media/test/data/bear_320x192_40frames.yuv', 320, 192, 200000)]
 
 args_dict = utils.args_to_dict(args)
 job.run_test('video_VideoEncodeAccelerator', in_cloud=False, streams=streams,
-        profile=11, tag='vp8', **args_dict)
+        profile=11, tag='vp8', capability='hw_enc_vp8_1080_30', **args_dict)
