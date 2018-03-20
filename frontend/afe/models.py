@@ -1485,11 +1485,13 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
     DEFAULT_MAX_RUNTIME_MINS = global_config.global_config.get_config_value(
         'AUTOTEST_WEB', 'job_max_runtime_mins_default', default=72*60)
     DEFAULT_PARSE_FAILED_REPAIR = global_config.global_config.get_config_value(
-        'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool,
-        default=False)
+        'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool, default=False)
     FETCH_READONLY_JOBS = global_config.global_config.get_config_value(
-        'AUTOTEST_WEB','shard_heartbeat_use_readonly_slave', type=bool,
-        default=False)
+        'AUTOTEST_WEB','readonly_heartbeat', type=bool, default=False)
+    READONLY_WHITELIST = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB','readonly_heartbeat_test_whitelist',
+        type=list, default=[])
+
 
     owner = dbmodels.CharField(max_length=255)
     name = dbmodels.CharField(max_length=255)
@@ -1667,7 +1669,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             'check_known_jobs': check_known_jobs_exclude,
             'shard_id': shard.id
         }
-        if cls.FETCH_READONLY_JOBS:
+        if cls.FETCH_READONLY_JOBS and shard.hostname in cls.READONLY_WHITELIST:
             #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
             #correct usage would be .raw(..., using='readonly')
             old_db = Job.objects._db
