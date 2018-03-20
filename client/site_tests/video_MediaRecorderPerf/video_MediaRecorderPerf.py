@@ -16,6 +16,7 @@ from autotest_lib.client.common_lib import error, file_utils
 from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import constants
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 from autotest_lib.client.cros.video import histogram_verifier
 
@@ -170,6 +171,8 @@ class video_MediaRecorderPerf(test.test):
         @param video_file: a string specifying the name of the video file to be
                 used as fake input video stream.
         """
+        device_capability.DeviceCapability().ensure_capability(capability)
+
         # Download test video.
         url = DOWNLOAD_BASE + video_file
         local_path = os.path.join(self.bindir, video_file)
@@ -212,4 +215,3 @@ class video_MediaRecorderPerf(test.test):
                 processing_time_hw,
                 cpu_usage_hw)
         logging.info(log)
-
