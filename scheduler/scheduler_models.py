@@ -1218,9 +1218,10 @@ class Job(DBObject):
         can_verify = (queue_entry.host.protection !=
                          host_protections.Protection.DO_NOT_VERIFY)
         can_reboot = self.reboot_before != model_attributes.RebootBefore.NEVER
-        return (can_reboot and can_verify and (self.run_reset or
-                (self._should_run_cleanup(queue_entry) and
-                 self._should_run_verify(queue_entry))))
+        return (can_reboot and can_verify
+                and (self.run_reset
+                     or (self._should_run_cleanup(queue_entry)
+                         and self._should_run_verify(queue_entry))))
 
 
     def _should_run_provision(self, queue_entry):
