@@ -158,17 +158,25 @@ class EventHandler(object):
 
     def _mark_job_complete(self):
         """Perform Autotest operations needed for job completion."""
-        models = autotest.load('frontend.afe.models')
         final_status = self._final_status()
         self._mark_hqes_complete(final_status)
-        if final_status is not models.HostQueueEntry.Status.ABORTED:
-            _stop_prejob_hqes(self._job)
+        self._stop_job_if_necessary(final_status)
         self._release_job_if_sharded()
 
     def _mark_hqes_complete(self, final_status):
         """Perform Autotest HQE operations needed for job completion."""
         for hqe in self._job.hostqueueentry_set.all():
             self._set_completed_status(hqe, final_status)
+
+    def _stop_job_if_necessary(self, final_status):
+        """Equivalent to scheduler.modes.Job.stop_if_necessary().
+
+        The name isn't informative, but this will stop pre-job tasks as
+        necessary.
+        """
+        models = autotest.load('frontend.afe.models')
+        if final_status is not models.HostQueueEntry.Status.ABORTED:
+            _stop_prejob_hqes(self._job)
 
     def _release_job_if_sharded(self):
         if self._job.shard_id is not None:
