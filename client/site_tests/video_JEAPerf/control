@@ -28,5 +28,4 @@ test_cases = [
     ('jpeg_test/lake_4160x3120.yuv', 4160, 3120)
 ]
 
-job.run_test('video_JEAPerf', test_cases=test_cases)
-
+job.run_test('video_JEAPerf', test_cases=test_cases, capability='hw_enc_jpeg')
