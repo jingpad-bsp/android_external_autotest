@@ -22,16 +22,13 @@ class desktopui_MusLogin(test.test):
           logging.warning('Skipping test run on this board.')
           return
 
-        # GPU info collection via devtools SystemInfo.getInfo does not work
-        # under mus due to differences in how the GPU process is configured.
-        # http://crbug.com/669965
-        mus_browser_args = ['--mus', '--gpu-no-complete-info-collection']
+        mus_browser_args = ['--enable-features=Mus']
 
-        logging.info('Testing Chrome --mus startup.')
+        logging.info('Testing Chrome with Mus startup.')
         with chrome.Chrome(auto_login=False,
                            extra_browser_args=mus_browser_args):
-            logging.info('Chrome --mus started and loaded OOBE.')
+            logging.info('Chrome with Mus started and loaded OOBE.')
 
-        logging.info('Testing Chrome --mus login.')
+        logging.info('Testing Chrome with Mus login.')
         with chrome.Chrome(extra_browser_args=mus_browser_args):
-            logging.info('Chrome login with --mus succeeded.')
+            logging.info('Chrome login with Mus succeeded.')
