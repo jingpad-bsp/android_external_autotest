@@ -4,8 +4,8 @@
 
 AUTHOR = "jamescook@chromium.org, mustash-team@google.com"
 NAME = "desktopui_MashLogin"
-PURPOSE = "Verify chrome --mash (for mustash) starts and logs in."
-CRITERIA = "Fails if chrome --mash does not start."
+PURPOSE = "Verify chrome --enable-features=Mash starts and logs in."
+CRITERIA = "Fails if chrome --enable-features=Mash does not start."
 ATTRIBUTES = "suite:chrome-informational, suite:bvt-perbuild"
 # TODO(jamescook): Add retries if this goes into bvt-cq.
 JOB_RETRIES = 0
@@ -14,16 +14,16 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 BUG_TEMPLATE = {
-  'components': ['Internals>Mus'],
+  'components': ['Internals>Services>WindowService'],
   'labels': ['Proj-Mustash'],
   'cc': ['mustash-autotest-bugs@google.com'],
 }
 
 DOC = """
-chrome --mash has significant differences in its initialization vs.
-both regular chrome on devices and chrome on Linux desktop. This
-test verifies chrome can start up and log in. If it fails, please contact
-mustash-team@google.com.
+chrome --enable-features=Mash has significant differences in its
+initialization vs. both regular chrome on devices and chrome on Linux
+desktop. This test verifies chrome can start up and log in. If it fails, please
+contact mustash-team@google.com.
 """
 
 job.run_test('desktopui_MashLogin')
