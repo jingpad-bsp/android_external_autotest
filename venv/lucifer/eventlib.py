@@ -52,6 +52,7 @@ class Event(enum.Enum):
     RUNNING = 'running'
     GATHERING = 'gathering'
     PARSING = 'parsing'
+    ABORTED = 'aborted'
     COMPLETED = 'completed'
 
     # Test status
@@ -65,7 +66,7 @@ class Event(enum.Enum):
     HOST_NEEDS_RESET = 'host_needs_reset'
 
     # Temporary
-    X_TESTS_DONE = 'x_tests_done'
+    X_TESTS_DONE = 'x_tests_done'  # Only for GATHERING
 
 
 def run_event_command(event_handler, args):
