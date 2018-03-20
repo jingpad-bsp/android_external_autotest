@@ -83,6 +83,8 @@ SYMBOLIC_BID_LENGTH = 4
 
 gsctool = argparse.ArgumentParser()
 gsctool.add_argument('-a', '--any', dest='universal', action='store_true')
+# Send a rma command
+gsctool.add_argument('-r', '--rma_auth', dest='rma_auth', action='store_true')
 # use /dev/tpm0 to send the command
 gsctool.add_argument('-s', '--systemdev', dest='systemdev', action='store_true')
 # fwver, binver, and board id are used to get information about cr50 or an
@@ -245,7 +247,7 @@ def StopTrunksd(client):
         client.run('stop trunksd')
 
 
-def GSCTool(client, args):
+def GSCTool(client, args, ignore_status=False):
     """Run gsctool with the given args.
 
     Args:
@@ -262,7 +264,7 @@ def GSCTool(client, args):
 
     # If we are updating the cr50 image, gsctool will return a non-zero exit
     # status so we should ignore it.
-    ignore_status = not options.info_cmd
+    ignore_status = not options.info_cmd or ignore_status
     # immediate reboots are only honored if the command is sent using /dev/tpm0
     expect_reboot = ((options.systemdev or options.universal) and
             not options.post_reset and not options.info_cmd)
@@ -273,7 +275,8 @@ def GSCTool(client, args):
                         timeout=UPDATE_TIMEOUT)
 
     # After a posted reboot, the gsctool exit code should equal 1.
-    if result.exit_status and result.exit_status != UPDATE_OK:
+    if (result.exit_status and result.exit_status != UPDATE_OK and
+        not ignore_status):
         logging.debug(result)
         raise error.TestFail('Unexpected gsctool exit code after %s %d' %
                              (' '.join(args), result.exit_status))
@@ -570,6 +573,11 @@ def GetExpectedFlags(flags):
         the original flags or 0xff00 if flags is None
     """
     return flags if flags != None else 0xff00
+
+
+def RMAOpen(client, cmd='', ignore_status=False):
+    """Run gsctool RMA commands"""
+    return GSCTool(client, ['-a', '-r', cmd], ignore_status)
 
 
 def GetChipBoardId(client):
