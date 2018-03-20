@@ -23,14 +23,15 @@ class desktopui_MashLogin(test.test):
           return
 
         # GPU info collection via devtools SystemInfo.getInfo does not work
-        # under mash due to differences in how the GPU process is configured.
-        # http://crbug.com/669965
-        mash_browser_args = ['--mash', '--gpu-no-complete-info-collection']
+        # under mash due to differences in how the GPU process is configured
+        # with mus hosting viz. http://crbug.com/669965
+        mash_browser_args = ['--enable-features=Mash',
+                             '--gpu-no-complete-info-collection']
 
-        logging.info('Testing Chrome --mash startup.')
+        logging.info('Testing Chrome with Mash startup.')
         with chrome.Chrome(auto_login=False, extra_browser_args=mash_browser_args):
-            logging.info('Chrome --mash started and loaded OOBE.')
+            logging.info('Chrome with Mash started and loaded OOBE.')
 
-        logging.info('Testing Chrome --mash login.')
+        logging.info('Testing Chrome with Mash login.')
         with chrome.Chrome(extra_browser_args=mash_browser_args):
-            logging.info('Chrome login with --mash succeeded.')
+            logging.info('Chrome login with Mash succeeded.')
