@@ -147,6 +147,7 @@ suite:memory_qual_quick
 suite:mmc_qual
 suite:moblab
 suite:moblab_quick
+suite:moblab_setup
 suite:network_nightly
 suite:network_ui
 suite:partners
