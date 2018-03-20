@@ -20,9 +20,9 @@ GET_CR50_VERSION = 'cat %s' % CR50_VERSION
 GET_CR50_MESSAGES ='grep "cr50-.*\[" /var/log/messages'
 UPDATE_FAILURE = 'unexpected cr50-update exit code'
 DUMMY_VER = '-1.-1.-1'
-# This dictionary is used to search the usb_updater output for the version
-# strings. There are two usb_updater commands that will return versions:
-# 'fwver' and 'binvers'.
+# This dictionary is used to search the gsctool output for the version strings.
+# There are two gsctool commands that will return versions: 'fwver' and
+# 'binvers'.
 #
 # 'fwver'   is used to get the running RO and RW versions from cr50
 # 'binvers'  gets the version strings for each RO and RW region in the given
@@ -81,19 +81,20 @@ ERASED_CHIP_BID = (ERASED_BID_INT, ERASED_BID_INT, ERASED_BID_INT)
 EMPTY_IMAGE_BID = '00000000:00000000:00000000'
 SYMBOLIC_BID_LENGTH = 4
 
-usb_update = argparse.ArgumentParser()
-usb_update.add_argument('-a', '--any', dest='universal', action='store_true')
+gsctool = argparse.ArgumentParser()
+gsctool.add_argument('-a', '--any', dest='universal', action='store_true')
+# Send a rma command
+gsctool.add_argument('-r', '--rma_auth', dest='rma_auth', action='store_true')
 # use /dev/tpm0 to send the command
-usb_update.add_argument('-s', '--systemdev', dest='systemdev',
-                        action='store_true')
+gsctool.add_argument('-s', '--systemdev', dest='systemdev', action='store_true')
 # fwver, binver, and board id are used to get information about cr50 or an
 # image.
-usb_update.add_argument('-b', '--binvers', '-f', '--fwver', '-i', '--board_id',
-                        dest='info_cmd', action='store_true')
+gsctool.add_argument('-b', '--binvers', '-f', '--fwver', '-i', '--board_id',
+                     dest='info_cmd', action='store_true')
 # upstart and post_reset will post resets instead of rebooting immediately
-usb_update.add_argument('-u', '--upstart', '-p', '--post_reset',
-                        dest='post_reset', action='store_true')
-usb_update.add_argument('extras', nargs=argparse.REMAINDER)
+gsctool.add_argument('-u', '--upstart', '-p', '--post_reset', dest='post_reset',
+                     action='store_true')
+gsctool.add_argument('extras', nargs=argparse.REMAINDER)
 
 
 def AssertVersionsAreEqual(name_a, ver_a, name_b, ver_b):
@@ -160,7 +161,7 @@ def FindVersion(output, arg):
 
     Args:
         output: The string to search
-        arg: string representing the usb_updater option, either '--binvers' or
+        arg: string representing the gsctool option, either '--binvers' or
              '--fwver'
 
     Returns:
@@ -170,7 +171,7 @@ def FindVersion(output, arg):
     versions = versions.groupdict()
     ro = GetVersion(versions, RO)
     rw = GetVersion(versions, RW)
-    # --binver is the only usb_updater command that may have bid keys in its
+    # --binver is the only gsctool command that may have bid keys in its
     # versions dictionary. If no bid keys exist, bid will be None.
     bid = GetVersion(versions, BID)
     # Right now most images that aren't board id locked don't support getting
@@ -246,54 +247,55 @@ def StopTrunksd(client):
         client.run('stop trunksd')
 
 
-def UsbUpdater(client, args):
-    """Run usb_update with the given args.
+def GSCTool(client, args, ignore_status=False):
+    """Run gsctool with the given args.
 
     Args:
         client: the object to run commands on
-        args: a list of strings that contiain the usb_updater args
+        args: a list of strings that contiain the gsctool args
 
     Returns:
-        the result of usb_update
+        the result of gsctool
     """
-    options = usb_update.parse_args(args)
+    options = gsctool.parse_args(args)
 
     if options.systemdev:
         StopTrunksd(client)
 
-    # If we are updating the cr50 image, usb_update will return a non-zero exit
+    # If we are updating the cr50 image, gsctool will return a non-zero exit
     # status so we should ignore it.
-    ignore_status = not options.info_cmd
+    ignore_status = not options.info_cmd or ignore_status
     # immediate reboots are only honored if the command is sent using /dev/tpm0
     expect_reboot = ((options.systemdev or options.universal) and
             not options.post_reset and not options.info_cmd)
 
-    result = client.run('usb_updater %s' % ' '.join(args),
+    result = client.run('gsctool %s' % ' '.join(args),
                         ignore_status=ignore_status,
                         ignore_timeout=expect_reboot,
                         timeout=UPDATE_TIMEOUT)
 
-    # After a posted reboot, the usb_update exit code should equal 1.
-    if result.exit_status and result.exit_status != UPDATE_OK:
+    # After a posted reboot, the gsctool exit code should equal 1.
+    if (result.exit_status and result.exit_status != UPDATE_OK and
+        not ignore_status):
         logging.debug(result)
-        raise error.TestFail('Unexpected usb_update exit code after %s %d' %
+        raise error.TestFail('Unexpected gsctool exit code after %s %d' %
                              (' '.join(args), result.exit_status))
     return result
 
 
 def GetVersionFromUpdater(client, args):
-    """Return the version from usb_updater"""
-    result = UsbUpdater(client, args).stdout.strip()
+    """Return the version from gsctool"""
+    result = GSCTool(client, args).stdout.strip()
     return FindVersion(result, args[0])
 
 
 def GetFwVersion(client):
-    """Get the running version using 'usb_updater --fwver'"""
+    """Get the running version using 'gsctool --fwver'"""
     return GetVersionFromUpdater(client, ['--fwver', '-a'])
 
 
 def GetBinVersion(client, image=CR50_PROD):
-    """Get the image version using 'usb_updater --binvers image'"""
+    """Get the image version using 'gsctool --binvers image'"""
     return GetVersionFromUpdater(client, ['--binvers', image])
 
 
@@ -306,7 +308,7 @@ def GetVersionString(ver):
 def GetRunningVersion(client):
     """Get the running Cr50 version.
 
-    The version from usb_updater and /var/cache/cr50-version should be the
+    The version from gsctool and /var/cache/cr50-version should be the
     same. Get both versions and make sure they match.
 
     Args:
@@ -318,7 +320,7 @@ def GetRunningVersion(client):
     Raises:
         TestFail
         - If the version in /var/cache/cr50-version is not the same as the
-          version from 'usb_updater --fwver'
+          version from 'gsctool --fwver'
     """
     running_ver = GetFwVersion(client)
     saved_ver = GetSavedVersion(client)
@@ -544,7 +546,7 @@ def ConvertSymbolicBoardId(symbolic_board_id):
 
 
 def GetIntBoardId(board_id):
-    """"Return the usb_updater interpretation of board_id
+    """"Return the gsctool interpretation of board_id
 
     Args:
         board_id: a int or string value of the board id
@@ -562,7 +564,7 @@ def GetIntBoardId(board_id):
 
 
 def GetExpectedFlags(flags):
-    """If flags are not specified, usb_updater will set them to 0xff00
+    """If flags are not specified, gsctool will set them to 0xff00
 
     Args:
         flags: The int value or None
@@ -571,6 +573,11 @@ def GetExpectedFlags(flags):
         the original flags or 0xff00 if flags is None
     """
     return flags if flags != None else 0xff00
+
+
+def RMAOpen(client, cmd='', ignore_status=False):
+    """Run gsctool RMA commands"""
+    return GSCTool(client, ['-a', '-r', cmd], ignore_status)
 
 
 def GetChipBoardId(client):
@@ -585,7 +592,7 @@ def GetChipBoardId(client):
     Raises:
         TestFail if the second board id response field is not ~board_id
     """
-    result = UsbUpdater(client, ['-a', '-i']).stdout.strip()
+    result = GSCTool(client, ['-a', '-i']).stdout.strip()
     board_id_info = result.split('Board ID space: ')[-1].strip().split(':')
     board_id, board_id_inv, flags = [int(val, 16) for val in board_id_info]
     logging.info('BOARD_ID: %x:%x:%x', board_id, board_id_inv, flags)
@@ -601,8 +608,8 @@ def GetChipBoardId(client):
 def CheckChipBoardId(client, board_id, flags):
     """Compare the given board_id and flags to the running board_id and flags
 
-    Interpret board_id and flags how usb_updater would interpret them, then
-    compare those interpreted values to the running board_id and flags.
+    Interpret board_id and flags how gsctool would interpret them, then compare
+    those interpreted values to the running board_id and flags.
 
     Args:
         client: the object to run commands on
@@ -644,6 +651,6 @@ def SetChipBoardId(client, board_id, flags=None):
         board_id_arg += ':' + hex(flags)
 
     # Set the board id using the given board id and flags
-    result = UsbUpdater(client, ['-a', '-i', board_id_arg]).stdout.strip()
+    result = GSCTool(client, ['-a', '-i', board_id_arg]).stdout.strip()
 
     CheckChipBoardId(client, board_id, flags)
