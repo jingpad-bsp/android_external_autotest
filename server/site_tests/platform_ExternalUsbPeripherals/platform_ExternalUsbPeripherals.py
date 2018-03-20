@@ -194,9 +194,14 @@ class platform_ExternalUsbPeripherals(test.test):
             if cmd.startswith('loggedin:'):
                 if not self.login_status:
                     continue
-                cmd = cmd.replace('loggedin:','')
+                cmd = cmd.replace('loggedin:', '')
+            board = self.host.get_board().split(':')[1].lower()
             # Run the usb check command
             for out_match in out_match_list:
+                # Skip running media_v4l2_test on hana boards
+                # crbug.com/820500
+                if 'media_v4l2_test' in cmd and board in ["hana"]:
+                    continue
                 match_result = self.wait_for_cmd_output(
                     cmd, out_match, _WAIT_DELAY * 4,
                     'USB CHECKS DETAILS failed at %s %s:' % (cmd, out_match))
