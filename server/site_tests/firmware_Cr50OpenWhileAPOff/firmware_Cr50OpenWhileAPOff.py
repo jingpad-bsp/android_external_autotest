@@ -22,7 +22,7 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
 
     SLEEP_DELAY = 20
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, ccd_lockout):
         """Initialize the test"""
         super(firmware_Cr50OpenWhileAPOff, self).initialize(host, cmdline_args)
 
@@ -36,15 +36,28 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
         if 'servo_v4_with_servo_micro' != self.servo.get_servo_version():
             raise error.TestNAError('Run using servo v4 with servo micro')
 
+        # If ccd is locked out just send the ccd command and make sure you get
+        # a response. You don't care if ccd open succeeds
+        self.ccd_func = (self.ccd_lockout_func if ccd_lockout else
+                self.cr50.set_ccd_level)
+
         # Verify DTS mode while the EC is off. DTS mode needs to work to control
         # deep sleep. Some devices' rdd doesn't work when the EC is off. Make
         # sure it works on this device before running the test.
+        ds_count = self.cr50.get_deep_sleep_count()
         self.servo.set('cold_reset', 'on')
-        dts_mode_works = self.cr50.servo_v4_supports_dts_mode()
-        self.servo.set('cold_reset', 'off')
+        try:
+            # delay 20 seconds, so cr50 will enter deep sleep
+            time.sleep(self.SLEEP_DELAY)
+            dts_mode_works = self.cr50.servo_v4_supports_dts_mode()
+        finally:
+            self.servo.set('cold_reset', 'off')
         if not dts_mode_works:
             raise error.TestNAError('Plug in servo v4 type c cable into ccd '
                     'port')
+        if ds_count != self.cr50.get_deep_sleep_count():
+            raise error.TestNAError('Skipping test on device without deep '
+                    'sleep support')
 
         if not self.cr50.has_command('ccdstate'):
             raise error.TestNAError('Cannot test on Cr50 with old CCD version')
@@ -89,9 +102,18 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
         self.servo.set_nocheck('servo_v4_dts_mode', 'on')
 
 
+    def ccd_lockout_func(self, state):
+        """Send the cr50 command ccd command. Make sure access is denied"""
+        logging.info('running lockout check %s', state)
+        rv = self.cr50.send_command_get_output('ccd %s' % state , ['.*>'])[0]
+        logging.info(rv)
+        if 'Access Denied' not in rv:
+            raise error.TestFail('CCD is not locked out')
+
+
     def try_ccd_open(self, cr50_reset):
         """Try 'ccd open' and make sure the console doesn't hang"""
-        self.cr50.set_ccd_level('lock')
+        self.ccd_func('lock')
 
         try:
             # Hold the EC in reset so the AP wont turn on when we press the
@@ -106,7 +128,7 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
                     raise error.TestFail('Did not detect a cr50 reset')
 
             # Verify ccd open
-            self.cr50.set_ccd_level('open')
+            self.ccd_func('open')
         finally:
             self.restore_dut()
 
