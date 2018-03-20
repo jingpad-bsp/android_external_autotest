@@ -96,7 +96,7 @@ def verify_repo_clean():
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
     out = strip_terminal_codes(out).strip()
 
-    if not 'working directory clean' in out:
+    if not 'working directory clean' in out and not 'working tree clean' in out:
         raise DirtyTreeException(out)
 
 
