@@ -30,7 +30,8 @@ class login_MultipleSessions(test.test):
                 gobject.MainLoop())
         self._listener.listen_for_new_key_and_policy()
 
-        self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(
+            self._bus_loop, self.autodir, self.job)
 
 
     def run_once(self):
