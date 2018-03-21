@@ -34,7 +34,6 @@ except ImportError:
 
 
 _STDOUT_IS_TTY = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
-_HTML_COLUMNS = ['testdir', 'status', 'error_msg', 'crashes']
 
 
 def Die(message_format, *args, **kwargs):
@@ -593,100 +592,103 @@ class ReportGenerator(object):
         """Return cleaned results for HTML report.!"""
         import copy
         tests = copy.deepcopy(self._GetSortedTests())
-        tests_info = []
-        # Get the info of columns which are included in _HTML_COLUMNS
-        for test_status in tests:
-            for html_column in test_status.keys():
-                if html_column not in _HTML_COLUMNS:
-                    del test_status[html_column]
-            tests_info.append(test_status)
-        html_results = {}
         pass_tag = "Pass"
         fail_tag = "Fail"
         na_tag = "NA"
-        individual_tc_results = {}
-        for test_status in tests_info:
-            test_name_num_matched = re.search(r'results-(\d[0-9]*)-(.*)',
-                                              test_status['testdir'])
-            test_log_dir_matched = re.search(r'(.*)results-', test_status[
-                    'testdir'])
-            if not test_name_num_matched and not test_log_dir_matched:
+        count = 0
+        html_results = {}
+        for test_status in tests:
+            individual_tc_results = {}
+            test_details_matched = re.search(r'(.*)results-(\d[0-9]*)-(.*)',
+                                             test_status['testdir'])
+            if not test_details_matched:
                 continue
-            test_name = test_name_num_matched.group(2)
-            test_number = test_name_num_matched.group(1)
-
+            log_dir = test_details_matched.group(1)
+            test_number = test_details_matched.group(2)
+            test_name = test_details_matched.group(3)
+            if '/' in test_name:
+                test_name = test_name.split('/')[0]
             if test_status['error_msg'] is None:
                 test_status['error_msg'] = ''
-            test_log_dir = test_log_dir_matched.group(1)
-            test_num_log_dir = test_number + '-' + test_log_dir
-            if not html_results.get(test_num_log_dir):
-                individual_tc_results = {}  # Empty dictionary after each TC
-                # Iterating through each html column to get in order.
-                for col in _HTML_COLUMNS:
-                    if col == 'testdir':
-                        individual_tc_results['test'] = test_name
-                    else:
-                        individual_tc_results[col] = test_status[col]
-            else:
-                if test_status['status'] is False:
-                    for col in _HTML_COLUMNS:
-                        if col != 'testdir':
-                            if type(test_status[col]) == "<type 'bool'>":
-                                html_results[test_num_log_dir][col] = \
-                                        test_status[col]
-                            else:
-                                html_results[test_num_log_dir][col] = \
-                                        html_results[test_num_log_dir][col] + \
-                                        test_status[col]
+            if not html_results.has_key(test_name):
+                count = count + 1
+                # Arranging the results in an order
+                individual_tc_results['status'] = test_status['status']
+                individual_tc_results['error_msg'] = test_status['error_msg']
+                individual_tc_results['s_no'] = count
+                individual_tc_results['crashes'] = test_status['crashes']
 
-            html_results[test_num_log_dir] = individual_tc_results
+                # Add <b> and </b> tag for the good format in the report.
+                individual_tc_results['attempts'] = \
+                    '<b>test_result_number: %s - %s</b> : %s' % (
+                        test_number, log_dir, test_status['error_msg'])
+                html_results[test_name] = individual_tc_results
+            else:
+
+                # If test found already then we are using the previous data
+                # instead of creating two different html rows. If existing
+                # status is False then needs to be updated
+                if html_results[test_name]['status'] is False:
+                    html_results[test_name]['status'] = test_status['status']
+                    html_results[test_name]['error_msg'] = test_status[
+                        'error_msg']
+                    html_results[test_name]['crashes'] = \
+                        html_results[test_name]['crashes'] + test_status[
+                            'crashes']
+                    html_results[test_name]['attempts'] = \
+                        html_results[test_name]['attempts'] + \
+                        '</br><b>test_result_number : %s - %s</b> : %s' % (
+                            test_number, log_dir, test_status['error_msg'])
+
+        # Re-formating the dictionary as s_no as key. So that we can have
+        # ordered data at the end
+        sorted_html_results = {}
+        for key in html_results.keys():
+            sorted_html_results[str(html_results[key]['s_no'])] = \
+                    html_results[key]
+            sorted_html_results[str(html_results[key]['s_no'])]['test'] = key
 
         # Mapping the Test case status if True->Pass, False->Fail and if
         # True and the error message then NA
-        for key in html_results.keys():
-            if html_results[key]['status']:
-                if html_results[key]['error_msg'] != '':
-                    html_results[key]['status'] = na_tag
+        for key in sorted_html_results.keys():
+            if sorted_html_results[key]['status']:
+                if sorted_html_results[key]['error_msg'] != '':
+                    sorted_html_results[key]['status'] = na_tag
                 else:
-                    html_results[key]['status'] = pass_tag
+                    sorted_html_results[key]['status'] = pass_tag
             else:
-                html_results[key]['status'] = fail_tag
+                sorted_html_results[key]['status'] = fail_tag
 
-        return html_results
-
+        return sorted_html_results
 
     def GenerateReportHTML(self):
         """Generate clean HTMl report for the results."""
 
         results = self._GetResultsForHTMLReport()
-        passed_tests = [test_key for test_key in results.keys() if results[
-            test_key]['status'].lower() == 'pass']
-        failed_tests = [test_key for test_key in results.keys() if results[
-            test_key]['status'].lower() == 'fail']
-        na_tests = [test_key for test_key in results.keys() if results[
-            test_key]['status'].lower() == 'na']
-        total_tests = len(passed_tests) + len(failed_tests) + len(na_tests)
-        html_table_header = "<th>S.No</th><th>Results Directory</th>"
-        for column in _HTML_COLUMNS:
-            # tabs are for making generated HTML file in format.
-            if column == 'testdir':
-                column = 'test'
-            html_table_header = html_table_header + \
-                                '\t\t\t\t\t\t<th>%s</th>\n' % \
-                                column.capitalize()
+        html_table_header = """ <th>S.No</th>
+                                <th>Test</th>
+                                <th>Status</th>
+                                <th>Error Message</th>
+                                <th>Crashes</th>
+                                <th>Attempts</th>
+                            """
+        # Sort the keys
+        ordered_keys = sorted([int(key) for key in results.keys()])
         html_table_body = ''
-        for key in sorted(results.keys()):
-            html_table_body = html_table_body + \
-                              "\t\t\t\t\t<tr><td>%s</td><td>%s</td>\n" % (
-                                  key.split('-')[0], key.split('-')[1])
-            for column in _HTML_COLUMNS:
-                if column == 'testdir':
-                    column = 'test'
-                html_table_body = html_table_body + \
-                    '\t\t\t\t\t\t<td>%s</td>\n' % results[
-                        key][column]
-            html_table_body = html_table_body + '\t\t\t\t\t</tr>\n'
-
+        for key in ordered_keys:
+            key = str(key)
+            html_table_body = html_table_body + """<tr>
+                                                    <td>%s</td>
+                                                    <td>%s</td>
+                                                    <td>%s</td>
+                                                    <td>%s</td>
+                                                    <td>%s</td>
+                                                    <td>%s</td></tr>""" % \
+                                                (key, results[key]['test'],
+                                                 results[key]['status'],
+                                                 results[key]['error_msg'],
+                                                 results[key]['crashes'],
+                                                 results[key]['attempts'])
         html_page = """
                         <!DOCTYPE html>
                         <html lang="en">
@@ -711,21 +713,12 @@ class ReportGenerator(object):
                                     \n%s
                                     </tbody>
                                 </table>
-                                <div class="row">
-                                    <div class="col-sm-4">Passed: %s</div>
-                                    <div class="col-sm-4">Failed: %s</div>
-                                    <div class="col-sm-4">NA: %s</div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-4">Total: %s</div>
-                                </div>
+
                             </div>
                         </body>
                         </html>
 
-                """ % (html_table_header, html_table_body,
-                       len(passed_tests), len(failed_tests), len(na_tests),
-                       total_tests)
+                """ % (html_table_header, html_table_body)
         with open(os.path.join(self._options.html_report_dir,
                                "test_report.html"), 'w') as html_file:
             html_file.write(html_page)
