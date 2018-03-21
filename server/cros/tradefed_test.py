@@ -877,7 +877,11 @@ class TradefedTest(test.test):
         target_argument = []
         for host in self._hosts:
             target_argument += ['-s', self._get_adb_target(host)]
-        shard_argument = ['--shards', str(len(self._hosts))]
+        # TODO(ihf): --shards option not available on P. Figure out what happened.
+        # For now, don't add it in the canonical case to unbreak P.
+        shard_argument = []
+        if len(self._hosts) > 1:
+            shard_argument = ['--shards', str(len(self._hosts))]
         commands = [command + target_argument + shard_argument
                     for command in commands]
 
