@@ -27,6 +27,7 @@ pinmux
 (?P<rma>rma_auth)?
 -serialno
 shmem
+(?P<ccd_v1>-?spihash)?
 sysinfo
 sysrst
 taskinfo
