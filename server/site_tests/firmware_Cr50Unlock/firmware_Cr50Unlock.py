@@ -38,7 +38,7 @@ class firmware_Cr50Unlock(FirmwareTest):
                 ignore_status=not unlock_allowed)
         if not unlock_allowed and (result.exit_status != 3 or
             'Error: rv 7, response 7' not in result.stderr):
-            raise error.TestFail('unexpected lockout result %r', result)
+            raise error.TestFail('unexpected lockout result %r' % result)
         self.check_unlock(unlock_allowed)
 
 
