@@ -2,9 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json, numpy, os, time, urllib, urllib2
+import json
+import numpy
+import os
+import time
+import urllib
+import urllib2
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
@@ -30,7 +36,6 @@ class BaseDashboard(object):
         self._resultsdir = resultsdir
         self._uploadurl = uploadurl
 
-
     def _create_powerlog_dict(self, raw_measurement):
         """Create powerlog dictionary from raw measurement data
         Data format in go/power-dashboard-data.
@@ -50,7 +55,6 @@ class BaseDashboard(object):
         }
         return powerlog_dict
 
-
     def _create_dut_info_dict(self, power_rails):
         """Create a dictionary that contain information of the DUT.
 
@@ -64,7 +68,6 @@ class BaseDashboard(object):
         """
         raise NotImplementedError
 
-
     def _save_json(self, powerlog_dict, resultsdir, filename='power_log.json'):
         """Convert powerlog dict to human readable formatted JSON and
         save to <resultsdir>/<filename>.
@@ -74,22 +77,23 @@ class BaseDashboard(object):
             resultsdir: directory to save formatted JSON object
             filename: filename to save
         """
+        if not os.path.exists(resultsdir):
+            raise error.TestError('resultsdir %s does not exist.' % resultsdir)
         filename = os.path.join(resultsdir, filename)
         with file(filename, 'w') as f:
             json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
-
 
     def _upload(self, powerlog_dict, uploadurl):
         """Convert powerlog dict to minimal size JSON and upload to dashboard.
 
         Args:
             powerlog_dict: dictionary of power data
+            uploadurl: url to upload the power data
         """
         data_obj = {'data': json.dumps(powerlog_dict)}
         encoded = urllib.urlencode(data_obj)
         req = urllib2.Request(uploadurl, encoded)
         urllib2.urlopen(req)
-
 
     def _convert(self):
         """Convert data from self._logger object to raw power measurement
@@ -137,7 +141,7 @@ class ClientTestDashboard(BaseDashboard):
                 'ec': utils.get_ec_version(),
                 'kernel': utils.get_kernel_version(),
             },
-            'sku' : {
+            'sku': {
                 'cpu': utils.get_cpu_name(),
                 'memory_size': utils.get_mem_total_gb(),
                 'storage_size': utils.get_disk_size_gb(utils.get_root_device()),
