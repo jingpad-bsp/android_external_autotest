@@ -160,14 +160,18 @@ class EventHandler(object):
         """Perform Autotest operations needed for job completion."""
         models = autotest.load('frontend.afe.models')
         final_status = self._final_status()
-        for hqe in self._job.hostqueueentry_set.all():
-            self._set_completed_status(hqe, final_status)
+        self._mark_hqes_complete(final_status)
         if final_status is not models.HostQueueEntry.Status.ABORTED:
             _stop_prejob_hqes(self._job)
         if self._job.shard_id is not None:
             # If shard_id is None, the job will be synced back to the master
             self._job.shard_id = None
             self._job.save()
+
+    def _mark_hqes_complete(self, final_status):
+        """Perform Autotest HQE operations needed for job completion."""
+        for hqe in self._job.hostqueueentry_set.all():
+            self._set_completed_status(hqe, final_status)
 
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
