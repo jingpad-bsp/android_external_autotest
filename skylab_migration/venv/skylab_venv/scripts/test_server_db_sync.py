@@ -113,7 +113,6 @@ class ServerDbSyncTest(unittest.TestCase):
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
@@ -126,16 +125,32 @@ class ServerDbSyncTest(unittest.TestCase):
     db_output = {'servers': [sds.Server('foo', None, 'primary', '')],
                  'server_attributes': [], 'server_roles': []}
     table = 'servers'
-    server_id_map = {'foo': 1}
 
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
-    delete_cmd = "DELETE FROM servers WHERE hostname='foo'"
+    delete_cmd = "DELETE FROM servers WHERE hostname='foo';"
     insert_cmd = ("INSERT INTO servers (hostname, cname, status, note) "
-                  "VALUES('foo', NULL, 'backup', '')")
+                  "VALUES('foo', NULL, 'backup', NULL);")
+    self.assertEqual([delete_cmd, insert_cmd], result)
+
+
+  def testCreateMysqlUpdatesServersTableToDealWithUnicode(self):
+    """Test create_mysql_updates to handle unicode string."""
+    api_output = {'servers': [sds.Server(u'foo', u'fake_cname', u'backup', '')],
+                  'server_attributes': [], 'server_roles': []}
+    db_output = {'servers': [sds.Server('foo', None, 'primary', '')],
+                 'server_attributes': [], 'server_roles': []}
+    table = 'servers'
+
+    result = sds.create_mysql_updates(api_output,
+                                      db_output,
+                                      table,
+                                      False)
+    delete_cmd = "DELETE FROM servers WHERE hostname='foo';"
+    insert_cmd = ("INSERT INTO servers (hostname, cname, status, note) "
+                  "VALUES('foo', 'fake_cname', 'backup', NULL);")
     self.assertEqual([delete_cmd, insert_cmd], result)
 
 
@@ -148,19 +163,17 @@ class ServerDbSyncTest(unittest.TestCase):
         'server_attributes': [sds.ServerAttribute('foo', 'ip', '1')],
         'servers': [], 'server_roles': []}
     table = 'server_attributes'
-    server_id_map = {'foo': 1, 'bar': 2}
 
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
 
 
-  def testCreateMysqlUpdatesServersAttrsTableWhenDbIsInconsistent(self):
-    """Test create_mysql_updates with servers table."""
+  def testCreateMysqlUpdatesServersAttrsTableWithInsert(self):
+    """Test create_mysql_updates to insert into server_attributes table."""
     api_output = {
         'server_attributes': [sds.ServerAttribute('foo', 'ip', '1'),
                                sds.ServerAttribute('bar', 'ip', '2')],
@@ -169,15 +182,31 @@ class ServerDbSyncTest(unittest.TestCase):
         'server_attributes': [sds.ServerAttribute('foo', 'ip', '1')],
         'servers': [], 'server_roles': []}
     table = 'server_attributes'
-    server_id_map = {'foo': 1, 'bar': 2}
 
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
-    insert_cmd = ("INSERT INTO server_attributes (server_id, attribute, value)"
-                  " VALUES(2, 'ip', '2')")
+    insert_cmd = ("INSERT INTO server_attributes (server_id, attribute, value) "
+                  "SELECT id, 'ip', '2' FROM servers WHERE hostname='bar';")
+    self.assertEqual([insert_cmd], result)
+
+
+  def testCreateMysqlUpdatesServersAttrsTableWithDeletes(self):
+    """Test create_mysql_updates to delete from server_attributes table."""
+    api_output = {
+        'server_attributes': [], 'servers': [], 'server_roles': []}
+    db_output = {
+        'server_attributes': [sds.ServerAttribute('foo', 'ip', '1')],
+        'servers': [], 'server_roles': []}
+    table = 'server_attributes'
+
+    result = sds.create_mysql_updates(api_output,
+                                      db_output,
+                                      table,
+                                      False)
+    insert_cmd = ("DELETE FROM server_attrs WHERE attribute='ip' and "
+                  "server_id=(SELECT id FROM servers WHERE hostname='foo');")
     self.assertEqual([insert_cmd], result)
 
 
@@ -188,34 +217,47 @@ class ServerDbSyncTest(unittest.TestCase):
     db_output = {'servers': [], 'server_attributes': [],
                  'server_roles': [sds.ServerRole('foo', 'afe')]}
     table = 'server_roles'
-    server_id_map = {'foo': 1}
 
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
     expect_returns = []
     self.assertEqual(expect_returns, result)
 
 
-  def testCreateMysqlUpdatesServerRolesTableWhenDbIsInconsistent(self):
-    """Test create_mysql_updates with servers table."""
+  def testCreateMysqlUpdatesServerRolesTableWithInsert(self):
+    """Test create_mysql_updates with server_roles table."""
+    api_output = {'servers': [], 'server_attributes': [],
+                  'server_roles': [sds.ServerRole('foo', 'afe')]}
+    db_output = {'servers': [], 'server_attributes': [],
+                 'server_roles': []}
+    table = 'server_roles'
+
+    result = sds.create_mysql_updates(api_output,
+                                      db_output,
+                                      table,
+                                      False)
+    delete_cmd = ("INSERT INTO server_roles (server_id, role) "
+                  "SELECT id, 'afe' FROM servers WHERE hostname='foo';")
+    self.assertEqual([delete_cmd], result)
+
+
+  def testCreateMysqlUpdatesServerRolesTableWithDeletes(self):
+    """Test create_mysql_updates to delete from server_roles table."""
     api_output = {'servers': [], 'server_attributes': [],
                   'server_roles': [sds.ServerRole('foo', 'afe')]}
     db_output = {'servers': [], 'server_attributes': [],
                  'server_roles': [sds.ServerRole('foo', 'afe'),
                                   sds.ServerRole('bar', 'scheduler')]}
     table = 'server_roles'
-    server_id_map = {'foo': 1, 'bar': 2}
 
     result = sds.create_mysql_updates(api_output,
                                       db_output,
                                       table,
-                                      server_id_map,
                                       False)
-    delete_cmd = ("DELETE FROM server_roles WHERE server_id=2 "
-                  "and role='scheduler'")
+    delete_cmd = ("DELETE FROM server_roles WHERE role='scheduler' and "
+                  "server_id=(SELECT id FROM servers WHERE hostname='bar');")
     self.assertEqual([delete_cmd], result)
 
 
