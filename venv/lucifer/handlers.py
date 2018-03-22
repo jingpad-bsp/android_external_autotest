@@ -69,31 +69,6 @@ class EventHandler(object):
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.GATHERING)
 
-    def _handle_x_tests_done(self, msg):
-        """Taken from GatherLogsTask.epilog."""
-        autoserv_exit, failures = (int(x) for x in msg.split(','))
-        logger.debug('Got autoserv_exit=%d, failures=%d',
-                     autoserv_exit, failures)
-        success = (autoserv_exit == 0 and failures == 0)
-        reset_after_failure = not self._job.run_reset and not success
-        hqes = self._job.hostqueueentry_set.all().prefetch_related('host')
-        if self._should_reboot_duts(autoserv_exit, failures,
-                                    reset_after_failure):
-            logger.debug('Creating cleanup jobs for hosts')
-            for entry in hqes:
-                self._handle_host_needs_cleanup(entry.host.hostname)
-        else:
-            logger.debug('Not creating cleanup jobs for hosts')
-            for entry in hqes:
-                self._handle_host_ready(entry.host.hostname)
-        if not reset_after_failure:
-            logger.debug('Skipping reset because reset_after_failure is False')
-            return
-        logger.debug('Creating reset jobs for hosts')
-        self._metrics.send_reset_after_failure(autoserv_exit, failures)
-        for entry in hqes:
-            self._handle_host_needs_reset(entry.host.hostname)
-
     def _handle_parsing(self, _msg):
         models = autotest.load('frontend.afe.models')
         self._job.hostqueueentry_set.all().update(
@@ -147,6 +122,31 @@ class EventHandler(object):
                 host_id=host.id,
                 task=models.SpecialTask.Task.RESET,
                 requested_by=models.User.objects.get(login=self._job.owner))
+
+    def _handle_x_tests_done(self, msg):
+        """Taken from GatherLogsTask.epilog."""
+        autoserv_exit, failures = (int(x) for x in msg.split(','))
+        logger.debug('Got autoserv_exit=%d, failures=%d',
+                     autoserv_exit, failures)
+        success = (autoserv_exit == 0 and failures == 0)
+        reset_after_failure = not self._job.run_reset and not success
+        hqes = self._job.hostqueueentry_set.all().prefetch_related('host')
+        if self._should_reboot_duts(autoserv_exit, failures,
+                                    reset_after_failure):
+            logger.debug('Creating cleanup jobs for hosts')
+            for entry in hqes:
+                self._handle_host_needs_cleanup(entry.host.hostname)
+        else:
+            logger.debug('Not creating cleanup jobs for hosts')
+            for entry in hqes:
+                self._handle_host_ready(entry.host.hostname)
+        if not reset_after_failure:
+            logger.debug('Skipping reset because reset_after_failure is False')
+            return
+        logger.debug('Creating reset jobs for hosts')
+        self._metrics.send_reset_after_failure(autoserv_exit, failures)
+        for entry in hqes:
+            self._handle_host_needs_reset(entry.host.hostname)
 
     def _should_reboot_duts(self, autoserv_exit, failures, reset_after_failure):
         models = autotest.load('frontend.afe.models')
