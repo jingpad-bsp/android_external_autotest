@@ -672,19 +672,36 @@ class ReportGenerator(object):
                                 <th>Crashes</th>
                                 <th>Attempts</th>
                             """
+        passed_tests = len([key for key in results.keys() if results[key][
+                'status'].lower() == 'pass'])
+        failed_tests = len([key for key in results.keys() if results[key][
+            'status'].lower() == 'fail'])
+        na_tests = len([key for key in results.keys() if results[key][
+            'status'].lower() == 'na'])
+        total_tests = passed_tests + failed_tests + na_tests
+
         # Sort the keys
         ordered_keys = sorted([int(key) for key in results.keys()])
         html_table_body = ''
         for key in ordered_keys:
             key = str(key)
+            if results[key]['status'].lower() == 'pass':
+                color = 'Lime'
+            elif results[key]['status'].lower() == 'na':
+                color = 'yellow'
+            else:
+                color = 'red'
             html_table_body = html_table_body + """<tr>
                                                     <td>%s</td>
                                                     <td>%s</td>
-                                                    <td>%s</td>
+                                                    <td
+                                                    style="background-color:%s;">
+                                                    %s</td>
                                                     <td>%s</td>
                                                     <td>%s</td>
                                                     <td>%s</td></tr>""" % \
                                                 (key, results[key]['test'],
+                                                 color,
                                                  results[key]['status'],
                                                  results[key]['error_msg'],
                                                  results[key]['crashes'],
@@ -705,7 +722,7 @@ class ReportGenerator(object):
                                 <h2>Automation Report</h2>
                                 <table class="table table-bordered">
                                     <thead>
-                                        <tr>
+                                        <tr style="background-color:Gainsboro;">
                                         \n%s
                                         </tr>
                                     </thead>
@@ -713,12 +730,20 @@ class ReportGenerator(object):
                                     \n%s
                                     </tbody>
                                 </table>
-
+                                <div class="row">
+                                    <div class="col-sm-4">Passed: <b>%d</b></div>
+                                    <div class="col-sm-4">Failed: <b>%d</b></div>
+                                    <div class="col-sm-4">NA: <b>%d</b></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-4">Total: <b>%d</b></div>
+                                </div>
                             </div>
                         </body>
                         </html>
 
-                """ % (html_table_header, html_table_body)
+                """ % (html_table_header, html_table_body, passed_tests,
+                       failed_tests, na_tests, total_tests)
         with open(os.path.join(self._options.html_report_dir,
                                "test_report.html"), 'w') as html_file:
             html_file.write(html_page)
