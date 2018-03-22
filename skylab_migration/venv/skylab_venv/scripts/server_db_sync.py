@@ -295,8 +295,8 @@ def _modify_table(cursor, mysql_cmds, table):
     logging.error(msg)
     raise UpdateDatabaseException(msg)
   finally:
-    num_deletes = len([cmd.startswith('DELETE') for cmd in mysql_cmds])
-    num_inserts = len([cmd.startswith('INSERT') for cmd in mysql_cmds])
+    num_deletes = len([cmd for cmd in mysql_cmds if cmd.startswith('DELETE')])
+    num_inserts = len([cmd for cmd in mysql_cmds if cmd.startswith('INSERT')])
     metrics.Gauge(_METRICS_PREFIX + '/inconsistency_fixed').set(
         num_deletes,
         fields={'table': table, 'action': 'delete', 'succeed': succeed})
