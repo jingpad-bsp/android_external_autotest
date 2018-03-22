@@ -36,14 +36,20 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     ON = 'on'
     OFF = 'off'
     UNDETECTABLE = 'undetectable'
+    DETECTABLE = 'detectable'
     # There are many valid CCD state strings. These lists define which strings
     # translate to off, on and unknown.
     STATE_VALUES = {
         OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC',
                 'UARTAP UARTEC I2C'],
-        ON : ['on', 'connected', 'enabled', 'UARTAP+TX UARTEC+TX I2C SPI'],
+        ON : ['on', 'connected', 'enabled'],
         UNDETECTABLE : ['undetectable'],
+        DETECTABLE : ['disconnected', 'connected'],
     }
+    # When CCD is locked out the 'on' state flags will look like this
+    ON_CCD_LOCKOUT = 'UARTAP+TX UARTEC'
+    # When CCD is accessible the 'on' state flags will look like this
+    ON_CCD_ACCESSIBLE = 'UARTAP+TX UARTEC+TX I2C SPI'
     # RESULT_ORDER is a list of the CCD state strings. The order corresponds
     # with the order of the key states in EXPECTED_RESULTS.
     RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
@@ -91,8 +97,18 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         'fake_servo on, cr50_run reboot' : [OFF, OFF, ON],
     }
 
+    # Results that will be slightly different if ccd is locked out.
+    EXPECTED_CCD_LOCKOUT_RESULTS = {
+        # When CCD is disabled we can always detect servo.
+        'rdd attach' : [ON, ON, DETECTABLE],
 
-    def initialize(self, host, cmdline_args):
+        # Cr50 can always detect servo if ccd is locked out
+        'rdd attach, fake_servo off' : [ON, ON, OFF],
+        'rdd attach, fake_servo on' : [OFF, ON, ON],
+    }
+
+
+    def initialize(self, host, cmdline_args, ccd_lockout):
         super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args)
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
@@ -104,32 +120,37 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         if not self.cr50.has_command('ccdstate'):
             raise error.TestNAError('Cannot test on Cr50 with old CCD version')
 
+        if not self.cr50.servo_v4_supports_dts_mode():
+            raise error.TestNAError('Need working servo v4 DTS control')
+
+        self.ccd_lockout = ccd_lockout
+        if self.ccd_lockout:
+            self.STATE_VALUES[self.ON].append(self.ON_CCD_LOCKOUT)
+            logging.info('Skipping ccd initialization because ccd')
+            return
+        else:
+            self.STATE_VALUES[self.ON].append(self.ON_CCD_ACCESSIBLE)
+
+        self._original_ccd_level = self.cr50.get_ccd_level()
+        # Enable testlab mode
         self._original_testlab_state = self.servo.get('cr50_testlab')
         self.cr50.set_ccd_testlab('on')
         if not self.cr50.testlab_is_on():
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
-
-        self._orignal_ccdstate = self.get_ccdstate()
-
-        if not self.cr50.servo_v4_supports_dts_mode():
-            raise error.TestNAError('Need working servo v4 DTS control')
+        self.cr50.send_command('ccd testlab open')
 
 
     def cleanup(self):
         """Disable CCD and reenable the EC uart"""
-        if hasattr(self, '_orignal_testlab_state'):
-            self.cr50.set_ccd_testlab(self._original_testlab_state)
-        if (hasattr(self, '_orignal_ccdstate') and
-            self._orignal_ccdstate != self.get_ccdstate()):
-            self.reset_ccd()
-            self.run_steps(self.CLEANUP)
-
+        self.reset_ccd()
+        self.run_steps(self.CLEANUP)
+        if hasattr(self, '_original_ccd_level'):
+            self.cr50.set_ccd_level(self._original_ccd_level)
         super(firmware_Cr50CCDServoCap, self).cleanup()
 
 
     def get_ccdstate(self):
         """Get the current Cr50 CCD states"""
-        self.cr50.send_command('ccd testlab open')
         rv = self.cr50.send_command_get_output('ccdstate',
             ['ccdstate(.*)>'])[0][1].split('\n')
         ccdstate = {}
@@ -154,10 +175,18 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         if run not in self.EXPECTED_RESULTS:
             raise error.TestError('Add results for %s to EXPECTED_RESULTS', run)
         expected_states = self.EXPECTED_RESULTS[run]
+
+        # If ccd is locked out change the expected state
+        if self.ccd_lockout and run in self.EXPECTED_CCD_LOCKOUT_RESULTS:
+            expected_states = self.EXPECTED_CCD_LOCKOUT_RESULTS[run]
+
         mismatch = []
         ccdstate = self.get_ccdstate()
         for i, expected_state in enumerate(expected_states):
             name = self.RESULT_ORDER[i]
+            if not expected_state:
+                logging.info('No expected %s state skipping check', name)
+                continue
             actual_state = ccdstate[name]
             valid_values = self.STATE_VALUES[expected_state]
             # Check that the current state is one of the valid states.
@@ -246,7 +275,15 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     def run_once(self):
         """Run through TEST_CASES and verify that Cr50 enables/disables uart"""
         for steps in self.TEST_CASES:
+            # We dont have access to the reboot command when cr50 is locked out.
+            # Skip any tests that rely on that.
+            if self.ccd_lockout and 'cr50_run reboot' in steps:
+                logging.info('SKIPPING: %s', steps)
+                continue
             self.run_steps('reset_ccd state')
             logging.info('TESTING: %s', steps)
             self.run_steps(steps)
             logging.info('VERIFIED: %s', steps)
+        if self.ccd_lockout:
+            raise error.TestNAError('Cannot fully verify device state while '
+                    'ccd is locked out')
