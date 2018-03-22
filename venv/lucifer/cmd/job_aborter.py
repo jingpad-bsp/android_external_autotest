@@ -100,7 +100,8 @@ def _mark_expired_jobs_failed(metrics, active_leases):
     for handoff in handoffs.incomplete():
         logger.debug('Found handoff: %d', handoff.job_id)
         if handoff.job_id not in active_leases:
-            logger.debug('Handoff %d is missing active lease', handoff.job_id)
+            logger.info('Handoff %d is missing active lease; cleaning up',
+                        handoff.job_id)
             job_ids.append(handoff.job_id)
     handoffs.clean_up(job_ids)
     handoffs.mark_complete(job_ids)
@@ -114,6 +115,7 @@ def _abort_timed_out_jobs(active_leases):
     """
     for job in _timed_out_jobs_queryset():
         if job.id in active_leases:
+            logger.info('Job %d is timed out; aborting', job.id)
             active_leases[job.id].maybe_abort()
 
 
@@ -124,6 +126,7 @@ def _abort_jobs_marked_aborting(active_leases):
     """
     for job in _aborting_jobs_queryset():
         if job.id in active_leases:
+            logger.info('Job %d is marked for aborting; aborting', job.id)
             active_leases[job.id].maybe_abort()
 
 
