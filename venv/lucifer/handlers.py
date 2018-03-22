@@ -75,16 +75,7 @@ class EventHandler(object):
                 status=models.HostQueueEntry.Status.PARSING)
 
     def _handle_completed(self, _msg):
-        models = autotest.load('frontend.afe.models')
-        final_status = self._final_status()
-        for hqe in self._job.hostqueueentry_set.all():
-            self._set_completed_status(hqe, final_status)
-        if final_status is not models.HostQueueEntry.Status.ABORTED:
-            _stop_prejob_hqes(self._job)
-        if self._job.shard_id is not None:
-            # If shard_id is None, the job will be synced back to the master
-            self._job.shard_id = None
-            self._job.save()
+        self._mark_job_complete()
         self.completed = True
 
     def _handle_test_passed(self, msg):
@@ -164,6 +155,19 @@ class EventHandler(object):
             return True
         else:
             return failures > 0 and not reset_after_failure
+
+    def _mark_job_complete(self):
+        """Perform Autotest operations needed for job completion."""
+        models = autotest.load('frontend.afe.models')
+        final_status = self._final_status()
+        for hqe in self._job.hostqueueentry_set.all():
+            self._set_completed_status(hqe, final_status)
+        if final_status is not models.HostQueueEntry.Status.ABORTED:
+            _stop_prejob_hqes(self._job)
+        if self._job.shard_id is not None:
+            # If shard_id is None, the job will be synced back to the master
+            self._job.shard_id = None
+            self._job.save()
 
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
