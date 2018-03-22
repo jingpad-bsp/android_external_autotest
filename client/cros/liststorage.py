@@ -230,7 +230,13 @@ def get_partition_info(part_path, bus, model, partid=None, fstype=None,
                     dev['fs_uuid'] = partid
                     dev['fstype'] = proc_fstype
                     dev['is_mounted'] = True
-                    dev['mountpoint'] = mount
+                    # When USB device is mounted automatically after login a
+                    # non-labelled drive is mounted to:
+                    # '/media/removable/USB Drive'
+                    # Here an octal unicode '\040' is added to the path
+                    # replacing ' ' (space).
+                    # Following '.decode('unicode-escape')' handles the same
+                    dev['mountpoint'] = mount.decode('unicode-escape')
                     dev['usb_type'], dev['serial'] = \
                             get_usbdevice_type_and_serial(dev['device'],
                                                           lsusb_info=lsusb_info,
