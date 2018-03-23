@@ -1,0 +1,15 @@
+NAME = "platform_MemoryPressure"
+PURPOSE = "Verify tab discarding occurs and is sane."
+CRITERIA = """
+
+"""
+AUTHOR="Luigi Semenzato"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+DOC = """
+
+"""
+
+job.run_test('platform_MemoryPressure', flavor='realistic')

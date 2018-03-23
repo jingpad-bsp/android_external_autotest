@@ -509,7 +509,7 @@ def parse_options():
                          'afe_labels and static tables. To-be-deleted labels '
                          'will be removed from both tables too.Default to '
                          'False')
-  parser.add_option('-e', '--environment', default=ENVIRONMENT_PROD,
+  parser.add_option('-e', '--environment', default='prod',
                     help='Environment of the local database, prod or staging. '
                          'Default is prod')
   parser.add_option('-s', '--sleep', type=int, default=300,
@@ -536,10 +536,12 @@ def verify_options_and_args(options, args):
                   ' DB. Please specify them through the command line.')
     return False
 
-  valid_env_inputs = [ENVIRONMENT_PROD, ENVIRONMENT_STAGING]
+  valid_env_inputs = ['prod', 'staging']
   if options.environment not in valid_env_inputs:
     logging.error('Invalid environment: %s, valid inputs: %s', valid_env_inputs)
     return False
+  else:
+    options.environment = 'ENVIRONMENT_%s' % options.environment.upper()
 
   return True
 

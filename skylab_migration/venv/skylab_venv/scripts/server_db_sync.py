@@ -151,8 +151,7 @@ def inventory_api_response_parse(response, environment):
   return api_output
 
 
-def create_mysql_updates(api_output, db_output, table,
-                         server_id_map, warn_only):
+def create_mysql_updates(api_output, db_output, table, warn_only):
   """Sync up servers table in server db with the inventory service.
 
   First step, entries in server_db but not in inventory services will be deleted
@@ -165,7 +164,6 @@ def create_mysql_updates(api_output, db_output, table,
   @param db_output: a dict mapping table name to list of corresponding
                     namedtuples parsed from server db.
   @param table: name of the targeted server_db table.
-  @param server_id_map: server hostname to id mapping dict.
   @param warn_only: whether it is warn_only. If yes, there will be no server id
                     for server_attributes and server_roles.
 
@@ -184,14 +182,17 @@ def create_mysql_updates(api_output, db_output, table,
                  'deleted from server db:\n%s',  table, delete_entries)
 
     for entry in delete_entries:
+      hostname = entry.hostname.encode('utf-8')
       if table == 'servers':
-        cmd = 'DELETE FROM servers WHERE hostname=%r' % entry.hostname
+        cmd = 'DELETE FROM servers WHERE hostname=%r;' % hostname
       elif table == 'server_attributes':
-        cmd = ('DELETE FROM server_attrs WHERE server_id=%d and attribute=%r' %
-               (server_id_map[entry.hostname], entry.attribute))
+        cmd = ('DELETE FROM server_attrs WHERE attribute=%r and server_id='
+               '(SELECT id FROM servers WHERE hostname=%r);'%
+               (entry.attribute.encode('utf-8'), hostname))
       else:
-        cmd = ('DELETE FROM server_roles WHERE server_id=%d and role=%r' %
-               (server_id_map[entry.hostname], entry.role))
+        cmd = ('DELETE FROM server_roles WHERE role=%r and server_id='
+               '(SELECT id FROM servers WHERE hostname=%r);'%
+               (entry.role.encode('utf-8'), hostname))
       mysql_cmds.append(cmd)
 
   if insert_entries:
@@ -200,29 +201,25 @@ def create_mysql_updates(api_output, db_output, table,
                  ' be inserted in to server db:\n%s', table, insert_entries)
 
     for entry in insert_entries:
-      # If this is warn_only, it is very likely that the server id for new
-      # entry does not exsit since the server has not been inserted into servers
-      # table yet. For this case, fake it as 0.
-      if warn_only and not server_id_map.get(entry.hostname):
-        server_id = 0
-      else:
-        server_id = server_id_map[entry.hostname]
-
+      hostname = entry.hostname.encode('utf-8')
       if table == 'servers':
-        cname = entry.cname.__repr__() if entry.cname else 'NULL'
+        cname = (entry.cname.encode('utf-8').__repr__()
+                 if entry.cname else 'NULL')
+        note = entry.note.encode('utf-8').__repr__() if entry.note else 'NULL'
         cmd = ('INSERT INTO servers (hostname, cname, status, note) '
-               'VALUES(%r, %s, %r, %r)' % (entry.hostname,
+               'VALUES(%r, %s, %r, %s);' % (hostname,
                                            cname,
-                                           entry.status,
-                                           entry.note))
+                                           entry.status.encode('utf-8'),
+                                           note))
       elif table == 'server_attributes':
         cmd = ('INSERT INTO server_attributes (server_id, attribute, value) '
-               'VALUES(%d, %r, %r)' % (server_id,
-                                       entry.attribute,
-                                       entry.value))
+               'SELECT id, %r, %r FROM servers WHERE hostname=%r;' %
+               (entry.attribute.encode('utf-8'), entry.value.encode('utf-8'),
+                hostname))
       else:
-        cmd = ('INSERT INTO server_roles (server_id, role) VALUES(%d, %r)' %
-               (server_id, entry.role))
+        cmd = ('INSERT INTO server_roles (server_id, role) '
+               'SELECT id, %r FROM servers WHERE hostname=%r;'%
+               (entry.role.encode('utf-8'), hostname))
       mysql_cmds.append(cmd)
 
   metrics.Gauge(_METRICS_PREFIX + '/inconsistency_found').set(
@@ -288,7 +285,7 @@ def _modify_table(cursor, mysql_cmds, table):
   try:
     succeed = False
     for cmd in mysql_cmds:
-      logging.info('running command: %s', cmd)
+      logging.info('Executing: %s', cmd)
       cursor.execute(cmd)
     succeed = True
   except Exception as e:
@@ -363,12 +360,9 @@ def _main(options):
       # also delete entries in server_attributes and server_roles
       # associated with that deleted server.
       for table in ['servers', 'server_attributes', 'server_roles']:
-        cursor.execute('SELECT id, hostname FROM servers')
-        server_id_map = {row[1]:row[0] for row in cursor.fetchall()}
         mysql_cmds = create_mysql_updates(skylab_server_data,
                                           db_output,
                                           table,
-                                          server_id_map,
                                           options.warn_only)
         if not options.warn_only:
           logging.info('Start updating table %s', table)

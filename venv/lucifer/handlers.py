@@ -69,47 +69,13 @@ class EventHandler(object):
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.GATHERING)
 
-    def _handle_x_tests_done(self, msg):
-        """Taken from GatherLogsTask.epilog."""
-        autoserv_exit, failures = (int(x) for x in msg.split(','))
-        logger.debug('Got autoserv_exit=%d, failures=%d',
-                     autoserv_exit, failures)
-        success = (autoserv_exit == 0 and failures == 0)
-        reset_after_failure = not self._job.run_reset and not success
-        hqes = self._job.hostqueueentry_set.all().prefetch_related('host')
-        if self._should_reboot_duts(autoserv_exit, failures,
-                                    reset_after_failure):
-            logger.debug('Creating cleanup jobs for hosts')
-            for entry in hqes:
-                self._handle_host_needs_cleanup(entry.host.hostname)
-        else:
-            logger.debug('Not creating cleanup jobs for hosts')
-            for entry in hqes:
-                self._handle_host_ready(entry.host.hostname)
-        if not reset_after_failure:
-            logger.debug('Skipping reset because reset_after_failure is False')
-            return
-        logger.debug('Creating reset jobs for hosts')
-        self._metrics.send_reset_after_failure(autoserv_exit, failures)
-        for entry in hqes:
-            self._handle_host_needs_reset(entry.host.hostname)
-
     def _handle_parsing(self, _msg):
         models = autotest.load('frontend.afe.models')
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.PARSING)
 
     def _handle_completed(self, _msg):
-        models = autotest.load('frontend.afe.models')
-        final_status = self._final_status()
-        for hqe in self._job.hostqueueentry_set.all():
-            self._set_completed_status(hqe, final_status)
-        if final_status is not models.HostQueueEntry.Status.ABORTED:
-            _stop_prejob_hqes(self._job)
-        if self._job.shard_id is not None:
-            # If shard_id is None, the job will be synced back to the master
-            self._job.shard_id = None
-            self._job.save()
+        self._mark_job_complete()
         self.completed = True
 
     def _handle_test_passed(self, msg):
@@ -148,6 +114,31 @@ class EventHandler(object):
                 task=models.SpecialTask.Task.RESET,
                 requested_by=models.User.objects.get(login=self._job.owner))
 
+    def _handle_x_tests_done(self, msg):
+        """Taken from GatherLogsTask.epilog."""
+        autoserv_exit, failures = (int(x) for x in msg.split(','))
+        logger.debug('Got autoserv_exit=%d, failures=%d',
+                     autoserv_exit, failures)
+        success = (autoserv_exit == 0 and failures == 0)
+        reset_after_failure = not self._job.run_reset and not success
+        hqes = self._job.hostqueueentry_set.all().prefetch_related('host')
+        if self._should_reboot_duts(autoserv_exit, failures,
+                                    reset_after_failure):
+            logger.debug('Creating cleanup jobs for hosts')
+            for entry in hqes:
+                self._handle_host_needs_cleanup(entry.host.hostname)
+        else:
+            logger.debug('Not creating cleanup jobs for hosts')
+            for entry in hqes:
+                self._handle_host_ready(entry.host.hostname)
+        if not reset_after_failure:
+            logger.debug('Skipping reset because reset_after_failure is False')
+            return
+        logger.debug('Creating reset jobs for hosts')
+        self._metrics.send_reset_after_failure(autoserv_exit, failures)
+        for entry in hqes:
+            self._handle_host_needs_reset(entry.host.hostname)
+
     def _should_reboot_duts(self, autoserv_exit, failures, reset_after_failure):
         models = autotest.load('frontend.afe.models')
         reboot_after = self._job.reboot_after
@@ -164,6 +155,26 @@ class EventHandler(object):
             return True
         else:
             return failures > 0 and not reset_after_failure
+
+    def _mark_job_complete(self):
+        """Perform Autotest operations needed for job completion."""
+        models = autotest.load('frontend.afe.models')
+        final_status = self._final_status()
+        self._mark_hqes_complete(final_status)
+        if final_status is not models.HostQueueEntry.Status.ABORTED:
+            _stop_prejob_hqes(self._job)
+        self._release_job_if_sharded()
+
+    def _mark_hqes_complete(self, final_status):
+        """Perform Autotest HQE operations needed for job completion."""
+        for hqe in self._job.hostqueueentry_set.all():
+            self._set_completed_status(hqe, final_status)
+
+    def _release_job_if_sharded(self):
+        if self._job.shard_id is not None:
+            # If shard_id is None, the job will be synced back to the master
+            self._job.shard_id = None
+            self._job.save()
 
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
