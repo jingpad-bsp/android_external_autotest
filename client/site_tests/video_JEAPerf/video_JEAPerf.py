@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import errno
 import logging
 import os
 from autotest_lib.client.common_lib import file_utils
@@ -117,4 +118,3 @@ class video_JEAPerf(chrome_binary_test.ChromeBinaryTest):
             finally:
                 self.remove_if_exists(input_path)
                 self.remove_if_exists(output_path)
-
