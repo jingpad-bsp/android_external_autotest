@@ -243,8 +243,13 @@ def take_tpm_ownership(wait_for_ownership=True):
     """
     __run_cmd(CRYPTOHOME_CMD + ' --action=tpm_take_ownership')
     if wait_for_ownership:
-        while not get_tpm_status()['Owned']:
-            time.sleep(0.1)
+        # Note that waiting for the 'Ready' flag is more correct than waiting
+        # for the 'Owned' flag, as the latter is set by cryptohomed before some
+        # of the ownership tasks are completed.
+        utils.poll_for_condition(
+                lambda: get_tpm_status()['Ready'],
+                timeout=300,
+                exception=error.TestError('Timeout waiting for TPM ownership'))
 
 
 def verify_ek():
