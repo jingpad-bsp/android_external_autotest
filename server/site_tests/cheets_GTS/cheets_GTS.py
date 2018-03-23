@@ -24,6 +24,7 @@ _PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.1_r3-4604229.zip'
 class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
+    _SHARD_CMD = '--shard-count'
 
     def _get_default_bundle_url(self, bundle):
         return _PARTNER_GTS_LOCATION
