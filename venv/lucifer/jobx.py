@@ -124,8 +124,7 @@ def prepare_keyvals_files(job, workdir):
     keyvals = job.keyval_dict()
     keyvals['job_queued'] = \
             int(time.mktime(job.created_on.timetuple()))
-    with open(_keyvals_file(workdir), 'w') as f:
-        f.write(_format_keyvals(keyvals))
+    _write_keyvals(workdir, keyvals)
     if is_hostless(job):
         return
     _prepare_host_keyvals_files(job, workdir)
@@ -154,11 +153,10 @@ def write_aborted_keyvals_and_status(job, workdir):
         aborted_by = ahqe.aborted_by
         aborted_on = int(time.mktime(ahqe.aborted_on.timetuple()))
         break
-    with open(_keyvals_file(workdir), 'a') as f:
-        f.write(_format_keyvals({
-                'aborted_by': aborted_by,
-                'aborted_on': aborted_on,
-        }))
+    _write_keyvals(workdir, {
+            'aborted_by': aborted_by,
+            'aborted_on': aborted_on,
+    })
     _write_status_comment(
             workdir, 'Job aborted by %s on %s' % (aborted_by, aborted_on))
 
@@ -175,6 +173,15 @@ _STATUS_FILE = 'status.log'
 def _status_file(workdir):
     """Return the path to the status.log file."""
     return os.path.join(workdir, _STATUS_FILE)
+
+
+def _write_keyvals(workdir, keyvals):
+    """Write keyvals to the results directory.
+
+    @param keyvals: dict
+    """
+    with open(_keyvals_file(workdir), 'a') as f:
+        f.write(_format_keyvals(keyvals))
 
 
 _KEYVAL_FILE = 'keyval'
