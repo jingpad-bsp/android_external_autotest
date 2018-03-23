@@ -8,6 +8,7 @@ Convenience functions for use by tests or whomever.
 
 # pylint: disable=missing-docstring
 
+import collections
 import commands
 import fnmatch
 import glob
@@ -490,6 +491,32 @@ def rounded_memtotal():
     phys_kbytes = min_kbytes + mod2n - 1
     phys_kbytes = phys_kbytes - (phys_kbytes % mod2n)  # clear low bits
     return phys_kbytes
+
+
+_MEMINFO_RE = re.compile('^(\w+)(\(\w+\))?:\s+(\d+)')
+
+
+def get_meminfo():
+    """Returns a namedtuple of pairs from /proc/meminfo.
+
+    Example /proc/meminfo snippets:
+        MemTotal:        2048000 kB
+        Active(anon):     409600 kB
+    Example usage:
+        meminfo = utils.get_meminfo()
+        print meminfo.Active_anon
+    """
+    info = {}
+    with _open_file('/proc/meminfo') as f:
+        for line in f:
+            m = _MEMINFO_RE.match(line)
+            if m:
+                if m.group(2):
+                    name = m.group(1) + '_' + m.group(2)[1:-1]
+                else:
+                    name = m.group(1)
+                info[name] = int(m.group(3))
+    return collections.namedtuple('MemInfo', info.keys())(**info)
 
 
 def sysctl(key, value=None):
