@@ -1032,6 +1032,8 @@ class Dispatcher(object):
                     [queue_entry], log_file_name='/dev/null')
             pidfile_id = task._autoserv_monitor.pidfile_id
             autoserv_exit = task._autoserv_monitor.exit_code()
+            if autoserv_exit is None:
+                autoserv_exit = 1
             try:
                 drone = luciferlib.spawn_gathering_job_handler(
                         manager=_drone_manager,
