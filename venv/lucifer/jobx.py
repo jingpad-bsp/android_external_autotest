@@ -131,15 +131,9 @@ def prepare_keyvals_files(job, workdir):
 
 
 def _prepare_host_keyvals_files(job, workdir):
-    keyvals_dir = os.path.join(workdir, 'host_keyvals')
-    try:
-        os.makedirs(keyvals_dir)
-    except OSError:
-        pass
     for hqe in job.hostqueueentry_set.all().prefetch_related('host'):
-        keyvals_path = os.path.join(keyvals_dir, hqe.host.hostname)
-        with open(keyvals_path, 'w') as f:
-            f.write(_format_keyvals(_host_keyvals(hqe.host)))
+        _write_host_keyvals(
+                workdir, hqe.host.hostname, _host_keyvals(hqe.host))
 
 
 def write_aborted_keyvals_and_status(job, workdir):
@@ -173,6 +167,22 @@ _STATUS_FILE = 'status.log'
 def _status_file(workdir):
     """Return the path to the status.log file."""
     return os.path.join(workdir, _STATUS_FILE)
+
+
+def _write_host_keyvals(workdir, hostname, keyvals):
+    """Write host keyvals to the results directory.
+
+    @param hostname: Hostname of host as string
+    @param keyvals: dict
+    """
+    keyvals_dir = os.path.join(workdir, 'host_keyvals')
+    try:
+        os.makedirs(keyvals_dir)
+    except OSError:
+        pass
+    keyvals_path = os.path.join(keyvals_dir, hostname)
+    with open(keyvals_path, 'w') as f:
+        f.write(_format_keyvals(keyvals))
 
 
 def _write_keyvals(workdir, keyvals):
