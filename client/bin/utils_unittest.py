@@ -141,6 +141,16 @@ class TestUtils(unittest.TestCase):
         self.assertAlmostEqual(utils.get_mem_free_plus_buffers_and_cached(),
                                600)
 
+    def test_get_meminfo(self):
+        self.fake_file_text = ('MemTotal:      2048000 kB\n'
+                               'MemFree:        307200 kB\n'
+                               'Buffers:        102400 kB\n'
+                               'Cached:         204800 kB\n'
+                               'Active(anon):   409600 kB')
+        meminfo = utils.get_meminfo()
+        self.assertEqual(meminfo.MemTotal, 2048000)
+        self.assertEqual(meminfo.Active_anon, 409600)
+
     def test_get_num_allocated_file_handles(self):
         self.fake_file_text = '123 0 456\n'
         self.assertEqual(utils.get_num_allocated_file_handles(), 123)
