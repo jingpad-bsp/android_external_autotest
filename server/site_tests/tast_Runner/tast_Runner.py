@@ -6,9 +6,16 @@ import json
 import logging
 import os
 
+import dateutil.parser
+
+from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 from autotest_lib.server import utils
+
+
+# A datetime.DateTime representing the Unix epoch in UTC.
+_UNIX_EPOCH = dateutil.parser.parse('1970-01-01T00:00:00Z')
 
 
 class tast_Runner(test.test):
@@ -43,15 +50,30 @@ class tast_Runner(test.test):
     # this prefix rather than under the root directory.
     _CIPD_INSTALL_ROOT = '/opt/infra-tools'
 
-    def initialize(self, host, test_exprs):
+    # Job start/end TKO event status codes from base_client_job._rungroup in
+    # client/bin/job.py.
+    _JOB_STATUS_START = 'START'
+    _JOB_STATUS_END_GOOD = 'END GOOD'
+    _JOB_STATUS_END_FAIL = 'END FAIL'
+    _JOB_STATUS_END_ABORT = 'END ABORT'
+
+    # In-job TKO event status codes from base_client_job._run_test_base in
+    # client/bin/job.py and client/common_lib/error.py.
+    _JOB_STATUS_GOOD = 'GOOD'
+    _JOB_STATUS_FAIL = 'FAIL'
+
+    def initialize(self, host, test_exprs, report_tests=False):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
+        @param report_tests: If True, report individual Tast tests' results in
+            status.log.
 
         @raises error.TestFail if the Tast installation couldn't be found.
         """
         self._host = host
         self._test_exprs = test_exprs
+        self._report_tests = report_tests
 
         # The data dir can be missing if no remote tests registered data files,
         # but all other files must exist.
@@ -160,9 +182,68 @@ class tast_Runner(test.test):
                     if 'flaky' not in test.get('attr', []):
                         failed.append(name)
 
+                if self._report_tests:
+                    self._log_test(test)
+
         if failed:
             msg = '%d failed: ' % len(failed)
             msg += ' '.join(sorted(failed)[:self._MAX_TEST_NAMES_IN_ERROR])
             if len(failed) > self._MAX_TEST_NAMES_IN_ERROR:
                 msg += ' ...'
             raise error.TestFail(msg)
+
+    def _log_test(self, test):
+        """Writes events to the TKO status.log file describing the results from
+        a Tast test.
+
+        @param test: A JSON object corresponding to a single test from a Tast
+            results.json file. See TestResult in
+            src/platform/tast/src/chromiumos/cmd/tast/run/results.go for
+            details.
+        """
+        name = test['name']
+        start_time = _rfc3339_time_to_timestamp(test['start'])
+        end_time = _rfc3339_time_to_timestamp(test['end'])
+
+        self._log_test_event(self._JOB_STATUS_START, name, start_time)
+
+        if not test['errors']:
+            self._log_test_event(self._JOB_STATUS_GOOD, name, end_time)
+            end_status = self._JOB_STATUS_END_GOOD
+        else:
+            # The previous START event automatically increases the log
+            # indentation level until the following END event.
+            for err in test['errors']:
+                # TODO(derat): Tast doesn't current report timestamps associated
+                # with test errors, but it should -- the test doesn't
+                # necessarily halt in response to the first error.
+                self._log_test_event(self._JOB_STATUS_FAIL, name, end_time,
+                                     err['reason'])
+            end_status = self._JOB_STATUS_END_FAIL
+
+        self._log_test_event(end_status, name, end_time)
+
+    def _log_test_event(self, status_code, test_name, timestamp, message=''):
+        """Logs a single event to the TKO status.log file.
+
+        @param status_code: Event status code, e.g. 'END GOOD'. See
+            client/common_lib/log.py for accepted values.
+        @param test_name: Tast test name, e.g. 'ui.ChromeSanity'.
+        @param timestamp: Event timestamp (as seconds since Unix epoch).
+        @param message: Optional human-readable message.
+        """
+        # The TKO parser code chokes on floating-point timestamps.
+        entry = base_job.status_log_entry(status_code, None, test_name, message,
+                                          None, timestamp=int(timestamp))
+        self.job.record_entry(entry, False)
+
+
+def _rfc3339_time_to_timestamp(time_str):
+    """Converts an RFC3339 time into a Unix timestamp.
+
+    @param time_str: RFC3339-compatible time, e.g.
+        '2018-02-25T07:45:35.916929332-07:00'.
+
+    @returns Float number of seconds since the Unix epoch.
+    """
+    return (dateutil.parser.parse(time_str) - _UNIX_EPOCH).total_seconds()
