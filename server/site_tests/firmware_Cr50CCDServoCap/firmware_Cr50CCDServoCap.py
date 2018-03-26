@@ -39,9 +39,13 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     DETECTABLE = 'detectable'
     # There are many valid CCD state strings. These lists define which strings
     # translate to off, on and unknown.
+    #
+    # The 'State flags' values are modified to ignore I2C. Hardware may or may
+    # not have the INAs populated. The I2C pin is open drain, so if the hardware
+    # isn't setup we can't tell what cr50 is even trying to do with the signal.
+    # This test completely ignores the I2C flags, because it is not useful.
     STATE_VALUES = {
-        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC',
-                'UARTAP UARTEC I2C'],
+        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC'],
         ON : ['on', 'connected', 'enabled'],
         UNDETECTABLE : ['undetectable'],
         DETECTABLE : ['disconnected', 'connected'],
@@ -49,7 +53,7 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     # When CCD is locked out the 'on' state flags will look like this
     ON_CCD_LOCKOUT = 'UARTAP+TX UARTEC'
     # When CCD is accessible the 'on' state flags will look like this
-    ON_CCD_ACCESSIBLE = 'UARTAP+TX UARTEC+TX I2C SPI'
+    ON_CCD_ACCESSIBLE = 'UARTAP+TX UARTEC+TX SPI'
     # RESULT_ORDER is a list of the CCD state strings. The order corresponds
     # with the order of the key states in EXPECTED_RESULTS.
     RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
@@ -126,7 +130,7 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         self.ccd_lockout = ccd_lockout
         if self.ccd_lockout:
             self.STATE_VALUES[self.ON].append(self.ON_CCD_LOCKOUT)
-            logging.info('Skipping ccd initialization because ccd')
+            logging.info('ccd is locked out. Skipping ccd initialization')
             return
         else:
             self.STATE_VALUES[self.ON].append(self.ON_CCD_ACCESSIBLE)
@@ -152,9 +156,12 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
     def get_ccdstate(self):
         """Get the current Cr50 CCD states"""
         rv = self.cr50.send_command_get_output('ccdstate',
-            ['ccdstate(.*)>'])[0][1].split('\n')
+            ['ccdstate(.*)>'])[0][1]
+        # I2C isn't a reliable flag, because the hardware often doesn't support
+        # it. Remove any I2C flags from the ccdstate output.
+        ccdstates = rv.replace(' I2C', '').split('\n')
         ccdstate = {}
-        for line in rv:
+        for line in ccdstates:
             line = line.strip()
             if line:
                 k, v = line.split(':', 1)
