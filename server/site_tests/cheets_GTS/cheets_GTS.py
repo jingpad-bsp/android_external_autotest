@@ -46,6 +46,9 @@ class cheets_GTS(tradefed_test.TradefedTest):
             args += ['--module', target_module]
         elif plan is not None and session_id is not None:
             args += ['--plan', plan, '--retry', '%d' % session_id]
+        # We occasionly saw business logic service issue at setup stage on our
+        # dashboard, ignore this type of failure and let the test run.
+        args += ['--ignore-business-logic-failure']
         return args
 
 
