@@ -22,7 +22,7 @@ struct TestProfile {
   bool check_1280x960 = false;
   bool check_1600x1200 = false;
   bool support_constant_framerate = false;
-  bool check_minimum_resolution = false;
+  bool check_maximum_resolution = false;
   uint32_t skip_frames = 0;
   uint32_t lens_facing;
 };
@@ -465,8 +465,9 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
 
 // ChromeOS spec requires word-facing camera should be at least 1920x1080 and
 // user-facing camera should be at least 1280x720.
-bool TestMinimumResolution(const std::string& dev_name, uint32_t facing) {
-  printf("[Info] TestMinimumResolution\n");
+bool TestMaximumSupportedResolution(const std::string& dev_name,
+                                    uint32_t facing) {
+  printf("[Info] TestMaximumSupportedResolution\n");
   uint32_t buffers = 4;
   std::unique_ptr<V4L2Device> device(
       new V4L2Device(dev_name.c_str(), buffers));
@@ -482,30 +483,30 @@ bool TestMinimumResolution(const std::string& dev_name, uint32_t facing) {
   device->CloseDevice();
   SupportedFormat max_resolution = GetMaximumResolution(supported_formats);
 
-  uint32_t required_minimum_width = 0, required_minimum_height = 0;
+  uint32_t required_width = 0, required_height = 0;
   std::string facing_str = "";
   if (facing == FACING_FRONT) {
-    required_minimum_width = 1080;
-    required_minimum_height = 720;
+    required_width = 1080;
+    required_height = 720;
     facing_str = kFrontCamera;
   } else if (facing == FACING_BACK) {
-    required_minimum_width = 1920;
-    required_minimum_height = 1080;
+    required_width = 1920;
+    required_height = 1080;
     facing_str = kBackCamera;
   } else {
     printf("[Error] Undefined facing: %d\n", facing);
     return false;
   }
 
-  if (max_resolution.width < required_minimum_width ||
-      max_resolution.height < required_minimum_height) {
-    printf("[Error] The maximum resolution %dx%d does not meet minimum "
-           "requirement %dx%d for %s-facing\n", max_resolution.width,
-           max_resolution.height, required_minimum_width,
-           required_minimum_height, facing_str.c_str());
+  if (max_resolution.width < required_width ||
+      max_resolution.height < required_height) {
+    printf("[Error] The maximum resolution %dx%d does not meet requirement "
+           "%dx%d for %s-facing\n", max_resolution.width,
+           max_resolution.height, required_width, required_height,
+           facing_str.c_str());
     return false;
   }
-  printf("[Info] TestMinimumResolution pass\n");
+  printf("[Info] TestMaximumSupportedResolution pass\n");
   return true;
 }
 
@@ -530,7 +531,7 @@ const TestProfile GetTestProfile(const std::string& dev_name,
     profile.support_constant_framerate =
         !device_infos[0].constant_framerate_unsupported;
     profile.skip_frames = device_infos[0].frames_to_skip_after_streamon;
-    profile.check_minimum_resolution = true;
+    profile.check_maximum_resolution = true;
     profile.lens_facing = device_infos[0].lens_facing;
   }
 
@@ -545,7 +546,7 @@ const TestProfile GetTestProfile(const std::string& dev_name,
     profile.check_1600x1200 = true;
     profile.support_constant_framerate = true;
     profile.skip_frames = 0;
-    profile.check_minimum_resolution = false;
+    profile.check_maximum_resolution = false;
     check_constant_framerate = true;
   }
 
@@ -567,8 +568,8 @@ bool RunDefaultTestList(const TestProfile& profile) {
                        profile.check_1600x1200, false)) {
     pass = false;
   }
-  if (profile.check_minimum_resolution &&
-      !TestMinimumResolution(profile.dev_name, profile.lens_facing)) {
+  if (profile.check_maximum_resolution &&
+      !TestMaximumSupportedResolution(profile.dev_name, profile.lens_facing)) {
     pass = false;
   }
   return pass;
@@ -591,8 +592,8 @@ bool RunHalv3TestList(const TestProfile& profile) {
   if (!TestFirstFrameAfterStreamOn(profile.dev_name, profile.skip_frames)) {
     pass = false;
   }
-  if (profile.check_minimum_resolution &&
-      !TestMinimumResolution(profile.dev_name, profile.lens_facing)) {
+  if (profile.check_maximum_resolution &&
+      !TestMaximumSupportedResolution(profile.dev_name, profile.lens_facing)) {
     pass = false;
   }
   return pass;
