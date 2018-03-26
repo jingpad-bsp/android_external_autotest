@@ -12,9 +12,6 @@ from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
-FILE_EXISTS = 'if [ -d "/home/chronos/user/Downloads/" ] ; then echo "yes" ;' \
-              'else echo "no" ; fi'
-
 
 class display_CheckModesAfterSignOutSignIn(test.test):
     """ To Check the modes after sign out/sign in"""
@@ -36,8 +33,7 @@ class display_CheckModesAfterSignOutSignIn(test.test):
         """Will check whether user logged out"""
         logging.debug("checking /home/chronos/user/Downloads/ to know "
                       "whether user logged out or not!")
-        is_dir_exists = self.host.run(FILE_EXISTS).stdout.strip()
-        return is_dir_exists == 'no'
+        return self.host.path_exists('/home/chronos/user/Downloads/') is False
 
     def check_mode(self, test_mirrored_mode=True):
         """Checks the display mode is as expected
