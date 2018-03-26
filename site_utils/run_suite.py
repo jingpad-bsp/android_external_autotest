@@ -671,9 +671,9 @@ class LogLink(object):
         """
         if not self.testname or self.testname in self._SKIP_RETRY_DASHBOARD:
             return None
-        return annotations.StepLink(
-            text='[Flake-Dashboard]: %s' % self.testname,
-            url=reporting_utils.link_retry_url(self.testname))
+
+        # TODO(xixuan): Return the right flake dashboard later.
+        return None
 
     def GenerateHistoryLink(self):
         """Generate a link to the test history dashboard.
