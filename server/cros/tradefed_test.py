@@ -57,6 +57,7 @@ class TradefedTest(test.test):
     _BOARD_RETRY = {}
     _CHANNEL_RETRY = {'dev': 5}
 
+    _SHARD_CMD = None
     _board_arch = None
     _board_name = None
     _release_channel = None
@@ -877,11 +878,13 @@ class TradefedTest(test.test):
         target_argument = []
         for host in self._hosts:
             target_argument += ['-s', self._get_adb_target(host)]
-        # TODO(ihf): --shards option not available on P. Figure out what happened.
-        # For now, don't add it in the canonical case to unbreak P.
         shard_argument = []
         if len(self._hosts) > 1:
-            shard_argument = ['--shards', str(len(self._hosts))]
+            if self._SHARD_CMD:
+                shard_argument = [self._SHARD_CMD, str(len(self._hosts))]
+            else:
+                logging.warning('cts-tradefed shard command isn\'t defined, '
+                                'falling back to use single device.')
         commands = [command + target_argument + shard_argument
                     for command in commands]
 
