@@ -4,10 +4,6 @@
 
 """Job leasing utilities
 
-See infra/lucifer for the implementation of job leasing.
-
-https://chromium.googlesource.com/chromiumos/infra/lucifer
-
 Jobs are leased to processes to own and run.  A process owning a job
 obtain a job lease.  Ongoing ownership of the lease is established using
 an exclusive fcntl lock on the lease file.
