@@ -85,9 +85,9 @@ class EventHandler(object):
                 if hqe.host is None:
                     continue
                 hqe.host.status = HostStatus.READY
-                hqe.host.save()
+                hqe.host.save(update_fields=['status'])
             hqe.status = Status.ABORTED
-            hqe.save()
+            hqe.save(update_fields=['status'])
 
     def _handle_completed(self, _msg):
         self._mark_job_complete()
@@ -197,7 +197,7 @@ class EventHandler(object):
         if self._job.shard_id is not None:
             # If shard_id is None, the job will be synced back to the master
             self._job.shard_id = None
-            self._job.save()
+            self._job.save(update_fields=['shard_id'])
 
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
@@ -219,7 +219,7 @@ class EventHandler(object):
         hqe.complete = True
         if hqe.started_on:
             hqe.finished_on = datetime.datetime.now()
-        hqe.save()
+        hqe.save(update_fields=['status', 'active', 'complete', 'finished_on'])
         self._metrics.send_hqe_completion(hqe)
         self._metrics.send_hqe_duration(hqe)
 
@@ -288,9 +288,9 @@ def _stop_prejob_hqes(job):
     for hqe in entries_to_stop:
         if hqe.status == HQEStatus.PENDING:
             hqe.host.status = HostStatus.READY
-            hqe.host.save()
+            hqe.host.save(update_fields=['status'])
         hqe.status = HQEStatus.STOPPED
-        hqe.save()
+        hqe.save(update_fields=['status'])
 
 
 def _get_prejob_hqes(job, include_active=True):
