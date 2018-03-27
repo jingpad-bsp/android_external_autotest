@@ -74,6 +74,21 @@ class EventHandler(object):
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.PARSING)
 
+    def _handle_aborted(self, _msg):
+        models = autotest.load('frontend.afe.models')
+        Status = models.HostQueueEntry.Status
+        HostStatus = models.Host.Status
+        for hqe in self._job.hostqueueentry_set.all().prefetch_related('host'):
+            if hqe.status in (Status.GATHERING, Status.PARSING):
+                continue
+            if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
+                if hqe.host is None:
+                    continue
+                hqe.host.status = HostStatus.READY
+                hqe.host.save()
+            hqe.status = Status.ABORTED
+            hqe.save()
+
     def _handle_completed(self, _msg):
         self._mark_job_complete()
         self.completed = True
