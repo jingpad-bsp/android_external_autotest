@@ -25,7 +25,7 @@ class firmware_Cr50SetBoardId(Cr50Test):
     # Used when the flags were not initialized in the factory.
     UNKNOWN_FLAGS = 0xff00
     # Used for dev, proto, EVT, and DVT phases.
-    DEVELOPMENT_FLAGS = 0xff7f
+    DEVELOPMENT_FLAGS = 0x7f7f
     # Used for PVT and MP builds.
     RELEASE_FLAGS = 0x7f80
     PHASE_FLAGS_DICT = {
