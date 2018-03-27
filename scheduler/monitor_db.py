@@ -986,7 +986,7 @@ class Dispatcher(object):
         """
         Hand off ownership of a job to lucifer component.
         """
-        if luciferlib.is_enabled_for('starting'):
+        if luciferlib.is_enabled_for('STARTING'):
             self._send_starting_to_lucifer()
         # TODO(crbug.com/810141): Older states need to be supported when
         # STARTING is toggled; some jobs may be in an intermediate state
@@ -1116,6 +1116,10 @@ class Dispatcher(object):
         jobs_to_stop = set()
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted=1 and complete=0'):
+            if (luciferlib.is_enabled_for('STARTING')
+                and luciferlib.is_lucifer_owned(
+                        models.Job.objects.get(id=entry.job.id))):
+                continue
 
             # If the job is running on a shard, let the shard handle aborting
             # it and sync back the right status.
