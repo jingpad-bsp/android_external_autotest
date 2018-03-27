@@ -276,16 +276,18 @@ def _mark_hqe_aborted(hqe):
     This logic is from scheduler_models.HostQueueEntry.abort().
     """
     models = autotest.load('frontend.afe.models')
+    transaction = autotest.deps_load('django.db.transaction')
     Status = models.HostQueueEntry.Status
-    if hqe.status in (Status.GATHERING, Status.PARSING):
-        return
-    if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
-        if hqe.host is None:
+    with transaction.commit_on_success():
+        if hqe.status in (Status.GATHERING, Status.PARSING):
             return
-        hqe.host.status = models.Host.Status.READY
-        hqe.host.save(update_fields=['status'])
-    hqe.status = Status.ABORTED
-    hqe.save(update_fields=['status'])
+        if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
+            if hqe.host is None:
+                return
+            hqe.host.status = models.Host.Status.READY
+            hqe.host.save(update_fields=['status'])
+        hqe.status = Status.ABORTED
+        hqe.save(update_fields=['status'])
 
 
 def _stop_prejob_hqes(job):
