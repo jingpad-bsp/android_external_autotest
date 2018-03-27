@@ -20,6 +20,7 @@ import time
 import urllib
 
 from lucifer import autotest
+from lucifer import results
 
 
 def is_hostless(job):
@@ -124,7 +125,7 @@ def prepare_keyvals_files(job, workdir):
     keyvals = job.keyval_dict()
     keyvals['job_queued'] = \
             int(time.mktime(job.created_on.timetuple()))
-    _write_keyvals(workdir, keyvals)
+    results.write_keyvals(workdir, keyvals)
     if is_hostless(job):
         return
     _prepare_host_keyvals_files(job, workdir)
@@ -132,7 +133,7 @@ def prepare_keyvals_files(job, workdir):
 
 def _prepare_host_keyvals_files(job, workdir):
     for hqe in job.hostqueueentry_set.all().prefetch_related('host'):
-        _write_host_keyvals(
+        results.write_host_keyvals(
                 workdir, hqe.host.hostname, _host_keyvals(hqe.host))
 
 
@@ -147,64 +148,12 @@ def write_aborted_keyvals_and_status(job, workdir):
         aborted_by = ahqe.aborted_by
         aborted_on = int(time.mktime(ahqe.aborted_on.timetuple()))
         break
-    _write_keyvals(workdir, {
+    results.write_keyvals(workdir, {
             'aborted_by': aborted_by,
             'aborted_on': aborted_on,
     })
-    _write_status_comment(
+    results.write_status_comment(
             workdir, 'Job aborted by %s on %s' % (aborted_by, aborted_on))
-
-
-def _write_status_comment(workdir, comment):
-    """Write status comment in status.log."""
-    with open(_status_file(workdir), 'a') as f:
-        f.write('INFO\t----\t----\t%s' % (comment,))
-
-
-_STATUS_FILE = 'status.log'
-
-
-def _status_file(workdir):
-    """Return the path to the status.log file."""
-    return os.path.join(workdir, _STATUS_FILE)
-
-
-def _write_host_keyvals(workdir, hostname, keyvals):
-    """Write host keyvals to the results directory.
-
-    @param hostname: Hostname of host as string
-    @param keyvals: dict
-    """
-    keyvals_dir = os.path.join(workdir, 'host_keyvals')
-    try:
-        os.makedirs(keyvals_dir)
-    except OSError:
-        pass
-    keyvals_path = os.path.join(keyvals_dir, hostname)
-    with open(keyvals_path, 'w') as f:
-        f.write(_format_keyvals(keyvals))
-
-
-def _write_keyvals(workdir, keyvals):
-    """Write keyvals to the results directory.
-
-    @param keyvals: dict
-    """
-    with open(_keyvals_file(workdir), 'a') as f:
-        f.write(_format_keyvals(keyvals))
-
-
-_KEYVAL_FILE = 'keyval'
-
-
-def _keyvals_file(workdir):
-    """Return the path to the keyvals file."""
-    return os.path.join(workdir, _KEYVAL_FILE)
-
-
-def _format_keyvals(keyvals):
-    """Format a dict of keyvals as a string."""
-    return ''.join('%s=%s\n' % (k, v) for k, v in keyvals.iteritems())
 
 
 def _host_keyvals(host):
