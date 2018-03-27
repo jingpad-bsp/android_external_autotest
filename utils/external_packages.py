@@ -1046,6 +1046,18 @@ class IsortPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_setup_py)
 
 
+class DateutilPackage(ExternalPackage):
+    """python-dateutil package."""
+    version = '2.6.1'
+    local_filename = 'python-dateutil-%s.tar.gz' % version
+    urls = (_CHROMEOS_MIRROR + local_filename,)
+    hex_sum = 'db2ace298dee7e47fd720ed03eb790885347bf4e'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class Pytz(ExternalPackage):
     """Pytz package."""
     version = '2016.10'

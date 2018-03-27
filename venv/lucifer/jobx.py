@@ -15,11 +15,16 @@ they are specialized and the Job class already suffers from method
 bloat.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import time
 import urllib
 
 from lucifer import autotest
+from lucifer import results
 
 
 def is_hostless(job):
@@ -119,36 +124,36 @@ def prepare_control_file(job, workdir):
         f.write(job.control_file)
 
 
-_KEYVAL_FILE = 'keyval'
-
-
 def prepare_keyvals_files(job, workdir):
     """Prepare Autotest keyvals files for a job."""
     keyvals = job.keyval_dict()
     keyvals['job_queued'] = \
             int(time.mktime(job.created_on.timetuple()))
-    with open(os.path.join(workdir, _KEYVAL_FILE), 'w') as f:
-        f.write(_format_keyvals(keyvals))
+    results.write_keyvals(workdir, keyvals)
     if is_hostless(job):
         return
-    _prepare_host_keyvals_files(job, workdir)
-
-
-def _prepare_host_keyvals_files(job, workdir):
-    keyvals_dir = os.path.join(workdir, 'host_keyvals')
-    try:
-        os.makedirs(keyvals_dir)
-    except OSError:
-        pass
     for hqe in job.hostqueueentry_set.all().prefetch_related('host'):
-        keyvals_path = os.path.join(keyvals_dir, hqe.host.hostname)
-        with open(keyvals_path, 'w') as f:
-            f.write(_format_keyvals(_host_keyvals(hqe.host)))
+        results.write_host_keyvals(
+                workdir, hqe.host.hostname, _host_keyvals(hqe.host))
 
 
-def _format_keyvals(keyvals):
-    """Format a dict of keyvals as a string."""
-    return ''.join('%s=%s\n' % (k, v) for k, v in keyvals.iteritems())
+def write_aborted_keyvals_and_status(job, workdir):
+    """Write the keyvals and status for an aborted job."""
+    aborted_by = 'autotest_system'
+    aborted_on = int(time.time())
+    for hqe in job.hostqueueentry_set.all():
+        if not hasattr(hqe, 'abortedhostqueueentry'):
+            continue
+        ahqe = hqe.abortedhostqueueentry
+        aborted_by = ahqe.aborted_by
+        aborted_on = int(time.mktime(ahqe.aborted_on.timetuple()))
+        break
+    results.write_keyvals(workdir, {
+            'aborted_by': aborted_by,
+            'aborted_on': aborted_on,
+    })
+    results.write_status_comment(
+            workdir, 'Job aborted by %s on %s' % (aborted_by, aborted_on))
 
 
 def _host_keyvals(host):

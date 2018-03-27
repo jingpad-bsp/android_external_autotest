@@ -146,6 +146,7 @@ def _make_handler(args, job):
             metrics=handlers.Metrics(),
             job=job,
             autoserv_exit=args.autoserv_exit,
+            results_dir=args.results_dir,
     )
 
 

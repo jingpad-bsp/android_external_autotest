@@ -30,19 +30,21 @@ class EventHandler(object):
     finishes.
     """
 
-    def __init__(self, metrics, job, autoserv_exit):
+    def __init__(self, metrics, job, autoserv_exit, results_dir):
         """Initialize instance.
 
         @param metrics: Metrics instance
         @param job: frontend.afe.models.Job instance to own
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
+        @param results_dir: Job results directory
         """
         self.completed = False
         self._metrics = metrics
         self._job = job
         # TODO(crbug.com/748234): autoserv not implemented yet.
         self._autoserv_exit = autoserv_exit
+        self._results_dir = results_dir
 
     def __call__(self, event, msg):
         logger.debug('Received event %r with message %r', event.name, msg)
@@ -73,6 +75,11 @@ class EventHandler(object):
         models = autotest.load('frontend.afe.models')
         self._job.hostqueueentry_set.all().update(
                 status=models.HostQueueEntry.Status.PARSING)
+
+    def _handle_aborted(self, _msg):
+        for hqe in self._job.hostqueueentry_set.all().prefetch_related('host'):
+            _mark_hqe_aborted(hqe)
+        jobx.write_aborted_keyvals_and_status(self._job, self._results_dir)
 
     def _handle_completed(self, _msg):
         self._mark_job_complete()
@@ -182,7 +189,7 @@ class EventHandler(object):
         if self._job.shard_id is not None:
             # If shard_id is None, the job will be synced back to the master
             self._job.shard_id = None
-            self._job.save()
+            self._job.save(update_fields=['shard_id'])
 
     def _final_status(self):
         models = autotest.load('frontend.afe.models')
@@ -204,7 +211,7 @@ class EventHandler(object):
         hqe.complete = True
         if hqe.started_on:
             hqe.finished_on = datetime.datetime.now()
-        hqe.save()
+        hqe.save(update_fields=['status', 'active', 'complete', 'finished_on'])
         self._metrics.send_hqe_completion(hqe)
         self._metrics.send_hqe_duration(hqe)
 
@@ -261,6 +268,28 @@ class Metrics(object):
                         'num_tests_failed': failures > 0})
 
 
+def _mark_hqe_aborted(hqe):
+    """Perform Autotest operations needed for HQE abortion.
+
+    This also operates on the HQE's host, so prefetch it when possible.
+
+    This logic is from scheduler_models.HostQueueEntry.abort().
+    """
+    models = autotest.load('frontend.afe.models')
+    transaction = autotest.deps_load('django.db.transaction')
+    Status = models.HostQueueEntry.Status
+    with transaction.commit_on_success():
+        if hqe.status in (Status.GATHERING, Status.PARSING):
+            return
+        if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
+            if hqe.host is None:
+                return
+            hqe.host.status = models.Host.Status.READY
+            hqe.host.save(update_fields=['status'])
+        hqe.status = Status.ABORTED
+        hqe.save(update_fields=['status'])
+
+
 def _stop_prejob_hqes(job):
     """Stop pending HQEs for a job (for synch_count)."""
     models = autotest.load('frontend.afe.models')
@@ -273,9 +302,9 @@ def _stop_prejob_hqes(job):
     for hqe in entries_to_stop:
         if hqe.status == HQEStatus.PENDING:
             hqe.host.status = HostStatus.READY
-            hqe.host.save()
+            hqe.host.save(update_fields=['status'])
         hqe.status = HQEStatus.STOPPED
-        hqe.save()
+        hqe.save(update_fields=['status'])
 
 
 def _get_prejob_hqes(job, include_active=True):
