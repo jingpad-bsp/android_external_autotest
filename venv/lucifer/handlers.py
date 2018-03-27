@@ -75,19 +75,8 @@ class EventHandler(object):
                 status=models.HostQueueEntry.Status.PARSING)
 
     def _handle_aborted(self, _msg):
-        models = autotest.load('frontend.afe.models')
-        Status = models.HostQueueEntry.Status
-        HostStatus = models.Host.Status
         for hqe in self._job.hostqueueentry_set.all().prefetch_related('host'):
-            if hqe.status in (Status.GATHERING, Status.PARSING):
-                continue
-            if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
-                if hqe.host is None:
-                    continue
-                hqe.host.status = HostStatus.READY
-                hqe.host.save(update_fields=['status'])
-            hqe.status = Status.ABORTED
-            hqe.save(update_fields=['status'])
+            _mark_hqe_aborted(hqe)
 
     def _handle_completed(self, _msg):
         self._mark_job_complete()
@@ -274,6 +263,26 @@ class Metrics(object):
                 fields={'autoserv_process_success': autoserv_exit == 0,
                         # Yes, this is a boolean
                         'num_tests_failed': failures > 0})
+
+
+def _mark_hqe_aborted(hqe):
+    """Perform Autotest operations needed for HQE abortion.
+
+    This also operates on the HQE's host, so prefetch it when possible.
+
+    This logic is from scheduler_models.HostQueueEntry.abort().
+    """
+    models = autotest.load('frontend.afe.models')
+    Status = models.HostQueueEntry.Status
+    if hqe.status in (Status.GATHERING, Status.PARSING):
+        return
+    if hqe.status in (Status.STARTING, Status.PENDING, Status.RUNNING):
+        if hqe.host is None:
+            return
+        hqe.host.status = models.Host.Status.READY
+        hqe.host.save(update_fields=['status'])
+    hqe.status = Status.ABORTED
+    hqe.save(update_fields=['status'])
 
 
 def _stop_prejob_hqes(job):
