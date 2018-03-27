@@ -119,15 +119,12 @@ def prepare_control_file(job, workdir):
         f.write(job.control_file)
 
 
-_KEYVAL_FILE = 'keyval'
-
-
 def prepare_keyvals_files(job, workdir):
     """Prepare Autotest keyvals files for a job."""
     keyvals = job.keyval_dict()
     keyvals['job_queued'] = \
             int(time.mktime(job.created_on.timetuple()))
-    with open(os.path.join(workdir, _KEYVAL_FILE), 'w') as f:
+    with open(_keyvals_file(workdir), 'w') as f:
         f.write(_format_keyvals(keyvals))
     if is_hostless(job):
         return
@@ -144,6 +141,48 @@ def _prepare_host_keyvals_files(job, workdir):
         keyvals_path = os.path.join(keyvals_dir, hqe.host.hostname)
         with open(keyvals_path, 'w') as f:
             f.write(_format_keyvals(_host_keyvals(hqe.host)))
+
+
+def write_aborted_keyvals_and_status(job, workdir):
+    """Write the keyvals and status for an aborted job."""
+    aborted_by = 'autotest_system'
+    aborted_on = int(time.time())
+    for hqe in job.hostqueueentry_set.all():
+        if not hasattr(hqe, 'abortedhostqueueentry'):
+            continue
+        ahqe = hqe.abortedhostqueueentry
+        aborted_by = ahqe.aborted_by
+        aborted_on = int(time.mktime(ahqe.aborted_on.timetuple()))
+        break
+    with open(_keyvals_file(workdir), 'a') as f:
+        f.write(_format_keyvals({
+                'aborted_by': aborted_by,
+                'aborted_on': aborted_on,
+        }))
+    _write_status_comment(
+            workdir, 'Job aborted by %s on %s' % (aborted_by, aborted_on))
+
+
+def _write_status_comment(workdir, comment):
+    """Write status comment in status.log."""
+    with open(_status_file(workdir), 'a') as f:
+        f.write('INFO\t----\t----\t%s' % (comment,))
+
+
+_STATUS_FILE = 'status.log'
+
+
+def _status_file(workdir):
+    """Return the path to the status.log file."""
+    return os.path.join(workdir, _STATUS_FILE)
+
+
+_KEYVAL_FILE = 'keyval'
+
+
+def _keyvals_file(workdir):
+    """Return the path to the keyvals file."""
+    return os.path.join(workdir, _KEYVAL_FILE)
 
 
 def _format_keyvals(keyvals):

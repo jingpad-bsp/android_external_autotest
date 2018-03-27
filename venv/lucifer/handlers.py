@@ -30,19 +30,21 @@ class EventHandler(object):
     finishes.
     """
 
-    def __init__(self, metrics, job, autoserv_exit):
+    def __init__(self, metrics, job, autoserv_exit, results_dir):
         """Initialize instance.
 
         @param metrics: Metrics instance
         @param job: frontend.afe.models.Job instance to own
         @param hqes: list of HostQueueEntry instances for the job
         @param autoserv_exit: autoserv exit status
+        @param results_dir: Job results directory
         """
         self.completed = False
         self._metrics = metrics
         self._job = job
         # TODO(crbug.com/748234): autoserv not implemented yet.
         self._autoserv_exit = autoserv_exit
+        self._results_dir = results_dir
 
     def __call__(self, event, msg):
         logger.debug('Received event %r with message %r', event.name, msg)
@@ -77,6 +79,7 @@ class EventHandler(object):
     def _handle_aborted(self, _msg):
         for hqe in self._job.hostqueueentry_set.all().prefetch_related('host'):
             _mark_hqe_aborted(hqe)
+        jobx.write_aborted_keyvals_and_status(self._job, self._results_dir)
 
     def _handle_completed(self, _msg):
         self._mark_job_complete()
