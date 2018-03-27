@@ -86,6 +86,8 @@ class kernel_ConfigVerify(test.test):
             ],
             'module': [
             ],
+            'enabled': [
+            ],
             'missing': [
                 # Sanity checks; one disabled, one does not exist.
                 'BINFMT_AOUT',
@@ -110,6 +112,8 @@ class kernel_ConfigVerify(test.test):
                 'UDF_FS',
                 'VFAT_FS',
             ],
+            'enabled': [
+            ],
             'missing': [
                 # Sanity checks; one disabled, one does not exist.
                 'EXT2_FS',
@@ -128,6 +132,8 @@ class kernel_ConfigVerify(test.test):
                 'MSDOS_PARTITION',
             ],
             'module': [
+            ],
+            'enabled': [
             ],
             'missing': [
                 # Sanity checks; one disabled, one does not exist.
