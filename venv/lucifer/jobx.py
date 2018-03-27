@@ -128,10 +128,6 @@ def prepare_keyvals_files(job, workdir):
     results.write_keyvals(workdir, keyvals)
     if is_hostless(job):
         return
-    _prepare_host_keyvals_files(job, workdir)
-
-
-def _prepare_host_keyvals_files(job, workdir):
     for hqe in job.hostqueueentry_set.all().prefetch_related('host'):
         results.write_host_keyvals(
                 workdir, hqe.host.hostname, _host_keyvals(hqe.host))
