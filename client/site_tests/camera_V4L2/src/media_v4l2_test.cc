@@ -15,6 +15,8 @@
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "gtest/gtest.h"
 
 #include "camera_characteristics.h"
@@ -76,10 +78,10 @@ int RunTest(V4L2Device* device, V4L2Device::IOMethod io,
   if (!retcode && !device->Run(capture_time_in_sec))
     retcode = 3;
 
-  if (!retcode && !device->StopCapture())
+  if (!device->StopCapture())
     retcode = 4;
 
-  if (!retcode && !device->UninitDevice())
+  if (!device->UninitDevice())
     retcode = 5;
 
   return retcode;
@@ -251,6 +253,7 @@ bool TestResolutions(const std::string& dev_name,
                      bool check_1280x960,
                      bool check_1600x1200,
                      bool test_constant_framerate) {
+  const int kMaxRetryTimes = 5;
   uint32_t buffers = 4;
   uint32_t time_to_capture = 3;
   uint32_t skip_frames = 0;
@@ -328,53 +331,62 @@ bool TestResolutions(const std::string& dev_name,
       return false;
     }
 
+    int retry_count = 0;
     for (const auto& constant_framerate : constant_framerate_setting) {
-      if (RunTest(device.get(), io, buffers, time_to_capture,
-            test_format->width, test_format->height, test_format->fourcc,
-            kFrameRate, constant_framerate, skip_frames)) {
-        printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
-            test_format->width, test_format->height, test_format->fourcc,
-            dev_name.c_str());
-        return false;
-      }
+      for (retry_count = 0; retry_count < kMaxRetryTimes; retry_count++) {
+        if (RunTest(device.get(), io, buffers, time_to_capture,
+              test_format->width, test_format->height, test_format->fourcc,
+              kFrameRate, constant_framerate, skip_frames)) {
+          printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
+              test_format->width, test_format->height, test_format->fourcc,
+              dev_name.c_str());
+          return false;
+        }
 
-      // Make sure the driver didn't adjust the format.
-      v4l2_format fmt;
-      if (!device->GetV4L2Format(&fmt)) {
-        return false;
-      }
-      if (test_format->width != fmt.fmt.pix.width ||
-          test_format->height != fmt.fmt.pix.height ||
-          test_format->fourcc != fmt.fmt.pix.pixelformat ||
-          std::fabs(kFrameRate - device->GetFrameRate()) >
-              std::numeric_limits<float>::epsilon()) {
-        printf("[Error] Capture test %dx%d (%08X) %.2f fps failed in %s\n",
-            test_format->width, test_format->height, test_format->fourcc,
-            kFrameRate, dev_name.c_str());
-        return false;
-      }
+        // Make sure the driver didn't adjust the format.
+        v4l2_format fmt;
+        if (!device->GetV4L2Format(&fmt)) {
+          return false;
+        }
+        if (test_format->width != fmt.fmt.pix.width ||
+            test_format->height != fmt.fmt.pix.height ||
+            test_format->fourcc != fmt.fmt.pix.pixelformat ||
+            std::fabs(kFrameRate - device->GetFrameRate()) >
+                std::numeric_limits<float>::epsilon()) {
+          printf("[Error] Capture test %dx%d (%08X) %.2f fps failed in %s\n",
+              test_format->width, test_format->height, test_format->fourcc,
+              kFrameRate, dev_name.c_str());
+          return false;
+        }
 
-      if (constant_framerate != V4L2Device::ENABLE_CONSTANT_FRAMERATE) {
-        continue;
-      }
+        if (constant_framerate != V4L2Device::ENABLE_CONSTANT_FRAMERATE) {
+          break;
+        }
 
-      float actual_fps = device->GetNumFrames() /
-          static_cast<float>(time_to_capture);
-      // 1 fps buffer is because |time_to_capture| may be too short.
-      // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
-      // The actual fps will be 29.66 or 30.33.
-      if (fabsf(actual_fps - kFrameRate) > 1) {
-        printf("[Error] Capture test %dx%d (%08X) failed with fps %.2f in "
-               "%s\n", test_format->width, test_format->height,
-               test_format->fourcc, actual_fps, dev_name.c_str());
-        return false;
-      }
+        float actual_fps = device->GetNumFrames() /
+            static_cast<float>(time_to_capture);
+        // 1 fps buffer is because |time_to_capture| may be too short.
+        // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
+        // The actual fps will be 29.66 or 30.33.
+        if (fabsf(actual_fps - kFrameRate) > 1) {
+          printf("[Error] Capture test %dx%d (%08X) failed with fps %.2f in "
+                 "%s\n", test_format->width, test_format->height,
+                 test_format->fourcc, actual_fps, dev_name.c_str());
+          continue;
+        }
 
-      if (!CheckConstantFramerate(device->GetFrameTimestamps(),
-                                  time_to_capture, kFrameRate)) {
-        printf("[Error] Capture test %dx%d (%08X) failed and didn't meet "
-               "constant framerate in %s\n", test_format->width,
-               test_format->height, test_format->fourcc, dev_name.c_str());
+        if (!CheckConstantFramerate(device->GetFrameTimestamps(),
+                                    time_to_capture, kFrameRate)) {
+          printf("[Error] Capture test %dx%d (%08X) failed and didn't meet "
+                 "constant framerate in %s\n", test_format->width,
+                 test_format->height, test_format->fourcc, dev_name.c_str());
+          continue;
+        }
+        break;
+      }
+      if (retry_count == kMaxRetryTimes) {
+        printf("[Error] Cannot meet constant framerate requirement %d times\n",
+               kMaxRetryTimes);
         return false;
       }
     }
@@ -422,8 +434,11 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
       return false;
 
     uint32_t buf_index, data_size;
-    if (!device->ReadOneFrame(&buf_index, &data_size))
+    int ret;
+    while ((ret = device->ReadOneFrame(&buf_index, &data_size)) == 0);
+    if (ret < 0) {
       return false;
+    }
 
     const V4L2Device::Buffer& buffer = device->GetBufferInfo(buf_index);
     std::unique_ptr<uint8_t[]> yuv_buffer(new uint8_t[width * height * 2]);
@@ -436,6 +451,8 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
         width, height, width, height);
     if (res) {
       printf("[Error] First frame is not a valid mjpeg image.\n");
+      base::WriteFile(base::FilePath("FirstFrame.jpg"),
+                      static_cast<char *>(buffer.start), data_size);
       return false;
     }
 
