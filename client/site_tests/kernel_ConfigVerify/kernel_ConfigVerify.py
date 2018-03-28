@@ -77,6 +77,11 @@ class kernel_ConfigVerify(test.test):
         'FW_LOADER_USER_HELPER',
         'FW_LOADER_USER_HELPER_FALLBACK',
     ]
+    MISSING_OK = [
+        # Due to a bug (crbug.com/782034), modifying this file together with
+        # kernel changes might cause failures in the CQ. In order to avoid that,
+        # this list contains modules that are okay that they are missing.
+    ]
     IS_EXCLUSIVE = [
         # Security; no surprise binary formats.
         {
@@ -164,7 +169,7 @@ class kernel_ConfigVerify(test.test):
 
         # Load the list of kernel config variables.
         config = kernel_config.KernelConfig()
-        config.initialize()
+        config.initialize(missing_ok=self.MISSING_OK)
 
         # Adjust for kernel-version-specific changes
         kernel_ver = os.uname()[2]
