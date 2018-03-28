@@ -52,6 +52,9 @@ static const char kResolution1600x1200Unsupported[] =
 static const char kConstantFramerateUnsupported[] =
     "constant_framerate_unsupported";
 
+/* Global parameters */
+static const char kAllowExternalCamera[] = "allow_external_camera";
+
 static const struct DeviceInfo kDefaultCharacteristics = {
   "",     // device_path
   "",     // usb_vid
@@ -94,6 +97,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   uint32_t camera_id;
   uint32_t module_id = -1;
   std::string vid, pid;
+  bool allow_external_camera = false;
   while (fgets(buffer, sizeof(buffer), file)) {
     // Skip comments and empty lines.
     if (buffer[0] == '#' || buffer[0] == '\n') {
@@ -104,6 +108,15 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
       LOG(ERROR) << __func__ << ": Illegal format: " << buffer;
       continue;
     }
+
+    // global config
+    if (strcmp(key, kAllowExternalCamera) == 0) {
+      VLOG(1) << "Allow external camera";
+      std::istringstream is(value);
+      is >> std::boolalpha >> allow_external_camera;
+      continue;
+    }
+
     std::vector<char*> sub_keys;
     char* sub_key = strtok(key, ".");
     while (sub_key) {
