@@ -506,6 +506,7 @@ def parse_one(db, jobname, path, parse_options):
     # NULL. Only generate timeline report when datastore_parent_key is given.
     try:
         datastore_parent_key = job_keyval.get('datastore_parent_key', None)
+        provision_job_id = job_keyval.get('provision_job_id', None)
         if (suite_report and jobname.endswith('/hostless')
             and job_data['suite'] and datastore_parent_key):
             tko_utils.dprint('Start dumping suite timing report...')
@@ -514,6 +515,10 @@ def parse_one(db, jobname, path, parse_options):
                         "--output='%s' --debug" %
                         (common.autotest_dir, job_data['afe_job_id'],
                          timing_log))
+
+            if provision_job_id is not None:
+                dump_cmd += " --provision_job_id=%d" % int(provision_job_id)
+
             subprocess.check_output(dump_cmd, shell=True)
             tko_utils.dprint('Successfully finish dumping suite timing report')
 
