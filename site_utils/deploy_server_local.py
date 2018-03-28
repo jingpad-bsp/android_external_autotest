@@ -235,19 +235,19 @@ def update_command(cmd_tag, dryrun=False, use_chromite_master=False):
     if cmd_tag not in cmds:
         raise UnknownCommandException(cmd_tag, cmds)
 
-    expanded_command = cmds[cmd_tag].replace('AUTOTEST_REPO',
-                                              common.autotest_dir)
+    command = cmds[cmd_tag]
     # When updating push servers, pass an arg to build_externals to update
     # chromite to master branch for testing
     if use_chromite_master and cmd_tag == BUILD_EXTERNALS_COMMAND:
-        expanded_command += ' --use_chromite_master'
+        command += ' --use_chromite_master'
 
-    print('Running: %s: %s' % (cmd_tag, expanded_command))
+    print('Running: %s: %s' % (cmd_tag, command))
     if dryrun:
-        print('Skip: %s' % expanded_command)
+        print('Skip: %s' % command)
     else:
         try:
-            subprocess.check_output(expanded_command, shell=True,
+            subprocess.check_output(command, shell=True,
+                                    cwd=common.autotest_dir,
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             print('FAILED:')
@@ -493,6 +493,10 @@ def _sync_chromiumos_repo():
 
 def main(args):
     """Main method."""
+    # Be careful before you change this call to `os.chdir()`:
+    # We make several calls to `subprocess.check_output()` and
+    # friends that depend on this directory, most notably calls to
+    # the 'repo' command from `verify_repo_clean()`.
     os.chdir(common.autotest_dir)
     global_config.global_config.parse_config_file()
 
