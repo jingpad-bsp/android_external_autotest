@@ -81,6 +81,12 @@ class kernel_ConfigVerify(test.test):
         # Due to a bug (crbug.com/782034), modifying this file together with
         # kernel changes might cause failures in the CQ. In order to avoid that,
         # this list contains modules that are okay that they are missing.
+
+        # TODO(crbug.com/826075): Remove these three entries once all of the
+        # changes have landed.
+        'USB_CONFIGFS_F_FS',
+        'CONFIGFS_FS',
+        'USB_F_FS',
     ]
     IS_EXCLUSIVE = [
         # Security; no surprise binary formats.
@@ -184,7 +190,10 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == 'BINFMT_':
                     entry['builtin'].append('BINFMT_MISC')
                 if entry['regex'] == '.*_FS$':
+                    entry['builtin'].append('USB_CONFIGFS_F_FS')
+                    entry['enabled'].append('CONFIGFS_FS')
                     entry['module'].append('NFS_FS')
+                    entry['module'].append('USB_F_FS')
 
         if utils.compare_versions(kernel_ver, "3.18") >= 0:
             for entry in self.IS_EXCLUSIVE:
@@ -201,7 +210,6 @@ class kernel_ConfigVerify(test.test):
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('ESD_FS')
-                    entry['builtin'].append('CONFIGFS_FS')
 
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MISSING.remove('INET_DIAG')
