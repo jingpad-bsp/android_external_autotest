@@ -202,41 +202,16 @@ class TPMStatusVerifier(hosts.Verifier):
     """Verify that the host's TPM is in a good state."""
 
     def verify(self, host):
-        if _is_virual_machine(host):
+        if _is_virtual_machine(host):
             # We do not forward host TPM / emulated TPM to qemu VMs, so skip
             # this verification step.
             logging.debug('Skipped verification %s on VM', self)
             return
 
-        # This cryptohome command emits status information in JSON format. It
-        # looks something like this:
-        # {
-        #    "installattrs": {
-        #       ...
-        #    },
-        #    "mounts": [ {
-        #       ...
-        #    } ],
-        #    "tpm": {
-        #       "being_owned": false,
-        #       "can_connect": true,
-        #       "can_decrypt": false,
-        #       "can_encrypt": false,
-        #       "can_load_srk": true,
-        #       "can_load_srk_pubkey": true,
-        #       "enabled": true,
-        #       "has_context": true,
-        #       "has_cryptohome_key": false,
-        #       "has_key_handle": false,
-        #       "last_error": 0,
-        #       "owned": true
-        #    }
-        # }
-        output = host.run('cryptohome --action=status').stdout.strip()
         try:
-            status = json.loads(output)
-        except ValueError:
-            logging.info('Cannot determine the Crytohome valid status - '
+            status = CryptohomeStatus(host)
+        except hosts.AutoservVerifyError:
+            logging.info('Cannot determine the Cryptohome valid status - '
                          'skipping check.')
             return
         try:
@@ -327,6 +302,63 @@ class HWIDVerifier(hosts.Verifier):
     @property
     def description(self):
         return 'The host should have valid HWID and Serial Number'
+
+
+class JetstreamTpmVerifier(hosts.Verifier):
+    """Verify that Jetstream TPM is in a good state."""
+
+    @retry.retry(error.AutoservError, timeout_min=2, delay_sec=10)
+    def verify(self, host):
+        try:
+            status = CryptohomeStatus(host)
+            if not status.tpm_enabled:
+                raise hosts.AutoservVerifyError('TPM is not enabled')
+            if not status.tpm_owned:
+                raise hosts.AutoservVerifyError('TPM is not owned')
+            if not status.tpm_can_load_srk:
+                raise hosts.AutoservVerifyError('TPM cannot load SRK')
+            if not status.tpm_can_load_srk_pubkey:
+                raise hosts.AutoservVerifyError('TPM cannot load SRK pubkey')
+
+            # Check that the TPM is fully initialized. The output of this
+            # command is line-oriented property/value pairs.
+            result = host.run('cryptohome --action=tpm_status')
+            if 'TPM Ready: true' not in result.stdout:
+                raise hosts.AutoservVerifyError('TPM is not ready')
+        except error.AutoservRunError:
+            raise hosts.AutoservVerifyError(
+                    'Could not determine TPM status')
+
+    @property
+    def description(self):
+        return 'Jetstream TPM state check'
+
+
+class JetstreamAttestationVerifier(hosts.Verifier):
+    """Verify that Jetstream attestation client has a certificate."""
+
+    @retry.retry(error.AutoservError, timeout_min=2, delay_sec=10)
+    def verify(self, host):
+        try:
+            # This output is in text protobuf format.
+            result = host.run('cryptohome --action=tpm_more_status')
+            if 'attestation_prepared: true' not in result.stdout:
+                raise hosts.AutoservVerifyError(
+                        'Attestation has not been prepared')
+
+            # This output is in text protobuf format.
+            result = host.run('ap-attestation-client '
+                              '--endpoint=get-endorsement-information')
+            if 'ek_certificate' not in result.stdout:
+                raise hosts.AutoservVerifyError(
+                        'Endorsement certificate not found')
+        except error.AutoservRunError:
+            raise hosts.AutoservVerifyError(
+                    'Unable to fetch endorsement certificate')
+
+    @property
+    def description(self):
+        return 'Jetstream attestation endorsement check'
 
 
 class JetstreamServicesVerifier(hosts.Verifier):
@@ -502,8 +534,24 @@ class ServoInstallRepair(hosts.RepairAction):
         return 'Reinstall from USB using servo'
 
 
-class JetstreamRepair(hosts.RepairAction):
-    """Repair by restarting Jetstrem services."""
+class JetstreamTpmRepair(hosts.RepairAction):
+    """Repair by resetting TPM and rebooting."""
+
+    def repair(self, host):
+        host.run('rm -f /var/cache/ap/setup-network', ignore_status=True)
+        host.run('rm -f /home/chronos/.oobe_completed', ignore_status=True)
+        host.run('rm -f /home/.shadow/.can_attempt_ownership',
+                 ignore_status=True)
+        host.run('crossystem clear_tpm_owner_request=1', ignore_status=True)
+        host.reboot()
+
+    @property
+    def description(self):
+        return 'Reset TPM and reboot'
+
+
+class JetstreamServiceRepair(hosts.RepairAction):
+    """Repair by restarting Jetstream services."""
 
     def repair(self, host):
         host.cleanup_services()
@@ -643,20 +691,32 @@ def create_moblab_repair_strategy():
 
 def _jetstream_repair_actions():
     """Return the repair actions for a `JetstreamHost`."""
-    au_triggers = _CROS_AU_TRIGGERS + ('jetstream_services',)
+    au_triggers = _CROS_AU_TRIGGERS
+    jetstream_tpm_triggers = ('jetstream_tpm', 'jetstream_attestation')
+    jetstream_service_triggers = (jetstream_tpm_triggers +
+                                  ('jetstream_services',))
     repair_actions = (
         _cros_basic_repair_actions() +
         (
-            (JetstreamRepair, 'jetstream_repair',
-             _CROS_USB_TRIGGERS + _CROS_POWERWASH_TRIGGERS, au_triggers),
+            (JetstreamTpmRepair, 'jetstream_tpm_repair',
+             _CROS_USB_TRIGGERS + _CROS_POWERWASH_TRIGGERS,
+             au_triggers + jetstream_tpm_triggers),
+
+            (JetstreamServiceRepair, 'jetstream_service_repair',
+             _CROS_USB_TRIGGERS + _CROS_POWERWASH_TRIGGERS + (
+                 'jetstream_tpm', 'jetstream_attestation'),
+             au_triggers + jetstream_service_triggers),
         ) +
-        _cros_extended_repair_actions(au_triggers=au_triggers))
+        _cros_extended_repair_actions(
+            au_triggers=au_triggers + jetstream_service_triggers))
     return repair_actions
 
 
 def _jetstream_verify_dag():
     """Return the verification DAG for a `JetstreamHost`."""
     verify_dag = _cros_verify_dag() + (
+        (JetstreamTpmVerifier, 'jetstream_tpm', ('ssh',)),
+        (JetstreamAttestationVerifier, 'jetstream_attestation', ('ssh',)),
         (JetstreamServicesVerifier, 'jetstream_services', ('ssh',)),
     )
     return verify_dag
@@ -676,7 +736,7 @@ def create_jetstream_repair_strategy():
 
 # TODO(pprabhu) Move this to a better place. I have no idea what that place
 # would be.
-def _is_virual_machine(host):
+def _is_virtual_machine(host):
     """Determine whether the given |host| is a virtual machine.
 
     @param host: a hosts.Host object.
@@ -684,3 +744,71 @@ def _is_virual_machine(host):
     """
     output = host.run('cat /proc/cpuinfo | grep "model name"')
     return output.stdout and 'qemu' in output.stdout.lower()
+
+
+class CryptohomeStatus(dict):
+    """Wrapper for getting cryptohome status from a host."""
+
+    def __init__(self, host):
+        super(CryptohomeStatus, self).__init__()
+        self.update(_get_cryptohome_status(host))
+        self.tpm = self['tpm']
+
+    @property
+    def tpm_enabled(self):
+        return self.tpm.get('enabled') == True
+
+    @property
+    def tpm_owned(self):
+        return self.tpm.get('owned') == True
+
+    @property
+    def tpm_can_load_srk(self):
+        return self.tpm.get('can_load_srk') == True
+
+    @property
+    def tpm_can_load_srk_pubkey(self):
+        return self.tpm.get('can_load_srk_pubkey') == True
+
+
+def _get_cryptohome_status(host):
+    """Returns a dictionary containing the cryptohome status.
+
+    @param host: a hosts.Host object.
+    @returns A dictionary containing the cryptohome status.
+    @raises AutoservVerifyError: if the output could not be parsed or the TPM
+       status is missing.
+    @raises hosts.AutoservRunError: if the cryptohome command failed.
+    """
+    # This cryptohome command emits status information in JSON format. It
+    # looks something like this:
+    # {
+    #    "installattrs": {
+    #       ...
+    #    },
+    #    "mounts": [ {
+    #       ...
+    #    } ],
+    #    "tpm": {
+    #       "being_owned": false,
+    #       "can_connect": true,
+    #       "can_decrypt": false,
+    #       "can_encrypt": false,
+    #       "can_load_srk": true,
+    #       "can_load_srk_pubkey": true,
+    #       "enabled": true,
+    #       "has_context": true,
+    #       "has_cryptohome_key": false,
+    #       "has_key_handle": false,
+    #       "last_error": 0,
+    #       "owned": true
+    #    }
+    # }
+    try:
+        output = host.run('cryptohome --action=status').stdout.strip()
+        status = json.loads(output)
+        if 'tpm' not in status:
+            raise hosts.AutoservVerifyError('TPM status is missing')
+        return status
+    except ValueError:
+        raise hosts.AutoservVerifyError('Unable to parse cryptohome status')
