@@ -99,12 +99,12 @@ class _CommandParserTestCase(unittest.TestCase):
     def _check_common_defaults(self, arguments):
         self.assertIsNone(arguments.web)
         self.assertIsNone(arguments.logdir)
-        self.assertIsNone(arguments.build)
-        self.assertIsNone(arguments.hostname_file)
+        self.assertFalse(arguments.dry_run)
         self.assertTrue(arguments.stageusb)
         self.assertTrue(arguments.install_test_image)
-        self.assertTrue(arguments.assign_repair_image)
         self.assertIsNone(arguments.board)
+        self.assertIsNone(arguments.build)
+        self.assertIsNone(arguments.hostname_file)
         self.assertEquals(arguments.hostnames, [])
 
     def test_web_option(self):
@@ -123,6 +123,13 @@ class _CommandParserTestCase(unittest.TestCase):
                 arguments = _test_parse_command([option, opt_arg], full_deploy)
                 self.assertEquals(arguments.logdir, opt_arg)
 
+    def test_dry_run_option(self):
+        """Test handling of `--dry-run`, both long and short forms."""
+        for option in ['-n', '--dry-run']:
+            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
+                arguments = _test_parse_command([option], full_deploy)
+                self.assertTrue(arguments.dry_run)
+
     def test_build_option(self):
         """Test handling of `--build`, both long and short forms."""
         opt_arg = 'R66-10447.0.0'
@@ -139,26 +146,12 @@ class _CommandParserTestCase(unittest.TestCase):
                 arguments = _test_parse_command([option, opt_arg], full_deploy)
                 self.assertEquals(arguments.hostname_file, opt_arg)
 
-    def test_noinstall_option(self):
-        """Test handling of `--noinstall`, both long and short forms."""
-        for option in ['-n', '--noinstall']:
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_command([option], full_deploy)
-                self.assertFalse(arguments.install_test_image)
-
     def test_nostage_option(self):
         """Test handling of `--nostage`, both long and short forms."""
         for option in ['-s', '--nostage']:
             for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
                 arguments = _test_parse_command([option], full_deploy)
                 self.assertFalse(arguments.stageusb)
-
-    def test_nostable_option(self):
-        """Test handling of `--nostable`, both long and short forms."""
-        for option in ['-t', '--nostable']:
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_command([option], full_deploy)
-                self.assertFalse(arguments.assign_repair_image)
 
     def test_upload_option(self):
         """Test handling of `--upload`, both long and short forms."""

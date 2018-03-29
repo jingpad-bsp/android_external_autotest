@@ -225,7 +225,7 @@ def _update_build(afe, report_log, arguments):
     # At this point `cros_version` is our new repair build, and
     # `fw_version` is our new target firmware.  Call the AFE back with
     # updates as necessary.
-    if arguments.assign_repair_image:
+    if not arguments.dry_run:
         if cros_version != afe_cros:
             cros_version_map.set_version(arguments.board, cros_version)
 
@@ -438,19 +438,27 @@ def _install_test_image(host, arguments):
     # since we can't pass None through the xml rpcs, use 0 to indicate None.
     if not host.servo.probe_host_usb_dev(timeout=0):
         raise Exception('No USB stick detected on Servo host')
-    try:
-        if arguments.install_test_image:
-            if arguments.stageusb:
-                host.servo.image_to_servo_usb(
-                        host.stage_image_for_servo())
-            if arguments.install_firmware:
-                _install_firmware(host)
+    if arguments.dry_run:
+        return
+    if arguments.stageusb:
+        try:
+            host.servo.image_to_servo_usb(
+                    host.stage_image_for_servo())
+        except Exception as e:
+            logging.exception('Failed to stage image on USB: %s', e)
+            raise Exception('USB staging failed')
+    if arguments.install_firmware:
+        try:
+            _install_firmware(host)
+        except error.AutoservRunError as e:
+            logging.exception('Firmware update failed: %s', e)
+            raise Exception('chromeos-firmwareupdate failed')
+    if arguments.install_test_image:
+        try:
             host.servo_install()
-    except error.AutoservRunError as e:
-        logging.exception('Failed to install: %s', e)
-        raise Exception('chromeos-install failed')
-    finally:
-        host.close()
+        except error.AutoservRunError as e:
+            logging.exception('Failed to install: %s', e)
+            raise Exception('chromeos-install failed')
 
 
 def _install_and_update_afe(afe, hostname, host_attrs, arguments):
@@ -472,6 +480,7 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
     """
     afe_host, unlock_on_failure = _get_afe_host(afe, hostname, host_attrs,
                                                 arguments)
+    host = None
     try:
         host = _create_host(hostname, afe, afe_host)
         _install_test_image(host, arguments)
@@ -492,6 +501,9 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
         if unlock_on_failure and not _try_unlock_host(afe_host):
             logging.error('Failed to unlock host!')
         raise
+    finally:
+        if host is not None:
+            host.close()
 
     if not _try_unlock_host(afe_host):
         raise Exception('Install succeeded, but failed to unlock the DUT.')
@@ -773,6 +785,9 @@ def install_duts(arguments):
     with open(report_log_path, 'w') as report_log_file:
         report_log = _MultiFileWriter([report_log_file, sys.stdout])
         afe = frontend.AFE(server=arguments.web)
+        if arguments.dry_run:
+            report_log.write('Dry run - installation and most testing '
+                             'will be skipped.\n')
         current_build = _update_build(afe, report_log, arguments)
         host_attr_dict = _get_host_attributes(arguments.host_info_list, afe)
         install_pool = multiprocessing.Pool(len(arguments.hostnames))
