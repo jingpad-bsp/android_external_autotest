@@ -40,32 +40,33 @@ import os
 
 
 class _ArgumentParser(argparse.ArgumentParser):
-    """ArgumentParser extended with boolean option pairs."""
+    """`argparse.ArgumentParser` extended with boolean option pairs."""
 
-    # Arguments required when adding an option pair.
-    _REQUIRED_PAIR_ARGS = {'dest', 'default'}
-
-    def add_argument_pair(self, yes_flags, no_flags, **kwargs):
+    def add_boolean_argument(self, name, default, **kwargs):
         """Add a pair of argument flags for a boolean option.
 
-        @param yes_flags  Iterable of flags to turn option on.
-                          May also be a single string.
-        @param no_flags   Iterable of flags to turn option off.
-                          May also be a single string.
-        @param *kwargs    Other arguments to pass to add_argument()
+        This add a pair of options, named `--<name>` and `--no<name>`.
+        The actions of the two options are 'store_true' and
+        'store_false', respectively, with the destination `<name>`.
+
+        If neither option is present on the command line, the default
+        value for destination `<name>` is given by `default`.
+
+        The given `kwargs` may be any arguments accepted by
+        `ArgumentParser.add_argument()`, except for `action` and `dest`.
+
+        @param name     The name of the boolean argument, used to
+                        construct the option names and destination field
+                        name.
+        @param default  Default setting for the option when not present
+                        on the command line.
         """
-        missing_args = self._REQUIRED_PAIR_ARGS - set(kwargs)
-        if missing_args:
-            raise ValueError("Argument pair must have explicit %s"
-                             % (', '.join(missing_args),))
-
-        if isinstance(yes_flags, (str, unicode)):
-            yes_flags = [yes_flags]
-        if isinstance(no_flags, (str, unicode)):
-            no_flags = [no_flags]
-
-        self.add_argument(*yes_flags, action='store_true', **kwargs)
-        self.add_argument(*no_flags, action='store_false', **kwargs)
+        exclusion_group = self.add_mutually_exclusive_group()
+        exclusion_group.add_argument('--%s' % name, action='store_true',
+                                     dest=name, **kwargs)
+        exclusion_group.add_argument('--no%s' % name, action='store_false',
+                                     dest=name, **kwargs)
+        self.set_defaults(**{name: bool(default)})
 
 
 def _make_common_parser(command_name):
@@ -102,15 +103,14 @@ def _make_common_parser(command_name):
     return parser
 
 
-def _add_upload_argument_pair(parser, default):
-    """Add an option pair for uploading logs.
+def _add_upload_option(parser, default):
+    """Add a boolean option pair for uploading logs.
 
     @param parser   _ArgumentParser instance.
     @param default  Default option value.
     """
-    parser.add_argument_pair('--upload', '--noupload', dest='upload',
-                             default=default,
-                             help='whether to upload logs to GS bucket',)
+    parser.add_boolean_argument('upload', default=default,
+                                help='whether to upload logs to GS bucket')
 
 
 def parse_command(argv, full_deploy):
@@ -129,7 +129,7 @@ def parse_command(argv, full_deploy):
     """
     command_name = os.path.basename(argv[0])
     parser = _make_common_parser(command_name)
-    _add_upload_argument_pair(parser, default=full_deploy)
+    _add_upload_option(parser, default=full_deploy)
 
     arguments = parser.parse_args(argv[1:])
     arguments.full_deploy = full_deploy
