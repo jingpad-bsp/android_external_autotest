@@ -33,6 +33,7 @@ SKIP_PROVISION = 'skip_provision'
 # Postfix -cheetsth to distinguish ChromeOS build during Cheets provisioning.
 CHEETS_SUFFIX = '-cheetsth'
 
+
 _Action = collections.namedtuple('_Action', 'name, value')
 
 

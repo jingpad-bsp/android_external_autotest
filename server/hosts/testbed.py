@@ -16,7 +16,6 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server.cros.dynamic_suite import constants
-from autotest_lib.server import autoserv_parser
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import adb_host
@@ -40,7 +39,6 @@ _IMAGE_NAME_PATTERN = '(.*/.*/[^:#]*)(?::(.*))?(?:#(\d+))?'
 class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
-    _parser = autoserv_parser.autoserv_parser
     VERSION_PREFIX = provision.TESTBED_BUILD_VERSION_PREFIX
     support_devserver_provision = False
 
@@ -412,7 +410,6 @@ class TestBed(object):
                 {'job_repo_url_XZ001': 'http://10.1.1.3/branch1/shamu-eng/1001',
                  'job_repo_url_XZ002': 'http://10.1.1.3/branch2/shamu-eng/1002'}
         """
-        image = image or self._parser.options.image
         if not image:
             raise error.InstallError('No image string is provided to test bed.')
         images = self._parse_image(image)

@@ -213,9 +213,7 @@ class EmulatedADBHost(adb_host.ADBHost):
 
         @param build_url: The url to use for downloading Android artifacts.
                           pattern: http://$devserver:###/static/$build.
-                          If build_url is set to None, the code may try
-                          _parser.options.image to do the installation. If none
-                          of them is set, machine_install will fail.
+                          If not set, machine_install will fail.
         @param build_local_path: The path to a local directory that contains the
                                  image files needed to provision the device.
         @param wipe: No-op
@@ -232,9 +230,6 @@ class EmulatedADBHost(adb_host.ADBHost):
                  is a url to the build staged on devserver.
         """
         os_type = os_type or self.get_os_type()
-        if not build_url and self._parser.options.image:
-            build_url, _ = self.stage_build_for_install(
-                    self._parser.options.image, os_type=os_type)
         if os_type == OS_TYPE_EMULATED_BRILLO:
             self.setup_brillo_emulator(
                     build_url=build_url, build_local_path=build_local_path)
