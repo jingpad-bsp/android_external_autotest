@@ -10,29 +10,34 @@ the two commands are primarily in slightly different defaults.
 
 This module exports a single function, `parse_command()`.  This function
 parses a command line and returns an `argparse.Namespace` object with
-the result.  That `Namespace` object contains the following fields:
+a specific set of fields.
+
+The following fields represent parameter inputs to the underlying
+deployment:
     `web`:  Server name (or URL) for the AFE RPC service.
     `logdir`:  The directory where logs are to be stored.
+    `board`:  Specifies the board to be used when creating DUTs.
     `build`:  A build version string (in the form 'R66-10447.0.0').
-        This version will be assigned as the repair image for the DUTs.
-    `noinstall`:  This is a debug option.  When true, skips Servo setup
-        and testing, and installation of both firmware and test images
-        on the DUT.  This option is only useful as a way to quickly test
-        certain parts of the script.
-    `nostage`:  When true, skips Servo setup and and testing.  This can
-        be used to speed up operations when the USB stick for the servo
-        is known to already have the proper image installed.
-    `nostable`:  This is a debug option.  When true, skips applying any
-        changes to the repair image for the DUTs.
-    `board`:  Specifies the board to be used for all DUTs.
+        This identifies the test image to use for installation, and will
+        be assigned as the repair image for the board.
     `hostname_file`:  Name of a file in CSV format with information
         about the hosts and servos to be deployed/repaired.
-    `hostnames`:  List of host names.
-    `upload`:  After the command completes, logs will be uploaded to
-        googlestorage if this is true.
-    `full_deploy`:  If this is true, the deployment process will include
-        the steps to install dev-signed RO firmware on a writable
-        device.
+    `hostnames`:  List of DUT host names.
+
+The following fields specify options that are used to enable or disable
+specific deployment steps.
+    `stageusb`:  When true, enable installing the test image on the
+        Servo USB stick.  It can be disabled to speed up operations when
+        the stick is known to already have the proper image.
+    `install_firmware`:  When true, enable installing dev-signed RO and
+        RW firmware onto the DUTs.  The device must be in dev mode, with
+        hardware write-protect disabled.
+    `install_test_image`:  When true, enable installing the test image
+        onto the device from the Servo USB stick.
+    `assign_repair_image`:  This is a debug option.  When true, enable
+        updating the repair image version assigned to the given board.
+    `upload`:  When true, logs will be uploaded to googlestorage after
+        the command completes.
 """
 
 import argparse
@@ -69,10 +74,12 @@ class _ArgumentParser(argparse.ArgumentParser):
         self.set_defaults(**{name: bool(default)})
 
 
-def _make_common_parser(command_name):
+def _make_common_parser(command_name, full_deploy):
     """Create argument parser for common arguments.
 
     @param command_name The command name.
+    @param full_deploy  True if firmware installation should be enabled,
+                        or false, if it shouldn't.
     @return ArgumentParser instance.
     """
     parser = _ArgumentParser(
@@ -86,11 +93,14 @@ def _make_common_parser(command_name):
                         help='directory for logs')
     parser.add_argument('-i', '--build',
                         help='select stable test build version')
-    parser.add_argument('-n', '--noinstall', action='store_true',
+    parser.add_argument('-n', '--noinstall',
+                        dest='install_test_image', action='store_false',
                         help='skip install (for script testing)')
-    parser.add_argument('-s', '--nostage', action='store_true',
+    parser.add_argument('-s', '--nostage',
+                        dest='stageusb', action='store_false',
                         help='skip staging test image (for script testing)')
-    parser.add_argument('-t', '--nostable', action='store_true',
+    parser.add_argument('-t', '--nostable',
+                        dest='assign_repair_image', action='store_false',
                         help='skip changing stable test image '
                              '(for script testing)')
     parser.add_argument('-f', '--hostname_file',
@@ -100,6 +110,8 @@ def _make_common_parser(command_name):
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
                         help='host names of DUTs to be installed')
+    parser.set_defaults(install_firmware=full_deploy,
+                        install_test_image=True)
     return parser
 
 
@@ -128,9 +140,6 @@ def parse_command(argv, full_deploy):
     @return Result, as returned by ArgumentParser.parse_args().
     """
     command_name = os.path.basename(argv[0])
-    parser = _make_common_parser(command_name)
+    parser = _make_common_parser(command_name, full_deploy)
     _add_upload_option(parser, default=full_deploy)
-
-    arguments = parser.parse_args(argv[1:])
-    arguments.full_deploy = full_deploy
-    return arguments
+    return parser.parse_args(argv[1:])
