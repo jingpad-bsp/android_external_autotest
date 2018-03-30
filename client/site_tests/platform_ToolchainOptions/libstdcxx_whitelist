@@ -11,3 +11,5 @@
 /usr/lib64/libSkyCamAICKBL.so
 # Part of prebuilt driver binary used in Tegra boards.
 /usr/lib/libnvmmlite_video.so
+# Whitelist rtanalytics_main (b/73422412).
+/opt/google/rta/rtanalytics_main
