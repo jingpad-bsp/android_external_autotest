@@ -225,7 +225,7 @@ def _update_build(afe, report_log, arguments):
     # At this point `cros_version` is our new repair build, and
     # `fw_version` is our new target firmware.  Call the AFE back with
     # updates as necessary.
-    if not arguments.nostable:
+    if arguments.assign_repair_image:
         if cros_version != afe_cros:
             cros_version_map.set_version(arguments.board, cros_version)
 
@@ -439,11 +439,11 @@ def _install_test_image(host, arguments):
     if not host.servo.probe_host_usb_dev(timeout=0):
         raise Exception('No USB stick detected on Servo host')
     try:
-        if not arguments.noinstall:
-            if not arguments.nostage:
+        if arguments.install_test_image:
+            if arguments.stageusb:
                 host.servo.image_to_servo_usb(
                         host.stage_image_for_servo())
-            if arguments.full_deploy:
+            if arguments.install_firmware:
                 _install_firmware(host)
             host.servo_install()
     except error.AutoservRunError as e:

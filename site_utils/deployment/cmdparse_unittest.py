@@ -101,9 +101,9 @@ class _CommandParserTestCase(unittest.TestCase):
         self.assertIsNone(arguments.logdir)
         self.assertIsNone(arguments.build)
         self.assertIsNone(arguments.hostname_file)
-        self.assertFalse(arguments.noinstall)
-        self.assertFalse(arguments.nostage)
-        self.assertFalse(arguments.nostable)
+        self.assertTrue(arguments.stageusb)
+        self.assertTrue(arguments.install_test_image)
+        self.assertTrue(arguments.assign_repair_image)
         self.assertIsNone(arguments.board)
         self.assertEquals(arguments.hostnames, [])
 
@@ -144,21 +144,21 @@ class _CommandParserTestCase(unittest.TestCase):
         for option in ['-n', '--noinstall']:
             for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
                 arguments = _test_parse_command([option], full_deploy)
-                self.assertTrue(arguments.noinstall)
+                self.assertFalse(arguments.install_test_image)
 
     def test_nostage_option(self):
         """Test handling of `--nostage`, both long and short forms."""
         for option in ['-s', '--nostage']:
             for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
                 arguments = _test_parse_command([option], full_deploy)
-                self.assertTrue(arguments.nostage)
+                self.assertFalse(arguments.stageusb)
 
     def test_nostable_option(self):
         """Test handling of `--nostable`, both long and short forms."""
         for option in ['-t', '--nostable']:
             for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
                 arguments = _test_parse_command([option], full_deploy)
-                self.assertTrue(arguments.nostable)
+                self.assertFalse(arguments.assign_repair_image)
 
     def test_upload_option(self):
         """Test handling of `--upload`, both long and short forms."""
@@ -177,14 +177,14 @@ class _CommandParserTestCase(unittest.TestCase):
         arguments = _test_parse_command([], True)
         self._check_common_defaults(arguments)
         self.assertTrue(arguments.upload)
-        self.assertTrue(arguments.full_deploy)
+        self.assertTrue(arguments.install_firmware)
 
     def test_repair_test_defaults(self):
         """Test argument defaults for `repair_test`."""
         arguments = _test_parse_command([], False)
         self._check_common_defaults(arguments)
         self.assertFalse(arguments.upload)
-        self.assertFalse(arguments.full_deploy)
+        self.assertFalse(arguments.install_firmware)
 
     def test_board_no_hostnames(self):
         """Test handling when a board is supplied without hostnames."""
