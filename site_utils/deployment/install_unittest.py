@@ -78,7 +78,7 @@ class UpdateBuildTests(unittest.TestCase):
                 cros_version=self.CROS_VERSION, fw_version=self.WOLF_FW_VERSION)
 
         self._set_patchers()
-        arguments = mock.Mock(board=self.WOLF_BOARD, nostable=False, build=None)
+        arguments = mock.Mock(board=self.WOLF_BOARD, dry_run=False, build=None)
         cros_version = install._update_build(
                 afe_mock, self.report_log_mock, arguments)
 
@@ -94,7 +94,7 @@ class UpdateBuildTests(unittest.TestCase):
                 cros_version=self.CROS_VERSION, fw_version=self.WOLF_FW_VERSION)
 
         self._set_patchers(omaha_version=None)
-        arguments = mock.Mock(board=self.WOLF_BOARD, nostable=False, build=None)
+        arguments = mock.Mock(board=self.WOLF_BOARD, dry_run=False, build=None)
         cros_version = install._update_build(
                 afe_mock, self.report_log_mock, arguments)
 
@@ -110,7 +110,7 @@ class UpdateBuildTests(unittest.TestCase):
                 cros_version=self.CROS_VERSION, fw_version=self.WOLF_FW_VERSION)
         self._set_patchers(
                 firmware_versions={self.WOLF_BOARD: self.WOLF_FW_VERSION})
-        arguments = mock.Mock(board=self.WOLF_BOARD, nostable=False, build=None)
+        arguments = mock.Mock(board=self.WOLF_BOARD, dry_run=False, build=None)
         cros_version = install._update_build(
                 afe_mock, self.report_log_mock, arguments)
 
@@ -124,7 +124,7 @@ class UpdateBuildTests(unittest.TestCase):
         """Update Non-unibuild with None cros_version & fw_version in AFE."""
         afe_mock = AFEMock(cros_version=None, fw_version=None)
         self._set_patchers()
-        arguments = mock.Mock(board=self.WOLF_BOARD, nostable=False, build=None)
+        arguments = mock.Mock(board=self.WOLF_BOARD, dry_run=False, build=None)
         cros_version = install._update_build(
                 afe_mock, self.report_log_mock, arguments)
 
@@ -141,7 +141,7 @@ class UpdateBuildTests(unittest.TestCase):
                 fw_version=self.CORAL_FW_VERSION)
         self._set_patchers(
                 firmware_versions=self.CORAL_FW_VERSION_MAP)
-        arguments = mock.Mock(board=self.CORAL_BOARD, nostable=False,
+        arguments = mock.Mock(board=self.CORAL_BOARD, dry_run=False,
                               build=None)
         cros_version = install._update_build(
                 afe_mock, self.report_log_mock, arguments)
