@@ -997,6 +997,10 @@ class TradefedTest(test.test):
             lastmatch = (session, passed, failed, done == total)
         return lastmatch
 
+    def _tradefed_retry_command(self, run_command, session_id):
+        """Builds the tradefed 'retry' command line."""
+        return run_command + ['--retry', '%d' % session_id]
+
     def _run_tradefed_with_retries(self,
                                    target_module,
                                    test_command,
@@ -1052,7 +1056,8 @@ class TradefedTest(test.test):
                 else:
                     logging.info('Retrying failures of %s with session_id %d:',
                                  test_name, session_id)
-                    commands = [test_command + ['--retry', '%d' % session_id]]
+                    commands = [self._tradefed_retry_command(list(test_command),
+                                                             session_id)]
 
                 # TODO(pwang): Evaluate if it is worth it to get the number of
                 #              not-excecuted, for instance, by collecting all
