@@ -31,7 +31,7 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
     """
     install.install_duts(
-        cmdparse.parse_command(argv, full_deploy=True))
+        cmdparse.parse_deprecated_command(argv, full_deploy=True))
 
 
 if __name__ == '__main__':
