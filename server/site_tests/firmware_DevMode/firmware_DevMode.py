@@ -6,6 +6,7 @@ import logging
 import time
 
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.servo import chrome_ec
 
 
 class firmware_DevMode(FirmwareTest):
@@ -45,12 +46,9 @@ class firmware_DevMode(FirmwareTest):
             self.faft_config.mode_switcher_type in
                 ['keyboard_dev_switcher', 'tablet_detachable_switcher']):
             logging.info("Rebooting into fake recovery mode (EC still in RW).")
-            self.ec.send_command_get_output('apshutdown',
-                    ['power state \d+ = (S5|G3)'])
-            self.ec.send_command_get_output('hostevent set 0x00004000',
-                    ['event set 0x0+4000'])
-            time.sleep(1)
-            self.ec.send_command('powerbtn')
+            self.servo.get_power_state_controller().power_off()
+            self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
+            self.servo.power_short_press()
 
             logging.info("Trying to transition to dev mode with EC_IN_RW=1.")
             self.switcher.trigger_rec_to_dev()
