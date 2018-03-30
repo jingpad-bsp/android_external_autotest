@@ -25,7 +25,10 @@ deployment:
     `hostnames`:  List of DUT host names.
 
 The following fields specify options that are used to enable or disable
-specific deployment steps.
+specific deployment steps:
+    `dry_run`:  When true, disables operations with any kind of
+        side-effect.  This option implicitly overrides and disables all
+        of the options below, except for the `upload` option.
     `stageusb`:  When true, enable installing the test image on the
         Servo USB stick.  It can be disabled to speed up operations when
         the stick is known to already have the proper image.
@@ -34,8 +37,6 @@ specific deployment steps.
         hardware write-protect disabled.
     `install_test_image`:  When true, enable installing the test image
         onto the device from the Servo USB stick.
-    `assign_repair_image`:  This is a debug option.  When true, enable
-        updating the repair image version assigned to the given board.
     `upload`:  When true, logs will be uploaded to googlestorage after
         the command completes.
 """
@@ -93,16 +94,11 @@ def _make_common_parser(command_name, full_deploy):
                         help='directory for logs')
     parser.add_argument('-i', '--build',
                         help='select stable test build version')
-    parser.add_argument('-n', '--noinstall',
-                        dest='install_test_image', action='store_false',
-                        help='skip install (for script testing)')
+    parser.add_argument('-n', '--dry-run', action='store_true',
+                        help='apply no changes, install nothing')
     parser.add_argument('-s', '--nostage',
                         dest='stageusb', action='store_false',
                         help='skip staging test image (for script testing)')
-    parser.add_argument('-t', '--nostable',
-                        dest='assign_repair_image', action='store_false',
-                        help='skip changing stable test image '
-                             '(for script testing)')
     parser.add_argument('-f', '--hostname_file',
                         help='CSV file that contains a list of hostnames and '
                              'their details to install with.')
