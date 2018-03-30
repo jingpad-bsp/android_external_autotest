@@ -75,49 +75,29 @@ class _ArgumentParser(argparse.ArgumentParser):
         self.set_defaults(**{name: bool(default)})
 
 
-def _make_common_parser(command_name, full_deploy):
-    """Create argument parser for common arguments.
-
-    @param command_name The command name.
-    @param full_deploy  True if firmware installation should be enabled,
-                        or false, if it shouldn't.
-    @return ArgumentParser instance.
-    """
-    parser = _ArgumentParser(
-            prog=command_name,
-            description='Install a test image on newly deployed DUTs')
+def _add_common_options(parser):
     # frontend.AFE(server=None) will use the default web server,
     # so default for --web is `None`.
     parser.add_argument('-w', '--web', metavar='SERVER', default=None,
                         help='specify web server')
     parser.add_argument('-d', '--dir', dest='logdir',
                         help='directory for logs')
-    parser.add_argument('-i', '--build',
-                        help='select stable test build version')
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='apply no changes, install nothing')
-    parser.add_argument('-s', '--nostage',
-                        dest='stageusb', action='store_false',
-                        help='skip staging test image (for script testing)')
+    parser.add_argument('-i', '--build',
+                        help='select stable test build version')
     parser.add_argument('-f', '--hostname_file',
                         help='CSV file that contains a list of hostnames and '
                              'their details to install with.')
-    parser.add_argument('board', nargs='?', metavar='BOARD',
-                        help='board for DUTs to be installed')
-    parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
-                        help='host names of DUTs to be installed')
-    parser.set_defaults(install_firmware=full_deploy,
-                        install_test_image=True)
-    return parser
 
 
 def _add_upload_option(parser, default):
-    """Add a boolean option pair for uploading logs.
+    """Add a boolean option for whether to upload logs.
 
     @param parser   _ArgumentParser instance.
     @param default  Default option value.
     """
-    parser.add_boolean_argument('upload', default=default,
+    parser.add_boolean_argument('upload', default,
                                 help='whether to upload logs to GS bucket')
 
 
@@ -135,7 +115,18 @@ def parse_command(argv, full_deploy):
 
     @return Result, as returned by ArgumentParser.parse_args().
     """
-    command_name = os.path.basename(argv[0])
-    parser = _make_common_parser(command_name, full_deploy)
-    _add_upload_option(parser, default=full_deploy)
+    parser = _ArgumentParser(
+            prog=os.path.basename(argv[0]),
+            description='Install a test image on newly deployed DUTs')
+    _add_common_options(parser)
+    parser.add_argument('-s', '--nostage',
+                        dest='stageusb', action='store_false',
+                        help='skip staging test image (for script testing)')
+    _add_upload_option(parser, full_deploy)
+    parser.add_argument('board', nargs='?', metavar='BOARD',
+                        help='board for DUTs to be installed')
+    parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
+                        help='host names of DUTs to be installed')
+    parser.set_defaults(install_firmware=full_deploy,
+                        install_test_image=True)
     return parser.parse_args(argv[1:])
