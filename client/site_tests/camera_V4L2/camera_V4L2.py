@@ -38,6 +38,7 @@ class camera_V4L2(test.test):
             else:
                 self.test_list = "default"
 
+        self.dut_board = utils.get_current_board()
         self.find_video_capture_devices()
 
         for device in self.v4l2_devices:
@@ -94,6 +95,12 @@ class camera_V4L2(test.test):
         options = ["--device=%s" % device, "--usb-info=%s" % self.usb_info]
         if self.test_list:
             options += ["--test-list=%s" % self.test_list]
+
+        # snappy old SKU cannot meet the requirement. Skip the test to avoid
+        # alarm. Please see http://crbug.com/737874 for detail.
+        if self.dut_board == 'snappy' and self.test_list == 'default':
+            options += ["--gtest_filter='-*MaximumSupportedResolution*'"]
+
         executable = os.path.join(self.bindir, "media_v4l2_test")
         cmd = "%s %s" % (executable, " ".join(options))
         logging.info("Running %s" % cmd)

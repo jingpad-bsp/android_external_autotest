@@ -997,6 +997,10 @@ class TradefedTest(test.test):
             lastmatch = (session, passed, failed, done == total)
         return lastmatch
 
+    def _tradefed_retry_command(self, run_command, session_id):
+        """Builds the tradefed 'retry' command line."""
+        return run_command + ['--retry', '%d' % session_id]
+
     def _run_tradefed_with_retries(self,
                                    target_module,
                                    test_command,
@@ -1023,6 +1027,9 @@ class TradefedTest(test.test):
 
         self._setup_result_directories()
 
+        # This loop retries failures. For this reason please do not raise
+        # TestFail in this loop if you suspect the failure might be fixed
+        # in the next loop iteration.
         while steps < self._max_retry:
             steps += 1
             self._run_precondition_scripts(login_precondition_commands, steps)
@@ -1049,9 +1056,14 @@ class TradefedTest(test.test):
                 else:
                     logging.info('Retrying failures of %s with session_id %d:',
                                  test_name, session_id)
-                    commands = [test_command + ['--retry', '%d' % session_id]]
+                    commands = [self._tradefed_retry_command(list(test_command),
+                                                             session_id)]
 
-                legacy_counts = self._run_and_parse_tradefed(commands)
+                # TODO(pwang): Evaluate if it is worth it to get the number of
+                #              not-excecuted, for instance, by collecting all
+                #              tests on startup (very expensive, may take 30
+                #              minutes).
+                waived_tests = self._run_and_parse_tradefed(commands)
                 result = self._run_tradefed_list_results()
                 if not result:
                     logging.error('Did not find any test results. Retry.')
@@ -1059,18 +1071,22 @@ class TradefedTest(test.test):
                         current_login.need_reboot()
                     continue
 
-                # TODO(kinaba): stop parsing |legacy_counts| except for
-                # waivers, and rely more on |result| for generating the
-                # message.
-                _, _, _, lnotexecuted, lwaived = legacy_counts
+                waived = len(waived_tests)
                 last_session_id, passed, failed, all_done = result
+                if failed < waived:
+                    logging.error(
+                        'Error: Internal waiver bookkeeping has become '
+                        'inconsistent (f=%d, w=%d)', failed, waived)
 
                 msg = 'run' if session_id == None else ' retry'
-                msg += '(t=%d, p=%d, f=%d, ne=%d, w=%d)' % legacy_counts
+                msg += '(w=%d)' % waived
                 self.summary += msg
                 logging.info('RESULT: %s %s', msg, result)
 
-                # Check for no-test modules
+                # Check for no-test modules. We use the "all_done" indicator
+                # provided by list_results to decide if there are outstanding
+                # modules to iterate over (similar to missing tests just on a
+                # per-module basis).
                 notest = (passed + failed == 0 and all_done)
                 if target_module in self._notest_modules:
                     if notest:
@@ -1092,13 +1108,13 @@ class TradefedTest(test.test):
                 session_id = last_session_id
 
                 # Check if all the tests passed.
-                if failed <= lwaived and all_done:
+                if failed <= waived and all_done:
                     # TODO(ihf): Make this error.TestPass('...') once
                     # available.
                     if steps > 0 and self._warn_on_test_retry:
                         raise error.TestWarn(
                             'Passed: after %d retries passing %d tests, '
-                            'waived=%d. %s' % (steps, passed, lwaived,
+                            'waived=%d. %s' % (steps, passed, waived,
                                                self.summary))
                     return
 
@@ -1106,5 +1122,5 @@ class TradefedTest(test.test):
             raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
-            'passed=%d, failed=%d, notexecuted=%d, waived=%d. %s' %
-            (steps, passed, failed, lnotexecuted, lwaived, self.summary))
+            'passed=%d, failed=%d, waived=%d. %s' %
+            (steps, passed, failed, waived, self.summary))

@@ -126,13 +126,22 @@ class platform_AddPrinter(test.test):
         @raises: error.TestFail if printing request generated cannot be
         verified.
         """
+        # Check if CUPS is running.
+        printers = utils.system_output('lpstat -t')
+        logging.info(printers)
 
         # Issue print request.
         utils.system_output(
             'lp -d %s %s' %
             (_FAKE_PRINTER_ID, self.pdf_path)
         );
+
         self.server_thread.join(_FAKE_SERVER_JOIN_TIMEOUT)
+        if self.server_thread.isAlive():
+          raise error.TestFail('ERROR: Server never terminated')
+
+        if not os.path.isfile(self.printing_log_path):
+          raise error.TestFail('ERROR: File never written')
 
         # Verify print request with a golden file.
         output = utils.system_output(
