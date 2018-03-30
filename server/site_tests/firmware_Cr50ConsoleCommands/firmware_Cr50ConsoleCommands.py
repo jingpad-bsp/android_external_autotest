@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import difflib
 import logging
 import os
 import re
@@ -47,7 +48,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         self.host = host
         self.missing = []
         self.extra = []
-        self.state = {}
+        self.past_matches = {}
 
 
     def parse_output(self, output, split_str):
@@ -65,6 +66,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
     def get_output(self, cmd, regexp, split_str, sort):
         """Return the cr50 console output"""
         output = self.cr50.send_command_get_output(cmd, regexp)[0][1].strip()
+        logging.debug('%s output:%s\n', cmd, output)
 
         # Record the original command output
         results_path = os.path.join(self.resultsdir, cmd)
@@ -102,30 +104,39 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         """Compare the actual console command output to the expected output"""
         expected_output = self.get_expected_output(cmd, split_str)
         output = self.get_output(cmd, regexp, split_str, sort)
+        diff_info = difflib.unified_diff(expected_output, output.splitlines())
+        logging.debug('%s DIFF:\n%s', cmd, '\n'.join(diff_info))
         missing = []
+        extra = []
         for regexp in expected_output:
             match = re.search(regexp, output)
             if match:
-                match_dict = match.groupdict()
-                for k, v in match_dict.iteritems():
-                    if k not in self.state:
-                        continue
-                    old_val = self.state[k]
-                    if (not old_val) != (not v):
-                        raise error.TestFail('%s mismatch: %r %r' % (k, old_val,
-                                v))
-                self.state.update(match.groupdict())
+                # Update the past_matches dict with the matches from this line.
+                #
+                # Make sure if matches for any keys existed before, they exist
+                # now and if they didn't exist, they don't exist now.
+                for k, v in match.groupdict().iteritems():
+                    old_val = self.past_matches.get(k, [v, v])[0]
+                    if old_val and not v:
+                        missing.append('%s:%s' % (k, regexp))
+                    elif not old_val and v:
+                        extra.append('%s:%s' % (k, v))
+                    else:
+                        self.past_matches[k] = [v, regexp]
 
             # Remove the matching string from the output.
             output, n = re.subn('%s\s*' % regexp, '', output, 1)
             if not n:
                 missing.append(regexp)
 
-        if len(missing):
+
+        if missing:
             self.missing.append('%s-(%s)' % (cmd, ', '.join(missing)))
         output = output.strip()
-        if len(output):
-            self.extra.append('%s-(%s)' % (cmd, ', '.join(output.split('\n'))))
+        if output:
+            extra.extend(output.split('\n'))
+        if extra:
+            self.extra.append('%s-(%s)' % (cmd, ', '.join(extra)))
 
 
     def get_brdprop(self):
@@ -146,8 +157,8 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         for command, regexp, split_str, sort in self.TESTS:
             self.check_command(command, regexp, split_str, sort)
 
-        if (not self.state.get('ccd_has_been_enabled', 0) and
-            self.state.get('ccd_enabled', 0)):
+        if (not self.past_matches.get('ccd_has_been_enabled', 0) and
+            self.past_matches.get('ccd_enabled', 0)):
             err.append('Inconsistent ccd settings')
 
         if len(self.missing):
@@ -155,7 +166,7 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
         if len(self.extra):
             err.append('EXTRA OUTPUT: ' + ', '.join(self.extra))
 
-        logging.info(self.state)
+        logging.info(self.past_matches)
 
         if len(err):
             raise error.TestFail('\t'.join(err))
