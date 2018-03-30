@@ -318,7 +318,7 @@ class ShardClient(object):
     def _report_job_time_distribution(self, jobs):
         """Report distribution of job durations to monarch."""
         jobs_time_distribution = metrics.Distribution(
-                _METRICS_PREFIX + 'known_job_ids_distribution')
+                _METRICS_PREFIX + 'known_jobs_durations')
         now = datetime.datetime.now()
 
         # The type expected by the .set(...) of a distribution is a
