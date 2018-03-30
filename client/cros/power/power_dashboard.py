@@ -47,7 +47,7 @@ class BaseDashboard(object):
             A dictionary of powerlog
         """
         powerlog_dict = {
-            'format_version': 2,
+            'format_version': 3,
             'timestamp': time.time(),
             'test': self._testname,
             'dut': self._create_dut_info_dict(raw_measurement['data'].keys()),
