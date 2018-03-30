@@ -27,6 +27,7 @@ from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import utils as server_utils
 from chromite.lib import timeout_util
+from django.core.exceptions import MultipleObjectsReturned
 from django.db import transaction
 
 try:
@@ -209,7 +210,11 @@ class ShardClient(object):
         if not incorrect_host_ids:
             return
 
-        models.Host.objects.filter(id__in=incorrect_host_ids).delete()
+        try:
+            models.Host.objects.filter(id__in=incorrect_host_ids).delete()
+        except MultipleObjectsReturned as e:
+            logging.exception('Failed to remove incorrect hosts %s',
+                              incorrect_host_ids)
 
 
     @property
