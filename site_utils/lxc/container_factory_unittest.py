@@ -13,11 +13,12 @@ from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
 
 
-class ContainerFactoryTests(unittest.TestCase):
+class ContainerFactoryTests(lxc.utils.LXCTests):
     """Unit tests for the ContainerFactory class."""
 
     @classmethod
     def setUpClass(cls):
+        super(ContainerFactoryTests, cls).setUpClass()
         cls.test_dir = tempfile.mkdtemp(dir=lxc.DEFAULT_CONTAINER_PATH,
                                         prefix='container_factory_unittest_')
 
@@ -196,5 +197,4 @@ class ContainerFactoryTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest_setup.setup()
     unittest.main()
