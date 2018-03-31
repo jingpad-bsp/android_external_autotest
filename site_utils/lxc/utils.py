@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import tempfile
+import unittest
 from contextlib import contextmanager
 
 import common
@@ -18,6 +19,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.site_utils.lxc import constants
+from autotest_lib.site_utils.lxc import unittest_setup
 
 
 def path_exists(path):
@@ -260,3 +262,10 @@ def sudo_commands(commands):
     else:
         for command in commands:
             result = utils.run("sudo %s" % command)
+
+class LXCTests(unittest.TestCase):
+    """Thin wrapper to call correct setup for LXC tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        unittest_setup.setup()
