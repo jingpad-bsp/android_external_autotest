@@ -22,6 +22,7 @@ suite:arc-cts-dev-sun
 suite:arc-cts-dev-thu
 suite:arc-cts-dev-tue
 suite:arc-cts-dev-wed
+suite:arc-cts-follower
 suite:arc-cts-perbuild
 suite:arc-cts-qual
 suite:arc-cts-stable

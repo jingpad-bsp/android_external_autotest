@@ -136,7 +136,7 @@ def bluetooth_nodes_plugged(audio_facade):
     return 'BLUETOOTH' in curr_out_nodes and 'BLUETOOTH' in curr_in_nodes
 
 
-def _get_board_name(host):
+def get_board_name(host):
     """Gets the board name.
 
     @param host: The CrosHost object.
@@ -155,7 +155,7 @@ def has_internal_speaker(host):
     @returns: True if Cros device has internal speaker. False otherwise.
 
     """
-    board_name = _get_board_name(host)
+    board_name = get_board_name(host)
     if not audio_spec.has_internal_speaker(host.get_board_type(), board_name):
         logging.info('Board %s does not have speaker.', board_name)
         return False
@@ -170,7 +170,7 @@ def has_internal_microphone(host):
     @returns: True if Cros device has internal microphone. False otherwise.
 
     """
-    board_name = _get_board_name(host)
+    board_name = get_board_name(host)
     if not audio_spec.has_internal_microphone(host.get_board_type()):
         logging.info('Board %s does not have internal microphone.', board_name)
         return False
@@ -185,7 +185,7 @@ def has_headphone(host):
     @returns: True if Cros device has headphone. False otherwise.
 
     """
-    board_name = _get_board_name(host)
+    board_name = get_board_name(host)
     if not audio_spec.has_headphone(host.get_board_type()):
         logging.info('Board %s does not have headphone.', board_name)
         return False

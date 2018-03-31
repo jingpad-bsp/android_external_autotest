@@ -4,40 +4,67 @@
 
 """Command-line parsing for the DUT deployment tool.
 
-This contains parsing for both the `repair_test` and `deployment_test`
-commands.  The syntax for both commands is identical, the differences in
-the two commands are primarily in slightly different defaults.
+This contains parsing for the legacy `repair_test` and `deployment_test`
+commands, and for the new `deploy` command.
 
-This module exports a single function, `parse_command()`.  This function
-parses a command line and returns an `argparse.Namespace` object with
-a specific set of fields.
+The syntax for the two legacy commands is identical; the difference in
+the two commands is merely slightly different default options.
+
+The full deployment flow performs all of the following actions:
+  * Stage the USB image:  Install the DUT's assigned repair image onto
+    the Servo USB stick.
+  * Install firmware:  Boot the DUT from the USB stick, and run
+    `chromeos-firmwareupdate` to install dev-signed RO and RW firmware.
+    The DUT must begin in dev-mode, with hardware write-protect
+    disabled.  At successful completion, the DUT is in verified boot
+    mode.
+  * Install test image:  Boot the DUT in recovery mode from the USB
+    stick, and run `chromeos-install` to install the OS.
+
+The new `deploy` command chooses particular combinations of the steps
+above based on a subcommand and options:
+    `deploy servo`:  Only stage the USB image.
+    `deploy firmware`:  Install both the firmware and the test image,
+        in that order.  Optionally, first stage the USB image.
+    `deploy test-image`: Install the test image.  Optionally, first
+        stage the USB image.
+    `deploy repair`:  Equivalent to `deploy test-image`, except that
+        by default it doesn't upload its logs to storage.
+
+This module exports two functions, `parse_deprecated_command()` (for the
+two legacy commands) and `parse_command()` (for the new `deploy`
+command).  Although the functions parse slightly different syntaxes,
+they return `argparse.Namespace` objects with identical fields, described
+below.
 
 The following fields represent parameter inputs to the underlying
 deployment:
     `web`:  Server name (or URL) for the AFE RPC service.
     `logdir`:  The directory where logs are to be stored.
     `board`:  Specifies the board to be used when creating DUTs.
-    `build`:  A build version string (in the form 'R66-10447.0.0').
-        This identifies the test image to use for installation, and will
-        be assigned as the repair image for the board.
+    `build`:  When provided, the repair image assigned to the board for
+        the target DUT will be updated to this value prior to staging
+        USB image.  The build is in a form like 'R66-10447.0.0'.
     `hostname_file`:  Name of a file in CSV format with information
         about the hosts and servos to be deployed/repaired.
     `hostnames`:  List of DUT host names.
 
 The following fields specify options that are used to enable or disable
-specific deployment steps.
-    `stageusb`:  When true, enable installing the test image on the
-        Servo USB stick.  It can be disabled to speed up operations when
-        the stick is known to already have the proper image.
-    `install_firmware`:  When true, enable installing dev-signed RO and
-        RW firmware onto the DUTs.  The device must be in dev mode, with
-        hardware write-protect disabled.
-    `install_test_image`:  When true, enable installing the test image
-        onto the device from the Servo USB stick.
-    `assign_repair_image`:  This is a debug option.  When true, enable
-        updating the repair image version assigned to the given board.
+specific deployment steps:
     `upload`:  When true, logs will be uploaded to googlestorage after
         the command completes.
+    `dry_run`:  When true, disables operations with any kind of
+        side-effect.  This option implicitly overrides and disables all
+        of the deployment steps below.
+    `stageusb`:  When true, enable staging the USB image.  Disabling
+        this will speed up operations when the stick is known to already
+        have the proper image.
+    `install_firmware`:  When true, enable firmware installation.
+    `install_test_image`:  When true, enable installing the test image.
+
+The `dry_run` option is off by default.  The `upload` option is on by
+default, except for `deploy repair` and `repair_test`.  The values for
+all other options are determined by the subcommand.
 """
 
 import argparse
@@ -74,72 +101,172 @@ class _ArgumentParser(argparse.ArgumentParser):
         self.set_defaults(**{name: bool(default)})
 
 
-def _make_common_parser(command_name, full_deploy):
-    """Create argument parser for common arguments.
-
-    @param command_name The command name.
-    @param full_deploy  True if firmware installation should be enabled,
-                        or false, if it shouldn't.
-    @return ArgumentParser instance.
-    """
-    parser = _ArgumentParser(
-            prog=command_name,
-            description='Install a test image on newly deployed DUTs')
+def _add_common_options(parser):
     # frontend.AFE(server=None) will use the default web server,
     # so default for --web is `None`.
     parser.add_argument('-w', '--web', metavar='SERVER', default=None,
                         help='specify web server')
     parser.add_argument('-d', '--dir', dest='logdir',
                         help='directory for logs')
+    parser.add_argument('-n', '--dry-run', action='store_true',
+                        help='apply no changes, install nothing')
     parser.add_argument('-i', '--build',
                         help='select stable test build version')
-    parser.add_argument('-n', '--noinstall',
-                        dest='install_test_image', action='store_false',
-                        help='skip install (for script testing)')
-    parser.add_argument('-s', '--nostage',
-                        dest='stageusb', action='store_false',
-                        help='skip staging test image (for script testing)')
-    parser.add_argument('-t', '--nostable',
-                        dest='assign_repair_image', action='store_false',
-                        help='skip changing stable test image '
-                             '(for script testing)')
     parser.add_argument('-f', '--hostname_file',
                         help='CSV file that contains a list of hostnames and '
                              'their details to install with.')
+
+
+def _add_upload_option(parser, default):
+    """Add a boolean option for whether to upload logs.
+
+    @param parser   _ArgumentParser instance.
+    @param default  Default option value.
+    """
+    parser.add_boolean_argument('upload', default,
+                                help='whether to upload logs to GS bucket')
+
+
+def _add_subcommand(subcommands, name, upload_default, description):
+    """Add a subcommand plus standard arguments to the `deploy` command.
+
+    This creates a new argument parser for a subcommand (as for
+    `subcommands.add_parser()`).  The parser is populated with the
+    standard arguments required by all `deploy` subcommands.
+
+    @param subcommands      Subcommand object as returned by
+                            `ArgumentParser.add_subcommands`
+    @param name             Name of the new subcommand.
+    @param upload_default   Default setting for the `--upload` option.
+    @param description      Description for the subcommand, for help text.
+    @returns The argument parser for the new subcommand.
+    """
+    subparser = subcommands.add_parser(name, description=description)
+    _add_common_options(subparser)
+    _add_upload_option(subparser, upload_default)
+    subparser.add_argument('-b', '--board', metavar='BOARD',
+                           help='board for DUTs to be installed')
+    subparser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
+                           help='host names of DUTs to be installed')
+    return subparser
+
+
+def _add_servo_subcommand(subcommands):
+    """Add the `servo` subcommand to `subcommands`.
+
+    @param subcommands  Subcommand object as returned by
+                        `ArgumentParser.add_subcommands`
+    """
+    subparser = _add_subcommand(
+        subcommands, 'servo', True,
+        'Test servo and install the image on the USB stick')
+    subparser.set_defaults(stageusb=True,
+                           install_firmware=False,
+                           install_test_image=False)
+
+
+def _add_stageusb_option(parser):
+    """Add a boolean option for whether to stage an image to USB.
+
+    @param parser   _ArgumentParser instance.
+    """
+    parser.add_boolean_argument('stageusb', False,
+                                help='Include USB stick setup')
+
+
+def _add_firmware_subcommand(subcommands):
+    """Add the `firmware` subcommand to `subcommands`.
+
+    @param subcommands  Subcommand object as returned by
+                        `ArgumentParser.add_subcommands`
+    """
+    subparser = _add_subcommand(
+        subcommands, 'firmware', True,
+        'Install firmware and initial test image on DUT')
+    _add_stageusb_option(subparser)
+    subparser.set_defaults(install_firmware=True,
+                           install_test_image=True)
+
+
+def _add_test_image_subcommand(subcommands):
+    """Add the `test-image` subcommand to `subcommands`.
+
+    @param subcommands  Subcommand object as returned by
+                        `ArgumentParser.add_subcommands`
+    """
+    subparser = _add_subcommand(
+        subcommands, 'test-image', True,
+        'Install initial test image on DUT from servo')
+    _add_stageusb_option(subparser)
+    subparser.set_defaults(install_firmware=False,
+                           install_test_image=True)
+
+
+def _add_repair_subcommand(subcommands):
+    """Add the `repair` subcommand to `subcommands`.
+
+    @param subcommands  Subcommand object as returned by
+                        `ArgumentParser.add_subcommands`
+    """
+    subparser = _add_subcommand(
+        subcommands, 'repair', False,
+        'Re-install test image on DUT from servo')
+    _add_stageusb_option(subparser)
+    subparser.set_defaults(install_firmware=False,
+                           install_test_image=True)
+
+
+def parse_deprecated_command(argv, full_deploy):
+    """Parse arguments for legacy deployment commands.
+
+    Create an argument parser for the `repair_test` or `deployment_test`
+    command.  Then parse the command line arguments, and return an
+    `argparse.Namespace` object with the results.
+
+    @param argv         Standard command line argument vector;
+                        argv[0] is assumed to be the command name.
+    @param full_deploy  Whether this is for full deployment or
+                        repair.
+    @return `Namespace` object with standard fields as described in the
+            module docstring.
+    """
+    parser = _ArgumentParser(
+            prog=os.path.basename(argv[0]),
+            description='Install a test image on newly deployed DUTs')
+    _add_common_options(parser)
+    parser.add_argument('-s', '--nostage',
+                        dest='stageusb', action='store_false',
+                        help='skip staging test image (for script testing)')
+    _add_upload_option(parser, full_deploy)
     parser.add_argument('board', nargs='?', metavar='BOARD',
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
                         help='host names of DUTs to be installed')
     parser.set_defaults(install_firmware=full_deploy,
                         install_test_image=True)
-    return parser
+    return parser.parse_args(argv[1:])
 
 
-def _add_upload_option(parser, default):
-    """Add a boolean option pair for uploading logs.
+def parse_command(argv):
+    """Parse arguments for the `deploy` command.
 
-    @param parser   _ArgumentParser instance.
-    @param default  Default option value.
-    """
-    parser.add_boolean_argument('upload', default=default,
-                                help='whether to upload logs to GS bucket')
-
-
-def parse_command(argv, full_deploy):
-    """Get arguments for install from `argv` or the user.
-
-    Create an argument parser for this command's syntax, parse the
-    command line, and return an `argparse.Namespace` object with the
-    results.
+    Create an argument parser for the `deploy` command and its
+    subcommands.  Then parse the command line arguments, and return an
+    `argparse.Namespace` object with the results.
 
     @param argv         Standard command line argument vector;
                         argv[0] is assumed to be the command name.
-    @param full_deploy  Whether this is for full deployment or
-                        repair.
-
-    @return Result, as returned by ArgumentParser.parse_args().
+    @return `Namespace` object with standard fields as described in the
+            module docstring.
     """
-    command_name = os.path.basename(argv[0])
-    parser = _make_common_parser(command_name, full_deploy)
-    _add_upload_option(parser, default=full_deploy)
+    parser = _ArgumentParser(
+            prog=os.path.basename(argv[0]),
+            description='DUT deployment and repair operations')
+    parser.add_argument('-b', '--board', metavar='BOARD',
+                        help='board for DUTs to be installed')
+    subcommands = parser.add_subparsers()
+    _add_servo_subcommand(subcommands)
+    _add_firmware_subcommand(subcommands)
+    _add_test_image_subcommand(subcommands)
+    _add_repair_subcommand(subcommands)
     return parser.parse_args(argv[1:])
