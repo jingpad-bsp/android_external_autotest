@@ -454,6 +454,11 @@ class HostapConfig(object):
         """@return int frag threshold value, or None."""
         return self._frag_threshold
 
+    @property
+    def bridge(self):
+        """@return string _bridge value, or None."""
+        return self._bridge
+
 
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
@@ -467,7 +472,13 @@ class HostapConfig(object):
                  beacon_footer='',
                  spectrum_mgmt_required=None,
                  scenario_name=None,
-                 min_streams=None):
+                 min_streams=None,
+                 nas_id=None,
+                 mdid=None,
+                 r1kh_id=None,
+                 r0kh=None,
+                 r1kh=None,
+                 bridge=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -501,6 +512,12 @@ class HostapConfig(object):
         @param scenario_name string to be included in file names, instead
             of the interface name.
         @param min_streams int number of spatial streams required.
+        @param nas_id string for RADIUS messages (needed for 802.11r)
+        @param mdid string used to indicate a group of APs for FT
+        @param r1kh_id string PMK-R1 key holder id for FT
+        @param r0kh string R0KHs in the same mobility domain
+        @param r1kh string R1KHs in the same mobility domain
+        @param bridge string bridge interface
 
         """
         super(HostapConfig, self).__init__()
@@ -570,6 +587,12 @@ class HostapConfig(object):
         self._spectrum_mgmt_required = spectrum_mgmt_required
         self._scenario_name = scenario_name
         self._min_streams = min_streams
+        self._nas_id = nas_id
+        self._mdid = mdid
+        self._r1kh_id = r1kh_id
+        self._r0kh = r0kh
+        self._r1kh = r1kh
+        self._bridge = bridge
 
 
     def __repr__(self):
@@ -689,6 +712,18 @@ class HostapConfig(object):
             conf['ieee80211w'] = self._pmf_support
         if self._obss_interval:
             conf['obss_interval'] = self._obss_interval
+        if self._nas_id:
+            conf['nas_identifier'] = self._nas_id
+        if self._mdid:
+            conf['mobility_domain'] = self._mdid
+        if self._r1kh_id:
+            conf['r1_key_holder'] = self._r1kh_id
+        if self._r0kh:
+            conf['r0kh'] = self._r0kh
+        if self._r1kh:
+            conf['r1kh'] = self._r1kh
+        if self._bridge:
+            conf['bridge'] = self._bridge
         conf['interface'] = interface
         conf['ctrl_interface'] = control_interface
         if self._spectrum_mgmt_required:
