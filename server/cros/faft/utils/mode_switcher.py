@@ -19,6 +19,10 @@ class ConnectionError(Exception):
 class _BaseFwBypasser(object):
     """Base class that controls bypass logic for firmware screens."""
 
+    # Duration of holding Volume down button to quickly bypass the developer
+    # warning screen in tablets/detachables.
+    HOLD_VOL_DOWN_BUTTON_BYPASS = 3
+
     def __init__(self, faft_framework):
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
@@ -59,9 +63,21 @@ class _CtrlDBypasser(_BaseFwBypasser):
     """Controls bypass logic via Ctrl-D combo."""
 
     def bypass_dev_mode(self):
-        """Bypass the dev mode firmware logic to boot internal image."""
-        time.sleep(self.faft_config.firmware_screen)
-        self.servo.ctrl_d()
+        """Bypass the dev mode firmware logic to boot internal image.
+
+        Press Ctrl-D repeatedly. To obtain a low firmware boot time, pressing
+        Ctrl+D for every half second until firmware_screen delay has been
+        reached.
+        """
+        logging.info("Pressing Ctrl-D.")
+        # At maximum, device waits for twice of firmware_screen delay to
+        # bypass the Dev screen.
+        timeout = time.time() + (self.faft_config.firmware_screen * 2)
+        while time.time() < timeout:
+            self.servo.ctrl_d()
+            time.sleep(0.5)
+            if self.client_host.ping_wait_up(timeout=0.1):
+                break
 
 
     def bypass_dev_boot_usb(self):
@@ -217,31 +233,29 @@ class _TabletDetachableBypasser(_BaseFwBypasser):
 
 
     def bypass_dev_mode(self):
-        """Bypass the dev mode firmware logic to boot internal image
+        """Bypass the developer warning screen immediately to boot into
+        internal disk.
 
-        On tablets/ detachables, recovery entered by pressing pwr, vol up
-        & vol down buttons for 10s.
-           Menu options seen in DEVELOPER WARNING screen:
-                 Developer Options
-                 Show Debug Info
-                 Enable Root Verification
-                 Power Off*
-                 Language
-           Menu options seen in DEV screen:
-                 Boot legacy BIOS
-                 Boot USB image
-                 Boot developer image*
-                 Cancel
-                 Power off
-                 Language
-        Vol up button selects previous item, vol down button selects
-        next item and pwr button selects current activated item.
+        On tablets/detachables, press & holding the Volume down button for
+        3-seconds will quickly bypass the developer warning screen.
         """
-        self.trigger_dev_screen()
-        time.sleep(self.faft_config.firmware_screen)
-        logging.info('Selecting power as enter key to select '
-                     'Boot Developer Image')
-        self.servo.power_short_press()
+        # Unit for the "volume_down_hold" console command is msec.
+        duration = (self.HOLD_VOL_DOWN_BUTTON_BYPASS + 0.1) * 1000
+        logging.info("Press and hold volume down button for %.1f seconds to "
+                     "immediately bypass the Developer warning screen.",
+                     self.HOLD_VOL_DOWN_BUTTON_BYPASS + 0.1)
+        # At maximum, device waits for twice of firmware_screen delay to
+        # bypass the Dev screen.
+        timeout = time.time() + (self.faft_config.firmware_screen * 2)
+        # To obtain a low firmware boot time, volume_down button pressed for
+        # every 3.1 seconds until firmware_screen delay has been reached.
+        while time.time() < timeout:
+            self.servo.set_nocheck('volume_down_hold', duration)
+            # After pressing 'volume_down_hold' button, wait for 0.2 seconds
+            # before start pressing the button for next iteration.
+            time.sleep(self.HOLD_VOL_DOWN_BUTTON_BYPASS + 0.2)
+            if self.client_host.ping_wait_up(timeout=0.1):
+                break
 
 
     def trigger_dev_screen(self):
@@ -385,6 +399,8 @@ def _create_fw_bypasser(faft_framework):
 
 class _BaseModeSwitcher(object):
     """Base class that controls firmware mode switching."""
+
+    HOLD_VOL_DOWN_BUTTON_BYPASS = _BaseFwBypasser.HOLD_VOL_DOWN_BUTTON_BYPASS
 
     def __init__(self, faft_framework):
         self.faft_framework = faft_framework
