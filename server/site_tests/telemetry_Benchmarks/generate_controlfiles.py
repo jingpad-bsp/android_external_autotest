@@ -21,10 +21,11 @@ This file generates all telemetry_Benchmarks control files from a master list.
 # haddowk in the change.
 
 PERF_PER_BUILD_TESTS = (
+    'cros_ui_smoothness',
     'jetstream',
     'kraken',
     'octane',
-    'cros_ui_smoothness',
+    'smoothness.top_25_smooth',
     'speedometer',
 )
 
