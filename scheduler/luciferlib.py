@@ -8,6 +8,7 @@ import os
 import logging
 import pipes
 import socket
+import subprocess
 
 import common
 from autotest_lib.client.bin import local_host
@@ -105,19 +106,17 @@ def spawn_starting_job_handler(manager, job):
                 'GOOGLE_APPLICATION_CREDENTIALS=%s'
                 % pipes.quote(_get_gcp_creds()),
         ] + args
-    drone.spawn(_ENV, args, output_file=_prepare_output_file(results_dir))
+    drone.spawn(_ENV, args,
+                output_file=_prepare_output_file(drone, results_dir))
     return drone
 
 
 _LUCIFER_DIR = 'lucifer'
 
 
-def _prepare_output_file(results_dir):
+def _prepare_output_file(drone, results_dir):
     logdir = os.path.join(results_dir, _LUCIFER_DIR)
-    try:
-        os.makedirs(logdir)
-    except OSError:
-        logging.info('Could not make lucifer output dir %s', logdir)
+    drone.run('mkdir', ['-p', logdir])
     return os.path.join(logdir, 'job_reporter_output.log')
 
 
@@ -334,6 +333,24 @@ class Drone(object):
     def hostname(self):
         """Return the hostname of the drone."""
 
+    def run(self, path, args):
+        """Run a command synchronously.
+
+        path must be an absolute path.  path may be on a remote machine.
+        args is a list of arguments.
+
+        The process may or may not have its own session.  The process
+        should be short-lived.  It should not try to obtain a
+        controlling terminal.
+
+        The new process will have stdin, stdout, and stderr opened to
+        /dev/null.
+
+        This method intentionally has a very restrictive API.  It should
+        be used to perform setup local to the drone, when the drone may
+        be a remote machine.
+        """
+
     def spawn(self, path, args, output_file):
         """Spawn an independent process.
 
@@ -357,6 +374,11 @@ class LocalDrone(Drone):
     def hostname(self):
         return socket.gethostname()
 
+    def run(self, path, args):
+        with open(os.devnull, 'r+b') as null:
+            subprocess.call([path] + args, stdin=null,
+                            stdout=null, stderr=null)
+
     def spawn(self, path, args, output_file):
         _spawn(path, [path] + args, output_file)
 
@@ -371,6 +393,12 @@ class RemoteDrone(Drone):
 
     def hostname(self):
         return self._host.hostname
+
+    def run(self, path, args):
+        cmd_parts = [path] + args
+        safe_cmd = ' '.join(pipes.quote(part) for part in cmd_parts)
+        self._host.run('%(cmd)s <%(null)s >%(null)s 2>&1'
+                       % {'cmd': safe_cmd, 'null': os.devnull})
 
     def spawn(self, path, args, output_file):
         cmd_parts = [path] + args
