@@ -199,6 +199,36 @@ def _get_model_firmware_versions(metadata_json, board):
     return model_firmware_versions
 
 
+def _get_omaha_version_map():
+    """
+    Convert omaha versions data to a versions mapping.
+
+    Returns a dictionary mapping board names to the currently preferred
+    version for the Beta channel as served by Omaha.  The mappings are
+    provided by settings in the JSON object read from `_OMAHA_STATUS`.
+
+    The board names are the names as known to Omaha:  If the board name
+    in the AFE contains '_', the corresponding Omaha name uses '-'
+    instead.  The boards mapped may include boards not in the list of
+    managed boards in the lab.
+
+    @return A dictionary mapping Omaha boards to Beta versions.
+    """
+    def _entry_valid(json_entry):
+        return json_entry['channel'] == 'beta'
+
+    def _get_omaha_data(json_entry):
+        board = json_entry['board']['public_codename']
+        milestone = json_entry['milestone']
+        build = json_entry['chrome_os_version']
+        version = 'R%d-%s' % (milestone, build)
+        return (board, version)
+
+    omaha_status = _read_gs_json_data(_OMAHA_STATUS)
+    return dict(_get_omaha_data(e) for e in omaha_status['omaha_data']
+                    if _entry_valid(e))
+
+
 def get_firmware_versions(board, cros_version):
     """Get the firmware versions for a given board and CrOS version.
 
@@ -398,35 +428,6 @@ class _NormalModeUpdater(_VersionUpdater):
         self._selected_map.delete_version(board)
 
 
-def _make_omaha_versions(omaha_status):
-    """
-    Convert parsed omaha versions data to a versions mapping.
-
-    Returns a dictionary mapping board names to the currently preferred
-    version for the Beta channel as served by Omaha.  The mappings are
-    provided by settings in the JSON object `omaha_status`.
-
-    The board names are the names as known to Omaha:  If the board name
-    in the AFE contains '_', the corresponding Omaha name uses '-'
-    instead.  The boards mapped may include boards not in the list of
-    managed boards in the lab.
-
-    @return A dictionary mapping Omaha boards to Beta versions.
-    """
-    def _entry_valid(json_entry):
-        return json_entry['channel'] == 'beta'
-
-    def _get_omaha_data(json_entry):
-        board = json_entry['board']['public_codename']
-        milestone = json_entry['milestone']
-        build = json_entry['chrome_os_version']
-        version = 'R%d-%s' % (milestone, build)
-        return (board, version)
-
-    return dict(_get_omaha_data(e) for e in omaha_status['omaha_data']
-                    if _entry_valid(e))
-
-
 def _get_upgrade_versions(cros_versions, omaha_versions, boards):
     """
     Get the new stable versions to which we should update.
@@ -614,8 +615,7 @@ def main(argv):
               lab_inventory.get_managed_boards(afe))
 
     cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
-    omaha_versions = _make_omaha_versions(
-            _read_gs_json_data(_OMAHA_STATUS))
+    omaha_versions = _get_omaha_version_map()
     upgrade_versions, new_default = (
         _get_upgrade_versions(cros_versions, omaha_versions, boards))
     _apply_cros_upgrades(updater, cros_versions,
