@@ -221,7 +221,7 @@ def _update_build(afe, report_log, arguments):
 
     afe_fw_versions = {arguments.board: afe_fw}
     fw_versions = assign_stable_images.get_firmware_versions(
-        cros_version_map, arguments.board, cros_version)
+        arguments.board, cros_version)
     # At this point `cros_version` is our new repair build, and
     # `fw_version` is our new target firmware.  Call the AFE back with
     # updates as necessary.
