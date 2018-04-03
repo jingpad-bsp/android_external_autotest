@@ -229,6 +229,37 @@ def _get_omaha_version_map():
                     if _entry_valid(e))
 
 
+def _get_omaha_upgrade(omaha_map, board, version):
+    """
+    Get the later of a build in `omaha_map` or `version`.
+
+    Read the Omaha version for `board` from `omaha_map`, and
+    compare it to version.  Return whichever version is more
+    recent.
+
+    N.B. `board` is the name of a board as known to the AFE.  Board
+    names as known to Omaha are different; see
+    `_get_omaha_version_map()`, above.  This function is responsible
+    for translating names as necessary.
+
+    @param omaha_map  Mapping of omaha board names to preferred builds.
+    @param board      Name of the board to look up, as known to the AFE.
+    @param version    Minimum version to be accepted.
+
+    @return Returns a Chrome OS version string in standard form
+            R##-####.#.#.  Will return `None` if `version` is `None` and
+            no Omaha entry is found.
+    """
+    # The passed in board name is the name known
+    omaha_version = omaha_map.get(board.replace('_', '-'))
+    if version is None:
+        return omaha_version
+    if omaha_version is not None:
+        if utils.compare_versions(version, omaha_version) < 0:
+            return omaha_version
+    return version
+
+
 def get_firmware_versions(board, cros_version):
     """Get the firmware versions for a given board and CrOS version.
 
@@ -454,11 +485,9 @@ def _get_upgrade_versions(cros_versions, omaha_versions, boards):
     version_counts = {}
     afe_default = cros_versions[_DEFAULT_BOARD]
     for board in boards:
-        version = cros_versions.get(board, afe_default)
-        omaha_version = omaha_versions.get(board.replace('_', '-'))
-        if (omaha_version is not None and
-                utils.compare_versions(version, omaha_version) < 0):
-            version = omaha_version
+        version = _get_omaha_upgrade(
+                omaha_versions, board,
+                cros_versions.get(board, afe_default))
         upgrade_versions[board] = version
         version_counts.setdefault(version, 0)
         version_counts[version] += 1
