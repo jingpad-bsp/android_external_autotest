@@ -161,7 +161,7 @@ def _run_lucifer_job(event_handler, args, job):
     """
     command_args = [args.run_job_path]
     command_args.extend([
-            '-autotestdir', autotest.AUTOTEST_DIR,
+            '-autotestdir', '/usr/local/autotest',
             '-watcherpath', args.watcher_path,
 
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
