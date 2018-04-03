@@ -44,19 +44,20 @@ _DEFAULT_BOARD = assign_stable_images._DEFAULT_BOARD
 
 
 class OmahaDataTests(unittest.TestCase):
-    """Tests for the `_make_omaha_versions()` function."""
+    """Tests for the `_get_omaha_version_map()` function."""
 
-    def test_make_omaha_versions(self):
+    @mock.patch.object(assign_stable_images, '_read_gs_json_data')
+    def test_make_omaha_versions(self, mock_read_gs):
         """
-        Test `_make_omaha_versions()` against one simple input.
+        Test `_get_omaha_version_map()` against one simple input.
 
-        This is a trivial sanity test that confirms that a single
+        This is a trivial sanity test that asserts that a single
         hard-coded input returns a correct hard-coded output.
         """
         module_dir = os.path.dirname(sys.modules[__name__].__file__)
         data_file_path = os.path.join(module_dir, _OMAHA_TEST_DATA)
-        omaha_versions = assign_stable_images._make_omaha_versions(
-                json.load(open(data_file_path, 'r')))
+        mock_read_gs.return_value = json.load(open(data_file_path, 'r'))
+        omaha_versions = assign_stable_images._get_omaha_version_map()
         self.assertEqual(omaha_versions, _EXPECTED_OMAHA_VERSIONS)
 
 
