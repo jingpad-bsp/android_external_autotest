@@ -1079,7 +1079,7 @@ class TradefedTest(test.test):
                         'inconsistent (f=%d, w=%d)', failed, waived)
 
                 msg = 'run' if session_id == None else ' retry'
-                msg += '(w=%d)' % waived
+                msg += '(p=%s, f=%s, w=%s)' % (passed, failed, waived)
                 self.summary += msg
                 logging.info('RESULT: %s %s', msg, result)
 
