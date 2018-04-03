@@ -18,15 +18,15 @@ def _split_url(url):
 class NanoOmahaDevserver(object):
     """A simple Omaha instance that can be setup on a DUT in client tests."""
 
-    def __init__(self, eol=False):
+    def __init__(self, eol=False, failures_per_url=1):
         """
         Create a nano omaha devserver.
 
-        @param eol: True if we should return a response with _eol flag
-
+        @param eol: True if we should return a response with _eol flag.
+        @param failures_per_url: how many times each url can fail.
         """
         self._eol = eol
-
+        self._failures_per_url = failures_per_url
 
     class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         """Inner class for handling HTTP requests."""
@@ -39,6 +39,7 @@ class NanoOmahaDevserver(object):
               <updatecheck status=\"ok\">
                 <urls>
                   <url codebase=\"%s\"/>
+                  <url codebase=\"%s\"/>
                 </urls>
                 <manifest version=\"9999.0.0\">
                   <packages>
@@ -50,6 +51,7 @@ class NanoOmahaDevserver(object):
               sha256=\"%s\"
               needsadmin=\"false\"
               IsDeltaPayload=\"%s\"
+              MaxFailureCountPerUrl=\"%d\"
         """
 
         _OMAHA_RESPONSE_TEMPLATE_TAIL = """ />
@@ -79,10 +81,12 @@ class NanoOmahaDevserver(object):
                     (base, name) = _split_url(self.server._devserver._image_url)
                     response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
                             base + '/',
+                            base + '/',
                             name,
                             self.server._devserver._image_size,
                             self.server._devserver._sha256,
-                            str(self.server._devserver._is_delta).lower())
+                            str(self.server._devserver._is_delta).lower(),
+                            self.server._devserver._failures_per_url)
                     if self.server._devserver._is_delta:
                         response += '              IsDelta="true"\n'
                     if self.server._devserver._critical:
