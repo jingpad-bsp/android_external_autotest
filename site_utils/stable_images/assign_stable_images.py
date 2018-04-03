@@ -32,6 +32,7 @@ import sys
 
 import common
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server import frontend
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import lab_inventory
 
@@ -114,6 +115,42 @@ _FIRMWARE_UPGRADE_BLACKLIST = set([
     ])
 
 
+def _read_gs_json_data(gs_uri):
+    """
+    Read and parse a JSON file from googlestorage.
+
+    This is a wrapper around `gsutil cat` for the specified URI.
+    The standard output of the command is parsed as JSON, and the
+    resulting object returned.
+
+    @return A JSON object parsed from `gs_uri`.
+    """
+    with open('/dev/null', 'w') as ignore_errors:
+        sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
+                              stdout=subprocess.PIPE,
+                              stderr=ignore_errors)
+        try:
+            json_object = json.load(sp.stdout)
+        finally:
+            sp.stdout.close()
+            sp.wait()
+    return json_object
+
+
+def _read_build_metadata(board, cros_version):
+    """Read and parse the `metadata.json` file for a build.
+
+    Given the board and version string for a potential CrOS image,
+    find the URI of the build in googlestorage, and return a Python
+    object for the associated `metadata.json`.
+
+    @param board         Board for the build to be read.
+    @param cros_version  Build version string.
+    """
+    image_path = frontend.format_cros_image_name(board, cros_version)
+    return _read_gs_json_data(_BUILD_METADATA_PATTERN % image_path)
+
+
 def _get_by_key_path(dictdict, key_path):
     """
     Traverse a sequence of keys in a dict of dicts.
@@ -162,17 +199,14 @@ def _get_model_firmware_versions(metadata_json, board):
     return model_firmware_versions
 
 
-def get_firmware_versions(version_map, board, cros_version):
-    """
-    Get the firmware versions for a given board and CrOS version.
+def get_firmware_versions(board, cros_version):
+    """Get the firmware versions for a given board and CrOS version.
 
     Typically, CrOS builds bundle firmware that is installed at update
     time. The returned firmware version value will be `None` if the build isn't
     found in storage, if there is no firmware found for the build, or if the
     board is blacklisted from firmware updates in the test lab.
 
-    @param version_map    An AFE cros version map object; used to
-                          locate the build in storage.
     @param board          The board for the firmware version to be
                           determined.
     @param cros_version   The CrOS version bundling the firmware.
@@ -184,27 +218,22 @@ def get_firmware_versions(version_map, board, cros_version):
     if board in _FIRMWARE_UPGRADE_BLACKLIST:
         return {board: None}
     try:
-        image_path = version_map.format_image_name(board, cros_version)
-        uri = _BUILD_METADATA_PATTERN % image_path
-        metadata_json = _read_gs_json_data(uri)
+        metadata_json = _read_build_metadata(board, cros_version)
         unibuild = bool(_get_by_key_path(metadata_json, ['unibuild']))
         if unibuild:
             return _get_model_firmware_versions(metadata_json, board)
         else:
             key_path = ['board-metadata', board, 'main-firmware-version']
-            fw_version = _get_by_key_path(metadata_json, key_path)
-            return {board: fw_version}
+            return {board: _get_by_key_path(metadata_json, key_path)}
     except Exception as e:
-        # TODO(jrbarnette): If we get here, it likely means that
-        # the repair build for our board doesn't exist.  That can
-        # happen if a board doesn't release on the Beta channel for
-        # at least 6 months.
+        # TODO(jrbarnette): If we get here, it likely means that the
+        # build for this board doesn't exist.  That can happen if a
+        # board doesn't release on the Beta channel for at least 6 months.
         #
-        # We can't allow this error to propogate up the call chain
+        # We can't allow this error to propagate up the call chain
         # because that will kill assigning versions to all the other
         # boards that are still OK, so for now we ignore it.  We
         # really should do better.
-        print ('Failed to get firmware version for board %s: %s.' % (board, e))
         return {board: None}
 
 
@@ -248,7 +277,7 @@ class _VersionUpdater(object):
                             object.
         """
         self._selected_map = self._version_maps[image_type]
-        return self._selected_map
+        return self._selected_map.get_all_versions()
 
     def announce(self):
         """Announce the start of processing to the user."""
@@ -369,28 +398,6 @@ class _NormalModeUpdater(_VersionUpdater):
         self._selected_map.delete_version(board)
 
 
-def _read_gs_json_data(gs_uri):
-    """
-    Read and parse a JSON file from googlestorage.
-
-    This is a wrapper around `gsutil cat` for the specified URI.
-    The standard output of the command is parsed as JSON, and the
-    resulting object returned.
-
-    @return A JSON object parsed from `gs_uri`.
-    """
-    with open('/dev/null', 'w') as ignore_errors:
-        sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
-                              stdout=subprocess.PIPE,
-                              stderr=ignore_errors)
-        try:
-            json_object = json.load(sp.stdout)
-        finally:
-            sp.stdout.close()
-            sp.wait()
-    return json_object
-
-
 def _make_omaha_versions(omaha_status):
     """
     Convert parsed omaha versions data to a versions mapping.
@@ -458,11 +465,10 @@ def _get_upgrade_versions(cros_versions, omaha_versions, boards):
             max(version_counts.items(), key=lambda x: x[1])[0])
 
 
-def _get_firmware_upgrades(cros_version_map, cros_versions):
+def _get_firmware_upgrades(cros_versions):
     """
     Get the new firmware versions to which we should update.
 
-    @param cros_version_map An instance of frontend._CrosVersionMap.
     @param cros_versions    Current board->cros version mappings in the
                             AFE.
     @return A dictionary mapping boards/models to firmware upgrade versions.
@@ -471,9 +477,7 @@ def _get_firmware_upgrades(cros_version_map, cros_versions):
     """
     firmware_upgrades = {}
     for board, version in cros_versions.iteritems():
-        firmware_upgrades.update(get_firmware_versions(
-            cros_version_map, board, version))
-
+        firmware_upgrades.update(get_firmware_versions(board, version))
     return firmware_upgrades
 
 
@@ -600,7 +604,7 @@ def main(argv):
     """
     Standard main routine.
 
-    @param argv  Command line arguments including `sys.argv[0]`.
+    @param argv  Command line arguments, including `sys.argv[0]`.
     """
     arguments = _parse_command_line(argv)
     afe = frontend_wrappers.RetryingAFE(server=None)
@@ -609,8 +613,7 @@ def main(argv):
     boards = (set(arguments.extra_boards) |
               lab_inventory.get_managed_boards(afe))
 
-    cros_version_map = updater.select_version_map(afe.CROS_IMAGE_TYPE)
-    cros_versions = cros_version_map.get_all_versions()
+    cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
     omaha_versions = _make_omaha_versions(
             _read_gs_json_data(_OMAHA_STATUS))
     upgrade_versions, new_default = (
@@ -619,10 +622,8 @@ def main(argv):
                          upgrade_versions, new_default)
 
     updater.report('\nApplying firmware updates:')
-    firmware_version_map = updater.select_version_map(afe.FIRMWARE_IMAGE_TYPE)
-    fw_versions = firmware_version_map.get_all_versions()
-    firmware_upgrades = _get_firmware_upgrades(
-            cros_version_map, upgrade_versions)
+    fw_versions = updater.select_version_map(afe.FIRMWARE_IMAGE_TYPE)
+    firmware_upgrades = _get_firmware_upgrades(upgrade_versions)
     _apply_firmware_upgrades(updater, fw_versions, firmware_upgrades)
 
 
