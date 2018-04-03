@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = "graphics_Idle"
+NAME = "graphics_Idle_P"
 ATTRIBUTES = "suite:bvt-perbuild"
 PURPOSE = "Verify that graphics behaves as expected on idle."
 CRITERIA = """
