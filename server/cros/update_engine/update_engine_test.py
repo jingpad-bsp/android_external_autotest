@@ -351,8 +351,9 @@ class UpdateEngineTest(test.test):
         if build is None:
             if self._job_repo_url is None:
                 self._job_repo_url = self._get_job_repo_url()
-            _, build = tools.get_devserver_build_from_package_url(
+            ds_url, build = tools.get_devserver_build_from_package_url(
                 self._job_repo_url)
+            self._autotest_devserver = dev_server.ImageServer(ds_url)
 
         gs = dev_server._get_image_storage_server()
         if full_payload:
@@ -497,7 +498,7 @@ class UpdateEngineTest(test.test):
         @param max_updates: int number of updates the test will perform. This
                             is passed to src/platform/dev/devserver.py if we
                             create our own deverver.
-        @param cellular: update will be done over cellular connection.
+        @param cellular: url needs to be publicly accessible.
 
         @returns an update url string.
 
