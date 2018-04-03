@@ -93,6 +93,67 @@ class KeyPathTests(unittest.TestCase):
         self._check_path_invalid(['level1_a', 'absent'])
 
 
+class GetOmahaUpgradeTests(unittest.TestCase):
+    """Tests for `_get_omaha_upgrade()`."""
+
+    V0 = 'R66-10452.27.0'
+    V1 = 'R66-10452.30.0'
+    V2 = 'R67-10494.0.0'
+
+    def test_choose_cros_version(self):
+        """Test that the CrOS version is chosen when it is later."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V0}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_choose_omaha_version(self):
+        """Test that the Omaha version is chosen when it is later."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V0)
+        self.assertEquals(new_version, self.V1)
+
+    def test_branch_version_comparison(self):
+        """Test that versions on different branches compare properly."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V2)
+        self.assertEquals(new_version, self.V2)
+
+    def test_identical_versions(self):
+        """Test handling when both the versions are the same."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_board_name_mapping(self):
+        """Test that AFE board names are mapped to Omaha board names."""
+        board_equivalents = [
+            ('a-b', 'a-b'), ('c_d', 'c-d'),
+            ('e_f-g', 'e-f-g'), ('hi', 'hi')
+        ]
+        for afe_board, omaha_board in board_equivalents:
+            new_version = assign_stable_images._get_omaha_upgrade(
+                {omaha_board: self.V1}, afe_board, self.V0)
+            self.assertEquals(new_version, self.V1)
+
+    def test_no_omaha_version(self):
+        """Test handling when there's no Omaha version."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_no_afe_version(self):
+        """Test handling when there's no CrOS version."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', None)
+        self.assertEquals(new_version, self.V1)
+
+    def test_no_version_whatsoever(self):
+        """Test handling when both versions are `None`."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {}, 'board', None)
+        self.assertIsNone(new_version)
+
+
 class GetFirmwareUpgradesTests(unittest.TestCase):
     """Tests for _get_firmware_upgrades."""
 
