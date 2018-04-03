@@ -120,10 +120,9 @@ class KernelConfig():
         for name in exclusive['module']:
             self.has_module(name)
             expected.add('CONFIG_%s' % (name))
-        if 'enabled' in exclusive:
-            for name in exclusive['enabled']:
-                self.is_enabled(name)
-                expected.add('CONFIG_%s' % (name))
+        for name in exclusive['enabled']:
+            self.is_enabled(name)
+            expected.add('CONFIG_%s' % (name))
 
         # Now make sure nothing else with the specified regex exists.
         regex = r'CONFIG_%s' % (exclusive['regex'])
