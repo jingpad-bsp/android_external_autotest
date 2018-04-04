@@ -24,6 +24,15 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
     LATENCY_MARGIN_MS = 200
     THRESHOLD_BASELINE_LATENCY_MS = 100
 
+    def parse_additional_arguments(self, commandline_args, additional_params):
+        """Hook into super class to take control files parameters.
+
+        @param commandline_args dict of parsed parameters from the autotest.
+        @param additional_params list of HostapConfig objects.
+
+        """
+        self._config_first_ap = additional_params[0]
+        self._config_second_ap = additional_params[1]
 
     def run_once(self):
         """Body of the test."""
@@ -34,7 +43,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                 self.context.get_wifi_addr(),
                 interval=self.PING_INTERVAL_SECONDS,
                 count=int(period / self.PING_INTERVAL_SECONDS))
-        self.context.configure(hostap_config.HostapConfig(channel=1))
+        self.context.configure(self._config_first_ap)
         bgscan_config = xmlrpc_datatypes.BgscanConfiguration(
                 short_interval=self.CONFIGURED_BGSCAN_INTERVAL_SECONDS,
                 long_interval=self.CONFIGURED_BGSCAN_INTERVAL_SECONDS,
@@ -46,11 +55,8 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                 get_ping_config(self.BGSCAN_SAMPLE_PERIOD_SECONDS))
         logging.info('Ping statistics with bgscan: %r', result_bgscan)
         # Bring up a second AP, make sure that it shows up in bgscans.
-        self.context.configure(
-                hostap_config.HostapConfig(channel=11,
-                                           min_streams=1,
-                                           ssid=self.context.router.get_ssid()),
-                multi_interface=True)
+        self._config_second_ap.ssid = self.context.router.get_ssid()
+        self.context.configure(self._config_second_ap,multi_interface=True)
         logging.info('Without a ping running, ensure that bgscans succeed.')
         ap_mac = self.context.router.get_hostapd_mac(ap_num=1)
         logging.debug('Looking for BSS %s', ap_mac)
@@ -71,7 +77,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.shill.disconnect(
                 self.context.router.get_ssid(instance=0))
         # Reconfigure AP, so the new bgscan setting can be correctly applied.
-        self.context.configure(hostap_config.HostapConfig(channel=1))
+        self.context.configure(self._config_first_ap)
         # Gather some statistics about ping latencies without scanning going on.
         self.context.assert_connect_wifi(get_assoc_params(None))
         logging.info('Pinging router without background scans for %d seconds.',
