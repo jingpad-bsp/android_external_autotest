@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Lab Infrastructure Team"
-NAME = "telemetry_LoginTest.arc"
+NAME = "telemetry_LoginTest_P.arc"
 PURPOSE = "Login through telemetry."
 CRITERIA = """
 This test will fail if telemetry login is broken, or if

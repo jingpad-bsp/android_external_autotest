@@ -5,11 +5,12 @@
 
 AUTHOR = "ARC Team"
 ATTRIBUTES = "suite:bvt-perbuild"
-NAME = "cheets_StartAndroid.smoke"
+NAME = "cheets_StartAndroid_P.smoke"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+DEPENDENCIES = "arc"
 
 DOC = """
 This test verifies in the VM a single login to the browser and start of ARC.
