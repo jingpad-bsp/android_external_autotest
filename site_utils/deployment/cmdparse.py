@@ -262,8 +262,6 @@ def parse_command(argv):
     parser = _ArgumentParser(
             prog=os.path.basename(argv[0]),
             description='DUT deployment and repair operations')
-    parser.add_argument('-b', '--board', metavar='BOARD',
-                        help='board for DUTs to be installed')
     subcommands = parser.add_subparsers()
     _add_servo_subcommand(subcommands)
     _add_firmware_subcommand(subcommands)
