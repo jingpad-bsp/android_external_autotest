@@ -4,12 +4,13 @@
 #
 
 AUTHOR = "ARC Team"
-NAME = "cheets_StartAndroid"
+NAME = "cheets_StartAndroid_P"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
+DEPENDENCIES = "arc"
 
 DOC = """
 This is a helper utility to log-in Chrome for CTS.
