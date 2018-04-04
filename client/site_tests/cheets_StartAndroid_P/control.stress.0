@@ -7,11 +7,12 @@ AUTHOR = "ARC Team"
 # Do not remove any of these suites without wider discussion as it will cause
 # instability in the testing lab.
 ATTRIBUTES = "suite:bvt-arc, suite:bvt-cq, suite:bvt-inline"
-NAME = "cheets_StartAndroid.stress.0"
+NAME = "cheets_StartAndroid_P.stress.0"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+DEPENDENCIES = "arc"
 
 DOC = """
 This sharded test verifies reliable and repeated login to Chrome and start of
