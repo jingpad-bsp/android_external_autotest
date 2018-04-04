@@ -194,7 +194,7 @@ class WPAConfig(SecurityConfig):
     def __init__(self, psk='', wpa_mode=MODE_DEFAULT, wpa_ciphers=[],
                  wpa2_ciphers=[], wpa_ptk_rekey_period=None,
                  wpa_gtk_rekey_period=None, wpa_gmk_rekey_period=None,
-                 use_strict_rekey=None, use_ft=False):
+                 use_strict_rekey=None, use_ft=None):
         """Construct a WPAConfig.
 
         @param psk string a passphrase (64 hex characters or an ASCII phrase up
@@ -252,9 +252,9 @@ class WPAConfig(SecurityConfig):
         if self.use_ft:
             ret['wpa_key_mgmt'] = 'FT-PSK'
         if len(self.psk) == 64:
-           ret['wpa_psk'] = self.psk
+            ret['wpa_psk'] = self.psk
         else:
-           ret['wpa_passphrase'] = self.psk
+            ret['wpa_passphrase'] = self.psk
 
         if self.wpa_ciphers:
             ret['wpa_pairwise'] = ' '.join(self.wpa_ciphers)
@@ -273,8 +273,10 @@ class WPAConfig(SecurityConfig):
 
     def get_shill_service_properties(self):
         """@return dict of shill service properties."""
-        return {self.SERVICE_PROPERTY_PASSPHRASE: self.psk,
-                self.SERVICE_PROPERTY_FT_ENABLED: self.use_ft}
+        ret = {self.SERVICE_PROPERTY_PASSPHRASE: self.psk}
+        if self.use_ft is not None:
+            ret[self.SERVICE_PROPERTY_FT_ENABLED] = self.use_ft
+        return ret
 
 
     def get_wpa_cli_properties(self):
@@ -325,7 +327,7 @@ class EAPConfig(SecurityConfig):
                  server_eap_users=None,
                  client_ca_cert=None, client_cert=None, client_key=None,
                  client_cert_id=None, client_key_id=None,
-                 eap_identity=None):
+                 eap_identity=None, use_ft=None):
         """Construct an EAPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -370,6 +372,7 @@ class EAPConfig(SecurityConfig):
         self.client_cert_slot_id = None
         self.client_key_slot_id = None
         self.eap_identity = eap_identity or self.DEFAULT_EAP_IDENTITY
+        self.use_ft = use_ft
 
 
     def install_router_credentials(self, host):
@@ -516,7 +519,7 @@ class WPAEAPConfig(EAPConfig):
                  client_ca_cert=None, client_cert=None, client_key=None,
                  client_cert_id=None, client_key_id=None,
                  eap_identity=None, server_eap_users=None,
-                 wpa_mode=WPAConfig.MODE_PURE_WPA, use_ft=False):
+                 wpa_mode=WPAConfig.MODE_PURE_WPA, use_ft=None):
         """Construct a DynamicWEPConfig.
 
         @param file_suffix string unique file suffix on DUT.
@@ -539,9 +542,9 @@ class WPAEAPConfig(EAPConfig):
                 server_key=server_key, client_ca_cert=client_ca_cert,
                 client_cert=client_cert, client_key=client_key,
                 client_cert_id=client_cert_id, client_key_id=client_key_id,
-                eap_identity=eap_identity, server_eap_users=server_eap_users)
+                eap_identity=eap_identity, server_eap_users=server_eap_users,
+                use_ft=use_ft)
         self.wpa_mode = wpa_mode
-        self.use_ft = use_ft
 
 
     def get_hostapd_config(self):
