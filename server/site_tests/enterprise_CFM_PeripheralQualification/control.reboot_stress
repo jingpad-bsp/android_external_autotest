@@ -23,16 +23,18 @@ Moblab or from a local workstation.
 
 args_dict = utils.args_to_dict(args)
 vid,pid = args_dict['vid_pid'].split(':')
-product = 'CustomProduct'  # The product is only informational, set it to whatever.
+# The product is only informational, set it to whatever.
+product = args_dict.get('product', 'customProduct')
 # Interfaces are only needed when verifying them, set them to empty in this case.
 interfaces = []
 device = usb_device_spec.UsbDeviceSpec(vid, pid, product, interfaces)
+repeat = int(args_dict.get('repeat', 10))
 
 cfm_test = CfmTest(
     configuration=Configuration(skip_enrollment=True),
     scenario=Scenario(
         AssertUsbDevices([device]),
-        RepeatTimes(10, Scenario(
+        RepeatTimes(repeat, Scenario(
             RebootDut(),
             AssertUsbDevices([device])
             # TODO(crbug.com/814775): mosys-info always crashes on reboot, why
