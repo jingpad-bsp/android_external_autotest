@@ -607,7 +607,7 @@ def infer_balancer_targets(afe, arguments, pools):
                            'too many models with at least 1 broken DUT '
                            'detected.', pool)
             else:
-                for model in inventory.get_models(pool):
+                for model in inventory.get_pool_models(pool):
                     labels = labellib.LabelsMapping()
                     labels['model'] = model
                     balancer_targets.append((pool, labels.getlabels()))
