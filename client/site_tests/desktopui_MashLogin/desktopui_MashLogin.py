@@ -3,14 +3,36 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.graphics import gbm
 
 
 class desktopui_MashLogin(test.test):
     """Verifies chrome --mash starts up and logs in correctly."""
     version = 1
+
+
+    def __screen_visual_sanity_test(self):
+        """Capture the screen and sanity check it (more than 5 colors)."""
+        try:
+            image = gbm.crtcScreenshot()
+        except Exception as e:
+            logging.warning('Unable to capture screenshot. %s', e)
+            return
+
+        # If colors in |image| is less than _MAX_COLORS, PIL.Image.getcolors
+        # returns a list of colors. If colors is more than _MAX_COLORS, it
+        # returns None. Expect None because the login screen should contain
+        # more than _MAX_COLORS.
+        _MAX_COLORS = 5
+        if image.getcolors(maxcolors=_MAX_COLORS) is not None:
+            image.save(os.path.join(self.resultsdir,
+                                    'bad_mash_login_screenshot.png'))
+            raise error.TestFail('Mash login screen does not look right.')
 
 
     def run_once(self):
@@ -31,6 +53,7 @@ class desktopui_MashLogin(test.test):
         logging.info('Testing Chrome with Mash startup.')
         with chrome.Chrome(auto_login=False, extra_browser_args=mash_browser_args):
             logging.info('Chrome with Mash started and loaded OOBE.')
+            self.__screen_visual_sanity_test()
 
         logging.info('Testing Chrome with Mash login.')
         with chrome.Chrome(extra_browser_args=mash_browser_args):
