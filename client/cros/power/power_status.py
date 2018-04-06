@@ -9,6 +9,7 @@ import contextlib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, enum
 from autotest_lib.client.cros import kernel_trace
+from autotest_lib.client.cros.power import power_utils
 
 BatteryDataReportType = enum.Enum('CHARGE', 'ENERGY')
 
@@ -1581,6 +1582,40 @@ class TempMeasurement(object):
         return int(utils.read_one_line(self._path)) / 1000.
 
 
+class BatteryTempMeasurement(TempMeasurement):
+    """Class to measure battery temperature."""
+    def __init__(self):
+        super(BatteryTempMeasurement, self).__init__('battery', 'battery_temp')
+
+
+    def refresh(self):
+        """Perform battery temperature reading.
+
+        Returns:
+            float, temperature in degrees Celsius.
+        """
+        result = utils.run(self._path, timeout=5, ignore_status=True)
+        return float(result.stdout)
+
+
+def has_battery_temp():
+    """Determine if DUT can provide battery temperature.
+
+    Returns:
+        Boolean, True if battery temperature available.  False otherwise.
+    """
+    if not power_utils.has_battery():
+        return False
+
+    btemp = BatteryTempMeasurement()
+    try:
+        btemp.refresh()
+    except ValueError:
+        return False
+
+    return True
+
+
 class TempLogger(MeasurementLogger):
     """A thread that logs temperature readings in millidegrees Celsius."""
     def __init__(self, measurements, seconds_period=30.0):
@@ -1595,6 +1630,9 @@ class TempLogger(MeasurementLogger):
                 fpath = tstats.fields[kname][0]
                 new_meas = TempMeasurement(domain, fpath)
                 measurements.append(new_meas)
+
+            if has_battery_temp():
+                measurements.append(BatteryTempMeasurement())
         super(TempLogger, self).__init__(measurements, seconds_period)
 
 
