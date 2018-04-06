@@ -91,6 +91,12 @@ class firmware_Cr50DeviceState(FirmwareTest):
     INCREASE = '+'
     DS_RESUME = 'DS'
 
+    def cleanup(self):
+        """Make sure the device is on at the end of the test."""
+        self.trigger_s0()
+        super(firmware_Cr50DeviceState, self).cleanup()
+
+
     def get_taskinfo_output(self):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.cr50.send_command_get_output('taskinfo',
@@ -262,11 +268,16 @@ class firmware_Cr50DeviceState(FirmwareTest):
             self.run_errors.update(errors)
 
 
+    def trigger_s0(self):
+        """Press the power button so the DUT will wake up."""
+        self.servo.power_short_press()
+
+
     def enter_state(self, state):
         """Get the command to enter the power state"""
         self.stage_irq_add(self.get_irq_counts(), 'start %s' % state)
         if state == 'S0':
-            self.servo.power_short_press()
+            self.trigger_s0()
         else:
             if state == 'S0ix':
                 full_command = 'echo freeze > /sys/power/state &'
