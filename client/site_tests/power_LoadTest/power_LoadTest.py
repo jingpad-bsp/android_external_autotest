@@ -50,7 +50,8 @@ class power_LoadTest(arc.ArcTest):
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', wifi_timeout=60, tasks='',
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
-                 ac_ok=False, log_mem_bandwidth=False, gaia_login=True):
+                 ac_ok=False, log_mem_bandwidth=False, gaia_login=True,
+                 force_discharge=False):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -75,6 +76,8 @@ class power_LoadTest(arc.ArcTest):
         ac_ok: boolean to allow running on AC
         log_mem_bandwidth: boolean to log memory bandwidth during the test
         gaia_login: boolean of whether real GAIA login should be attempted.
+        force_discharge: boolean of whether to tell ec to discharge battery even
+            when the charger is plugged in.
         """
         self._backlight = None
         self._services = None
@@ -106,6 +109,7 @@ class power_LoadTest(arc.ArcTest):
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
         self._gaia_login = gaia_login
+        self._force_discharge = force_discharge
 
         if not power_utils.has_battery():
             if ac_ok and (power_utils.has_powercap_support() or
@@ -122,6 +126,11 @@ class power_LoadTest(arc.ArcTest):
 
         if not ac_ok:
             self._power_status.assert_battery_state(percent_initial_charge_min)
+
+        if force_discharge:
+            if not power_utils.charge_control_by_ectool(False):
+                raise error.TestError('Could not run battery force discharge.')
+
         # If force wifi enabled, convert eth0 to backchannel and connect to the
         # specified WiFi AP.
         if self._force_wifi:
@@ -474,6 +483,8 @@ class power_LoadTest(arc.ArcTest):
 
 
     def cleanup(self):
+        if self._force_discharge:
+            power_utils.charge_control_by_ectool(True)
         if self._backlight:
             self._backlight.restore()
         if self._services:
