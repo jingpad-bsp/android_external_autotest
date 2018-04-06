@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "mruthven"
-NAME = "firmware_Cr50Update"
+NAME = "firmware_Cr50Update.post_install"
 PURPOSE = "Verify Cr50 update"
 ATTRIBUTES = "suite:cr50_stress_flaky"
 TIME = "SHORT"
@@ -68,7 +68,6 @@ old_release_ver = args_dict.get("old_release_ver", "")
 release_path = args_dict.get("release_path", "")
 release_ver = args_dict.get("release_ver", "")
 dev_path = args_dict.get("dev_path", "")
-test = args_dict.get("test", "")
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
@@ -77,6 +76,6 @@ def run(machine):
                  release_path=release_path, release_ver=release_ver,
                  old_release_path=old_release_path,
                  old_release_ver=old_release_ver, dev_path=dev_path,
-                 test=test, iterations=iterations)
+                 test="post_install", iterations=iterations)
 
 parallel_simple(run, machines)
