@@ -9,7 +9,7 @@ import unittest
 
 import common
 from autotest_lib.site_utils.deployment import install
-from autotest_lib.site_utils.stable_images import assign_stable_images
+from autotest_lib.site_utils.stable_images import build_data
 
 
 class AFEMock(object):
@@ -60,7 +60,7 @@ class UpdateBuildTests(unittest.TestCase):
                 install, '_get_omaha_build',
                 return_value=omaha_version)
         patcher2 = mock.patch.object(
-                assign_stable_images, 'get_firmware_versions',
+                build_data, 'get_firmware_versions',
                 return_value=firmware_versions)
 
         self.patchers.extend([patcher1, patcher2])

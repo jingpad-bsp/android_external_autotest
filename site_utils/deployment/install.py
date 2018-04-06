@@ -75,7 +75,7 @@ from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.deployment import cmdvalidate
-from autotest_lib.site_utils.stable_images import assign_stable_images
+from autotest_lib.site_utils.stable_images import build_data
 
 
 _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
@@ -220,7 +220,7 @@ def _update_build(afe, report_log, arguments):
                              % (arguments.build, cros_version))
 
     afe_fw_versions = {arguments.board: afe_fw}
-    fw_versions = assign_stable_images.get_firmware_versions(
+    fw_versions = build_data.get_firmware_versions(
         arguments.board, cros_version)
     # At this point `cros_version` is our new repair build, and
     # `fw_version` is our new target firmware.  Call the AFE back with
