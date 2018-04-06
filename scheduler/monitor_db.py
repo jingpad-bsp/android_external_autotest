@@ -501,13 +501,16 @@ class Dispatcher(object):
                     and not luciferlib.is_split_job(
                             agent_task.queue_entries[0].id))):
                 return
-            # If this AgentTask is already started (i.e., recovered from
-            # the scheduler running previously not at STARTING lucifer
-            # level), we want to use the AgentTask to run the test to
-            # completion.
-            if (isinstance(agent_task, AbstractQueueTask)
-                and not agent_task.started):
-                return
+            if isinstance(agent_task, AbstractQueueTask):
+                # If Lucifer already owns the job, ignore the agent.
+                if luciferlib.is_lucifer_owned(agent_task.job):
+                    return
+                # If the job isn't started yet, let Lucifer own it.
+                if not agent_task.started:
+                    return
+                # Otherwise, this is a STARTING job that Autotest owned
+                # before Lucifer was enabled for STARTING.  Allow the
+                # scheduler to recover the agent task normally.
 
         agent = Agent(agent_task)
         self._agents.append(agent)
