@@ -42,7 +42,8 @@ class firmware_Cr50Update(Cr50Test):
                                                     cr50_dev_path=dev_path)
 
         if not release_ver and not os.path.isfile(release_path):
-            raise error.TestError('Need to specify a release version or path')
+            release_path = self.get_saved_cr50_original_path()
+            logging.info('Using device image as release')
 
         self.devid = self.servo.get('cr50_devid')
 
