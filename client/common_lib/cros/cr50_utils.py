@@ -275,7 +275,7 @@ def GSCTool(client, args, ignore_status=False):
                         timeout=UPDATE_TIMEOUT)
 
     # After a posted reboot, the gsctool exit code should equal 1.
-    if (result.exit_status and result.exit_status != UPDATE_OK and
+    if (result and result.exit_status and result.exit_status != UPDATE_OK and
         not ignore_status):
         logging.debug(result)
         raise error.TestFail('Unexpected gsctool exit code after %s %d' %
