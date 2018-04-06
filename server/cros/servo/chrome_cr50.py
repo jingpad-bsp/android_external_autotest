@@ -218,7 +218,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def rolledback(self):
         """Returns true if cr50 just rolled back"""
-        return int(self._servo.get('cr50_reset_count')) > self.MAX_RETRY_COUNT
+        return 'Rollback detected' in self.send_command_get_output('sysinfo',
+                ['.*>'])[0]
 
 
     def get_version_info(self, regexp):
