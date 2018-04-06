@@ -59,7 +59,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     BID_FORMAT = ':\s+[a-f0-9:]+ '
     ACTIVE_BID = r'%s.*(\1%s|%s.*>)' % (ACTIVE_VERSION, BID_FORMAT,
             BID_ERROR)
-    WAKE_CHAR = '\n'
+    WAKE_CHAR = '\n\n'
+    WAKE_RESPONSE = ['(>|Console is enabled)']
     START_UNLOCK_TIMEOUT = 20
     GETTIME = ['= (\S+)']
     FWMP_LOCKED_PROD = ["Managed device console can't be unlocked"]
@@ -75,6 +76,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         super(ChromeCr50, self).__init__(servo, 'cr50_uart')
 
 
+    def wake_cr50(self):
+        """Wake up cr50 by sending some linebreaks and wait for the response"""
+        logging.debug(super(ChromeCr50, self).send_command_get_output(
+                self.WAKE_CHAR, self.WAKE_RESPONSE))
+
+
     def send_command(self, commands):
         """Send command through UART.
 
@@ -83,7 +90,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         real command to make sure cr50 is awake.
         """
         if not self.using_ccd():
-            super(ChromeCr50, self).send_command(self.WAKE_CHAR)
+            self.wake_cr50()
         super(ChromeCr50, self).send_command(commands)
 
 
@@ -95,7 +102,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         real command to make sure cr50 is awake.
         """
         if not self.using_ccd():
-            super(ChromeCr50, self).send_command(self.WAKE_CHAR)
+            self.wake_cr50()
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
