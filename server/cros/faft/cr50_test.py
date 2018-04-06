@@ -393,19 +393,19 @@ class Cr50Test(FirmwareTest):
         return dest, ver
 
 
-    def download_cr50_release_image(self, rw_ver, image_bid=''):
+    def download_cr50_release_image(self, image_rw, image_bid=''):
         """download the cr50 release file
 
         Get the file with the matching version and image board id info
 
         Args:
-            rw_ver: the rw version string
+            image_rw: the rw version string
             image_bid: the image board id info string or list
         Returns:
             A tuple with the release image local path and version
         """
         # Release images can be found using the rw version
-        filename = self.CR50_PROD_FILE % rw_ver
+        filename = self.CR50_PROD_FILE % image_rw
 
         # Download the image
         dest, ver = self.download_cr50_gs_image(filename, image_bid=image_bid,
@@ -413,17 +413,17 @@ class Cr50Test(FirmwareTest):
 
         # Compare the rw version and board id info to make sure the right image
         # was found
-        if rw_ver != ver[1]:
+        if image_rw != ver[1]:
             raise error.TestError('Could not download image with matching '
                                   'rw version')
         return dest, ver
 
 
-    def _cr50_verify_update(self, expected_ver, expect_rollback):
+    def _cr50_verify_update(self, expected_rw, expect_rollback):
         """Verify the expected version is running on cr50
 
         Args:
-            expect_ver: The RW version string we expect to be running
+            expected_rw: The RW version string we expect to be running
             expect_rollback: True if cr50 should have rolled back during the
                              update
 
@@ -431,16 +431,16 @@ class Cr50Test(FirmwareTest):
             TestFail if there is any unexpected update state
         """
         errors = []
-        running_ver = self.cr50.get_version()
-        if expected_ver != running_ver:
-            errors.append('running %s not %s' % (running_ver, expected_ver))
+        running_rw = self.cr50.get_version()
+        if expected_rw != running_rw:
+            errors.append('running %s not %s' % (running_rw, expected_rw))
 
         if expect_rollback != self.cr50.rolledback():
             errors.append('%srollback detected' %
                           'no ' if expect_rollback else '')
         if len(errors):
             raise error.TestFail('cr50_update failed: %s' % ', '.join(errors))
-        logging.info('RUNNING %s after %s', expected_ver,
+        logging.info('RUNNING %s after %s', expected_rw,
                      'rollback' if expect_rollback else 'update')
 
 
@@ -481,13 +481,13 @@ class Cr50Test(FirmwareTest):
         Raises:
             TestFail if the update failed
         """
-        original_ver = self.cr50.get_version()
+        original_rw = self.cr50.get_version()
 
         # Cr50 is going to reject an update if it hasn't been up for more than
         # 60 seconds. Wait until that passes before trying to run the update.
         self.cr50.wait_until_update_is_allowed()
 
-        rw_ver = self._cr50_run_update(path)
+        image_rw = self._cr50_run_update(path)
 
         # Running the update may cause cr50 to reboot. Wait for that before
         # sending more commands. The reboot should happen quickly. Wait a
@@ -500,6 +500,6 @@ class Cr50Test(FirmwareTest):
         if rollback:
             self.cr50.rollback(chip_bid=chip_bid, chip_flags=chip_flags)
 
-        expected_ver = original_ver if expect_rollback else rw_ver
+        expected_rw = original_rw if expect_rollback else image_rw
         # If we expect a rollback, the version should remain unchanged
-        self._cr50_verify_update(expected_ver, rollback or expect_rollback)
+        self._cr50_verify_update(expected_rw, rollback or expect_rollback)
