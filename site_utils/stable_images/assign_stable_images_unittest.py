@@ -14,7 +14,6 @@ import sys
 import unittest
 
 import common
-from autotest_lib.server import frontend
 from autotest_lib.site_utils.stable_images import assign_stable_images
 
 
@@ -45,19 +44,20 @@ _DEFAULT_BOARD = assign_stable_images._DEFAULT_BOARD
 
 
 class OmahaDataTests(unittest.TestCase):
-    """Tests for the `_make_omaha_versions()` function."""
+    """Tests for the `_get_omaha_version_map()` function."""
 
-    def test_make_omaha_versions(self):
+    @mock.patch.object(assign_stable_images, '_read_gs_json_data')
+    def test_make_omaha_versions(self, mock_read_gs):
         """
-        Test `_make_omaha_versions()` against one simple input.
+        Test `_get_omaha_version_map()` against one simple input.
 
-        This is a trivial sanity test that confirms that a single
+        This is a trivial sanity test that asserts that a single
         hard-coded input returns a correct hard-coded output.
         """
         module_dir = os.path.dirname(sys.modules[__name__].__file__)
         data_file_path = os.path.join(module_dir, _OMAHA_TEST_DATA)
-        omaha_versions = assign_stable_images._make_omaha_versions(
-                json.load(open(data_file_path, 'r')))
+        mock_read_gs.return_value = json.load(open(data_file_path, 'r'))
+        omaha_versions = assign_stable_images._get_omaha_version_map()
         self.assertEqual(omaha_versions, _EXPECTED_OMAHA_VERSIONS)
 
 
@@ -93,36 +93,92 @@ class KeyPathTests(unittest.TestCase):
         self._check_path_invalid(['level1_a', 'absent'])
 
 
+class GetOmahaUpgradeTests(unittest.TestCase):
+    """Tests for `_get_omaha_upgrade()`."""
+
+    V0 = 'R66-10452.27.0'
+    V1 = 'R66-10452.30.0'
+    V2 = 'R67-10494.0.0'
+
+    def test_choose_cros_version(self):
+        """Test that the CrOS version is chosen when it is later."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V0}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_choose_omaha_version(self):
+        """Test that the Omaha version is chosen when it is later."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V0)
+        self.assertEquals(new_version, self.V1)
+
+    def test_branch_version_comparison(self):
+        """Test that versions on different branches compare properly."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V2)
+        self.assertEquals(new_version, self.V2)
+
+    def test_identical_versions(self):
+        """Test handling when both the versions are the same."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_board_name_mapping(self):
+        """Test that AFE board names are mapped to Omaha board names."""
+        board_equivalents = [
+            ('a-b', 'a-b'), ('c_d', 'c-d'),
+            ('e_f-g', 'e-f-g'), ('hi', 'hi')
+        ]
+        for afe_board, omaha_board in board_equivalents:
+            new_version = assign_stable_images._get_omaha_upgrade(
+                {omaha_board: self.V1}, afe_board, self.V0)
+            self.assertEquals(new_version, self.V1)
+
+    def test_no_omaha_version(self):
+        """Test handling when there's no Omaha version."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {}, 'board', self.V1)
+        self.assertEquals(new_version, self.V1)
+
+    def test_no_afe_version(self):
+        """Test handling when there's no CrOS version."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {'board': self.V1}, 'board', None)
+        self.assertEquals(new_version, self.V1)
+
+    def test_no_version_whatsoever(self):
+        """Test handling when both versions are `None`."""
+        new_version = assign_stable_images._get_omaha_upgrade(
+            {}, 'board', None)
+        self.assertIsNone(new_version)
+
+
 class GetFirmwareUpgradesTests(unittest.TestCase):
     """Tests for _get_firmware_upgrades."""
-
-
-    def setUp(self):
-        self.version_map = frontend._CrosVersionMap(mock.Mock())
-
 
     @mock.patch.object(assign_stable_images, 'get_firmware_versions')
     def test_get_firmware_upgrades(self, mock_get_firmware_versions):
         """Test _get_firmware_upgrades."""
         mock_get_firmware_versions.side_effect = [
-                {'auron_paine': 'fw_version'},
-                {'blue': 'fw_version',
-                 'robo360': 'fw_version',
-                 'porbeagle': 'fw_version'}
+            {'auron_paine': 'fw_version'},
+            {'blue': 'fw_version',
+             'robo360': 'fw_version',
+             'porbeagle': 'fw_version'}
         ]
         cros_versions = {
-                'coral': 'R64-10176.65.0',
-                'auron_paine': 'R64-10176.65.0'
+            'coral': 'R64-10176.65.0',
+            'auron_paine': 'R64-10176.65.0'
         }
         boards = ['auron_paine', 'coral']
 
         firmware_upgrades = assign_stable_images._get_firmware_upgrades(
-            self.version_map, cros_versions)
+            cros_versions)
         expected_firmware_upgrades = {
-                'auron_paine': 'fw_version',
-                'blue': 'fw_version',
-                'robo360': 'fw_version',
-                'porbeagle': 'fw_version'
+            'auron_paine': 'fw_version',
+            'blue': 'fw_version',
+            'robo360': 'fw_version',
+            'porbeagle': 'fw_version'
         }
         self.assertEqual(firmware_upgrades, expected_firmware_upgrades)
 
@@ -130,11 +186,8 @@ class GetFirmwareUpgradesTests(unittest.TestCase):
 class GetFirmwareVersionsTests(unittest.TestCase):
     """Tests for get_firmware_versions."""
 
-
     def setUp(self):
-        self.version_map = frontend._CrosVersionMap(mock.Mock())
         self.cros_version = 'R64-10176.65.0'
-
 
     @mock.patch.object(assign_stable_images, '_read_gs_json_data')
     def test_get_firmware_versions_on_normal_build(self, mock_read_gs):
@@ -153,22 +206,18 @@ class GetFirmwareVersionsTests(unittest.TestCase):
         board = 'auron_paine'
 
         fw_version = assign_stable_images.get_firmware_versions(
-                self.version_map, board, self.cros_version)
+                board, self.cros_version)
         expected_version = {board: "Google_Auron_paine.6301.58.98"}
         self.assertEqual(fw_version, expected_version)
-
 
     @mock.patch.object(assign_stable_images, '_read_gs_json_data',
                        side_effect = Exception('GS ERROR'))
     def test_get_firmware_versions_with_exceptions(self, mock_read_gs):
         """Test get_firmware_versions on normal build with exceptions."""
         afe_mock = mock.Mock()
-        version_map = frontend._CrosVersionMap(afe_mock)
-
         fw_version = assign_stable_images.get_firmware_versions(
-                self.version_map, 'auron_paine', self.cros_version)
+                'auron_paine', self.cros_version)
         self.assertEqual(fw_version, {'auron_paine': None})
-
 
     @mock.patch.object(assign_stable_images, '_read_gs_json_data')
     def test_get_firmware_versions_on_unibuild(self, mock_read_gs):
@@ -198,16 +247,14 @@ class GetFirmwareVersionsTests(unittest.TestCase):
 }
 """
         mock_read_gs.return_value = json.loads(metadata_json)
-
         fw_version = assign_stable_images.get_firmware_versions(
-                self.version_map, 'coral', self.cros_version)
+            'coral', self.cros_version)
         expected_version = {
-                'blue': 'Google_Coral.10068.39.0',
-                'robo360': 'Google_Coral.10068.34.0',
-                'porbeagle': None
+            'blue': 'Google_Coral.10068.39.0',
+            'robo360': 'Google_Coral.10068.34.0',
+            'porbeagle': None
         }
         self.assertEqual(fw_version, expected_version)
-
 
     @mock.patch.object(assign_stable_images, '_read_gs_json_data')
     def test_get_firmware_versions_on_unibuild_no_models(self, mock_read_gs):
@@ -223,9 +270,8 @@ class GetFirmwareVersionsTests(unittest.TestCase):
 }
 """
         mock_read_gs.return_value = json.loads(metadata_json)
-
         fw_version = assign_stable_images.get_firmware_versions(
-                self.version_map, 'coral', self.cros_version)
+                'coral', self.cros_version)
         self.assertEqual(fw_version, {'coral': None})
 
 

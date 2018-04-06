@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "cmasone, antrim"
-NAME = "desktopui_ExitOnSupervisedUserCrash.arc"
+NAME = "desktopui_ExitOnSupervisedUserCrash_P.arc"
 ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"

@@ -113,7 +113,7 @@ drm_tests = {
         DrmTest('mmap_test', timeout=300),
         DrmTest('null_platform_test'),
         DrmTest('swrast_test', display_required=False),
-        DrmTest('vgem_test', display_required=False),
+        DrmTest('vgem_test'),
         DrmTest('vk_glow', vulkan_required=True),
     )
 }

@@ -13,13 +13,14 @@ DEPENDENCIES = "servo"
 DOC = """
 This test verifies Cr50 update works or recovery from erased nvmem.
 
-To test nvmem recovery set test to "erase_nvmem" or use
-firmware_Cr50Update.erase_nvmem
+To test postinstall cr50 update script set test to "post_install" or use
+firmware_Cr50Update.post_install. To test the startup script leave the test arg
+blank
 
 The test will rollback to the oldest Cr50 image and then verify each update to
-the next newest image runs successfully. If testing nvmem recovery, nvmem will
-be erased during the rollback from the dev image to the release image and
-any old release args  will be ignored for erase_nvmem tests.
+the next newest image runs successfully. If testing post install, the test will
+update using cr50-update.sh. If testing the startup script the updates will be
+run with cr50-update.conf after reboot..
 
 The old release needs to have a version lower than the release image. The
 release image needs to have a version lower than the dev image. The dev image
@@ -50,9 +51,9 @@ device.
 @param release_ver: RW and BID version string used to fetch the image from gs
 @param old_release_path: the location of the old release image.
 @param old_release_ver: RW version string used to fetch the image from gs
-@param test: string representing the test type. use "erase_nvmem" if nvmem
-             should be erased before updating to the release image. This can be
-             used to verify that Cr50 can recovery from erased nvmem.
+@param test: string representing the update type. use "post_install" if the test
+             should verify the cr50-update.sh post install script. Anything else
+             the test will run using the cr50-update.conf startup script.
 """
 
 from autotest_lib.client.common_lib import error

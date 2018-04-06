@@ -204,12 +204,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if set_bid:
             self.send_command('bid 0x%x 0x%x' % (chip_bid, chip_flags))
 
-        self.send_command('rollback')
-
-        # If we aren't using ccd, we should be able to detect the reboot
-        # almost immediately
-        self.wait_for_reboot(self.REBOOT_DELAY_WITH_CCD if self.using_ccd() else
-                self.REBOOT_DELAY_WITH_FLEX)
+        if self.using_ccd():
+            self.send_command('rollback')
+            self.wait_for_reboot()
+        else:
+            logging.debug(self.send_command_get_output('rollback',
+                    ['.*Console is enabled'])[0])
 
         running_partition = self.get_active_version_info()[0]
         if inactive_partition != running_partition:
@@ -218,7 +218,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def rolledback(self):
         """Returns true if cr50 just rolled back"""
-        return int(self._servo.get('cr50_reset_count')) > self.MAX_RETRY_COUNT
+        return 'Rollback detected' in self.send_command_get_output('sysinfo',
+                ['.*>'])[0]
 
 
     def get_version_info(self, regexp):

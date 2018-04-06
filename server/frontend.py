@@ -292,6 +292,22 @@ class _OSVersionMap(_StableVersionMap):
         return versions
 
 
+def format_cros_image_name(board, version):
+    """
+    Return an image name for a given `board` and `version`.
+
+    This formats `board` and `version` into a string identifying an
+    image file.  The string represents part of a URL for access to
+    the image.
+
+    The returned image name is typically of a form like
+    "falco-release/R55-8872.44.0".
+    """
+    build_pattern = GLOBAL_CONFIG.get_config_value(
+            'CROS', 'stable_build_pattern')
+    return build_pattern % (board, version)
+
+
 class _CrosVersionMap(_OSVersionMap):
     """
     Stable version mapping for Chrome OS release images.
@@ -305,22 +321,6 @@ class _CrosVersionMap(_OSVersionMap):
     def __init__(self, afe):
         super(_CrosVersionMap, self).__init__(afe, False)
 
-    @staticmethod
-    def format_image_name(board, version):
-        """
-        Return an image name for a given `board` and `version`.
-
-        This formats `board` and `version` into a string identifying an
-        image file.  The string represents part of a URL for access to
-        the image.
-
-        The returned image name is typically of a form like
-        "falco-release/R55-8872.44.0".
-        """
-        build_pattern = GLOBAL_CONFIG.get_config_value(
-                'CROS', 'stable_build_pattern')
-        return build_pattern % (board, version)
-
     def get_image_name(self, board):
         """
         Return the full image name of the stable version for `board`.
@@ -332,7 +332,7 @@ class _CrosVersionMap(_OSVersionMap):
         @return A string identifying the image file for the stable
                 image for `board`.
         """
-        return self.format_image_name(board, self.get_version(board))
+        return format_cros_image_name(board, self.get_version(board))
 
 
 class _AndroidVersionMap(_OSVersionMap):
