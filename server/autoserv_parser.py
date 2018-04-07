@@ -221,6 +221,23 @@ class autoserv_parser(object):
                                  dest='cloud_trace_context_enabled',
                                  help=('Global trace context to configure '
                                        'emission of data to Cloud Trace.'))
+        self.parser.add_argument(
+                '--host-info-subdir',
+                default='host_info_store',
+                help='Optional path to a directory containing host '
+                     'information for the machines. The path is relative to '
+                     'the results directory (see -r) and must be inside '
+                     'the directory.'
+        )
+        self.parser.add_argument(
+                '--local-only-host-info',
+                default='False',
+                help='By default, host status are immediately reported back to '
+                     'the AFE, shadowing the updates to disk. This flag '
+                     'disables the AFE interaction completely, and assumes '
+                     'that initial host information is supplied to autoserv. '
+                     'See also: --host-info-subdir',
+        )
         #
         # Warning! Please read before adding any new arguments!
         #
@@ -268,6 +285,13 @@ class autoserv_parser(object):
                     'Ignoring custom host attributes: %s',
                     str(self.options.host_attributes))
             self.options.host_attributes = []
+
+        self.options.local_only_host_info = _interpret_bool_arg(
+                self.options.local_only_host_info)
+
+
+def _interpret_bool_arg(value):
+    return value.lower() in {'yes', 'true'}
 
 
 # create the one and only one instance of autoserv_parser
