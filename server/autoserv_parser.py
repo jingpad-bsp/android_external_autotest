@@ -238,6 +238,14 @@ class autoserv_parser(object):
                      'that initial host information is supplied to autoserv. '
                      'See also: --host-info-subdir',
         )
+        self.parser.add_argument(
+                '--control-name',
+                action='store',
+                help='NAME attribute of the control file to stage and run. '
+                     'This overrides the control file provided via the '
+                     'positional args.',
+        )
+
         #
         # Warning! Please read before adding any new arguments!
         #
