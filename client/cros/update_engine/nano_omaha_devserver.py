@@ -3,8 +3,11 @@
 # found in the LICENSE file.
 
 import BaseHTTPServer
+import base64
+import binascii
 import thread
 import urlparse
+from xml.dom import minidom
 
 def _split_url(url):
     """Splits a URL into the URL base and path."""
@@ -24,6 +27,7 @@ class NanoOmahaDevserver(object):
 
         @param eol: True if we should return a response with _eol flag.
         @param failures_per_url: how many times each url can fail.
+
         """
         self._eol = eol
         self._failures_per_url = failures_per_url
@@ -34,7 +38,7 @@ class NanoOmahaDevserver(object):
         _OMAHA_RESPONSE_TEMPLATE_HEAD = """
           <response protocol=\"3.0\">
             <daystart elapsed_seconds=\"44801\"/>
-            <app appid=\"{87efface-864d-49a5-9bb3-4b050a7c227a}\" status=\"ok\">
+            <app appid=\"%s\" status=\"ok\">
               <ping status=\"ok\"/>
               <updatecheck status=\"ok\">
                 <urls>
@@ -43,7 +47,8 @@ class NanoOmahaDevserver(object):
                 </urls>
                 <manifest version=\"9999.0.0\">
                   <packages>
-                    <package name=\"%s\" size=\"%d\" required=\"true\"/>
+                    <package hash_sha256=\"%s\" name=\"%s\" size=\"%d\"
+                    required=\"true\"/>
                   </packages>
                   <actions>
                     <action event=\"postinstall\"
@@ -65,7 +70,7 @@ class NanoOmahaDevserver(object):
         _OMAHA_RESPONSE_EOL = """
           <response protocol=\"3.0\">
             <daystart elapsed_seconds=\"44801\"/>
-            <app appid=\"{87efface-864d-49a5-9bb3-4b050a7c227a}\" status=\"ok\">
+            <app appid=\"%s\" status=\"ok\">
               <ping status=\"ok\"/>
               <updatecheck _eol=\"eol\" status=\"noupdate\"/>
             </app>
@@ -75,13 +80,24 @@ class NanoOmahaDevserver(object):
         def do_POST(self):
             """Handler for POST requests."""
             if self.path == '/update':
+
+                # Parse the app id from the request to use in the response.
+                content_len = int(self.headers.getheader('content-length'))
+                request_string = self.rfile.read(content_len)
+                request_dom = minidom.parseString(request_string)
+                app = request_dom.firstChild.getElementsByTagName('app')[0]
+                appid = app.getAttribute('appid')
+
                 if self.server._devserver._eol:
-                    response = self._OMAHA_RESPONSE_EOL
+                    response = self._OMAHA_RESPONSE_EOL % appid
                 else:
                     (base, name) = _split_url(self.server._devserver._image_url)
                     response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
+                            appid,
                             base + '/',
                             base + '/',
+                            binascii.hexlify(base64.b64decode(
+                                self.server._devserver._sha256)),
                             name,
                             self.server._devserver._image_size,
                             self.server._devserver._sha256,
