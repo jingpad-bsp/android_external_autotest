@@ -126,9 +126,13 @@ def _stage_ssp(parser, resultsdir):
               side package is staged successfully.
     """
     machines_list = _get_machines(parser)
-    machines_list = server_job.get_machine_dicts(machines_list, resultsdir,
-                                                 parser.options.lab,
-                                                 parser.options.host_attributes)
+    machines_list = server_job.get_machine_dicts(
+            machine_names=machines_list,
+            store_dir=os.path.join(resultsdir, parser.options.host_info_subdir),
+            in_lab=parser.options.lab,
+            use_shadow_store=not parser.options.local_only_host_info,
+            host_attributes=parser.options.host_attributes,
+    )
 
     # If test_source_build is not specified, default to use server-side test
     # code from build specified in --image.
@@ -423,7 +427,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     ssh_verbosity = int(parser.options.ssh_verbosity)
     ssh_options = parser.options.ssh_options
     no_use_packaging = parser.options.no_use_packaging
-    host_attributes = parser.options.host_attributes
     in_lab = bool(parser.options.lab)
 
     # can't be both a client and a server side test
@@ -455,20 +458,39 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         parser.parser.error('-G %r may only be supplied with more than one '
                             'machine.' % group_name)
 
-    kwargs = {'group_name': group_name, 'tag': execution_tag,
-              'disable_sysinfo': parser.options.disable_sysinfo}
+    job_kwargs = {
+            'control': control,
+            'args': parser.args[1:],
+            'resultdir': results,
+            'label': label,
+            'user': user,
+            'machines': machines,
+            'machine_dict_list': server_job.get_machine_dicts(
+                    machine_names=machines,
+                    store_dir=os.path.join(results,
+                                           parser.options.host_info_subdir),
+                    in_lab=in_lab,
+                    use_shadow_store=not parser.options.local_only_host_info,
+                    host_attributes=parser.options.host_attributes,
+            ),
+            'client': client,
+            'parse_job': parse_job,
+            'ssh_user': ssh_user,
+            'ssh_port': ssh_port,
+            'ssh_pass': ssh_pass,
+            'ssh_verbosity_flag': ssh_verbosity_flag,
+            'ssh_options': ssh_options,
+            'test_retry': test_retry,
+            'group_name': group_name,
+            'tag': execution_tag,
+            'disable_sysinfo': parser.options.disable_sysinfo,
+            'in_lab': in_lab,
+    }
     if parser.options.parent_job_id:
-        kwargs['parent_job_id'] = int(parser.options.parent_job_id)
+        job_kwargs['parent_job_id'] = int(parser.options.parent_job_id)
     if control_filename:
-        kwargs['control_filename'] = control_filename
-    if host_attributes:
-        kwargs['host_attributes'] = host_attributes
-    kwargs['in_lab'] = in_lab
-    job = server_job.server_job(control, parser.args[1:], results, label,
-                                user, machines, client, parse_job,
-                                ssh_user, ssh_port, ssh_pass,
-                                ssh_verbosity_flag, ssh_options,
-                                test_retry, **kwargs)
+        job_kwargs['control_filename'] = control_filename
+    job = server_job.server_job(**job_kwargs)
 
     job.logging.start_logging()
     job.init_parser()
@@ -692,6 +714,7 @@ def main():
 
     logging.debug('autoserv is running in drone %s.', socket.gethostname())
     logging.debug('autoserv command was: %s', ' '.join(sys.argv))
+    logging.debug('autoserv parsed options: %s', parser.options)
 
     if parser.options.write_pidfile and results:
         pid_file_manager = pidfile.PidFileManager(parser.options.pidfile_label,

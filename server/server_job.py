@@ -88,8 +88,8 @@ RESET_CONTROL_FILE = _control_segment_path('reset')
 GET_NETWORK_STATS_CONTROL_FILE = _control_segment_path('get_network_stats')
 
 
-def get_machine_dicts(machine_names, workdir, in_lab, host_attributes=None,
-                      connection_pool=None):
+def get_machine_dicts(machine_names, store_dir, in_lab, use_shadow_store,
+                      host_attributes=None):
     """Converts a list of machine names to list of dicts.
 
     TODO(crbug.com/678430): This function temporarily has a side effect of
@@ -97,13 +97,14 @@ def get_machine_dicts(machine_names, workdir, in_lab, host_attributes=None,
     go away once callers of autoserv start passing in the FileStore.
 
     @param machine_names: A list of machine names.
-    @param workdir: A directory where any on-disk files related to the machines
-            may be created.
+    @param store_dir: A directory to contain store backing files.
+    @param use_shadow_store: If True, we should create a ShadowingStore where
+            actual store is backed by the AFE but we create a backing file to
+            shadow the store. If False, backing file should already exist at:
+            ${store_dir}/${hostname}.store
     @param in_lab: A boolean indicating whether we're running in lab.
     @param host_attributes: Optional list of host attributes to add for each
             host.
-    @param connection_pool: ssh_multiplex.ConnectionPool instance to share
-            master connections across control scripts.
     @returns: A list of dicts. Each dict has the following keys:
             'hostname': Name of the machine originally in machine_names (str).
             'afe_host': A frontend.Host object for the machine, or a stub if
@@ -111,12 +112,17 @@ def get_machine_dicts(machine_names, workdir, in_lab, host_attributes=None,
             'host_info_store': A host_info.CachingHostInfoStore object to obtain
                     host information. A stub if in_lab is False.
             'connection_pool': ssh_multiplex.ConnectionPool instance to share
-                    master ssh connection across control scripts.
+                    master ssh connection across control scripts. This is set to
+                    None, and should be overridden for connection sharing.
     """
+    # See autoserv_parser.parse_args. Only one of in_lab or host_attributes can
+    # be provided.
+    if in_lab and host_attributes:
+        raise error.AutoservError(
+                'in_lab and host_attribute are mutually exclusive.')
+
     machine_dict_list = []
     for machine in machine_names:
-        # See autoserv_parser.parse_args. Only one of in_lab or host_attributes
-        # can be provided.
         if not in_lab:
             afe_host = server_utils.EmptyAFEHost()
             host_info_store = host_info.InMemoryHostInfoStore()
@@ -124,20 +130,20 @@ def get_machine_dicts(machine_names, workdir, in_lab, host_attributes=None,
                 afe_host.attributes.update(host_attributes)
                 info = host_info.HostInfo(attributes=host_attributes)
                 host_info_store.commit(info)
-        elif host_attributes:
-            raise error.AutoservError(
-                    'in_lab and host_attribute are mutually exclusive. '
-                    'Obtained in_lab:%s, host_attributes:%s'
-                    % (in_lab, host_attributes))
         else:
             afe_host = _create_afe_host(machine)
-            host_info_store = _create_host_info_store(machine, workdir)
+            if use_shadow_store:
+                host_info_store = _create_afe_backed_host_info_store(store_dir,
+                                                                     machine)
+            else:
+                host_info_store = _create_file_backed_host_info_store(store_dir,
+                                                                      machine)
 
         machine_dict_list.append({
                 'hostname' : machine,
                 'afe_host' : afe_host,
                 'host_info_store': host_info_store,
-                'connection_pool': connection_pool,
+                'connection_pool': None,
         })
 
     return machine_dict_list
@@ -236,6 +242,7 @@ class server_job(base_job.base_job):
 
     # TODO crbug.com/285395 eliminate ssh_verbosity_flag
     def __init__(self, control, args, resultdir, label, user, machines,
+                 machine_dict_list,
                  client=False, parse_job='',
                  ssh_user=host_factory.DEFAULT_SSH_USER,
                  ssh_port=host_factory.DEFAULT_SSH_PORT,
@@ -245,7 +252,7 @@ class server_job(base_job.base_job):
                  test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME,
-                 parent_job_id=None, host_attributes=None, in_lab=False):
+                 parent_job_id=None, in_lab=False):
         """
         Create a server side job object.
 
@@ -254,6 +261,9 @@ class server_job(base_job.base_job):
         @param resultdir: Where to throw the results.
         @param label: Description of the job.
         @param user: Username for the job (email address).
+        @param machines: A list of hostnames of the machines to use for the job.
+        @param machine_dict_list: A list of dicts for each of the machines above
+                as returned by get_machine_dicts.
         @param client: True if this is a client-side control file.
         @param parse_job: string, if supplied it is the job execution tag that
                 the results will be passed through to the TKO parser with.
@@ -275,9 +285,6 @@ class server_job(base_job.base_job):
                 should be written in the results directory.
         @param parent_job_id: Job ID of the parent job. Default to None if the
                 job does not have a parent job.
-        @param host_attributes: Dict of host attributes passed into autoserv
-                                via the command line. If specified here, these
-                                attributes will apply to all machines.
         @param in_lab: Boolean that indicates if this is running in the lab
                        environment.
         """
@@ -362,9 +369,9 @@ class server_job(base_job.base_job):
 
         self.parent_job_id = parent_job_id
         self.in_lab = in_lab
-        self.machine_dict_list = get_machine_dicts(
-                self.machines, self.resultdir, self.in_lab, host_attributes,
-                self._connection_pool)
+        self.machine_dict_list = machine_dict_list
+        for machine_dict in self.machine_dict_list:
+            machine_dict['connection_pool'] = self._connection_pool
 
         # TODO(jrbarnette) The harness attribute is only relevant to
         # client jobs, but it's required to be present, or we will fail
@@ -1580,38 +1587,54 @@ def _create_afe_host(hostname):
     return hosts[0]
 
 
-def _create_host_info_store(hostname, workdir):
-    """Create a CachingHostInfo store backed by the AFE.
+def _create_file_backed_host_info_store(store_dir, hostname):
+    """Create a CachingHostInfoStore backed by an existing file.
 
+    @param store_dir: A directory to contain store backing files.
     @param hostname: Name of the host for which we want the store.
-    @param workdir: A directory where any on-disk files related to the machines
-            may be created.
-    @returns: An object of type shadowing_store.ShadowingStore
+
+    @returns: An object of type CachingHostInfoStore.
+    """
+    backing_file_path = os.path.join(store_dir, '%s.store' % hostname)
+    if not os.path.isfile(backing_file_path):
+        raise error.AutoservError(
+                'Requested FileStore but no backing file at %s'
+                % backing_file_path
+        )
+    return file_store.FileStore(backing_file_path)
+
+
+def _create_afe_backed_host_info_store(store_dir, hostname):
+    """Create a CachingHostInfoStore backed by the AFE.
+
+    @param store_dir: A directory to contain store backing files.
+    @param hostname: Name of the host for which we want the store.
+
+    @returns: An object of type CachingHostInfoStore.
     """
     primary_store = afe_store.AfeStore(hostname)
     try:
         primary_store.get(force_refresh=True)
     except host_info.StoreError:
-        raise error.AutoservError('Could not obtain HostInfo for hostname %s' %
-                                  hostname)
-    backing_file_path = _file_store_unique_file_path(workdir)
+        raise error.AutoservError(
+                'Could not obtain HostInfo for hostname %s' % hostname)
+    # Since the store wasn't initialized external to autoserv, we must
+    # ensure that the store we create is unique within store_dir.
+    backing_file_path = os.path.join(
+            _make_unique_subdir(store_dir),
+            '%s.store' % hostname,
+    )
     logging.info('Shadowing AFE store with a FileStore at %s',
                  backing_file_path)
     shadow_store = file_store.FileStore(backing_file_path)
     return shadowing_store.ShadowingStore(primary_store, shadow_store)
 
 
-def _file_store_unique_file_path(workdir):
-    """Returns a unique filepath for the on-disk FileStore.
-
-    Also makes sure that the workdir exists.
-
-    @param: Top level working directory.
-    """
-    store_dir = os.path.join(workdir, 'host_info_store')
+def _make_unique_subdir(workdir):
+    """Creates a new subdir within workdir and returns the path to it."""
+    store_dir = os.path.join(workdir, 'dir_%s' % uuid.uuid4())
     _make_dirs_if_needed(store_dir)
-    file_path = os.path.join(store_dir, 'store_%s' % uuid.uuid4())
-    return file_path
+    return store_dir
 
 
 def _make_dirs_if_needed(path):
