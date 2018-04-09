@@ -1,1 +1,0 @@
-../cheets_StartAndroid/cheets_StartAndroid.py

@@ -20,4 +20,4 @@ the Android container. If this test is flaky every Android based test will be
 flaky as well.
 """
 
-job.run_test('cheets_StartAndroid', count=10, tag='stress')
+job.run_test('cheets_StartAndroid_P', count=10, tag='stress')
