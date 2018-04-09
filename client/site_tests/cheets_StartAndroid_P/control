@@ -17,4 +17,4 @@ This is a helper utility to log-in Chrome for CTS.
 See also cheets_CTS for more details.
 """
 
-job.run_test('cheets_StartAndroid')
+job.run_test('cheets_StartAndroid_P')
