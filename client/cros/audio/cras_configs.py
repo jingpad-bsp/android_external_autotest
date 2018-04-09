@@ -32,5 +32,21 @@ def get_internal_mic_node(board, model):
     @param board: board name of the DUT.
     @param model: model name of the DUT.
 
+    @returns: The name of the expected internal microphone nodes.
     """
     return INTERNAL_MIC_NODE.get((board, model), 'INTERNAL_MIC')
+
+INTERNAL_MIC_NODES = {
+        ('coral', 'nasher360'): ['FRONT_MIC', 'REAR_MIC']
+}
+
+def get_plugged_internal_mics(board, model):
+    """Return a list of all the plugged internal microphone nodes for given
+       board name and model name.
+
+    @param board: board name of the DUT.
+    @param model: model name of the DUT.
+
+    @returns: A list of all the plugged internal microphone nodes.
+    """
+    return INTERNAL_MIC_NODES.get((board, model), ['INTERNAL_MIC'])
