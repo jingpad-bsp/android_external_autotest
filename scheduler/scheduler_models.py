@@ -1165,8 +1165,7 @@ class Job(DBObject):
 
     def _next_group_name(self):
         """@returns a directory name to use for the next host group results."""
-        group_name = ''
-        group_count_re = re.compile(r'%sgroup(\d+)' % re.escape(group_name))
+        group_count_re = re.compile(r'group(\d+)')
         query = models.HostQueueEntry.objects.filter(
             job=self.id).values('execution_subdir').distinct()
         subdirs = (entry['execution_subdir'] for entry in query)
@@ -1176,7 +1175,7 @@ class Job(DBObject):
             next_id = max(ids) + 1
         else:
             next_id = 0
-        return '%sgroup%d' % (group_name, next_id)
+        return 'group%d' % (next_id,)
 
 
     def get_group_entries(self, queue_entry_from_group):
