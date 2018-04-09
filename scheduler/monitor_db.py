@@ -503,7 +503,7 @@ class Dispatcher(object):
                 return
             if isinstance(agent_task, AbstractQueueTask):
                 # If Lucifer already owns the job, ignore the agent.
-                if luciferlib.is_lucifer_owned(agent_task.job):
+                if luciferlib.is_lucifer_owned_by_id(agent_task.job.id):
                     return
                 # If the job isn't started yet, let Lucifer own it.
                 if not agent_task.started:
