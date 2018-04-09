@@ -19,4 +19,4 @@ starts (and restarts) successfully on repeated logins
 of Chrome with ARC enabled.
 """
 
-job.run_test('cheets_Midis')
+job.run_test('cheets_Midis_P')

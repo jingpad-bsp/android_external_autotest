@@ -26,4 +26,4 @@ This test checks that the GPU is in the proper state when idle (RC6, panel,
 clocks...)
 """
 
-job.run_test('graphics_Idle', arc_mode=ARC_MODE, tag='arc')
+job.run_test('graphics_Idle_P', arc_mode=ARC_MODE, tag='arc')
