@@ -50,6 +50,10 @@ class tast_Runner(test.test):
     # this prefix rather than under the root directory.
     _CIPD_INSTALL_ROOT = '/opt/infra-tools'
 
+    # Prefix added to Tast test names when writing their results to TKO
+    # status.log files.
+    _TEST_NAME_PREFIX = 'tast_Runner.'
+
     # Job start/end TKO event status codes from base_client_job._rungroup in
     # client/bin/job.py.
     _JOB_STATUS_START = 'START'
@@ -62,7 +66,7 @@ class tast_Runner(test.test):
     _JOB_STATUS_GOOD = 'GOOD'
     _JOB_STATUS_FAIL = 'FAIL'
 
-    def initialize(self, host, test_exprs, report_tests=False):
+    def initialize(self, host, test_exprs, report_tests=True):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
@@ -74,6 +78,11 @@ class tast_Runner(test.test):
         self._host = host
         self._test_exprs = test_exprs
         self._report_tests = report_tests
+
+        # List of JSON objects corresponding to tests from a Tast results.json
+        # file. See TestResult in
+        # src/platform/tast/src/chromiumos/cmd/tast/run/results.go for details.
+        self._test_results = []
 
         # The data dir can be missing if no remote tests registered data files,
         # but all other files must exist.
@@ -169,10 +178,16 @@ class tast_Runner(test.test):
 
         @raises error.TestFail if one or more tests failed.
         """
+        # Register a hook to write the results of individual Tast tests as
+        # top-level entries in the TKO status.log file.
+        if self._report_tests:
+            self.job.add_post_run_hook(self._log_all_tests)
+
         path = os.path.join(self.resultsdir, self._RESULTS_FILENAME)
         failed = []
         with open(path, 'r') as f:
             for test in json.load(f):
+                self._test_results.append(test)
                 if test['errors']:
                     name = test['name']
                     for err in test['errors']:
@@ -182,15 +197,19 @@ class tast_Runner(test.test):
                     if 'flaky' not in test.get('attr', []):
                         failed.append(name)
 
-                if self._report_tests:
-                    self._log_test(test)
-
         if failed:
             msg = '%d failed: ' % len(failed)
             msg += ' '.join(sorted(failed)[:self._MAX_TEST_NAMES_IN_ERROR])
             if len(failed) > self._MAX_TEST_NAMES_IN_ERROR:
                 msg += ' ...'
             raise error.TestFail(msg)
+
+    def _log_all_tests(self):
+        """Writes entries to the TKO status.log file describing the results of
+        all tests.
+        """
+        for test in self._test_results:
+            self._log_test(test)
 
     def _log_test(self, test):
         """Writes events to the TKO status.log file describing the results from
@@ -201,7 +220,7 @@ class tast_Runner(test.test):
             src/platform/tast/src/chromiumos/cmd/tast/run/results.go for
             details.
         """
-        name = test['name']
+        name = self._TEST_NAME_PREFIX + test['name']
         start_time = _rfc3339_time_to_timestamp(test['start'])
         end_time = _rfc3339_time_to_timestamp(test['end'])
 

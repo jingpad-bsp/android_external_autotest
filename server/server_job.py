@@ -367,6 +367,9 @@ class server_job(base_job.base_job):
 
         self._connection_pool = ssh_multiplex.ConnectionPool()
 
+        # List of functions to run after the main job function.
+        self._post_run_hooks = []
+
         self.parent_job_id = parent_job_id
         self.in_lab = in_lab
         self.machine_dict_list = machine_dict_list
@@ -997,6 +1000,9 @@ class server_job(base_job.base_job):
             raise error.JobError(name + ' failed\n' + traceback.format_exc())
         else:
             self.record('END GOOD', subdir, name)
+        finally:
+            for hook in self._post_run_hooks:
+                hook()
 
         return result
 
@@ -1182,6 +1188,20 @@ class server_job(base_job.base_job):
             summary_data = {'child_test_ids': ids_string}
             utils.write_keyval(os.path.join(subdirectory_path, 'summary_data'),
                                summary_data)
+
+
+    def add_post_run_hook(self, hook):
+        """
+        Registers a hook to run after the main job function.
+
+        This provides a mechanism by which tests that perform multiple tests of
+        their own can write additional top-level results to the TKO status.log
+        file.
+
+        @param hook: Function to invoke (without any args) after the main job
+            function completes and the job status is logged.
+        """
+        self._post_run_hooks.append(hook)
 
 
     def disable_warnings(self, warning_type):
