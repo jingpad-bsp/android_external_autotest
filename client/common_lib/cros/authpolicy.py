@@ -13,6 +13,7 @@ import dbus
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import upstart
 
 
 class AuthPolicy(object):
@@ -60,27 +61,36 @@ class AuthPolicy(object):
         # Pull in protobuf bindings.
         sys.path.append(proto_binding_location)
 
+        self._bus_loop = bus_loop
+        self.restart()
+
+    def restart(self):
+        """
+        Restarts authpolicyd and rebinds to D-Bus interface.
+        """
+        logging.info('restarting authpolicyd')
+        upstart.restart_job('authpolicyd')
         try:
             # Get the interface as Chronos since only they are allowed to send
             # D-Bus messages to authpolicyd.
             os.setresuid(self._CHRONOS_UID, self._CHRONOS_UID, 0)
-            bus = dbus.SystemBus(bus_loop)
-
+            bus = dbus.SystemBus(self._bus_loop)
             proxy = bus.get_object(self._DBUS_SERVICE_NAME,
                                    self._DBUS_SERVICE_PATH)
             self._authpolicyd = dbus.Interface(proxy, self._DBUS_INTERFACE_NAME)
         finally:
             os.setresuid(0, 0, 0)
 
-    def __del__(self):
+    def stop(self):
         """
-        Destructor
-
         Turns debug logs off.
 
+        Stops authpolicyd.
         """
-
+        logging.info('stopping authpolicyd')
         self.set_default_log_level(0)
+        self._authpolicyd = None
+        upstart.stop_job('authpolicyd')
 
     def join_ad_domain(self,
                        user_principal_name,
