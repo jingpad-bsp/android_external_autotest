@@ -164,10 +164,6 @@ class SiteDrone(object):
                              'packaging before host is set.')
         if self._support_ssp is None:
             try:
-                # TODO(crbug.com/471316): We need a better way to check if drone
-                # supports container, and install/upgrade base container. The
-                # check of base container folder is not reliable and shall be
-                # obsoleted once that bug is fixed.
                 self._host.run('which lxc-start')
                 # Test if base container is setup.
                 base_container_name = CONFIG.get_config_value(
