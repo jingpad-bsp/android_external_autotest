@@ -4,7 +4,7 @@
 #
 
 AUTHOR = "ARC Team"
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:smoke"
 NAME = "cheets_StartAndroid_P.smoke"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
@@ -16,4 +16,4 @@ DOC = """
 This test verifies in the VM a single login to the browser and start of ARC.
 """
 
-job.run_test('cheets_StartAndroid', count=1, tag='sanity')
+job.run_test('cheets_StartAndroid_P', count=1, tag='sanity')

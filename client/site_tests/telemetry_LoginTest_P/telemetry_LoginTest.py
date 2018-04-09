@@ -1,1 +1,0 @@
-../telemetry_LoginTest/telemetry_LoginTest.py

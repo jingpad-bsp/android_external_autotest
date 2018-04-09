@@ -17,4 +17,4 @@ account is being created and verifies that a crash during that operation
 triggers session termination.
 """
 
-job.run_test('desktopui_ExitOnSupervisedUserCrash')
+job.run_test('desktopui_ExitOnSupervisedUserCrash_P')
