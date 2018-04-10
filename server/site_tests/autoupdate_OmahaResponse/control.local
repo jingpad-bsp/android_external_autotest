@@ -15,6 +15,9 @@ omaha response. Example:
 
 switch_urls: Test switching between the two UrlBase URLs when there is an
 error downloading from the first URL.
+bad_sha256: Tests that when the SHA256 value is invalid the update fails.
+bad_metadata_size: Tests when the metadata size value is invalid the update
+fails.
 """
 
 from autotest_lib.client.common_lib import utils
@@ -24,6 +27,7 @@ args_dict = utils.args_to_dict(args)
 def run(machine):
     host = hosts.create_host(machine)
     job.run_test('autoupdate_OmahaResponse', host=host, full_payload=True,
-                 running_at_desk=True, switch_urls=True, **args_dict)
+                 running_at_desk=True, switch_urls=True, bad_sha256=False,
+                 bad_metadata_size=False, **args_dict)
 
 job.parallel_simple(run, machines)

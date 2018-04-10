@@ -29,6 +29,10 @@ class UpdateEngineTest(test.test):
     _UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
     _CUSTOM_LSB_RELEASE = '/mnt/stateful_partition/etc/lsb-release'
 
+    # Public key used to force update_engine to verify omaha response data on
+    # test images.
+    _IMAGE_PUBLIC_KEY = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxZE03Z25kNDNjV2ZRenlydDE2UQpESEUrVDB5eGcxOE9aTys5c2M4aldwakMxekZ0b01Gb2tFU2l1OVRMVXArS1VDMjc0ZitEeElnQWZTQ082VTVECkpGUlBYVXp2ZTF2YVhZZnFsalVCeGMrSlljR2RkNlBDVWw0QXA5ZjAyRGhrckduZi9ya0hPQ0VoRk5wbTUzZG8Kdlo5QTZRNUtCZmNnMUhlUTA4OG9wVmNlUUd0VW1MK2JPTnE1dEx2TkZMVVUwUnUwQW00QURKOFhtdzRycHZxdgptWEphRm1WdWYvR3g3K1RPbmFKdlpUZU9POUFKSzZxNlY4RTcrWlppTUljNUY0RU9zNUFYL2xaZk5PM1JWZ0cyCk83RGh6emErbk96SjNaSkdLNVI0V3daZHVobjlRUllvZ1lQQjBjNjI4NzhxWHBmMkJuM05wVVBpOENmL1JMTU0KbVFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=='
+
 
     def cleanup(self):
         # Make sure to grab the update engine log for every test run.
@@ -103,27 +107,33 @@ class UpdateEngineTest(test.test):
         if status is None:
             return None
         logging.debug(status)
-        status = status.stdout.splitlines()
         status_dict = {}
-        for line in status:
+        for line in status.stdout.splitlines():
             entry = line.partition('=')
             status_dict[entry[0]] = entry[2]
         return status_dict
 
 
-    def _check_update_engine_log_for_entry(self, entry):
+    def _check_update_engine_log_for_entry(self, entry, raise_error=False):
         """
         Checks for entries in the update_engine log.
 
         @param entry: The line to search for.
+        @param raise_error: Fails tests if log doesn't contain entry.
+
+        @return Boolean if the update engine log contains the entry.
 
         """
         result = utils.run('cat %s | grep "%s"' % (self._UPDATE_ENGINE_LOG,
                                                    entry), ignore_status=True)
 
         if result.exit_status != 0:
-            raise error.TestFail('Did not find expected string in %s: %s' %
-                (self._UPDATE_ENGINE_LOG, entry))
+            if raise_error:
+                raise error.TestFail('Did not find expected string in %s: %s' %
+                    (self._UPDATE_ENGINE_LOG, entry))
+            else:
+                return False
+        return True
 
 
     def _enable_internet(self, ping_server='google.com'):
