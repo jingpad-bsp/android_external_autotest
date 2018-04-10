@@ -6,6 +6,7 @@ import logging
 import operator
 import os
 
+from autotest_lib.client.bin import utils
 
 # TODO: This is a quick workaround; some of our arm devices so far only
 # support the HDMI EDIDs and the DP one at 1680x1050. A more proper
@@ -22,11 +23,12 @@ def is_edid_supported(host, width, height):
     """
     # TODO: Support client test that the host is not a CrosHost.
     platform = host.get_platform()
+    gpu_family = utils.get_gpu_family()
     if platform in ('snow', 'spring', 'skate', 'pi', 'jerry'):
         if (width, height) in [(1280, 800), (1440, 900), (1600, 900),
                                (3840, 2160)]:
             return False
-    if platform in ('kahlee',):
+    if gpu_family == 'stoney':
         if (width, height) in [(3840, 2160)]:
             return False
     return True
