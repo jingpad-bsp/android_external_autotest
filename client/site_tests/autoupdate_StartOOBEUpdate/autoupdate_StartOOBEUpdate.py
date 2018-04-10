@@ -109,7 +109,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
                                                  payload_info['size'],
                                                  payload_info['sha256'],
                                                  is_delta=not full_payload,
-                                                 critical=True)
+                                                 critical=self._critical_update)
                     self._omaha.start()
 
                     # We will tell OOBE to call localhost for update requests.
