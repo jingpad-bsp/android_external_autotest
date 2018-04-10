@@ -236,11 +236,11 @@ def _get_binaries_path():
 
 
 def _get_gcp_creds():
-  """Return path to GCP service account credentials.
+    """Return path to GCP service account credentials.
 
-  This is the empty string by default, if no credentials will be used.
-  """
-  return _config.get_config_value(_SECTION, 'gcp_creds', default='')
+    This is the empty string by default, if no credentials will be used.
+    """
+    return _config.get_config_value(_SECTION, 'gcp_creds', default='')
 
 
 class _DroneManager(object):
