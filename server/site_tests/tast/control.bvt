@@ -3,31 +3,30 @@
 # found in the LICENSE file.
 
 AUTHOR = 'Chromium OS team'
-NAME = 'tast_Runner.bvt_arc'
+NAME = 'tast.bvt'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:bvt-perbuild'
-DEPENDENCIES = 'arc'
 
 # The tast executable and server test bundle are currently installed via prod
 # pushes rather than SSP, but leaving REQUIRE_SSP enabled at least makes it
-# possible to test changes to tast_Runner via tryjobs and to deploy changes to
-# it without waiting for prod pushes.
+# possible to test changes to the tast server test via tryjobs and to deploy
+# changes to it without waiting for prod pushes.
 
 DOC = '''
-Run the Tast ARC-specific BVT suite.
+Run the Tast BVT suite.
 
 Tast is an integration-testing framework analagous to the test-running portion
 of Autotest. See https://chromium.googlesource.com/chromiumos/platform/tast/ for
 more information.
 
-This test runs Tast-based ARC-specific BVT tests against a remote DUT and
-reports failure if any tests (that haven't been marked flaky) fail.
+This test runs Tast-based BVT tests against a remote DUT and reports failure if
+any tests (that haven't been marked flaky) fail.
 '''
 
 def run(machine):
-    job.run_test('tast_Runner',
+    job.run_test('tast',
                  host=hosts.create_host(machine),
-                 test_exprs=['(bvt && arc)'])
+                 test_exprs=['(bvt && !arc)'])
 
 parallel_simple(run, machines)
