@@ -24,4 +24,4 @@ This is a test that checks that login completed successfully through telemetry,
 and exercises the extension api chrome.autotestPrivate.
 """
 
-job.run_test('telemetry_LoginTest', arc_mode=ARC_MODE, tag='arc')
+job.run_test('telemetry_LoginTest_P', arc_mode=ARC_MODE, tag='arc')

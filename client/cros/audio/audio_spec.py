@@ -47,3 +47,18 @@ def has_headphone(board_type):
     if board_type == _BOARD_TYPE_CHROMEBIT:
         return False
     return True
+
+
+def has_hotwording(board_name, model_name):
+    """Checks if a board has hotwording.
+
+    @param board_name: board name of the DUT.
+    @param model_name: model name of the DUT.
+
+    @returns: True if the board has hotwording.
+
+    """
+    if (board_name in ['samus', 'kevin', 'eve', 'pyro'] or
+        model_name in ['nasher360']):
+        return True
+    return False

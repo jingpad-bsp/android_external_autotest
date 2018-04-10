@@ -19,4 +19,4 @@ TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
 
-job.run_test("security_NetworkListeners")
+job.run_test("security_NetworkListeners_P")

@@ -19,4 +19,4 @@ account is being created and verifies that a crash during that operation
 triggers session termination.
 """
 
-job.run_test('desktopui_ExitOnSupervisedUserCrash', arc_mode=ARC_MODE, tag='arc')
+job.run_test('desktopui_ExitOnSupervisedUserCrash_P', arc_mode=ARC_MODE, tag='arc')

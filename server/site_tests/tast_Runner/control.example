@@ -25,7 +25,6 @@ This test runs all example Tast tests.
 def run(machine):
     job.run_test('tast_Runner',
                  host=hosts.create_host(machine),
-                 test_exprs=['example.*'],
-                 report_tests=True)
+                 test_exprs=['example.*'])
 
 parallel_simple(run, machines)
