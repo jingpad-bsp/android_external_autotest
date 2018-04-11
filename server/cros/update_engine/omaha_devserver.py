@@ -343,9 +343,12 @@ class OmahaDevserver(object):
             event_log_resp = conn.read()
             conn.close()
             hostlog = json.loads(event_log_resp)
-            if wait_for_reboot_events and len(hostlog) < expected_events_count:
-                time.sleep(5)
-                continue
+            if wait_for_reboot_events:
+                if hostlog[-1]['event_type'] == 54:
+                    return hostlog
+                else:
+                    time.sleep(5)
+                    continue
             else:
                 return hostlog
 

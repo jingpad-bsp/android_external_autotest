@@ -58,8 +58,8 @@ class autoupdate_BadMetadata(update_engine_test.UpdateEngineTest):
         """
         self._omaha.start()
         try:
-            utils.run('update_engine_client --update -omaha_url=' +
-                      'http://127.0.0.1:%d/update ' % self._omaha.get_port())
+            self._check_for_update(port=self._omaha.get_port(),
+                                   wait_for_completion=True)
         except error.CmdError as e:
             logging.error(e)
             self._check_update_engine_log_for_entry(error_string,

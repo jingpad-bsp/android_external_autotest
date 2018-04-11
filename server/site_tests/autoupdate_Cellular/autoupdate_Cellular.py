@@ -21,7 +21,6 @@ class autoupdate_Cellular(update_engine_test.UpdateEngineTest):
 
     """
     version = 1
-    _UPDATE_ENGINE_LOG_FILE = '/var/log/update_engine.log'
 
     def cleanup(self):
         cmd = 'update_engine_client --update_over_cellular=no'
@@ -35,7 +34,7 @@ class autoupdate_Cellular(update_engine_test.UpdateEngineTest):
 
         update_url = self.get_update_url_for_test(job_repo_url,
                                                   full_payload=full_payload,
-                                                  cellular=True)
+                                                  public=True)
         logging.info('Update url: %s', update_url)
 
         # gs://chromeos-image-archive does not contain a handy .json file
@@ -64,5 +63,5 @@ class autoupdate_Cellular(update_engine_test.UpdateEngineTest):
 
         # Verify there are cellular entries in the update_engine log.
         update_engine_log = self._host.run('cat %s ' %
-                                           self._UPDATE_ENGINE_LOG_FILE).stdout
+                                           self._UPDATE_ENGINE_LOG).stdout
         self._check_for_cellular_entries_in_update_log(update_engine_log)
