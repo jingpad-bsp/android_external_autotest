@@ -46,17 +46,8 @@ def is_enabled_for(level):
 
 
 def is_lucifer_owned(job):
-    """Return True if job is already sent to lucifer.
-
-    @param job: frontend.afe.models.Job instance
-    """
-    assert isinstance(job, models.Job)
-    return hasattr(job, 'jobhandoff')
-
-
-def is_lucifer_owned_by_id(job_id):
     """Return True if job is already sent to lucifer."""
-    return models.JobHandoff.objects.filter(job_id=job_id).exists()
+    return hasattr(job, 'jobhandoff')
 
 
 def is_split_job(hqe_id):
