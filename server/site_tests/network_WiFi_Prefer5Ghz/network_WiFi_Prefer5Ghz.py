@@ -21,7 +21,7 @@ class network_WiFi_Prefer5Ghz(wifi_cell_test_base.WiFiCellTestBase):
         self.context.configure(ap_config0)
         ssid = self.context.router.get_ssid(instance=0)
         ap_config1 = hostap_config.HostapConfig(
-                ssid=ssid, channel=48, mode=mode_n)
+                ssid=ssid, channel=36, mode=mode_n)
         self.context.configure(ap_config1, multi_interface=True)
         # Wait for both BSSes to be discovered. Since sometimes devices failed
         # to discover both BSSes in the initial scan, which results in client
