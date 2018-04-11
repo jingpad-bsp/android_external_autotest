@@ -5,13 +5,11 @@
 import dbus
 import logging
 import os
-import tempfile
 from threading import Thread
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import dbus_send
 from autotest_lib.client.cros import debugd_util
 from fake_printer import FakePrinter
@@ -35,18 +33,6 @@ class platform_AddPrinter(test.test):
         Args:
         @param ppd_file: ppd file name
         """
-
-        # Instantiate Chrome browser.
-        with tempfile.NamedTemporaryFile() as cap:
-            file_utils.download_file(chrome.CAP_URL, cap.name)
-            password = cap.read().rstrip()
-
-        extra_flags = ['--enable-features=CrOSComponent']
-        self.browser = chrome.Chrome(gaia_login=False,
-                                     username=chrome.CAP_USERNAME,
-                                     password=password,
-                                     extra_browser_args=extra_flags)
-        self.tab = self.browser.browser.tabs[0]
 
         # Set file path.
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -75,10 +61,6 @@ class platform_AddPrinter(test.test):
         # Remove component.
         if hasattr(self, 'component'):
           self.delete_component(self.component)
-
-        # Close browser.
-        if hasattr(self, 'browser'):
-            self.browser.close()
 
         # Remove temp files.
         if os.path.exists(self.ppd_file):
