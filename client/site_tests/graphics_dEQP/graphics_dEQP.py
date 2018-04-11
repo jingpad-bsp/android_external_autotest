@@ -103,6 +103,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
             test_results = {}
 
         if not os.path.isfile(result_filename):
+            failing_test.append(test_case)
             return test_results
 
         with open(result_filename) as result_file:
