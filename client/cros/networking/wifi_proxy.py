@@ -6,6 +6,7 @@ import dbus
 import logging
 import time
 
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros.networking import shill_proxy
 
 
@@ -349,19 +350,21 @@ class WifiProxy(shill_proxy.ShillProxy):
         discovery_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                             self.SERVICE_PROPERTY_NAME: ssid}
         start_time = time.time()
-        service_object = None
-        while time.time() - start_time < timeout_seconds:
-            service_object = self.find_matching_service(discovery_params)
-            if service_object:
-                break
+        try:
+            service_object = utils.poll_for_condition(
+                    condition=lambda: self.find_matching_service(
+                            discovery_params),
+                    timeout=timeout_seconds,
+                    sleep_interval=self.POLLING_INTERVAL_SECONDS,
+                    desc='Find a matching service to the discovery params')
 
-            time.sleep(self.POLLING_INTERVAL_SECONDS)
-        else:
+            return self.wait_for_property_in(
+                    service_object,
+                    self.SERVICE_PROPERTY_STATE,
+                    states,
+                    timeout_seconds - (time.time() - start_time))
+
+        # poll_for_condition timed out
+        except utils.TimeoutError:
             logging.error('Timed out waiting for %s states', ssid)
             return False, 'unknown', timeout_seconds
-
-        return self.wait_for_property_in(
-                service_object,
-                self.SERVICE_PROPERTY_STATE,
-                states,
-                timeout_seconds - (time.time() - start_time))
