@@ -143,7 +143,7 @@ class NanoOmahaDevserver(object):
 
     def set_image_params(self, image_url, image_size, sha256,
                          metadata_size=None, metadata_signature=None,
-                         public_key=None, is_delta=False, critical=False):
+                         public_key=None, is_delta=False, critical=True):
         """Sets the values to return in the Omaha response. Only the
         |image_url|, |image_size| and |sha256| parameters are
         mandatory."""
