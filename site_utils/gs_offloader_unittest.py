@@ -1069,13 +1069,16 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
 
         self.mox.StubOutWithMock(gs_offloader, '_upload_files')
         gs_offloader._upload_files(
-            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False,
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 ['test', '-d', host_folder])
         gs_offloader._upload_files(
-            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False,
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 ['test', '-d', host_folder])
         gs_offloader._upload_files(
-            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False,
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                 ['test', '-d', host_folder])
 
         self.mox.ReplayAll()
@@ -1103,7 +1106,9 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                     ['test', '-d', path])
 
             self.mox.ReplayAll()
-            gs_offloader._upload_files(host_folder, path, pattern, False)
+            gs_offloader._upload_files(host_folder, path, pattern, False,
+                                       'gs://a-test-bucket/',
+                                       'gs://a-test-apfe-bucket/')
             self.mox.VerifyAll()
             self.mox.ResetAll()
 
