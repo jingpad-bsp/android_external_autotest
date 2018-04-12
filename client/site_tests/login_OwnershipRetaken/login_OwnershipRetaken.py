@@ -27,7 +27,8 @@ class login_OwnershipRetaken(test.test):
         policy.install_protobufs(self.autodir, self.job)
 
         bus_loop = DBusGMainLoop(set_as_default=True)
-        self._cryptohome_proxy = cryptohome.CryptohomeProxy(bus_loop)
+        self._cryptohome_proxy = \
+            cryptohome.CryptohomeProxy(bus_loop, self.autodir, self.job)
         self._cryptohome_proxy.remove(ownership.TESTUSER)
 
         self._sm = session_manager.connect(bus_loop)
