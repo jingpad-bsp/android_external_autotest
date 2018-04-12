@@ -31,7 +31,8 @@ class login_MultiUserPolicy(test.test):
         # policy or key lingering around. At this stage the session isn't
         # started and there's no user signed in.
         ownership.restart_ui_to_clear_ownership_files()
-        cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+        cryptohome_proxy = cryptohome.CryptohomeProxy(
+            self._bus_loop, self.autodir, self.job)
         cryptohome_proxy.ensure_clean_cryptohome_for(self._user1)
         cryptohome_proxy.ensure_clean_cryptohome_for(self._user2)
 
