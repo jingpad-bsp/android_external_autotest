@@ -108,6 +108,16 @@
     "dashboard_test_name": "graphics_dEQP"
   },
   {
+    "autotest_name": "graphics_dEQP.gles31-master",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "graphics_dEQP"
+  },
+  {
+    "autotest_name": "graphics_dEQP.gles32-master",
+    "master_name": "ChromeOS_Graphics",
+    "dashboard_test_name": "graphics_dEQP"
+  },
+  {
     "autotest_name": "graphics_dEQP.vk-master",
     "master_name": "ChromeOS_Graphics",
     "dashboard_test_name": "graphics_dEQP"
@@ -527,6 +537,10 @@
   },
   {
     "autotest_name": "power_Consumption",
+    "master_name": "ChromeOSPower"
+  },
+  {
+    "autotest_name": "power_Idle",
     "master_name": "ChromeOSPower"
   },
   {

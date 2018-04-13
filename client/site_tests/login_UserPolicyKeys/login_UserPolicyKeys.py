@@ -65,7 +65,8 @@ class login_UserPolicyKeys(test.test):
         super(login_UserPolicyKeys, self).initialize()
         policy.install_protobufs(self.autodir, self.job)
         self._bus_loop = DBusGMainLoop(set_as_default=True)
-        self._cryptohome_proxy = cryptohome.CryptohomeProxy(self._bus_loop)
+        self._cryptohome_proxy = cryptohome.CryptohomeProxy(
+            self._bus_loop, self.autodir, self.job)
 
         # Clear the user's vault, to make sure the test starts without any
         # policy or key lingering around. At this stage the session isn't

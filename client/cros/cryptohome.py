@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, gobject, logging, os, random, re, shutil, string, time
+import dbus, gobject, logging, os, random, re, shutil, string, sys, time
 from dbus.mainloop.glib import DBusGMainLoop
 
 import common, constants
@@ -16,6 +16,9 @@ UNAVAILABLE_ACTION = 'Unknown action or no action given.'
 MOUNT_RETRY_COUNT = 20
 TEMP_MOUNT_PATTERN = '/home/.shadow/%s/temporary_mount'
 VAULT_PATH_PATTERN = '/home/.shadow/%s/vault'
+
+DBUS_PROTOS_DEP = 'dbus_protos'
+
 
 class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -593,7 +596,14 @@ class CryptohomeProxy(DBusClient):
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 
 
-    def __init__(self, bus_loop=None):
+    def __init__(self, bus_loop=None, autodir=None, job=None):
+        if autodir and job:
+            # Install D-Bus protos necessary for some methods.
+            dep_dir = os.path.join(autodir, 'deps', DBUS_PROTOS_DEP)
+            job.install_pkg(DBUS_PROTOS_DEP, 'dep', dep_dir)
+            sys.path.append(dep_dir)
+
+        # Set up D-Bus main loop and interface.
         self.main_loop = gobject.MainLoop()
         if bus_loop is None:
             bus_loop = DBusGMainLoop(set_as_default=True)
@@ -661,19 +671,29 @@ class CryptohomeProxy(DBusClient):
         return result
 
 
-    def mount(self, user, password, create=False, async=True):
+    def mount(self, user, password, create=False, async=True, key_label='bar'):
         """Mounts a cryptohome.
 
         Returns True if the mount succeeds or False otherwise.
-        TODO(ellyjones): Migrate mount_vault() to use a multi-user-safe
-        heuristic, then remove this method. See <crosbug.com/20778>.
         """
-        if async:
-            return self.__async_call(self.iface.AsyncMount, user, password,
-                                     create, False, [])['return_status']
-        out = self.__call(self.iface.Mount, user, password, create, False, [])
-        # Sync returns (return code, return status)
-        return out[1] if len(out) > 1 else False
+        import rpc_pb2
+
+        acc = rpc_pb2.AccountIdentifier()
+        acc.account_id = user
+
+        auth = rpc_pb2.AuthorizationRequest()
+        auth.key.secret = password
+        auth.key.data.label = key_label
+
+        mount_req = rpc_pb2.MountRequest()
+        if create:
+            mount_req.create.copy_authorization_key = True
+
+        out = self.__call(self.iface.MountEx, acc.SerializeToString(),
+            auth.SerializeToString(), mount_req.SerializeToString())
+        parsed_out = rpc_pb2.BaseReply()
+        parsed_out.ParseFromString(''.join(map(chr, out)))
+        return parsed_out.error == rpc_pb2.CRYPTOHOME_ERROR_NOT_SET
 
 
     def unmount(self, user):

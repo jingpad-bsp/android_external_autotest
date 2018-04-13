@@ -105,12 +105,24 @@ class power_Idle(test.test):
 
     def _publish_chromeperf_dashboard(self, measurements):
         """Report to chromeperf dashboard."""
+
+        # publish power values
         publish = {key: measurements[key]
                    for key in measurements.keys() if key.endswith('pwr')}
 
         for key, values in publish.iteritems():
             self.output_perf_value(description=key, value=values,
-                units='W', higher_is_better=False, graph='power')
+                                   units='W', higher_is_better=False,
+                                   graph='power')
+
+        # publish temperature values
+        publish = {key: measurements[key]
+                   for key in measurements.keys() if key.endswith('temp')}
+
+        for key, values in publish.iteritems():
+            self.output_perf_value(description=key, value=values,
+                                   units='C', higher_is_better=False,
+                                   graph='temperature')
 
 
     def postprocess_iteration(self):
@@ -141,11 +153,10 @@ class power_Idle(test.test):
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
 
-        plog_keyvals = self._plog.calc()
-        self._publish_chromeperf_dashboard(plog_keyvals)
-        keyvals.update(plog_keyvals)
+        keyvals.update(self._plog.calc())
         keyvals.update(self._tlog.calc())
         keyvals.update(self._psr.get_keyvals())
+        self._publish_chromeperf_dashboard(keyvals)
         logging.debug("keyvals = %s", keyvals)
 
         self.write_perf_keyval(keyvals)

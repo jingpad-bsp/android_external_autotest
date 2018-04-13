@@ -1120,8 +1120,7 @@ class Dispatcher(object):
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='aborted=1 and complete=0'):
             if (luciferlib.is_enabled_for('STARTING')
-                and luciferlib.is_lucifer_owned(
-                        models.Job.objects.get(id=entry.job.id))):
+                and luciferlib.is_lucifer_owned_by_id(entry.job.id)):
                 continue
 
             # If the job is running on a shard, let the shard handle aborting

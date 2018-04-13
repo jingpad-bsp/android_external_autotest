@@ -16,3 +16,4 @@ class Values(object):
     wp_voltage = 'pp3300'
     chrome_ec = True
     ec_capability = ['x86', 'no_reset_in_off']
+    delay_reboot_to_ping = 40
