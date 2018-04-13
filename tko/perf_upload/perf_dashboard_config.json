@@ -540,6 +540,10 @@
     "master_name": "ChromeOSPower"
   },
   {
+    "autotest_name": "power_Idle",
+    "master_name": "ChromeOSPower"
+  },
+  {
     "autotest_name": "power_LoadTest.WIFI_1hr",
     "master_name": "ChromeOSPower"
   },
