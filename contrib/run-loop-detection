@@ -7,4 +7,4 @@ SCRIPT_DIR=$(dirname $(readlink -f $0))
 cd $SCRIPT_DIR/..
 . contrib/inventory_options
 
-site_utils/lab_inventory.py $OPTIONS "${REPAIR_LOOP_DETECT[@]}"
+site_utils/lab_inventory.py $OPTIONS "${UNTESTABLE_DETECT[@]}"

@@ -29,9 +29,9 @@ Options:
     When generating the "model status" e-mail, include a list of
     <number> specific DUTs to be recommended for repair.
 
---repair-loops
-    Scan the inventory for DUTs stuck in repair loops, and report them
-    via a Monarch presence metric.
+--report-untestable
+    Scan the inventory for DUTs that can't test because they're stuck in
+    repair loops, or because the scheduler can't give them work.
 
 --logdir <directory>
     Log progress and actions in a file under this directory.  Text
@@ -120,6 +120,11 @@ _HOSTNAME_PATTERN = re.compile(
 #    that a DUT is stuck in a repair loop.
 
 _REPAIR_LOOP_THRESHOLD = 4
+
+
+_UNTESTABLE_PRESENCE_METRIC = metrics.BooleanMetric(
+    'chromeos/autotest/inventory/untestable',
+    'DUTs that cannot be scheduled for testing')
 
 
 class _HostSetInventory(object):
@@ -1015,7 +1020,7 @@ def _dut_in_repair_loop(history):
     # a repair task, then our history includes a successful non-repair
     # task, and we're not looping.
     #
-    # The for loop below  is very expensive, because it must fetch the
+    # The for loop below is very expensive, because it must fetch the
     # full history, regardless of how many tasks we examine.  At the
     # time of this writing, this check against the diagnosis task
     # reduces the cost of finding loops in the full inventory from hours
@@ -1042,17 +1047,29 @@ def _dut_in_repair_loop(history):
                 return True
 
 
-def _perform_repair_loop_report(arguments, inventory):
-    """Scan the inventory for DUTs stuck in a repair loop.
+def _report_untestable_dut(history, state):
+    fields = {
+        'dut_hostname': history.hostname,
+        'model': history.host_model,
+        'pool': history.host_pool,
+        'state': state,
+    }
+    logging.info('Untestable DUT: %(dut_hostname)s, model: %(model)s, '
+                 'pool: %(pool)s', fields)
+    _UNTESTABLE_PRESENCE_METRIC.set(True, fields=fields)
 
-    This routine walks through the given inventory looking for DUTs
-    where the most recent history shows that the DUT is regularly
-    passing repair tasks, but has not run any tests.
 
-    @param arguments  Command-line arguments as returned by
-                      `ArgumentParser`
+def _report_repair_loop_metrics(inventory):
+    """Find and report DUTs stuck in a repair loop.
+
+    Go through `inventory`, and find and report any DUT identified as
+    being in a repair loop.
+
     @param inventory  `_LabInventory` object to be reported on.
     """
+    # TODO(jrbarnette)  The `repair_loops` metric is being deprecated,
+    # and should be deleted as soon as the `untestable` metric has a
+    # dashboard that's working reliably.
     loop_presence = metrics.BooleanMetric(
         'chromeos/autotest/inventory/repair_loops',
         'DUTs stuck in repair loops')
@@ -1067,13 +1084,59 @@ def _perform_repair_loop_report(arguments, inventory):
             if not _HOSTNAME_PATTERN.match(history.hostname):
                 continue
             if _dut_in_repair_loop(history):
-                fields = {'dut_hostname': history.hostname,
-                          'model': history.host_model,
-                          'pool': history.host_pool}
-                logging.info('Looping DUT: %(dut_hostname)s, '
-                             'model: %(model)s, pool: %(pool)s',
-                             fields)
+                fields = {
+                    'dut_hostname': history.hostname,
+                    'model': history.host_model,
+                    'pool': history.host_pool
+                }
                 loop_presence.set(True, fields=fields)
+                _report_untestable_dut(history, 'repair_loop')
+
+
+def _report_idle_dut_metrics(inventory):
+    """Find and report idle, unlocked DUTs.
+
+    Go through `inventory`, and find and report any DUT identified as
+    "idle" that is not also locked.
+
+    @param inventory  `_LabInventory` object to be reported on.
+    """
+    logging.info('Scanning for idle, unlocked DUTs.')
+    for counts in inventory.itervalues():
+        for history in counts.get_idle_list():
+            # Managed DUTs with names that don't match
+            # _HOSTNAME_PATTERN shouldn't be possible.  However, we
+            # don't want arbitrary strings being attached to the
+            # 'dut_hostname' field, so for safety, we exclude all
+            # anomalies.
+            if not _HOSTNAME_PATTERN.match(history.hostname):
+                continue
+            if not history.host.locked:
+                _report_untestable_dut(history, 'idle_unlocked')
+
+
+def _report_untestable_dut_metrics(inventory):
+    """Scan the inventory for DUTs unable to run tests.
+
+    DUTs in the inventory are judged "untestable" if they meet one of
+    two criteria:
+      * The DUT is stuck in a repair loop; that is, it regularly passes
+        repair, but never passes other operations.
+      * The DUT runs no tasks at all, but is not locked.
+
+    This routine walks through the given inventory looking for DUTs in
+    either of these states.  Results are reported via a Monarch presence
+    metric.
+
+    Note:  To make sure that DUTs aren't flagged as "idle" merely
+    because there's no work, a separate job runs prior to regular
+    inventory runs which schedules trivial work on any DUT that appears
+    idle.
+
+    @param inventory  `_LabInventory` object to be reported on.
+    """
+    _report_repair_loop_metrics(inventory)
+    _report_idle_dut_metrics(inventory)
 
 
 def _log_startup(arguments, startup_time):
@@ -1134,8 +1197,8 @@ def _perform_inventory_reports(arguments):
         _perform_model_inventory(arguments, inventory, timestamp)
     if arguments.pool_notify:
         _perform_pool_inventory(arguments, inventory, timestamp)
-    if arguments.repair_loops:
-        _perform_repair_loop_report(arguments, inventory)
+    if arguments.report_untestable:
+        _report_untestable_dut_metrics(inventory)
 
 
 def _separate_email_addresses(address_list):
@@ -1176,11 +1239,11 @@ def _verify_arguments(arguments):
     arguments.pool_notify = _separate_email_addresses(
             arguments.pool_notify)
     if not any([arguments.model_notify, arguments.pool_notify,
-                arguments.repair_loops]):
+                arguments.report_untestable]):
         if not arguments.debug:
             sys.stderr.write('Must request at least one report via '
                              '--model-notify, --pool-notify, or '
-                             '--repair-loops\n')
+                             '--report-untestable\n')
             return False
         else:
             # We want to run all the e-mail reports.  An empty notify
@@ -1237,8 +1300,8 @@ def _parse_command(argv):
                         help=('Specify how many DUTs should be '
                               'recommended for repair (default: no '
                               'recommendation)'))
-    parser.add_argument('--repair-loops', action='store_true',
-                        help='Check for devices stuck in repair loops.')
+    parser.add_argument('--report-untestable', action='store_true',
+                        help='Check for devices unable to run tests.')
     parser.add_argument('--debug-metrics', action='store_true',
                         help='Include debug information about the metrics '
                              'that would be reported ')
@@ -1315,7 +1378,7 @@ def main(argv):
         if arguments.debug_metrics or not arguments.debug:
             metrics_file = None if not arguments.debug_metrics else '/dev/null'
             with site_utils.SetupTsMonGlobalState(
-                    'repair_loops', debug_file=metrics_file,
+                    'lab_inventory', debug_file=metrics_file,
                     auto_flush=False):
                 _perform_inventory_reports(arguments)
             metrics.Flush()
