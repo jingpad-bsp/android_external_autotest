@@ -13,6 +13,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class security_Minijail0(test.test):
+    """Tests features of the minijail0 tool."""
     version = 1
 
 
@@ -118,12 +119,12 @@ class security_Minijail0(test.test):
             if self.run_test(p, static=False):
                 failed.append(name)
             ran += 1
-            if name != 'test-caps':
-                if self.run_test(p, static=True):
-                    failed.append(name + ' static')
-                ran += 1
+            if self.run_test(p, static=True):
+                failed.append(name + ' static')
+            ran += 1
+
         if ran == 0:
-            failed.append("No tests found to run from %s!" % (self.srcdir))
+            failed.append("No tests found in %s!" % (self.srcdir))
         if failed:
             logging.error('Failed: %s', failed)
             raise error.TestFail('Failed: %s' % failed)
