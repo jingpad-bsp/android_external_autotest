@@ -4,6 +4,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.update_engine import update_engine_test
 
@@ -34,6 +35,7 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         """
         self._host = host
+        tpm_utils.ClearTPMOwnerRequest(self._host)
 
         # veyron_rialto is a medical device with a different OOBE that auto
         # completes so this test is not valid on that device.
