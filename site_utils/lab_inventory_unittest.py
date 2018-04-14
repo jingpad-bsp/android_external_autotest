@@ -1077,7 +1077,9 @@ class CommandParsingTests(unittest.TestCase):
 
     # At least one of these options must be specified on every command
     # line; otherwise, the command line parsing will fail.
-    _REPORT_OPTIONS = ['--model-notify=', '--pool-notify=', '--repair-loops']
+    _REPORT_OPTIONS = [
+        '--model-notify=', '--pool-notify=', '--report-untestable'
+    ]
 
     def setUp(self):
         dirpath = '/usr/local/fubar'
@@ -1126,7 +1128,7 @@ class CommandParsingTests(unittest.TestCase):
         arguments = self._parse_arguments(['--model-notify='])
         self.assertEqual(arguments.model_notify, [''])
         self.assertEqual(arguments.pool_notify, [])
-        self.assertFalse(arguments.repair_loops)
+        self.assertFalse(arguments.report_untestable)
 
 
     def test_pool_notify_defaults(self):
@@ -1134,15 +1136,15 @@ class CommandParsingTests(unittest.TestCase):
         arguments = self._parse_arguments(['--pool-notify='])
         self.assertEqual(arguments.model_notify, [])
         self.assertEqual(arguments.pool_notify, [''])
-        self.assertFalse(arguments.repair_loops)
+        self.assertFalse(arguments.report_untestable)
 
 
-    def test_repair_loop_defaults(self):
-        """Test defaults when `--repair-loops` is specified alone."""
-        arguments = self._parse_arguments(['--repair-loops'])
+    def test_report_untestable_defaults(self):
+        """Test defaults when `--report-untestable` is specified alone."""
+        arguments = self._parse_arguments(['--report-untestable'])
         self.assertEqual(arguments.model_notify, [])
         self.assertEqual(arguments.pool_notify, [])
-        self.assertTrue(arguments.repair_loops)
+        self.assertTrue(arguments.report_untestable)
 
 
     def test_model_arguments(self):
