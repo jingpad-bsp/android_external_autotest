@@ -9,6 +9,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.update_engine import update_engine_test
 from chromite.lib import retry_util
@@ -162,6 +163,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         """
         self._host = host
+        tpm_utils.ClearTPMOwnerRequest(self._host)
 
         # veyron_rialto is a medical device with a different OOBE that auto
         # completes so this test is not valid on that device.
@@ -199,7 +201,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         if interrupt:
             # Choose a random downloaded percentage to interrupt the update.
-            percent = random.uniform(0.1, 0.8)
+            percent = random.uniform(0.1, 0.7)
             logging.debug('Percent when we will interrupt: %f', percent)
             self._wait_for_percentage(percent)
             logging.info('We will start interrupting the update.')
@@ -219,13 +221,13 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             if not self._update_continued_where_it_left_off(completed):
                 raise error.TestFail('The update did not continue where it '
                                      'left off before disconnecting network.')
+            completed = self._get_update_percentage()
 
             # Suspend / Resume
-            boot_id = self._host.get_boot_id()
-            self._host.servo.lid_close()
-            self._host.test_wait_for_sleep()
-            self._host.servo.lid_open()
-            self._host.test_wait_for_boot(boot_id)
+            try:
+                self._host.suspend(suspend_time=30)
+            except error.AutoservSuspendError:
+                logging.exception('Suspend did not last the entire time.')
             if not self._update_continued_where_it_left_off(completed):
                 raise error.TestFail('The update did not continue where it '
                                      'left off after suspend/resume.')

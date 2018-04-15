@@ -484,18 +484,19 @@ def _install_and_update_afe(afe, hostname, host_attrs, arguments):
     try:
         host = _create_host(hostname, afe, afe_host)
         _install_test_image(host, arguments)
-        host.labels.update_labels(host)
-        platform_labels = afe.get_labels(
-                host__hostname=hostname, platform=True)
-        if not platform_labels:
-            platform = host.get_platform()
-            new_labels = afe.get_labels(name=platform)
-            if not new_labels:
-                afe.create_label(platform, platform=True)
-            afe_host.add_labels([platform])
+        if arguments.install_test_image and not arguments.dry_run:
+            host.labels.update_labels(host)
+            platform_labels = afe.get_labels(
+                    host__hostname=hostname, platform=True)
+            if not platform_labels:
+                platform = host.get_platform()
+                new_labels = afe.get_labels(name=platform)
+                if not new_labels:
+                    afe.create_label(platform, platform=True)
+                afe_host.add_labels([platform])
         version = [label for label in afe_host.labels
                        if label.startswith(VERSION_PREFIX)]
-        if version:
+        if version and not arguments.dry_run:
             afe_host.remove_labels(version)
     except Exception as e:
         if unlock_on_failure and not _try_unlock_host(afe_host):

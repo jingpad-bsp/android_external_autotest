@@ -115,6 +115,10 @@ DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
 DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_apfe_server', default='')
+DEFAULT_CTS_DELTA_RESULTS_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'ctsdelta_results_server', default='')
+DEFAULT_CTS_DELTA_APFE_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'ctsdelta_apfe_server', default='')
 
 # metadata type
 GS_OFFLOADER_SUCCESS_TYPE = 'gs_offloader_success'
@@ -395,14 +399,20 @@ def _upload_cts_testresult(dir_entry, multiprocessing):
                                 TIMESTAMP_PATTERN)
         cts_v2_path = os.path.join(host, 'cheets_CTS_*', 'results', '*',
                                    TIMESTAMP_PATTERN)
-        gts_v2_path = os.path.join(host, 'cheets_GTS.*', 'results', '*',
+        gts_v2_path = os.path.join(host, 'cheets_GTS*', 'results', '*',
                                    TIMESTAMP_PATTERN)
         for result_path, result_pattern in [(cts_path, CTS_RESULT_PATTERN),
                             (cts_v2_path, CTS_V2_RESULT_PATTERN),
                             (gts_v2_path, CTS_V2_RESULT_PATTERN)]:
             for path in glob.glob(result_path):
                 try:
-                    _upload_files(host, path, result_pattern, multiprocessing)
+                    _upload_files(host, path, result_pattern, multiprocessing,
+                                  DEFAULT_CTS_RESULTS_GSURI, DEFAULT_CTS_APFE_GSURI)
+                    # TODO(rohitbm): make better comparison using regex.
+                    if 'plan_follower' in path:
+                        _upload_files(host, path, result_pattern, multiprocessing,
+                                      DEFAULT_CTS_DELTA_RESULTS_GSURI,
+                                      DEFAULT_CTS_DELTA_APFE_GSURI)
                 except Exception as e:
                     logging.error('ERROR uploading test results %s to GS: %s',
                                   path, e)
@@ -445,7 +455,8 @@ def _is_test_collector(package):
     return TEST_LIST_COLLECTOR in package
 
 
-def _upload_files(host, path, result_pattern, multiprocessing):
+def _upload_files(host, path, result_pattern, multiprocessing,
+                  result_gs_bucket, apfe_gs_bucket):
     keyval = models.test.parse_job_keyval(host)
     build = keyval.get('build')
     suite = keyval.get('suite')
@@ -468,7 +479,7 @@ def _upload_files(host, path, result_pattern, multiprocessing):
         # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
         # or bucket/build/parent_job_id/cheets_GTS.*/job_id_timestamp/
         cts_apfe_gs_path = os.path.join(
-                DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
+                apfe_gs_bucket, build, parent_job_id,
                 package, job_id + '_' + timestamp) + '/'
 
         for zip_file in glob.glob(os.path.join('%s.zip' % path)):
@@ -482,8 +493,7 @@ def _upload_files(host, path, result_pattern, multiprocessing):
     # Path: bucket/cheets_CTS.*/job_id_timestamp/
     # or bucket/cheets_GTS.*/job_id_timestamp/
     test_result_gs_path = os.path.join(
-            DEFAULT_CTS_RESULTS_GSURI, package,
-            job_id + '_' + timestamp) + '/'
+            result_gs_bucket, package, job_id + '_' + timestamp) + '/'
 
     for test_result_file in glob.glob(os.path.join(path, result_pattern)):
         # gzip test_result_file(testResult.xml/test_result.xml)
