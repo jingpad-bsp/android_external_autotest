@@ -179,6 +179,10 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_VideoRenderingPower",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_WebGLAquarium",
     "master_name": "ChromeOS_Graphics"
   },
