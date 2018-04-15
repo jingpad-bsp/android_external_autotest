@@ -199,7 +199,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         if interrupt:
             # Choose a random downloaded percentage to interrupt the update.
-            percent = random.uniform(0.1, 0.8)
+            percent = random.uniform(0.1, 0.7)
             logging.debug('Percent when we will interrupt: %f', percent)
             self._wait_for_percentage(percent)
             logging.info('We will start interrupting the update.')
@@ -219,13 +219,13 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             if not self._update_continued_where_it_left_off(completed):
                 raise error.TestFail('The update did not continue where it '
                                      'left off before disconnecting network.')
+            completed = self._get_update_percentage()
 
             # Suspend / Resume
-            boot_id = self._host.get_boot_id()
-            self._host.servo.lid_close()
-            self._host.test_wait_for_sleep()
-            self._host.servo.lid_open()
-            self._host.test_wait_for_boot(boot_id)
+            try:
+                self._host.suspend(suspend_time=30)
+            except error.AutoservSuspendError:
+                logging.exception('Suspend did not last the entire time.')
             if not self._update_continued_where_it_left_off(completed):
                 raise error.TestFail('The update did not continue where it '
                                      'left off after suspend/resume.')
