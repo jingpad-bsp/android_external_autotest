@@ -11,6 +11,7 @@ from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.power import power_status, power_utils
+from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
 # The download base for test assets.
@@ -233,6 +234,8 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             helper_logger.chrome_vmodule_flag(),
         ]
         cmd_line.append('--ozone-platform=gbm')
+        if encoder_utils.has_broken_flush():
+            cmd_line.append('--disable_flush')
         return cmd_line
 
     def run_in_parallel(self, *commands):
