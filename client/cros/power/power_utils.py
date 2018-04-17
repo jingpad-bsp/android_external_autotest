@@ -910,3 +910,95 @@ class DisplayPanelSelfRefresh(object):
         @returns dictionary of keyvals
         """
         return self._keyvals
+
+class BaseActivityException(Exception):
+  """ Class for base activity simulation exceptions. """
+
+class BaseActivitySimulator(object):
+  """ Class to simulate wake activity on the normally autosuspended base """
+
+  # Note on naming: throughout this class, the word base is used to mean the
+  # base of a detachable (keyboard, touchpad, etc).
+
+  _DETACHABLE_BOARDS = ['poppy', 'soraka']
+
+  # file defines where to look for detachable base.
+  # TODO(coconutruben): check when next wave of detachables come out if this
+  # structure still holds, or if we need to replace it by querying input
+  # devices.
+  _BASE_INIT_FILE = '/etc/init/hammerd.override'
+  _BASE_WAKE_TIME_MS = 10000
+
+  def __init__(self):
+      """ Initializer
+
+          Let the BaseActivitySimulator bootstrap itself by detecting if
+          the board is a detachable, and ensuring the base path exists.
+          Sets the base to autosuspend, and the autosuspend delay to be
+          at most _BASE_WAKE_TIME_MS.
+
+      """
+      board = utils.get_board()
+      self._should_run = board in self._DETACHABLE_BOARDS
+      if self._should_run:
+          if not os.path.exists(self._BASE_INIT_FILE):
+              raise BaseActivityException("Board %s marked as detachable, but "
+                                          "hammerd init file missing." % board)
+
+          with open(self._BASE_INIT_FILE, 'r') as init_file:
+              init_file_content = init_file.read()
+              try:
+                  bus = re.search('env USB_BUS=([0-9]*)',
+                                  init_file_content).group(1)
+                  port = re.search('env USB_PORT=([0-9]*)',
+                                  init_file_content).group(1)
+              except AttributeError:
+                  raise BaseActivityException("Failed to read usb bus "
+                                              "or port from hammerd file.")
+              base_power_path = ('/sys/bus/usb/devices/%s-%s/power/'
+                                 % (bus, port))
+              self._base_control_path =  os.path.join(base_power_path,
+                                                      'control')
+              self._autosuspend_delay_path = os.path.join(base_power_path,
+                                                         'autosuspend_delay_ms')
+          logging.debug("Base activity simulator will be running.")
+          with open(self._base_control_path, 'r+') as f:
+              self._default_control = f.read()
+              if self._default_control != 'auto':
+                  logging.debug("Putting the base into autosuspend.")
+                  f.write('auto')
+
+          with open(self._autosuspend_delay_path, 'r+') as f:
+              self._default_autosuspend_delay_ms = f.read().rstrip('\n')
+              f.write(str(self._BASE_WAKE_TIME_MS))
+
+  def wake_base(self, wake_time_ms=_BASE_WAKE_TIME_MS):
+      """
+          Wake up the base to simulate user activity.
+
+          Args:
+           wake_time_ms:  time the base should be turned on
+                          (taken out of autosuspend) in milliseconds.
+      """
+      if self._should_run:
+          logging.debug("Taking base out of runtime suspend for %d seconds",
+                        wake_time_ms/1000)
+          with open(self._autosuspend_delay_path, 'r+') as f:
+              f.write(str(wake_time_ms))
+          # Toggling the control will keep the base awake for
+          # the duration specified in the autosuspend_delay_ms file.
+          with open(self._base_control_path, 'w') as f:
+              f.write('on')
+          with open(self._base_control_path, 'w') as f:
+              f.write('auto')
+
+  def restore(self):
+      """
+          Restore the original control and autosuspend delay.
+      """
+      with open(self._base_control_path, 'w') as f:
+          f.write(self._default_control)
+
+      with open(self._autosuspend_delay_path, 'w') as f:
+          f.write(self._default_autosuspend_delay_ms)
+

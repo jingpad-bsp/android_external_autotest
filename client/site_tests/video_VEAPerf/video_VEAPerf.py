@@ -13,6 +13,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
 
@@ -268,6 +269,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
             '--output_log="%s"' % test_log_file,
             helper_logger.chrome_vmodule_flag(),
             '--ozone-platform=gbm']
+        if encoder_utils.has_broken_flush():
+            vea_args.append('--disable_flush')
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
         self._analyze_fps(test_name, test_log_file)
 
@@ -283,6 +286,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
             '--output_log="%s"' % test_log_file,
             helper_logger.chrome_vmodule_flag(),
             '--ozone-platform=gbm']
+        if encoder_utils.has_broken_flush():
+            vea_args.append('--disable_flush')
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args),

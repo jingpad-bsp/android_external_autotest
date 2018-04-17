@@ -14,7 +14,8 @@ var unique_url_salt = 1;
 
 function setupTest() {
   //adding these listeners to track request failure codes
-  chrome.webRequest.onCompleted.addListener(capture_completed_status, {urls: ["<all_urls>"]});
+  chrome.webRequest.onCompleted.addListener(capture_completed_status,
+                                            {urls: ["<all_urls>"]});
   chrome.windows.getAll(null, function(windows) {
     preexisting_windows = windows;
     for (var i = 0; i < tasks.length; i++) {
@@ -47,9 +48,10 @@ function testListener(request, sender, sendResponse) {
     cycle = cycle_tabs[sender.tab.id];
     cycle.successful_loads++;
     url = get_active_url(cycle);
-   var page_load_time = end - page_load_time_counter[cycle.id]
-   page_load_times.push({'url': (unique_url_salt++) + url, 'time': page_load_time});
-   console.log(JSON.stringify(page_load_times));
+    var page_load_time = end - page_load_time_counter[cycle.id]
+    page_load_times.push({'url': (unique_url_salt++) + url,
+                          'time': page_load_time});
+    console.log(JSON.stringify(page_load_times));
     record_log_entry(dateToString(new Date()) + " [load success] " + url);
     if (request.action == "should_scroll" && cycle.focus) {
       sendResponse({"should_scroll": should_scroll,
@@ -60,6 +62,14 @@ function testListener(request, sender, sendResponse) {
     }
     delete cycle_tabs[sender.tab.id];
   }
+}
+
+function report_page_nav_to_test() {
+  //Sends message to PLT informing that user is navigating to new page.
+  var ping_url = 'http://localhost:8001/pagenav';
+  var req = new XMLHttpRequest();
+  req.open('GET', ping_url, true);
+  req.send("");
 }
 
 function capture_completed_status(details) {
@@ -90,6 +100,7 @@ function cycle_navigate(cycle) {
   var start = Date.now();
   page_load_time_counter[cycle.id] = start;
   chrome.tabs.update(cycle.id, {'url': url, 'selected': true});
+  report_page_nav_to_test()
   cycle.idx = (cycle.idx + 1) % cycle.urls.length;
   if (cycle.timeout < cycle.delay / time_ratio && cycle.timeout > 0) {
     cycle.timer = setTimeout(cycle_check_timeout, cycle.timeout, cycle);
@@ -99,7 +110,8 @@ function cycle_navigate(cycle) {
 }
 
 function record_error_codes(cycle) {
-  var error_report = dateToString(new Date()) + " [load failure details] " + get_active_url(cycle) + "\n";
+  var error_report = dateToString(new Date()) + " [load failure details] "
+                     + get_active_url(cycle) + "\n";
   var reports = error_codes[cycle.id];
   for (var i = 0; i < reports.length; i++) {
     report = reports[i];
@@ -117,7 +129,8 @@ function cycle_check_timeout(cycle) {
   if (cycle.id in cycle_tabs) {
     cycle.failed_loads++;
     record_error_codes(cycle);
-    record_log_entry(dateToString(new Date()) + " [load failure] " + get_active_url(cycle));
+    record_log_entry(dateToString(new Date()) + " [load failure] " +
+                                  get_active_url(cycle));
     cycle_navigate(cycle);
   } else {
     cycle.timer = setTimeout(cycle_navigate,

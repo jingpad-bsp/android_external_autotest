@@ -336,6 +336,11 @@
     "dashboard_test_name": "network_WiFi_Perf"
   },
   {
+    "autotest_name": "network_WiFi_Perf.vht80",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_Perf"
+  },
+  {
     "autotest_name": "network_WiFi_PTK",
     "master_name": "ChromeOSWiFi"
   },
