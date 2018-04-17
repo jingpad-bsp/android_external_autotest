@@ -6,8 +6,9 @@ AUTHOR = 'matthewmwang'
 TIME = 'SHORT'
 NAME = 'network_WiFi_RoamFT.EAP'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_endtoend, suite:wifi_release, '
-              'suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+## TODO(crbug.com/832402): this test is messing up the lab.
+#ATTRIBUTES = ('suite:wifi_endtoend, suite:wifi_release, '
+#              'suite:wifi_matfunc, suite:wifi_matfunc_noservo')
 DEPENDENCIES = 'wificell'
 
 DOC = """
