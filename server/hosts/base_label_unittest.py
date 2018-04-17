@@ -54,18 +54,6 @@ class TestStringPrefixLabel(base_label.StringPrefixLabel):
         return [self.label_to_return]
 
 
-class TestLabelList(base_label.StringLabel):
-    """TestLabelList is used to validate a label consisting of other labels."""
-
-    _LABEL_LIST = [TestBaseLabel(), TestStringPrefixLabel()]
-
-    def generate_labels(self, host):
-        labels = []
-        for label_detectors in self._LABEL_LIST:
-            labels.extend(label_detectors.get(host))
-        return labels
-
-
 class MockAFEHost(utils.EmptyAFEHost):
 
     def __init__(self, labels=[], attributes={}):
@@ -150,8 +138,6 @@ class LabelRetrieverUnittests(unittest.TestCase):
         label_list = [TestStringPrefixLabel(), TestBaseLabel()]
         self.retriever = base_label.LabelRetriever(label_list)
         self.retriever._populate_known_labels(label_list)
-        self.retriever_label_list = base_label.LabelRetriever([TestLabelList()])
-        self.retriever_label_list._populate_known_labels([TestLabelList()])
 
 
     def test_populate_known_labels(self):
@@ -161,11 +147,6 @@ class LabelRetrieverUnittests(unittest.TestCase):
         # Check on a normal retriever.
         self.assertEqual(self.retriever.label_full_names, full_names)
         self.assertEqual(self.retriever.label_prefix_names, prefix_names)
-
-        # Check on a retriever that has a label with a label list.
-        self.assertEqual(self.retriever_label_list.label_full_names, full_names)
-        self.assertEqual(self.retriever_label_list.label_prefix_names,
-                         prefix_names)
 
 
     def test_is_known_label(self):

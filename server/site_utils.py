@@ -863,27 +863,6 @@ def lock_duts_and_wait(duts, afe, lock_msg='default lock message',
         afe.unlock_hosts(locked_duts)
 
 
-def board_labels_allowed(boards):
-    """Check if the list of board labels can be set to a single host.
-
-    The only case multiple board labels can be set to a single host is for
-    testbed, which may have a list of board labels like
-    board:angler-1, board:angler-2, board:angler-3, board:marlin-1'
-
-    @param boards: A list of board labels (may include platform label).
-
-    @returns True if the the list of boards can be set to a single host.
-    """
-    # Filter out any non-board labels
-    boards = [b for b in boards if re.match('board:.*', b)]
-    if len(boards) <= 1:
-        return True
-    for board in boards:
-        if not re.match('board:[^-]+-\d+', board):
-            return False
-    return True
-
-
 def _get_default_size_info(path):
     """Get the default result size information.
 
