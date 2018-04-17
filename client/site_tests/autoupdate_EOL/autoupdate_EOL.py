@@ -2,14 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import logging
+import os
 import shutil
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.update_engine import nano_omaha_devserver
+from autotest_lib.client.cros.update_engine import update_engine_test
 
-class autoupdate_EOL(test.test):
+class autoupdate_EOL(update_engine_test.UpdateEngineTest):
     """Tests end of life (EOL) behaviour."""
     version = 1
 
@@ -17,8 +19,14 @@ class autoupdate_EOL(test.test):
     _EOL_NOTIFICATION_TITLE = 'This device is no longer supported'
 
     def cleanup(self):
-        shutil.copy('/var/log/update_engine.log', self.resultsdir)
-        self._omaha.stop()
+        # Get the last two update_engine logs.
+        files = utils.run('ls -t -1 %s' %
+                          self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
+        for i in range(2):
+            file = os.path.join(self._UPDATE_ENGINE_LOG_DIR, files[i])
+            shutil.copy(file, self.resultsdir)
+        # Base class will save current update_engine log.
+        super(autoupdate_EOL, self).cleanup()
 
 
     def _check_eol_status(self):
