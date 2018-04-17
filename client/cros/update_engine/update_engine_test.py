@@ -27,6 +27,7 @@ class UpdateEngineTest(test.test):
 
     # Files used by the tests.
     _UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
+    _UPDATE_ENGINE_LOG_DIR = '/var/log/update_engine/'
     _CUSTOM_LSB_RELEASE = '/mnt/stateful_partition/etc/lsb-release'
 
     # Public key used to force update_engine to verify omaha response data on
