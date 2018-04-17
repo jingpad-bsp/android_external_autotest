@@ -75,7 +75,7 @@ def is_split_job(hqe_id):
     hqes = hqe.job.hostqueueentry_set.all()
     try:
         _get_consistent_execution_path(hqes)
-    except _ExecutionPathError:
+    except ExecutionPathError:
         return True
     return False
 
@@ -323,7 +323,7 @@ def _get_consistent_execution_path(execution_entries):
     first_execution_path = execution_entries[0].execution_path()
     for execution_entry in execution_entries[1:]:
         if execution_entry.execution_path() != first_execution_path:
-            raise _ExecutionPathError(
+            raise ExecutionPathError(
                     '%s (%s) != %s (%s)'
                     % (execution_entry.execution_path(),
                        execution_entry,
@@ -332,7 +332,7 @@ def _get_consistent_execution_path(execution_entries):
     return first_execution_path
 
 
-class _ExecutionPathError(Exception):
+class ExecutionPathError(Exception):
     """Raised by _get_consistent_execution_path()."""
 
 

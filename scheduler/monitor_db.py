@@ -1010,10 +1010,17 @@ class Dispatcher(object):
             job = queue_entry.job
             if luciferlib.is_lucifer_owned(job):
                 continue
-            drone = luciferlib.spawn_starting_job_handler(
-                    manager=_drone_manager,
-                    job=job)
-            models.JobHandoff.objects.create(job=job, drone=drone.hostname())
+            try:
+                drone = luciferlib.spawn_starting_job_handler(
+                        manager=_drone_manager,
+                        job=job)
+            except Exception:
+                logging.exception('Error when sending job to Lucifer')
+                models.HostQueueEntry.abort_host_queue_entries(
+                        job.hostqueueentry_set.all())
+            else:
+                models.JobHandoff.objects.create(
+                        job=job, drone=drone.hostname())
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling
