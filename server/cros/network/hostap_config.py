@@ -158,6 +158,14 @@ class HostapConfig(object):
     VHT_CHANNEL_WIDTH_160 = object()
     VHT_CHANNEL_WIDTH_80_80 = object()
 
+    # Human readable names for these channel widths.
+    VHT_NAMES = {
+        VHT_CHANNEL_WIDTH_40: 'VHT40',
+        VHT_CHANNEL_WIDTH_80: 'VHT80',
+        VHT_CHANNEL_WIDTH_160: 'VHT160',
+        VHT_CHANNEL_WIDTH_80_80: 'VHT80+80',
+    }
+
     # This is a loose merging of the rules for US and EU regulatory
     # domains as taken from IEEE Std 802.11-2012 Appendix E.  For instance,
     # we tolerate HT40 in channels 149-161 (not allowed in EU), but also
@@ -407,6 +415,12 @@ class HostapConfig(object):
     @property
     def printable_mode(self):
         """@return human readable mode string."""
+
+        # Note: VHT capture is not yet supported in ht_packet_capture_mode()
+        # (nor cros.network.packet_capturer).
+        if self.vht_channel_width is not None:
+            return self.VHT_NAMES[self.vht_channel_width]
+
         if self._is_11n:
             return self.ht_packet_capture_mode
 
@@ -579,6 +593,7 @@ class HostapConfig(object):
             self._vht_oper_chwidth = 3
         elif vht_channel_width is not None:
             raise error.TestFail('Invalid channel width')
+        self.vht_channel_width = vht_channel_width
         # TODO(zqiu) Add checking for center channel based on the channel width
         # and operating channel.
         self._vht_oper_centr_freq_seg0_idx = vht_center_channel
