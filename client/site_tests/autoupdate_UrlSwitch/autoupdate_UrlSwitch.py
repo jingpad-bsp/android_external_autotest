@@ -1,7 +1,6 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.update_engine import nano_omaha_devserver
@@ -10,22 +9,6 @@ from autotest_lib.client.cros.update_engine import update_engine_test
 class autoupdate_UrlSwitch(update_engine_test.UpdateEngineTest):
     """Tests that we can continue with the second url when the first fails."""
     version = 1
-
-    def _check_for_update(self):
-        """Starts a background update check."""
-        utils.run('update_engine_client --check_for_update -omaha_url=' +
-                  'http://127.0.0.1:%d/update ' % self._omaha.get_port(),
-                  ignore_status=True)
-
-
-    def _wait_for_update_to_fail(self):
-        """Wait for the update to retry 21 times and fail."""
-        while True:
-            if self._check_update_engine_log_for_entry('Reached max attempts ',
-                                                       raise_error=False):
-                break
-            time.sleep(1)
-
 
     def run_once(self, image_url, image_size, sha256):
         utils.run('restart update-engine')
@@ -37,7 +20,7 @@ class autoupdate_UrlSwitch(update_engine_test.UpdateEngineTest):
         self._omaha.start()
 
         # Start the update.
-        self._check_for_update()
+        self._check_for_update(self._omaha.get_port())
         self._wait_for_progress(0.2)
 
         # Pull the network cable so the update fails.
@@ -52,7 +35,7 @@ class autoupdate_UrlSwitch(update_engine_test.UpdateEngineTest):
                                                 'failures for Url')
 
         # The next update attempt should resume and finish successfully.
-        self._check_for_update()
+        self._check_for_update(self._omaha.get_port())
         self._wait_for_update_to_complete()
         self._check_update_engine_log_for_entry('Resuming an update that was '
                                                 'previously started.')
