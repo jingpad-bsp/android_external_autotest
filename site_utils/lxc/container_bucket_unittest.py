@@ -11,6 +11,7 @@ import unittest
 import common
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import container_bucket
+from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
 container_path = None
@@ -34,7 +35,7 @@ class DummyClient(object):
         return None
 
 
-class ContainerBucketTests(lxc.utils.LXCTests):
+class ContainerBucketTests(lxc_utils.LXCTests):
     """Unit tests for the ContainerBucket class."""
 
     def setUp(self):
