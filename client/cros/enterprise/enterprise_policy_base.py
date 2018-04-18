@@ -65,14 +65,22 @@ class EnterprisePolicyTest(test.test):
 
 
     def initialize(self, **kwargs):
-        """Initialize test parameters."""
+        """
+        Initialize test parameters.
+
+        Consume the check_client_result parameter if this test was started
+        from a server test.
+
+        """
+        kwargs.pop('check_client_result', False)
         self._initialize_enterprise_policy_test(**kwargs)
 
 
     def _initialize_enterprise_policy_test(
             self, case='', env='dm-fake', dms_name=None,
             username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID):
-        """Initialize test parameters and fake DM Server.
+        """
+        Initialize test parameters and fake DM Server.
 
         @param case: String name of the test case to run.
         @param env: String environment of DMS and Gaia servers.
@@ -80,6 +88,7 @@ class EnterprisePolicyTest(test.test):
         @param password: String password login credential.
         @param gaia_id: String gaia_id login credential.
         @param dms_name: String name of test DM Server.
+
         """
         self.case = case
         self.env = env
