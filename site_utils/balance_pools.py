@@ -639,33 +639,34 @@ def main(argv):
         metrics_manager = site_utils.TrivialContextManager()
 
     with metrics_manager:
-        end_time = time.time()
-        start_time = end_time - 24 * 60 * 60
-        afe = frontend.AFE(server=arguments.web)
+        with metrics.SuccessCounter('chromeos/autotest/balance_pools/runs'):
+            end_time = time.time()
+            start_time = end_time - 24 * 60 * 60
+            afe = frontend.AFE(server=arguments.web)
 
-        def balancer(pool, labels):
-            """Balance the specified model.
+            def balancer(pool, labels):
+                """Balance the specified model.
 
-            @param pool: The pool to rebalance for the model.
-            @param labels: labels to restrict to balancing operations
-                    within.
-            """
-            _balance_model(arguments, afe, pool, labels,
-                           start_time, end_time)
-            _log_message('')
+                @param pool: The pool to rebalance for the model.
+                @param labels: labels to restrict to balancing operations
+                        within.
+                """
+                _balance_model(arguments, afe, pool, labels,
+                               start_time, end_time)
+                _log_message('')
 
-        pools = (lab_inventory.CRITICAL_POOLS
-                if arguments.pool == _ALL_CRITICAL_POOLS
-                else [arguments.pool])
-        balancer_targets = infer_balancer_targets(afe, arguments, pools)
-        try:
-            parallel.RunTasksInProcessPool(
-                    balancer,
-                    balancer_targets,
-                    processes=8,
-            )
-        except KeyboardInterrupt:
-            pass
+            pools = (lab_inventory.CRITICAL_POOLS
+                    if arguments.pool == _ALL_CRITICAL_POOLS
+                    else [arguments.pool])
+            balancer_targets = infer_balancer_targets(afe, arguments, pools)
+            try:
+                parallel.RunTasksInProcessPool(
+                        balancer,
+                        balancer_targets,
+                        processes=8,
+                )
+            except KeyboardInterrupt:
+                pass
 
 
 if __name__ == '__main__':
