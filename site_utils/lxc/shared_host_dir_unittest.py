@@ -14,9 +14,10 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import lxc
+from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
-class SharedHostDirTests(lxc.utils.LXCTests):
+class SharedHostDirTests(lxc_utils.LXCTests):
     """Unit tests for the ContainerBucket class."""
 
     def setUp(self):
@@ -93,7 +94,7 @@ class SharedHostDirTests(lxc.utils.LXCTests):
             host_dir.cleanup()
 
 
-class TimeoutTests(lxc.utils.LXCTests):
+class TimeoutTests(lxc_utils.LXCTests):
     """Test the timeouts on the shared host dir class."""
 
     def setUp(self):
