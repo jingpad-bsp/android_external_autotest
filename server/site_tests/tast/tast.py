@@ -18,7 +18,7 @@ from autotest_lib.server import utils
 _UNIX_EPOCH = dateutil.parser.parse('1970-01-01T00:00:00Z')
 
 
-class tast_Runner(test.test):
+class tast(test.test):
     """Autotest server test that runs a Tast test suite.
 
     Tast is an integration-testing framework analagous to the test-running
@@ -52,7 +52,7 @@ class tast_Runner(test.test):
 
     # Prefix added to Tast test names when writing their results to TKO
     # status.log files.
-    _TEST_NAME_PREFIX = 'tast_Runner.'
+    _TEST_NAME_PREFIX = 'tast.'
 
     # Job start/end TKO event status codes from base_client_job._rungroup in
     # client/bin/job.py.
