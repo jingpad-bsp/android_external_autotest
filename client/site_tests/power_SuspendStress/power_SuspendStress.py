@@ -86,6 +86,9 @@ class power_SuspendStress(test.test):
                 except utils.TimeoutError:
                     logging.error('Link to the server gone, reboot')
                     utils.system('reboot')
+                    # Reboot may return; raise a TestFail() to abort too, even
+                    # though the server likely won't see this.
+                    raise error.TestFail('Link is gone; rebooting')
 
             self._suspender.suspend(random.randint(0, 3) + self._min_suspend)
 
