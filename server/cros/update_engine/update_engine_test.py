@@ -12,6 +12,7 @@ import urlparse
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.update_engine import omaha_devserver
@@ -439,6 +440,19 @@ class UpdateEngineTest(test.test):
         new_gs_url = self._CELLULAR_BUCKET + payload_filename
         utils.run('gsutil acl ch -u AllUsers:R %s' % new_gs_url)
         return new_gs_url.replace('gs://', 'https://storage.googleapis.com/')
+
+
+    def _run_client_test_and_check_result(self, test_name, **kwargs):
+        """
+        Kicks of a client autotest and checks that it didn't fail.
+
+        @param test_name: client test name
+        @param **kwargs: key-value arguments to pass to the test.
+
+        """
+        client_at = autotest.Autotest(self._host)
+        client_at.run_test(test_name, **kwargs)
+        client_at._check_client_test_result(self._host, test_name)
 
 
     def verify_update_events(self, source_release, hostlog_filename,

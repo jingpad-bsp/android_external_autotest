@@ -21,16 +21,23 @@ def _split_url(url):
 class NanoOmahaDevserver(object):
     """A simple Omaha instance that can be setup on a DUT in client tests."""
 
-    def __init__(self, eol=False, failures_per_url=1):
+    def __init__(self, eol=False, failures_per_url=1, backoff=False,
+                 num_urls=2):
         """
         Create a nano omaha devserver.
 
         @param eol: True if we should return a response with _eol flag.
         @param failures_per_url: how many times each url can fail.
+        @param backoff: Whether we should wait a while before trying to
+                        update again after a failure.
+        @param num_urls: The number of URLs in the omaha response.
 
         """
         self._eol = eol
         self._failures_per_url = failures_per_url
+        self._backoff = backoff
+        self._num_urls = num_urls
+
 
     class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         """Inner class for handling HTTP requests."""
@@ -42,8 +49,8 @@ class NanoOmahaDevserver(object):
               <ping status=\"ok\"/>
               <updatecheck status=\"ok\">
                 <urls>
-                  <url codebase=\"%s\"/>
-                  <url codebase=\"%s\"/>
+        """
+        _OMAHA_RESPONSE_BODY = """
                 </urls>
                 <manifest version=\"9999.0.0\">
                   <packages>
@@ -57,6 +64,7 @@ class NanoOmahaDevserver(object):
               needsadmin=\"false\"
               IsDeltaPayload=\"%s\"
               MaxFailureCountPerUrl=\"%d\"
+              DisablePayloadBackoff=\"%s\"
         """
 
         _OMAHA_RESPONSE_TEMPLATE_TAIL = """ />
@@ -92,17 +100,18 @@ class NanoOmahaDevserver(object):
                     response = self._OMAHA_RESPONSE_EOL % appid
                 else:
                     (base, name) = _split_url(self.server._devserver._image_url)
-                    response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % (
-                            appid,
-                            base + '/',
-                            base + '/',
+                    response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % appid
+                    for i in range(0, self.server._devserver._num_urls):
+                        response += """<url codebase=\"%s\"/>""" % (base + '/')
+                    response += self._OMAHA_RESPONSE_BODY % (
                             binascii.hexlify(base64.b64decode(
                                 self.server._devserver._sha256)),
                             name,
                             self.server._devserver._image_size,
                             self.server._devserver._sha256,
                             str(self.server._devserver._is_delta).lower(),
-                            self.server._devserver._failures_per_url)
+                            self.server._devserver._failures_per_url,
+                            str(not self.server._devserver._backoff).lower())
                     if self.server._devserver._is_delta:
                         response += '              IsDelta="true"\n'
                     if self.server._devserver._critical:
