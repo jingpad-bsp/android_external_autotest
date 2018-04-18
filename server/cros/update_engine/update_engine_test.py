@@ -51,6 +51,8 @@ class UpdateEngineTest(test.test):
     _DEVSERVER_HOSTLOG_ROOTFS = 'devserver_hostlog_rootfs'
     _DEVSERVER_HOSTLOG_REBOOT = 'devserver_hostlog_reboot'
 
+    _UPDATE_ENGINE_PREFS_FOLDER = '/var/lib/update_engine/prefs/'
+
     _CELLULAR_BUCKET = 'gs://chromeos-throw-away-bucket/CrOSPayloads/Cellular/'
 
 
