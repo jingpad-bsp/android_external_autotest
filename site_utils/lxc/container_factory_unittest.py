@@ -11,9 +11,10 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import unittest_setup
+from autotest_lib.site_utils.lxc import utils as lxc_utils
 
 
-class ContainerFactoryTests(lxc.utils.LXCTests):
+class ContainerFactoryTests(lxc_utils.LXCTests):
     """Unit tests for the ContainerFactory class."""
 
     @classmethod
