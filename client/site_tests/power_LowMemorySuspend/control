@@ -5,6 +5,7 @@
 NAME = "power_LowMemorySuspend"
 PURPOSE = "Low memory suspension tests."
 CRITERIA = """Fails if system hang or reboot during this test."""
+ATTRIBUTES = "suite:crosbolt_perf_weekly"
 AUTHOR="Vovo Yang"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
