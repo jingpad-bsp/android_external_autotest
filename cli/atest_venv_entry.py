@@ -3,7 +3,6 @@ import os
 import sys
 
 import common
-from autotest_lib.cli import atest
 
 _AUTOTEST_ROOT = os.path.realpath(os.path.join(__file__, '..', '..'))
 _CHROMIUMOS_ROOT = os.path.abspath(
@@ -20,5 +19,7 @@ except ImportError as e:
   raise Exception('Error when importing skylab_inventory (venv dir: %s): %s'
                   % (_SKYLAB_INVENTORY_DIR, e))
 
+# Import atest after 'import skylab_inventory' as it uses skylab_inventory
+from autotest_lib.cli import atest
 
 sys.exit(atest.main())
