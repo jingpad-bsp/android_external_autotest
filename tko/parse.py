@@ -76,7 +76,7 @@ def parse_args():
                       dest="write_pidfile", action="store_true",
                       default=False)
     parser.add_option("--record-duration",
-                      help="Record timing to metadata db",
+                      help="[DEPRECATED] Record timing to metadata db",
                       dest="record_duration", action="store_true",
                       default=False)
     parser.add_option("--suite-report",
@@ -641,26 +641,6 @@ def parse_path(db, path, level, parse_options):
     return processed_jobs
 
 
-def record_parsing(processed_jobs, duration_secs):
-    """Record the time spent on parsing to metadata db.
-
-    @param processed_jobs: A set of job names of the parsed jobs.
-              set(['123-chromeos-test/host1', '123-chromeos-test/host2'])
-    @param duration_secs: Total time spent on parsing, in seconds.
-    """
-
-    for job_name in processed_jobs:
-        job_id, hostname = tko_utils.get_afe_job_id_and_hostname(job_name)
-        if not job_id or not hostname:
-            tko_utils.dprint('ERROR: can not parse job name %s, '
-                             'will not send duration to metadata db.'
-                             % job_name)
-            continue
-        else:
-            job_overhead.record_state_duration(
-                    job_id, hostname, job_overhead.STATUS.PARSING,
-                    duration_secs)
-
 def _detach_from_parent_process():
     """Allow reparenting the parse process away from caller.
 
@@ -741,8 +721,6 @@ def main():
     finally:
         metrics.Flush()
     duration_secs = (datetime.datetime.now() - start_time).total_seconds()
-    if options.record_duration:
-        record_parsing(processed_jobs, duration_secs)
 
 
 if __name__ == "__main__":
