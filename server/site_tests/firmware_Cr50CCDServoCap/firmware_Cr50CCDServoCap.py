@@ -113,6 +113,7 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
 
 
     def initialize(self, host, cmdline_args, ccd_lockout):
+        self.ccd_lockout = ccd_lockout
         super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args)
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
@@ -127,7 +128,6 @@ class firmware_Cr50CCDServoCap(FirmwareTest):
         if not self.cr50.servo_v4_supports_dts_mode():
             raise error.TestNAError('Need working servo v4 DTS control')
 
-        self.ccd_lockout = ccd_lockout
         if self.ccd_lockout:
             self.STATE_VALUES[self.ON].append(self.ON_CCD_LOCKOUT)
             logging.info('ccd is locked out. Skipping ccd initialization')
