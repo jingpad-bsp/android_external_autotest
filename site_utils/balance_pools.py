@@ -633,11 +633,8 @@ def main(argv):
     """
     arguments = _parse_command(argv)
     if arguments.production:
-        metrics_manager = site_utils.SetupTsMonGlobalState(
-                'balance_pools',
-                indirect=False,
-                auto_flush=False,
-        )
+        metrics_manager = site_utils.SetupTsMonGlobalState('balance_pools',
+                                                           indirect=True)
     else:
         metrics_manager = site_utils.TrivialContextManager()
 
@@ -669,8 +666,6 @@ def main(argv):
             )
         except KeyboardInterrupt:
             pass
-        finally:
-            metrics.Flush()
 
 
 if __name__ == '__main__':
