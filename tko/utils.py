@@ -70,4 +70,4 @@ def get_afe_job_id(tag):
     @return: the afe_job_id as a string if regex matches, else return ''
     """
     match = re.search('^([0-9]+)-.+/(.+)$', tag)
-    return match.group(1) if match else ''
+    return match.group(1) if match else None
