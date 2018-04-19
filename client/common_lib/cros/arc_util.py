@@ -148,15 +148,19 @@ def set_browser_options_for_opt_in(b_options):
     b_options.gaia_login = True
 
 
-def enable_play_store(autotest_ext, enabled):
+def enable_play_store(autotest_ext, enabled, enable_managed_policy=True):
     """
     Enable ARC++ Play Store
 
-    Do nothing if the account is managed.
+    Do nothing if the account is managed and enable_managed_policy is set to
+    True.
 
     @param autotest_ext: autotest extension object.
 
     @param enabled: if True then perform opt-in, otherwise opt-out.
+
+    @param enable_managed_policy: If False then policy check is ignored for
+            managed user case and ARC++ is forced enabled or disabled.
 
     @returns: True if the opt-in should continue; else False.
 
@@ -176,21 +180,22 @@ def enable_play_store(autotest_ext, enabled):
             });
         ''')
         # Results must be available by the next invocation.
-        is_managed = autotest_ext.EvaluateJavaScript(
-            'window.__play_store_state.managed')
-        if is_managed:
+        if autotest_ext.EvaluateJavaScript('window.__play_store_state.managed'):
+            # Handle managed case.
             logging.info('Determined that ARC is managed by user policy.')
-            policy_enabled = autotest_ext.EvaluateJavaScript(
-                'window.__play_store_state.enabled')
-            if enabled != policy_enabled:
-                logging.info(
-                    'Returning early since ARC is policy-enforced.')
+            if enable_managed_policy:
+                if enabled == autotest_ext.EvaluateJavaScript(
+                        'window.__play_store_state.enabled'):
+                    return True
+                logging.info('Returning early since ARC is policy-enforced.')
                 return False
-        else:
-            autotest_ext.ExecuteJavaScript('''
-                    chrome.autotestPrivate.setPlayStoreEnabled(
-                        %s, function(enabled) {});
-                ''' % ('true' if enabled else 'false'))
+            logging.info('Forcing ARC %s, ignore managed state.' %
+                    ('enabled' if enabled else 'disabled'))
+
+        autotest_ext.ExecuteJavaScript('''
+                chrome.autotestPrivate.setPlayStoreEnabled(
+                    %s, function(enabled) {});
+            ''' % ('true' if enabled else 'false'))
     except exceptions.EvaluateException as e:
         raise error.TestFail('Could not change the Play Store enabled state '
                              ' via autotest API. "%s".' % e)
@@ -276,7 +281,7 @@ def opt_in_and_wait_for_completion(extension_main_page):
     extension_main_page.ExecuteJavaScript('termsPage = null')
 
 
-def opt_in(browser, autotest_ext):
+def opt_in(browser, autotest_ext, enable_managed_policy=True):
     """
     Step through opt in and wait for it to complete.
 
@@ -284,13 +289,15 @@ def opt_in(browser, autotest_ext):
 
     @param browser: chrome.Chrome browser object.
     @param autotest_ext: autotest extension object.
+    @param enable_managed_policy: If False then policy check is ignored for
+            managed user case and ARC++ is forced enabled.
 
     @raises: error.TestFail if opt in fails.
 
     """
 
     logging.info(_OPT_IN_BEGIN)
-    if not enable_play_store(autotest_ext, True):
+    if not enable_play_store(autotest_ext, True, enable_managed_policy):
         return
 
     extension_main_page = find_opt_in_extension_page(browser)
