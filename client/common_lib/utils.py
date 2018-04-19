@@ -683,7 +683,7 @@ def run(command, timeout=None, ignore_status=False, stdout_tee=None,
             code of the command is.
     @param stdout_tee: optional file-like object to which stdout data
             will be written as it is generated (data will still be stored
-            in result.stdout).
+            in result.stdout unless this is DEVNULL).
     @param stderr_tee: likewise for stderr.
     @param verbose: if True, log the command being run.
     @param stdin: stdin to pass to the executed process (can be a file
