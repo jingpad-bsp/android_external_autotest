@@ -485,14 +485,6 @@ def parse_one(db, jobname, path, parse_options):
     if export_tko_to_file:
         export_tko_job_to_file(job, jobname, binary_file_name)
 
-    if reparse:
-        site_export_file = "autotest_lib.tko.site_export"
-        site_export = utils.import_site_function(__file__,
-                                                 site_export_file,
-                                                 "site_export",
-                                                 _site_export_dummy)
-        site_export(binary_file_name)
-
     if not dry_run:
         db.commit()
 
@@ -571,10 +563,6 @@ def _write_job_to_db(db, jobname, job, job_keyval):
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
-
-
-def _site_export_dummy(binary_file_name):
-    pass
 
 
 def _get_job_subdirs(path):
