@@ -3,13 +3,12 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
@@ -33,6 +32,16 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         """
         self._config_first_ap = additional_params[0]
         self._config_second_ap = additional_params[1]
+
+    def _find_bss_matching_mac_addr(self, iw, mac_addr):
+        """ Scan and look for a BSS in the scan results with given mac address.
+
+        @param iw iw_runner instantiated on the client
+        @param mac_addr the address to look for
+        """
+        bss_list = iw.scan_dump(self.context.client.wifi_if)
+        logging.debug('Found BSSes: %r', bss_list)
+        return filter(lambda bss: bss.bss == mac_addr, bss_list)
 
     def run_once(self):
         """Body of the test."""
@@ -61,17 +70,13 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         ap_mac = self.context.router.get_hostapd_mac(ap_num=1)
         logging.debug('Looking for BSS %s', ap_mac)
         iw = iw_runner.IwRunner(remote_host=self.context.client.host)
-        start_time = time.time()
-        while time.time() - start_time < self.BGSCAN_SAMPLE_PERIOD_SECONDS:
-            bsses = iw.scan_dump(self.context.client.wifi_if)
-            logging.debug('Found BSSes: %r', bsses)
-            if filter(lambda bss: bss.bss == ap_mac, bsses):
-                break
 
-            time.sleep(1)
-        else:
-            raise error.TestFail('Background scans should detect new BSSes '
-                                 'within an associated ESS.')
+        utils.poll_for_condition(
+            condition=lambda: self._find_bss_matching_mac_addr(iw, ap_mac),
+            exception=error.TestFail('Background scans should detect new BSSes'
+                                     'within an associated ESS.'),
+            timeout=self.BGSCAN_SAMPLE_PERIOD_SECONDS,
+            sleep_interval=1)
 
         self.context.router.deconfig_aps(instance=1)
         self.context.client.shill.disconnect(
