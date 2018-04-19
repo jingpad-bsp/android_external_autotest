@@ -440,8 +440,6 @@ class db_sql(object):
         @param job: The job object.
         @param parent_job_id: The parent job id.
         @param commit: If commit the transaction .
-
-        @return The dict of data inserted into the tko_jobs table.
         """
         afe_job_id = utils.get_afe_job_id(tag)
 
@@ -469,8 +467,6 @@ class db_sql(object):
         else:
             self.insert('tko_jobs', data, commit=commit)
             job.index = self.get_last_autonumber_value()
-        data['job_idx'] = job.index
-        return data
 
 
     def update_job_keyvals(self, job, commit=None):

@@ -445,7 +445,7 @@ def parse_one(db, jobname, path, parse_options):
 
             # write the job into the database.
             db.insert_or_update_machine(job)
-            job_data = db.insert_job(
+            db.insert_job(
                 jobname, job,
                 parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
             db.update_job_keyvals(job)
@@ -454,14 +454,13 @@ def parse_one(db, jobname, path, parse_options):
 
             # Verify the job data is written to the database.
             if job.tests:
-                tests_in_db = db.find_tests(job_data['job_idx'])
+                tests_in_db = db.find_tests(job.index)
                 tests_in_db_count = len(tests_in_db) if tests_in_db else 0
                 if tests_in_db_count != len(job.tests):
                     tko_utils.dprint(
                             'Failed to find enough tests for job_idx: %d. The '
                             'job should have %d tests, only found %d tests.' %
-                            (job_data['job_idx'], len(job.tests),
-                             tests_in_db_count))
+                            (job.index, len(job.tests), tests_in_db_count))
                     metrics.Counter(
                             'chromeos/autotest/result/db_save_failure',
                             description='The number of times parse failed to '
@@ -512,12 +511,12 @@ def parse_one(db, jobname, path, parse_options):
         datastore_parent_key = job_keyval.get('datastore_parent_key', None)
         provision_job_id = job_keyval.get('provision_job_id', None)
         if (suite_report and jobname.endswith('/hostless')
-            and job_data['suite'] and datastore_parent_key):
+            and job.suite and datastore_parent_key):
             tko_utils.dprint('Start dumping suite timing report...')
             timing_log = os.path.join(path, 'suite_timing.log')
             dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
                         "--output='%s' --debug" %
-                        (common.autotest_dir, job_data['afe_job_id'],
+                        (common.autotest_dir, job.afe_job_id,
                          timing_log))
 
             if provision_job_id is not None:
