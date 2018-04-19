@@ -322,18 +322,9 @@ def parse_one(db, jobname, path, parse_options):
 
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
-    # old tests is a dict from tuple (test_name, subdir) to test_idx
-    old_tests = {}
-    if old_job_idx is not None:
-        if not reparse:
-            tko_utils.dprint("! Job is already parsed, done")
-            return
-
-        raw_old_tests = db.select("test_idx,subdir,test", "tko_tests",
-                                  {"job_idx": old_job_idx})
-        if raw_old_tests:
-            old_tests = dict(((test, subdir), test_idx)
-                             for test_idx, subdir, test in raw_old_tests)
+    if old_job_idx is not None and not reparse:
+        tko_utils.dprint("! Job is already parsed, done")
+        return
 
     # look up the status version
     job_keyval = models.job.read_keyval(path)
@@ -348,27 +339,11 @@ def parse_one(db, jobname, path, parse_options):
         return
     _parse_status_log(parser, job, status_log_path)
 
-    # try and port test_idx over from the old tests, but if old tests stop
-    # matching up with new ones just give up
-    if reparse and old_job_idx is not None:
-        job.index = old_job_idx
-        for test in job.tests:
-            test_idx = old_tests.pop((test.testname, test.subdir), None)
-            if test_idx is not None:
-                test.test_idx = test_idx
-            else:
-                tko_utils.dprint("! Reparse returned new test "
-                                 "testname=%r subdir=%r" %
-                                 (test.testname, test.subdir))
+    if old_job_idx is not None:
+        job.job_idx = old_job_idx
+        unmatched_tests = _match_existing_tests(db, job)
         if not dry_run:
-            for test_idx in old_tests.itervalues():
-                where = {'test_idx' : test_idx}
-                db.delete('tko_iteration_result', where)
-                db.delete('tko_iteration_perf_value', where)
-                db.delete('tko_iteration_attributes', where)
-                db.delete('tko_test_attributes', where)
-                db.delete('tko_test_labels_tests', {'test_id': test_idx})
-                db.delete('tko_tests', where)
+            _delete_tests_from_db(db, unmatched_tests)
 
     job.build = None
     job.board = None
@@ -570,6 +545,42 @@ def _parse_status_log(parser, job, status_log_path):
         if test not in already_added:
             already_added.add(test)
             job.tests.append(test)
+
+
+def _match_existing_tests(db, job):
+    """Find entries in the DB corresponding to the job's tests, update job.
+
+    @return: Any unmatched tests in the db.
+    """
+    old_job_idx = job.job_idx
+    raw_old_tests = db.select("test_idx,subdir,test", "tko_tests",
+                                {"job_idx": old_job_idx})
+    if raw_old_tests:
+        old_tests = dict(((test, subdir), test_idx)
+                            for test_idx, subdir, test in raw_old_tests)
+    else:
+        old_tests = {}
+
+    for test in job.tests:
+        test_idx = old_tests.pop((test.testname, test.subdir), None)
+        if test_idx is not None:
+            test.test_idx = test_idx
+        else:
+            tko_utils.dprint("! Reparse returned new test "
+                                "testname=%r subdir=%r" %
+                                (test.testname, test.subdir))
+    return old_tests
+
+
+def _delete_tests_from_db(db, tests):
+    for test_idx in tests.itervalues():
+        where = {'test_idx' : test_idx}
+        db.delete('tko_iteration_result', where)
+        db.delete('tko_iteration_perf_value', where)
+        db.delete('tko_iteration_attributes', where)
+        db.delete('tko_test_attributes', where)
+        db.delete('tko_test_labels_tests', {'test_id': test_idx})
+        db.delete('tko_tests', where)
 
 
 def _get_job_subdirs(path):
