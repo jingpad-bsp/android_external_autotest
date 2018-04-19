@@ -532,7 +532,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if 'servo_v4_with_servo_micro' != self._servo.get_servo_version():
             return False
 
-        start_val = self._servo.get('servo_v4_dts_mode')
+        ccd_start = 'on' if self.ccd_is_enabled() else 'off'
+        dts_start = self._servo.get('servo_v4_dts_mode')
         try:
             # Verify both ccd enable and disable
             self.ccd_disable(raise_error=True)
@@ -541,8 +542,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         except Exception, e:
             logging.info(e)
             rv = False
-        self._servo.set_nocheck('servo_v4_dts_mode', start_val)
-        self.wait_for_ccd_state(start_val, 60, True)
+        self._servo.set_nocheck('servo_v4_dts_mode', dts_start)
+        self.wait_for_ccd_state(ccd_start, 60, True)
         logging.info('Test setup does%s support servo DTS mode',
                 '' if rv else 'n\'t')
         return rv
