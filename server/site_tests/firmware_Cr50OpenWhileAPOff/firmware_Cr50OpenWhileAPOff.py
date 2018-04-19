@@ -25,6 +25,7 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
 
     def initialize(self, host, cmdline_args, ccd_lockout):
         """Initialize the test"""
+        self.changed_dut_state = False
         super(firmware_Cr50OpenWhileAPOff, self).initialize(host, cmdline_args)
 
         if not hasattr(self, 'cr50'):
@@ -46,6 +47,7 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
             raise error.TestNAError('Plug in servo v4 type c cable into ccd '
                     'port')
 
+        self.changed_dut_state = True
         self.hold_ec_in_reset = True
         if not self.reset_device_get_deep_sleep_count(True):
             # Some devices can't tell the AP is off when the EC is off. Try
@@ -77,7 +79,10 @@ class firmware_Cr50OpenWhileAPOff(FirmwareTest):
 
     def cleanup(self):
         """Make sure the device is on at the end of the test"""
-        self.restore_dut()
+        # If we got far enough to start changing the DUT power state, attempt to
+        # turn the DUT back on and reenable the cr50 console.
+        if self.changed_dut_state:
+            self.restore_dut()
         super(firmware_Cr50OpenWhileAPOff, self).cleanup()
 
 
