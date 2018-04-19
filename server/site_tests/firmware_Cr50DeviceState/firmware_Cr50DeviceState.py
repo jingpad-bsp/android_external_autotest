@@ -136,6 +136,11 @@ class firmware_Cr50DeviceState(FirmwareTest):
             self.DEEP_SLEEP_STEP_SUFFIX in str(irq_key)):
             return [0, 0]
         if irq_key == self.KEY_REGULAR_SLEEP:
+            # If cr50_time is really low, we probably woke cr50 up using
+            # taskinfo, which would be a pmu wakeup.
+            if cr50_time == 0:
+                return [0, 1]
+
             min_count = max(cr50_time - self.SLEEP_DELAY, 0)
             # Just checking there is not a lot of extra sleep wakeups. Add 1 to
             # the sleep rate so cr50 can have some extra wakeups, but not too
@@ -370,20 +375,32 @@ class firmware_Cr50DeviceState(FirmwareTest):
         self.all_errors = {}
         self.host = host
         self.is_arm = self.is_arm_family()
-        self.cr50.ccd_disable(raise_error=False)
+        supports_dts_control = self.cr50.servo_v4_supports_dts_mode()
+
+        if supports_dts_control:
+            self.cr50.ccd_disable(raise_error=True)
+
         self.ccd_enabled = self.cr50.ccd_is_enabled()
         self.run_through_power_states()
 
-        ccd_was_enabled = self.ccd_enabled
-        self.cr50.ccd_enable(raise_error=False)
-        self.ccd_enabled = self.cr50.ccd_is_enabled()
-        # If the first run had ccd disabled, and the test was able to enable
-        # ccd, run through the states again to make sure there are no issues
-        # come up when ccd is enabled.
-        if not ccd_was_enabled and self.ccd_enabled:
-            # Reboot the EC to reset the device
-            self.ec.reboot()
-            self.run_through_power_states()
+        if supports_dts_control:
+            ccd_was_enabled = self.ccd_enabled
+            self.cr50.ccd_enable(raise_error=supports_dts_control)
+            self.ccd_enabled = self.cr50.ccd_is_enabled()
+            # If the first run had ccd disabled, and the test was able to enable
+            # ccd, run through the states again to make sure there are no issues
+            # come up when ccd is enabled.
+            if not ccd_was_enabled and self.ccd_enabled:
+                # Reboot the EC to reset the device
+                self.ec.reboot()
+                self.run_through_power_states()
+        else:
+            logging.info('Current setup only supports test with ccd %sabled.',
+                    'en' if self.ccd_enabled else 'dis')
 
         if self.all_errors:
             raise error.TestFail('Unexpected IRQ counts: %s' % self.all_errors)
+        if not supports_dts_control:
+            raise error.TestNAError('Verified device state with %s. Please '
+                    'run with type c servo v4 to test full device state.' %
+                    self.ccd_str)
