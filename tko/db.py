@@ -461,6 +461,32 @@ class db_sql(object):
             job.index = self.get_last_autonumber_value()
 
 
+    def insert_or_update_task_reference(self, job, commit=None):
+        """Insert an entry in the tko_task_references table.
+
+        The job should already have been inserted in tko_jobs.
+        @param job: tko.models.job object.
+        @param commit: Whether to commit this transaction.
+        """
+        data = {
+                'reference_type': 'afe',
+                'tko_job_idx': job.index,
+                'task_id': job.afe_job_id,
+                'parent_task_id': job.afe_parent_job_id,
+        }
+        task_reference_id = self._lookup_task_reference(job)
+        if task_reference_id is not None:
+            self.update('tko_task_references',
+                        data,
+                        {'id': task_reference_id},
+                        commit=commit)
+            job.task_reference_id = task_reference_id
+        else:
+            self.insert('tko_task_references', data, commit=commit)
+            job.task_reference_id = self.get_last_autonumber_value()
+
+
+
     def update_job_keyvals(self, job, commit=None):
         """Updates the job key values.
 
@@ -581,6 +607,23 @@ class db_sql(object):
             # Only try to update tko_machines record if machine is set. This
             # prevents unnecessary db writes for suite jobs.
             self._update_machine_information(job, commit=commit)
+
+
+    def _lookup_task_reference(self, job):
+        """Find the task_reference_id for a given job. Return None if not found.
+
+        @param job: tko.models.job object.
+        """
+        if job.index is None:
+            return None
+        rows = self.select(
+                'id', 'tko_task_references', {'tko_job_idx': job.index})
+        if not rows:
+            return None
+        if len(rows) > 1:
+            raise MySQLTooManyRows('Got %d tko_task_references for tko_job %d'
+                                   % (len(rows), job.index))
+        return rows[0][0]
 
 
     def _insert_machine(self, job, commit = None):

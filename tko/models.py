@@ -29,7 +29,10 @@ class job(object):
         self.suite = None
         self.board = None
         self.index = None
-
+        # id of the corresponding tko_task_references entry.
+        # This table is used to refer to skylab task / afe job corresponding to
+        # this tko_job.
+        self.task_reference_id = None
 
     @staticmethod
     def read_keyval(dir):
