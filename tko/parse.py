@@ -443,14 +443,7 @@ def parse_one(db, jobname, path, parse_options):
             if sponge_url:
                 job.keyval_dict['sponge_url'] = sponge_url
 
-            # write the job into the database.
-            db.insert_or_update_machine(job)
-            db.insert_job(
-                jobname, job,
-                parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
-            db.update_job_keyvals(job)
-            for test in job.tests:
-                db.insert_test(job, test)
+            _write_job_to_db(db, jobname, job, job_keyval)
 
             # Verify the job data is written to the database.
             if job.tests:
@@ -560,6 +553,24 @@ def parse_one(db, jobname, path, parse_options):
             gs_offloader_instructions[constants.GS_OFFLOADER_NO_OFFLOAD] = True
             with open(gs_instructions_file, 'w') as f:
                 json.dump(gs_offloader_instructions, f)
+
+
+def _write_job_to_db(db, jobname, job, job_keyval):
+    """Write all TKO data associated with a job to DB.
+
+    This updates the job object as a side effect.
+
+    @param db: tko.db.db_sql object.
+    @param jobname: Name of the job to write.
+    @param job: tko.models.job object.
+    """
+    db.insert_or_update_machine(job)
+    db.insert_job(
+        jobname, job,
+        parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+    db.update_job_keyvals(job)
+    for test in job.tests:
+        db.insert_test(job, test)
 
 
 def _site_export_dummy(binary_file_name):
