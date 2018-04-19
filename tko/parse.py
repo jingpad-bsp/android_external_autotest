@@ -341,24 +341,12 @@ def parse_one(db, jobname, path, parse_options):
 
     parser = parser_lib.parser(status_version)
     job = parser.make_job(path)
-    status_log = _find_status_log_path(path)
-    if not status_log:
+    tko_utils.dprint("+ Parsing dir=%s, jobname=%s" % (path, jobname))
+    status_log_path = _find_status_log_path(path)
+    if not status_log_path:
         tko_utils.dprint("! Unable to parse job, no status file")
         return
-
-    # parse the status logs
-    tko_utils.dprint("+ Parsing dir=%s, jobname=%s" % (path, jobname))
-    status_lines = open(status_log).readlines()
-    parser.start(job)
-    tests = parser.end(status_lines)
-
-    # parser.end can return the same object multiple times, so filter out dups
-    job.tests = []
-    already_added = set()
-    for test in tests:
-        if test not in already_added:
-            already_added.add(test)
-            job.tests.append(test)
+    _parse_status_log(parser, job, status_log_path)
 
     # try and port test_idx over from the old tests, but if old tests stop
     # matching up with new ones just give up
@@ -568,6 +556,20 @@ def _find_status_log_path(path):
     if os.path.exists(os.path.join(path, "status")):
         return os.path.join(path, "status")
     return ""
+
+
+def _parse_status_log(parser, job, status_log_path):
+    status_lines = open(status_log_path).readlines()
+    parser.start(job)
+    tests = parser.end(status_lines)
+
+    # parser.end can return the same object multiple times, so filter out dups
+    job.tests = []
+    already_added = set()
+    for test in tests:
+        if test not in already_added:
+            already_added.add(test)
+            job.tests.append(test)
 
 
 def _get_job_subdirs(path):
