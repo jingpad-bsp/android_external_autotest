@@ -252,7 +252,8 @@ class atest(object):
     Should only be instantiated by itself for usage
     references, otherwise, the <topic> objects should
     be used."""
-    msg_topic = '[acl|host|job|label|shard|test|user|server]'
+    msg_topic = ('[acl|host|job|label|shard|test|user|server|'
+                 'stable_version]')
     usage_action = '[action]'
     msg_items = ''
 
