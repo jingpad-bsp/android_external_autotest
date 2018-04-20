@@ -32,7 +32,7 @@ CONFIG = global_config.global_config
 # SQL command to remove old test results in TKO database.
 SLAVE_STATUS_CMD = 'show slave status\G'
 DELAY_TIME_REGEX = 'Seconds_Behind_Master:\s(\d+)'
-DELAY_METRICS = 'chromeos/autotest/database/seconds_behind_master'
+DELAY_METRICS = 'chromeos/autotest/afe_db/seconds_behind_master'
 # A large delay to report to metrics indicating the replica is in error.
 LARGE_DELAY = 1000000
 
