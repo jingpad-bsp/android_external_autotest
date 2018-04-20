@@ -181,7 +181,7 @@ class power_LoadTest(arc.ArcTest):
             # Find all wired ethernet interfaces.
             ifaces = [ iface for iface in interface.get_interfaces()
                 if (not iface.is_wifi_device() and
-                    iface.name.find('eth') != -1) ]
+                    iface.name.startswith('eth')) ]
             logging.debug(str([iface.name for iface in ifaces]))
             for iface in ifaces:
                 if check_network and iface.is_lower_up:
