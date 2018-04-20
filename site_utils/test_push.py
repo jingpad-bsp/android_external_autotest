@@ -205,31 +205,15 @@ def reverify_all_push_duts():
     AFE.reverify_hosts(hostnames=hosts)
 
 
-def get_default_build(board='gandof', server='chromeos-staging-master2.hot'):
-    """Get the default build to be used for test.
-
-    @param board: Name of board to be tested, default is gandof.
-    @return: Build to be tested, e.g., gandof-release/R36-5881.0.0
-    """
-    build = None
-    cmd = ('%s/cli/atest stable_version list --board=%s -w %s' %
-           (AUTOTEST_DIR, board, server))
-    result = subprocess.check_output(cmd, shell=True).strip()
-    build = re.search(BUILD_REGEX, result)
-    if build:
-        return '%s-release/%s' % (board, build.group(0))
-
-    # If fail to get stable version from cautotest, use that defined in config
-    build = CONFIG.get_config_value('CROS', 'stable_cros_version')
-    return '%s-release/%s' % (board, build)
-
-def parse_arguments():
+def parse_arguments(argv):
     """Parse arguments for test_push tool.
 
+    @param argv   Argument vector, as for `sys.argv`, including the
+                  command name in `argv[0]`.
     @return: Parsed arguments.
 
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=argv[0])
     parser.add_argument('-b', '--board', dest='board', default='gandof',
                         help='Default is gandof.')
     parser.add_argument('-sb', '--shard_board', dest='shard_board',
@@ -243,8 +227,6 @@ def parse_arguments():
                         help='Default is the latest stable build of given '
                              'board. Must be a stable build, otherwise AU test '
                              'will fail.')
-    parser.add_argument('-w', '--web', default='chromeos-staging-master2.hot',
-                        help='Specify web server to grab stable version from.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
                         default='shamu-2', help='Android board to test.')
     parser.add_argument('-ai', '--android_build', dest='android_build',
@@ -268,15 +250,15 @@ def parse_arguments():
                         help='If a service crashes more than this, the test '
                              'push is considered failed.')
 
-    arguments = parser.parse_args(sys.argv[1:])
+    arguments = parser.parse_args(argv[1:])
 
     # Get latest stable build as default build.
+    version_map = AFE.get_stable_version_map(AFE.CROS_IMAGE_TYPE)
     if not arguments.build:
-        arguments.build = get_default_build(arguments.board, arguments.web)
+        arguments.build = version_map.get_image_name(arguments.board)
     if not arguments.shard_build:
-        arguments.shard_build = get_default_build(arguments.shard_board,
-                                                  arguments.web)
-
+        arguments.shard_build = version_map.get_image_name(
+            arguments.shard_board)
     return arguments
 
 
@@ -705,7 +687,7 @@ def _main(arguments):
 
 def main():
     """Entry point."""
-    arguments = parse_arguments()
+    arguments = parse_arguments(sys.argv)
     with ts_mon_config.SetupTsMonGlobalState(service_name='test_push',
                                              indirect=True):
         test_push_success = False
