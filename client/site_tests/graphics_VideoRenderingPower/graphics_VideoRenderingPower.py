@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import time
+import logging, time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -22,6 +22,11 @@ TEST_NAME_AND_FLAGS = [
 PREAMBLE_DURATION_SECONDS = 8
 # Amount of time to let the video play while measuring power consumption.
 MEASUREMENT_DURATION_SECONDS = 12
+
+# Time in seconds to wait for cpu idle until giveup.
+IDLE_CPU_WAIT_TIMEOUT_SECONDS = 60.0
+# Maximum percent of cpu usage considered as idle.
+IDLE_CPU_LOAD_PERCENTAGE = 0.1
 
 GRAPH_NAME = 'power_consumption'
 
@@ -80,6 +85,13 @@ class graphics_VideoRenderingPower(graphics_utils.GraphicsTest):
             with chrome.Chrome(
                     extra_browser_args=test_name_and_flags[1],
                     init_network_controller=True) as cr:
+
+                if not utils.wait_for_idle_cpu(IDLE_CPU_WAIT_TIMEOUT_SECONDS,
+                                               IDLE_CPU_LOAD_PERCENTAGE):
+                    raise error.TestFail('Failed: Could not get idle CPU.')
+                if not utils.wait_for_cool_machine():
+                    raise error.TestFail('Failed: Could not get cold machine.')
+
                 tab = cr.browser.tabs[0]
                 tab.Navigate(video_url)
                 tab.WaitForDocumentReadyStateToBeComplete()

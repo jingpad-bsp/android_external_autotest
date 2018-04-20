@@ -647,6 +647,7 @@ class Autotest(installable_object.InstallableObject):
             host = self.host
         if not self.installed:
             self.install(host)
+
         opts = ["%s=%s" % (o[0], repr(o[1])) for o in dargs.items()]
         cmd = ", ".join([repr(test_name)] + map(repr, args) + opts)
         control = "job.run_test(%s)\n" % cmd

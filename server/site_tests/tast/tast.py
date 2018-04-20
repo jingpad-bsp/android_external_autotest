@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import time
 
 import dateutil.parser
 
@@ -18,7 +19,7 @@ from autotest_lib.server import utils
 _UNIX_EPOCH = dateutil.parser.parse('1970-01-01T00:00:00Z')
 
 
-class tast_Runner(test.test):
+class tast(test.test):
     """Autotest server test that runs a Tast test suite.
 
     Tast is an integration-testing framework analagous to the test-running
@@ -31,8 +32,12 @@ class tast_Runner(test.test):
     """
     version = 1
 
-    # Maximum time to wait for the tast command to complete, in seconds.
-    _EXEC_TIMEOUT_SEC = 600
+    # Maximum time to wait for various tast commands to complete, in seconds.
+    _VERSION_TIMEOUT_SEC = 10
+    _SUBCOMMAND_TIMEOUT_SEC = {
+        'list': 30,
+        'run': 600,
+    }
 
     # JSON file written by the tast command containing test results.
     _RESULTS_FILENAME = 'results.json'
@@ -52,7 +57,7 @@ class tast_Runner(test.test):
 
     # Prefix added to Tast test names when writing their results to TKO
     # status.log files.
-    _TEST_NAME_PREFIX = 'tast_Runner.'
+    _TEST_NAME_PREFIX = 'tast.'
 
     # Job start/end TKO event status codes from base_client_job._rungroup in
     # client/bin/job.py.
@@ -66,18 +71,19 @@ class tast_Runner(test.test):
     _JOB_STATUS_GOOD = 'GOOD'
     _JOB_STATUS_FAIL = 'FAIL'
 
-    def initialize(self, host, test_exprs, report_tests=True):
+    def initialize(self, host, test_exprs):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
-        @param report_tests: If True, report individual Tast tests' results in
-            status.log.
 
         @raises error.TestFail if the Tast installation couldn't be found.
         """
         self._host = host
         self._test_exprs = test_exprs
-        self._report_tests = report_tests
+
+        # List of JSON objects describing tests that will be run. See Test in
+        # src/platform/tast/src/chromiumos/tast/testing/test.go for details.
+        self._tests_to_run = []
 
         # List of JSON objects corresponding to tests from a Tast results.json
         # file. See TestResult in
@@ -94,16 +100,17 @@ class tast_Runner(test.test):
                 self._REMOTE_TEST_RUNNER_PATH)
 
     def run_once(self):
-        """Runs the test suite once."""
+        """Runs a single iteration of the test."""
         self._log_version()
-        self._run_tast()
+        self._get_tests_to_run()
+        self._run_tests()
         self._parse_results()
 
     def _get_path(self, path, allow_missing=False):
         """Returns the path to an installed Tast-related file or directory.
 
-        @param path Absolute path in root filesystem, e.g. "/usr/bin/tast".
-        @param allow_missing True if it's okay for the path to be missing.
+        @param path: Absolute path in root filesystem, e.g. "/usr/bin/tast".
+        @param allow_missing: True if it's okay for the path to be missing.
 
         @return: Absolute path within install root, e.g.
             "/opt/infra-tools/usr/bin/tast", or an empty string if the path
@@ -128,50 +135,85 @@ class tast_Runner(test.test):
         """Runs the tast command locally to log its version."""
         try:
             utils.run([self._tast_path, '-version'],
-                      timeout=self._EXEC_TIMEOUT_SEC,
+                      timeout=self._VERSION_TIMEOUT_SEC,
                       stdout_tee=utils.TEE_TO_LOGS,
                       stderr_tee=utils.TEE_TO_LOGS,
                       stderr_is_expected=True,
                       stdout_level=logging.INFO,
                       stderr_level=logging.ERROR)
         except error.CmdError as e:
-            logging.error('Failed to log tast version: %s' % str(e))
+            logging.error('Failed to log tast version: %s', str(e))
 
-    def _run_tast(self):
-        """Runs the tast command locally to perform testing against the DUT.
+    def _run_tast(self, subcommand, extra_subcommand_args, log_stdout=False):
+        """Runs the tast command locally to e.g. list available tests or perform
+        testing against the DUT.
 
-        @raises error.TestFail if the tast command fails or times out (but not
-            if individual tests fail).
+        @param subcommand: Subcommand to pass to the tast executable, e.g. 'run'
+            or 'list'.
+        @param extra_subcommand_args: List of additional subcommand arguments.
+        @param log_stdout: If true, write stdout to log.
+
+        @returns client.common_lib.utils.CmdResult object describing the result.
+
+        @raises error.TestFail if the tast command fails or times out.
         """
         cmd = [
             self._tast_path,
             '-verbose',
             '-logtime=false',
-            'run',
+            subcommand,
             '-build=false',
-            '-resultsdir=' + self.resultsdir,
             '-remotebundledir=' + self._remote_bundle_dir,
             '-remotedatadir=' + self._remote_data_dir,
             '-remoterunner=' + self._remote_test_runner_path,
-            self._host.hostname,
         ]
+        cmd.extend(extra_subcommand_args)
+        cmd.append(self._host.hostname)
         cmd.extend(self._test_exprs)
 
         logging.info('Running ' +
                      ' '.join([utils.sh_quote_word(a) for a in cmd]))
         try:
-            utils.run(cmd,
-                      ignore_status=False,
-                      timeout=self._EXEC_TIMEOUT_SEC,
-                      stdout_tee=utils.TEE_TO_LOGS,
-                      stderr_tee=utils.TEE_TO_LOGS,
-                      stderr_is_expected=True,
-                      stdout_level=logging.INFO,
-                      stderr_level=logging.ERROR)
+            return utils.run(cmd,
+                             ignore_status=False,
+                             timeout=self._SUBCOMMAND_TIMEOUT_SEC[subcommand],
+                             stdout_tee=(utils.TEE_TO_LOGS if log_stdout
+                                         else None),
+                             stderr_tee=utils.TEE_TO_LOGS,
+                             stderr_is_expected=True,
+                             stdout_level=logging.INFO,
+                             stderr_level=logging.ERROR)
         except error.CmdError as e:
             raise error.TestFail('Failed to run tast: %s' % str(e))
         except error.CmdTimeoutError as e:
             raise error.TestFail('Got timeout while running tast: %s' % str(e))
+
+    def _get_tests_to_run(self):
+        """Runs the tast command to update the list of tests that will be run.
+
+        @raises error.TestFail if the tast command fails or times out.
+        """
+        logging.info('Getting list of tests that will be run')
+        result = self._run_tast('list', ['-json'])
+        try:
+            self._tests_to_run = json.loads(result.stdout.strip())
+        except ValueError as e:
+            raise error.TestFail('Failed to parse tests: %s' % str(e))
+        if len(self._tests_to_run) == 0:
+            expr = ' '.join([utils.sh_quote_word(a) for a in self._test_exprs])
+            raise error.TestFail('No tests matched by %s' % expr)
+
+        logging.info('Expect to run %d test(s)', len(self._tests_to_run))
+
+    def _run_tests(self):
+        """Runs the tast command to perform testing.
+
+        @raises error.TestFail if the tast command fails or times out (but not
+            if individual tests fail).
+            """
+        logging.info('Running tests')
+        self._run_tast('run', ['-resultsdir=' + self.resultsdir],
+                       log_stdout=True)
 
     def _parse_results(self):
         """Parses results written by the tast command.
@@ -180,8 +222,7 @@ class tast_Runner(test.test):
         """
         # Register a hook to write the results of individual Tast tests as
         # top-level entries in the TKO status.log file.
-        if self._report_tests:
-            self.job.add_post_run_hook(self._log_all_tests)
+        self.job.add_post_run_hook(self._log_all_tests)
 
         path = os.path.join(self.resultsdir, self._RESULTS_FILENAME)
         failed = []
@@ -208,8 +249,15 @@ class tast_Runner(test.test):
         """Writes entries to the TKO status.log file describing the results of
         all tests.
         """
+        seen_test_names = set()
         for test in self._test_results:
             self._log_test(test)
+            seen_test_names.add(test['name'])
+
+        # Report any tests that unexpectedly weren't run.
+        for test in self._tests_to_run:
+            if test['name'] not in seen_test_names:
+                self._log_missing_test(test['name'])
 
     def _log_test(self, test):
         """Writes events to the TKO status.log file describing the results from
@@ -241,6 +289,18 @@ class tast_Runner(test.test):
             end_status = self._JOB_STATUS_END_FAIL
 
         self._log_test_event(end_status, name, end_time)
+
+    def _log_missing_test(self, test_name):
+        """Writes events to the TKO status.log file describing a Tast test that
+        unexpectedly wasn't run.
+
+        @param test_name: Name of the Tast test that wasn't run.
+        """
+        now = time.time()
+        self._log_test_event(self._JOB_STATUS_START, test_name, now)
+        self._log_test_event(self._JOB_STATUS_FAIL, test_name, now,
+                             'Test was not run')
+        self._log_test_event(self._JOB_STATUS_END_FAIL, test_name, now)
 
     def _log_test_event(self, status_code, test_name, timestamp, message=''):
         """Logs a single event to the TKO status.log file.

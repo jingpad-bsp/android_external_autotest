@@ -181,7 +181,7 @@ class power_LoadTest(arc.ArcTest):
             # Find all wired ethernet interfaces.
             ifaces = [ iface for iface in interface.get_interfaces()
                 if (not iface.is_wifi_device() and
-                    iface.name.find('eth') != -1) ]
+                    iface.name.startswith('eth')) ]
             logging.debug(str([iface.name for iface in ifaces]))
             for iface in ifaces:
                 if check_network and iface.is_lower_up:
@@ -276,7 +276,6 @@ class power_LoadTest(arc.ArcTest):
         arc_mode = arc_common.ARC_MODE_DISABLED
         if utils.is_arc_available():
             arc_mode = arc_common.ARC_MODE_ENABLED
-        self._detachable_handler = power_utils.BaseActivitySimulator()
 
         try:
             self._browser = chrome.Chrome(extension_paths=[ext_path],
@@ -325,24 +324,9 @@ class power_LoadTest(arc.ArcTest):
             pagelt_tracking = self._testServer.add_wait_url(url='/pagelt')
 
             self._testServer.add_url_handler(url='/pagelt',\
-                handler_func=(lambda handler, forms, tracker=self,
-                              loop_counter=i:\
-                    _extension_page_load_info_handler(handler, forms,
-                                                      loop_counter, self)))
+                handler_func=(lambda handler, forms, tracker=self, loop_counter=i:\
+                    _extension_page_load_info_handler(handler, forms, loop_counter, self)))
 
-            # setup a handler to simulate waking up the base of a detachable
-            # on user interaction. On scrolling, wake for 1s, on page
-            # navigation, wake for 10s.
-            self._testServer.add_url(url='/pagenav')
-            self._testServer.add_url(url='/scroll')
-
-            self._testServer.add_url_handler(url='/pagenav',
-                handler_func=(lambda handler, args, plt=self:
-                              plt._detachable_handler.wake_base(10000)))
-
-            self._testServer.add_url_handler(url='/scroll',
-                handler_func=(lambda handler, args, plt=self:
-                              plt._detachable_handler.wake_base(1000)))
             # reset backlight level since powerd might've modified it
             # based on ambient light
             self._set_backlight_level()
@@ -505,7 +489,6 @@ class power_LoadTest(arc.ArcTest):
             self._backlight.restore()
         if self._services:
             self._services.restore_services()
-        self._detachable_handler.restore()
 
         # cleanup backchannel interface
         # Prevent wifi congestion in test lab by forcing machines to forget the
@@ -568,6 +551,7 @@ class power_LoadTest(arc.ArcTest):
             logging.debug("Didn't get status back from power extension")
 
         return low_battery
+
 
     def _set_backlight_level(self):
         self._backlight.set_default()

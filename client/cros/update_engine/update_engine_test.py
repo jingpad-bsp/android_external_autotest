@@ -27,7 +27,10 @@ class UpdateEngineTest(test.test):
 
     # Files used by the tests.
     _UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
+    _UPDATE_ENGINE_LOG_DIR = '/var/log/update_engine/'
     _CUSTOM_LSB_RELEASE = '/mnt/stateful_partition/etc/lsb-release'
+
+    _UPDATE_ENGINE_PREFS_FOLDER = '/var/lib/update_engine/prefs/'
 
     # Public key used to force update_engine to verify omaha response data on
     # test images.
@@ -75,6 +78,10 @@ class UpdateEngineTest(test.test):
             if self._UPDATE_STATUS_IDLE == status[self._CURRENT_OP]:
                 raise error.TestFail('Update status was idle while trying to '
                                      'get download status.')
+            if self._UPDATE_STATUS_UPDATED_NEED_REBOOT == status[
+                self._CURRENT_OP]:
+                raise error.TestFail('Update status was NEED_REBOOT while '
+                                     'trying to get download status.')
             # If we call this right after reboot it may not be downloading yet.
             if self._UPDATE_ENGINE_DOWNLOADING != status[self._CURRENT_OP]:
                 time.sleep(1)
@@ -165,6 +172,32 @@ class UpdateEngineTest(test.test):
             # of this test.
             utils.stop_service('recover_duts', ignore_status=True)
             utils.run('ifconfig eth0 down')
-            utils.run('ifconfig eth1 down')
+            utils.run('ifconfig eth1 down', ignore_status=True)
         except error.CmdError:
             logging.exception('Failed to disconnect one or more interfaces.')
+
+
+    def _check_for_update(self, port, server='http://127.0.0.1',
+                          interactive=True):
+        """
+        Starts a background update check.
+
+        @param port: The omaha port to call in the update url.
+        @param interactive: Whether we are doing an interactive update.
+
+        """
+        cmd = 'update_engine_client --check_for_update --omaha_url=' + \
+              '%s:%d/update ' % (server, port)
+        if not interactive:
+            cmd += ' --interactive=false'
+
+        utils.run(cmd, ignore_status=True)
+
+
+    def _wait_for_update_to_fail(self):
+        """Waits for the update to retry until failure."""
+        while True:
+            if self._check_update_engine_log_for_entry('Reached max attempts ',
+                                                       raise_error=False):
+                break
+            time.sleep(1)
