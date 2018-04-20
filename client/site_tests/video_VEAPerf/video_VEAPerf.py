@@ -132,6 +132,7 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         self._logperf(test_name, KEY_CPU_USER_USAGE, u / r, UNIT_RATIO)
         self._logperf(test_name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_RATIO)
 
+
     def _analyze_frame_stats(self, test_name, frame_stats_file):
         """
         Analyzes quality from --frame_stats output CSV. Assumes YUV420 (for MSE
@@ -200,6 +201,7 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                               func(frame_psnr[channel]), None,
                               higher_is_better=True)
 
+
     def _get_profile_name(self, profile):
         """
         Gets profile name from a profile index.
@@ -253,6 +255,17 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                             '%s_%s_%s' % (test_name, subtype, suffix))
 
 
+    def _get_vea_unittest_args(self, test_stream_data, test_log_file):
+        vea_args = [
+            '--test_stream_data=%s' % test_stream_data,
+            '--output_log="%s"' % test_log_file,
+            '--ozone-platform=gbm',
+            helper_logger.chrome_vmodule_flag()]
+        if encoder_utils.has_broken_flush():
+            vea_args.append('--disable_flush')
+        return vea_args
+
+
     def _run_test_case(self, test_name, test_stream_data):
         """
         Runs a VEA unit test.
@@ -263,14 +276,8 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         # Get FPS.
         test_log_file = self._get_result_filename(test_name, 'fullspeed',
                                                   TEST_LOG_SUFFIX)
-        vea_args = [
-            '--gtest_filter=EncoderPerf/*/0',
-            '--test_stream_data=%s' % test_stream_data,
-            '--output_log="%s"' % test_log_file,
-            helper_logger.chrome_vmodule_flag(),
-            '--ozone-platform=gbm']
-        if encoder_utils.has_broken_flush():
-            vea_args.append('--disable_flush')
+        vea_args = self._get_vea_unittest_args(test_stream_data, test_log_file)
+        vea_args += ['--gtest_filter=EncoderPerf/*/0']
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
         self._analyze_fps(test_name, test_log_file)
 
@@ -279,15 +286,10 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                                                   TEST_LOG_SUFFIX)
         time_log_file = self._get_result_filename(test_name, 'fixedspeed',
                                                   TIME_LOG_SUFFIX)
-        vea_args = [
-            '--gtest_filter=SimpleEncode/*/0',
-            '--test_stream_data=%s' % test_stream_data,
-            '--run_at_fps', '--measure_latency',
-            '--output_log="%s"' % test_log_file,
-            helper_logger.chrome_vmodule_flag(),
-            '--ozone-platform=gbm']
-        if encoder_utils.has_broken_flush():
-            vea_args.append('--disable_flush')
+        vea_args = self._get_vea_unittest_args(test_stream_data, test_log_file)
+        vea_args += ['--gtest_filter=SimpleEncode/*/0',
+                     '--run_at_fps',
+                     '--measure_latency']
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args),
@@ -301,15 +303,12 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                                                   TEST_LOG_SUFFIX)
         frame_stats_file = self._get_result_filename(test_name, 'quality',
                                                     FRAME_STATS_SUFFIX)
-        vea_args = [
-            '--gtest_filter=SimpleEncode/*/0',
-            '--test_stream_data=%s' % test_stream_data,
-            '--frame_stats="%s"' % frame_stats_file,
-            '--output_log="%s"' % test_log_file,
-            helper_logger.chrome_vmodule_flag(),
-            '--ozone-platform=gbm']
+        vea_args = self._get_vea_unittest_args(test_stream_data, test_log_file)
+        vea_args += ['--gtest_filter=SimpleEncode/*/0',
+                     '--frame_stats="%s"' % frame_stats_file]
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
         self._analyze_frame_stats(test_name, frame_stats_file)
+
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
