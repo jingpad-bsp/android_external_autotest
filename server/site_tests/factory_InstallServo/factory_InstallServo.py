@@ -36,6 +36,7 @@ class factory_InstallServo(FactoryInstallTest):
     def _create_servo(self, servo_host, servo_port):
         self.servo = servo.Servo(
                 hosts.ServoHost(servo_host=servo_host, servo_port=servo_port))
+        hosts.send_creation_metric(self.servo, context='factory_InstallServo')
         def kill_servo():
             del self.servo
         self.cleanup_tasks.append(kill_servo)
@@ -57,7 +58,9 @@ class factory_InstallServo(FactoryInstallTest):
         """
         Overridden from superclass.
         """
-        return hosts.SSHHost(self.dut_ip)
+        host = hosts.SSHHost(self.dut_ip)
+        hosts.send_creation_metric(host, context='factory_InstallServo')
+        return host
 
     def run_factory_install(self, shim_image):
         """
