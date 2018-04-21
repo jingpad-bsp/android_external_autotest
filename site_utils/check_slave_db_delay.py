@@ -70,6 +70,7 @@ def parse_options():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--replicas', nargs='+',
+                        default=[],
                         help='IP addresses of readonly replicas of TKO.')
     parser.add_argument('-l', '--logfile', type=str,
                         default=None,
@@ -95,8 +96,11 @@ def main():
 
     logging.info('Start checking Seconds_Behind_Master of slave databases')
 
-    for replica in options.replicas:
-        check_delay(replica, global_db_user, global_db_password)
+    if not options.replicas:
+        logging.warning('No replicas checked.')
+    else:
+        for replica in options.replicas:
+            check_delay(replica, global_db_user, global_db_password)
 
     slaves = server_manager_utils.get_servers(
             role='database_slave', status='primary')
