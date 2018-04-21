@@ -8,6 +8,7 @@
 
 """This file provides core logic for servo verify/repair process."""
 
+from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import servo_host
 
 
@@ -70,4 +71,6 @@ def create_plankton_host(plankton_args):
     # TODO Make this work in the lab chromium:564836
     if plankton_args is None:
         return None
-    return PlanktonHost(Required_by_test=True, is_in_lab=False, **plankton_args)
+    host = PlanktonHost(Required_by_test=True, is_in_lab=False, **plankton_args)
+    base_classes.send_creation_metric(host)
+    return host
