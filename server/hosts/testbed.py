@@ -20,6 +20,7 @@ from autotest_lib.server import autoserv_parser
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import adb_host
+from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import testbed_label
@@ -73,10 +74,12 @@ class TestBed(object):
                                    self.query_adb_device_serials())
         self.adb_devices = {}
         for adb_serial in self.adb_device_serials:
-            self.adb_devices[adb_serial] = adb_host.ADBHost(
+            host = adb_host.ADBHost(
                 hostname=hostname, teststation=self.teststation,
                 adb_serial=adb_serial, afe_host=self._afe_host,
                 host_info_store=self.host_info_store, **dargs)
+            base_classes.send_creation_metric(host, context='testbed')
+            self.adb_devices[adb_serial] = host
 
 
     def query_adb_device_serials(self):

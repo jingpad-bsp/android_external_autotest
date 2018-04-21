@@ -19,7 +19,7 @@ import os, re
 
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.server.cros.factory_install_test import FactoryInstallTest
-from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server import hosts
 
 
 # How long to wait after killing KVMs.
@@ -92,7 +92,9 @@ class factory_InstallVM(FactoryInstallTest):
         """
         Overridden from superclass.
         """
-        return ssh_host.SSHHost("localhost", port=self.ssh_tunnel_port)
+        host = hosts.SSHHost("localhost", port=self.ssh_tunnel_port)
+        hosts.send_creation_metric(host, context='factory_InstallVM')
+        return host
 
     def run_factory_install(self, local_hdb):
         """

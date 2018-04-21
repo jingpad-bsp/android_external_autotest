@@ -3,6 +3,8 @@
 import logging
 from contextlib import closing
 
+import common
+
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -10,6 +12,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import adb_host
+from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import emulated_adb_host
 from autotest_lib.server.hosts import host_info
@@ -201,6 +204,7 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
         host_instance.job_start()
         _started_hostnames.add(hostname)
 
+    base_classes.send_creation_metric(host_instance, context='factory')
     return host_instance
 
 
@@ -220,7 +224,9 @@ def create_testbed(machine, **kwargs):
     detected_args = _get_host_arguments(machine)
     hostname = detected_args.pop('hostname')
     kwargs.update(detected_args)
-    return testbed.TestBed(hostname, **kwargs)
+    host = testbed.TestBed(hostname, **kwargs)
+    base_classes.send_creation_metric(host, context='factory')
+    return host
 
 
 def create_target_machine(machine, **kwargs):
