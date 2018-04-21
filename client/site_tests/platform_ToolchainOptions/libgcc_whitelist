@@ -15,4 +15,4 @@
 # Remove these after crosvm is built with compiler-rt.
 # https://crbug.com/814480.
 /usr/bin/crosvm
-/usr/lib64/libqcow_utils.so
+/usr/lib*/libqcow_utils.so
