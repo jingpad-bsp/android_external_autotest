@@ -12,13 +12,9 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
     """Try a non-forced autoupdate during OOBE."""
     version = 1
 
-    # We override the default lsb-release file.
-    _CUSTOM_LSB_RELEASE = '/mnt/stateful_partition/etc/lsb-release'
-
-
     def cleanup(self):
         self._host.run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
-        self._host.get_file('/var/log/update_engine.log', self.resultsdir)
+        self._host.get_file(self._UPDATE_ENGINE_LOG, self.resultsdir)
         super(autoupdate_NonBlockingOOBEUpdate, self).cleanup()
 
 
@@ -55,8 +51,8 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
         # Ensure that the update failed as expected.
         err_msg = 'finished OmahaRequestAction with code ' \
                   'ErrorCode::kNonCriticalUpdateInOOBE'
-        output = self._host.run('cat /var/log/update_engine.log | grep "%s"'
-                                % err_msg, ignore_status=True).exit_status
+        output = self._host.run('cat %s | grep "%s"' % (
+            self._UPDATE_ENGINE_LOG, err_msg), ignore_status=True).exit_status
         if output != 0:
             raise error.TestFail('Update did not fail with '
                                  'kNonCriticalUpdateInOOBE')
