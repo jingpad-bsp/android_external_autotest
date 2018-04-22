@@ -2008,14 +2008,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @returns a string representing this host's platform.
         """
-        cmd = 'mosys platform model'
-        result = self.run(command=cmd, ignore_status=True)
-        if result.exit_status == 0:
-            return result.stdout.strip()
-        else:
-            # $(mosys platform model) should support all platforms, but it
-            # currently doesn't, so this reverts to parsing the fw
-            # for any unsupported mosys platforms.
+        release_info = utils.parse_cmd_output('cat /etc/lsb-release',
+                                              run_method=self.run)
+        unibuild = release_info.get('CHROMEOS_RELEASE_UNIBUILD') == '1'
+        platform = ''
+        if unibuild:
+            cmd = 'mosys platform model'
+            result = self.run(command=cmd, ignore_status=True)
+            if result.exit_status == 0:
+                platform = result.stdout.strip()
+
+        if not platform:
+            # Look at the firmware for non-unibuild cases or if mosys fails.
             crossystem = utils.Crossystem(self)
             crossystem.init()
             # Extract fwid value and use the leading part as the platform id.
@@ -2023,7 +2027,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Example: Alex.X.YYY.Z or Google_Alex.X.YYY.Z
             platform = crossystem.fwid().split('.')[0].lower()
             # Newer platforms start with 'Google_' while the older ones do not.
-            return platform.replace('google_', '')
+            platform = platform.replace('google_', '')
+        return platform
 
 
     def get_architecture(self):
