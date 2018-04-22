@@ -53,14 +53,14 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
 
     def _setup_second_hosts_prefs(self):
         """The second DUT needs to be setup for the test."""
-        num_attempts = os.path.join(self._UPDATE_ENGINE_PREFS_FOLDER,
+        num_attempts = os.path.join(self._UPDATE_ENGINE_PREFS_DIR,
                                     self._P2P_NUM_ATTEMPTS_PREF)
         if self._too_many_attempts:
             self._hosts[1].run('echo 11 > %s' % num_attempts)
         else:
             self._hosts[1].run('rm %s' % num_attempts, ignore_status=True)
 
-        first_attempt = os.path.join(self._UPDATE_ENGINE_PREFS_FOLDER,
+        first_attempt = os.path.join(self._UPDATE_ENGINE_PREFS_DIR,
                                      self._P2P_FIRST_ATTEMPT_TIMESTAMP_PREF)
         if self._deadline_expired:
             self._hosts[1].run('echo 1 > %s' % first_attempt)
@@ -78,13 +78,13 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
         the error states (deadline expired and too many attempts).
 
         """
-        pref_file = os.path.join(self._UPDATE_ENGINE_PREFS_FOLDER,
+        pref_file = os.path.join(self._UPDATE_ENGINE_PREFS_DIR,
                                  self._CURRENT_RESPONSE_SIGNATURE_PREF)
         self._hosts[0].get_file(pref_file, self.resultsdir)
         result_pref_file = os.path.join(self.resultsdir,
                                         self._CURRENT_RESPONSE_SIGNATURE_PREF)
         self._hosts[1].send_file(result_pref_file,
-                                 self._UPDATE_ENGINE_PREFS_FOLDER)
+                                 self._UPDATE_ENGINE_PREFS_DIR)
 
 
     def _update_dut(self, host, update_url):
@@ -106,7 +106,7 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                  'the update_engine logs in the results dir.')
         finally:
             logging.info('Saving update engine logs to results dir.')
-            host.get_file('/var/log/update_engine.log',
+            host.get_file(self._UPDATE_ENGINE_LOG,
                           os.path.join(self.resultsdir,
                                        'update_engine.log_first_dut'))
         host.reboot()
@@ -159,12 +159,12 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                  'checkout update_engine logs in results dir.')
         finally:
             logging.info('Saving update engine logs to results dir.')
-            host.get_file('/var/log/update_engine.log',
+            host.get_file(self._UPDATE_ENGINE_LOG,
                           os.path.join(self.resultsdir,
                                        'update_engine.log_second_dut'))
 
         # Return the update_engine logs so we can check for p2p entries.
-        return host.run('cat /var/log/update_engine.log').stdout
+        return host.run('cat %s' % self._UPDATE_ENGINE_LOG).stdout
 
 
     def _check_for_p2p_entries_in_update_log(self, update_engine_log):

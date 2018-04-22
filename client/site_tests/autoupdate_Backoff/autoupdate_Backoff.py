@@ -42,9 +42,9 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
 
     def run_once(self, image_url, image_size, sha256, backoff):
         self._no_ignore_backoff = os.path.join(
-            self._UPDATE_ENGINE_PREFS_FOLDER, self._NO_IGNORE_BACKOFF_PREF)
+            self._UPDATE_ENGINE_PREFS_DIR, self._NO_IGNORE_BACKOFF_PREF)
         self._backoff_expiry_time = os.path.join(
-            self._UPDATE_ENGINE_PREFS_FOLDER, self._BACKOFF_EXPIRY_TIME_PREF)
+            self._UPDATE_ENGINE_PREFS_DIR, self._BACKOFF_EXPIRY_TIME_PREF)
         utils.run('touch %s' % self._no_ignore_backoff, ignore_status=True)
         utils.run('restart update-engine')
 
@@ -56,7 +56,7 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
         self._omaha.start()
 
         # Start the update.
-        self._check_for_update(self._omaha.get_port(), interactive=False)
+        self._check_for_update(port=self._omaha.get_port(), interactive=False)
         self._wait_for_progress(0.2)
 
         # Disable internet so the update fails.
@@ -69,8 +69,9 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
                                                     raise_error=True)
             utils.run('cat %s' % self._backoff_expiry_time)
             try:
-                self._check_for_update(self._omaha.get_port(),
-                                       interactive=False)
+                self._check_for_update(port=self._omaha.get_port(),
+                                       interactive=False,
+                                       wait_for_completion=True)
             except error.CmdError as e:
                 logging.info('Update failed as expected.')
                 logging.error(e)
@@ -83,6 +84,7 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
         else:
             self._check_update_engine_log_for_entry(self._BACKOFF_DISABLED,
                                                     raise_error=True)
-            self._check_for_update(self._omaha.get_port(), interactive=False)
+            self._check_for_update(port=self._omaha.get_port(),
+                                   interactive=False)
             self._wait_for_update_to_complete()
 

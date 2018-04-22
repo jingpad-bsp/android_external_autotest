@@ -131,7 +131,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
                     # via cellular and don't  need to ping omaha again. When
                     # the DUT reboots it will send a final update ping to
                     # production omaha and then move to the sign in screen.
-                    self._wait_for_update_to_complete()
+                    self._wait_for_update_to_complete(finalizing_ok=True)
             except error.TestError as e:
                 logging.error('Failure setting up sim card.')
                 raise error.TestFail(e)
