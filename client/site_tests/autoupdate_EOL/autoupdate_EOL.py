@@ -64,9 +64,8 @@ class autoupdate_EOL(update_engine_test.UpdateEngineTest):
         self._omaha.start()
 
         # Try to update using the omaha server. It will fail with noupdate.
-        utils.run('update_engine_client -update -omaha_url=' +
-                  'http://127.0.0.1:%d/update ' % self._omaha.get_port(),
-                  ignore_status=True)
+        self._check_for_update(port=self._omaha.get_port(), ignore_status=True,
+                               wait_for_completion=True)
 
         self._check_eol_status()
         self._check_eol_notification()
