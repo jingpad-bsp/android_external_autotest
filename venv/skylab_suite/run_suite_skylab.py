@@ -13,6 +13,7 @@ import sys
 import logging
 
 from skylab_suite import suite_parser
+from skylab_suite import suite_tracking
 
 
 def _run_suite(options):
@@ -38,6 +39,7 @@ def parse_args():
 def main():
     """Entry point."""
     options = parse_args()
+    suite_tracking.setup_logging()
     _run_suite(options)
 
 
