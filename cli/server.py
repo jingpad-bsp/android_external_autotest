@@ -33,6 +33,7 @@ from autotest_lib.client.common_lib import revision_control
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.site_utils import server_manager
 from autotest_lib.site_utils import server_manager_utils
+from chromite.lib import gob_util
 from skylab_inventory import text_manager
 from skylab_inventory import translation_utils
 from skylab_inventory.lib import server as skylab_server
@@ -47,9 +48,7 @@ RESPECT_SKYLAB_SERVERDB = global_config.global_config.get_config_value(
 ATEST_DISABLE_MSG = ('Updating server_db via atest server command has been '
                      'disabled. Please use use go/cros-infra-inventory-tool '
                      'to update it in skylab inventory service.')
-UPLOAD_CL_MSG = ('Please submit the CL uploaded in https://chrome-internal-'
-                 'review.googlesource.com/dashboard/self to make the server '
-                 'change effective.')
+SUBMIT_CL_MSG = 'Please submit the CL at %s to make the change effective.'
 
 
 class server(topic_common.atest):
@@ -305,10 +304,9 @@ class server_create(server):
 
         message = skylab_utils.construct_commit_message(
                 'Add new server: %s' % self.hostname)
-        inventory_repo.git_repo.commit(message)
-        inventory_repo.git_repo.upload_cl(
-                'origin', 'master', draft=self.draft,
-                dryrun=self.dryrun)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
 
         return new_server
 
@@ -327,7 +325,8 @@ class server_create(server):
             try:
                 return self.execute_skylab()
             except (skylab_server.SkylabServerActionError,
-                    revision_control.GitError) as e:
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to create server in  skylab'
                              'inventory.', item=self.hostname, fatal=True)
         else:
@@ -352,8 +351,10 @@ class server_create(server):
             print 'Server %s is added.\n' % self.hostname
             print results
 
-            if self.skylab and not self.dryrun:
-                print UPLOAD_CL_MSG
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
+
 
 
 class server_delete(server):
@@ -374,10 +375,9 @@ class server_delete(server):
 
         message = skylab_utils.construct_commit_message(
                 'Delete server: %s' % self.hostname)
-        inventory_repo.git_repo.commit(message)
-        inventory_repo.git_repo.upload_cl(
-                'origin', 'master', draft=self.draft,
-                dryrun=self.dryrun)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
 
 
     def execute(self):
@@ -395,7 +395,8 @@ class server_delete(server):
                 self.execute_skylab()
                 return True
             except (skylab_server.SkylabServerActionError,
-                    revision_control.GitError) as e:
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to delete server from '
                              'skylab inventory.', item=self.hostname,
                              fatal=True)
@@ -418,8 +419,10 @@ class server_delete(server):
             print ('Server %s is deleted.\n' %
                    self.hostname)
 
-            if self.skylab and not self.dryrun:
-                print UPLOAD_CL_MSG
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
+
 
 
 class server_modify(server):
@@ -535,10 +538,9 @@ class server_modify(server):
 
         message = skylab_utils.construct_commit_message(
                 'Modify server: %s' % self.hostname)
-        inventory_repo.git_repo.commit(message)
-        inventory_repo.git_repo.upload_cl(
-                'origin', 'master', draft=self.draft,
-                dryrun=self.dryrun)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
 
         return target_server
 
@@ -557,7 +559,8 @@ class server_modify(server):
             try:
                 return self.execute_skylab()
             except (skylab_server.SkylabServerActionError,
-                    revision_control.GitError) as e:
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to modify server in skylab'
                              ' inventory.', item=self.hostname, fatal=True)
         else:
@@ -583,5 +586,6 @@ class server_modify(server):
             print 'Server %s is modified.\n' % self.hostname
             print results
 
-            if self.skylab and not self.dryrun:
-                print UPLOAD_CL_MSG
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
