@@ -20,7 +20,10 @@ def run_GTS(machine):
         host=host,
         iterations=1,
         tag='tradefed-run-collect-tests-only',
-        tradefed_args = ['run', 'commandAndExit', 'collect-tests-only'],
+        tradefed_args = ['run', 'commandAndExit', 'collect-tests-only',
+                # TODO(kinaba): workaround until ag/3850281 is made public.
+                '--preparer-whitelist',
+                'com.android.tradefed.targetprep.suite.SuiteApkInstaller'],
         timeout=600)
 
 parallel_simple(run_GTS, machines)
