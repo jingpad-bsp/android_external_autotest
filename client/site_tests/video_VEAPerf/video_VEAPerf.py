@@ -13,6 +13,7 @@ import re
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
@@ -312,11 +313,12 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
-    def run_once(self, test_cases):
+    def run_once(self, test_cases, required_cap):
         """
         Tests ChromeOS video hardware encoder performance.
         """
         last_error = None
+        device_capability.DeviceCapability().ensure_capability(required_cap)
         for (path, on_cloud, width, height, requested_bit_rate,
              profile, requested_frame_rate) in test_cases:
             try:
