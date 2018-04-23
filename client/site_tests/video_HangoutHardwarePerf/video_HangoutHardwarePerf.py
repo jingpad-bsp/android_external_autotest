@@ -11,6 +11,7 @@ from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.power import power_status, power_utils
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
@@ -265,7 +266,12 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
 
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
-    def run_once(self, resources, decode_videos, encode_videos, measurement):
+    def run_once(self, resources, decode_videos, encode_videos, measurement,
+                 capabilities):
+        dc = device_capability.DeviceCapability()
+        for cap in capabilities:
+            dc.ensure_capability(cap)
+
         self._downloads = DownloadManager(tmpdir = self.tmpdir)
         try:
             self._downloads.download_all(resources)
