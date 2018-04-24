@@ -64,3 +64,7 @@ See the coding style guide for guidance on submitting patches.
 
 You need to run `utils/build_externals.py` to set up the dependencies
 for pre-upload hook tests.
+
+## Setting up Lucifer
+
+[Setting up Lucifer](docs/lucifer-setup.md)
