@@ -947,33 +947,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
             self.prepare_for_update()
 
-            num_of_attempts = provision.FLAKY_DEVSERVER_ATTEMPTS
-
-            while num_of_attempts > 0:
-                num_of_attempts -= 1
-                try:
-                    updater.run_update()
-                except Exception:
-                    logging.warn('Autoupdate did not complete.')
-                    # Do additional check for the devserver health. Ideally,
-                    # the autoupdater.py could raise an exception when it
-                    # detected network flake but that would require
-                    # instrumenting the update engine and parsing it log.
-                    if (num_of_attempts <= 0 or
-                            devserver is None or
-                            dev_server.ImageServer.devserver_healthy(
-                                    devserver.url())):
-                        raise
-
-                    logging.warn('Devserver looks unhealthy. Trying another')
-                    update_url, devserver = self._stage_image_for_update(
-                            requested_build)
-                    logging.debug('New Update URL is %s', update_url)
-                    updater = autoupdater.ChromiumOSUpdater(
-                            update_url, host=self,
-                            local_devserver=local_devserver)
-                else:
-                    break
+            updater.run_update()
 
             # Give it some time in case of IO issues.
             time.sleep(10)
