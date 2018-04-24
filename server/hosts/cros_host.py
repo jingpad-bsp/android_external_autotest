@@ -24,7 +24,6 @@ from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server import afe_utils
-from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
 from autotest_lib.server import utils as server_utils
@@ -67,7 +66,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     VERSION_PREFIX = provision.CROS_VERSION_PREFIX
 
-    _parser = autoserv_parser.autoserv_parser
     _AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
     support_devserver_provision = ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE
 
@@ -748,13 +746,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             update_url = self._get_cros_repair_image_name()
             force_update = True
 
-        if not update_url and not self._parser.options.image:
+        if not update_url:
             raise error.AutoservError(
                     'There is no update URL, nor a method to get one.')
-
-        if not update_url and self._parser.options.image:
-            update_url = self._parser.options.image
-
 
         # Get build from parameter or AFE.
         # If the build is not a URL, let devserver to stage it first.
@@ -900,22 +894,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             update_url, devserver = self._stage_image_for_update()
             force_update = True
 
-        if not update_url and not self._parser.options.image:
+        if not update_url:
             raise error.AutoservError(
                     'There is no update URL, nor a method to get one.')
-
-        if not update_url and self._parser.options.image:
-            # This is the base case where we have no given update URL i.e.
-            # dynamic suites logic etc. This is the most flexible case where we
-            # can serve an update from any of our fleet of devservers.
-            requested_build = self._parser.options.image
-            if not requested_build.startswith('http://'):
-                logging.debug('Update will be staged for this installation')
-                update_url, devserver = self._stage_image_for_update(
-                        requested_build)
-            else:
-                update_url = requested_build
-
         logging.debug('Update URL is %s', update_url)
 
         # Report provision stats.
