@@ -1067,12 +1067,6 @@ def _report_repair_loop_metrics(inventory):
 
     @param inventory  `_LabInventory` object to be reported on.
     """
-    # TODO(jrbarnette)  The `repair_loops` metric is being deprecated,
-    # and should be deleted as soon as the `untestable` metric has a
-    # dashboard that's working reliably.
-    loop_presence = metrics.BooleanMetric(
-        'chromeos/autotest/inventory/repair_loops',
-        'DUTs stuck in repair loops')
     logging.info('Scanning for DUTs in repair loops.')
     for counts in inventory.itervalues():
         for history in counts.get_working_list():
@@ -1084,12 +1078,6 @@ def _report_repair_loop_metrics(inventory):
             if not _HOSTNAME_PATTERN.match(history.hostname):
                 continue
             if _dut_in_repair_loop(history):
-                fields = {
-                    'dut_hostname': history.hostname,
-                    'model': history.host_model,
-                    'pool': history.host_pool
-                }
-                loop_presence.set(True, fields=fields)
                 _report_untestable_dut(history, 'repair_loop')
 
 
