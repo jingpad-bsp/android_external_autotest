@@ -304,10 +304,11 @@ def export_tko_job_to_file(job, jobname, filename):
                          "compiling tko/tko.proto.")
 
 
-def parse_one(db, jobname, path, parse_options):
+def parse_one(db, pid_file_manager, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
     @param db: database object.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param jobname: the tag used to search for existing job in db,
                     e.g. '1234-chromeos-test/host1'
     @param path: The path to the results to be parsed.
@@ -385,6 +386,7 @@ def parse_one(db, jobname, path, parse_options):
                             test.reason))
         if test.status != 'GOOD':
             job_successful = False
+            pid_file_manager.num_tests_failed += 1
             message_lines.append(format_failure_message(
                 jobname, test.kernel.base, test.subdir,
                 test.status, test.reason))
@@ -615,10 +617,11 @@ def _get_job_subdirs(path):
     return None
 
 
-def parse_leaf_path(db, path, level, parse_options):
+def parse_leaf_path(db, pid_file_manager, path, level, parse_options):
     """Parse a leaf path.
 
     @param db: database handle.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
     @param parse_options: _ParseOptions instance.
@@ -628,17 +631,19 @@ def parse_leaf_path(db, path, level, parse_options):
     job_elements = path.split("/")[-level:]
     jobname = "/".join(job_elements)
     try:
-        db.run_with_retry(parse_one, db, jobname, path, parse_options)
+        db.run_with_retry(parse_one, db, pid_file_manager, jobname, path,
+                          parse_options)
     except Exception as e:
         tko_utils.dprint("Error parsing leaf path: %s\nException:\n%s\n%s" %
                          (path, e, traceback.format_exc()))
     return jobname
 
 
-def parse_path(db, path, level, parse_options):
+def parse_path(db, pid_file_manager, path, level, parse_options):
     """Parse a path
 
     @param db: database handle.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
     @param parse_options: _ParseOptions instance.
@@ -653,16 +658,19 @@ def parse_path(db, path, level, parse_options):
         # synchronous server side tests record output in this directory. without
         # this check, we do not parse these results.
         if os.path.exists(os.path.join(path, 'status.log')):
-            new_job = parse_leaf_path(db, path, level, parse_options)
+            new_job = parse_leaf_path(db, pid_file_manager, path, level,
+                                      parse_options)
             processed_jobs.add(new_job)
         # multi-machine job
         for subdir in job_subdirs:
             jobpath = os.path.join(path, subdir)
-            new_jobs = parse_path(db, jobpath, level + 1, parse_options)
+            new_jobs = parse_path(db, pid_file_manager, jobpath, level + 1,
+                                  parse_options)
             processed_jobs.update(new_jobs)
     else:
         # single machine job
-        new_job = parse_leaf_path(db, path, level, parse_options)
+        new_job = parse_leaf_path(db, pid_file_manager, path, level,
+                                  parse_options)
         processed_jobs.add(new_job)
     return processed_jobs
 
@@ -732,7 +740,8 @@ def main():
                 else:
                     raise # something unexpected happened
             try:
-                new_jobs = parse_path(db, path, options.level, parse_options)
+                new_jobs = parse_path(db, pid_file_manager, path, options.level,
+                                      parse_options)
                 processed_jobs.update(new_jobs)
 
             finally:
