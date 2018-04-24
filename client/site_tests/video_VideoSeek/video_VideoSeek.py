@@ -9,6 +9,7 @@ import os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 
 WAIT_TIMEOUT_S = 180
@@ -45,16 +46,19 @@ class video_VideoSeek(test.test):
 
 
     @helper_logger.video_log_wrapper
-    def run_once(self, codec, is_switchres, video):
+    def run_once(self, codec, is_switchres, video, capability):
         """Tests whether video seek works by random seeks forward and backward.
 
         @param codec: the codec to be tested, ex. 'vp8', 'vp9', 'h264'.
         @param is_switchres: bool, True if using switch resolution video.
         @param video: Sample video file to be seeked in Chrome.
+        @param capability: The capability required for executing the test.
         """
         if self.is_skipping_test(codec, is_switchres):
             logging.info('Skipping test run on this board.')
             return  # return immediately to pass this test
+
+        device_capability.DeviceCapability().ensure_capability(capability)
 
         with chrome.Chrome(
                 extra_browser_args=helper_logger.chrome_vmodule_flag(),
