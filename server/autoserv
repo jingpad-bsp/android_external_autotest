@@ -138,11 +138,8 @@ def _stage_ssp(parser, resultsdir):
             host_attributes=parser.options.host_attributes,
     )
 
-    # If test_source_build is not specified, default to use server-side test
-    # code from build specified in --image.
     namespace = {'machines': machines_list,
-                 'image': (parser.options.test_source_build or
-                           parser.options.image),}
+                 'image': parser.options.test_source_build}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
     return script_locals['ssp_url'], script_locals['error_msg']
@@ -462,8 +459,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     user = parser.options.user
     client = parser.options.client
     server = parser.options.server
-    install_before = parser.options.install_before
-    install_after = parser.options.install_after
     verify = parser.options.verify
     repair = parser.options.repair
     cleanup = parser.options.cleanup
@@ -609,8 +604,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                     f = {'in_container': utils.is_in_container(),
                          'success': False}
                     with metrics.SecondsTimer(metric_name, fields=f) as c:
-                        job.run(install_before, install_after,
-                                verify_job_repo_url=verify_job_repo_url,
+                        job.run(verify_job_repo_url=verify_job_repo_url,
                                 only_collect_crashinfo=collect_crashinfo,
                                 skip_crash_collection=skip_crash_collection,
                                 job_labels=job_labels,
@@ -758,12 +752,13 @@ def main():
         logging.warn(
                 'Autoserv is required to run with server-side packaging. '
                 'However, no server-side package can be staged based on '
-                '`--image`, host attribute job_repo_url or host OS version '
-                'label. It could be that the build to test is older than the '
-                'minimum version that supports server-side packaging, or no '
-                'devserver can be found to stage server-side package. The test '
-                'will be executed without using erver-side packaging. '
-                'Following is the detailed error:\n%s', ssp_error_msg)
+                '`--test_source_build`, host attribute job_repo_url or host '
+                'OS version label. It could be that the build to test is '
+                'older than the minimum version that supports server-side '
+                'packaging, or no devserver can be found to stage server-side '
+                'package. The test will be executed without using server-side '
+                'packaging. Following is the detailed error:\n%s',
+                ssp_error_msg)
 
     if results:
         logging.info("Results placed in %s" % results)

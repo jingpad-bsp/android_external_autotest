@@ -78,7 +78,6 @@ MACHINES_FILENAME = '.machines'
 CLIENT_WRAPPER_CONTROL_FILE = _control_segment_path('client_wrapper')
 CRASHDUMPS_CONTROL_FILE = _control_segment_path('crashdumps')
 CRASHINFO_CONTROL_FILE = _control_segment_path('crashinfo')
-INSTALL_CONTROL_FILE = _control_segment_path('install')
 CLEANUP_CONTROL_FILE = _control_segment_path('cleanup')
 VERIFY_CONTROL_FILE = _control_segment_path('verify')
 REPAIR_CONTROL_FILE = _control_segment_path('repair')
@@ -792,8 +791,7 @@ class server_job(base_job.base_job):
 
 
     _USE_TEMP_DIR = object()
-    def run(self, install_before=False, install_after=False,
-            collect_crashdumps=True, namespace={}, control=None,
+    def run(self, collect_crashdumps=True, namespace={}, control=None,
             control_file_dir=None, verify_job_repo_url=False,
             only_collect_crashinfo=False, skip_crash_collection=False,
             job_labels='', use_packaging=True):
@@ -851,9 +849,6 @@ class server_job(base_job.base_job):
                         namespace['network_stats_label'] = 'at-start'
                         self._execute_code(GET_NETWORK_STATS_CONTROL_FILE,
                                            namespace)
-
-                if install_before and machines:
-                    self._execute_code(INSTALL_CONTROL_FILE, namespace)
 
                 if only_collect_crashinfo:
                     return
@@ -935,8 +930,6 @@ class server_job(base_job.base_job):
             self.disable_external_logging()
             if self._uncollected_log_file and created_uncollected_logs:
                 os.remove(self._uncollected_log_file)
-            if install_after and machines:
-                self._execute_code(INSTALL_CONTROL_FILE, namespace)
 
             if not self.fast:
                 with metrics.SecondsTimer(

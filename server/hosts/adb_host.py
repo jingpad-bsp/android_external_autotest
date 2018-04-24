@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
@@ -148,8 +147,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     label_decorator = functools.partial(utils.add_label_detector,
                                         _LABEL_FUNCTIONS,
                                         _DETECTABLE_LABELS)
-
-    _parser = autoserv_parser.autoserv_parser
 
     # Minimum build id that supports server side packaging. Older builds may
     # not have server side package built or with Autotest code change to support
@@ -1566,9 +1563,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Install the DUT.
 
         @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/$build. If build_url is
-                set to None, the code may try _parser.options.image to do the
-                installation. If none of them is set, machine_install will fail.
+                pattern: http://$devserver:###/static/$build.  If not set,
+                machine_install will fail.
         @param build_local_path: The path to a local directory that contains the
                 image files needed to provision the device.
         @param wipe: If true, userdata will be wiped before flashing.
@@ -1585,9 +1581,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 is a url to the build staged on devserver.
         """
         os_type = os_type or self.get_os_type()
-        if not build_url and self._parser.options.image:
-            build_url, _ = self.stage_build_for_install(
-                    self._parser.options.image, os_type=os_type)
         if os_type == OS_TYPE_ANDROID:
             self.install_android(
                     build_url=build_url, build_local_path=build_local_path,
