@@ -454,9 +454,7 @@ class db_sql(object):
                 'board': job.board,
                 'suite': job.suite}
 
-        # TODO(ntang): check job.index directly.
-        is_update = hasattr(job, 'index')
-        if is_update:
+        if job.index is not None:
             self.update('tko_jobs', data, {'job_idx': job.index}, commit=commit)
         else:
             self.insert('tko_jobs', data, commit=commit)

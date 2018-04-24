@@ -28,6 +28,7 @@ class job(object):
         self.build_version = None
         self.suite = None
         self.board = None
+        self.index = None
 
 
     @staticmethod
