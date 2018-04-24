@@ -58,9 +58,8 @@ class autoserv_parser(object):
         self.parser.add_argument('-P', action='store', type=str,
                                  dest='parse_job',
                                  default='',
-                                 help=('Parse the results of the job using this'
-                                       ' execution tag. Accessible in control '
-                                       'files as job.tag.'))
+                                 help=('DEPRECATED.'
+                                       ' Use --execution-tag instead.'))
         self.parser.add_argument('--execution-tag', action='store',
                                  type=str, dest='execution_tag',
                                  default='',
@@ -277,6 +276,8 @@ class autoserv_parser(object):
 
         self.options.local_only_host_info = _interpret_bool_arg(
                 self.options.local_only_host_info)
+        if not self.options.execution_tag:
+            self.options.execution_tag = self.options.parse_job
 
 
 def _interpret_bool_arg(value):
