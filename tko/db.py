@@ -445,11 +445,12 @@ class db_sql(object):
                 'afe_job_id': job.afe_job_id,
                 'afe_parent_job_id': job.afe_parent_job_id,
         })
-        if job.index is not None:
-            self.update('tko_jobs', data, {'job_idx': job.index}, commit=commit)
+        if job.job_idx is not None:
+            self.update(
+                    'tko_jobs', data, {'job_idx': job.job_idx}, commit=commit)
         else:
             self.insert('tko_jobs', data, commit=commit)
-            job.index = self.get_last_autonumber_value()
+            job.job_idx = self.get_last_autonumber_value()
 
 
     def _get_common_job_data(self, tag, job):
@@ -487,7 +488,7 @@ class db_sql(object):
             parent_task_id = job.skylab_parent_task_id
         data = {
                 'reference_type': reference_type,
-                'tko_job_idx': job.index,
+                'tko_job_idx': job.job_idx,
                 'task_id': task_id,
                 'parent_task_id': parent_task_id,
         }
@@ -511,7 +512,7 @@ class db_sql(object):
         @param commit: If commit the transaction .
         """
         for key, value in job.keyval_dict.iteritems():
-            where = {'job_id': job.index, 'key': key}
+            where = {'job_id': job.job_idx, 'key': key}
             data = dict(where, value=value)
             exists = self.select('id', 'tko_job_keyvals', where=where)
 
@@ -529,7 +530,7 @@ class db_sql(object):
         @param commit: If commit the transaction .
         """
         kver = self.insert_kernel(test.kernel, commit=commit)
-        data = {'job_idx':job.index, 'test':test.testname,
+        data = {'job_idx':job.job_idx, 'test':test.testname,
                 'subdir':test.subdir, 'kernel_idx':kver,
                 'status':self.status_idx[test.status],
                 'reason':test.reason, 'machine_idx':job.machine_idx,
@@ -631,15 +632,15 @@ class db_sql(object):
 
         @param job: tko.models.job object.
         """
-        if job.index is None:
+        if job.job_idx is None:
             return None
         rows = self.select(
-                'id', 'tko_task_references', {'tko_job_idx': job.index})
+                'id', 'tko_task_references', {'tko_job_idx': job.job_idx})
         if not rows:
             return None
         if len(rows) > 1:
             raise MySQLTooManyRows('Got %d tko_task_references for tko_job %d'
-                                   % (len(rows), job.index))
+                                   % (len(rows), job.job_idx))
         return rows[0][0]
 
 
