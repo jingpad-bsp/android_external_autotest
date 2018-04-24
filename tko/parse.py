@@ -520,6 +520,7 @@ def _write_job_to_db(db, jobname, job):
     """
     db.insert_or_update_machine(job)
     db.insert_job(jobname, job)
+    db.insert_or_update_task_reference(job)
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
