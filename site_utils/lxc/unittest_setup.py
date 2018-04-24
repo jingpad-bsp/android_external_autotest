@@ -84,13 +84,9 @@ class Config(object):
 # line.
 config = Config()
 
-setup_run = False
 def setup(require_sudo=True):
     """Performs global setup for unit-tests."""
     global setup_run
-    if setup_run:
-        return
-    setup_run = True
     config.parse_options()
 
     verify_user(require_sudo)
