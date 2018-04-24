@@ -443,14 +443,7 @@ class db_sql(object):
 
         @return The dict of data inserted into the tko_jobs table.
         """
-        job.machine_idx = self._lookup_machine(job.machine)
-        if not job.machine_idx:
-            job.machine_idx = self._insert_machine(job, commit=commit)
-        elif job.machine:
-            # Only try to update tko_machines record if machine is set. This
-            # prevents unnecessary db writes for suite jobs.
-            self._update_machine_information(job, commit=commit)
-
+        self.insert_or_update_machine(job, commit)
         afe_job_id = utils.get_afe_job_id(tag)
 
         data = {'tag':tag,
@@ -588,6 +581,23 @@ class db_sql(object):
                 group = owner + '/' + hostname
 
         return {'hostname': hostname, 'machine_group': group, 'owner': owner}
+
+
+    def insert_or_update_machine(self, job, commit=None):
+        """Insert or updates machine information for the given job.
+
+        Also updates the job object with new machine index, if any.
+
+        @param job: tko.models.job object.
+        @param commit: Whether to commit the database transaction.
+        """
+        job.machine_idx = self._lookup_machine(job.machine)
+        if not job.machine_idx:
+            job.machine_idx = self._insert_machine(job, commit=commit)
+        elif job.machine:
+            # Only try to update tko_machines record if machine is set. This
+            # prevents unnecessary db writes for suite jobs.
+            self._update_machine_information(job, commit=commit)
 
 
     def _insert_machine(self, job, commit = None):
