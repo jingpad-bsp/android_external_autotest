@@ -443,7 +443,6 @@ class db_sql(object):
 
         @return The dict of data inserted into the tko_jobs table.
         """
-        self.insert_or_update_machine(job, commit)
         afe_job_id = utils.get_afe_job_id(tag)
 
         data = {'tag':tag,
@@ -470,10 +469,6 @@ class db_sql(object):
         else:
             self.insert('tko_jobs', data, commit=commit)
             job.index = self.get_last_autonumber_value()
-        self.update_job_keyvals(job, commit=commit)
-        for test in job.tests:
-            self.insert_test(job, test, commit=commit)
-
         data['job_idx'] = job.index
         return data
 
