@@ -444,9 +444,13 @@ def parse_one(db, jobname, path, parse_options):
                 job.keyval_dict['sponge_url'] = sponge_url
 
             # write the job into the database.
+            db.insert_or_update_machine(job)
             job_data = db.insert_job(
                 jobname, job,
                 parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+            db.update_job_keyvals(job)
+            for test in job.tests:
+                db.insert_test(job, test)
 
             # Verify the job data is written to the database.
             if job.tests:
