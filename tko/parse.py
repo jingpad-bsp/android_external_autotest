@@ -322,68 +322,28 @@ def parse_one(db, jobname, path, parse_options):
 
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
-    # old tests is a dict from tuple (test_name, subdir) to test_idx
-    old_tests = {}
-    if old_job_idx is not None:
-        if not reparse:
-            tko_utils.dprint("! Job is already parsed, done")
-            return
-
-        raw_old_tests = db.select("test_idx,subdir,test", "tko_tests",
-                                  {"job_idx": old_job_idx})
-        if raw_old_tests:
-            old_tests = dict(((test, subdir), test_idx)
-                             for test_idx, subdir, test in raw_old_tests)
+    if old_job_idx is not None and not reparse:
+        tko_utils.dprint("! Job is already parsed, done")
+        return
 
     # look up the status version
     job_keyval = models.job.read_keyval(path)
     status_version = job_keyval.get("status_version", 0)
 
-    # parse out the job
     parser = parser_lib.parser(status_version)
     job = parser.make_job(path)
-    status_log = os.path.join(path, "status.log")
-    if not os.path.exists(status_log):
-        status_log = os.path.join(path, "status")
-    if not os.path.exists(status_log):
+    tko_utils.dprint("+ Parsing dir=%s, jobname=%s" % (path, jobname))
+    status_log_path = _find_status_log_path(path)
+    if not status_log_path:
         tko_utils.dprint("! Unable to parse job, no status file")
         return
+    _parse_status_log(parser, job, status_log_path)
 
-    # parse the status logs
-    tko_utils.dprint("+ Parsing dir=%s, jobname=%s" % (path, jobname))
-    status_lines = open(status_log).readlines()
-    parser.start(job)
-    tests = parser.end(status_lines)
-
-    # parser.end can return the same object multiple times, so filter out dups
-    job.tests = []
-    already_added = set()
-    for test in tests:
-        if test not in already_added:
-            already_added.add(test)
-            job.tests.append(test)
-
-    # try and port test_idx over from the old tests, but if old tests stop
-    # matching up with new ones just give up
-    if reparse and old_job_idx is not None:
-        job.index = old_job_idx
-        for test in job.tests:
-            test_idx = old_tests.pop((test.testname, test.subdir), None)
-            if test_idx is not None:
-                test.test_idx = test_idx
-            else:
-                tko_utils.dprint("! Reparse returned new test "
-                                 "testname=%r subdir=%r" %
-                                 (test.testname, test.subdir))
+    if old_job_idx is not None:
+        job.job_idx = old_job_idx
+        unmatched_tests = _match_existing_tests(db, job)
         if not dry_run:
-            for test_idx in old_tests.itervalues():
-                where = {'test_idx' : test_idx}
-                db.delete('tko_iteration_result', where)
-                db.delete('tko_iteration_perf_value', where)
-                db.delete('tko_iteration_attributes', where)
-                db.delete('tko_test_attributes', where)
-                db.delete('tko_test_labels_tests', {'test_id': test_idx})
-                db.delete('tko_tests', where)
+            _delete_tests_from_db(db, unmatched_tests)
 
     job.build = None
     job.board = None
@@ -443,21 +403,17 @@ def parse_one(db, jobname, path, parse_options):
             if sponge_url:
                 job.keyval_dict['sponge_url'] = sponge_url
 
-            # write the job into the database.
-            job_data = db.insert_job(
-                jobname, job,
-                parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+            _write_job_to_db(db, jobname, job, job_keyval)
 
             # Verify the job data is written to the database.
             if job.tests:
-                tests_in_db = db.find_tests(job_data['job_idx'])
+                tests_in_db = db.find_tests(job.index)
                 tests_in_db_count = len(tests_in_db) if tests_in_db else 0
                 if tests_in_db_count != len(job.tests):
                     tko_utils.dprint(
                             'Failed to find enough tests for job_idx: %d. The '
                             'job should have %d tests, only found %d tests.' %
-                            (job_data['job_idx'], len(job.tests),
-                             tests_in_db_count))
+                            (job.index, len(job.tests), tests_in_db_count))
                     metrics.Counter(
                             'chromeos/autotest/result/db_save_failure',
                             description='The number of times parse failed to '
@@ -489,14 +445,6 @@ def parse_one(db, jobname, path, parse_options):
     if export_tko_to_file:
         export_tko_job_to_file(job, jobname, binary_file_name)
 
-    if reparse:
-        site_export_file = "autotest_lib.tko.site_export"
-        site_export = utils.import_site_function(__file__,
-                                                 site_export_file,
-                                                 "site_export",
-                                                 _site_export_dummy)
-        site_export(binary_file_name)
-
     if not dry_run:
         db.commit()
 
@@ -508,12 +456,12 @@ def parse_one(db, jobname, path, parse_options):
         datastore_parent_key = job_keyval.get('datastore_parent_key', None)
         provision_job_id = job_keyval.get('provision_job_id', None)
         if (suite_report and jobname.endswith('/hostless')
-            and job_data['suite'] and datastore_parent_key):
+            and job.suite and datastore_parent_key):
             tko_utils.dprint('Start dumping suite timing report...')
             timing_log = os.path.join(path, 'suite_timing.log')
             dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
                         "--output='%s' --debug" %
-                        (common.autotest_dir, job_data['afe_job_id'],
+                        (common.autotest_dir, job.afe_job_id,
                          timing_log))
 
             if provision_job_id is not None:
@@ -559,8 +507,80 @@ def parse_one(db, jobname, path, parse_options):
                 json.dump(gs_offloader_instructions, f)
 
 
-def _site_export_dummy(binary_file_name):
-    pass
+def _write_job_to_db(db, jobname, job, job_keyval):
+    """Write all TKO data associated with a job to DB.
+
+    This updates the job object as a side effect.
+
+    @param db: tko.db.db_sql object.
+    @param jobname: Name of the job to write.
+    @param job: tko.models.job object.
+    """
+    db.insert_or_update_machine(job)
+    db.insert_job(
+        jobname, job,
+        parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+    db.update_job_keyvals(job)
+    for test in job.tests:
+        db.insert_test(job, test)
+
+
+def _find_status_log_path(path):
+    if os.path.exists(os.path.join(path, "status.log")):
+        return os.path.join(path, "status.log")
+    if os.path.exists(os.path.join(path, "status")):
+        return os.path.join(path, "status")
+    return ""
+
+
+def _parse_status_log(parser, job, status_log_path):
+    status_lines = open(status_log_path).readlines()
+    parser.start(job)
+    tests = parser.end(status_lines)
+
+    # parser.end can return the same object multiple times, so filter out dups
+    job.tests = []
+    already_added = set()
+    for test in tests:
+        if test not in already_added:
+            already_added.add(test)
+            job.tests.append(test)
+
+
+def _match_existing_tests(db, job):
+    """Find entries in the DB corresponding to the job's tests, update job.
+
+    @return: Any unmatched tests in the db.
+    """
+    old_job_idx = job.job_idx
+    raw_old_tests = db.select("test_idx,subdir,test", "tko_tests",
+                                {"job_idx": old_job_idx})
+    if raw_old_tests:
+        old_tests = dict(((test, subdir), test_idx)
+                            for test_idx, subdir, test in raw_old_tests)
+    else:
+        old_tests = {}
+
+    for test in job.tests:
+        test_idx = old_tests.pop((test.testname, test.subdir), None)
+        if test_idx is not None:
+            test.test_idx = test_idx
+        else:
+            tko_utils.dprint("! Reparse returned new test "
+                                "testname=%r subdir=%r" %
+                                (test.testname, test.subdir))
+    return old_tests
+
+
+def _delete_tests_from_db(db, tests):
+    for test_idx in tests.itervalues():
+        where = {'test_idx' : test_idx}
+        db.delete('tko_iteration_result', where)
+        db.delete('tko_iteration_perf_value', where)
+        db.delete('tko_iteration_attributes', where)
+        db.delete('tko_test_attributes', where)
+        db.delete('tko_test_labels_tests', {'test_id': test_idx})
+        db.delete('tko_tests', where)
 
 
 def _get_job_subdirs(path):

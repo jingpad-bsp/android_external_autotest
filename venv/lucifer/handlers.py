@@ -95,13 +95,18 @@ class EventHandler(object):
 
     def _handle_host_running(self, msg):
         models = autotest.load('frontend.afe.models')
-        (models.Host.objects.filter(hostname=msg)
-         .update(status=models.Host.Status.RUNNING, dirty=1))
+        host = models.Host.objects.get(hostname=msg)
+        host.status = models.Host.Status.RUNNING
+        host.dirty = 1
+        host.save(update_fields=['status', 'dirty'])
+        self._metrics.send_host_status(host)
 
     def _handle_host_ready(self, msg):
         models = autotest.load('frontend.afe.models')
-        (models.Host.objects.filter(hostname=msg)
-         .update(status=models.Host.Status.READY))
+        host = models.Host.objects.get(hostname=msg)
+        host.status = models.Host.Status.READY
+        host.save(update_fields=['status'])
+        self._metrics.send_host_status(host)
 
     def _handle_host_needs_cleanup(self, msg):
         models = autotest.load('frontend.afe.models')
@@ -226,6 +231,27 @@ class Metrics(object):
         self._reset_after_failure_metric = metrics.Counter(
                 'chromeos/autotest/scheduler/postjob_tasks/'
                 'reset_after_failure')
+        self._host_status_metric = metrics.Boolean(
+                'chromeos/autotest/dut_status', reset_after=True)
+
+    def send_host_status(self, host):
+        """Send ts_mon metrics for host status.
+
+        @param host: frontend.afe.models.Host instance
+        """
+        labellib = autotest.load('utils.labellib')
+        labels = labellib.LabelsMapping.from_host(host)
+        fields = {
+                'dut_host_name': host.hostname,
+                'board': labels['board'],
+                'model': labels['model'],
+        }
+        # As each device switches state, indicate that it is not in any
+        # other state.  This allows Monarch queries to avoid double counting
+        # when additional points are added by the Window Align operation.
+        for s in host.Status.names:
+            fields['status'] = s
+            self._host_status_metric.set(s == host.status, fields=fields)
 
     def send_hqe_completion(self, hqe):
         """Send ts_mon metrics for HQE completion."""

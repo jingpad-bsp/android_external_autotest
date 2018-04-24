@@ -440,17 +440,7 @@ class db_sql(object):
         @param job: The job object.
         @param parent_job_id: The parent job id.
         @param commit: If commit the transaction .
-
-        @return The dict of data inserted into the tko_jobs table.
         """
-        job.machine_idx = self.lookup_machine(job.machine)
-        if not job.machine_idx:
-            job.machine_idx = self.insert_machine(job, commit=commit)
-        elif job.machine:
-            # Only try to update tko_machines record if machine is set. This
-            # prevents unnecessary db writes for suite jobs.
-            self.update_machine_information(job, commit=commit)
-
         afe_job_id = utils.get_afe_job_id(tag)
 
         data = {'tag':tag,
@@ -477,12 +467,6 @@ class db_sql(object):
         else:
             self.insert('tko_jobs', data, commit=commit)
             job.index = self.get_last_autonumber_value()
-        self.update_job_keyvals(job, commit=commit)
-        for test in job.tests:
-            self.insert_test(job, test, commit=commit)
-
-        data['job_idx'] = job.index
-        return data
 
 
     def update_job_keyvals(self, job, commit=None):
@@ -590,7 +574,24 @@ class db_sql(object):
         return {'hostname': hostname, 'machine_group': group, 'owner': owner}
 
 
-    def insert_machine(self, job, commit = None):
+    def insert_or_update_machine(self, job, commit=None):
+        """Insert or updates machine information for the given job.
+
+        Also updates the job object with new machine index, if any.
+
+        @param job: tko.models.job object.
+        @param commit: Whether to commit the database transaction.
+        """
+        job.machine_idx = self._lookup_machine(job.machine)
+        if not job.machine_idx:
+            job.machine_idx = self._insert_machine(job, commit=commit)
+        elif job.machine:
+            # Only try to update tko_machines record if machine is set. This
+            # prevents unnecessary db writes for suite jobs.
+            self._update_machine_information(job, commit=commit)
+
+
+    def _insert_machine(self, job, commit = None):
         """Inserts the job machine.
 
         @param job: The job object.
@@ -601,7 +602,7 @@ class db_sql(object):
         return self.get_last_autonumber_value()
 
 
-    def update_machine_information(self, job, commit = None):
+    def _update_machine_information(self, job, commit = None):
         """Updates the job machine information.
 
         @param job: The job object.
@@ -613,7 +614,7 @@ class db_sql(object):
                     commit=commit)
 
 
-    def lookup_machine(self, hostname):
+    def _lookup_machine(self, hostname):
         """Look up the machine information.
 
         @param hostname: The hostname as string.

@@ -33,10 +33,6 @@ SKIP_PROVISION = 'skip_provision'
 # Postfix -cheetsth to distinguish ChromeOS build during Cheets provisioning.
 CHEETS_SUFFIX = '-cheetsth'
 
-# Default number of provisions attempts to try if we believe the devserver is
-# flaky.
-FLAKY_DEVSERVER_ATTEMPTS = 2
-
 
 _Action = collections.namedtuple('_Action', 'name, value')
 

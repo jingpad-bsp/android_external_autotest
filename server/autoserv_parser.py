@@ -66,14 +66,6 @@ class autoserv_parser(object):
                                  default='',
                                  help=('Accessible in control files as job.tag;'
                                        ' Defaults to the value passed to -P.'))
-        self.parser.add_argument('-i', action='store_true',
-                                 dest='install_before', default=False,
-                                 help=('reinstall machines before running the '
-                                       'job'))
-        self.parser.add_argument('-I', action='store_true',
-                                 dest='install_after', default=False,
-                                 help=('reinstall machines after running the '
-                                       'job'))
         self.parser.add_argument('-v', action='store_true',
                                  dest='verify', default=False,
                                  help='verify the machines only')
@@ -186,22 +178,15 @@ class autoserv_parser(object):
         self.parser.add_argument('--test_source_build', action='store',
                                  type=str, default='',
                                  dest='test_source_build',
-                                 help=('Name of the build that contains the '
-                                       'test code. Default is empty, that is, '
-                                       'use the build specified in --image to '
-                                       'retrieve tests.'))
+                                 help=('Alternative build that contains the '
+                                       'test code for server-side packaging. '
+                                       'Default is to use the build on the '
+                                       'target DUT.'))
         self.parser.add_argument('--parent_job_id', action='store',
                                  type=str, default=None,
                                  dest='parent_job_id',
                                  help=('ID of the parent job. Default to None '
                                        'if the job does not have a parent job'))
-        self.parser.add_argument('--image', action='store', type=str,
-                               default='', dest='image',
-                               help=('Full path of an OS image to install, e.g.'
-                                     ' http://devserver/update/alex-release/'
-                                     'R27-3837.0.0 or a build name: '
-                                     'x86-alex-release/R27-3837.0.0 to '
-                                     'utilize lab devservers automatically.'))
         self.parser.add_argument('--host_attributes', action='store',
                                  dest='host_attributes', default='{}',
                                  help=('Host attribute to be applied to all '
@@ -280,10 +265,6 @@ class autoserv_parser(object):
                          removed_args)
 
         self.args = unknown_args + shlex.split(self.options.args or '')
-
-        if self.options.image:
-            self.options.install_before = True
-            self.options.image =  self.options.image.strip()
 
         self.options.host_attributes = ast.literal_eval(
                 self.options.host_attributes)
