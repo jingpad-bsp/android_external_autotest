@@ -299,17 +299,21 @@ def check_job_dependencies(host_objects, job_dependencies):
     ok_hosts = hosts_in_job
     for index, dependency in enumerate(job_dependencies):
         if not provision.is_for_special_action(dependency):
+            diagnostic_did_label_fail = False
             try:
               label = models.Label.smart_get(dependency)
             except models.Label.DoesNotExist:
               logging.info('Label %r does not exist, so it cannot '
                            'be replaced by static label.', dependency)
               label = None
+              diagnostic_did_label_fail = True
 
             if label is not None and label.is_replaced_by_static():
                 ok_hosts = ok_hosts.filter(static_labels__name=dependency)
             else:
                 ok_hosts = ok_hosts.filter(labels__name=dependency)
+                if diagnostic_did_label_fail:
+                    logging.debug("Hosts filtered to nonexistent label.")
 
     failing_hosts = (set(host.hostname for host in host_objects) -
                      set(host.hostname for host in ok_hosts))
@@ -338,17 +342,21 @@ def check_job_metahost_dependencies(metahost_objects, job_dependencies):
 
         for label_name in job_dependencies:
             if not provision.is_for_special_action(label_name):
+                diagnostic_did_label_fail = False
                 try:
                     label = models.Label.smart_get(label_name)
                 except models.Label.DoesNotExist:
                     logging.info('Label %r does not exist, so it cannot '
                                  'be replaced by static label.', label_name)
                     label = None
+                    diagnostic_did_label_fail = True
 
                 if label is not None and label.is_replaced_by_static():
                     hosts = hosts.filter(static_labels__name=label_name)
                 else:
                     hosts = hosts.filter(labels__name=label_name)
+                if diagnostic_did_label_fail:
+                    logging.debug("Hosts filtered to nonexistent label.")
 
         if not any(hosts):
             raise error.NoEligibleHostException("No hosts within %s satisfy %s."
