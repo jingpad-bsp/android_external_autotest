@@ -345,6 +345,8 @@ def parse_one(db, jobname, path, parse_options):
         if not dry_run:
             _delete_tests_from_db(db, unmatched_tests)
 
+    job.afe_job_id = tko_utils.get_afe_job_id(jobname)
+    job.afe_parent_job_id = str(job_keyval.get(constants.PARENT_JOB_ID))
     job.build = None
     job.board = None
     job.build_version = None
@@ -403,7 +405,7 @@ def parse_one(db, jobname, path, parse_options):
             if sponge_url:
                 job.keyval_dict['sponge_url'] = sponge_url
 
-            _write_job_to_db(db, jobname, job, job_keyval)
+            _write_job_to_db(db, jobname, job)
 
             # Verify the job data is written to the database.
             if job.tests:
@@ -507,7 +509,7 @@ def parse_one(db, jobname, path, parse_options):
                 json.dump(gs_offloader_instructions, f)
 
 
-def _write_job_to_db(db, jobname, job, job_keyval):
+def _write_job_to_db(db, jobname, job):
     """Write all TKO data associated with a job to DB.
 
     This updates the job object as a side effect.
@@ -517,9 +519,7 @@ def _write_job_to_db(db, jobname, job, job_keyval):
     @param job: tko.models.job object.
     """
     db.insert_or_update_machine(job)
-    db.insert_job(
-        jobname, job,
-        parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+    db.insert_job(jobname, job)
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
