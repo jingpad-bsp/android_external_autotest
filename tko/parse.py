@@ -339,13 +339,10 @@ def parse_one(db, jobname, path, parse_options):
     job_keyval = models.job.read_keyval(path)
     status_version = job_keyval.get("status_version", 0)
 
-    # parse out the job
     parser = parser_lib.parser(status_version)
     job = parser.make_job(path)
-    status_log = os.path.join(path, "status.log")
-    if not os.path.exists(status_log):
-        status_log = os.path.join(path, "status")
-    if not os.path.exists(status_log):
+    status_log = _find_status_log_path(path)
+    if not status_log:
         tko_utils.dprint("! Unable to parse job, no status file")
         return
 
@@ -563,6 +560,14 @@ def _write_job_to_db(db, jobname, job, job_keyval):
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
+
+
+def _find_status_log_path(path):
+    if os.path.exists(os.path.join(path, "status.log")):
+        return os.path.join(path, "status.log")
+    if os.path.exists(os.path.join(path, "status")):
+        return os.path.join(path, "status")
+    return ""
 
 
 def _get_job_subdirs(path):
