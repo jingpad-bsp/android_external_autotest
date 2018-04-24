@@ -281,10 +281,8 @@ class tast(test.test):
             # The previous START event automatically increases the log
             # indentation level until the following END event.
             for err in test['errors']:
-                # TODO(derat): Tast doesn't current report timestamps associated
-                # with test errors, but it should -- the test doesn't
-                # necessarily halt in response to the first error.
-                self._log_test_event(self._JOB_STATUS_FAIL, name, end_time,
+                self._log_test_event(self._JOB_STATUS_FAIL, name,
+                                     _rfc3339_time_to_timestamp(err['time']),
                                      err['reason'])
             end_status = self._JOB_STATUS_END_FAIL
 
