@@ -450,7 +450,7 @@ def run_provision_suite(**dargs):
     try:
         my_job_id = int(tko_utils.get_afe_job_id(spec.job.tag))
         logging.debug('Determined own job id: %d', my_job_id)
-    except ValueError:
+    except (TypeError, ValueError):
         my_job_id = None
         logging.warning('Could not determine own job id.')
 
@@ -510,7 +510,7 @@ def reimage_and_run(**dargs):
     try:
         my_job_id = int(tko_utils.get_afe_job_id(dargs['job'].tag))
         logging.debug('Determined own job id: %d', my_job_id)
-    except ValueError:
+    except (TypeError, ValueError):
         my_job_id = None
         logging.warning('Could not determine own job id.')
 
