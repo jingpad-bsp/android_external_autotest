@@ -15,7 +15,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES='hw_video_acc_vp9'
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
@@ -34,4 +33,4 @@ test_cases = [
     ['video_VDASanity/bear_profile3.vp9', 320, 180, 30, 30, 12],
 ]
 
-job.run_test('video_VDASanity', test_cases=test_cases, tag='vp9')
+job.run_test('video_VDASanity', test_cases=test_cases, tag='vp9', capability='hw_dec_vp9_1080_30')
