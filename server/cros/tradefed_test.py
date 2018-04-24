@@ -1122,5 +1122,6 @@ class TradefedTest(test.test):
             raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
-            'passed=%d, failed=%d, waived=%d. %s' %
-            (steps, passed, failed, waived, self.summary))
+            'passed=%d, failed=%d, waived=%d%s. %s' %
+            (steps, passed, failed, waived, '' if all_done else ', notexec>=1',
+             self.summary))
