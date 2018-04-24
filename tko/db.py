@@ -443,13 +443,13 @@ class db_sql(object):
 
         @return The dict of data inserted into the tko_jobs table.
         """
-        job.machine_idx = self.lookup_machine(job.machine)
+        job.machine_idx = self._lookup_machine(job.machine)
         if not job.machine_idx:
-            job.machine_idx = self.insert_machine(job, commit=commit)
+            job.machine_idx = self._insert_machine(job, commit=commit)
         elif job.machine:
             # Only try to update tko_machines record if machine is set. This
             # prevents unnecessary db writes for suite jobs.
-            self.update_machine_information(job, commit=commit)
+            self._update_machine_information(job, commit=commit)
 
         afe_job_id = utils.get_afe_job_id(tag)
 
@@ -590,7 +590,7 @@ class db_sql(object):
         return {'hostname': hostname, 'machine_group': group, 'owner': owner}
 
 
-    def insert_machine(self, job, commit = None):
+    def _insert_machine(self, job, commit = None):
         """Inserts the job machine.
 
         @param job: The job object.
@@ -601,7 +601,7 @@ class db_sql(object):
         return self.get_last_autonumber_value()
 
 
-    def update_machine_information(self, job, commit = None):
+    def _update_machine_information(self, job, commit = None):
         """Updates the job machine information.
 
         @param job: The job object.
@@ -613,7 +613,7 @@ class db_sql(object):
                     commit=commit)
 
 
-    def lookup_machine(self, hostname):
+    def _lookup_machine(self, hostname):
         """Look up the machine information.
 
         @param hostname: The hostname as string.
