@@ -433,16 +433,13 @@ class db_sql(object):
         self.delete('tko_jobs', where)
 
 
-    def insert_job(self, tag, job, parent_job_id=None, commit=None):
+    def insert_job(self, tag, job, commit=None):
         """Insert a tko job.
 
         @param tag: The job tag.
         @param job: The job object.
-        @param parent_job_id: The parent job id.
         @param commit: If commit the transaction .
         """
-        afe_job_id = utils.get_afe_job_id(tag)
-
         data = {'tag':tag,
                 'label': job.label,
                 'username': job.user,
@@ -450,15 +447,12 @@ class db_sql(object):
                 'queued_time': job.queued_time,
                 'started_time': job.started_time,
                 'finished_time': job.finished_time,
-                'afe_job_id': afe_job_id,
-                'afe_parent_job_id': parent_job_id,
+                'afe_job_id': job.afe_job_id,
+                'afe_parent_job_id': job.afe_parent_job_id,
                 'build': job.build,
                 'build_version': job.build_version,
                 'board': job.board,
                 'suite': job.suite}
-        job.afe_job_id = afe_job_id
-        if parent_job_id:
-            job.afe_parent_job_id = str(parent_job_id)
 
         # TODO(ntang): check job.index directly.
         is_update = hasattr(job, 'index')
