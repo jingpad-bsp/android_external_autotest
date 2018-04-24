@@ -107,7 +107,7 @@ drm_tests = {
     test.name: test
     for test in (
         DrmTest('atomictest', 'atomictest -a -t all', min_kernel_version='4.4',
-                timeout=120),
+                timeout=300),
         DrmTest('drm_cursor_test'),
         DrmTest('linear_bo_test'),
         DrmTest('mmap_test', timeout=300),
