@@ -9,7 +9,6 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server.cros.update_engine import update_engine_test
-from chromite.lib import retry_util
 
 class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
     """Runs a forced autoupdate during OOBE."""
@@ -20,14 +19,8 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         self._host.run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
 
         # Get the last two update_engine logs: before and after reboot.
-        files = self._host.run('ls -t -1 %s' %
-                               self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
-        for i in range(2):
-            self._host.get_file('%s%s' % (self._UPDATE_ENGINE_LOG_DIR,
-                                          files[i]), self.resultsdir)
-        cmd = 'update_engine_client --update_over_cellular=no'
-        retry_util.RetryException(error.AutoservRunError, 2, self._host.run,
-                                  cmd)
+        self._save_extra_update_engine_logs()
+        self._change_cellular_setting_in_update_engine(False)
         super(autoupdate_ForcedOOBEUpdate, self).cleanup()
 
 
@@ -38,7 +31,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         FINALIZING to COMPLETE (then reboot) to IDLE.
         """
         while True:
-            status = self._get_update_engine_status()
+            status = self._get_update_engine_status(timeout=10)
 
             # During reboot, status will be None
             if status is not None:
@@ -47,7 +40,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             time.sleep(1)
 
 
-    def run_once(self, host, full_payload=True, cellular=False,
+    def run_once(self, full_payload=True, cellular=False,
                  interrupt=False, max_updates=1, job_repo_url=None):
         """
         Runs a forced autoupdate during ChromeOS OOBE.
@@ -65,7 +58,6 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
                              when run in the lab.
 
         """
-        self._host = host
         tpm_utils.ClearTPMOwnerRequest(self._host)
 
         # veyron_rialto is a medical device with a different OOBE that auto
@@ -78,13 +70,10 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
                                                   critical_update=True,
                                                   public=cellular,
                                                   max_updates=max_updates)
-        logging.info('Update url: %s', update_url)
         before = self._get_chromeos_version()
         payload_info = None
         if cellular:
-            cmd = 'update_engine_client --update_over_cellular=yes'
-            retry_util.RetryException(error.AutoservRunError, 2, self._host.run,
-                                      cmd)
+            self._change_cellular_setting_in_update_engine(True)
             # Get the payload's information (size, SHA256 etc) since we will be
             # setting up our own omaha instance on the DUT. We pass this to
             # the client test.
@@ -95,7 +84,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         # Call client test to start the forced OOBE update.
         self._run_client_test_and_check_result('autoupdate_StartOOBEUpdate',
                                                image_url=update_url,
-                                               public=cellular,
+                                               cellular=cellular,
                                                payload_info=payload_info,
                                                full_payload=full_payload)
 
@@ -135,20 +124,13 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             # that the second-to-last update engine log has the successful
             # update message. Second to last because its the one before OOBE
             # rebooted.
-            update_engine_files_cmd = 'ls -t -1 %s' % \
-                                      self._UPDATE_ENGINE_LOG_DIR
-            files = self._host.run(update_engine_files_cmd).stdout.splitlines()
-            before_reboot_file = self._host.run('cat %s%s' % (
-                self._UPDATE_ENGINE_LOG_DIR, files[1])).stdout
+            before_reboot_file = self._get_second_last_update_engine_log()
             self._check_for_cellular_entries_in_update_log(before_reboot_file)
-
             success = 'Update successfully applied, waiting to reboot.'
-            update_ec = self._host.run('cat %s%s | grep '
-                                       '"%s"' % (self._UPDATE_ENGINE_LOG_DIR,
-                                                 files[1], success)).exit_status
-            if update_ec != 0:
-                raise error.TestFail('We could not verify that the update '
-                                     'completed successfully. Check the logs.')
+            self._check_update_engine_log_for_entry(success,
+                                                    raise_error=True,
+                                                    update_engine_log=
+                                                    before_reboot_file)
             return
 
         # Verify that the update completed successfully by checking hostlog.
