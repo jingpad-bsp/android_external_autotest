@@ -56,7 +56,7 @@ class video_VideoCapability(test.test):
         if mismatch_list:
             raise error.TestFail("Dynamic capability detection results did not "
                                  "match static capability configuration. "
-                                 "mismatch_list=%r", mismatch_list)
+                                 "mismatch_list=%r" % mismatch_list)
 
 
     def run_once(self):
