@@ -99,7 +99,8 @@ class ChromeBinaryTest(test.test):
                                binary_to_run,
                                extra_params='',
                                prefix='',
-                               as_chronos=True):
+                               as_chronos=True,
+                               timeout=None):
         """
         Run chrome test binary.
 
@@ -108,8 +109,11 @@ class ChromeBinaryTest(test.test):
         @param prefix: Prefix to the command that invokes the test binary.
         @param as_chronos: Boolean indicating if the tests should run in a
             chronos shell.
+        @param timeout: timeout in seconds
 
         @raises: error.TestFail if there is error running the command.
+        @raises: CmdTimeoutError: the command timed out and |timeout| is
+            specified and not None.
         """
         gtest_xml = tempfile.mktemp(prefix='gtest_xml', suffix='.xml')
 
@@ -124,9 +128,10 @@ class ChromeBinaryTest(test.test):
 
         try:
             if as_chronos:
-                utils.system('su %s -c \'%s\'' % ('chronos', cmd))
+                utils.system('su %s -c \'%s\'' % ('chronos', cmd),
+                             timeout=timeout)
             else:
-                utils.system(cmd)
+                utils.system(cmd, timeout=timeout)
         except error.CmdError as e:
             raise error.TestFail(self.parse_fail_reason(e, gtest_xml))
 
