@@ -5,6 +5,7 @@
 import logging
 
 from autotest_lib.client.cros import chrome_binary_test
+from autotest_lib.client.cros.graphics import graphics_utils
 
 class graphics_Chrome(graphics_utils.GraphicsTest,
                       chrome_binary_test.ChromeBinaryTest):
