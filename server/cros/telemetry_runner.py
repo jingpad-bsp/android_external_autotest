@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import json
 import logging
 import os
 import StringIO
@@ -431,31 +432,33 @@ class TelemetryRunner(object):
         @param test_name: Name of the telemetry test.
         """
         # Get DEPs using host's telemetry.
-        format_string = ('python %s/tools/perf/fetch_benchmark_deps.py %s')
-        command = format_string % (self._telemetry_path, test_name)
-        stdout = StringIO.StringIO()
-        stderr = StringIO.StringIO()
+        # Example output, fetch_benchmark_deps.py --output-deps=deps octane:
+        # {'octane': ['tools/perf/page_sets/data/octane_002.wprgo']}
+        perf_path = os.path.join(self._telemetry_path, 'tools', 'perf')
+        deps_path = os.path.join(perf_path, 'fetch_benchmark_deps_result.json')
+        fetch_path = os.path.join(perf_path, 'fetch_benchmark_deps.py')
+        format_fetch = ('python %s --output-deps=%s %s')
+        command_fetch = format_fetch % (fetch_path, deps_path, test_name)
+        command_get = 'cat %s' % deps_path
 
         if self._devserver:
             devserver_hostname = self._devserver.url().split(
                     'http://')[1].split(':')[0]
-            command = 'ssh %s %s' % (devserver_hostname, command)
+            command_fetch = 'ssh %s %s' % (devserver_hostname, command_fetch)
+            command_get = 'ssh %s %s' % (devserver_hostname, command_get)
 
-        logging.info('Getting DEPs: %s', command)
-        try:
-            result = utils.run(command, stdout_tee=stdout,
-                               stderr_tee=stderr)
-        except error.CmdError as e:
-            logging.debug('Error occurred getting DEPs: %s\n %s\n',
-                          stdout.getvalue(), stderr.getvalue())
+        logging.info('Getting DEPs: %s', command_fetch)
+        _, _, exit_code = self._run_cmd(command_fetch)
+        if exit_code != 0:
+            raise error.TestFail('Error occurred while fetching DEPs.')
+        stdout, _, exit_code = self._run_cmd(command_get)
+        if exit_code != 0:
             raise error.TestFail('Error occurred while getting DEPs.')
 
         # Download DEPs to DUT.
         # send_file() relies on rsync over ssh. Couldn't be better.
-        stdout_str = stdout.getvalue()
-        stdout.close()
-        stderr.close()
-        for dep in stdout_str.split():
+        deps = json.loads(stdout)
+        for dep in deps[test_name]:
             src = os.path.join(self._telemetry_path, dep)
             dst = os.path.join(DUT_CHROME_ROOT, dep)
             if self._devserver:
