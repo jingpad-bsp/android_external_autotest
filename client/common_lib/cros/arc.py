@@ -130,9 +130,11 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     pubkey_path = os.environ[_ADB_VENDOR_KEYS] + '.pub'
     with open(pubkey_path, 'r') as f:
         _write_android_file(_ANDROID_ADB_KEYS_PATH, f.read())
+    _android_shell('chown shell ' + pipes.quote(_ANDROID_ADB_KEYS_PATH))
     _android_shell('restorecon ' + pipes.quote(_ANDROID_ADB_KEYS_PATH))
 
-    # This starts adbd.
+    # This starts adbd, restarting it if needed so it can read the updated key.
+    _android_shell('setprop sys.usb.config mtp')
     _android_shell('setprop sys.usb.config mtp,adb')
 
     # Kill existing adb server to ensure that a full reconnect is performed.
@@ -791,7 +793,13 @@ class ArcTest(test.test):
         adb_shell('settings put global package_verifier_enable 1')
         adb_shell('settings put secure package_verifier_user_consent 0')
 
-        remove_android_file(_ANDROID_ADB_KEYS_PATH)
+        # Remove the adb keys without going through adb. This is because the
+        # 'rm' tool does not have permissions to remove the keys once they have
+        # been restorecon(8)ed.
+        utils.system_output('rm -f %s' %
+                            pipes.quote(os.path.join(
+                                get_android_data_root(),
+                                os.path.relpath(_ANDROID_ADB_KEYS_PATH, '/'))))
         utils.system_output('adb kill-server')
 
     def block_outbound(self):
