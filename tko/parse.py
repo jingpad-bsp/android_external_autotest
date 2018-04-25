@@ -411,13 +411,13 @@ def parse_one(db, jobname, path, parse_options):
 
             # Verify the job data is written to the database.
             if job.tests:
-                tests_in_db = db.find_tests(job.index)
+                tests_in_db = db.find_tests(job.job_idx)
                 tests_in_db_count = len(tests_in_db) if tests_in_db else 0
                 if tests_in_db_count != len(job.tests):
                     tko_utils.dprint(
                             'Failed to find enough tests for job_idx: %d. The '
                             'job should have %d tests, only found %d tests.' %
-                            (job.index, len(job.tests), tests_in_db_count))
+                            (job.job_idx, len(job.tests), tests_in_db_count))
                     metrics.Counter(
                             'chromeos/autotest/result/db_save_failure',
                             description='The number of times parse failed to '
@@ -435,7 +435,7 @@ def parse_one(db, jobname, path, parse_options):
             if orig_afe_job_id:
                 orig_job_idx = tko_models.Job.objects.get(
                         afe_job_id=orig_afe_job_id).job_idx
-                _invalidate_original_tests(orig_job_idx, job.index)
+                _invalidate_original_tests(orig_job_idx, job.job_idx)
     except Exception as e:
         tko_utils.dprint("Hit exception while uploading to tko db:\n%s" %
                          traceback.format_exc())
