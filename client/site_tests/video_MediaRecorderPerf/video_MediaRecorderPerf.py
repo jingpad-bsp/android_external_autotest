@@ -159,7 +159,7 @@ class video_MediaRecorderPerf(test.test):
         return (elapsed_time / mkv_listener.get_num_frames(), cpu_usage)
 
     @helper_logger.video_log_wrapper
-    def run_once(self, codec, fps, video_file):
+    def run_once(self, codec, fps, video_file, capability):
         """ Report cpu usage and frame processing time with HW and SW encode.
 
         Use MediaRecorder to record a videos with HW encode and SW encode, and
@@ -170,6 +170,7 @@ class video_MediaRecorderPerf(test.test):
         @param fps: an integer specifying FPS of the fake input video stream.
         @param video_file: a string specifying the name of the video file to be
                 used as fake input video stream.
+        @param capability: The capability required for running this test.
         """
         device_capability.DeviceCapability().ensure_capability(capability)
 
