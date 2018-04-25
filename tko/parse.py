@@ -346,7 +346,9 @@ def parse_one(db, jobname, path, parse_options):
             _delete_tests_from_db(db, unmatched_tests)
 
     job.afe_job_id = tko_utils.get_afe_job_id(jobname)
+    job.skylab_task_id = tko_utils.get_skylab_task_id(jobname)
     job.afe_parent_job_id = str(job_keyval.get(constants.PARENT_JOB_ID))
+    job.skylab_parent_task_id = str(job_keyval.get(constants.PARENT_JOB_ID))
     job.build = None
     job.board = None
     job.build_version = None
@@ -520,7 +522,10 @@ def _write_job_to_db(db, jobname, job):
     """
     db.insert_or_update_machine(job)
     db.insert_job(jobname, job)
-    db.insert_or_update_task_reference(job)
+    db.insert_or_update_task_reference(
+            job,
+            'skylab' if tko_utils.is_skylab_task(jobname) else 'afe',
+    )
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
