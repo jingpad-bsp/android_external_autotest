@@ -61,9 +61,7 @@ def drop_redundant_messages(messages):
 def get_afe_job_id(tag):
     """ Given a tag return the afe_job_id (if any).
 
-    Extract job id and hostname if tag is in the format of
-    JOB_ID-OWNER/HOSTNAME. JOB_ID and HOSTNAME must both be present
-    to be considered as a match.
+    Tag is in the format of JOB_ID-OWNER/HOSTNAME
 
     @param tag: afe_job_id and hostname are extracted from this tag.
                 e.g. "1234-chromeos-test/chromeos1-row1-host1"
@@ -71,3 +69,20 @@ def get_afe_job_id(tag):
     """
     match = re.search('^([0-9]+)-.+/(.+)$', tag)
     return match.group(1) if match else None
+
+
+def get_skylab_task_id(tag):
+    """ Given a tag return the skylab_task's id (if any).
+
+    Tag is in the format of swarming-TASK_ID/HOSTNAME
+
+    @param tag: afe_job_id and hostname are extracted from this tag.
+                e.g. "1234-chromeos-test/chromeos1-row1-host1"
+    @return: the afe_job_id as a string if regex matches, else return ''
+    """
+    match = re.search('^swarming-([A-Fa-f0-9]+)/(.+)$', tag)
+    return match.group(1) if match else None
+
+
+def is_skylab_task(tag):
+    return get_skylab_task_id(tag) is not None

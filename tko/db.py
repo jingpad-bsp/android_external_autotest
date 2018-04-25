@@ -440,20 +440,11 @@ class db_sql(object):
         @param job: The job object.
         @param commit: If commit the transaction .
         """
-        data = {'tag':tag,
-                'label': job.label,
-                'username': job.user,
-                'machine_idx': job.machine_idx,
-                'queued_time': job.queued_time,
-                'started_time': job.started_time,
-                'finished_time': job.finished_time,
+        data = self._get_common_job_data(tag, job)
+        data.update({
                 'afe_job_id': job.afe_job_id,
                 'afe_parent_job_id': job.afe_parent_job_id,
-                'build': job.build,
-                'build_version': job.build_version,
-                'board': job.board,
-                'suite': job.suite}
-
+        })
         if job.index is not None:
             self.update('tko_jobs', data, {'job_idx': job.index}, commit=commit)
         else:
@@ -461,19 +452,46 @@ class db_sql(object):
             job.index = self.get_last_autonumber_value()
 
 
-    def insert_or_update_task_reference(self, job, commit=None):
+    def _get_common_job_data(self, tag, job):
+        """Construct a dictionary with the common data to insert in job/task."""
+        return {
+                'tag':tag,
+                'label': job.label,
+                'username': job.user,
+                'machine_idx': job.machine_idx,
+                'queued_time': job.queued_time,
+                'started_time': job.started_time,
+                'finished_time': job.finished_time,
+                'build': job.build,
+                'build_version': job.build_version,
+                'board': job.board,
+                'suite': job.suite,
+        }
+
+
+    def insert_or_update_task_reference(self, job, reference_type, commit=None):
         """Insert an entry in the tko_task_references table.
 
         The job should already have been inserted in tko_jobs.
         @param job: tko.models.job object.
+        @param reference_type: The type of reference to insert.
+                One of: {'afe', 'skylab'}
         @param commit: Whether to commit this transaction.
         """
+        assert reference_type in {'afe', 'skylab'}
+        if reference_type == 'afe':
+            task_id = job.afe_job_id
+            parent_task_id = job.afe_parent_job_id
+        else:
+            task_id = job.skylab_task_id
+            parent_task_id = job.skylab_parent_task_id
         data = {
-                'reference_type': 'afe',
+                'reference_type': reference_type,
                 'tko_job_idx': job.index,
-                'task_id': job.afe_job_id,
-                'parent_task_id': job.afe_parent_job_id,
+                'task_id': task_id,
+                'parent_task_id': parent_task_id,
         }
+
         task_reference_id = self._lookup_task_reference(job)
         if task_reference_id is not None:
             self.update('tko_task_references',
@@ -484,7 +502,6 @@ class db_sql(object):
         else:
             self.insert('tko_task_references', data, commit=commit)
             job.task_reference_id = self.get_last_autonumber_value()
-
 
 
     def update_job_keyvals(self, job, commit=None):
