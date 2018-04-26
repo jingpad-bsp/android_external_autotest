@@ -8,10 +8,10 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import autotest
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_FWMPDisableCCD(FirmwareTest):
+class firmware_FWMPDisableCCD(Cr50Test):
     """A test that uses cryptohome to set the FWMP flags and verifies that
     cr50 disables/enables console unlock."""
     version = 1
