@@ -21,6 +21,8 @@ from __future__ import print_function
 
 import collections
 
+from lucifer import autotest
+
 
 SuiteSpecs = collections.namedtuple(
         'SuiteSpecs',
@@ -42,3 +44,23 @@ class Suite(object):
         self.wait = True
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
+
+
+    def stage_suite_artifacts(self):
+        """Stage suite control files and suite-to-tests mapping file.
+
+        @param build: The build to stage artifacts.
+        """
+        suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
+        ds, _ = suite_common.stage_build_artifacts(self.test_source_build)
+        self.ds = ds
+
+
+    def get_suite_args(self):
+        """Get the suite args.
+
+        The suite args includes:
+            a. suite args in suite control file.
+            b. passed-in suite args by user.
+        """
+        return

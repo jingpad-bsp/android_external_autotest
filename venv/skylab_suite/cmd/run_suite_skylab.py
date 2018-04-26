@@ -33,6 +33,7 @@ def _parse_suite_specs(options):
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
     suite_job = cros_suite.Suite(_parse_suite_specs(options))
+    suite_job.stage_suite_artifacts()
     dynamic_suite.run(suite_job)
     return suite_tracking.SuiteResult(
                 suite_tracking.SUITE_RESULT_CODES.OK)
