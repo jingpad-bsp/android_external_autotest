@@ -242,7 +242,7 @@ class server_job(base_job.base_job):
     # TODO crbug.com/285395 eliminate ssh_verbosity_flag
     def __init__(self, control, args, resultdir, label, user, machines,
                  machine_dict_list,
-                 client=False, parse_job='',
+                 client=False,
                  ssh_user=host_factory.DEFAULT_SSH_USER,
                  ssh_port=host_factory.DEFAULT_SSH_PORT,
                  ssh_pass=host_factory.DEFAULT_SSH_PASS,
@@ -264,8 +264,6 @@ class server_job(base_job.base_job):
         @param machine_dict_list: A list of dicts for each of the machines above
                 as returned by get_machine_dicts.
         @param client: True if this is a client-side control file.
-        @param parse_job: string, if supplied it is the job execution tag that
-                the results will be passed through to the TKO parser with.
         @param ssh_user: The SSH username.  [root]
         @param ssh_port: The SSH port number.  [22]
         @param ssh_pass: The SSH passphrase, if needed.
@@ -344,9 +342,8 @@ class server_job(base_job.base_job):
             job_data.update(self._get_job_data())
             utils.write_keyval(self.resultdir, job_data)
 
-        self._parse_job = parse_job
-        self._using_parser = (INCREMENTAL_TKO_PARSING and self._parse_job
-                              and len(machines) <= 1)
+        self._parse_job = ''
+        self._using_parser = False
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':600})
         self.num_tests_run = 0
