@@ -1,9 +1,8 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 import logging
-import os
-import shutil
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -19,13 +18,7 @@ class autoupdate_EOL(update_engine_test.UpdateEngineTest):
     _EOL_NOTIFICATION_TITLE = 'This device is no longer supported'
 
     def cleanup(self):
-        # Get the last two update_engine logs.
-        files = utils.run('ls -t -1 %s' %
-                          self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
-        for i in range(2):
-            file = os.path.join(self._UPDATE_ENGINE_LOG_DIR, files[i])
-            shutil.copy(file, self.resultsdir)
-        # Base class will save current update_engine log.
+        self._save_extra_update_engine_logs()
         super(autoupdate_EOL, self).cleanup()
 
 
@@ -57,8 +50,6 @@ class autoupdate_EOL(update_engine_test.UpdateEngineTest):
 
 
     def run_once(self):
-        utils.run('restart update-engine')
-
         # Start a devserver to return a response with eol entry.
         self._omaha = nano_omaha_devserver.NanoOmahaDevserver(eol=True)
         self._omaha.start()

@@ -1,7 +1,6 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
@@ -12,13 +11,15 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
     """Try a non-forced autoupdate during OOBE."""
     version = 1
 
+    _NON_CRITICAL_ERROR = 'finished OmahaRequestAction with code ' \
+                          'ErrorCode::kNonCriticalUpdateInOOBE'
+
     def cleanup(self):
         self._host.run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
-        self._host.get_file(self._UPDATE_ENGINE_LOG, self.resultsdir)
         super(autoupdate_NonBlockingOOBEUpdate, self).cleanup()
 
 
-    def run_once(self, host, full_payload=True, job_repo_url=None):
+    def run_once(self, full_payload=True, job_repo_url=None):
         """
         Trys an autoupdate during ChromeOS OOBE without a deadline.
 
@@ -30,7 +31,6 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
                              when run in the lab.
 
         """
-        self._host = host
         tpm_utils.ClearTPMOwnerRequest(self._host)
 
         # veyron_rialto is a medical device with a different OOBE that auto
@@ -41,7 +41,6 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
         update_url = self.get_update_url_for_test(job_repo_url,
                                                   full_payload=full_payload,
                                                   critical_update=False)
-        logging.info('Update url: %s', update_url)
 
         # Call client test to start the OOBE update.
         client_at = autotest.Autotest(self._host)
@@ -49,10 +48,7 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
                            full_payload=full_payload, critical_update=False)
 
         # Ensure that the update failed as expected.
-        err_msg = 'finished OmahaRequestAction with code ' \
-                  'ErrorCode::kNonCriticalUpdateInOOBE'
-        output = self._host.run('cat %s | grep "%s"' % (
-            self._UPDATE_ENGINE_LOG, err_msg), ignore_status=True).exit_status
-        if output != 0:
-            raise error.TestFail('Update did not fail with '
-                                 'kNonCriticalUpdateInOOBE')
+        err_str = 'Update did not fail with kNonCriticalUpdateInOOBE'
+        self._check_update_engine_log_for_entry(self._NON_CRITICAL_ERROR,
+                                                raise_error=True,
+                                                err_str=err_str)

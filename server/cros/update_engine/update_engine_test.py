@@ -5,7 +5,6 @@
 import json
 import logging
 import os
-import re
 import update_engine_event as uee
 import urlparse
 
@@ -18,8 +17,10 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.update_engine import omaha_devserver
+from chromite.lib import retry_util
 from datetime import datetime, timedelta
 from update_engine_event import UpdateEngineEvent
+
 
 class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
     """Class for comparing expected update_engine events against actual ones.
@@ -81,12 +82,16 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         # Some AU tests use multiple DUTs
         self._hosts = hosts
 
+        # Define functions used in update_engine_util.
         self._run = self._host.run if self._host else None
+        self._get_file = self._host.get_file if self._host else None
 
 
     def cleanup(self):
         if self._omaha_devserver is not None:
             self._omaha_devserver.stop_devserver()
+        if self._host:
+            self._host.get_file(self._UPDATE_ENGINE_LOG, self.resultsdir)
 
 
     def _get_expected_events_for_rootfs_update(self, source_release):
@@ -446,7 +451,7 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         return lsbrelease_utils.get_chromeos_release_version(lsb)
 
 
-    def _check_for_cellular_entries_in_update_log(self, update_engine_log):
+    def _check_for_cellular_entries_in_update_log(self, update_engine_log=None):
         """
         Check update_engine.log for log entries about cellular.
 
@@ -459,12 +464,9 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
                 "set to true."
         line2 = "We are connected via cellular, Updates allowed: Yes"
         for line in [line1, line2]:
-            ue = re.compile(line)
-            if ue.search(update_engine_log) is None:
-                raise error.TestFail('We did not find cellular string "%s" in '
-                                     'the update_engine log. Please check the '
-                                     'update_engine logs in the results '
-                                     'directory.' % line)
+            self._check_update_engine_log_for_entry(line, raise_error=True,
+                                                    update_engine_log=
+                                                    update_engine_log)
 
 
     def _disconnect_then_reconnect_network(self, update_url):
@@ -538,6 +540,19 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         client_at = autotest.Autotest(self._host)
         client_at.run_test(test_name, **kwargs)
         client_at._check_client_test_result(self._host, test_name)
+
+
+    def _change_cellular_setting_in_update_engine(self,
+                                                  update_over_cellular=True):
+        """
+        Toggles the update_over_cellular setting in update_engine.
+
+        @param update_over_cellular: True to enable, False to disable.
+
+        """
+        answer = 'yes' if update_over_cellular else 'no'
+        cmd = 'update_engine_client --update_over_cellular=%s' % answer
+        retry_util.RetryException(error.AutoservRunError, 2, self._run, cmd)
 
 
     def verify_update_events(self, source_release, hostlog_filename,
@@ -621,13 +636,17 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
             # to updates via autest command).
             payload_url = self._get_payload_url(build,
                                                 full_payload=full_payload)
-            return self._copy_payload_to_public_bucket(payload_url)
+            url = self._copy_payload_to_public_bucket(payload_url)
+            logging.info('Public update URL: %s', url)
+            return url
 
         if full_payload:
             self._autotest_devserver.stage_artifacts(build, ['full_payload'])
             if not critical_update:
                 # We can use the same lab devserver to handle the update.
-                return self._autotest_devserver.get_update_url(build)
+                url = self._autotest_devserver.get_update_url(build)
+                logging.info('Full payload, non-critical update URL: %s', url)
+                return url
             else:
                 staged_url = self._autotest_devserver._get_image_url(build)
         else:
@@ -640,7 +659,9 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
             self._autotest_devserver.hostname, staged_url,
             max_updates=max_updates, critical_update=critical_update)
         self._omaha_devserver.start_devserver()
-        return self._omaha_devserver.get_update_url()
+        url = self._omaha_devserver.get_update_url()
+        logging.info('Update URL: %s', url)
+        return url
 
 
 class UpdateEngineEventMissing(error.TestFail):
