@@ -764,20 +764,6 @@ def get_creds_abspath(creds_file):
     return os.path.join(creds_dir, creds_file)
 
 
-def machine_is_testbed(machine):
-    """Checks if the machine is a testbed.
-
-    The signal we use to determine if the machine is a testbed
-    is if the host attributes contain more than 1 serial.
-
-    @param machine: is a list of dicts
-
-    @return: True if the machine is a testbed, False otherwise.
-    """
-    _, afe_host = get_host_info_from_machine(machine)
-    return len(afe_host.attributes.get('serials', '').split(',')) > 1
-
-
 def SetupTsMonGlobalState(*args, **kwargs):
     """Import-safe wrap around chromite.lib.ts_mon_config's setup function.
 
