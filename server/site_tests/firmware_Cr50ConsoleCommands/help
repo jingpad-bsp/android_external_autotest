@@ -25,7 +25,8 @@ recbtnforce
 rma_auth
 -serialno
 shmem
--spihash
+(?P<prepvt>-s3term)?
+(?P<mp>-)?spihash
 sysinfo
 sysrst
 taskinfo
