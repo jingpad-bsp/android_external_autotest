@@ -13,7 +13,11 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
     """Base class for update engine client tests."""
 
     def initialize(self):
+        self._internet_was_disabled = False
+
+        # Define functions to be used in update_engine_util.
         self._run = utils.run
+        self._get_file = shutil.copy
 
 
     def cleanup(self):
@@ -31,6 +35,9 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         @param ping_server: The server to ping to check we are online.
 
         """
+        if not self._internet_was_disabled:
+            return
+
         utils.run('ifconfig eth0 up', ignore_status=True)
         utils.run('ifconfig eth1 up', ignore_status=True)
         utils.start_service('recover_duts', ignore_status=True)
@@ -46,6 +53,7 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
 
     def _disable_internet(self):
         """Disable the internet connection"""
+        self._internet_was_disabled = True
         try:
             # DUTs in the lab have a service called recover_duts that is used to
             # check that the DUT is online and if it is not it will bring it
