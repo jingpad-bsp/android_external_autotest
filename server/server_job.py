@@ -50,20 +50,15 @@ from autotest_lib.server.hosts import shadowing_store
 from autotest_lib.server.hosts import factory as host_factory
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import ssh_multiplex
-from autotest_lib.tko import db as tko_db
 from autotest_lib.tko import models as tko_models
 from autotest_lib.tko import status_lib
 from autotest_lib.tko import parser_lib
-from autotest_lib.tko import utils as tko_utils
 
 try:
     from chromite.lib import metrics
 except ImportError:
     metrics = utils.metrics_mock
 
-
-INCREMENTAL_TKO_PARSING = global_config.global_config.get_config_value(
-        'autoserv', 'incremental_tko_parsing', type=bool, default=False)
 
 def _control_segment_path(name):
     """Get the pathname of the named control segment file."""
@@ -221,7 +216,6 @@ class server_job_record_hook(object):
         for entry in entries:
             rendered_entry = job._logger.render_entry(entry)
             logging.info(rendered_entry)
-            job._parse_status(rendered_entry)
 
 
 class server_job(base_job.base_job):
@@ -229,9 +223,6 @@ class server_job(base_job.base_job):
 
     Optional properties provided by this implementation:
         serverdir
-
-        num_tests_run
-        num_tests_failed
 
         warning_manager
         warning_loggers
@@ -342,14 +333,15 @@ class server_job(base_job.base_job):
             job_data.update(self._get_job_data())
             utils.write_keyval(self.resultdir, job_data)
 
-        self._parse_job = ''
-        self._using_parser = False
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':600})
-        self.num_tests_run = 0
-        self.num_tests_failed = 0
 
         self._register_subcommand_hooks()
+
+        # We no longer parse results as part of the server_job. These arguments
+        # can't be dropped yet because clients haven't all be cleaned up yet.
+        self.num_tests_run = -1
+        self.num_tests_failed = -1
 
         # set up the status logger
         self._indenter = status_indenter()
@@ -445,63 +437,6 @@ class server_job(base_job.base_job):
         subcommand.subcommand.register_fork_hook(on_fork)
         subcommand.subcommand.register_join_hook(on_join)
 
-
-    def init_parser(self):
-        """
-        Start the continuous parsing of self.resultdir. This sets up
-        the database connection and inserts the basic job object into
-        the database if necessary.
-        """
-        if self.fast and not self._using_parser:
-            self.parser = parser_lib.parser(self._STATUS_VERSION)
-            self.job_model = self.parser.make_job(self.resultdir)
-            self.parser.start(self.job_model)
-            return
-
-        if not self._using_parser:
-            return
-
-        # redirect parser debugging to .parse.log
-        parse_log = os.path.join(self.resultdir, '.parse.log')
-        parse_log = open(parse_log, 'w', 0)
-        tko_utils.redirect_parser_debugging(parse_log)
-        # create a job model object and set up the db
-        self.results_db = tko_db.db(autocommit=True)
-        self.parser = parser_lib.parser(self._STATUS_VERSION)
-        self.job_model = self.parser.make_job(self.resultdir)
-        self.parser.start(self.job_model)
-        # check if a job already exists in the db and insert it if
-        # it does not
-        job_idx = self.results_db.find_job(self._parse_job)
-        if job_idx is None:
-            self.results_db.insert_job(self._parse_job, self.job_model,
-                                       self.parent_job_id)
-        else:
-            machine_idx = self.results_db.lookup_machine(self.job_model.machine)
-            self.job_model.index = job_idx
-            self.job_model.machine_idx = machine_idx
-
-
-    def cleanup_parser(self):
-        """
-        This should be called after the server job is finished
-        to carry out any remaining cleanup (e.g. flushing any
-        remaining test results to the results db)
-        """
-        if self.fast and not self._using_parser:
-            final_tests = self.parser.end()
-            for test in final_tests:
-                if status_lib.is_worse_than_or_equal_to(test.status, 'FAIL'):
-                    self.num_tests_failed += 1
-            return
-
-        if not self._using_parser:
-            return
-
-        final_tests = self.parser.end()
-        for test in final_tests:
-            self.__insert_test(test)
-        self._using_parser = False
 
     # TODO crbug.com/285395 add a kwargs parameter.
     def _make_namespace(self):
@@ -634,26 +569,10 @@ class server_job(base_job.base_job):
         # server_job._make_namespace.
         # To compare the machinese to self.machines, which is a list of machine
         # hostname, we need to convert machines back to a list of hostnames.
-        # Note that the order of hostnames doesn't matter, as is_forking will be
-        # True if there are more than one machine.
         if (machines and isinstance(machines, list)
             and isinstance(machines[0], dict)):
             machines = [m['hostname'] for m in machines]
-        is_forking = not (len(machines) == 1 and self.machines == machines)
-        if self._parse_job and is_forking and log:
-            def wrapper(machine):
-                hostname = server_utils.get_hostname_from_machine(machine)
-                self._parse_job += "/" + hostname
-                self._using_parser = INCREMENTAL_TKO_PARSING
-                self.machines = [machine]
-                self.push_execution_context(hostname)
-                os.chdir(self.resultdir)
-                utils.write_keyval(self.resultdir, {"hostname": hostname})
-                self.init_parser()
-                result = function(machine)
-                self.cleanup_parser()
-                return result
-        elif len(machines) > 1 and log:
+        if len(machines) > 1 and log:
             def wrapper(machine):
                 hostname = server_utils.get_hostname_from_machine(machine)
                 self.push_execution_context(hostname)
@@ -890,9 +809,6 @@ class server_job(base_job.base_job):
                 collect_crashinfo = self.failed_with_device_error
             except Exception as e:
                 try:
-                    # Add num_tests_failed if any extra exceptions are raised
-                    # outside _execute_code().
-                    self.num_tests_failed += 1
                     logging.exception(
                             'Exception escaped control file, job aborting:')
                     reason = re.sub(base_job.status_log_entry.BAD_CHAR_REGEX,
@@ -1411,40 +1327,6 @@ class server_job(base_job.base_job):
             if machines_text != existing_machines_text:
                 utils.open_write_close(MACHINES_FILENAME, machines_text)
         execfile(code_file, namespace, namespace)
-
-
-    def _parse_status(self, new_line):
-        if self.fast and not self._using_parser:
-            logging.info('Parsing lines in fast mode')
-            new_tests = self.parser.process_lines([new_line])
-            for test in new_tests:
-                if status_lib.is_worse_than_or_equal_to(test.status, 'FAIL'):
-                    self.num_tests_failed += 1
-
-        if not self._using_parser:
-            return
-
-        new_tests = self.parser.process_lines([new_line])
-        for test in new_tests:
-            self.__insert_test(test)
-
-
-    def __insert_test(self, test):
-        """
-        An internal method to insert a new test result into the
-        database. This method will not raise an exception, even if an
-        error occurs during the insert, to avoid failing a test
-        simply because of unexpected database issues."""
-        self.num_tests_run += 1
-        if status_lib.is_worse_than_or_equal_to(test.status, 'FAIL'):
-            self.num_tests_failed += 1
-        try:
-            self.results_db.insert_test(self.job_model, test)
-        except Exception:
-            msg = ("WARNING: An unexpected error occured while "
-                   "inserting test results into the database. "
-                   "Ignoring error.\n" + traceback.format_exc())
-            print >> sys.stderr, msg
 
 
     def preprocess_client_state(self):
