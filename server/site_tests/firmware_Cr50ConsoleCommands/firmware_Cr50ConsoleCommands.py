@@ -149,6 +149,7 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
     def run_once(self, host):
         """Verify the Cr50 gpiocfg, pinmux, and help output."""
         err = []
+        test_err = []
         self.get_brdprop()
         for command, regexp, split_str, sort in self.TESTS:
             self.check_command(command, regexp, split_str, sort)
@@ -161,8 +162,22 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
             err.append('MISSING OUTPUT: ' + ', '.join(self.missing))
         if len(self.extra):
             err.append('EXTRA OUTPUT: ' + ', '.join(self.extra))
-
         logging.info(self.past_matches)
 
         if len(err):
             raise error.TestFail('\t'.join(err))
+
+        mp = self.past_matches.get('mp', [None])[0]
+        prepvt = self.past_matches.get('prepvt', [None])[0]
+        # If we made it through the whole test, and matched both mp and prepvt,
+        # that means the test needs to be updated to unify mp and prepvt labels.
+        if mp and prepvt:
+            test_err.append('Matched both MP and prePVT labels.')
+
+        is_mp = 'mp' in self.servo.get('cr50_version')
+        if is_mp and prepvt:
+            test_err.append('Matched prePVT labels in MP image.')
+        if not is_mp and mp:
+            test_err.append('Matched mp labels in prePVT image.')
+        if test_err:
+            raise error.TestError('\t'.join(test_err))
