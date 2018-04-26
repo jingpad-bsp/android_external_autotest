@@ -8,10 +8,10 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50DeviceState(FirmwareTest):
+class firmware_Cr50DeviceState(Cr50Test):
     """Verify Cr50 tracks the EC and AP state correctly.
 
     Put the device through S0, S0ix, S3, and G3. Cr50 responds to these state

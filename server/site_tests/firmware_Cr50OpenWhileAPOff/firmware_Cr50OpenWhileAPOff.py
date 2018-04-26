@@ -6,10 +6,10 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50OpenWhileAPOff(FirmwareTest):
+class firmware_Cr50OpenWhileAPOff(Cr50Test):
     """Verify the console can be opened while the AP is off.
 
     Make sure it runs ok when cr50 saw the AP turn off and when it resets while
