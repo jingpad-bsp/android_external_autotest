@@ -329,7 +329,7 @@ class graphics_Idle(graphics_utils.GraphicsTest):
         logging.info('Running verify_graphics_psr')
 
         board = utils.get_board()
-        if board != 'samus':
+        if board != 'samus' and board != 'eve':
             return ''
         tries = 0
         found = False
@@ -338,10 +338,16 @@ class graphics_Idle(graphics_utils.GraphicsTest):
             return 'PSR_PATHS not found.'
         while not found and tries < 20:
             time.sleep(1)
-            with open(param_path, 'r') as fbc_info_file:
-                for line in fbc_info_file:
+            with open(param_path, 'r') as psr_info_file:
+                for line in psr_info_file:
+                    # Older kernels (up to 3.14)
                     match = re.search(r'Performance_Counter: (.*)', line)
                     if match and int(match.group(1)) > 0:
+                        found = True
+                        break
+                    # Newer kernels (3.18 and up)
+                    match = re.search(r'Active bit: yes', line)
+                    if match:
                         found = True
                         break
 
