@@ -55,13 +55,19 @@ def setup_adb_host():
     os.environ[_ADB_VENDOR_KEYS] = key_path
 
 
-def adb_connect():
+def adb_connect(attempts=1):
     """Attempt to connect ADB to the Android container.
 
     Returns true if successful. Do not call this function directly. Call
     wait_for_adb_ready() instead."""
     if not is_android_booted():
         return False
+
+    # Kill existing adb server every other invocation to ensure that a full
+    # reconnect is performed.
+    if attempts % 2 == 1:
+        utils.system('adb kill-server', ignore_status=True)
+
     if utils.system('adb connect localhost:22', ignore_status=True) != 0:
         return False
     return is_adb_connected()
@@ -137,11 +143,14 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     _android_shell('setprop sys.usb.config mtp')
     _android_shell('setprop sys.usb.config mtp,adb')
 
-    # Kill existing adb server to ensure that a full reconnect is performed.
-    utils.system('adb kill-server', ignore_status=True)
-
     exception = error.TestFail('adb is not ready in %d seconds.' % timeout)
-    utils.poll_for_condition(adb_connect,
+
+    # Keeps track of how many times adb has attempted to establish a connection.
+    def _adb_connect_wrapper():
+        _adb_connect_wrapper.attempts += 1
+        return adb_connect(_adb_connect_wrapper.attempts)
+    _adb_connect_wrapper.attempts = 0
+    utils.poll_for_condition(_adb_connect_wrapper,
                              exception,
                              timeout)
 
