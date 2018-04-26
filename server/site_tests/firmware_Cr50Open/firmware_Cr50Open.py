@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50Open(FirmwareTest):
+class firmware_Cr50Open(Cr50Test):
     """Verify cr50 unlock.
 
     Enable the lock on cr50, run 'lock disable', and then press the power
@@ -20,9 +20,6 @@ class firmware_Cr50Open(FirmwareTest):
         """Initialize the test"""
         super(firmware_Cr50Open, self).initialize(host, cmdline_args)
 
-        if not hasattr(self, 'cr50'):
-            raise error.TestNAError('Test can only be run on devices with '
-                                    'access to the Cr50 console')
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
 

@@ -8,10 +8,10 @@ import os
 import re
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50ConsoleCommands(FirmwareTest):
+class firmware_Cr50ConsoleCommands(Cr50Test):
     """
     Verify the cr50 console output for important commands.
 
@@ -41,10 +41,6 @@ class firmware_Cr50ConsoleCommands(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_Cr50ConsoleCommands, self).initialize(host, cmdline_args)
-        if not hasattr(self, 'cr50'):
-            raise error.TestNAError('Test can only be run on devices with '
-                                    'access to the Cr50 console')
-
         self.host = host
         self.missing = []
         self.extra = []
