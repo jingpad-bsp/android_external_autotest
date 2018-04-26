@@ -40,6 +40,24 @@ class Cr50Test(FirmwareTest):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
 
+        args = {}
+        for arg in cmdline_args:
+            if '=' in arg:
+                k, v = arg.split('=')
+                args[k] = v
+            else:
+                logging.debug('ignoring misformatted arg "%s"', arg)
+
+        self.ccd_lockout = args.get('ccd_lockout', '').lower == 'true'
+        self.can_set_ccd_level = (not self.cr50.using_ccd() or
+            self.cr50.testlab_is_on()) and not self.ccd_lockout
+        self.original_ccd_level = self.cr50.get_ccd_level()
+        if self.can_set_ccd_level:
+            # Lock cr50 so the console will be restricted
+            self.cr50.set_ccd_level('lock')
+        elif self.original_ccd_level != 'lock':
+            raise error.TestNAError('Lock the console before running cr50 test')
+
         self.host = host
         self._save_original_state()
         # We successfully saved the device state
@@ -306,6 +324,16 @@ class Cr50Test(FirmwareTest):
             if self._raise_error_on_mismatch:
                 raise error.TestError('Unexpected state mismatch during '
                                       'cleanup %s' % state_mismatch)
+
+        # Restore the ccd privilege level
+        if hasattr(self, 'original_ccd_level'):
+            # First try using testlab open to open the device
+            if self.cr50.testlab_is_on() and self.original_ccd_level == 'open':
+                self.servo.set_nocheck('cr50_testlab', 'open')
+            if (self.can_set_ccd_level and
+                self.original_ccd_level != self.cr50.get_ccd_level()):
+                self.cr50.set_ccd_level(self.original_ccd_level)
+
         super(Cr50Test, self).cleanup()
 
 
