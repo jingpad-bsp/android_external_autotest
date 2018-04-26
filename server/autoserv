@@ -541,7 +541,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     job = server_job.server_job(**job_kwargs)
 
     job.logging.start_logging()
-    job.init_parser()
 
     # perform checks
     job.precheck()
@@ -622,11 +621,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         traceback.print_exc()
     finally:
         metrics.Flush()
-
-    if pid_file_manager:
-        pid_file_manager.num_tests_failed = job.num_tests_failed
-        pid_file_manager.close_file(exit_code)
-    job.cleanup_parser()
 
     sys.exit(exit_code)
 
