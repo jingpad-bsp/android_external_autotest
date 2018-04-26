@@ -81,11 +81,12 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
         @param image_url: The omaha URL to call. It contains the payload url
                           for cellular tests.
         @param cellular: True if we should run this test using a sim card.
-        @payload_payload_info: For cellular tests we need to have our own
-                               omaha instance and this is a dictionary of
-                               payload information to be used in the omaha
-                               response.
-        @full_payload: True for full payloads, False for delta.
+        @param payload_info: For cellular tests we need to have our own omaha
+                             instance and this is a dictionary of payload
+                             information to be used in the omaha response.
+        @param full_payload: True for full payloads, False for delta.
+        @param critical_update: True if we should have deadline:now in omaha
+                                response.
 
         """
         utils.run('restart update-engine')
@@ -111,10 +112,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
                                                  is_delta=not full_payload,
                                                  critical=self._critical_update)
                     self._omaha.start()
-
-                    # We will tell OOBE to call localhost for update requests.
-                    url = 'http://127.0.0.1:%d/update' % self._omaha.get_port()
-                    self._start_oobe_update(url)
+                    self._start_oobe_update(self._omaha.get_update_url())
 
                     # Remove the custom omaha server from lsb release because
                     # after we reboot it will no longer be running.

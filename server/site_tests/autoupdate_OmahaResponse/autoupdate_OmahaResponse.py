@@ -1,9 +1,9 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 import logging
 
-from autotest_lib.server import autotest
 from autotest_lib.server.cros.update_engine import update_engine_test
 
 class autoupdate_OmahaResponse(update_engine_test.UpdateEngineTest):
@@ -15,14 +15,12 @@ class autoupdate_OmahaResponse(update_engine_test.UpdateEngineTest):
     version = 1
 
     def cleanup(self):
-        self._host.reboot()
         super(autoupdate_OmahaResponse, self).cleanup()
+        self._host.reboot()
 
-
-    def run_once(self, host, job_repo_url=None, full_payload=True,
+    def run_once(self, job_repo_url=None, full_payload=True,
                  running_at_desk=False, switch_urls=False, bad_sha256=False,
                  bad_metadata_size=False, test_backoff=False, backoff=False):
-        self._host = host
         self._job_repo_url = job_repo_url
 
         # Figure out the payload to use for the current build.

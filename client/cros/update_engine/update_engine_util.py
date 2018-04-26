@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import os
 import time
 
 from autotest_lib.client.common_lib import error
@@ -112,9 +113,10 @@ class UpdateEngineUtil(object):
             time.sleep(1)
 
 
-    def _get_update_engine_status(self):
+    def _get_update_engine_status(self, timeout=3600):
         """Returns a dictionary version of update_engine_client --status"""
-        status = self._run('update_engine_client --status', ignore_timeout=True)
+        status = self._run('update_engine_client --status', timeout=timeout,
+                           ignore_timeout=True)
         if status is None:
             return None
         logging.debug(status)
@@ -125,23 +127,36 @@ class UpdateEngineUtil(object):
         return status_dict
 
 
-    def _check_update_engine_log_for_entry(self, entry, raise_error=False):
+    def _check_update_engine_log_for_entry(self, entry, raise_error=False,
+                                           err_str=None,
+                                           update_engine_log=None):
         """
         Checks for entries in the update_engine log.
 
         @param entry: The line to search for.
         @param raise_error: Fails tests if log doesn't contain entry.
+        @param err_str: The error string to raise if we cannot find entry.
+        @param update_engine_log: Update engine log string you want to
+                                  search. If None, we will read from the
+                                  current update engine log.
 
         @return Boolean if the update engine log contains the entry.
 
         """
-        result = self._run('cat %s | grep "%s"' % (self._UPDATE_ENGINE_LOG,
-                                                   entry), ignore_status=True)
+        if update_engine_log:
+            result = self._run('echo "%s" | grep "%s"' % (update_engine_log,
+                                                          entry),
+                               ignore_status=True)
+        else:
+            result = self._run('cat %s | grep "%s"' % (
+                self._UPDATE_ENGINE_LOG, entry), ignore_status=True)
 
         if result.exit_status != 0:
             if raise_error:
-                raise error.TestFail('Did not find expected string in %s: %s' %
-                    (self._UPDATE_ENGINE_LOG, entry))
+                error_str = 'Did not find expected string in update_engine ' \
+                            'log: %s' % entry
+                logging.debug(error_str)
+                raise error.TestFail(err_str if err_str else error_str)
             else:
                 return False
         return True
@@ -183,3 +198,30 @@ class UpdateEngineUtil(object):
           cmd += ' --interactive=false'
         self._run(cmd, ignore_status=ignore_status)
 
+
+    def _save_extra_update_engine_logs(self, number_of_logs=2):
+        """
+        Get the last X number of update_engine logs on the DUT.
+
+        @param number_of_logs: The number of logs to save.
+
+        """
+        files = self._run('ls -t -1 %s' %
+                          self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
+
+        for i in range(number_of_logs):
+            file = os.path.join(self._UPDATE_ENGINE_LOG_DIR, files[i])
+            self._get_file(file, self.resultsdir)
+
+
+    def _get_second_last_update_engine_log(self):
+        """
+        Gets second last update engine log text.
+
+        This is useful for getting the last update engine log before a reboot.
+
+        """
+        files = self._run('ls -t -1 %s' %
+                          self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
+        return self._run('cat %s%s' % (self._UPDATE_ENGINE_LOG_DIR,
+                                       files[1])).stdout
