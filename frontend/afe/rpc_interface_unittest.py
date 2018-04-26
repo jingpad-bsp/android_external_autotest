@@ -24,6 +24,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import suite_common
 from django.db.utils import DatabaseError
 
 
@@ -1441,7 +1442,7 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
 
     def setUp(self):
         super(ExtraRpcInterfaceTest, self).setUp()
-        self._SUITE_NAME = rpc_interface.canonicalize_suite_name(
+        self._SUITE_NAME = suite_common.canonicalize_suite_name(
             self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
         self._frontend_common_setup(fill_data=False)

@@ -28,8 +28,13 @@ SuiteSpecs = collections.namedtuple(
         'SuiteSpecs',
         [
                 'builds',
+                'suite_file_name',
                 'test_source_build',
         ])
+
+
+class NonValidPropertyError(Exception):
+  """Raised if a suite's property is not valid."""
 
 
 class Suite(object):
@@ -40,27 +45,54 @@ class Suite(object):
 
         @param specs: A SuiteSpecs object.
         """
+        self._ds = None
+
+        self.control_file = ''
         self.tests = []
         self.wait = True
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
+        self.suite_file_name = specs.suite_file_name
 
 
-    def stage_suite_artifacts(self):
+    @property
+    def ds(self):
+        """Getter for private |self._ds| property.
+
+        This ensures that once self.ds is called, there's a devserver ready
+        for it.
+        """
+        if self._ds is None:
+            raise NonValidPropertyError(
+                'Property self.ds is None. Please call stage_suite_artifacts() '
+                'before calling it.')
+
+        return self._ds
+
+
+    def prepare(self):
+        """Prepare a suite job for execution."""
+        self._stage_suite_artifacts()
+        self._parse_suite_args()
+
+
+    def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
 
         @param build: The build to stage artifacts.
         """
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
         ds, _ = suite_common.stage_build_artifacts(self.test_source_build)
-        self.ds = ds
+        self._ds = ds
 
 
-    def get_suite_args(self):
+    def _parse_suite_args(self):
         """Get the suite args.
 
         The suite args includes:
             a. suite args in suite control file.
             b. passed-in suite args by user.
         """
-        return
+        suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
+        self.control_file = suite_common.get_control_file_by_build(
+                self.test_source_build, self.ds, self.suite_file_name)
