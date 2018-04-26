@@ -99,8 +99,6 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
         key0 = '0f0e0d0c0b0a09080706050403020100'
         key1 = '000102030405060708090a0b0c0d0e0f'
         mdid = 'a1b2'
-        br0 = 'br0'
-        br1 = 'br1'
         router0_conf = hostap_config.HostapConfig(channel=1,
                        mode=hostap_config.HostapConfig.MODE_11G,
                        security_config=self._security_config,
@@ -110,7 +108,7 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
                        r1kh_id=id0,
                        r0kh='%s %s %s' % (mac1, id1, key0),
                        r1kh='%s %s %s' % (mac1, mac1, key1),
-                       bridge=br0)
+                       use_bridge=True)
         router1_conf = hostap_config.HostapConfig(channel=48,
                        mode=hostap_config.HostapConfig.MODE_11A,
                        security_config=self._security_config,
@@ -120,7 +118,7 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
                        r1kh_id=id1,
                        r0kh='%s %s %s' % (mac0, id0, key1),
                        r1kh='%s %s %s' % (mac0, mac0, key0),
-                       bridge=br1)
+                       use_bridge=True)
         client_conf = xmlrpc_datatypes.AssociationParameters(
                       security_config=self._security_config)
 
@@ -156,17 +154,22 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
             roam_to_bssid = bssid0
 
         # Set up virtual ethernet interface so APs can talk to each other
-        veth0 = 'veth0'
-        veth1 = 'veth1'
+        br0 = router0_conf.bridge
+        br1 = router1_conf.bridge
+        self.veth0 = 'veth0'
+        self.veth1 = 'veth1'
+        self.context.router.delete_link(self.veth0)
+        self.context.router.delete_link(self.veth1)
+
         try:
             self.context.router.router.run('ip link add %s type veth peer name '
-                                           '%s' % (veth0, veth1))
-            self.context.router.router.run('ifconfig %s up' % veth0)
-            self.context.router.router.run('ifconfig %s up' % veth1)
+                                           '%s' % (self.veth0, self.veth1))
+            self.context.router.router.run('ifconfig %s up' % self.veth0)
+            self.context.router.router.run('ifconfig %s up' % self.veth1)
             self.context.router.router.run('ip link set %s master %s' %
-                                           (veth0, br0))
+                                           (self.veth0, br0))
             self.context.router.router.run('ip link set %s master %s' %
-                                           (veth1, br1))
+                                           (self.veth1, br1))
         except Exception as e:
             raise error.TestFail('veth configuration failed: %s' % e)
 
@@ -190,6 +193,8 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
                    roam_to_bssid, timeout_seconds=self.TIMEOUT_SECONDS):
                 raise error.TestFail('Failed to roam.')
 
-        # Tear down
-        self.context.router.router.run('ip link del %s' % veth0)
-        self.context.router.deconfig()
+    def cleanup(self):
+        """Cleanup function."""
+
+        self.context.router.delete_link(self.veth0)
+        super(network_WiFi_RoamFT, self).cleanup()
