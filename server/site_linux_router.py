@@ -207,6 +207,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.dhcp_low = 1
         self.dhcp_high = 128
 
+        # Tear down hostapbr bridge interfaces
+        result = self.host.run('ls -d /sys/class/net/%s*' %
+                               self.HOSTAP_BRIDGE_INTERFACE_PREFIX,
+                               ignore_status=True)
+        if result.exit_status == 0:
+            for path in result.stdout.splitlines():
+                self.delete_link(path.split('/')[-1])
+
         # Kill hostapd and dhcp server if already running.
         self._kill_process_instance('hostapd', timeout_seconds=30)
         self.stop_dhcp_server(instance=None)
@@ -445,6 +453,9 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             router_caps = self.get_capabilities()
             if site_linux_system.LinuxSystem.CAPABILITY_VHT not in router_caps:
                 raise error.TestNAError('Router does not have AC support')
+
+        if configuration.use_bridge:
+            configuration._bridge = self.get_brif()
 
         self.start_hostapd(configuration)
         interface = self.hostapd_instances[-1].interface
@@ -820,6 +831,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         for server in local_servers:
             self.stop_local_server(server)
+
+        for brif in range(self._brif_index):
+            self.delete_link('%s%d' %
+                             (self.HOSTAP_BRIDGE_INTERFACE_PREFIX, brif))
+
+
+    def delete_link(self, name):
+        """Delete link using the `ip` command.
+
+        @param name string link name.
+
+        """
+        self.host.run('%s link del %s' % (self.cmd_ip, name),
+                      ignore_status=True)
 
 
     def set_ap_interface_down(self, instance=0):
