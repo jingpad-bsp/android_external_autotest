@@ -25,13 +25,13 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
     """
     version = 1
 
-    _NO_IGNORE_BACKOFF_PREF = 'no-ignore-backoff'
-    _BACKOFF_EXPIRY_TIME_PREF = 'backoff-expiry-time'
+    _BACKOFF_DISABLED = 'Resetting backoff expiry time as payload backoff is ' \
+                        'disabled'
     _BACKOFF_ENABLED = 'Incrementing the backoff expiry time'
     _BACKOFF_ERROR = 'Updating payload state for error code: 40 (' \
                      'ErrorCode::kOmahaUpdateDeferredForBackoff)'
-    _BACKOFF_DISABLED = 'Resetting backoff expiry time as payload backoff is ' \
-                        'disabled'
+    _BACKOFF_EXPIRY_TIME_PREF = 'backoff-expiry-time'
+    _NO_IGNORE_BACKOFF_PREF = 'no-ignore-backoff'
 
 
     def cleanup(self):

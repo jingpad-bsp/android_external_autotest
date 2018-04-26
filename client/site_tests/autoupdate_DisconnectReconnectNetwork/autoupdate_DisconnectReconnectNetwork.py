@@ -21,6 +21,15 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
     version = 1
 
 
+    def _has_progress_stopped(self):
+        """Checks that the update_engine progress has stopped moving."""
+        before = self._get_update_engine_status()[self._PROGRESS]
+        for i in range(0, 10):
+            if before != self._get_update_engine_status()[self._PROGRESS]:
+                return False
+            time.sleep(1)
+        return True
+
     def run_once(self, update_url, time_without_network=120):
         self._update_server = urlparse.urlparse(update_url).hostname
         self._disable_internet()
@@ -29,6 +38,11 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
         result = utils.ping(self._update_server, deadline=5, timeout=5)
         if result != 2:
             raise error.TestFail('Ping succeeded even though we were offline.')
+
+        # We are seeing update_engine progress move a very tiny amount
+        # after disconnecting network so wait for it to stop moving.
+        utils.poll_for_condition(lambda: self._has_progress_stopped,
+                                 desc='Waiting for update progress to stop.')
 
         # Get the update progress as the network is down
         progress_before = self._get_update_engine_status()[self._PROGRESS]

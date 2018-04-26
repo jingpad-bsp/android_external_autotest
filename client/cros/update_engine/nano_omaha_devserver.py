@@ -150,6 +150,10 @@ class NanoOmahaDevserver(object):
         """Returns the TCP port number the server is listening on."""
         return self._port
 
+    def get_update_url(self):
+        """Returns the update url for this server."""
+        return 'http://127.0.0.1:%d/update' % self._port
+
     def set_image_params(self, image_url, image_size, sha256,
                          metadata_size=None, metadata_signature=None,
                          public_key=None, is_delta=False, critical=True):
