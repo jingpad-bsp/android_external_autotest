@@ -233,7 +233,8 @@ def install_packages(packages=[], python_packages=[], force_latest=False):
         packages.extend(['python-pip', 'python-dev'])
     if packages:
         common_utils.run(
-            'sudo apt-get install %s -y --force-yes' % ' '.join(packages))
+            'sudo DEBIAN_FRONTEND=noninteractive apt-get install %s -y '
+            '--force-yes' % ' '.join(packages))
         logging.debug('Packages are installed: %s.', packages)
 
     target_setting = ''
