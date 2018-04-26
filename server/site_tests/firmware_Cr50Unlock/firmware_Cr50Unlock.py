@@ -6,10 +6,10 @@ import logging
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50Unlock(FirmwareTest):
+class firmware_Cr50Unlock(Cr50Test):
     """Verify cr50 unlock using the console and gsctool.
 
     Enable the lock on cr50, run the different forms of unlock, making sure
@@ -23,9 +23,6 @@ class firmware_Cr50Unlock(FirmwareTest):
         """Initialize servo and check that it has access to cr50 with ccd"""
         super(firmware_Cr50Unlock, self).initialize(host, cmdline_args)
 
-        if not hasattr(self, 'cr50'):
-            raise error.TestNAError('Test can only be run on devices with '
-                                    'access to the Cr50 console')
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
 
