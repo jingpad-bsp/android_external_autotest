@@ -5,10 +5,10 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50Testlab(FirmwareTest):
+class firmware_Cr50Testlab(Cr50Test):
     """Verify cr50 testlab enable/disable."""
     version = 1
     ACCESS_DENIED = 'Access Denied'
