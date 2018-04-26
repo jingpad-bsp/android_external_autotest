@@ -57,7 +57,7 @@ class HostInfoTest(unittest.TestCase):
 
     def test_build_needs_prefix(self):
         """The build prefix is of the form '<type>-version:'"""
-        self.info.labels = ['cros-version', 'ab-version', 'testbed-version',
+        self.info.labels = ['cros-version', 'ab-version',
                             'fwrw-version', 'fwro-version']
         self.assertIsNone(self.info.build)
 
@@ -65,8 +65,7 @@ class HostInfoTest(unittest.TestCase):
     def test_build_prefix_must_be_anchored(self):
         """Ensure that build ignores prefixes occuring mid-string."""
         self.info.labels = ['not-at-start-cros-version:cros1',
-                            'not-at-start-ab-version:ab1',
-                            'not-at-start-testbed-version:testbed1']
+                            'not-at-start-ab-version:ab1']
         self.assertIsNone(self.info.build)
 
 
@@ -82,26 +81,14 @@ class HostInfoTest(unittest.TestCase):
         self.assertEqual(self.info.build, 'cros1')
         self.info.labels = ['ab-version:ab1', 'ab-version:ab2']
         self.assertEqual(self.info.build, 'ab1')
-        self.info.labels = ['testbed-version:tb1', 'testbed-version:tb2']
-        self.assertEqual(self.info.build, 'tb1')
 
 
     def test_build_prefer_cros_over_others(self):
         """When multiple versions are available, prefer cros."""
-        self.info.labels = ['testbed-version:tb1', 'ab-version:ab1',
-                            'cros-version:cros1']
+        self.info.labels = ['ab-version:ab1', 'cros-version:cros1']
         self.assertEqual(self.info.build, 'cros1')
-        self.info.labels = ['cros-version:cros1', 'ab-version:ab1',
-                            'testbed-version:tb1']
+        self.info.labels = ['cros-version:cros1', 'ab-version:ab1']
         self.assertEqual(self.info.build, 'cros1')
-
-
-    def test_build_prefer_ab_over_testbed(self):
-        """When multiple versions are available, prefer ab over testbed."""
-        self.info.labels = ['testbed-version:tb1', 'ab-version:ab1']
-        self.assertEqual(self.info.build, 'ab1')
-        self.info.labels = ['ab-version:ab1', 'testbed-version:tb1']
-        self.assertEqual(self.info.build, 'ab1')
 
 
     def test_os_no_match(self):
@@ -163,16 +150,14 @@ class HostInfoTest(unittest.TestCase):
 
     def test_clear_all_version_labels(self):
         """Clear each recognized type of version label."""
-        original_labels = ['extra_label', 'cros-version:cr1', 'ab-version:ab1',
-                           'testbed-version:tb1']
+        original_labels = ['extra_label', 'cros-version:cr1', 'ab-version:ab1']
         self.info.labels = list(original_labels)
         self.info.clear_version_labels()
         self.assertListEqual(self.info.labels, ['extra_label'])
 
     def test_clear_all_version_label_prefixes(self):
         """Clear each recognized type of version label with empty value."""
-        original_labels = ['extra_label', 'cros-version:', 'ab-version:',
-                           'testbed-version:']
+        original_labels = ['extra_label', 'cros-version:', 'ab-version:']
         self.info.labels = list(original_labels)
         self.info.clear_version_labels()
         self.assertListEqual(self.info.labels, ['extra_label'])

@@ -42,7 +42,6 @@ class HostInfo(object):
             provision.CROS_VERSION_PREFIX,
             provision.CROS_ANDROID_VERSION_PREFIX,
             provision.ANDROID_BUILD_VERSION_PREFIX,
-            provision.TESTBED_BUILD_VERSION_PREFIX,
     )
 
     def __init__(self, labels=None, attributes=None):
