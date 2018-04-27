@@ -18,7 +18,8 @@ class firmware_Cr50CCDServoCap(Cr50Test):
     """
     version = 1
 
-    # Time used to wait for Cr50 to detect the servo state
+    # Time used to wait for Cr50 to detect the servo state. Cr50 updates the ccd
+    # state once a second. Wait 2 seconds to be conservative.
     SLEEP = 2
 
     # A list of the actions we should verify
@@ -142,6 +143,7 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         if not self.cr50.testlab_is_on():
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
         self.cr50.send_command('ccd testlab open')
+        self.cr50.set_cap('UartGscTxECRx', 'Always')
 
 
     def cleanup(self):
@@ -186,6 +188,9 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         # If ccd is locked out change the expected state
         if self.ccd_lockout and run in self.EXPECTED_CCD_LOCKOUT_RESULTS:
             expected_states = self.EXPECTED_CCD_LOCKOUT_RESULTS[run]
+
+        # Wait a short time for the ccd state to settle
+        time.sleep(self.SLEEP)
 
         mismatch = []
         ccdstate = self.get_ccdstate()
