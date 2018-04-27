@@ -9,8 +9,10 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import histogram_verifier
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
+from autotest_lib.client.cros.video import histogram_verifier
+
 
 EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream',
                       '--use-fake-device-for-media-stream',
@@ -51,11 +53,13 @@ class video_MediaRecorderHWEncodeUsed(test.test):
             return True
 
     @helper_logger.video_log_wrapper
-    def run_once(self, codec):
+    def run_once(self, codec, capability):
         """
         Tests whether VEA works by verifying histogram after MediaRecorder
         records a video.
         """
+        device_capability.DeviceCapability().ensure_capability(capability)
+
         with chrome.Chrome(
                 extra_browser_args=EXTRA_BROWSER_ARGS +\
                 [helper_logger.chrome_vmodule_flag()],
@@ -83,4 +87,3 @@ class video_MediaRecorderHWEncodeUsed(test.test):
                 logging.info(histogram_verifier.get_histogram(
                              cr, MEDIA_RECORDER_ERROR))
                 raise error.TestError('GPU Video Encoder Error.')
-

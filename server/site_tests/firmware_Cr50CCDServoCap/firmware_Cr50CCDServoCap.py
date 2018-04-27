@@ -7,10 +7,10 @@ import pprint
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50CCDServoCap(FirmwareTest):
+class firmware_Cr50CCDServoCap(Cr50Test):
     """Verify Cr50 CCD output enable/disable when servo is connected.
 
     Verify Cr50 will enable/disable the CCD servo output capabilities when servo

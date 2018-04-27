@@ -473,6 +473,10 @@ class HostapConfig(object):
         """@return string _bridge value, or None."""
         return self._bridge
 
+    @property
+    def use_bridge(self):
+        """@return bool _use_bridge value, or None."""
+        return self._use_bridge
 
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
@@ -492,7 +496,7 @@ class HostapConfig(object):
                  r1kh_id=None,
                  r0kh=None,
                  r1kh=None,
-                 bridge=None):
+                 use_bridge=False):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -531,7 +535,7 @@ class HostapConfig(object):
         @param r1kh_id string PMK-R1 key holder id for FT
         @param r0kh string R0KHs in the same mobility domain
         @param r1kh string R1KHs in the same mobility domain
-        @param bridge string bridge interface
+        @param use_bridge True if we should use a bridge
 
         """
         super(HostapConfig, self).__init__()
@@ -607,7 +611,8 @@ class HostapConfig(object):
         self._r1kh_id = r1kh_id
         self._r0kh = r0kh
         self._r1kh = r1kh
-        self._bridge = bridge
+        self._bridge = None
+        self._use_bridge = use_bridge
 
 
     def __repr__(self):

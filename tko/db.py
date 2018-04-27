@@ -433,40 +433,76 @@ class db_sql(object):
         self.delete('tko_jobs', where)
 
 
-    def insert_job(self, tag, job, parent_job_id=None, commit=None):
+    def insert_job(self, tag, job, commit=None):
         """Insert a tko job.
 
         @param tag: The job tag.
         @param job: The job object.
-        @param parent_job_id: The parent job id.
         @param commit: If commit the transaction .
         """
-        afe_job_id = utils.get_afe_job_id(tag)
+        data = self._get_common_job_data(tag, job)
+        data.update({
+                'afe_job_id': job.afe_job_id,
+                'afe_parent_job_id': job.afe_parent_job_id,
+        })
+        if job.job_idx is not None:
+            self.update(
+                    'tko_jobs', data, {'job_idx': job.job_idx}, commit=commit)
+        else:
+            self.insert('tko_jobs', data, commit=commit)
+            job.job_idx = self.get_last_autonumber_value()
 
-        data = {'tag':tag,
+
+    def _get_common_job_data(self, tag, job):
+        """Construct a dictionary with the common data to insert in job/task."""
+        return {
+                'tag':tag,
                 'label': job.label,
                 'username': job.user,
                 'machine_idx': job.machine_idx,
                 'queued_time': job.queued_time,
                 'started_time': job.started_time,
                 'finished_time': job.finished_time,
-                'afe_job_id': afe_job_id,
-                'afe_parent_job_id': parent_job_id,
                 'build': job.build,
                 'build_version': job.build_version,
                 'board': job.board,
-                'suite': job.suite}
-        job.afe_job_id = afe_job_id
-        if parent_job_id:
-            job.afe_parent_job_id = str(parent_job_id)
+                'suite': job.suite,
+        }
 
-        # TODO(ntang): check job.index directly.
-        is_update = hasattr(job, 'index')
-        if is_update:
-            self.update('tko_jobs', data, {'job_idx': job.index}, commit=commit)
+
+    def insert_or_update_task_reference(self, job, reference_type, commit=None):
+        """Insert an entry in the tko_task_references table.
+
+        The job should already have been inserted in tko_jobs.
+        @param job: tko.models.job object.
+        @param reference_type: The type of reference to insert.
+                One of: {'afe', 'skylab'}
+        @param commit: Whether to commit this transaction.
+        """
+        assert reference_type in {'afe', 'skylab'}
+        if reference_type == 'afe':
+            task_id = job.afe_job_id
+            parent_task_id = job.afe_parent_job_id
         else:
-            self.insert('tko_jobs', data, commit=commit)
-            job.index = self.get_last_autonumber_value()
+            task_id = job.skylab_task_id
+            parent_task_id = job.skylab_parent_task_id
+        data = {
+                'reference_type': reference_type,
+                'tko_job_idx': job.job_idx,
+                'task_id': task_id,
+                'parent_task_id': parent_task_id,
+        }
+
+        task_reference_id = self._lookup_task_reference(job)
+        if task_reference_id is not None:
+            self.update('tko_task_references',
+                        data,
+                        {'id': task_reference_id},
+                        commit=commit)
+            job.task_reference_id = task_reference_id
+        else:
+            self.insert('tko_task_references', data, commit=commit)
+            job.task_reference_id = self.get_last_autonumber_value()
 
 
     def update_job_keyvals(self, job, commit=None):
@@ -476,7 +512,7 @@ class db_sql(object):
         @param commit: If commit the transaction .
         """
         for key, value in job.keyval_dict.iteritems():
-            where = {'job_id': job.index, 'key': key}
+            where = {'job_id': job.job_idx, 'key': key}
             data = dict(where, value=value)
             exists = self.select('id', 'tko_job_keyvals', where=where)
 
@@ -494,7 +530,7 @@ class db_sql(object):
         @param commit: If commit the transaction .
         """
         kver = self.insert_kernel(test.kernel, commit=commit)
-        data = {'job_idx':job.index, 'test':test.testname,
+        data = {'job_idx':job.job_idx, 'test':test.testname,
                 'subdir':test.subdir, 'kernel_idx':kver,
                 'status':self.status_idx[test.status],
                 'reason':test.reason, 'machine_idx':job.machine_idx,
@@ -589,6 +625,23 @@ class db_sql(object):
             # Only try to update tko_machines record if machine is set. This
             # prevents unnecessary db writes for suite jobs.
             self._update_machine_information(job, commit=commit)
+
+
+    def _lookup_task_reference(self, job):
+        """Find the task_reference_id for a given job. Return None if not found.
+
+        @param job: tko.models.job object.
+        """
+        if job.job_idx is None:
+            return None
+        rows = self.select(
+                'id', 'tko_task_references', {'tko_job_idx': job.job_idx})
+        if not rows:
+            return None
+        if len(rows) > 1:
+            raise MySQLTooManyRows('Got %d tko_task_references for tko_job %d'
+                                   % (len(rows), job.job_idx))
+        return rows[0][0]
 
 
     def _insert_machine(self, job, commit = None):

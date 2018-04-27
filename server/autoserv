@@ -200,11 +200,6 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
     container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
     if parser.options.results:
         paths_to_replace[parser.options.results] = container_result_dir
-    # Update parse_job directory with the one in container. The assumption is
-    # that the result folder to be parsed is always the same as the results_dir.
-    if parser.options.parse_job:
-        paths_to_replace[parser.options.parse_job] = container_result_dir
-
     args = [paths_to_replace.get(arg, arg) for arg in args]
 
     # Apply --use-existing-results, results directory is aready created and
@@ -466,10 +461,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     reset = parser.options.reset
     job_labels = parser.options.job_labels
     no_tee = parser.options.no_tee
-    parse_job = parser.options.parse_job
     execution_tag = parser.options.execution_tag
-    if not execution_tag:
-        execution_tag = parse_job
     ssh_user = parser.options.ssh_user
     ssh_port = parser.options.ssh_port
     ssh_pass = parser.options.ssh_pass
@@ -531,7 +523,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                     host_attributes=parser.options.host_attributes,
             ),
             'client': client,
-            'parse_job': parse_job,
             'ssh_user': ssh_user,
             'ssh_port': ssh_port,
             'ssh_pass': ssh_pass,
@@ -550,7 +541,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     job = server_job.server_job(**job_kwargs)
 
     job.logging.start_logging()
-    job.init_parser()
 
     # perform checks
     job.precheck()
@@ -631,11 +621,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         traceback.print_exc()
     finally:
         metrics.Flush()
-
-    if pid_file_manager:
-        pid_file_manager.num_tests_failed = job.num_tests_failed
-        pid_file_manager.close_file(exit_code)
-    job.cleanup_parser()
 
     sys.exit(exit_code)
 

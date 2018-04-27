@@ -304,10 +304,11 @@ def export_tko_job_to_file(job, jobname, filename):
                          "compiling tko/tko.proto.")
 
 
-def parse_one(db, jobname, path, parse_options):
+def parse_one(db, pid_file_manager, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
     @param db: database object.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param jobname: the tag used to search for existing job in db,
                     e.g. '1234-chromeos-test/host1'
     @param path: The path to the results to be parsed.
@@ -345,6 +346,10 @@ def parse_one(db, jobname, path, parse_options):
         if not dry_run:
             _delete_tests_from_db(db, unmatched_tests)
 
+    job.afe_job_id = tko_utils.get_afe_job_id(jobname)
+    job.skylab_task_id = tko_utils.get_skylab_task_id(jobname)
+    job.afe_parent_job_id = str(job_keyval.get(constants.PARENT_JOB_ID))
+    job.skylab_parent_task_id = str(job_keyval.get(constants.PARENT_JOB_ID))
     job.build = None
     job.board = None
     job.build_version = None
@@ -381,6 +386,7 @@ def parse_one(db, jobname, path, parse_options):
                             test.reason))
         if test.status != 'GOOD':
             job_successful = False
+            pid_file_manager.num_tests_failed += 1
             message_lines.append(format_failure_message(
                 jobname, test.kernel.base, test.subdir,
                 test.status, test.reason))
@@ -403,17 +409,17 @@ def parse_one(db, jobname, path, parse_options):
             if sponge_url:
                 job.keyval_dict['sponge_url'] = sponge_url
 
-            _write_job_to_db(db, jobname, job, job_keyval)
+            _write_job_to_db(db, jobname, job)
 
             # Verify the job data is written to the database.
             if job.tests:
-                tests_in_db = db.find_tests(job.index)
+                tests_in_db = db.find_tests(job.job_idx)
                 tests_in_db_count = len(tests_in_db) if tests_in_db else 0
                 if tests_in_db_count != len(job.tests):
                     tko_utils.dprint(
                             'Failed to find enough tests for job_idx: %d. The '
                             'job should have %d tests, only found %d tests.' %
-                            (job.index, len(job.tests), tests_in_db_count))
+                            (job.job_idx, len(job.tests), tests_in_db_count))
                     metrics.Counter(
                             'chromeos/autotest/result/db_save_failure',
                             description='The number of times parse failed to '
@@ -431,7 +437,7 @@ def parse_one(db, jobname, path, parse_options):
             if orig_afe_job_id:
                 orig_job_idx = tko_models.Job.objects.get(
                         afe_job_id=orig_afe_job_id).job_idx
-                _invalidate_original_tests(orig_job_idx, job.index)
+                _invalidate_original_tests(orig_job_idx, job.job_idx)
     except Exception as e:
         tko_utils.dprint("Hit exception while uploading to tko db:\n%s" %
                          traceback.format_exc())
@@ -507,7 +513,7 @@ def parse_one(db, jobname, path, parse_options):
                 json.dump(gs_offloader_instructions, f)
 
 
-def _write_job_to_db(db, jobname, job, job_keyval):
+def _write_job_to_db(db, jobname, job):
     """Write all TKO data associated with a job to DB.
 
     This updates the job object as a side effect.
@@ -517,9 +523,11 @@ def _write_job_to_db(db, jobname, job, job_keyval):
     @param job: tko.models.job object.
     """
     db.insert_or_update_machine(job)
-    db.insert_job(
-        jobname, job,
-        parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+    db.insert_job(jobname, job)
+    db.insert_or_update_task_reference(
+            job,
+            'skylab' if tko_utils.is_skylab_task(jobname) else 'afe',
+    )
     db.update_job_keyvals(job)
     for test in job.tests:
         db.insert_test(job, test)
@@ -609,10 +617,11 @@ def _get_job_subdirs(path):
     return None
 
 
-def parse_leaf_path(db, path, level, parse_options):
+def parse_leaf_path(db, pid_file_manager, path, level, parse_options):
     """Parse a leaf path.
 
     @param db: database handle.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
     @param parse_options: _ParseOptions instance.
@@ -622,17 +631,19 @@ def parse_leaf_path(db, path, level, parse_options):
     job_elements = path.split("/")[-level:]
     jobname = "/".join(job_elements)
     try:
-        db.run_with_retry(parse_one, db, jobname, path, parse_options)
+        db.run_with_retry(parse_one, db, pid_file_manager, jobname, path,
+                          parse_options)
     except Exception as e:
         tko_utils.dprint("Error parsing leaf path: %s\nException:\n%s\n%s" %
                          (path, e, traceback.format_exc()))
     return jobname
 
 
-def parse_path(db, path, level, parse_options):
+def parse_path(db, pid_file_manager, path, level, parse_options):
     """Parse a path
 
     @param db: database handle.
+    @param pid_file_manager: pidfile.PidFileManager object.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
     @param parse_options: _ParseOptions instance.
@@ -647,16 +658,19 @@ def parse_path(db, path, level, parse_options):
         # synchronous server side tests record output in this directory. without
         # this check, we do not parse these results.
         if os.path.exists(os.path.join(path, 'status.log')):
-            new_job = parse_leaf_path(db, path, level, parse_options)
+            new_job = parse_leaf_path(db, pid_file_manager, path, level,
+                                      parse_options)
             processed_jobs.add(new_job)
         # multi-machine job
         for subdir in job_subdirs:
             jobpath = os.path.join(path, subdir)
-            new_jobs = parse_path(db, jobpath, level + 1, parse_options)
+            new_jobs = parse_path(db, pid_file_manager, jobpath, level + 1,
+                                  parse_options)
             processed_jobs.update(new_jobs)
     else:
         # single machine job
-        new_job = parse_leaf_path(db, path, level, parse_options)
+        new_job = parse_leaf_path(db, pid_file_manager, path, level,
+                                  parse_options)
         processed_jobs.add(new_job)
     return processed_jobs
 
@@ -726,7 +740,8 @@ def main():
                 else:
                     raise # something unexpected happened
             try:
-                new_jobs = parse_path(db, path, options.level, parse_options)
+                new_jobs = parse_path(db, pid_file_manager, path, options.level,
+                                      parse_options)
                 processed_jobs.update(new_jobs)
 
             finally:

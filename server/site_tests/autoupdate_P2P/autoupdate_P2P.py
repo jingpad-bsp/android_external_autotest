@@ -19,8 +19,9 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
     version = 1
 
     _CURRENT_RESPONSE_SIGNATURE_PREF = 'current-response-signature'
-    _P2P_NUM_ATTEMPTS_PREF = 'p2p-num-attempts'
+    _CURRENT_URL_INDEX_PREF = 'current-url-index'
     _P2P_FIRST_ATTEMPT_TIMESTAMP_PREF = 'p2p-first-attempt-timestamp'
+    _P2P_NUM_ATTEMPTS_PREF = 'p2p-num-attempts'
 
 
     def setup(self):
@@ -85,6 +86,20 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                         self._CURRENT_RESPONSE_SIGNATURE_PREF)
         self._hosts[1].send_file(result_pref_file,
                                  self._UPDATE_ENGINE_PREFS_DIR)
+
+
+    def _reset_current_url_index(self):
+        """
+        Reset current-url-index pref to 0.
+
+        Since we are copying the state from one DUT to the other we also need to
+        reset the current url index or UE will reset all of its state.
+
+        """
+        current_url_index = os.path.join(self._UPDATE_ENGINE_PREFS_DIR,
+                                         self._CURRENT_URL_INDEX_PREF)
+
+        self._hosts[1].run('echo 0 > %s' % current_url_index)
 
 
     def _update_dut(self, host, update_url):
@@ -256,9 +271,8 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
                                                                      build2))
 
 
-    def run_once(self, hosts, job_repo_url=None, too_many_attempts=False,
+    def run_once(self, job_repo_url=None, too_many_attempts=False,
                  deadline_expired=False):
-        self._hosts = hosts
         logging.info('Hosts for this test: %s', self._hosts)
 
         self._too_many_attempts = too_many_attempts
@@ -280,6 +294,7 @@ class autoupdate_P2P(update_engine_test.UpdateEngineTest):
 
         if too_many_attempts or deadline_expired:
             self._copy_payload_signature_between_hosts()
+            self._reset_current_url_index()
 
         # Update the 2nd DUT with the delta payload via P2P from the 1st DUT.
         update_engine_log = self._update_via_p2p(self._hosts[1], update_url)

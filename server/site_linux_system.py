@@ -39,6 +39,7 @@ class LinuxSystem(object):
     CAPABILITY_TDLS = 'tdls'
     CAPABILITY_VHT = 'vht'
     BRIDGE_INTERFACE_NAME = 'br0'
+    HOSTAP_BRIDGE_INTERFACE_PREFIX = 'hostapbr'
     MIN_SPATIAL_STREAMS = 2
     MAC_BIT_LOCAL = 0x2  # Locally administered.
     MAC_BIT_MULTICAST = 0x1
@@ -96,6 +97,7 @@ class LinuxSystem(object):
         logging.debug('Current regulatory domain %r',
                       self.iw_runner.get_regulatory_domain())
         self._interfaces = []
+        self._brif_index = 0
         for interface in self.iw_runner.list_interfaces():
             if self.inherit_interfaces:
                 self._interfaces.append(NetDev(inherited=True,
@@ -480,6 +482,13 @@ class LinuxSystem(object):
             self.ensure_unique_mac(net_dev)
 
         return net_dev
+
+
+    def get_brif(self):
+        brif_name = '%s%d' % (self.HOSTAP_BRIDGE_INTERFACE_PREFIX,
+                              self._brif_index)
+        self._brif_index += 1
+        return brif_name
 
 
     def get_configured_interface(self, phytype, spatial_streams=None,
