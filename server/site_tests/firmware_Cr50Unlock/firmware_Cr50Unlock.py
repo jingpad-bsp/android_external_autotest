@@ -76,7 +76,7 @@ class firmware_Cr50Unlock(Cr50Test):
         self.cr50.set_ccd_level('lock')
 
         # Clear the TPM owner. The login state can affect unlock abilities
-        tpm_utils.ClearTPMOwnerRequest(self.host)
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
 
         unlock_func(unlock_allowed)
 
