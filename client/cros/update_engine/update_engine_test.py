@@ -51,7 +51,7 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
                                  sleep_interval=1)
 
 
-    def _disable_internet(self):
+    def _disable_internet(self, ping_server='google.com'):
         """Disable the internet connection"""
         self._internet_was_disabled = True
         try:
@@ -62,6 +62,14 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
             utils.stop_service('recover_duts', ignore_status=True)
             utils.run('ifconfig eth0 down')
             utils.run('ifconfig eth1 down', ignore_status=True)
+
+            # Make sure we are offline
+            utils.poll_for_condition(lambda: utils.ping(ping_server,
+                                                        deadline=5,
+                                                        timeout=5) != 0,
+                                     timeout=60,
+                                     sleep_interval=1)
         except error.CmdError:
             logging.exception('Failed to disconnect one or more interfaces.')
+            logging.debug(utils.run('ifconfig', ignore_status=True))
 

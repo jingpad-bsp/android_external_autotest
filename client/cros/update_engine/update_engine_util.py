@@ -209,7 +209,8 @@ class UpdateEngineUtil(object):
         files = self._run('ls -t -1 %s' %
                           self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
 
-        for i in range(number_of_logs):
+        for i in range(number_of_logs if number_of_logs <= len(files) else
+                       len(files)):
             file = os.path.join(self._UPDATE_ENGINE_LOG_DIR, files[i])
             self._get_file(file, self.resultsdir)
 
