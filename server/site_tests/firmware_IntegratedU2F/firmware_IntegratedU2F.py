@@ -31,7 +31,7 @@ class firmware_IntegratedU2F(FirmwareTest):
                 self.host.run('stop u2fd')
             if self.create_g2f_force:
                 self.host.run('rm /var/lib/u2f/force/g2f.force')
-            tpm_utils.ClearTPMOwnerRequest(self.host)
+            tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
 
         super(firmware_IntegratedU2F, self).cleanup()
 
@@ -49,7 +49,7 @@ class firmware_IntegratedU2F(FirmwareTest):
             return
 
         # Login
-        tpm_utils.ClearTPMOwnerRequest(self.host)
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
         client_at = autotest.Autotest(self.host)
         client_at.run_test('login_LoginSuccess')
 
