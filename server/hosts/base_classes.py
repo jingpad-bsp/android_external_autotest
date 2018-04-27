@@ -108,7 +108,8 @@ def send_creation_metric(host, context=''):
     @param host: An instace of one of the host classes to send a report about.
     @param context: Optional context for who created the host instance.
     """
-    bases = host.__class__.__bases__ and _CREATION_METRIC_WHITELIST
+    bases = {b.__name__ for b in host.__class__.__bases__}
+    bases = bases & _CREATION_METRIC_WHITELIST
     for base in bases:
         metrics.Counter(_CREATION_METRIC).increment(fields={
                 'class': base,
