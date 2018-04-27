@@ -15,7 +15,7 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
     Tests removing network for a couple minutes.
 
     This test will be used in conjunction with
-    autoupdate_ForcedOOBEUpdate.interrupt.full.
+    autoupdate_ForcedOOBEUpdate.interrupt and autoupdate_Interruptions.
 
     """
     version = 1
@@ -29,6 +29,7 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
                 return False
             time.sleep(1)
         return True
+
 
     def run_once(self, update_url, time_without_network=120):
         self._update_server = urlparse.urlparse(update_url).hostname
