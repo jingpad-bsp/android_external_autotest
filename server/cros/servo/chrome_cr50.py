@@ -94,6 +94,54 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         super(ChromeCr50, self).send_command(commands)
 
 
+    def set_cap(self, cap, config):
+        """Set the capability to the config value"""
+        self.set_caps({ cap : config })
+
+
+    def set_caps(self, cap_dict):
+        """Use cap_dict to set all the cap values
+
+        Set all of the capabilities in cap_dict to the correct config.
+
+        Args:
+            cap_dict: A dictionary with the capability as key and the desired
+                setting as values
+        """
+        for cap, config in cap_dict.iteritems():
+            self.send_command('ccd set %s %s' % (cap, config))
+        current_cap_settings = self.get_cap_dict()
+        for cap, config in cap_dict.iteritems():
+            if current_cap_settings[cap].lower() != config.lower():
+                raise error.TestFail('Failed to set %s to %s' % (cap, config))
+
+
+    def get_cap_dict(self):
+        """Get the current ccd capability settings.
+
+        Returns:
+            A dictionary with the capability as the key and the setting as the
+            value
+        """
+        caps = {}
+        rv = self.send_command_get_output('ccd',
+                ["Capabilities:\s+\d+\s(.*)Use 'ccd help'"])[0][1]
+        for line in rv.splitlines():
+            # Line information is separated with an =
+            #   RebootECAP      Y 0=Default (IfOpened)
+            # Extract the capability name and the value. The first word after
+            # the equals sign is the only one that matters. 'Default' is the
+            # value not IfOpened
+            line = line.strip()
+            if '=' not in line:
+                continue
+            logging.info(line)
+            start, end = line.split('=')
+            caps[start.split()[0]] = end.split()[0]
+        logging.debug(caps)
+        return caps
+
+
     def send_command_get_output(self, command, regexp_list):
         """Send command through UART and wait for response.
 
