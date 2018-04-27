@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task
+from autotest_lib.scheduler import luciferlib
 from autotest_lib.scheduler import monitor_db, drone_manager
 from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats
@@ -757,7 +758,7 @@ class AgentTest(unittest.TestCase):
 
 class JobSchedulingTest(BaseSchedulerTest):
     def _test_run_helper(self, expect_agent=True, expect_starting=False,
-                         expect_pending=False):
+                         expect_pending=False, lucifer=False):
         if expect_starting:
             expected_status = models.HostQueueEntry.Status.STARTING
         elif expect_pending:
@@ -772,11 +773,15 @@ class JobSchedulingTest(BaseSchedulerTest):
         self.god.check_playback()
 
         self._dispatcher._schedule_running_host_queue_entries()
-        agent = self._dispatcher._agents[0]
 
         actual_status = models.HostQueueEntry.smart_get(1).status
         self.assertEquals(expected_status, actual_status)
 
+        if lucifer:
+            # TODO(ayatane): Lucifer ruins the fragile expectations
+            # here.  In particular, there won't be any agents.
+            return
+        agent = self._dispatcher._agents[0]
         if not expect_agent:
             self.assertEquals(agent, None)
             return
@@ -787,15 +792,10 @@ class JobSchedulingTest(BaseSchedulerTest):
 
 
     def test_run_synchronous_ready(self):
-        self._create_job(hosts=[1, 2], synchronous=True)
+        job = self._create_job(hosts=[1, 2], synchronous=True)
         self._update_hqe("status='Pending', execution_subdir=''")
-
-        queue_task = self._test_run_helper(expect_starting=True)
-
-        self.assert_(isinstance(queue_task, monitor_db.QueueTask))
-        self.assertEquals(queue_task.job.id, 1)
-        hqe_ids = [hqe.id for hqe in queue_task.queue_entries]
-        self.assertEquals(hqe_ids, [1, 2])
+        self._test_run_helper(expect_starting=True, lucifer=True)
+        self._assert_lucifer_called_with(job)
 
 
     def test_schedule_running_host_queue_entries_fail(self):
@@ -836,13 +836,24 @@ class JobSchedulingTest(BaseSchedulerTest):
         self._dispatcher._schedule_new_jobs()
 
         self.assertEqual(models.HostQueueEntry.Status.STARTING, hqe.status)
-        self.assertEqual(1, len(self._dispatcher._agents))
+        self._assert_lucifer_called_with(job)
 
-        self._dispatcher._schedule_new_jobs()
 
-        # No change to previously schedule hostless job, and no additional agent
-        self.assertEqual(models.HostQueueEntry.Status.STARTING, hqe.status)
-        self.assertEqual(1, len(self._dispatcher._agents))
+    def _assert_lucifer_called_with(self, job):
+        calls = []
+        # Create a thing we can assign attributes on.
+        fake_drone = lambda: None
+        fake_drone.hostname = lambda: 'localhost'
+        def fake(manager, job):
+            calls.append((manager, job))
+            return fake_drone
+        old = luciferlib.spawn_starting_job_handler
+        try:
+            luciferlib.spawn_starting_job_handler = fake
+            self._dispatcher._send_to_lucifer()
+        finally:
+            luciferlib.spawn_starting_job_handler = old
+        self.assertEqual(calls[0][1], job)
 
 
 class TopLevelFunctionsTest(unittest.TestCase):
