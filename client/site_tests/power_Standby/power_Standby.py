@@ -7,7 +7,10 @@ import logging, math, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc
-from autotest_lib.client.cros.power import power_status, power_utils, sys_power
+from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_utils
+from autotest_lib.client.cros.power import sys_power
+
 
 class power_Standby(test.test):
     """Measure Standby power test."""
@@ -23,13 +26,14 @@ class power_Standby(test.test):
                  force_discharge=False):
 
         if test_hours < sample_hours:
-            raise error.TestFail("Test hours must be greater than sample hours")
+            raise error.TestFail('Test hours must be greater than sample '
+                                 'hours.')
 
         # If we're measuring < 6min of standby then the S0 time is not
         # negligible. Note, reasonable rule of thumb is S0 idle is ~10-20 times
         # standby power.
         if sample_hours < self._min_sample_hours:
-            raise error.TestFail("Must standby more than %.2f hours" % \
+            raise error.TestFail('Must standby more than %.2f hours.' % \
                                  sample_hours)
 
         power_stats = power_status.get_status()
@@ -49,10 +53,10 @@ class power_Standby(test.test):
         charge_start = power_stats.battery[0].charge_now
         voltage_start = power_stats.battery[0].voltage_now
 
-        max_hours = (charge_start * voltage_start /
-                (max_milliwatts_standby / 1000.))
+        max_hours = ((charge_start * voltage_start) /
+                     (max_milliwatts_standby / 1000.))
         if max_hours < test_hours:
-            raise error.TestFail('Battery not charged adequately for test')
+            raise error.TestFail('Battery not charged adequately for test.')
 
         elapsed_hours = 0
 
@@ -67,31 +71,32 @@ class power_Standby(test.test):
 
             power_stats.refresh()
             if power_stats.percent_current_charge() < self._percent_min_charge:
-                logging.warning("Battery = %.2f%%.  Too low to continue")
+                logging.warning('Battery = %.2f%%.  Too low to continue.')
                 break
 
             # check that the RTC slept the correct amount of time as there could
             # potentially be another wake source that would spoil the test.
             actual_hours = (after_suspend_secs - before_suspend_secs) / 3600.0
-            percent_diff = math.fabs((actual_hours - sample_hours) /
-                                     ((actual_hours + sample_hours) / 2) * 100)
+            percent_diff = math.fabs((actual_hours - sample_hours) / (
+                    (actual_hours + sample_hours) / 2) * 100)
             if percent_diff > 2:
-                err = "Requested standby time and actual varied by %.2f%%." \
+                err = 'Requested standby time and actual varied by %.2f%%.' \
                     % percent_diff
                 raise error.TestFail(err)
 
             # Check resulting charge consumption
             charge_used = charge_before - power_stats.battery[0].charge_now
             elapsed_hours += actual_hours
-            logging.debug('loop%d done: loop hours %.3f, elapsed hours %.3f '
-                          'charge used: %.3f', loop, actual_hours,
-                          elapsed_hours, charge_used)
+            logging.debug(
+                    'loop%d done: loop hours %.3f, elapsed hours %.3f '
+                    'charge used: %.3f', loop, actual_hours, elapsed_hours,
+                    charge_used)
             loop += 1
 
         charge_end = power_stats.battery[0].charge_now
         total_charge_used = charge_start - charge_end
         if total_charge_used <= 0:
-            raise error.TestError("Charge used is suspect.")
+            raise error.TestError('Charge used is suspect.')
 
         voltage_end = power_stats.battery[0].voltage_now
         standby_hours = power_stats.battery[0].charge_full_design / \
