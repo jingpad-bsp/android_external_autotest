@@ -66,9 +66,14 @@ import urllib2
 import common
 
 from autotest_lib.cli import rpc
+from autotest_lib.cli import skylab_utils
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib import autotemp
-from skylab_inventory import translation_utils
+
+try:
+    from skylab_inventory import translation_utils
+except ImportError:
+    skylab_inventory = None
 
 
 # Maps the AFE keys to printable names.
@@ -497,6 +502,12 @@ class atest(object):
         self.skylab = options.skylab
         if not self.skylab:
             return
+
+        # TODO(nxia): crbug.com/837831 Add skylab_inventory to
+        # autotest-server-deps ebuilds to remove the ImportError check.
+        if skylab_inventory is None:
+            raise skylab_utils.SkylabInventoryNotImported(
+                    "Please try to run utils/build_externals.py.")
 
         self.draft = options.draft
 
