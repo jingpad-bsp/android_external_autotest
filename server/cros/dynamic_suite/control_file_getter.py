@@ -194,16 +194,18 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
 
         regexp = re.compile(self._CONTROL_PATTERN)
         directories = self._paths
-        # Do not explore site-packages. (crbug.com/771823)
-        # Do not explore venv. (b/67416549)
-        # (Do not pass Go. Do not collect $200.)
-        blacklist = {'site-packages', 'venv'}
+        # Some of our callers are ill-considered and request that we
+        # search all of /usr/local/autotest (crbug.com/771823).
+        # Fixing the callers immediately is somewhere between a
+        # nuisance and hard.  So, we have a blacklist, hoping two
+        # wrongs will somehow make it right.
+        blacklist = {
+            'site-packages', 'venv', 'results', 'logs', 'containers',
+        }
         while len(directories) > 0:
             directory = directories.pop()
             if not os.path.exists(directory):
                 continue
-            # TODO(crbug.com/771827): This traverses everything,
-            # including results and containers.  Make it stop doing that.
             try:
                 for name in os.listdir(directory):
                     if name in blacklist:
@@ -213,7 +215,8 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
                         if regexp.search(name):
                             # if we are a control file
                             self._files.append(fullpath)
-                    elif os.path.isdir(fullpath):
+                    elif (not os.path.islink(fullpath)
+                          and os.path.isdir(fullpath)):
                         directories.append(fullpath)
             except OSError:
                 # Some directories under results/ like the Chrome Crash
