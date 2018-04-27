@@ -68,9 +68,18 @@ class firmware_FWMPDisableCCD(Cr50Test):
         @param fwmp_disabled_unlock: True if open should fail
         """
         self.cr50.send_command('ccd lock')
-        response = 'Console unlock%s allowed.*>' % (
-                ' not' if fwmp_disabled_unlock else '')
-        logging.info(self.cr50.send_command_get_output('ccd open', [response]))
+        rv = self.cr50.send_command_get_output('ccd open',
+                ['.*Console unlock(.*) allowed.*>'])[0]
+        logging.info(rv)
+        # The regex matches the 'not' from console unlocked allowed. If we
+        # didn't find the not, that means the console is open. If we found
+        # console unlock wasn't allowed, that means the console is not open.
+        open_allowed = not rv[1]
+        if fwmp_disabled_unlock == open_allowed:
+            state = 'opened' if open_allowed else 'closed'
+            expected_state = 'closed' if fwmp_disabled_unlock else 'opened'
+            raise error.TestFail('CCD %sed when it should be %s' % (state,
+                    expected_state))
 
         # Wait long enough for ccd open to timeout
         time.sleep(10)
@@ -137,5 +146,5 @@ class firmware_FWMPDisableCCD(Cr50Test):
 
         # Clear the TPM owner and verify lock can still be enabled/disabled when
         # the FWMP has not been created
-        tpm_utils.ClearTPMOwnerRequest(self.host)
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
         self.cr50_check_lock_control('0')
