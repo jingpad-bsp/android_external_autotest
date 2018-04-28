@@ -79,16 +79,25 @@ def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     # overlayfs is the default clone backend storage. However it is not
     # supported in Ganeti yet. Use aufs as the alternative.
     aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
-    cmd = (('sudo lxc-clone --lxcpath {lxcpath} --newpath {newpath} '
-            '--orig {orig} --new {new} {snapshot} {backing}')
-           .format(
-               lxcpath = lxc_path,
-               newpath = new_path,
-               orig = src_name,
-               new = dst_name,
-               snapshot = snapshot_arg,
-               backing = aufs_arg
-           ))
+    # TODO(jkop): Remove clone_cmd once moblab LXC has updated to match shards.
+    clone_cmd = ('sudo lxc-clone --lxcpath {lxcpath} --newpath {newpath} '
+                 '--orig {orig} --new {new} {snapshot} {backing}')
+    copy_cmd = ('sudo lxc-copy --lxcpath {lxcpath} --newpath {newpath} '
+                '--name {orig} --newname {new} {snapshot} {backing}')
+    has_copy = utils.run('which lxc-copy', ignore_status=True)
+    if has_copy and has_copy.exit_status == 0:
+        partial_command = copy_cmd
+    else:
+        partial_command = clone_cmd
+
+    cmd = partial_command.format(
+        lxcpath = lxc_path,
+        newpath = new_path,
+        orig = src_name,
+        new = dst_name,
+        snapshot = snapshot_arg,
+        backing = aufs_arg
+    )
     utils.run(cmd)
 
 
