@@ -58,7 +58,7 @@ class TestPushUnittests(mox.MoxTestBase):
         self.mox.StubOutWithMock(test_push, 'do_run_suite')
         test_push.do_run_suite(
                 test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg(), mox.IgnoreArg(),
-                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn((1))
+                mox.IgnoreArg()).AndReturn((1))
 
         self.mox.StubOutWithMock(site_utils, 'get_test_views_from_tko')
         site_utils.get_test_views_from_tko(1, None).AndReturn(test_views)
