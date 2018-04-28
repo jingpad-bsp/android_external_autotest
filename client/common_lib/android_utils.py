@@ -51,18 +51,6 @@ class AndroidAliases(object):
                board.
     """
 
-    # regex pattern for CLIENT/android_aliases_[product]. For example,
-    # global config can have following config in CLIENT section to indicate that
-    # android product name `zzz` has following aliases.
-    # ['my_board', 'xyz'].
-    # android_board_aliases_zzz: my_board,xyz
-    ALIASES_PATTERN = 'android_aliases_(.*)'
-
-    # A dict of product:aliases for product aliases, can be defined in global
-    # config CLIENT/android_aliases_[product]
-    aliases_map = get_config_value_regex('CLIENT',
-                                         ALIASES_PATTERN)
-
     # regex pattern for CLIENT/android_board_name[product]. For example,
     # global config can have following config in CLIENT section to indicate that
     # android product `zzz` has following board name.
@@ -74,24 +62,6 @@ class AndroidAliases(object):
     # A dict of product:board for product board names, can be defined in global
     # config CLIENT/android_board_name_[product]
     board_name_map = get_config_value_regex('CLIENT', BOARD_NAME_PATTERN)
-
-    @classmethod
-    def get_product_aliases(cls, product):
-        """Get all aliases for a android product name.
-
-        Androids can have multiple aliases for a single product. These aliases
-        may be what the device is called in different configs. For example
-        bat has a board name of bat_land. Therefore the product name bat
-        can be referenced as either bat or batland.
-
-        @param product: The name of the product that is reported for a device.
-        @returns: All aliases for that product (including the product name).
-        """
-        aliases = set(cls.aliases_map.get(product, []))
-        aliases.add(cls.get_board_name(product))
-        aliases.add(product)
-
-        return aliases
 
     @classmethod
     def get_board_name(cls, product):
