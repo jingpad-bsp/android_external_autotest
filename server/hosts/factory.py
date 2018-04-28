@@ -21,7 +21,6 @@ from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.hosts import gce_host
 from autotest_lib.server.hosts import sonic_host
 from autotest_lib.server.hosts import ssh_host
-from autotest_lib.server.hosts import testbed
 
 
 CONFIG = global_config.global_config
@@ -208,29 +207,8 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     return host_instance
 
 
-def create_testbed(machine, **kwargs):
-    """Create the testbed object.
-
-    @param machine: A dict representing the test bed under test or a String
-                    representing the testbed hostname (for legacy caller
-                    support).
-                    If it is a machine dict, the 'hostname' key is required.
-                    Optional 'afe_host' key will pipe in afe_host from
-                    the afe_host object from the autoserv runtime or the AFE.
-    @param kwargs: Keyword args to pass to the testbed initialization.
-
-    @returns: The testbed object with all associated host objects instantiated.
-    """
-    detected_args = _get_host_arguments(machine)
-    hostname = detected_args.pop('hostname')
-    kwargs.update(detected_args)
-    host = testbed.TestBed(hostname, **kwargs)
-    base_classes.send_creation_metric(host, context='factory')
-    return host
-
-
 def create_target_machine(machine, **kwargs):
-    """Create the target machine which could be a testbed or a *Host.
+    """Create the target machine, accounting for containers.
 
     @param machine: A dict representing the test bed under test or a String
                     representing the testbed hostname (for legacy caller
@@ -259,9 +237,4 @@ def create_target_machine(machine, **kwargs):
             machine = hostname
         logging.debug('Hostname of machine is converted to %s for the test to '
                       'run inside a container.', hostname)
-
-    # TODO(kevcheng): We'll want to have a smarter way of figuring out which
-    # host to create (checking host labels).
-    if server_utils.machine_is_testbed(machine):
-        return create_testbed(machine, **kwargs)
     return create_host(machine, **kwargs)
