@@ -17,14 +17,12 @@ from autotest_lib.utils.labellib import Key
 CROS_VERSION_PREFIX = Key.CROS_VERSION
 CROS_ANDROID_VERSION_PREFIX = Key.CROS_ANDROID_VERSION
 ANDROID_BUILD_VERSION_PREFIX = Key.ANDROID_BUILD_VERSION
-TESTBED_BUILD_VERSION_PREFIX = Key.TESTBED_VERSION
 FW_RW_VERSION_PREFIX = Key.FIRMWARE_RW_VERSION
 FW_RO_VERSION_PREFIX = Key.FIRMWARE_RO_VERSION
 
 # So far the word cheets is only way to distinguish between ARC and Android
 # build.
 _ANDROID_BUILD_REGEX = r'.+/(?!cheets).+/P?([0-9]+|LATEST)'
-_ANDROID_TESTBED_BUILD_REGEX = _ANDROID_BUILD_REGEX + '(,|(#[0-9]+))'
 _CROS_ANDROID_BUILD_REGEX = r'.+/(?=cheets).+/P?([0-9]+|LATEST)'
 
 # Special label to skip provision and run reset instead.
@@ -70,19 +68,13 @@ def get_version_label_prefix(image):
       * `ANDROID_BUILD_VERSION_PREFIX` for Android build versions
         These images have names like
         `git_mnc-release/shamu-userdebug/2457013`.
-      * `TESTBED_BUILD_VERSION_PREFIX` for Android testbed version
-        specifications.  These are either comma separated lists of
-        Android versions, or an Android version with a suffix like
-        '#2', indicating two devices running the given build.
 
     @param image: The image name to be parsed.
     @returns: A string that is the prefix of version labels for the type
               of image identified by `image`.
 
     """
-    if re.match(_ANDROID_TESTBED_BUILD_REGEX, image, re.I):
-        return TESTBED_BUILD_VERSION_PREFIX
-    elif re.match(_ANDROID_BUILD_REGEX, image, re.I):
+    if re.match(_ANDROID_BUILD_REGEX, image, re.I):
         return ANDROID_BUILD_VERSION_PREFIX
     elif re.match(_CROS_ANDROID_BUILD_REGEX, image, re.I):
         return CROS_ANDROID_VERSION_PREFIX
@@ -96,7 +88,7 @@ def image_version_to_label(image):
 
     The type of version label is as determined described for
     `get_version_label_prefix()`, meaning the label will identify a
-    CrOS, Android, or Testbed version.
+    CrOS or Android version.
 
     @param image: The image name to be parsed.
     @returns: A string that is the appropriate label name.
@@ -322,8 +314,6 @@ class Provision(_SpecialTaskAction):
                               'tag': 'rw_only'}),
         ANDROID_BUILD_VERSION_PREFIX : actionables.TestActionable(
                 'provision_AndroidUpdate'),
-        TESTBED_BUILD_VERSION_PREFIX : actionables.TestActionable(
-                'provision_TestbedUpdate'),
     }
 
     name = 'provision'
