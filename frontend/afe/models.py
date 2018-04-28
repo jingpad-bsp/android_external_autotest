@@ -851,7 +851,9 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
                 boards += [label.name for label in host.staticlabel_list
                            if label.name.startswith('board:')]
 
-            if not server_utils.board_labels_allowed(boards + new_labels):
+            new_boards = [name for name in new_labels
+                          if name.startswith('board:')]
+            if len(boards) + len(new_boards) > 1:
                 # do a join, just in case this host has multiple boards,
                 # we'll be able to see it
                 errors.append('Host %s already has board labels: %s' % (
