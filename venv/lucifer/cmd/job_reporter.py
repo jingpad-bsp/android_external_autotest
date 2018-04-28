@@ -182,8 +182,6 @@ def _add_level_specific_args(command_args, args, job):
     """
     if args.lucifer_level == 'STARTING':
         _add_starting_args(command_args, args, job)
-    elif args.lucifer_level == 'GATHERING':
-        _add_gathering_args(command_args, args, job)
     else:
         raise Exception('Invalid lucifer level %s' % args.lucifer_level)
 
@@ -215,22 +213,6 @@ def _add_starting_args(command_args, args, job):
             command_args.extend(['-x-test-source-build', test_source_build])
     if job.parent_job_id:
         command_args.extend(['-x-parent-job-id', str(job.parent_job_id)])
-
-
-def _add_gathering_args(command_args, args, job):
-    """Add GATHERING level arguments for lucifer_run_job.
-
-    command_args is modified in place.
-    """
-    del job
-    command_args.extend([
-        '-x-autoserv-exit', str(args.autoserv_exit),
-    ])
-    if args.need_gather:
-        command_args.extend([
-                '-x-need-gather',
-                '-x-num-tests-failed', str(args.num_tests_failed),
-        ])
 
 
 def _mark_handoff_completed(job_id):
