@@ -23,7 +23,6 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
         """
         Trys an autoupdate during ChromeOS OOBE without a deadline.
 
-        @param host: The DUT that we are running on.
         @param full_payload: True for a full payload. False for delta.
         @param job_repo_url: Used for debugging locally. This is used to figure
                              out the current build and the devserver to use.

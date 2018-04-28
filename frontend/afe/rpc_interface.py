@@ -501,18 +501,15 @@ def host_add_labels(id, labels):
     label_objs = models.Label.smart_get_bulk(labels)
 
     platforms = [label.name for label in label_objs if label.platform]
-    boards = [label.name for label in label_objs
-              if label.name.startswith('board:')]
-    if len(platforms) > 1 or not utils.board_labels_allowed(boards):
+    if len(platforms) > 1:
         raise model_logic.ValidationError(
-            {'labels': ('Adding more than one platform label, or a list of '
-                        'non-compatible board labels.: %s %s' %
-                        (', '.join(platforms), ', '.join(boards)))})
+            {'labels': ('Adding more than one platform: %s' %
+                        ', '.join(platforms))})
 
     host_obj = models.Host.smart_get(id)
     if platforms:
         models.Host.check_no_platform([host_obj])
-    if boards:
+    if any(label_name.startswith('board:') for label_name in labels):
         models.Host.check_board_labels_allowed([host_obj], labels)
     add_labels_to_host(id, labels)
 
@@ -1714,8 +1711,7 @@ def get_static_data():
                              {'name__startswith': 'fw-version'},
                              {'name__startswith': 'fwrw-version'},
                              {'name__startswith': 'fwro-version'},
-                             {'name__startswith': 'ab-version'},
-                             {'name__startswith': 'testbed-version'}]
+                             {'name__startswith': 'ab-version'}]
     result['labels'] = get_labels(
         label_exclude_filters,
         sort_by=['-platform', 'name'])

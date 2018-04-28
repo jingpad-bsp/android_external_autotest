@@ -79,16 +79,25 @@ def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     # overlayfs is the default clone backend storage. However it is not
     # supported in Ganeti yet. Use aufs as the alternative.
     aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
-    cmd = (('sudo lxc-clone --lxcpath {lxcpath} --newpath {newpath} '
-            '--orig {orig} --new {new} {snapshot} {backing}')
-           .format(
-               lxcpath = lxc_path,
-               newpath = new_path,
-               orig = src_name,
-               new = dst_name,
-               snapshot = snapshot_arg,
-               backing = aufs_arg
-           ))
+    # TODO(jkop): Remove clone_cmd once moblab LXC has updated to match shards.
+    clone_cmd = ('sudo lxc-clone --lxcpath {lxcpath} --newpath {newpath} '
+                 '--orig {orig} --new {new} {snapshot} {backing}')
+    copy_cmd = ('sudo lxc-copy --lxcpath {lxcpath} --newpath {newpath} '
+                '--name {orig} --newname {new} {snapshot} {backing}')
+    has_copy = utils.run('which lxc-copy', ignore_status=True)
+    if has_copy and has_copy.exit_status == 0:
+        partial_command = copy_cmd
+    else:
+        partial_command = clone_cmd
+
+    cmd = partial_command.format(
+        lxcpath = lxc_path,
+        newpath = new_path,
+        orig = src_name,
+        new = dst_name,
+        snapshot = snapshot_arg,
+        backing = aufs_arg
+    )
     utils.run(cmd)
 
 
@@ -146,13 +155,16 @@ class BindMount(object):
         """
         spec = (dst, (rename if rename else src).lstrip(os.path.sep))
         full_dst = os.path.join(*list(spec))
+        commands = []
 
         if not path_exists(full_dst):
-            utils.run('sudo mkdir -p %s' % full_dst)
+            commands.append('mkdir -p %s' % full_dst)
 
-        utils.run('sudo mount --bind %s %s' % (src, full_dst))
+        commands.append('mount --bind %s %s' % (src, full_dst))
         if readonly:
-            utils.run('sudo mount -o remount,ro,bind %s' % full_dst)
+            commands.append('mount -o remount,ro,bind %s' % full_dst)
+
+        sudo_commands(commands)
 
         return cls(spec)
 
@@ -178,14 +190,14 @@ class BindMount(object):
         Unmounts the destination, and deletes it if possible. If it was mounted
         alongside important files, it will not be deleted.
         """
-        full_dst = os.path.join(*list(self.spec))
-        utils.run('sudo umount %s' % full_dst)
-        # Ignore errors because bind mount locations are sometimes nested
-        # alongside actual file content (e.g. SSPs install into
-        # /usr/local/autotest so rmdir -p will fail for any mounts located in
-        # /usr/local/autotest).
-        utils.run('sudo bash -c "cd %s; rmdir -p --ignore-fail-on-non-empty %s"'
-                  % self.spec)
+        # Bind mount locations are sometimes nested alongside actual file
+        # content (e.g. SSPs install into /usr/local/autotest.)
+        d, mount = self.spec
+        full_dst = os.path.join(d, mount)
+        commands = ["umount '%s'" % full_dst,
+                    "cd %s" % d,
+                    "rmdir -p --ignore-fail-on-non-empty %s" % mount]
+        sudo_commands(commands)
 
 
 MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])

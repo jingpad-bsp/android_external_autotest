@@ -30,7 +30,7 @@ ONE Sweetberry connected.
 timezone with the DUT.
 
 Sample usage:
-test_that <ip address of DUT>  power_MeasurementWrapper --args
+test_that <ip address of DUT>  power_MeasurementWrapper --args \
 'test:power_LoadTest.fast sweetberry_interval:1 sweetberry_config:eve_rev7'
 
 What are the parameters:

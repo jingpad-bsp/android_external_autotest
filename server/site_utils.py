@@ -764,20 +764,6 @@ def get_creds_abspath(creds_file):
     return os.path.join(creds_dir, creds_file)
 
 
-def machine_is_testbed(machine):
-    """Checks if the machine is a testbed.
-
-    The signal we use to determine if the machine is a testbed
-    is if the host attributes contain more than 1 serial.
-
-    @param machine: is a list of dicts
-
-    @return: True if the machine is a testbed, False otherwise.
-    """
-    _, afe_host = get_host_info_from_machine(machine)
-    return len(afe_host.attributes.get('serials', '').split(',')) > 1
-
-
 def SetupTsMonGlobalState(*args, **kwargs):
     """Import-safe wrap around chromite.lib.ts_mon_config's setup function.
 
@@ -875,27 +861,6 @@ def lock_duts_and_wait(duts, afe, lock_msg='default lock message',
         yield wait_for_idle_duts(locked_duts, afe, max_wait)
     finally:
         afe.unlock_hosts(locked_duts)
-
-
-def board_labels_allowed(boards):
-    """Check if the list of board labels can be set to a single host.
-
-    The only case multiple board labels can be set to a single host is for
-    testbed, which may have a list of board labels like
-    board:angler-1, board:angler-2, board:angler-3, board:marlin-1'
-
-    @param boards: A list of board labels (may include platform label).
-
-    @returns True if the the list of boards can be set to a single host.
-    """
-    # Filter out any non-board labels
-    boards = [b for b in boards if re.match('board:.*', b)]
-    if len(boards) <= 1:
-        return True
-    for board in boards:
-        if not re.match('board:[^-]+-\d+', board):
-            return False
-    return True
 
 
 def _get_default_size_info(path):

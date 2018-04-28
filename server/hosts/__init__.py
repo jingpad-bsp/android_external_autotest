@@ -19,11 +19,9 @@ from ssh_host import SSHHost
 from cros_host import CrosHost
 from chameleon_host import ChameleonHost
 from servo_host import ServoHost
-from testbed import TestBed
 
 # factory function
 from factory import create_host
-from factory import create_testbed
 from factory import create_target_machine
 
 # Many host creation sites only import the package, so also provide useful

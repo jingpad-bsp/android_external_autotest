@@ -45,7 +45,6 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         """
         Runs a forced autoupdate during ChromeOS OOBE.
 
-        @param host: The DUT that we are running on.
         @param full_payload: True for a full payload. False for delta.
         @param cellular: True to do the update over a cellualar connection.
                          Requires that the DUT have a sim card slot.

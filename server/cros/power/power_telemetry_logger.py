@@ -13,6 +13,7 @@ import numpy
 import os
 import re
 import shutil
+import string
 import threading
 
 import powerlog
@@ -222,35 +223,29 @@ class PowerTelemetryLogger(object):
                 if match:
                     test_events[event]['ts'] = ts_to_datetime(match.group(1))
 
-        if 'ts' in test_events['default_start']:
-            test_start_ts = test_events['default_start']['ts']
-            if 'ts' in test_events['custom_start']:
-                test_start_ts = test_events['custom_start']['ts']
-            test_start = test_start_ts + \
-                         datetime.timedelta(seconds=self._interval / 2.)
+        events_ts = {
+            'start': datetime.datetime.min,
+            'end': datetime.datetime.max,
+        }
+        for event in events_ts:
+            if 'ts' in test_events['default_' + event]:
+                events_ts[event] = test_events['default_' + event]['ts']
+                if 'ts' in test_events['custom_' + event]:
+                    events_ts[event] = test_events['custom_' + event]['ts']
+                events_ts[event] += \
+                        datetime.timedelta(seconds=self._interval / 2.)
+            else:
+                logging.warning('Cannot parse client side test %s timestamp '
+                                'from test log file. Please check if client '
+                                'side test properly completed.', event)
 
-            for sweetberry_file in os.listdir(self._logdir):
-                if sweetberry_file.startswith('sweetberry'):
-                    sweetberry_ts = datetime.datetime.strptime(
-                            sweetberry_file, 'sweetberry%Y%m%d%H%M%S.%f')
-                    if sweetberry_ts < test_start:
-                        shutil.rmtree(
-                                os.path.join(self._logdir, sweetberry_file))
-
-        if 'ts' in test_events['default_end']:
-            test_end_ts = test_events['default_end']['ts']
-            if 'ts' in test_events['custom_end']:
-                test_end_ts = test_events['custom_end']['ts']
-            test_end = test_end_ts + \
-                       datetime.timedelta(seconds=self._interval / 2.)
-
-            for sweetberry_file in os.listdir(self._logdir):
-                if sweetberry_file.startswith('sweetberry'):
-                    sweetberry_ts = datetime.datetime.strptime(
-                            sweetberry_file, 'sweetberry%Y%m%d%H%M%S.%f')
-                    if sweetberry_ts > test_end:
-                        shutil.rmtree(
-                                os.path.join(self._logdir, sweetberry_file))
+        for sweetberry_file in os.listdir(self._logdir):
+            if sweetberry_file.startswith('sweetberry'):
+                sweetberry_ts = datetime.datetime.fromtimestamp(float(
+                        string.lstrip(sweetberry_file, 'sweetberry')))
+                if (sweetberry_ts < events_ts['start'] or
+                        sweetberry_ts > events_ts['end']):
+                    shutil.rmtree(os.path.join(self._logdir, sweetberry_file))
 
         debug_log.close()
 
@@ -293,7 +288,7 @@ class PowerTelemetryLogger(object):
                 with open(fname, 'r') as f:
                     d = json.load(f)
                     for k, v in d.iteritems():
-                        data[k].append(v)
+                        data[k].append(v['mean'])
 
         logger = {
             # All data domains should have same sample count.
@@ -301,6 +296,9 @@ class PowerTelemetryLogger(object):
             'sample_duration': self._interval,
             'data': data,
             'average': {k: numpy.average(v) for k, v in data.iteritems()},
+            # TODO(mqg): hard code the units for now because we are only dealing
+            # with power so far. When we start to work with voltage or current,
+            # read the units from the .json files.
             'unit': {k: 'milliwatt' for k in data},
         }
 

@@ -42,24 +42,9 @@ class BaseLabel(object):
 
     @property _NAME String that is either the label returned or a prefix of a
                     generated label.
-    @property _LABEL_LIST List of label classes that this label generates its
-                          own labels from.  This class attribute is primarily
-                          for the LabelRetriever class to figure out what
-                          labels are generated from this label.  In most cases,
-                          the _NAME attribute gives us what we want, but in the
-                          special case where a label class is actually a
-                          collection of label classes, then this attribute
-                          comes into play.  For the example of
-                          testbed_label.ADBDeviceLabels, that class is really a
-                          collection of the adb devices' labels in that testbed
-                          so _NAME won't cut it.  Instead, we use _LABEL_LIST
-                          to tell LabelRetriever what list of label classes we
-                          are generating and thus are able to have a
-                          comprehensive list of the generated labels.
     """
 
     _NAME = None
-    _LABEL_LIST = []
 
     def generate_labels(self, host):
         """
@@ -191,11 +176,6 @@ class LabelRetriever(object):
     def _populate_known_labels(self, label_list):
         """Create a list of known labels that is created through this class."""
         for label_instance in label_list:
-            # If this instance has a list of label, recurse on that list.
-            if label_instance._LABEL_LIST:
-                self._populate_known_labels(label_instance._LABEL_LIST)
-                continue
-
             prefixed_labels, full_labels = label_instance.get_all_labels()
             self.label_prefix_names.update(prefixed_labels)
             self.label_full_names.update(full_labels)

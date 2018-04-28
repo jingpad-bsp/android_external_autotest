@@ -666,13 +666,9 @@ class host_create(BaseHostModCreate):
         try:
             if bin_utils.ping(host, tries=1, deadline=1) == 0:
                 serials = self.attributes.get('serials', '').split(',')
-                if serials and len(serials) > 1:
-                    host_dut = hosts.create_testbed(machine,
-                                                    adb_serials=serials)
-                else:
-                    adb_serial = self.attributes.get('serials')
-                    host_dut = hosts.create_host(machine,
-                                                 adb_serial=adb_serial)
+                adb_serial = self.attributes.get('serials')
+                host_dut = hosts.create_host(machine,
+                                             adb_serial=adb_serial)
 
                 info = HostInfo(host, host_dut.get_platform(),
                                 host_dut.get_labels())
