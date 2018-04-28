@@ -1268,3 +1268,32 @@ class BtsocketRepo(_ExternalGitRepo):
             os.chdir(work_dir)
             self.temp_btsocket_dir.clean()
         return rv
+
+
+class SkylabInventoryRepo(_ExternalGitRepo):
+    """Clones or updates the skylab_inventory repo."""
+
+    _GIT_URL = ('https://chromium.googlesource.com/chromiumos/infra/'
+                'skylab_inventory')
+
+    # TODO(nxia): create a prod branch for skylab_inventory.
+    def build_and_install(self, install_dir):
+        """
+        @param install_dir: destination directory for skylab_inventory
+                            installation.
+        """
+        local_skylab_dir = os.path.join(install_dir, 'infra_skylab_inventory')
+        git_repo = revision_control.GitRepo(
+                local_skylab_dir,
+                self._GIT_URL,
+                abs_work_tree=local_skylab_dir)
+        git_repo.reinit_repo_at(self.MASTER_BRANCH)
+
+        # The top-level __init__.py for skylab is at venv/skylab_inventory.
+        symlink_src = os.path.join(local_skylab_dir, 'venv', 'skylab_inventory')
+        symlink_dest = os.path.join(install_dir, 'skylab_inventory')
+        os.symlink(symlink_src, symlink_dest)
+
+        if git_repo.get_latest_commit_hash():
+            return True
+        return False
