@@ -17,7 +17,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server import utils
-from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import base_label
@@ -39,7 +38,6 @@ _IMAGE_NAME_PATTERN = '(.*/.*/[^:#]*)(?::(.*))?(?:#(\d+))?'
 class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
-    VERSION_PREFIX = provision.TESTBED_BUILD_VERSION_PREFIX
     support_devserver_provision = False
 
     def __init__(self, hostname='localhost', afe_host=None, adb_serials=None,
