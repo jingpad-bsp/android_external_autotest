@@ -153,14 +153,16 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
             current_if = self.context.router.get_hostapd_interface(1)
             roam_to_bssid = bssid0
 
-        # Set up virtual ethernet interface so APs can talk to each other
         br0 = router0_conf.bridge
         br1 = router1_conf.bridge
         self.veth0 = 'veth0'
         self.veth1 = 'veth1'
+
+        # Cleanup veth interfaces from previous runs
         self.context.router.delete_link(self.veth0)
         self.context.router.delete_link(self.veth1)
 
+        # Set up virtual ethernet interface so APs can talk to each other
         try:
             self.context.router.router.run('ip link add %s type veth peer name '
                                            '%s' % (self.veth0, self.veth1))
