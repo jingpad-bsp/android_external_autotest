@@ -4,10 +4,12 @@
 
 import datetime
 import glob
+import logging
 import os
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import system_metrics_collector
 from autotest_lib.client.common_lib.cros.cfm.metrics import (
         media_metrics_collector)
@@ -17,6 +19,10 @@ from autotest_lib.server.cros.cfm import cfm_base_test
 _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 900
+
+_DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
+                  'chromiumos-test-assets-public/crowd/')
+_VIDEO_NAME = 'crowd720_25frames.y4m'
 
 _BASE_DIR = '/home/chronos/user/Storage/ext/'
 _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
@@ -295,6 +301,27 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                         'num_active_vid_in_streams', jmidata),
                 units='count', higher_is_better=True)
 
+    def _download_test_video(self):
+        """
+        Downloads the test video to a temporary directory on host.
+
+        @return the remote path of the downloaded video.
+        """
+        url = _DOWNLOAD_BASE + _VIDEO_NAME
+        local_path = os.path.join(self.tmpdir, _VIDEO_NAME)
+        logging.info('Downloading %s to %s', url, local_path)
+        file_utils.download_file(url, local_path)
+        # The directory returned by get_tmp_dir() is automatically deleted.
+        tmp_dir = self._host.get_tmp_dir()
+        remote_path = os.path.join(tmp_dir, _VIDEO_NAME)
+        # The temporary directory has mode 700 by default. Chrome runs with a
+        # different user so cannot access it unless we change the permissions.
+        logging.info('chmodding tmpdir %s to 755', tmp_dir)
+        self._host.run('chmod 755 %s' % tmp_dir)
+        logging.info('Sending %s to %s on DUT', local_path, remote_path)
+        self._host.send_file(local_path, remote_path)
+        os.remove(local_path)
+        return remote_path
 
     def initialize(self, host, run_test_only=False):
         """
@@ -305,6 +332,7 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             deprovisioning, enrollment and system reboot. See cfm_base_test.
         """
         super(enterprise_CFM_Perf, self).initialize(host, run_test_only)
+        self._host = host
         self.system_facade = self._facade_factory.create_system_facade()
         metrics = system_metrics_collector.create_default_metric_set(
                 self.system_facade)
@@ -316,6 +344,21 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                 self.cfm_facade)
         self.media_metrics_collector = (media_metrics_collector
                                         .MetricsCollector(data_point_collector))
+
+    def setup(self):
+        """
+        Download video for fake media and restart Chrome with fake media flags.
+
+        This runs after initialize().
+        """
+        super(enterprise_CFM_Perf, self).setup()
+        remote_video_path = self._download_test_video()
+        # Restart chrome with fake media flags.
+        extra_chrome_args=[
+                '--use-fake-device-for-media-stream',
+                '--use-file-for-fake-video-capture=%s' % remote_video_path
+        ]
+        self.cfm_facade.restart_chrome_for_cfm(extra_chrome_args)
 
     def run_once(self, is_meeting=False):
         """Stays in a meeting/hangout and collects perf data."""
