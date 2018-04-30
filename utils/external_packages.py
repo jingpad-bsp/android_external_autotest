@@ -1290,9 +1290,15 @@ class SkylabInventoryRepo(_ExternalGitRepo):
         git_repo.reinit_repo_at(self.MASTER_BRANCH)
 
         # The top-level __init__.py for skylab is at venv/skylab_inventory.
-        symlink_src = os.path.join(local_skylab_dir, 'venv', 'skylab_inventory')
-        symlink_dest = os.path.join(install_dir, 'skylab_inventory')
-        os.symlink(symlink_src, symlink_dest)
+        source = os.path.join(local_skylab_dir, 'venv', 'skylab_inventory')
+        link_name = os.path.join(install_dir, 'skylab_inventory')
+
+        if (os.path.exists(link_name) and
+            os.path.realpath(link_name) != os.path.realpath(source)):
+            os.remove(link_name)
+
+        if not os.path.exists(link_name):
+            os.symlink(source, link_name)
 
         if git_repo.get_latest_commit_hash():
             return True
