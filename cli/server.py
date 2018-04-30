@@ -34,9 +34,13 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.site_utils import server_manager
 from autotest_lib.site_utils import server_manager_utils
 from chromite.lib import gob_util
-from skylab_inventory import text_manager
-from skylab_inventory import translation_utils
-from skylab_inventory.lib import server as skylab_server
+
+try:
+    from skylab_inventory import text_manager
+    from skylab_inventory import translation_utils
+    from skylab_inventory.lib import server as skylab_server
+except ImportError:
+    pass
 
 
 # TODO(nxia): add an option to set logging level.
