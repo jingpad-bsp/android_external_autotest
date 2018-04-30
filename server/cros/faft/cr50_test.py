@@ -321,8 +321,8 @@ class Cr50Test(FirmwareTest):
         current_settings = self.cr50.get_cap_dict()
         if self.original_ccd_settings != current_settings:
             self.servo.set_nocheck('cr50_testlab', 'open')
-            self.set_ccd_level('open')
-            self.set_ccd_caps(self.original_ccd_settings)
+            self.cr50.set_ccd_level('open')
+            self.cr50.set_ccd_caps(self.original_ccd_settings)
 
         # First try using testlab open to open the device
         if self.cr50.testlab_is_on() and self.original_ccd_level == 'open':
