@@ -231,10 +231,12 @@ class GitRepo(object):
         @param local_ref: The local ref to upload.
         @param draft: Whether to upload the CL as a draft.
         @param dryrun: Whether the upload operation is a dryrun.
+
+        @return: Git command result stderr.
         """
         remote_refspec = (('refs/drafts/%s' if draft else 'refs/for/%s') %
                           remote_branch)
-        self.push(remote, local_ref, remote_refspec, dryrun=dryrun)
+        return self.push(remote, local_ref, remote_refspec, dryrun=dryrun)
 
 
     def push(self, remote, local_refspec, remote_refspec, dryrun=False):
@@ -245,6 +247,8 @@ class GitRepo(object):
         @param local_ref: The local ref to push.
         @param remote_refspec: The remote ref to push to.
         @param dryrun: Whether the upload operation is a dryrun.
+
+        @return: Git command result stderr.
         """
         cmd = 'push %s %s:%s' % (remote, local_refspec, remote_refspec)
 
@@ -256,6 +260,9 @@ class GitRepo(object):
         if rv.exit_status != 0:
             logging.error(rv.stderr)
             raise GitPushError('Unable to push', rv)
+
+        # The CL url is in the result stderr (not stdout)
+        return rv.stderr
 
 
     def reset(self, branch_or_sha):

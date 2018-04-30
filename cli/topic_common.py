@@ -465,6 +465,13 @@ class atest(object):
                                action='store_true',
                                dest='dryrun',
                                default=False)
+        self.parser.add_option('--submit',
+                               help=('Submit the change CL directly without '
+                                     'reviewing it in Gerrit. Only useful when '
+                                     '--skylab is enabled.'),
+                               action='store_true',
+                               dest='submit',
+                               default=False)
 
 
     def _get_usage(self):
@@ -488,26 +495,36 @@ class atest(object):
         @param: options: Option values parsed by the parser.
         """
         self.skylab = options.skylab
-        if self.skylab:
-            self.draft = options.draft
-            self.dryrun = options.dryrun
+        if not self.skylab:
+            return
 
-            if self.dryrun:
-                print('This is a dryrun. NO CL will be uploaded.\n')
+        self.draft = options.draft
 
-            self.environment = options.environment
-            translation_utils.validate_environment(self.environment)
+        self.dryrun = options.dryrun
+        if self.dryrun:
+            print('This is a dryrun. NO CL will be uploaded.\n')
 
-            self.keep_repo_dir = options.keep_repo_dir
-            self.inventory_repo_dir = options.inventory_repo_dir
-            if self.inventory_repo_dir is None:
-                self.temp_dir = autotemp.tempdir(
-                        prefix='inventory_repo',
-                        auto_clean=not self.keep_repo_dir)
-                self.inventory_repo_dir = self.temp_dir.name
-                if self.debug:
-                    print('No inventory-repo-dir was provided, using %s' %
-                          self.inventory_repo_dir)
+        self.submit = options.submit
+        if self.submit and (self.dryrun or self.draft):
+            self.invalid_syntax('Can not set --dryrun or --draft when '
+                                '--submit is set.')
+
+        # The change number of the inventory change CL.
+        self.change_number = None
+
+        self.environment = options.environment
+        translation_utils.validate_environment(self.environment)
+
+        self.keep_repo_dir = options.keep_repo_dir
+        self.inventory_repo_dir = options.inventory_repo_dir
+        if self.inventory_repo_dir is None:
+            self.temp_dir = autotemp.tempdir(
+                    prefix='inventory_repo',
+                    auto_clean=not self.keep_repo_dir)
+            self.inventory_repo_dir = self.temp_dir.name
+            if self.debug:
+                print('No inventory-repo-dir was provided, using %s' %
+                      self.inventory_repo_dir)
 
 
     def parse(self, parse_info=[], req_items=None):
