@@ -49,9 +49,14 @@ class CFMFacadeRemoteAdapter(object):
         self._cfm_proxy.enroll_device()
 
 
-    def restart_chrome_for_cfm(self):
-        """Restart chrome for CFM."""
-        self._cfm_proxy.restart_chrome_for_cfm()
+    def restart_chrome_for_cfm(self, extra_chrome_args=None):
+        """
+        Restart chrome for CFM.
+
+        @param extra_chrome_args a list with extra command line arguments for
+                Chrome.
+        """
+        self._cfm_proxy.restart_chrome_for_cfm(extra_chrome_args)
 
     def reboot_device_with_chrome_api(self):
         """Reboot device using Chrome runtime API."""

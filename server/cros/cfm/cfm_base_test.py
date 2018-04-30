@@ -60,8 +60,11 @@ class CfmBaseTest(test.test):
             # running in test_only mode.
             self.cfm_facade.restart_chrome_for_cfm()
         else:
+            logging.info('Clearing TPM')
             tpm_utils.ClearTPMOwnerRequest(self._host)
+            logging.info('Enrolling device')
             self.cfm_facade.enroll_device()
+            logging.info('Skipping OOBE')
             self.cfm_facade.skip_oobe_after_enrollment()
 
     def _setup_servo(self):
