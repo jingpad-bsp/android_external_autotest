@@ -11,7 +11,11 @@ import common
 
 from autotest_lib.client.common_lib import revision_control
 from chromite.lib import gob_util
-from skylab_inventory import text_manager
+
+try:
+    from skylab_inventory import text_manager
+except ImportError:
+    pass
 
 
 INTERNAL_GERRIT_HOST = 'chrome-internal-review.googlesource.com'
@@ -22,6 +26,10 @@ INTERNAL_INVENTORY_REPO_URL = ('https://chrome-internal.googlesource.com/'
 INTERNAL_INVENTORY_CHANGE_PATTERN = (
         r'https://chrome-internal-review.googlesource.com/#/c/chromeos/'
         'infra_internal/skylab_inventory/\\+/([0-9]*)')
+
+
+class SkylabInventoryNotImported(Exception):
+    """skylab_inventory is not imported."""
 
 
 class InventoryRepoChangeNotFound(Exception):
