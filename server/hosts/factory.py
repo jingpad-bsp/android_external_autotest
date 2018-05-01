@@ -14,7 +14,6 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import cros_host
-from autotest_lib.server.hosts import emulated_adb_host
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import jetstream_host
 from autotest_lib.server.hosts import moblab_host
@@ -46,7 +45,6 @@ host_types = [cros_host.CrosHost, moblab_host.MoblabHost,
 OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'brillo': adb_host.ADBHost,
                 'cros' : cros_host.CrosHost,
-                'emulated_brillo': emulated_adb_host.EmulatedADBHost,
                 'jetstream': jetstream_host.JetstreamHost,
                 'moblab': moblab_host.MoblabHost}
 
