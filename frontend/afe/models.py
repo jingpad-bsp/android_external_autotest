@@ -1671,7 +1671,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             'check_known_jobs': check_known_jobs_exclude,
             'shard_id': shard.id
         }
-        if cls.FETCH_READONLY_JOBS and shard.hostname in cls.READONLY_WHITELIST:
+        if cls.FETCH_READONLY_JOBS:
             #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
             #correct usage would be .raw(..., using='readonly')
             old_db = Job.objects._db
