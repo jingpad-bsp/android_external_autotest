@@ -450,6 +450,8 @@ def setup_logging(logfile=None, prefix=False):
     @param prefix: Flag for log prefix. Set to True to add prefix to log
         entries to include timestamp and log level. Default is False.
     """
+    # TODO (xixuan): Delete this code when finishing replacing run_suite.py &
+    # abort_suite.py in skylab.
     # Remove all existing handlers. client/common_lib/logging_config adds
     # a StreamHandler to logger when modules are imported, e.g.,
     # autotest_lib.client.bin.utils. A new StreamHandler will be added here to
