@@ -43,10 +43,8 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
                 ht_type=configuration.ht_packet_capture_mode)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid(instance=0)
-        assoc_result = self.context.assert_connect_wifi(assoc_params)
+        self.context.assert_connect_wifi(assoc_params)
         start_time = time.time()
-        count = 1
-        scan = 0
         rx_probe_resp_count = 0
         with self.context.client.assert_no_disconnects():
             with frame_sender.FrameSender(
