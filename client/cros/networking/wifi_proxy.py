@@ -4,7 +4,6 @@
 
 import dbus
 import logging
-import subprocess
 import time
 
 from autotest_lib.client.cros.networking import shill_proxy
