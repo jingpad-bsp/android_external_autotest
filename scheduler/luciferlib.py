@@ -100,7 +100,6 @@ def spawn_starting_job_handler(manager, job):
             # General configuration
             '--jobdir', _get_jobdir(),
             '--run-job-path', _get_run_job_path(),
-            '--watcher-path', _get_watcher_path(),
 
             # Job specific
             '--lucifer-level', 'STARTING',
@@ -135,10 +134,6 @@ def _get_jobdir():
 
 def _get_run_job_path():
     return os.path.join(_get_binaries_path(), 'lucifer_run_job')
-
-
-def _get_watcher_path():
-    return os.path.join(_get_binaries_path(), 'lucifer_watcher')
 
 
 def _get_binaries_path():
