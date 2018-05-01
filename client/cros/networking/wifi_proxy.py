@@ -130,7 +130,6 @@ class WifiProxy(shill_proxy.ShillProxy):
 
         """
         logging.info('Attempting to connect to %s', ssid)
-        service_proxy = None
         start_time = time.time()
         discovery_time = -1.0
         association_time = -1.0
