@@ -26,8 +26,7 @@ class network_WiFi_WakeOnWiFiThrottling(
 
     def run_once(self):
         """Body of the test"""
-        ap_ssid = self.configure_and_connect_to_ap(
-                hostap_config.HostapConfig(channel=1))
+        self.configure_and_connect_to_ap(hostap_config.HostapConfig(channel=1))
         client = self.context.client
         client_mac = client.wifi_mac
         router = self.context.router
