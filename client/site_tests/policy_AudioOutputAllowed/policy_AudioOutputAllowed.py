@@ -8,7 +8,6 @@ import utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
-from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
@@ -22,8 +21,6 @@ class policy_AudioOutputAllowed(
     POLICY_NAME = 'AudioOutputAllowed'
     # How long (sec) to capture output for
     SAMPLE_DURATION = 1
-    # The acceptable RMS volume threshold when muted
-    MUTE_THRESHOLD = 0.05
 
     TEST_CASES = {
         'NotSet_Allow': None,
@@ -35,11 +32,6 @@ class policy_AudioOutputAllowed(
         """Initialize objects for test."""
         super(policy_AudioOutputAllowed, self).initialize(**kwargs)
         audio_helper.cras_rms_test_setup()
-
-
-    def cleanup(self):
-        super(policy_AudioOutputAllowed, self).cleanup()
-
 
     def wait_for_active_stream_count(self, expected_count):
         """
@@ -77,9 +69,9 @@ class policy_AudioOutputAllowed(
         """
         Verify the AudioOutputAllowed policy behaves as expected.
 
-        Generate and play a sample audio file. When enabled, the RMS for
-        the loopback audio must be below the MUTE_THRESHOLD, and when disabled,
-        the RMS should be above that value.
+        Generate and play a sample audio file. When enabled, the difference
+        between the muted and unmuted RMS should be greater than 0.75. When
+        disabled, the RMS difference should be less than 0.05.
 
         @param policy_value: policy value for this case.
 
@@ -90,27 +82,46 @@ class policy_AudioOutputAllowed(
         audio_allowed = policy_value or policy_value is None
 
         RAW_FILE = os.path.join(self.enterprise_dir, 'test_audio.raw')
-        recorded_file = os.path.join(self.resultsdir, 'cras_recorded.raw')
+        noise_file = os.path.join(self.resultsdir, 'noise.wav')
+        recorded_file = os.path.join(self.resultsdir, 'recorded-cras.raw')
+        recorded_rms = []
 
-        # Play the audio file and capture the output
-        self.wait_for_active_stream_count(0)
-        p = cmd_utils.popen(cras_utils.playback_cmd(RAW_FILE))
-        try:
-            self.wait_for_active_stream_count(1)
-            cras_utils.capture(recorded_file, duration=self.SAMPLE_DURATION)
+        # Record a sample of silence to use as a noise profile.
+        cras_utils.capture(noise_file, duration=2)
+        logging.info('NOISE: %s', audio_helper.get_rms(noise_file))
 
-            if p.poll() is not None:
-                raise error.TestError('Audio playback stopped prematurely')
-        finally:
-            cmd_utils.kill_or_log_returncode(p)
+        # Get two RMS samples: one when muted and one when not
+        for muted in [False, True]:
+            cras_utils.set_system_mute(muted)
 
-        rms_value = audio_helper.get_rms(recorded_file)[0]
+            # Play the audio file and capture the output
+            self.wait_for_active_stream_count(0)
+            p = cmd_utils.popen(cras_utils.playback_cmd(RAW_FILE))
+            try:
+                self.wait_for_active_stream_count(1)
+                cras_utils.capture(recorded_file, duration=self.SAMPLE_DURATION)
 
-        if audio_allowed and rms_value <= self.MUTE_THRESHOLD:
-            raise error.TestFail('RMS (%s) is too low for audio enabled'
-                                 % rms_value)
-        elif not audio_allowed and rms_value > self.MUTE_THRESHOLD:
-            raise error.TestFail('Audio not muted. RMS = %s' % rms_value)
+                if p.poll() is not None:
+                    raise error.TestError('Audio playback stopped prematurely')
+            finally:
+                cmd_utils.kill_or_log_returncode(p)
+
+            rms_value = audio_helper.reduce_noise_and_get_rms(
+                recorded_file, noise_file)[0]
+
+            recorded_rms.append(rms_value)
+
+        rms_diff = recorded_rms[0] - recorded_rms[1]
+        self.write_perf_keyval({'rms_diff': rms_diff})
+
+        if audio_allowed:
+            if rms_diff < 0.75:
+                raise error.TestFail('RMS difference not large enough between '
+                                     'mute and ummute: %s' % rms_diff)
+        else:
+            if abs(rms_diff) > 0.05:
+                raise error.TestFail('RMS difference too wide while audio '
+                                     'disabled: %s' % rms_diff)
 
 
     def _test_unmute_disabled(self, policy_value):
