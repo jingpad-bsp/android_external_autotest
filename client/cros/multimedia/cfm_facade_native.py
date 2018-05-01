@@ -61,13 +61,19 @@ class CFMFacadeNative(object):
         time.sleep(self._ENROLLMENT_DELAY)
 
 
-    def restart_chrome_for_cfm(self):
-        """Restart chrome with custom values for CFM."""
+    def restart_chrome_for_cfm(self, extra_chrome_args=None):
+        """Restart chrome with custom values for CFM.
+
+        @param extra_chrome_args a list with extra command line arguments for
+                Chrome.
+        """
         custom_chrome_setup = {"clear_enterprise_policy": False,
                                "dont_override_profile": True,
                                "disable_gaia_services": False,
                                "disable_default_apps": False,
                                "auto_login": False}
+        if extra_chrome_args:
+            custom_chrome_setup["extra_browser_args"] = extra_chrome_args
         self._resource.start_custom_chrome(custom_chrome_setup)
 
 

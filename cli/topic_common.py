@@ -63,8 +63,19 @@ import textwrap
 import traceback
 import urllib2
 
+import common
+
 from autotest_lib.cli import rpc
+from autotest_lib.cli import skylab_utils
 from autotest_lib.client.common_lib.test_utils import mock
+from autotest_lib.client.common_lib import autotemp
+
+skylab_inventory_imported = False
+try:
+    from skylab_inventory import translation_utils
+    skylab_inventory_imported = True
+except ImportError:
+    pass
 
 
 # Maps the AFE keys to printable names.
@@ -392,6 +403,8 @@ class atest(object):
         self.web_server = ''
         self.verbose = False
         self.no_confirmation = False
+        # Whether the topic or command supports skylab inventory repo.
+        self.allow_skylab = False
         self.topic_parse_info = item_parse_info(attribute_name='not_used')
 
         self.parser = optparse.OptionParser(self._get_usage())
@@ -421,6 +434,53 @@ class atest(object):
                                dest='web_server', default=None)
 
 
+    def add_skylab_options(self):
+        """Add options for reading and writing skylab inventory repository."""
+        self.allow_skylab = True
+        self.parser.add_option('--skylab',
+                               help=('Use the skylab inventory as the data '
+                                     'source.'),
+                               action='store_true', dest='skylab',
+                               default=False)
+        self.parser.add_option('--env',
+                               help=('Environment of the server. Only useful '
+                                     'when --skylab is enabled'),
+                               dest='environment',
+                               default='skylab')
+        self.parser.add_option('--inventory-repo-dir',
+                               help=('The path to clone skylab inventory repo. '
+                                     'If not provided, a temporary dir will be '
+                                     'created and used as the repo dir.'
+                                     'Only useful when --skylab is enabled'),
+                               dest='inventory_repo_dir')
+        self.parser.add_option('--keep-repo-dir',
+                               help=('Keep the repo dir after the command '
+                                     'completes, otherwise the dir will be '
+                                     'cleaned up. Only useful when --skylab is '
+                                     'enabled.'),
+                               action='store_true',
+                               dest='keep_repo_dir')
+        self.parser.add_option('--draft',
+                               help=('Upload server change CL as a draft. Only'
+                                     ' useful when --skylab is enabled.'),
+                               action='store_true',
+                               dest='draft',
+                               default=False)
+        self.parser.add_option('--dryrun',
+                               help=('Execute the action as a dryrun. Only '
+                                     'useful when --skylab is enabled.'),
+                               action='store_true',
+                               dest='dryrun',
+                               default=False)
+        self.parser.add_option('--submit',
+                               help=('Submit the change CL directly without '
+                                     'reviewing it in Gerrit. Only useful when '
+                                     '--skylab is enabled.'),
+                               action='store_true',
+                               dest='submit',
+                               default=False)
+
+
     def _get_usage(self):
         return "atest %s %s [options] %s" % (self.msg_topic.lower(),
                                              self.usage_action,
@@ -434,6 +494,50 @@ class atest(object):
         @param argv: A list of arguments.
         """
         return action
+
+
+    def parse_skylab_options(self, options):
+        """Parse skylab related options.
+
+        @param: options: Option values parsed by the parser.
+        """
+        self.skylab = options.skylab
+        if not self.skylab:
+            return
+
+        # TODO(nxia): crbug.com/837831 Add skylab_inventory to
+        # autotest-server-deps ebuilds to remove the ImportError check.
+        if not skylab_inventory_imported:
+            raise skylab_utils.SkylabInventoryNotImported(
+                    "Please try to run utils/build_externals.py.")
+
+        self.draft = options.draft
+
+        self.dryrun = options.dryrun
+        if self.dryrun:
+            print('This is a dryrun. NO CL will be uploaded.\n')
+
+        self.submit = options.submit
+        if self.submit and (self.dryrun or self.draft):
+            self.invalid_syntax('Can not set --dryrun or --draft when '
+                                '--submit is set.')
+
+        # The change number of the inventory change CL.
+        self.change_number = None
+
+        self.environment = options.environment
+        translation_utils.validate_environment(self.environment)
+
+        self.keep_repo_dir = options.keep_repo_dir
+        self.inventory_repo_dir = options.inventory_repo_dir
+        if self.inventory_repo_dir is None:
+            self.temp_dir = autotemp.tempdir(
+                    prefix='inventory_repo',
+                    auto_clean=not self.keep_repo_dir)
+            self.inventory_repo_dir = self.temp_dir.name
+            if self.debug:
+                print('No inventory-repo-dir was provided, using %s' %
+                      self.inventory_repo_dir)
 
 
     def parse(self, parse_info=[], req_items=None):
@@ -465,6 +569,9 @@ class atest(object):
                                 (self.msg_topic,
                                  self.usage_action,
                                  self.msg_topic))
+
+        if self.allow_skylab:
+            self.parse_skylab_options(options)
 
         return (options, leftover)
 

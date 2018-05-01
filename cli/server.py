@@ -18,23 +18,41 @@ The common options are:
 See topic_common.py for a High Level Design and Algorithm.
 """
 
+import logging
+
 import common
 
 from autotest_lib.cli import action_common
+from autotest_lib.cli import skylab_utils
 from autotest_lib.cli import topic_common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import revision_control
 # The django setup is moved here as test_that uses sqlite setup. If this line
 # is in server_manager, test_that unittest will fail.
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.site_utils import server_manager
 from autotest_lib.site_utils import server_manager_utils
+from chromite.lib import gob_util
+
+try:
+    from skylab_inventory import text_manager
+    from skylab_inventory import translation_utils
+    from skylab_inventory.lib import server as skylab_server
+except ImportError:
+    pass
+
+
+# TODO(nxia): add an option to set logging level.
+root = logging.getLogger()
+root.setLevel(logging.CRITICAL)
 
 RESPECT_SKYLAB_SERVERDB = global_config.global_config.get_config_value(
         'SKYLAB', 'respect_skylab_serverdb', type=bool, default=False)
 ATEST_DISABLE_MSG = ('Updating server_db via atest server command has been '
                      'disabled. Please use use go/cros-infra-inventory-tool '
                      'to update it in skylab inventory service.')
+SUBMIT_CL_MSG = 'Please submit the CL at %s to make the change effective.'
 
 
 class server(topic_common.atest):
@@ -62,10 +80,14 @@ class server(topic_common.atest):
         self.parser.add_option('-x', '--action',
                                help=('Set to True to apply actions when role '
                                      'or status is changed, e.g., restart '
-                                     'scheduler when a drone is removed.'),
+                                     'scheduler when a drone is removed. Note: '
+                                     'This is NOT supported when --skylab is '
+                                     'enabled.'),
                                action='store_true',
                                default=False,
                                metavar='ACTION')
+
+        self.add_skylab_options()
 
         self.topic_parse_info = topic_common.item_parse_info(
                 attribute_name='hostname', use_leftover=True)
@@ -97,6 +119,10 @@ class server(topic_common.atest):
             # Override self.hostname with the first hostname in the list.
             self.hostname = self.hostname[0]
         self.role = options.role
+
+        if self.skylab and self.role:
+            translation_utils.validate_server_role(self.role)
+
         return (options, leftover)
 
 
@@ -123,15 +149,17 @@ class server_list(action_common.atest_list, server):
         """Initializer.
         """
         super(server_list, self).__init__(hostname_required=False)
+        warn_message_for_skylab = 'This is not supported with --skylab.'
+
         self.parser.add_option('-t', '--table',
                                help=('List details of all servers in a table, '
                                      'e.g., \tHostname | Status  | Roles     | '
                                      'note\t\tserver1  | primary | scheduler | '
-                                     'lab'),
+                                     'lab. %s' % warn_message_for_skylab),
                                action='store_true',
                                default=False)
         self.parser.add_option('-s', '--status',
-                               help='Only show servers with given status',
+                               help='Only show servers with given status.',
                                type='string',
                                default=None,
                                metavar='STATUS')
@@ -139,15 +167,18 @@ class server_list(action_common.atest_list, server):
                                help=('Show the summary of roles and status '
                                      'only, e.g.,\tscheduler: server1(primary) '
                                      'server2(backup)\t\tdrone: server3(primary'
-                                     ') server4(backup)'),
+                                     ') server4(backup). %s' %
+                                     warn_message_for_skylab),
                                action='store_true',
                                default=False)
         self.parser.add_option('--json',
-                               help='Format output as JSON.',
+                               help=('Format output as JSON. %s' %
+                                     warn_message_for_skylab),
                                action='store_true',
                                default=False)
         self.parser.add_option('-N', '--hostnames-only',
-                               help='Only return hostnames.',
+                               help=('Only return hostnames. %s' %
+                                     warn_message_for_skylab),
                                action='store_true',
                                default=False)
 
@@ -161,6 +192,12 @@ class server_list(action_common.atest_list, server):
         self.status = options.status
         self.summary = options.summary
         self.namesonly = options.hostnames_only
+
+        # TODO(nxia): support all formats for skylab inventory.
+        if (self.skylab and (self.json or self.table or self.summary)):
+            self.invalid_syntax('The format (json|summary|json|hostnames-only)'
+                                ' is not supported with --skylab.')
+
         if sum([self.table, self.summary, self.json, self.namesonly]) > 1:
             self.invalid_syntax('May only specify up to 1 output-format flag.')
         return (options, leftover)
@@ -171,14 +208,33 @@ class server_list(action_common.atest_list, server):
 
         @return: A list of servers matched given hostname and role.
         """
-        try:
-            return server_manager_utils.get_servers(hostname=self.hostname,
-                                                    role=self.role,
-                                                    status=self.status)
-        except (server_manager_utils.ServerActionError,
-                error.InvalidDataError) as e:
-            self.failure(e, what_failed='Failed to find servers',
-                         item=self.hostname, fatal=True)
+        if self.skylab:
+            try:
+                inventory_repo = skylab_utils.InventoryRepo(
+                        self.inventory_repo_dir)
+                inventory_repo.initialize()
+                infrastructure = text_manager.load_infrastructure(
+                        inventory_repo.get_data_dir(), {self.environment})
+
+                return skylab_server.get_servers(
+                        infrastructure,
+                        hostname=self.hostname,
+                        role=self.role,
+                        status=self.status)
+            except (skylab_server.SkylabServerActionError,
+                    revision_control.GitError) as e:
+                self.failure(e, what_failed='Failed to list servers from skylab'
+                             ' inventory.', item=self.hostname, fatal=True)
+        else:
+            try:
+                return server_manager_utils.get_servers(
+                        hostname=self.hostname,
+                        role=self.role,
+                        status=self.status)
+            except (server_manager_utils.ServerActionError,
+                    error.InvalidDataError) as e:
+                self.failure(e, what_failed='Failed to find servers',
+                             item=self.hostname, fatal=True)
 
 
     def output(self, results):
@@ -232,6 +288,33 @@ class server_create(server):
         return (options, leftover)
 
 
+    def execute_skylab(self):
+        """Execute the command for skylab inventory changes."""
+        inventory_repo = skylab_utils.InventoryRepo(
+                self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        infrastructure = text_manager.load_infrastructure(
+                data_dir, {self.environment})
+
+        new_server = skylab_server.create(
+                infrastructure,
+                self.hostname,
+                self.environment,
+                role=self.role,
+                note=self.note)
+        text_manager.dump_infrastructure(
+                data_dir, self.environment, infrastructure)
+
+        message = skylab_utils.construct_commit_message(
+                'Add new server: %s' % self.hostname)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
+
+        return new_server
+
+
     def execute(self):
         """Execute the command.
 
@@ -242,13 +325,24 @@ class server_create(server):
                          what_failed='Failed to create server',
                          item=self.hostname, fatal=True)
 
-        try:
-            return server_manager.create(hostname=self.hostname, role=self.role,
-                                         note=self.note)
-        except (server_manager_utils.ServerActionError,
-                error.InvalidDataError) as e:
-            self.failure(e, what_failed='Failed to create server',
-                         item=self.hostname, fatal=True)
+        if self.skylab:
+            try:
+                return self.execute_skylab()
+            except (skylab_server.SkylabServerActionError,
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
+                self.failure(e, what_failed='Failed to create server in  skylab'
+                             'inventory.', item=self.hostname, fatal=True)
+        else:
+            try:
+                return server_manager.create(
+                        hostname=self.hostname,
+                        role=self.role,
+                        note=self.note)
+            except (server_manager_utils.ServerActionError,
+                    error.InvalidDataError) as e:
+                self.failure(e, what_failed='Failed to create server',
+                             item=self.hostname, fatal=True)
 
 
     def output(self, results):
@@ -258,12 +352,37 @@ class server_create(server):
                         contains server information.
         """
         if results:
-            print 'Server %s is added to server database:\n' % self.hostname
+            print 'Server %s is added.\n' % self.hostname
             print results
+
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
+
 
 
 class server_delete(server):
     """atest server delete hostname"""
+
+    def execute_skylab(self):
+        """Execute the command for skylab inventory changes."""
+        inventory_repo = skylab_utils.InventoryRepo(
+                self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        infrastructure = text_manager.load_infrastructure(
+                data_dir, {self.environment})
+
+        skylab_server.delete(infrastructure, self.hostname)
+        text_manager.dump_infrastructure(
+                data_dir, self.environment, infrastructure)
+
+        message = skylab_utils.construct_commit_message(
+                'Delete server: %s' % self.hostname)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
+
 
     def execute(self):
         """Execute the command.
@@ -275,13 +394,24 @@ class server_delete(server):
                          what_failed='Failed to delete server',
                          item=self.hostname, fatal=True)
 
-        try:
-            server_manager.delete(hostname=self.hostname)
-            return True
-        except (server_manager_utils.ServerActionError,
-                error.InvalidDataError) as e:
-            self.failure(e, what_failed='Failed to delete server',
-                         item=self.hostname, fatal=True)
+        if self.skylab:
+            try:
+                self.execute_skylab()
+                return True
+            except (skylab_server.SkylabServerActionError,
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
+                self.failure(e, what_failed='Failed to delete server from '
+                             'skylab inventory.', item=self.hostname,
+                             fatal=True)
+        else:
+            try:
+                server_manager.delete(hostname=self.hostname)
+                return True
+            except (server_manager_utils.ServerActionError,
+                    error.InvalidDataError) as e:
+                self.failure(e, what_failed='Failed to delete server',
+                             item=self.hostname, fatal=True)
 
 
     def output(self, results):
@@ -290,8 +420,13 @@ class server_delete(server):
         @param results: return of the execute call.
         """
         if results:
-            print ('Server %s is deleted from server database successfully.' %
+            print ('Server %s is deleted.\n' %
                    self.hostname)
+
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
+
 
 
 class server_modify(server):
@@ -369,7 +504,49 @@ class server_modify(server):
         if self.attribute != None and not self.delete and self.value == None:
             self.invalid_syntax('--attribute must be used with option --value '
                                 'or --delete.')
+
+        # TODO(nxia): crbug.com/832964 support --action with --skylab
+        if self.skylab and self.action:
+            self.invalid_syntax('--action is currently not supported with'
+                                ' --skylab.')
+
         return (options, leftover)
+
+
+    def execute_skylab(self):
+        """Execute the command for skylab inventory changes."""
+        inventory_repo = skylab_utils.InventoryRepo(
+                        self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        infrastructure = text_manager.load_infrastructure(
+                data_dir, {self.environment})
+
+        target_server = skylab_server.modify(
+                infrastructure,
+                self.hostname,
+                role=self.role,
+                status=self.status,
+                delete_role=self.delete,
+                note=self.note,
+                attribute=self.attribute,
+                value=self.value,
+                delete_attribute=self.delete)
+        text_manager.dump_infrastructure(
+                data_dir, self.environment, infrastructure)
+
+        status = inventory_repo.git_repo.status()
+        if not status:
+            print('Nothing is changed for server %s.' % self.hostname)
+            return
+
+        message = skylab_utils.construct_commit_message(
+                'Modify server: %s' % self.hostname)
+        self.change_number = inventory_repo.upload_change(
+                message, draft=self.draft, dryrun=self.dryrun,
+                submit=self.submit)
+
+        return target_server
 
 
     def execute(self):
@@ -382,16 +559,25 @@ class server_modify(server):
                          what_failed='Failed to modify server',
                          item=self.hostname, fatal=True)
 
-        try:
-            return server_manager.modify(hostname=self.hostname, role=self.role,
-                                         status=self.status, delete=self.delete,
-                                         note=self.note,
-                                         attribute=self.attribute,
-                                         value=self.value, action=self.action)
-        except (server_manager_utils.ServerActionError,
-                error.InvalidDataError) as e:
-            self.failure(e, what_failed='Failed to modify server',
-                         item=self.hostname, fatal=True)
+        if self.skylab:
+            try:
+                return self.execute_skylab()
+            except (skylab_server.SkylabServerActionError,
+                    revision_control.GitError,
+                    gob_util.GOBError) as e:
+                self.failure(e, what_failed='Failed to modify server in skylab'
+                             ' inventory.', item=self.hostname, fatal=True)
+        else:
+            try:
+                return server_manager.modify(
+                        hostname=self.hostname, role=self.role,
+                        status=self.status, delete=self.delete,
+                        note=self.note, attribute=self.attribute,
+                        value=self.value, action=self.action)
+            except (server_manager_utils.ServerActionError,
+                    error.InvalidDataError) as e:
+                self.failure(e, what_failed='Failed to modify server',
+                             item=self.hostname, fatal=True)
 
 
     def output(self, results):
@@ -401,5 +587,9 @@ class server_modify(server):
                         object.
         """
         if results:
-            print 'Server %s is modified successfully.' % self.hostname
+            print 'Server %s is modified.\n' % self.hostname
             print results
+
+            if self.skylab and not self.dryrun and not self.submit:
+                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
+                        self.change_number)
