@@ -21,4 +21,4 @@ and uses it to create a DmaBuf NativePixmap and allocate a GLImageEGL.
 
 job.run_test('graphics_Chrome',
              unittests_binary_name=UNITTESTS_BINARY_NAME,
-             timeout=TIMEOUT_SECONDS)
+             unittests_timeout=TIMEOUT_SECONDS)
