@@ -46,7 +46,6 @@ class autoupdate_Backoff(update_engine_test.UpdateEngineTest):
         self._backoff_expiry_time = os.path.join(
             self._UPDATE_ENGINE_PREFS_DIR, self._BACKOFF_EXPIRY_TIME_PREF)
         utils.run('touch %s' % self._no_ignore_backoff, ignore_status=True)
-        utils.run('restart update-engine')
 
         # Only set one URL in the omaha response so we can test the backoff
         # functionality quicker.
