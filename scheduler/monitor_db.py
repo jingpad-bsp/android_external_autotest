@@ -182,6 +182,10 @@ def main_without_exception_handling():
           minimum_tick_sec = global_config.global_config.get_config_value(
                   scheduler_config.CONFIG_SECTION, 'minimum_tick_sec', type=float)
 
+          # TODO(crbug.com/837680): Force creating the current user.
+          # This is a dirty hack to work around a race; see bug.
+          models.User.current_user()
+
           while not _shutdown:
               if _lifetime_expired(options.lifetime_hours, process_start_time):
                   break
