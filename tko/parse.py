@@ -348,8 +348,8 @@ def parse_one(db, pid_file_manager, jobname, path, parse_options):
 
     job.afe_job_id = tko_utils.get_afe_job_id(jobname)
     job.skylab_task_id = tko_utils.get_skylab_task_id(jobname)
-    job.afe_parent_job_id = str(job_keyval.get(constants.PARENT_JOB_ID))
-    job.skylab_parent_task_id = str(job_keyval.get(constants.PARENT_JOB_ID))
+    job.afe_parent_job_id = job_keyval.get(constants.PARENT_JOB_ID)
+    job.skylab_parent_task_id = job_keyval.get(constants.PARENT_JOB_ID)
     job.build = None
     job.board = None
     job.build_version = None
