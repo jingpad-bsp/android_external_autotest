@@ -73,6 +73,8 @@ class DrmTest(object):
 
     def run(self):
         try:
+            # Flush log files to disk in case of hang/reboot.
+            utils.run('sync')
             # TODO(pwang): consider TEE to another file if drmtests keep
             # spewing so much output.
             cmd_result = utils.run(
