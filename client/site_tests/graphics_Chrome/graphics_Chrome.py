@@ -25,4 +25,4 @@ class graphics_Chrome(graphics_utils.GraphicsTest,
                 'Failed: timeout running %s' % unittests_binary_name)
         except:
             # TODO(ihf): Consider parsing the output from the test.
-            raise error.TestFail('Failed %' % unittests_binary_name)
+            raise error.TestFail('Failed %s' % unittests_binary_name)
