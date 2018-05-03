@@ -42,26 +42,14 @@ class policy_DisableScreenshots(
             'NotSet_Allow': None
         }
 
-        # JavaScript used to write API results to global CAPTURE variable
+        # Possible API methods to capture the screen
         self.CAPTURE_CMDS = [
-            ('captureVisibleTab', 'chrome.tabs.captureVisibleTab((img) => '
-                                      'CAPTURE = img);'),
-            ('tabCapture', 'chrome.tabCapture.capture({video: true}, '
-                                '(stream) => CAPTURE = stream);'),
-            # TODO(timkovich): https://crbug.com/817497
-            # ('desktopCapture', 'chrome.desktopCapture.chooseDesktopMedia( '
-            #                         "['screen'], (streamId) => "
-            #                         'CAPTURE = streamId);')
+                'captureVisibleTab',
+                # TODO(timkovich): https://crbug.com/839630
+                # 'tabCapture',
+                # TODO(timkovich): https://crbug.com/817497
+                # 'desktopCapture'
         ]
-
-
-    def _load_extension_page(self):
-        """Open options page for screenshot extension."""
-        extension = self.cr.get_extension(self._extension_path)
-        options_page = ('chrome-extension://%s/options.html' %
-                       extension.extension_id)
-        self._ext = self.cr._browser.tabs.New()
-        self._ext.Navigate(options_page)
 
 
     def _screenshot_file_exists(self):
@@ -138,17 +126,18 @@ class policy_DisableScreenshots(
             does not match the policy value
 
         """
-        self._load_extension_page()
+        self._ext = self.cr._browser.tabs.New()
+        self._ext.Navigate('https://google.com')
 
-        # Enable activeTab permission for tab by calling extension's shortcut
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        self.player.blocking_playback(
-                input_type='keyboard',
-                filepath=os.path.join(current_dir, 'keyboard_ctrl+shift+y'))
 
-        for method, cmd in self.CAPTURE_CMDS:
-            self._ext.ExecuteJavaScript('CAPTURE = null')
-            self._ext.ExecuteJavaScript(cmd)
+        for method in self.CAPTURE_CMDS:
+            self._ext.ExecuteJavaScript('document.title = "%s"' % method)
+
+            # Call the extensions shortcut to trigger the activeTab permission
+            self.player.blocking_playback(
+                    input_type='keyboard',
+                    filepath=os.path.join(current_dir, 'keyboard_ctrl+shift+y'))
 
             # desktopCapture opens a prompt window that needs to be OKed
             if method == 'desktopCapture':
@@ -157,20 +146,26 @@ class policy_DisableScreenshots(
 
             try:
                 utils.poll_for_condition(
-                        lambda: self._ext.EvaluateJavaScript('CAPTURE != null'),
+                        lambda: self._ext.EvaluateJavaScript(
+                            'document.title != "%s"' % method
+                        ),
                         timeout=POLL_TIMEOUT)
-                capture = self._ext.EvaluateJavaScript('CAPTURE')
+                capture = self._ext.EvaluateJavaScript('document.title')
             except utils.TimeoutError:
                 capture = None
 
+            if capture == 'undefined':
+                capture = None
+
             if policy_value:
-                # tabCapture returns {} on failure, the others return None
-                if capture is not None and capture != {}:
+                if capture is not None:
                     raise error.TestFail('Screen should not be captured. '
-                                         'method = %s' % method)
+                                         'method = %s, capture = %s'
+                                         % (method, capture))
             elif capture is None:
                 raise error.TestFail('Screen should be captured. '
-                                     'method = %s' % method)
+                                     'method = %s, capture = %s'
+                                     % (method, capture))
 
 
     def run_once(self, case):
