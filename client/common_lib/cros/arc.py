@@ -852,7 +852,8 @@ class ArcTest(test.test):
         from uiautomator import device as d
         adb_shell('am force-stop ' + _PLAY_STORE_PKG)
         adb_shell('am start -W ' + _SETTINGS_PKG)
-        d(text='Apps', packageName=_SETTINGS_PKG).click.wait()
+        # N and P have different name. StartsWith("Apps") matches both.
+        d(textStartsWith='Apps', packageName=_SETTINGS_PKG).click.wait()
         adb_shell('input text Store')
         d(text='Google Play Store', packageName=_SETTINGS_PKG).click.wait()
         d(textMatches='(?i)DISABLE').click.wait()
