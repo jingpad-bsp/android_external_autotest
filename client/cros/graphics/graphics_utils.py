@@ -199,6 +199,9 @@ class GraphicsTest(test.test):
         target = self._get_failure(name, subtest=subtest)
         if name in target['names']:
             target['names'].remove(name)
+            if len(target['names']) == 0:
+                self._failures.remove(target)
+
 
     def _output_perf(self):
         """Report recorded failures back to chrome perf."""
