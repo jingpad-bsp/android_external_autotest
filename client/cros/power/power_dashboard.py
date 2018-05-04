@@ -202,3 +202,34 @@ class PowerLoggerDashboard(MeasurementLoggerDashboard):
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(PowerLoggerDashboard, self).__init__(logger, testname, resultsdir,
                                                    uploadurl)
+
+class SimplePowerLoggerDashboard(ClientTestDashboard):
+    """Dashboard class for simple system power measurement taken and publishing
+    it to the dashboard.
+    """
+    def __init__(self, duration_secs, power_watts, testname, resultsdir=None,
+                 uploadurl=None):
+
+        if uploadurl is None:
+            uploadurl = 'http://chrome-power.appspot.com/rapl'
+        super(SimplePowerLoggerDashboard, self).__init__(
+            None, testname, resultsdir, uploadurl)
+
+        self._unit = 'watt'
+        self._type = 'power'
+        self._duration_secs = duration_secs
+        self._power_watts = power_watts
+
+    def _convert(self):
+        """Convert vbat to raw power measurement dictionary.
+
+        Return:
+            raw measurement dictionary
+        """
+        power_dict = {
+            'sample_count': 1,
+            'sample_duration': self._duration_secs,
+            'average': {'vbat': self._power_watts},
+            'data': {'vbat': [self._power_watts]}
+        }
+        return power_dict
