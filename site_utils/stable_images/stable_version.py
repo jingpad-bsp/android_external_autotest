@@ -112,6 +112,8 @@ class _VersionMapHandler(object):
         """Print all mappings in `self._version_map`"""
         print '%s version mappings:' % self._description
         mappings = self._version_map.get_all_versions()
+        if not mappings:
+            return
         key_list = mappings.keys()
         key_width = max(12, len(max(key_list, key=len)))
         format = '%%-%ds  %%s' % key_width
