@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import string
+import time
 import threading
 
 import powerlog
@@ -88,9 +89,9 @@ class SweetberryThread(threading.Thread):
         """
         threading.Thread.__init__(self, name='Sweetberry')
         self._end_flag = end_flag
+        self._interval = interval
         self._argv = ['--board', board,
                       '--config', scenario,
-                      '--seconds', str(interval),
                       '--save_stats_json', stats_json_dir,
                       '--no_print_raw_data',
                       '--mW']
@@ -98,11 +99,17 @@ class SweetberryThread(threading.Thread):
     def run(self):
         """Start Sweetberry measurement until end_flag is set."""
         logging.debug('Sweetberry starts.')
+        loop = 0
+        start_timestamp = time.time()
         while not self._end_flag.is_set():
             # TODO(mqg): in the future use more of powerlog components
             # explicitly, make a long call and harvest data from Sweetberry,
             # instead of using it like a command line tool now.
-            powerlog.main(self._argv)
+            loop += 1
+            next_loop_start_timestamp = start_timestamp + loop * self._interval
+            current_timestamp = time.time()
+            this_loop_duration = next_loop_start_timestamp - current_timestamp
+            powerlog.main(self._argv + ['--seconds', str(this_loop_duration)])
         logging.debug('Sweetberry stops.')
 
 
