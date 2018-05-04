@@ -713,9 +713,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 quick_provision=quick_provision)
 
 
-    def machine_install_by_devserver(self, update_url=None, force_update=False,
-                    local_devserver=False, repair=False,
-                    force_full_update=False):
+    def machine_install_by_devserver(self, update_url=None,
+                                     force_update=False, repair=False,
+                                     force_full_update=False):
         """Ultiize devserver to install the DUT.
 
         (TODO) crbugs.com/627269: The logic in this function has some overlap
@@ -725,8 +725,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param update_url: The update_url or build for the host to update.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
-        @param local_devserver: Used by test_that to allow people to
-                use their local devserver. Default: False
         @param repair: Forces update to repair image. Implies force_update.
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
@@ -851,8 +849,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, update_url=None, force_update=False,
-                        local_devserver=False, repair=False,
-                        force_full_update=False):
+                        repair=False, force_full_update=False):
         """Install the DUT.
 
         Use stateful update if the DUT is already running the same build.
@@ -872,8 +869,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 will be used instead.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
-        @param local_devserver: Used by test_that to allow people to
-                use their local devserver. Default: False
         @param repair: Forces update to repair image. Implies force_update.
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
@@ -909,8 +904,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.run('touch %s' % self.PROVISION_FAILED)
 
         update_complete = False
-        updater = autoupdater.ChromiumOSUpdater(
-                 update_url, host=self, local_devserver=local_devserver)
+        updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
         if not force_full_update:
             try:
                 # If the DUT is already running the same build, try stateful
