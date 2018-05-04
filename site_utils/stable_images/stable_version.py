@@ -438,7 +438,7 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
     """
     arguments = _parse_args(argv)
-    afe = frontend.AFE(arguments.web)
+    afe = frontend.AFE(server=arguments.web)
     try:
         _dispatch_command(afe, arguments)
     except _CommandError as exc:
