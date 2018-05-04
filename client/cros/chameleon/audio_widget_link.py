@@ -336,7 +336,7 @@ class USBWidgetLink(WidgetLink):
     # This is the default channel map for 2-channel data
     _DEFAULT_CHANNEL_MAP = [0, 1]
     # Wait some time for Cros device to detect USB has been plugged.
-    _DELAY_AFTER_PLUGGING_SECS = 0.5
+    _DELAY_AFTER_PLUGGING_SECS = 2.0
 
     def __init__(self, usb_ctrl):
         """Initializes a USBWidgetLink.
