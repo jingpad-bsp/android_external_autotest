@@ -7,6 +7,7 @@ import logging, math, time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc
+from autotest_lib.client.cros.power import power_dashboard
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
 from autotest_lib.client.cros.power import sys_power
@@ -24,6 +25,9 @@ class power_Standby(test.test):
     def run_once(self, test_hours=None, sample_hours=None,
                  max_milliwatts_standby=500, ac_ok=False,
                  force_discharge=False):
+
+        if not power_utils.has_battery():
+            raise error.TestNAError('Skipping test because DUT has no battery.')
 
         if test_hours < sample_hours:
             raise error.TestFail('Test hours must be greater than sample '
@@ -115,8 +119,18 @@ class power_Standby(test.test):
         results['w_energy_rate'] = energy_used / elapsed_hours
         results['wh_energy_used'] = energy_used
 
-        # TODO(?): add power/chromeperf dashboard uploading.
         self.write_perf_keyval(results)
+        pdash = power_dashboard.SimplePowerLoggerDashboard(
+                test_hours * 3600., results['w_energy_rate'],
+                self.tagged_testname, self.resultsdir)
+        pdash.upload()
+
+        self.output_perf_value(description='hours_standby_time',
+                               value=results['hours_standby_time'],
+                               units='hours', higher_is_better=True)
+        self.output_perf_value(description='w_energy_rate',
+                               value=results['w_energy_rate'], units='watts',
+                               higher_is_better=False)
 
         # need to sleep for some time to allow network connection to return
         time.sleep(10)
