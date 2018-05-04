@@ -31,6 +31,7 @@ class autoupdate_NonBlockingOOBEUpdate(update_engine_test.UpdateEngineTest):
 
         """
         tpm_utils.ClearTPMOwnerRequest(self._host)
+        self._host.run('ls /home/chronos/.oobe_completed', ignore_status=True)
 
         # veyron_rialto is a medical device with a different OOBE that auto
         # completes so this test is not valid on that device.
