@@ -120,17 +120,24 @@ class video_WebRtcCamera(test.test):
                 errors.append('Frame Stats is empty '
                               'for resolution: %s' % resolution)
                 continue
+
+            total_num_frames = data['frameStats']['numFrames']
+            num_black_frames = data['frameStats']['numBlackFrames']
+            num_frozen_frames = data['frameStats']['numFrozenFrames']
+
+            def _percent(num, total):
+                if total == 0:
+                    return 1.0
+                return float(num) / float(total)
+
             self.output_perf_value(
-                    description='black_frames_%s' % resolution,
-                    value=data['frameStats']['numBlackFrames'],
-                    units='frames', higher_is_better=False)
+                    description='black_frames_percentage_%s' % resolution,
+                    value=_percent(num_black_frames, total_num_frames),
+                    units='percent', higher_is_better=False)
             self.output_perf_value(
-                    description='frozen_frames_%s' % resolution,
-                    value=data['frameStats']['numFrozenFrames'],
-                    units='frames', higher_is_better=False)
-            self.output_perf_value(
-                    description='total_num_frames_%s' % resolution,
-                    value=data['frameStats']['numFrames'],
-                    units='frames', higher_is_better=True)
+                    description='frozen_frames_percentage_%s' % resolution,
+                    value=_percent(num_frozen_frames, total_num_frames),
+                    units='percent', higher_is_better=False)
+
         if errors:
             raise error.TestFail('Found errors: %s' % ', '.join(errors))
