@@ -188,12 +188,15 @@ def adb_shell(cmd, **kwargs):
     return output
 
 
-def adb_install(apk):
+def adb_install(apk, auto_grant_permissions=True):
     """Install an apk into container. You must connect first.
 
     @param apk: Package to install.
+    @param auto_grant_permissions: Set to false to not automatically grant all
+    permissions. Most tests should not care.
     """
-    return adb_cmd('install -r %s' % apk, timeout=60*5)
+    flags = '-g' if auto_grant_permissions else ''
+    return adb_cmd('install -r %s %s' % (flags, apk), timeout=60*5)
 
 
 def adb_uninstall(apk):
