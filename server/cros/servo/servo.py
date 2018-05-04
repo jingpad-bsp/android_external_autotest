@@ -526,7 +526,7 @@ class Servo(object):
         @param gpio_value New setting for the gpio.
         """
         assert gpio_name and gpio_value
-        logging.info('Setting %s to %s', gpio_name, gpio_value)
+        logging.info('Setting %s to %r', gpio_name, gpio_value)
         try:
             self._server.set(gpio_name, gpio_value)
         except  xmlrpclib.Fault as e:
