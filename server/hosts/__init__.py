@@ -14,7 +14,6 @@ from remote import RemoteHost
 
 # host implementation classes
 from adb_host import ADBHost
-from emulated_adb_host import EmulatedADBHost
 from ssh_host import SSHHost
 from cros_host import CrosHost
 from chameleon_host import ChameleonHost

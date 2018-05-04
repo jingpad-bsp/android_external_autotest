@@ -57,8 +57,6 @@ def _parse_args_and_configure_logging(args):
                         help='Path to job leases directory.')
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
                         help='Path to lucifer_run_job binary')
-    parser.add_argument('--watcher-path', default='/usr/bin/lucifer_watcher',
-                        help='Path to lucifer_watcher binary')
 
     # Job specific
 
@@ -162,7 +160,6 @@ def _run_lucifer_job(event_handler, args, job):
     command_args = [args.run_job_path]
     command_args.extend([
             '-autotestdir', '/usr/local/autotest',
-            '-watcherpath', args.watcher_path,
 
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
             '-hosts', ','.join(jobx.hostnames(job)),

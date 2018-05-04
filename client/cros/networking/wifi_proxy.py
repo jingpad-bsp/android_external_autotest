@@ -4,7 +4,6 @@
 
 import dbus
 import logging
-import subprocess
 import time
 
 from autotest_lib.client.cros.networking import shill_proxy
@@ -41,7 +40,7 @@ class WifiProxy(shill_proxy.ShillProxy):
                     profile.DeleteEntry(entry_id)
 
 
-    def configure_wifi_service(self, ssid, security, security_parameters={},
+    def configure_wifi_service(self, ssid, security, security_parameters=None,
                                save_credentials=True, station_type=None,
                                hidden_network=False, guid=None,
                                autoconnect=None):
@@ -65,6 +64,10 @@ class WifiProxy(shill_proxy.ShillProxy):
         # does not refer to the 802.11x (802.11a/b/g/n) type.  It refers to a
         # shill connection mode.
         mode = self.SUPPORTED_WIFI_STATION_TYPES[station_type]
+
+        if security_parameters is None:
+            security_parameters = {}
+
         config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                          self.SERVICE_PROPERTY_HIDDEN: hidden_network,
                          self.SERVICE_PROPERTY_SSID: ssid,
@@ -126,7 +129,6 @@ class WifiProxy(shill_proxy.ShillProxy):
 
         """
         logging.info('Attempting to connect to %s', ssid)
-        service_proxy = None
         start_time = time.time()
         discovery_time = -1.0
         association_time = -1.0

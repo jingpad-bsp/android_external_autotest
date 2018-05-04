@@ -4,8 +4,10 @@
 
 import logging
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros.graphics import graphics_utils
+
 
 class graphics_Chrome(graphics_utils.GraphicsTest,
                       chrome_binary_test.ChromeBinaryTest):
@@ -13,11 +15,14 @@ class graphics_Chrome(graphics_utils.GraphicsTest,
     version = 1
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self, unittests_binary_name, timeout):
+    def run_once(self, unittests_binary_name, unittests_timeout):
         logging.debug('Starting %s', unittests_binary_name)
         try:
-            self.run_chrome_test_binary(unittests_binary_name,
-                                        timeout=timeout)
+            self.run_chrome_test_binary(
+                unittests_binary_name, timeout=unittests_timeout)
         except error.CmdTimeoutError:
-            raise error.TestFail('Failed: timeout running %s' %
-                                 unittests_binary_name)
+            raise error.TestFail(
+                'Failed: timeout running %s' % unittests_binary_name)
+        except:
+            # TODO(ihf): Consider parsing the output from the test.
+            raise error.TestFail('Failed %s' % unittests_binary_name)

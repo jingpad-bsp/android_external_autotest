@@ -9,7 +9,7 @@ TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
 TEST_TYPE = 'client'
 DEPENDENCIES = 'audio_loopback_dongle'
-CRITERIA = 'This test will fail if RMS > 0.05 when muted'
+CRITERIA = 'Test will fail if RMS difference is not within acceptable limits'
 
 DOC = '''
 Verify effect of AudioOutputAllowed policy on Chrome OS behavior.
