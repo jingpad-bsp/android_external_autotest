@@ -10,6 +10,15 @@ from __future__ import print_function
 
 import logging.config
 
+from autotest_lib.site_utils import run_suite_common
+
+
+SUITE_RESULT_CODES = run_suite_common.RETURN_CODES
+
+SuiteResult = run_suite_common.SuiteResult
+
+dump_json = run_suite_common.dump_json
+
 
 def setup_logging():
     """Setup the logging for skylab suite."""
