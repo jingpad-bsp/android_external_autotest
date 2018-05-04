@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.update_engine import nano_omaha_devserver
 from autotest_lib.client.cros.update_engine import update_engine_test
 
@@ -11,8 +10,6 @@ class autoupdate_UrlSwitch(update_engine_test.UpdateEngineTest):
     version = 1
 
     def run_once(self, image_url, image_size, sha256):
-        utils.run('restart update-engine')
-
         # Start an omaha instance on the DUT that will return a response with
         # two Urls. This matches what test and production omaha does today.
         self._omaha = nano_omaha_devserver.NanoOmahaDevserver()
