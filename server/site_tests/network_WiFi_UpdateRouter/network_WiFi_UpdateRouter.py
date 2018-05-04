@@ -40,8 +40,8 @@ class network_WiFi_UpdateRouter(test.test):
         'panther': StableVersion('trybot-panther-test-ap/R47-7424.0.0-b10',
                                  '7424.0.2015_09_03_1532'),
         'whirlwind': StableVersion('trybot-whirlwind-test-ap-tryjob/'
-                                   'R65-10323.33.0-c40061',
-                                   '10323.33.2018_02_15_1605')
+                                   'R65-10323.83.0-c40829',
+                                   '10323.83.2018_04_30_1605')
     }
 
 
