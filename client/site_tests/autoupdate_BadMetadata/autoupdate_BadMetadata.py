@@ -4,7 +4,6 @@
 
 import logging
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.update_engine import nano_omaha_devserver
 from autotest_lib.client.cros.update_engine import update_engine_test
@@ -80,7 +79,6 @@ class autoupdate_BadMetadata(update_engine_test.UpdateEngineTest):
         @param metadata_size: The payloads metadata_size.
 
         """
-        utils.run('restart update-engine')
         self._omaha = nano_omaha_devserver.NanoOmahaDevserver()
 
         # Setup an omaha response with a bad metadata size.
