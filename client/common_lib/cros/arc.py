@@ -80,15 +80,6 @@ def is_adb_connected():
     return output.strip() == 'device'
 
 
-def is_partial_boot_enabled():
-    """Return true if partial boot is enabled.
-
-    When partial boot is enabled, Android is started at login screen without
-    any persistent state (e.g. /data is not mounted).
-    """
-    return _android_shell('getprop ro.boot.partial_boot') == '1'
-
-
 def _is_android_data_mounted():
     """Return true if Android's /data is mounted with partial boot enabled."""
     return _android_shell('getprop ro.data_mounted') == '1'
@@ -122,11 +113,10 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
 
     @param timeout: Timeout in seconds.
     """
-    # When partial boot is enabled, although adbd is started at login screen,
-    # we still need /data to be mounted to set up key-based authentication.
-    # /data should be mounted once the user has logged in.
-    if is_partial_boot_enabled():
-        _wait_for_data_mounted()
+    # Although adbd is started at login screen, we still need /data to be
+    # mounted to set up key-based authentication. /data should be mounted
+    # once the user has logged in.
+    _wait_for_data_mounted()
 
     setup_adb_host()
     if is_adb_connected():
@@ -852,7 +842,8 @@ class ArcTest(test.test):
         from uiautomator import device as d
         adb_shell('am force-stop ' + _PLAY_STORE_PKG)
         adb_shell('am start -W ' + _SETTINGS_PKG)
-        d(text='Apps', packageName=_SETTINGS_PKG).click.wait()
+        # N and P have different name. StartsWith("Apps") matches both.
+        d(textStartsWith='Apps', packageName=_SETTINGS_PKG).click.wait()
         adb_shell('input text Store')
         d(text='Google Play Store', packageName=_SETTINGS_PKG).click.wait()
         d(textMatches='(?i)DISABLE').click.wait()
@@ -860,4 +851,4 @@ class ArcTest(test.test):
         ok_button = d(textMatches='(?i)OK')
         if ok_button.exists:
             ok_button.click.wait()
-        d(description='Close', packageName=_SETTINGS_PKG).click.wait()
+        adb_shell('am force-stop ' + _SETTINGS_PKG)

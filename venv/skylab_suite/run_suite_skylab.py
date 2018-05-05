@@ -8,6 +8,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import sys
 
 import logging
@@ -18,7 +19,8 @@ from skylab_suite import suite_tracking
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
-    return
+    return suite_tracking.SuiteResult(
+                suite_tracking.SUITE_RESULT_CODES.OK)
 
 
 def parse_args():
@@ -40,7 +42,13 @@ def main():
     """Entry point."""
     options = parse_args()
     suite_tracking.setup_logging()
-    _run_suite(options)
+    result = _run_suite(options)
+
+    if options.json_dump:
+        suite_tracking.dump_json(result)
+
+    logging.info('Will return from %s with status: %s',
+                 os.path.basename(__file__), result.string_code)
 
 
 if __name__ == "__main__":
