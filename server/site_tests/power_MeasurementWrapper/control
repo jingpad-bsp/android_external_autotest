@@ -23,10 +23,7 @@ For example,
 /usr/lib64/python2.7/site-packages/servo/data/eve_rev7.board
 /usr/lib64/python2.7/site-packages/servo/data/eve_rev7.scenario
 
-2. The workstation (or where the autotest is kicked off from) should have
-ONE Sweetberry connected.
-
-3. The workstation (or where the autotest is kicked off from) should be in same
+2. The workstation (or where the autotest is kicked off from) should be in same
 timezone with the DUT.
 
 Sample usage:
@@ -39,6 +36,8 @@ test: the client test to run in wrapper test; DUT power is measured during this
 sweetberry_interval: number of seconds between each Sweetberry measurement.
 sweetberry_config: use [].board and [].scenario as configuration file for
                    Sweetberry measurement; optional.
+sweetberry_serial: serial number of sweetberry to use; If not supplied use
+                   the first sweetberry found; optional.
 """
 
 def run(machine):
