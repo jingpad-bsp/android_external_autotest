@@ -68,8 +68,10 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
                                                         deadline=5,
                                                         timeout=5) != 0,
                                      timeout=60,
-                                     sleep_interval=1)
-        except error.CmdError:
+                                     sleep_interval=1,
+                                     desc='Ping failure while offline.')
+        except (error.CmdError, utils.TimeoutError):
             logging.exception('Failed to disconnect one or more interfaces.')
             logging.debug(utils.run('ifconfig', ignore_status=True))
+            raise error.TestFail('Disabling the internet connection failed.')
 
