@@ -46,7 +46,6 @@ Options:
     With no arguments, gathers the status for all models in the lab.
     With one or more named models on the command line, restricts
     reporting to just those models.
-
 """
 
 
@@ -170,19 +169,16 @@ class _HostSetInventory(object):
         self._broken_list = None
         self._idle_list = None
 
-
     def record_host(self, host_history):
         """Add one `HostJobHistory` object to the collection.
 
         @param host_history The `HostJobHistory` object to be
                             remembered.
-
         """
         self._working_list = None
         self._broken_list = None
         self._idle_list = None
         self._histories.append(host_history)
-
 
     def get_working_list(self):
         """Return a list of all working DUTs in the pool.
@@ -193,18 +189,15 @@ class _HostSetInventory(object):
         Cache the result so that we only cacluate it once.
 
         @return A list of HostJobHistory objects.
-
         """
         if self._working_list is None:
             self._working_list = [h for h in self._histories
                     if h.last_diagnosis()[0] == status_history.WORKING]
         return self._working_list
 
-
     def get_working(self):
         """Return the number of working DUTs in the pool."""
         return len(self.get_working_list())
-
 
     def get_broken_list(self):
         """Return a list of all broken DUTs in the pool.
@@ -215,18 +208,15 @@ class _HostSetInventory(object):
         Cache the result so that we only cacluate it once.
 
         @return A list of HostJobHistory objects.
-
         """
         if self._broken_list is None:
             self._broken_list = [h for h in self._histories
                     if h.last_diagnosis()[0] == status_history.BROKEN]
         return self._broken_list
 
-
     def get_broken(self):
         """Return the number of broken DUTs in the pool."""
         return len(self.get_broken_list())
-
 
     def get_idle_list(self):
         """Return a list of all idle DUTs in the pool.
@@ -237,7 +227,6 @@ class _HostSetInventory(object):
         Cache the result so that we only cacluate it once.
 
         @return A list of HostJobHistory objects.
-
         """
         idle_statuses = {status_history.UNUSED, status_history.UNKNOWN}
         if self._idle_list is None:
@@ -245,11 +234,9 @@ class _HostSetInventory(object):
                     if h.last_diagnosis()[0] in idle_statuses]
         return self._idle_list
 
-
     def get_idle(self):
         """Return the number of idle DUTs in the pool."""
         return len(self.get_idle_list())
-
 
     def get_total(self):
         """Return the total number of DUTs in the pool."""
@@ -281,11 +268,9 @@ class _PoolSetInventory(object):
 
         @param host_history The `HostJobHistory` object to be
                             remembered.
-
         """
         pool = host_history.host_pool
         self._histories_by_pool[pool].record_host(host_history)
-
 
     def _count_pool(self, get_pool_count, pool=None):
         """Internal helper to count hosts in a given pool.
@@ -297,14 +282,12 @@ class _PoolSetInventory(object):
                                _PoolCount object.
         @param pool            The pool to be counted.  If `None`,
                                return the total across all pools.
-
         """
         if pool is None:
             return sum([get_pool_count(cached_history) for cached_history in
                         self._histories_by_pool.values()])
         else:
             return get_pool_count(self._histories_by_pool[pool])
-
 
     def get_working_list(self):
         """Return a list of all working DUTs (across all pools).
@@ -313,13 +296,11 @@ class _PoolSetInventory(object):
         ones where the last diagnosis is `WORKING`.
 
         @return A list of HostJobHistory objects.
-
         """
         l = []
         for p in self._histories_by_pool.values():
             l.extend(p.get_working_list())
         return l
-
 
     def get_working(self, pool=None):
         """Return the number of working DUTs in a pool.
@@ -332,7 +313,6 @@ class _PoolSetInventory(object):
         """
         return self._count_pool(_HostSetInventory.get_working, pool)
 
-
     def get_broken_list(self):
         """Return a list of all broken DUTs (across all pools).
 
@@ -340,13 +320,11 @@ class _PoolSetInventory(object):
         selecting the ones where the last diagnosis is `BROKEN`.
 
         @return A list of HostJobHistory objects.
-
         """
         l = []
         for p in self._histories_by_pool.values():
             l.extend(p.get_broken_list())
         return l
-
 
     def get_broken(self, pool=None):
         """Return the number of broken DUTs in a pool.
@@ -358,7 +336,6 @@ class _PoolSetInventory(object):
         """
         return self._count_pool(_HostSetInventory.get_broken, pool)
 
-
     def get_idle_list(self, pool=None):
         """Return a list of all idle DUTs in the given pool.
 
@@ -369,7 +346,6 @@ class _PoolSetInventory(object):
                      across all pools.
 
         @return A list of HostJobHistory objects.
-
         """
         if pool is None:
             l = []
@@ -378,7 +354,6 @@ class _PoolSetInventory(object):
             return l
         else:
             return self._histories_by_pool[pool].get_idle_list()
-
 
     def get_idle(self, pool=None):
         """Return the number of idle DUTs in a pool.
@@ -389,7 +364,6 @@ class _PoolSetInventory(object):
         @return The total number of idle DUTs in the selected pool(s).
         """
         return self._count_pool(_HostSetInventory.get_idle, pool)
-
 
     def get_spares_buffer(self, spare_pool=SPARE_POOL):
         """Return the the nominal number of working spares.
@@ -403,7 +377,6 @@ class _PoolSetInventory(object):
                 number of broken DUTs in all pools.
         """
         return self.get_total(spare_pool) - self.get_broken()
-
 
     def get_total(self, pool=None):
         """Return the total number of DUTs in a pool.
@@ -466,7 +439,6 @@ class _LabInventory(collections.Mapping):
         @param modellist    List of models to include.  If empty,
                             include all available models.
         @return A `_LabInventory` object for the specified models.
-
         """
         target_pools = MANAGED_POOLS
         label_list = [constants.Labels.POOL_PREFIX + l for l in target_pools]
@@ -489,7 +461,6 @@ class _LabInventory(collections.Mapping):
                                               start_time, end_time))
         return cls([create(host) for host in afehosts], target_pools)
 
-
     def __init__(self, histories, pools):
         models = {h.host_model for h in histories}
         self._modeldata = {model: _PoolSetInventory(pools) for model in models}
@@ -498,21 +469,17 @@ class _LabInventory(collections.Mapping):
             self[h.host_model].record_host(h)
         self._boards = {h.host_board for h in histories}
 
-
     def __getitem__(self, key):
         return self._modeldata.__getitem__(key)
-
 
     def __len__(self):
         return self._modeldata.__len__()
 
-
     def __iter__(self):
         return self._modeldata.__iter__()
 
-
     def reportable_items(self, spare_pool=SPARE_POOL):
-        """Iterate over  all items subject to reporting.
+        """Iterate over all items subject to reporting.
 
         Yields the contents of `self.iteritems()` filtered to include
         only reportable models.  A model is reportable if it has DUTs in
@@ -526,16 +493,13 @@ class _LabInventory(collections.Mapping):
             if spares != 0 and spares != total:
                 yield model, histories
 
-
     def get_num_duts(self):
         """Return the total number of DUTs in the inventory."""
         return self._dut_count
 
-
     def get_num_models(self):
         """Return the total number of models in the inventory."""
         return len(self)
-
 
     def get_pool_models(self, pool):
         """Return all models in `pool`.
@@ -543,7 +507,6 @@ class _LabInventory(collections.Mapping):
         @param pool The pool to be inventoried for models.
         """
         return {m for m, h in self.iteritems() if h.get_total(pool)}
-
 
     def get_boards(self):
         return self._boards
@@ -567,7 +530,6 @@ def _sort_by_location(inventory_list):
     break down.
 
     @return A list of sorted lists of DUTs.
-
     """
     BASE = 100
     lab_lists = {}
@@ -659,7 +621,6 @@ def _generate_repair_recommendation(inventory, num_recommend):
     @param inventory      `_LabInventory` object from which to generate
                           recommendations.
     @param num_recommend  Number of DUTs to recommend for repair.
-
     """
     logging.debug('Creating DUT repair recommendations')
     model_buffer_counts = {}
@@ -855,7 +816,6 @@ def _generate_idle_inventory_message(inventory):
 
     @param inventory  `_LabInventory` object to be reported on.
     @return String with the inventory message to be sent.
-
     """
     logging.debug('Creating idle inventory')
     message = [_IDLE_INVENTORY_HEADER]
@@ -1195,7 +1155,6 @@ def _separate_email_addresses(address_list):
     @param address_list  A list of strings containing comma
                          separate e-mail addresses.
     @return A list of the individual e-mail addresses.
-
     """
     newlist = []
     for arg in address_list:
@@ -1220,7 +1179,6 @@ def _verify_arguments(arguments):
                       `ArgumentParser`
     @return True if the arguments are semantically good, or False
             if the arguments don't meet requirements.
-
     """
     arguments.model_notify = _separate_email_addresses(
             arguments.model_notify)
@@ -1250,7 +1208,6 @@ def _get_default_logdir(script):
 
     @param script  Path to this script file.
     @return A path to a directory.
-
     """
     basedir = os.path.dirname(os.path.abspath(script))
     basedir = os.path.dirname(basedir)
@@ -1267,7 +1224,6 @@ def _parse_command(argv):
     @param argv Standard command line argument vector; argv[0] is
                 assumed to be the command name.
     @return Result returned by ArgumentParser.parse_args().
-
     """
     parser = argparse.ArgumentParser(
             prog=argv[0],
