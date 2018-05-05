@@ -861,4 +861,4 @@ class ArcTest(test.test):
         ok_button = d(textMatches='(?i)OK')
         if ok_button.exists:
             ok_button.click.wait()
-        d(description='Close', packageName=_SETTINGS_PKG).click.wait()
+        adb_shell('am force-stop ' + _SETTINGS_PKG)
