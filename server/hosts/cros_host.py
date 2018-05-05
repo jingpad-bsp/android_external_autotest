@@ -695,8 +695,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 quick_provision=quick_provision)
 
 
-    def machine_install_by_devserver(self, update_url=None,
-                                     force_update=False,
+    def machine_install_by_devserver(self, update_url, force_update=False,
                                      force_full_update=False):
         """Ultiize devserver to install the DUT.
 
@@ -721,10 +720,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 `job_repo_url`: repo_url, where repo_url is a devserver url to
                 autotest packages.
         """
-        if not update_url:
-            raise error.AutoservError(
-                    'There is no update URL, nor a method to get one.')
-
         # Get build from parameter or AFE.
         # If the build is not a URL, let devserver to stage it first.
         # Otherwise, choose a devserver to trigger auto-update.
@@ -825,7 +820,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         pass
 
 
-    def machine_install(self, update_url=None, force_update=False,
+    def machine_install(self, update_url, force_update=False,
                         force_full_update=False):
         """Install the DUT.
 
@@ -860,9 +855,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 `job_repo_url`: repo_url, where repo_url is a devserver url to
                 autotest packages.
         """
-        if not update_url:
-            raise error.AutoservError(
-                    'There is no update URL, nor a method to get one.')
         logging.debug('Update URL is %s', update_url)
 
         # Report provision stats.
