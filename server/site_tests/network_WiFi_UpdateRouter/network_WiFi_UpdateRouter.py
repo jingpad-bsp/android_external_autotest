@@ -118,7 +118,7 @@ class network_WiFi_UpdateRouter(test.test):
 
         url = self.get_update_url(ds.url(), desired.builder_version)
         try:
-            router_host.machine_install(force_update=True, update_url=url)
+            router_host.machine_install(update_url=url)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))
