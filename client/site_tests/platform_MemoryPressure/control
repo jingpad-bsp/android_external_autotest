@@ -1,15 +1,18 @@
 NAME = "platform_MemoryPressure"
 PURPOSE = "Verify tab discarding occurs and is sane."
 CRITERIA = """
-
+This test fails if it times out or if the kernel crashes.
+TODO: should also check that no OOM-kills occur.
 """
+ATTRIBUTES = "suite:stress_experimental"
+
 AUTHOR="Luigi Semenzato"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 DOC = """
-
+  This test opens tabs and cycles through them until a tab discard occurs.
 """
 
 job.run_test('platform_MemoryPressure', flavor='realistic')
