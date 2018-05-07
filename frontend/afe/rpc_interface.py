@@ -50,7 +50,6 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import control_file as control_file_lib
 from autotest_lib.frontend.afe import model_attributes
@@ -65,6 +64,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
+from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.lib import status_history
@@ -1828,11 +1828,6 @@ def canonicalize_suite_name(suite_name):
     return 'test_suites/control.%s' % suite_name
 
 
-def formatted_now():
-    """Format the current datetime."""
-    return datetime.datetime.now().strftime(time_utils.TIME_FMT)
-
-
 def _get_control_file_by_build(build, ds, suite_name):
     """Return control file contents for |suite_name|.
 
@@ -1881,36 +1876,6 @@ def _get_control_file_by_suite(suite_name):
             [_CONFIG.get_config_value('SCHEDULER',
                                       'drone_installation_directory')])
     return getter.get_control_file_contents_by_name(suite_name)
-
-
-def _stage_build_artifacts(build, hostname=None):
-    """
-    Ensure components of |build| necessary for installing images are staged.
-
-    @param build image we want to stage.
-    @param hostname hostname of a dut may run test on. This is to help to locate
-        a devserver closer to duts if needed. Default is None.
-
-    @raises StageControlFileFailure: if the dev server throws 500 while staging
-        suite control files.
-
-    @return: dev_server.ImageServer instance to use with this build.
-    @return: timings dictionary containing staging start/end times.
-    """
-    timings = {}
-    # Ensure components of |build| necessary for installing images are staged
-    # on the dev server. However set synchronous to False to allow other
-    # components to be downloaded in the background.
-    ds = dev_server.resolve(build, hostname=hostname)
-    ds_name = ds.hostname
-    timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
-    try:
-        ds.stage_artifacts(image=build, artifacts=['test_suites'])
-    except dev_server.DevServerException as e:
-        raise error.StageControlFileFailure(
-                "Failed to stage %s on %s: %s" % (build, ds_name, e))
-    timings[constants.PAYLOAD_FINISHED_TIME] = formatted_now()
-    return (ds, timings)
 
 
 @rpc_utils.route_rpc_to_master
@@ -2026,7 +1991,7 @@ def create_suite_job(
         ds = dev_server.resolve(test_source_build, hostname=sample_dut)
         keyvals = {}
     else:
-        (ds, keyvals) = _stage_build_artifacts(
+        ds, keyvals = suite_common.stage_build_artifacts(
                 test_source_build, hostname=sample_dut)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
