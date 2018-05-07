@@ -338,15 +338,10 @@ class ChromiumOSUpdater(BaseUpdater):
     # auto update.
     KERNEL_UPDATE_TIMEOUT = 120
 
-    def __init__(self, update_url, host=None, local_devserver=False,
-                 interactive=True):
+    def __init__(self, update_url, host=None, interactive=True):
         super(ChromiumOSUpdater, self).__init__(self.UPDATER_BIN, update_url,
                                                 host, interactive=interactive)
-        self.local_devserver = local_devserver
-        if not local_devserver:
-            self.update_version = url_to_version(update_url)
-        else:
-            self.update_version = None
+        self.update_version = url_to_version(update_url)
 
 
     def reset_update_engine(self):
@@ -538,9 +533,8 @@ class ChromiumOSUpdater(BaseUpdater):
         @param update_root: True to force a rootfs update.
         """
         booted_version = self.host.get_release_version()
-        if self.update_version:
-            logging.info('Updating from version %s to %s.',
-                         booted_version, self.update_version)
+        logging.info('Updating from version %s to %s.',
+                     booted_version, self.update_version)
 
         # Check that Dev Server is accepting connections (from autoserv's host).
         # If we can't talk to it, the machine host probably can't either.
@@ -597,8 +591,7 @@ class ChromiumOSUpdater(BaseUpdater):
 
         """
         booted_version = self.host.get_release_version()
-        return (self.update_version and
-                self.update_version.endswith(booted_version))
+        return self.update_version.endswith(booted_version)
 
 
     def check_version_to_confirm_install(self):
@@ -649,11 +642,6 @@ class ChromiumOSUpdater(BaseUpdater):
             autoupdater is trying to update to.
 
         """
-        # In the local_devserver case, we can't know the expected
-        # build, so just pass.
-        if not self.update_version:
-            return True
-
         # Always try the default check_version method first, this prevents
         # any backward compatibility issue.
         if self.check_version():
