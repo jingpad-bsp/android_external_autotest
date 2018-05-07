@@ -65,10 +65,10 @@ from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
-from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
+from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
 from autotest_lib.site_utils import job_overhead
@@ -1623,33 +1623,6 @@ class ResultCollector(object):
                 self._board, self._build, self._num_child_jobs, runtime_in_secs)
 
 
-
-def _make_builds_from_options(options):
-    """Create a dict of builds for creating a suite job.
-
-    The returned dict maps version label prefixes to build names.  Together,
-    each key-value pair describes a complete label.
-
-    @param options: SimpleNamespace from argument parsing.
-
-    @return: dict mapping version label prefixes to build names
-    """
-    builds = {}
-    build_prefix = None
-    if options.build:
-        build_prefix = provision.get_version_label_prefix(options.build)
-        builds[build_prefix] = options.build
-    if options.cheets_build:
-        builds[provision.CROS_ANDROID_VERSION_PREFIX] = options.cheets_build
-        if build_prefix == provision.CROS_VERSION_PREFIX:
-            builds[build_prefix] += provision.CHEETS_SUFFIX
-    if options.firmware_rw_build:
-        builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
-    if options.firmware_ro_build:
-        builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
-    return builds
-
-
 def _make_child_deps_from_options(options):
     """Creates a list of extra dependencies for child jobs.
 
@@ -1691,7 +1664,7 @@ def create_suite(afe, options):
         'create_suite_job',
         name=options.name,
         board=options.board,
-        builds=_make_builds_from_options(options),
+        builds=suite_common.make_builds_from_options(options),
         test_source_build=options.test_source_build,
         check_hosts=not options.no_wait,
         pool=options.pool,
