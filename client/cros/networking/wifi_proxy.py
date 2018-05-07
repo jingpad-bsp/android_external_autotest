@@ -34,7 +34,7 @@ class WifiProxy(shill_proxy.ShillProxy):
                 try:
                     entry = profile.GetEntry(entry_id)
                 except dbus.exceptions.DBusException as e:
-                    logging.error('Unable to retrieve entry %s', entry_id)
+                    logging.error('Unable to retrieve entry %s:%r', entry_id, e)
                     continue
                 if entry[self.ENTRY_FIELD_TYPE] == 'wifi':
                     profile.DeleteEntry(entry_id)
@@ -319,7 +319,7 @@ class WifiProxy(shill_proxy.ShillProxy):
             try:
                 service_properties = self.dbus2primitive(service.GetProperties(
                         utf8_strings=True))
-            except dbus.exceptions.DBusException as e:
+            except dbus.exceptions.DBusException:
                 pass  # Probably the service disappeared before GetProperties().
             logging.debug('Considering service with properties: %r',
                           service_properties)
