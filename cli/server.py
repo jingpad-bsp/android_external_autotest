@@ -214,10 +214,11 @@ class server_list(action_common.atest_list, server):
                         self.inventory_repo_dir)
                 inventory_repo.initialize()
                 infrastructure = text_manager.load_infrastructure(
-                        inventory_repo.get_data_dir(), {self.environment})
+                        inventory_repo.get_data_dir())
 
                 return skylab_server.get_servers(
                         infrastructure,
+                        self.environment,
                         hostname=self.hostname,
                         role=self.role,
                         status=self.status)
@@ -294,8 +295,7 @@ class server_create(server):
                 self.inventory_repo_dir)
         inventory_repo.initialize()
         data_dir = inventory_repo.get_data_dir()
-        infrastructure = text_manager.load_infrastructure(
-                data_dir, {self.environment})
+        infrastructure = text_manager.load_infrastructure(data_dir)
 
         new_server = skylab_server.create(
                 infrastructure,
@@ -303,8 +303,7 @@ class server_create(server):
                 self.environment,
                 role=self.role,
                 note=self.note)
-        text_manager.dump_infrastructure(
-                data_dir, self.environment, infrastructure)
+        text_manager.dump_infrastructure(data_dir, infrastructure)
 
         message = skylab_utils.construct_commit_message(
                 'Add new server: %s' % self.hostname)
@@ -331,7 +330,7 @@ class server_create(server):
             except (skylab_server.SkylabServerActionError,
                     revision_control.GitError,
                     gob_util.GOBError) as e:
-                self.failure(e, what_failed='Failed to create server in  skylab'
+                self.failure(e, what_failed='Failed to create server in skylab '
                              'inventory.', item=self.hostname, fatal=True)
         else:
             try:
@@ -370,12 +369,10 @@ class server_delete(server):
                 self.inventory_repo_dir)
         inventory_repo.initialize()
         data_dir = inventory_repo.get_data_dir()
-        infrastructure = text_manager.load_infrastructure(
-                data_dir, {self.environment})
+        infrastructure = text_manager.load_infrastructure(data_dir)
 
-        skylab_server.delete(infrastructure, self.hostname)
-        text_manager.dump_infrastructure(
-                data_dir, self.environment, infrastructure)
+        skylab_server.delete(infrastructure, self.hostname, self.environment)
+        text_manager.dump_infrastructure(data_dir, infrastructure)
 
         message = skylab_utils.construct_commit_message(
                 'Delete server: %s' % self.hostname)
@@ -519,12 +516,12 @@ class server_modify(server):
                         self.inventory_repo_dir)
         inventory_repo.initialize()
         data_dir = inventory_repo.get_data_dir()
-        infrastructure = text_manager.load_infrastructure(
-                data_dir, {self.environment})
+        infrastructure = text_manager.load_infrastructure(data_dir)
 
         target_server = skylab_server.modify(
                 infrastructure,
                 self.hostname,
+                self.environment,
                 role=self.role,
                 status=self.status,
                 delete_role=self.delete,
@@ -532,8 +529,7 @@ class server_modify(server):
                 attribute=self.attribute,
                 value=self.value,
                 delete_attribute=self.delete)
-        text_manager.dump_infrastructure(
-                data_dir, self.environment, infrastructure)
+        text_manager.dump_infrastructure(data_dir, infrastructure)
 
         status = inventory_repo.git_repo.status()
         if not status:
