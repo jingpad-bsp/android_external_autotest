@@ -7,4 +7,4 @@
 
 set -eu
 readonly bin_dir="$(readlink -e -- "$(dirname -- "$0")")"
-exec "${bin_dir}/python_venv" -m skylab_suite.run_suite_skylab "$@"
+exec "${bin_dir}/python_venv" -m skylab_suite.cmd.run_suite_skylab "$@"
