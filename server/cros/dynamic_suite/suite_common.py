@@ -7,12 +7,21 @@
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import re
 
 import common
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
+from autotest_lib.server.cros.dynamic_suite import constants
+
+
+def _formatted_now():
+    """Format the current datetime."""
+    return datetime.datetime.now().strftime(time_utils.TIME_FMT)
 
 
 def make_builds_from_options(options):
@@ -79,3 +88,33 @@ def get_test_source_build(builds, **dargs):
                 'specified.')
 
     return test_source_build
+
+
+def stage_build_artifacts(build, hostname=None):
+    """
+    Ensure components of |build| necessary for installing images are staged.
+
+    @param build image we want to stage.
+    @param hostname hostname of a dut may run test on. This is to help to locate
+        a devserver closer to duts if needed. Default is None.
+
+    @raises StageControlFileFailure: if the dev server throws 500 while staging
+        suite control files.
+
+    @return: dev_server.ImageServer instance to use with this build.
+    @return: timings dictionary containing staging start/end times.
+    """
+    timings = {}
+    # Ensure components of |build| necessary for installing images are staged
+    # on the dev server. However set synchronous to False to allow other
+    # components to be downloaded in the background.
+    ds = dev_server.resolve(build, hostname=hostname)
+    ds_name = ds.hostname
+    timings[constants.DOWNLOAD_STARTED_TIME] = _formatted_now()
+    try:
+        ds.stage_artifacts(image=build, artifacts=['test_suites'])
+    except dev_server.DevServerException as e:
+        raise error.StageControlFileFailure(
+                "Failed to stage %s on %s: %s" % (build, ds_name, e))
+    timings[constants.PAYLOAD_FINISHED_TIME] = _formatted_now()
+    return ds, timings
