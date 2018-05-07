@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import json
+import logging
 
 from subprocess import CalledProcessError
 
@@ -27,6 +28,9 @@ def __execute_for_dict(client, *args, **kwargs):
     run = client.run(*args, **kwargs)
     if run.exit_status == 2:  # EXIT_PINWEAVER_NOT_SUPPORTED
         raise PinWeaverNotAvailableError(run.exit_status, args[0]);
+    logging.debug(args)
+    logging.info(run.stderr)
+    logging.debug(run.stdout)
     return json.loads(run.stdout)
 
 
