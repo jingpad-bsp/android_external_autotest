@@ -59,8 +59,8 @@ import time
 
 import common
 from autotest_lib.server import constants
-from autotest_lib.server import frontend
 from autotest_lib.server import site_utils
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.utils import labellib
@@ -642,7 +642,7 @@ def main(argv):
         with metrics.SuccessCounter('chromeos/autotest/balance_pools/runs'):
             end_time = time.time()
             start_time = end_time - 24 * 60 * 60
-            afe = frontend.AFE(server=arguments.web)
+            afe = frontend_wrappers.RetryingAFE(server=arguments.web)
 
             def balancer(pool, labels):
                 """Balance the specified model.
