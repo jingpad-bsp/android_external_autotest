@@ -90,9 +90,11 @@ def submit_inventory_change(change_number):
 class InventoryRepo(object):
     """Class to present a inventory repository."""
 
+
     def __init__(self, inventory_repo_dir):
         self.inventory_repo_dir = inventory_repo_dir
         self.git_repo = None
+
 
     def initialize(self):
         """Initialize inventory repo at the given dir."""
@@ -110,9 +112,10 @@ class InventoryRepo(object):
             self.git_repo.clone()
 
 
-    def get_data_dir(self):
+    def get_data_dir(self, data_subdir='skylab'):
         """Get path to the data dir."""
-        return text_manager.get_data_dir(self.inventory_repo_dir)
+        return text_manager.get_data_dir(self.inventory_repo_dir, data_subdir)
+
 
     def upload_change(self, commit_message, draft=False, dryrun=False,
                       submit=False):
