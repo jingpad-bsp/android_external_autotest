@@ -24,10 +24,11 @@ def _parse_suite_specs(options):
     suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
     builds = suite_common.make_builds_from_options(options)
     return cros_suite.SuiteSpecs(
-            builds = builds,
-            suite_file_name = suite_common.canonicalize_suite_name(
+            builds=builds,
+            suite_name=options.suite_name,
+            suite_file_name=suite_common.canonicalize_suite_name(
                     options.suite_name),
-            test_source_build = suite_common.get_test_source_build(
+            test_source_build=suite_common.get_test_source_build(
                     builds, test_source_build=options.test_source_build),
     )
 
