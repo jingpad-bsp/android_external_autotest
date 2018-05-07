@@ -1322,18 +1322,19 @@ def main(argv):
     else:
         metrics_file = None
 
-    try:
-        with site_utils.SetupTsMonGlobalState(
-                'lab_inventory', debug_file=metrics_file,
-                auto_flush=False):
+    with site_utils.SetupTsMonGlobalState(
+            'lab_inventory', debug_file=metrics_file,
+            auto_flush=False):
+        try:
             _perform_inventory_reports(arguments)
-        metrics.Flush()
-    except KeyboardInterrupt:
-        pass
-    except (EnvironmentError, Exception):
-        # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
-        logging.exception('Error escaped main')
-        raise
+        except KeyboardInterrupt:
+            pass
+        except (EnvironmentError, Exception):
+            # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
+            logging.exception('Error escaped main')
+            raise
+        finally:
+            metrics.Flush()
 
 
 def get_inventory(afe):
