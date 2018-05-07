@@ -13,15 +13,26 @@ import sys
 
 import logging
 
+from lucifer import autotest
 from skylab_suite import cros_suite
 from skylab_suite import dynamic_suite
 from skylab_suite import suite_parser
 from skylab_suite import suite_tracking
 
 
+def _parse_suite_specs(options):
+    suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
+    builds = suite_common.make_builds_from_options(options)
+    return cros_suite.SuiteSpecs(
+            builds = builds,
+            test_source_build = suite_common.get_test_source_build(
+                builds, test_source_build=options.test_source_build)
+    )
+
+
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
-    suite_job = cros_suite.Suite()
+    suite_job = cros_suite.Suite(_parse_suite_specs(options))
     dynamic_suite.run(suite_job)
     return suite_tracking.SuiteResult(
                 suite_tracking.SUITE_RESULT_CODES.OK)
@@ -44,6 +55,8 @@ def parse_args():
 
 def main():
     """Entry point."""
+    autotest.monkeypatch()
+
     options = parse_args()
     suite_tracking.setup_logging()
     result = _run_suite(options)
