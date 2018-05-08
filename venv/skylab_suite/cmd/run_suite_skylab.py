@@ -13,12 +13,16 @@ import sys
 
 import logging
 
+from skylab_suite import cros_suite
+from skylab_suite import dynamic_suite
 from skylab_suite import suite_parser
 from skylab_suite import suite_tracking
 
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
+    suite_job = cros_suite.Suite()
+    dynamic_suite.run(suite_job)
     return suite_tracking.SuiteResult(
                 suite_tracking.SUITE_RESULT_CODES.OK)
 
