@@ -168,7 +168,7 @@ class tast(test.test):
             '-remoterunner=' + self._remote_test_runner_path,
         ]
         cmd.extend(extra_subcommand_args)
-        cmd.append(self._host.hostname)
+        cmd.append('%s:%d' % (self._host.hostname, self._host.port))
         cmd.extend(self._test_exprs)
 
         logging.info('Running ' +
