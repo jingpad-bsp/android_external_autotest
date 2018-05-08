@@ -8,7 +8,8 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
     """Dashboard class for autotests that run on server side.
     """
 
-    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None,
+                 note=''):
         """Create ServerTestDashboard objects.
 
         Args:
@@ -18,9 +19,11 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
             resultsdir: directory to save the power json
             uploadurl: url to upload power data
             host: autotest_lib.server.hosts.cros_host.CrosHost object of DUT
+            note: note for current test run
         """
 
         self._host = host
+        self._note = note
         super(ServerTestDashboard, self).__init__(logger, testname, resultsdir,
                                                   uploadurl)
 
@@ -54,7 +57,7 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
                 'version': 0,
                 'ina': power_rails,
             },
-            'note': '',
+            'note': self._note,
         }
 
         if self._host.has_battery():
@@ -70,11 +73,12 @@ class PowerTelemetryLoggerDashboard(ServerTestDashboard):
     """Dashboard class for power_telemetry_logger.PowerTelemetryLogger class.
     """
 
-    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None):
+    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None,
+                 note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com'
         super(PowerTelemetryLoggerDashboard, self).__init__(
-                logger, testname, host, resultsdir, uploadurl)
+                logger, testname, host, resultsdir, uploadurl, note)
 
     def _convert(self):
         """
@@ -83,5 +87,4 @@ class PowerTelemetryLoggerDashboard(ServerTestDashboard):
         Returns:
             raw measurement dictionary
         """
-
         return self._logger

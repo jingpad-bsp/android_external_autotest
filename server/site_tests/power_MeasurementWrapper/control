@@ -33,11 +33,13 @@ test_that <ip address of DUT>  power_MeasurementWrapper --args \
 What are the parameters:
 test: the client test to run in wrapper test; DUT power is measured during this
       client test.
-sweetberry_interval: number of seconds between each Sweetberry measurement.
+sweetberry_interval: number of seconds between each Sweetberry measurement;
+                     optional.
 sweetberry_config: use [].board and [].scenario as configuration file for
                    Sweetberry measurement; optional.
 sweetberry_serial: serial number of sweetberry to use; If not supplied use
                    the first sweetberry found; optional.
+note: User supplied note to tag the specific test; optional.
 """
 
 def run(machine):
