@@ -8,7 +8,7 @@ TIME = 'LONG'
 TEST_CATEGORY = 'Stress'
 TEST_CLASS = 'enterprise'
 # TODO(crbug/811694) Enable once dbus issue is fixed.
-#ATTRIBUTES = 'suite:bluestreak'
+#ATTRIBUTES = 'suite:hotrod'
 TEST_TYPE = 'server'
 DEPENDENCIES = 'atrus'
 
