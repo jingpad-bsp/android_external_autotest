@@ -5,6 +5,7 @@
 import logging
 import pprint
 import time
+import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -104,18 +105,20 @@ class firmware_Cr50DeviceState(Cr50Test):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.cr50.send_command_get_output('taskinfo',
             self.GET_TASKINFO)[0][1].strip()
+        logging.info(output)
         return output
 
 
     def get_irq_counts(self):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.get_taskinfo_output()
-        irq_list = output.split('\n')
+        irq_list = re.findall('\d+\s+\d+\r', output)
         # Make sure the regular sleep irq is in the dictionary, even if cr50
         # hasn't seen any interrupts. It's important the test sees that there's
         # never an interrupt.
         irq_counts = { self.KEY_REGULAR_SLEEP : 0 }
         for irq_info in irq_list:
+            logging.debug(irq_info)
             num, count = irq_info.split()
             irq_counts[int(num)] = int(count)
         irq_counts[self.KEY_RESET] = int(self.servo.get('cr50_reset_count'))
