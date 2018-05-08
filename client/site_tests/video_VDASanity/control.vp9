@@ -31,6 +31,9 @@ test_cases = [
     ['video_VDASanity/bear_profile1.vp9', 320, 180, 30, 30, 12],
     ['video_VDASanity/bear_profile2.vp9', 320, 180, 30, 30, 12],
     ['video_VDASanity/bear_profile3.vp9', 320, 180, 30, 30, 12],
+    # From Android CTS:
+    # https://android.googlesource.com/platform/cts/+/master/tests/tests/media/res/raw/vp90_2_17_show_existing_frame.vp9
+    ['video_VDASanity/vp90_2_17_show_existing_frame.vp9', 352, 288, 30, 30, 12],
 ]
 
 job.run_test('video_VDASanity', test_cases=test_cases, tag='vp9', capability='hw_dec_vp9_1080_30')
