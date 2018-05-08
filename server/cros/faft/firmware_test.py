@@ -205,8 +205,17 @@ class FirmwareTest(FAFTBase):
             'rw_fwid': self.faft_client.system.get_crossystem_value('fwid'),
             'servod_version': self._client._servo_host.run(
                 'servod --version').stdout.strip(),
-            'os_version': self._client.get_release_builder_path()
+            'os_version': self._client.get_release_builder_path(),
+            'servo_type': self.servo.get_servo_version()
         }
+
+        # Record the servo v4 and servo micro versions when possible
+        if 'servo_micro' in system_info['servo_type']:
+            system_info['servo_micro_version'] = self.servo.get(
+                    'servo_micro_version')
+
+        if 'servo_v4' in system_info['servo_type']:
+            system_info['servo_v4_version'] = self.servo.get('servo_v4_version')
 
         if hasattr(self, 'cr50'):
             system_info['cr50_version'] = self.servo.get('cr50_version')
