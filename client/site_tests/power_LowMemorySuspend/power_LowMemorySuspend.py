@@ -57,7 +57,11 @@ class power_LowMemorySuspend(test.test):
 
     def check_tab_discard(self, cr, tabs):
         """Raise error if too many tabs are discarded."""
-        active_tabs = len(cr.browser.tabs)
+        try:
+            active_tabs = len(cr.browser.tabs)
+        except Exception as e:
+            logging.info('error getting active tab count: %s', e)
+            return
         created_tabs = len(tabs)
         if (active_tabs < created_tabs * _TOO_FEW_ACTIVE_TABS_THRESHOLD):
             msg = ('Too many discards, active tabs: %d, created tabs: %d' %
@@ -97,7 +101,7 @@ class power_LowMemorySuspend(test.test):
 
         return suspend_count
 
-    def run_once(self, switches_per_suspend=15, total_suspend_duration=3600,
+    def run_once(self, switches_per_suspend=15, total_suspend_duration=2400,
                  suspend_seconds=10, additional_sleep=10):
         """Runs the test once."""
         username, password = arc_util.get_test_account_info()
