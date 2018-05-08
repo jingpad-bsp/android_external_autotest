@@ -168,6 +168,13 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestFail("Could not clear deep sleep count")
 
 
+    def get_board_properties(self):
+        """Get information from the version command"""
+        rv = self.send_command_get_output('brdprop',
+                ['properties = (\S+)'])
+        return int(rv[0][1], 16)
+
+
     def has_command(self, cmd):
         """Returns 1 if cr50 has the command 0 if it doesn't"""
         try:
