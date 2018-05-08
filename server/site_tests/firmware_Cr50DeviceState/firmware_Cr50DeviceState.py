@@ -22,6 +22,9 @@ class firmware_Cr50DeviceState(Cr50Test):
     """
     version = 1
 
+    S3_PROP = (1 << 15)
+    # S3 terminations will be enabled in any power state lower than s3
+    S3_TERM_STATES = ['S3', 'S5', 'G3']
     DEEP_SLEEP_STEP_SUFFIX = ' Num Deep Sleep Steps'
 
     # Use negative numbers to keep track of counts not in the IRQ list.
@@ -278,6 +281,23 @@ class firmware_Cr50DeviceState(Cr50Test):
         self.servo.power_short_press()
 
 
+    def check_s3_term(self, state):
+        """Compare the S3_TERM ccdstate to the expected state"""
+        rv = self.cr50.send_command_get_output('ccdstate',
+                ['State flags: (.*)CCD'])[0][1]
+        s3_term_enabled = 'S3_TERM' in rv
+        expect_s3_term = self.use_s3_term and state in self.S3_TERM_STATES
+        logging.info('S3_TERM %sabled in %s',
+                'en' if s3_term_enabled else 'dis', state)
+        if s3_term_enabled != expect_s3_term:
+            error_key = 'S3_TERM %s' % (self.step_names[-1].strip())
+            message = 'S3_TERM %sabled when it should be %sabled' % (
+                    'en' if s3_term_enabled else 'dis',
+                    'en' if expect_s3_term else 'dis')
+            logging.info(message)
+            self.run_errors[error_key] = message
+
+
     def enter_state(self, state):
         """Get the command to enter the power state"""
         self.stage_irq_add(self.get_irq_counts(), 'start %s' % state)
@@ -297,6 +317,12 @@ class firmware_Cr50DeviceState(Cr50Test):
         if not self.wait_power_state(state, self.SHORT_WAIT):
             raise error.TestFail('Platform failed to reach %s state.' % state)
         self.stage_irq_add(self.get_irq_counts(), 'in %s' % state)
+        # Check S3_TERM once the device is fully in the state not at the start.
+        # Cr50 may take a while to notice the state change, so checking once the
+        # device is in the state is safer. Skipping the check at the start of
+        # the stage shouldn't show much, and it may be difficult to determine
+        # the expected state.
+        self.check_s3_term(state)
 
 
     def stage_irq_add(self, irq_dict, name=''):
@@ -376,6 +402,9 @@ class firmware_Cr50DeviceState(Cr50Test):
         self.host = host
         self.is_arm = self.is_arm_family()
         supports_dts_control = self.cr50.servo_v4_supports_dts_mode()
+        self.use_s3_term = self.cr50.get_board_properties() & self.S3_PROP
+        logging.info('board %s s3 term', 'uses' if self.use_s3_term else
+                'does not use')
 
         if supports_dts_control:
             self.cr50.ccd_disable(raise_error=True)
@@ -399,7 +428,8 @@ class firmware_Cr50DeviceState(Cr50Test):
                     'en' if self.ccd_enabled else 'dis')
 
         if self.all_errors:
-            raise error.TestFail('Unexpected IRQ counts: %s' % self.all_errors)
+            raise error.TestFail('Unexpected Device State: %s' %
+                    self.all_errors)
         if not supports_dts_control:
             raise error.TestNAError('Verified device state with %s. Please '
                     'run with type c servo v4 to test full device state.' %
