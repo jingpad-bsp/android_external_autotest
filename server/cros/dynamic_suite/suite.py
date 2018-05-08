@@ -31,6 +31,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import job_status
+from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
 
@@ -669,39 +670,6 @@ class _BatchControlFileRetriever(_ControlFileRetriever):
         filtered_files = self._filter_cf_paths(files)
         for path in filtered_files:
             yield path, suite_info[path]
-
-
-def get_test_source_build(builds, **dargs):
-    """Get the build of test code.
-
-    Get the test source build from arguments. If parameter
-    `test_source_build` is set and has a value, return its value. Otherwise
-    returns the ChromeOS build name if it exists. If ChromeOS build is not
-    specified either, raise SuiteArgumentException.
-
-    @param builds: the builds on which we're running this suite. It's a
-                   dictionary of version_prefix:build.
-    @param **dargs: Any other Suite constructor parameters, as described
-                    in Suite.__init__ docstring.
-
-    @return: The build contains the test code.
-    @raise: SuiteArgumentException if both test_source_build and ChromeOS
-            build are not specified.
-
-    """
-    if dargs.get('test_source_build', None):
-        return dargs['test_source_build']
-    cros_build = builds.get(provision.CROS_VERSION_PREFIX, None)
-    if cros_build.endswith(provision.CHEETS_SUFFIX):
-        test_source_build = re.sub(
-                provision.CHEETS_SUFFIX + '$', '', cros_build)
-    else:
-        test_source_build = cros_build
-    if not test_source_build:
-        raise error.SuiteArgumentException(
-                'test_source_build must be specified if CrOS build is not '
-                'specified.')
-    return test_source_build
 
 
 def list_all_suites(build, devserver, cf_getter=None):
@@ -1499,7 +1467,8 @@ class Suite(_BaseSuite):
     test_file_similarity_predicate = _deprecated_suite_method(
             test_file_similarity_predicate)
     list_all_suites = _deprecated_suite_method(list_all_suites)
-    get_test_source_build = _deprecated_suite_method(get_test_source_build)
+    get_test_source_build = _deprecated_suite_method(
+            suite_common.get_test_source_build)
 
 
     @classmethod
@@ -1536,7 +1505,7 @@ class Suite(_BaseSuite):
             if run_prod_code:
                 cf_getter = create_fs_getter(_AUTOTEST_DIR)
             else:
-                build = get_test_source_build(builds, **dargs)
+                build = suite_common.get_test_source_build(builds, **dargs)
                 cf_getter = _create_ds_getter(build, devserver)
 
         return cls(predicates,
@@ -1566,7 +1535,7 @@ class Suite(_BaseSuite):
         @return a Suite instance.
         """
         if cf_getter is None:
-            build = get_test_source_build(builds, **dargs)
+            build = suite_common.get_test_source_build(builds, **dargs)
             cf_getter = _create_ds_getter(build, devserver)
 
         return cls([name_in_tag_predicate(name)],
@@ -1793,7 +1762,7 @@ def _load_dummy_test(
         if run_prod_code:
             cf_getter = create_fs_getter(_AUTOTEST_DIR)
         else:
-            build = get_test_source_build(
+            build = suite_common.get_test_source_build(
                     builds, test_source_build=test_source_build)
             cf_getter = _create_ds_getter(build, devserver)
     retriever = _get_cf_retriever(cf_getter,

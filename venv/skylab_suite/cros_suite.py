@@ -19,9 +19,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
+
+SuiteSpecs = collections.namedtuple(
+        'SuiteSpecs',
+        [
+                'builds',
+                'test_source_build',
+        ])
+
+
 class Suite(object):
     """The class for a CrOS suite."""
 
-    def __init__(self):
+    def __init__(self, specs):
+        """Initialize a suite.
+
+        @param specs: A SuiteSpecs object.
+        """
         self.tests = []
         self.wait = True
+        self.builds = specs.builds
+        self.test_source_build = specs.test_source_build
