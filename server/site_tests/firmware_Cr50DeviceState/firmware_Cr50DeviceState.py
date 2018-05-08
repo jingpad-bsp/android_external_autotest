@@ -381,8 +381,13 @@ class firmware_Cr50DeviceState(Cr50Test):
         # Make sure the DUT is in s0
         self.enter_state('S0')
 
-        # Login before entering S0ix so cr50 will be able to enter regular sleep
-        if not self.is_arm:
+        # Check if the device supports S0ix. The exit status will be 0 if it
+        # does 1 if it doesn't.
+        result = self.host.run('check_powerd_config --suspend_to_idle',
+                ignore_status=True)
+        if not result.exit_status:
+            # Login before entering S0ix so cr50 will be able to enter regular
+            # sleep
             client_at = autotest.Autotest(self.host)
             client_at.run_test('login_LoginSuccess')
             self.run_transition('S0ix')
