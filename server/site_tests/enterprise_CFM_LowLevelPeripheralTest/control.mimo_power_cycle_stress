@@ -10,7 +10,7 @@ PURPOSE = "Stresses a Mimo by repeatedly power cycling its USB port."
 CRITERIA = ("Mimo detectable as a USB device after each cycle "
             "and no crash files appear")
 # TODO(crbug.com/828334) Enable again if we get the power off to work.
-#ATTRIBUTES = "suite:bluestreak, suite:bluestreak-release, suite:bluestreak-perbuild"
+#ATTRIBUTES = "suite:hotrod"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Stress"
 TEST_TYPE = "server"
