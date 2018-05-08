@@ -9,7 +9,6 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.server import test
-from autotest_lib.site_utils import lxc
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
 class WiFiCellTestBase(test.test):
