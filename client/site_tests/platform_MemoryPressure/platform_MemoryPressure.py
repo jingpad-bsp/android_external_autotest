@@ -226,7 +226,7 @@ def run_realistic_memory_pressure_test(time_limit, tab_open_delay):
 
             if time.time() > time_limit:
                 logging.info('test timeout')
-                raise error.TestError('FAIL: phase 1 timeout with %d tabs',
+                raise error.TestError('FAIL: phase 1 timeout with %d tabs' %
                                       created_tab_count)
 
         # Measure the page fault rate.
@@ -330,7 +330,7 @@ class platform_MemoryPressure(test.test):
     def run_once(self,
                  flavor='simple',
                  tab_open_delay_seconds=1.0,
-                 timeout_seconds=900):
+                 timeout_seconds=1800):
         """Runs the test once.
         """
         time_limit = time.time() + timeout_seconds
