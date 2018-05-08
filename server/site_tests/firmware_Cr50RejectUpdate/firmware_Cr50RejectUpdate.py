@@ -43,6 +43,9 @@ class firmware_Cr50RejectUpdate(Cr50Test):
         self.old_path = self.download_cr50_release_image(self.OLD_IMAGE_VER)[0]
         self.original_path = self.get_saved_cr50_original_path()
         self.host = host
+        # Wait until cr50 can accept an update, so cr50 update rate limiting
+        # won't interfere with the test.
+        self.cr50.wait_until_update_is_allowed()
 
 
     def cleanup(self):
