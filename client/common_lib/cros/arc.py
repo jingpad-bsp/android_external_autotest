@@ -198,9 +198,16 @@ def adb_uninstall(apk):
 
 
 def adb_reboot():
-    """Reboots the container. You must connect first."""
-    adb_root()
-    return adb_cmd('reboot', ignore_status=True)
+    """Reboots the container and block until container pid is gone.
+
+    You must connect first.
+    """
+    old_pid = get_container_pid()
+    logging.info('Trying to reboot PID:%s' % old_pid)
+    adb_cmd('reboot', ignore_status=True)
+    # Ensure that the old container is no longer booted
+    utils.poll_for_condition(
+        lambda: not utils.pid_is_alive(int(old_pid)), timeout=10)
 
 
 def adb_root():
