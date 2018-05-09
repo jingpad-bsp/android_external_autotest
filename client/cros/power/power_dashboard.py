@@ -176,7 +176,7 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
             raw measurement dictionary
         """
         power_dict = {
-            'sample_count': len(self._logger.readings),
+            'sample_count': len(self._logger.readings) - 1,
             'sample_duration': 0,
             'average': dict(),
             'data': dict(),
@@ -184,12 +184,14 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         if power_dict['sample_count'] > 1:
             total_duration = self._logger.times[-1] - self._logger.times[0]
             power_dict['sample_duration'] = \
-                    1.0 * total_duration / (power_dict['sample_count'] - 1)
+                    1.0 * total_duration / power_dict['sample_count']
 
         for i, domain_readings in enumerate(zip(*self._logger.readings)):
             domain = self._logger.domains[i]
-            power_dict['data'][domain] = domain_readings
-            power_dict['average'][domain] = numpy.average(domain_readings)
+            # Remove first item because that is the log before the test begin.
+            power_dict['data'][domain] = domain_readings[1:]
+            power_dict['average'][domain] = \
+                    numpy.average(power_dict['data'][domain])
         return power_dict
 
 
