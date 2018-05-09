@@ -526,7 +526,7 @@ class AbstractStats(object):
         """
         total = sum(stats.itervalues())
         if total == 0:
-            return {}
+            return {k: 0 for k in stats}
         return dict((k, v * 100.0 / total) for (k, v) in stats.iteritems())
 
 
@@ -633,9 +633,12 @@ class CPUFreqStats(AbstractStats):
     def __init__(self, start_cpu=-1, end_cpu=-1):
         cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
                              'time_in_state'
+        cpufreq_key_path = '/sys/devices/system/cpu/cpu*/cpufreq/' + \
+                           'scaling_available_frequencies'
         intel_pstate_stats_path = '/sys/devices/system/cpu/intel_pstate/' + \
                              'aperf_mperf'
         self._file_paths = glob.glob(cpufreq_stats_path)
+        cpufreq_key_paths = glob.glob(cpufreq_key_path)
         num_cpus = len(self._file_paths)
         self._intel_pstate_file_paths = glob.glob(intel_pstate_stats_path)
         self._running_intel_pstate = False
@@ -652,7 +655,14 @@ class CPUFreqStats(AbstractStats):
             if (start_cpu >= 0 and end_cpu >= 0
                     and not (start_cpu == 0 and end_cpu == num_cpus - 1)):
                 self._file_paths = self._file_paths[start_cpu : end_cpu]
+                cpufreq_key_paths = cpufreq_key_paths[start_cpu : end_cpu]
                 name += '_' + str(start_cpu) + '_' + str(end_cpu)
+
+        self._available_freqs = set()
+        for path in cpufreq_key_paths:
+            if os.path.exists(path):
+                self._available_freqs |= \
+                        set(int(x) for x in utils.read_file(path).split())
 
         super(CPUFreqStats, self).__init__(name=name)
 
@@ -682,7 +692,7 @@ class CPUFreqStats(AbstractStats):
 
             self._current_perf = (aperf, mperf)
 
-        stats = {}
+        stats = dict((k, 0) for k in self._available_freqs)
         for path in self._file_paths:
             if not os.path.exists(path):
                 logging.debug('%s is not found', path)
@@ -1169,6 +1179,18 @@ def get_cpu_sibling_groups():
     return sibling_groups
 
 
+def get_avaliable_cpu_stats():
+    """Return CPUFreq/CPUIdleStats groups by big-small siblings groups."""
+    ret = []
+    cpu_sibling_groups = get_cpu_sibling_groups()
+    if not cpu_sibling_groups:
+        ret.append(CPUFreqStats())
+        ret.append(CPUIdleStats())
+    for cpu_start, cpu_end in cpu_sibling_groups:
+        ret.append(CPUFreqStats(cpu_start, cpu_end))
+        ret.append(CPUIdleStats(cpu_start, cpu_end))
+    return ret
+
 
 class StatoMatic(object):
     """Class to aggregate and monitor a bunch of power related statistics."""
@@ -1177,13 +1199,7 @@ class StatoMatic(object):
         self._astats = [USBSuspendStats(),
                         GPUFreqStats(incremental=False),
                         CPUPackageStats()]
-        cpu_sibling_groups = get_cpu_sibling_groups()
-        if not len(cpu_sibling_groups):
-            self._astats.append(CPUFreqStats())
-            self._astats.append(CPUIdleStats())
-        for cpu_start, cpu_end in cpu_sibling_groups:
-            self._astats.append(CPUFreqStats(cpu_start, cpu_end))
-            self._astats.append(CPUIdleStats(cpu_start, cpu_end))
+        self._astats.extend(get_avaliable_cpu_stats())
         if os.path.isdir(DevFreqStats._DIR):
             self._astats.extend([DevFreqStats(f) for f in \
                                  os.listdir(DevFreqStats._DIR)])
@@ -1361,7 +1377,8 @@ class MeasurementLogger(threading.Thread):
         domains: list of  domain strings being measured
 
     Public methods:
-        run: launches the thread to gather measuremnts
+        run: launches the thread to gather measurements
+        refresh: perform data samplings for every measurements
         calc: calculates
         save_results:
 
@@ -1400,19 +1417,26 @@ class MeasurementLogger(threading.Thread):
 
         self.done = False
 
+    def refresh(self):
+        """Perform data samplings for every measurements.
+
+        Returns:
+            list of sampled data for every measurements.
+        """
+        readings = []
+        for meas in self._measurements:
+            readings.append(meas.refresh())
+        return readings
 
     def run(self):
         """Threads run method."""
         loop = 0
         start_time = time.time()
         while(not self.done):
-            readings = []
-            for meas in self._measurements:
-                readings.append(meas.refresh())
             # TODO (dbasehore): We probably need proper locking in this file
             # since there have been race conditions with modifying and accessing
             # data.
-            self.readings.append(readings)
+            self.readings.append(self.refresh())
             current_time = time.time()
             self.times.append(current_time)
             loop += 1
@@ -1540,6 +1564,44 @@ class MeasurementLogger(threading.Thread):
                 fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
                 line = '\t'.join(fmt_row)
                 f.write(line + '\n')
+
+
+class CPUStatsLogger(MeasurementLogger):
+    """Class to measure CPU Frequency and CPU Idle Stats.
+
+    CPUStatsLogger derived from MeasurementLogger class but overload data
+    samplings method because MeasurementLogger assumed that each sampling is
+    independent to each other. However, in this case it is not. For example,
+    CPU time spent in C0 state is measure by time not spent in all other states.
+
+    Private attributes:
+       _stats: list of CPU AbstractStats objects to be sampled.
+    """
+    def __init__(self, seconds_period=1.0):
+        """Initialize a CPUStatsLogger.
+
+        Args:
+            seconds_period: float, probing interval in seconds.  Default 1.0
+        """
+        # We don't use measurements since CPU stats can't measure separately.
+        super(CPUStatsLogger, self).__init__([], seconds_period)
+
+        self._stats = get_avaliable_cpu_stats()
+        self.domains = []
+        for stat in self._stats:
+            self.domains.extend([stat.name + '_' + str(state_name)
+                                 for state_name in stat.refresh()])
+
+    def refresh(self):
+        ret = []
+        for stat in self._stats:
+            ret.extend(stat.refresh().values())
+        return ret
+
+    def save_results(self, resultsdir, fname=None):
+        if not fname:
+            fname = 'cpu_results_%.0f.txt' % time.time()
+        super(CPUStatsLogger, self).save_results(resultsdir, fname)
 
 
 class PowerLogger(MeasurementLogger):
