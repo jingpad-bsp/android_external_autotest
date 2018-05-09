@@ -17,6 +17,17 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+
+
+def canonicalize_suite_name(suite_name):
+    """Canonicalize the suite's name.
+
+    @param suite_name: the name of the suite.
+    """
+    # Do not change this naming convention without updating
+    # site_utils.parse_job_name.
+    return 'test_suites/control.%s' % suite_name
 
 
 def _formatted_now():
@@ -118,3 +129,41 @@ def stage_build_artifacts(build, hostname=None):
                 "Failed to stage %s on %s: %s" % (build, ds_name, e))
     timings[constants.PAYLOAD_FINISHED_TIME] = _formatted_now()
     return ds, timings
+
+
+def get_control_file_by_build(build, ds, suite_name):
+    """Return control file contents for |suite_name|.
+
+    Query the dev server at |ds| for the control file |suite_name|, included
+    in |build| for |board|.
+
+    @param build: unique name by which to refer to the image from now on.
+    @param ds: a dev_server.DevServer instance to fetch control file with.
+    @param suite_name: canonicalized suite name, e.g. test_suites/control.bvt.
+    @raises ControlFileNotFound if a unique suite control file doesn't exist.
+    @raises NoControlFileList if we can't list the control files at all.
+    @raises ControlFileEmpty if the control file exists on the server, but
+                             can't be read.
+
+    @return the contents of the desired control file.
+    """
+    getter = control_file_getter.DevServerGetter.create(build, ds)
+    devserver_name = ds.hostname
+    # Get the control file for the suite.
+    try:
+        control_file_in = getter.get_control_file_contents_by_name(suite_name)
+    except error.CrosDynamicSuiteException as e:
+        raise type(e)('Failed to get control file for %s '
+                      '(devserver: %s) (error: %s)' %
+                      (build, devserver_name, e))
+    if not control_file_in:
+        raise error.ControlFileEmpty(
+            "Fetching %s returned no data. (devserver: %s)" %
+            (suite_name, devserver_name))
+    # Force control files to only contain ascii characters.
+    try:
+        control_file_in.encode('ascii')
+    except UnicodeDecodeError as e:
+        raise error.ControlFileMalformed(str(e))
+
+    return control_file_in
