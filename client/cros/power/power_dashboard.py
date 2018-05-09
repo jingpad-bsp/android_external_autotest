@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import json
 import numpy
 import os
@@ -47,7 +48,7 @@ class BaseDashboard(object):
             A dictionary of powerlog
         """
         powerlog_dict = {
-            'format_version': 3,
+            'format_version': 4,
             'timestamp': time.time(),
             'test': self._testname,
             'dut': self._create_dut_info_dict(raw_measurement['data'].keys()),
@@ -70,17 +71,17 @@ class BaseDashboard(object):
 
     def _save_json(self, powerlog_dict, resultsdir, filename='power_log.json'):
         """Convert powerlog dict to human readable formatted JSON and
-        save to <resultsdir>/<filename>.
+        append to <resultsdir>/<filename>.
 
         Args:
             powerlog_dict: dictionary of power data
             resultsdir: directory to save formatted JSON object
-            filename: filename to save
+            filename: filename to append to
         """
         if not os.path.exists(resultsdir):
             raise error.TestError('resultsdir %s does not exist.' % resultsdir)
         filename = os.path.join(resultsdir, filename)
-        with file(filename, 'w') as f:
+        with file(filename, 'a') as f:
             json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
 
     def _upload(self, powerlog_dict, uploadurl):
@@ -168,6 +169,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
     """Dashboard class for power_status.MeasurementLogger.
     """
 
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+        super(MeasurementLoggerDashboard, self).__init__(logger, testname,
+                                                         resultsdir, uploadurl)
+        self._unit = None
+        self._type = None
+
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
         power measurement dictionary.
@@ -175,12 +182,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         Return:
             raw measurement dictionary
         """
-        power_dict = {
+        power_dict = collections.defaultdict(dict, {
             'sample_count': len(self._logger.readings) - 1,
             'sample_duration': 0,
             'average': dict(),
             'data': dict(),
-        }
+        })
         if power_dict['sample_count'] > 1:
             total_duration = self._logger.times[-1] - self._logger.times[0]
             power_dict['sample_duration'] = \
@@ -192,6 +199,10 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
             power_dict['data'][domain] = domain_readings[1:]
             power_dict['average'][domain] = \
                     numpy.average(power_dict['data'][domain])
+            if self._unit:
+                power_dict['unit'][domain] = self._unit
+            if self._type:
+                power_dict['type'][domain] = self._type
         return power_dict
 
 
@@ -204,6 +215,9 @@ class PowerLoggerDashboard(MeasurementLoggerDashboard):
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(PowerLoggerDashboard, self).__init__(logger, testname, resultsdir,
                                                    uploadurl)
+        self._unit = 'watt'
+        self._type = 'power'
+
 
 class SimplePowerLoggerDashboard(ClientTestDashboard):
     """Dashboard class for simple system power measurement taken and publishing
@@ -234,4 +248,22 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
             'average': {'vbat': self._power_watts},
             'data': {'vbat': [self._power_watts]}
         }
+        return power_dict
+
+
+class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
+    """Dashboard class for power_status.CPUStatsLogger.
+    """
+
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+        if uploadurl is None:
+            uploadurl = 'http://chrome-power.appspot.com/rapl'
+        super(CPUStatsLoggerDashboard, self).__init__(logger, testname,
+                                                      resultsdir, uploadurl)
+        self._unit = 'percent'
+
+    def _convert(self):
+        power_dict = super(CPUStatsLoggerDashboard, self)._convert()
+        for rail in power_dict['data']:
+            power_dict['type'][rail] = rail.rsplit('_', 1)[0]
         return power_dict
