@@ -1330,10 +1330,10 @@ def main(argv):
             _perform_inventory_reports(arguments)
     except KeyboardInterrupt:
         pass
-    except EnvironmentError as e:
-        logging.exception('Unexpected OS error: %s', e)
-    except Exception as e:
-        logging.exception('Unexpected exception: %s', e)
+    except (EnvironmentError, Exception):
+        # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
+        logging.exception('Error escaped main')
+        raise
 
 
 def get_inventory(afe):
