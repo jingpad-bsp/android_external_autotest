@@ -6,6 +6,7 @@ import collections
 import json
 import numpy
 import os
+import re
 import time
 import urllib
 import urllib2
@@ -174,6 +175,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
                                                          resultsdir, uploadurl)
         self._unit = None
         self._type = None
+        self._padded_domains = None
+
+    def _create_padded_domains(self):
+        """Pad the domains name for dashboard to make the domain name better
+        sorted in alphabetical order"""
+        pass
 
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
@@ -193,8 +200,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
             power_dict['sample_duration'] = \
                     1.0 * total_duration / power_dict['sample_count']
 
+        self._create_padded_domains()
         for i, domain_readings in enumerate(zip(*self._logger.readings)):
-            domain = self._logger.domains[i]
+            if self._padded_domains:
+                domain = self._padded_domains[i]
+            else:
+                domain = self._logger.domains[i]
             # Remove first item because that is the log before the test begin.
             power_dict['data'][domain] = domain_readings[1:]
             power_dict['average'][domain] = \
@@ -267,3 +278,44 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
         for rail in power_dict['data']:
             power_dict['type'][rail] = rail.rsplit('_', 1)[0]
         return power_dict
+
+    def _create_padded_domains(self):
+        """Padded number in the domain name with dot to make it sorted
+        alphabetically.
+
+        Example:
+        cpuidle_C1-SKL, cpuidle_C1E-SKL, cpuidle_C2-SKL, cpuidle_C10-SKL
+        will be changed to
+        cpuidle_C.1-SKL, cpuidle_C.1E-SKL, cpuidle_C.2-SKL, cpuidle_C10-SKL
+        which make it in alphabetically order.
+        """
+        longest = collections.defaultdict(int)
+        searcher = re.compile("[0-9]+")
+        number_strs = []
+        # Split cpuidle_C1E-SKL to "cpuidle" and "C1E-SKL"
+        splitted_domains = \
+            [domain.rsplit('_', 1) for domain in self._logger.domains]
+        for domain_type, domain_name in splitted_domains:
+            result = searcher.search(domain_name)
+            if not result:
+                number_strs.append('')
+                continue
+            number_str = result.group(0)
+            number_strs.append(number_str)
+            longest[domain_type] = max(longest[domain_type], len(number_str))
+
+        self._padded_domains = []
+        for i in range(len(self._logger.domains)):
+            if not number_strs[i]:
+                self._padded_domains.append(self._logger.domains[i])
+                continue
+
+            domain_type, domain_name = splitted_domains[i]
+            formatter_component = '{:.>%ds}' % longest[domain_type]
+
+            # Change "cpuidle_C1E-SKL" to "cpuidle_C{:.>2s}E-SKL"
+            formatter_str = domain_type + '_' + \
+                            searcher.sub(formatter_component, domain_name)
+
+            # Run "cpuidle_C{:_>2s}E-SKL".format("1") to get "cpuidle_C.1E-SKL"
+            self._padded_domains.append(formatter_str.format(number_strs[i]))
