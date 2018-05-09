@@ -340,12 +340,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.plankton = None
 
 
-    def _get_cros_repair_image_name(self):
+    def get_cros_repair_image_name(self):
         info = self.host_info_store.get()
         if info.board is None:
             raise error.AutoservError('Cannot obtain repair image name. '
                                       'No board label value found')
-
         return afe_utils.get_stable_cros_image_name(info.board)
 
 
@@ -573,23 +572,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.debug('No autotest installed directory found.')
 
 
-    def _stage_image_for_update(self, image_name=None):
-        """Stage a build on a devserver and return the update_url and devserver.
-
-        @param image_name: a name like lumpy-release/R27-3837.0.0
-        @returns a tuple with an update URL like:
-            http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
-            and the devserver instance.
-        """
-        if not image_name:
-            image_name = self._get_cros_repair_image_name()
-        logging.info('Staging build for AU: %s', image_name)
-        devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
-        devserver.trigger_download(image_name, synchronous=False)
-        return (tools.image_url_pattern() % (devserver.url(), image_name),
-                devserver)
-
-
     def stage_image_for_servo(self, image_name=None):
         """Stage a build on a devserver and return the update_url.
 
@@ -598,7 +580,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
         """
         if not image_name:
-            image_name = self._get_cros_repair_image_name()
+            image_name = self.get_cros_repair_image_name()
         logging.info('Staging build for servo install: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.stage_artifacts(image_name, ['test_image'])
@@ -714,7 +696,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install_by_devserver(self, update_url=None,
-                                     force_update=False, repair=False,
+                                     force_update=False,
                                      force_full_update=False):
         """Ultiize devserver to install the DUT.
 
@@ -725,7 +707,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param update_url: The update_url or build for the host to update.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
-        @param repair: Forces update to repair image. Implies force_update.
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
                 first when the dut is already installed with the same version.
@@ -740,10 +721,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 `job_repo_url`: repo_url, where repo_url is a devserver url to
                 autotest packages.
         """
-        if repair:
-            update_url = self._get_cros_repair_image_name()
-            force_update = True
-
         if not update_url:
             raise error.AutoservError(
                     'There is no update URL, nor a method to get one.')
@@ -849,7 +826,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, update_url=None, force_update=False,
-                        repair=False, force_full_update=False):
+                        force_full_update=False):
         """Install the DUT.
 
         Use stateful update if the DUT is already running the same build.
@@ -869,7 +846,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 will be used instead.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
-        @param repair: Forces update to repair image. Implies force_update.
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
                 first when the dut is already installed with the same version.
@@ -884,11 +860,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 `job_repo_url`: repo_url, where repo_url is a devserver url to
                 autotest packages.
         """
-        devserver = None
-        if repair:
-            update_url, devserver = self._stage_image_for_update()
-            force_update = True
-
         if not update_url:
             raise error.AutoservError(
                     'There is no update URL, nor a method to get one.')
