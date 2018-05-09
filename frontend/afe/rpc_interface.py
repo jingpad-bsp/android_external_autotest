@@ -1818,54 +1818,6 @@ def get_hosts_by_attribute(attribute, value):
         return [row.host.hostname for row in rows if row.host.invalid == 0]
 
 
-def canonicalize_suite_name(suite_name):
-    """Canonicalize the suite's name.
-
-    @param suite_name: the name of the suite.
-    """
-    # Do not change this naming convention without updating
-    # site_utils.parse_job_name.
-    return 'test_suites/control.%s' % suite_name
-
-
-def _get_control_file_by_build(build, ds, suite_name):
-    """Return control file contents for |suite_name|.
-
-    Query the dev server at |ds| for the control file |suite_name|, included
-    in |build| for |board|.
-
-    @param build: unique name by which to refer to the image from now on.
-    @param ds: a dev_server.DevServer instance to fetch control file with.
-    @param suite_name: canonicalized suite name, e.g. test_suites/control.bvt.
-    @raises ControlFileNotFound if a unique suite control file doesn't exist.
-    @raises NoControlFileList if we can't list the control files at all.
-    @raises ControlFileEmpty if the control file exists on the server, but
-                             can't be read.
-
-    @return the contents of the desired control file.
-    """
-    getter = control_file_getter.DevServerGetter.create(build, ds)
-    devserver_name = ds.hostname
-    # Get the control file for the suite.
-    try:
-        control_file_in = getter.get_control_file_contents_by_name(suite_name)
-    except error.CrosDynamicSuiteException as e:
-        raise type(e)('Failed to get control file for %s '
-                      '(devserver: %s) (error: %s)' %
-                      (build, devserver_name, e))
-    if not control_file_in:
-        raise error.ControlFileEmpty(
-            "Fetching %s returned no data. (devserver: %s)" %
-            (suite_name, devserver_name))
-    # Force control files to only contain ascii characters.
-    try:
-        control_file_in.encode('ascii')
-    except UnicodeDecodeError as e:
-        raise error.ControlFileMalformed(str(e))
-
-    return control_file_in
-
-
 def _get_control_file_by_suite(suite_name):
     """Get control file contents by suite name.
 
@@ -1986,7 +1938,7 @@ def create_suite_job(
 
     sample_dut = rpc_utils.get_sample_dut(board, pool)
 
-    suite_name = canonicalize_suite_name(name)
+    suite_name = suite_common.canonicalize_suite_name(name)
     if run_prod_code:
         ds = dev_server.resolve(test_source_build, hostname=sample_dut)
         keyvals = {}
@@ -2015,7 +1967,7 @@ def create_suite_job(
 
     if not control_file:
         # No control file was supplied so look it up from the build artifacts.
-        control_file = _get_control_file_by_build(
+        control_file = suite_common.get_control_file_by_build(
                 test_source_build, ds, suite_name)
 
     # Prepend builds and board to the control file.
