@@ -1246,11 +1246,8 @@ def _parse_command(argv):
                               'recommendation)'))
     parser.add_argument('--report-untestable', action='store_true',
                         help='Check for devices unable to run tests.')
-    parser.add_argument('--debug-metrics', action='store_true',
-                        help='Include debug information about the metrics '
-                             'that would be reported ')
     parser.add_argument('--debug', action='store_true',
-                        help='Print e-mail messages on stdout '
+                        help='Print e-mail, metrics messages on stdout '
                              'without sending them.')
     parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
@@ -1318,16 +1315,19 @@ def main(argv):
     if not arguments:
         sys.exit(1)
     _configure_logging(arguments)
+
+    if arguments.debug:
+        logging.info('--debug mode: Will not  report metrics to monarch')
+        metrics_file = '/dev/null'
+    else:
+        metrics_file = None
+
     try:
-        if arguments.debug_metrics or not arguments.debug:
-            metrics_file = None if not arguments.debug_metrics else '/dev/null'
-            with site_utils.SetupTsMonGlobalState(
-                    'lab_inventory', debug_file=metrics_file,
-                    auto_flush=False):
-                _perform_inventory_reports(arguments)
-            metrics.Flush()
-        else:
+        with site_utils.SetupTsMonGlobalState(
+                'lab_inventory', debug_file=metrics_file,
+                auto_flush=False):
             _perform_inventory_reports(arguments)
+        metrics.Flush()
     except KeyboardInterrupt:
         pass
     except (EnvironmentError, Exception):
