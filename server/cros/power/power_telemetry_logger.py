@@ -67,7 +67,8 @@ def get_sweetberry_config_path(filename):
 class SweetberryThread(threading.Thread):
     """A thread that starts and ends Sweetberry measurement."""
 
-    def __init__(self, board, scenario, interval, stats_json_dir, end_flag):
+    def __init__(self, board, scenario, interval, stats_json_dir, end_flag,
+                 serial=None):
         """
         Initialize the Sweetberry thread.
 
@@ -86,6 +87,7 @@ class SweetberryThread(threading.Thread):
         @param stats_json_dir: directory to store Sweetberry stats in json.
         @param end_flag: event object, stop Sweetberry measurement when this is
                          set.
+        @param serial: serial number of sweetberry
         """
         threading.Thread.__init__(self, name='Sweetberry')
         self._end_flag = end_flag
@@ -95,6 +97,8 @@ class SweetberryThread(threading.Thread):
                       '--save_stats_json', stats_json_dir,
                       '--no_print_raw_data',
                       '--mW']
+        if serial:
+            self._argv.extend(['--serial', serial])
 
     def run(self):
         """Start Sweetberry measurement until end_flag is set."""
@@ -143,6 +147,7 @@ class PowerTelemetryLogger(object):
         self._interval = DEFAULT_SWEETBERRY_INTERVAL
         if 'sweetberry_interval' in config:
             self._interval = float(config['sweetberry_interval'])
+        self._sweetberry_serial = config.get('sweetberry_serial', None)
         self._logdir = os.path.join(resultsdir, 'power_telemetry_log')
         self._end_flag = threading.Event()
         self._host = host
@@ -155,11 +160,13 @@ class PowerTelemetryLogger(object):
         board_path, scenario_path = \
                 get_sweetberry_config_path(self._sweetberry_config)
         self._tagged_testname = config['test']
-        self._sweetberry_thread = SweetberryThread(board=board_path,
-                                                   scenario=scenario_path,
-                                                   interval=self._interval,
-                                                   stats_json_dir=self._logdir,
-                                                   end_flag=self._end_flag)
+        self._sweetberry_thread = SweetberryThread(
+                board=board_path,
+                scenario=scenario_path,
+                interval=self._interval,
+                stats_json_dir=self._logdir,
+                end_flag=self._end_flag,
+                serial=self._sweetberry_serial)
         self._sweetberry_thread.setDaemon(True)
 
     def start_measurement(self):
