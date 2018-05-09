@@ -500,6 +500,9 @@ class power_LoadTest(arc.ArcTest):
         pdash = power_dashboard.PowerLoggerDashboard( \
                 self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()
+        cdash = power_dashboard.CPUStatsLoggerDashboard( \
+                self._clog, self.tagged_testname, self.resultsdir)
+        cdash.upload()
 
 
     def cleanup(self):
