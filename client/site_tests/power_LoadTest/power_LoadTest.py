@@ -263,8 +263,10 @@ class power_LoadTest(arc.ArcTest):
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements, seconds_period=20)
         self._tlog = power_status.TempLogger([], seconds_period=20)
+        self._clog = power_status.CPUStatsLogger(seconds_period=20)
         self._plog.start()
         self._tlog.start()
+        self._clog.start()
         if self._log_mem_bandwidth:
             self._mlog = memory_bandwidth_logger.MemoryBandwidthLogger(
                 raw=False, seconds_period=2)
@@ -406,6 +408,7 @@ class power_LoadTest(arc.ArcTest):
 
         keyvals = self._plog.calc()
         keyvals.update(self._tlog.calc())
+        keyvals.update(self._clog.calc())
         keyvals.update(self._statomatic.publish())
 
         if self._log_mem_bandwidth:
@@ -493,6 +496,7 @@ class power_LoadTest(arc.ArcTest):
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
         self._tlog.save_results(self.resultsdir)
+        self._clog.save_results(self.resultsdir)
         pdash = power_dashboard.PowerLoggerDashboard( \
                 self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()
