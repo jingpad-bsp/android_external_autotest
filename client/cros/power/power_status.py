@@ -43,7 +43,7 @@ class DevStat(object):
             if not file_name.startswith('/'):
                 path = os.path.join(self.path, file_name)
             f = open(path, 'r')
-            out = f.readline()
+            out = f.readline().rstrip('\n')
             val = field_type(out)
             return val
 
@@ -368,7 +368,8 @@ class LineStat(DevStat):
     """
 
     linepower_fields = {
-        'is_online':             ['online', int]
+        'is_online':             ['online', int],
+        'status':                ['status', str]
         }
 
 
@@ -459,6 +460,17 @@ class SysStat(object):
             on_ac &= (not self.battery_discharging())
         return on_ac
 
+
+    def ac_charging(self):
+        """
+        Returns true if device is currently charging from AC power.
+        """
+        charging = False
+        for linepower in self.linepower:
+            charging |= (linepower.status == 'Charging')
+        return charging
+
+
     def battery_discharging(self):
         """
         Returns true if battery is currently discharging or false otherwise.
@@ -468,6 +480,16 @@ class SysStat(object):
             return False
 
         return(self.battery[0].status.rstrip() == 'Discharging')
+
+
+    def battery_discharge_ok_on_ac(self):
+        """Returns True if battery is ok to discharge on AC presently.
+
+        some devices cycle between charge & discharge above a certain
+        SoC.  If AC is charging and SoC > 95% we can safely assume that.
+        """
+        return self.ac_charging() and (self.percent_current_charge() > 95)
+
 
     def percent_current_charge(self):
         return self.battery[0].charge_now * 100 / \
