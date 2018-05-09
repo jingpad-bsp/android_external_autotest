@@ -2,7 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, os
+import glob
+import logging
+import os
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.cros.power import power_status, power_utils
@@ -36,8 +39,14 @@ class power_ProbeDriver(test.test):
         if not status.on_ac():
             raise error.TestFail('Line power is not connected')
 
-        if status.battery_discharging():
-            raise error.TestFail('Battery is discharging')
+        if not status.battery_discharging():
+            return
+
+        if status.battery_discharge_ok_on_ac():
+            logging.info('DUT battery discharging but deemed ok')
+            return
+
+        raise error.TestFail('Battery is discharging')
 
     def run_bat(self, status):
         """ Checks batteries.
