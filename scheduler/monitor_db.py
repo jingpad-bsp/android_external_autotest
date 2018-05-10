@@ -986,6 +986,7 @@ class Dispatcher(object):
         Hand off ownership of a job to lucifer component.
         """
         self._send_starting_to_lucifer()
+        self._send_parsing_to_lucifer()
 
 
     # TODO(crbug.com/748234): This is temporary to enable toggling
@@ -1011,6 +1012,42 @@ class Dispatcher(object):
             else:
                 models.JobHandoff.objects.create(
                         job=job, drone=drone.hostname())
+
+
+    # TODO(crbug.com/748234): This is temporary to enable toggling
+    # lucifer rollouts with an option.
+    def _send_parsing_to_lucifer(self):
+        Status = models.HostQueueEntry.Status
+        queue_entries_qs = (models.HostQueueEntry.objects
+                            .filter(status=Status.PARSING))
+        for queue_entry in queue_entries_qs:
+            # If this HQE already has an agent, let monitor_db continue
+            # owning it.
+            if self.get_agents_for_entry(queue_entry):
+                continue
+            job = queue_entry.job
+            if luciferlib.is_lucifer_owned(job):
+                continue
+            # TODO(crbug.com/811877): Ignore split HQEs.
+            if luciferlib.is_split_job(queue_entry.id):
+                continue
+            task = postjob_task.PostJobTask(
+                    [queue_entry], log_file_name='/dev/null')
+            pidfile_id = task._autoserv_monitor.pidfile_id
+            autoserv_exit = task._autoserv_monitor.exit_code()
+            try:
+                drone = luciferlib.spawn_parsing_job_handler(
+                        manager=_drone_manager,
+                        job=job,
+                        autoserv_exit=autoserv_exit,
+                        pidfile_id=pidfile_id)
+                models.JobHandoff.objects.create(job=job,
+                                                 drone=drone.hostname())
+            except drone_manager.DroneManagerError as e:
+                logging.warning(
+                    'Fail to get drone for job %s, skipping lucifer. Error: %s',
+                    job.id, e)
+
 
 
     @_calls_log_tick_msg
