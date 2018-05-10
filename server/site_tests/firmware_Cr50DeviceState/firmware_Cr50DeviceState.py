@@ -343,10 +343,10 @@ class firmware_Cr50DeviceState(Cr50Test):
 
 
     def run_transition(self, state):
-        """Verify there are no Cr50 interrupt storms in the power state.
+        """Enter the given power state and reenter s0
 
-        Enter the power state, return to S0, and then verify that Cr50 behaved
-        correctly.
+        Enter the power state and return to S0. Wait long enough to ensure cr50
+        will enter sleep mode, so we can verify that as well.
 
         Args:
             state: the power state: S0ix, S3, or G3
@@ -361,6 +361,16 @@ class firmware_Cr50DeviceState(Cr50Test):
 
         # Return to S0
         self.enter_state('S0')
+
+
+    def verify_state(self, state):
+        """Verify cr50 behavior while running through the power state"""
+
+        try:
+            self.run_transition(state)
+        finally:
+            # reset the system to S0 no matter what happens
+            self.trigger_s0()
 
         # Check that the progress of the irq counts seems reasonable
         self.check_for_errors(state)
@@ -393,13 +403,13 @@ class firmware_Cr50DeviceState(Cr50Test):
             # sleep
             client_at = autotest.Autotest(self.host)
             client_at.run_test('login_LoginSuccess')
-            self.run_transition('S0ix')
+            self.verify_state('S0ix')
 
         # Enter S3
-        self.run_transition('S3')
+        self.verify_state('S3')
 
         # Enter G3
-        self.run_transition('G3')
+        self.verify_state('G3')
         if self.run_errors:
             self.all_errors[self.ccd_str] = self.run_errors
 
