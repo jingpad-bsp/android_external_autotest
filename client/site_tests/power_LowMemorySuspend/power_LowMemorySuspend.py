@@ -33,15 +33,17 @@ class power_LowMemorySuspend(test.test):
         return False
 
     def create_tabs(self, cr):
-        """Creates tabs until swap free is low."""
+        """Creates tabs until swap free is low.
+
+        @return: list of created tabs
+        """
         # Any non-trivial web page is suitable to consume memory.
         URL = 'https://inbox.google.com/'
         tabs = []
 
-        # No need to create the first tab as there is already one
-        # when the browser is ready.
-        tabs.append(cr.browser.tabs[0])
-        tabs[0].Navigate(URL);
+        # There is some race condition to navigate the first tab, navigating
+        # the first tab may fail unless sleep 2 seconds before navigation.
+        # Skip the first tab.
 
         while not self.low_swap_free():
             logging.info('creating tab %d', len(tabs))
@@ -56,7 +58,7 @@ class power_LowMemorySuspend(test.test):
         return tabs
 
     def check_tab_discard(self, cr, tabs):
-        """Raise error if too many tabs are discarded."""
+        """Raises error if too many tabs are discarded."""
         try:
             active_tabs = len(cr.browser.tabs)
         except Exception as e:
@@ -71,33 +73,42 @@ class power_LowMemorySuspend(test.test):
     def cycling_suspend(self, cr, tabs, switches_per_suspend,
                         total_suspend_duration, suspend_seconds,
                         additional_sleep):
-        """Page cycling and suspending."""
+        """Page cycling and suspending.
+
+        @return: total suspending count.
+        """
         start_time = time.time()
         suspend_count = 0
-        switch_count = 0
+        tab_index = 0
+        spurious_wakeup_count = 0
+        MAX_SPURIOUS_WAKEUP = 5
 
         while time.time() - start_time < total_suspend_duration:
             # Page cycling
-            for tab in tabs:
+            for _ in range(switches_per_suspend):
                 try:
-                    tab.Activate()
-                    tab.WaitForFrameToBeDisplayed()
+                    tabs[tab_index].Activate()
+                    tabs[tab_index].WaitForFrameToBeDisplayed()
                 except Exception as e:
                     logging.info('cannot activate tab: %s', e)
-                switch_count += 1
+                tab_index = (tab_index + 1) % len(tabs)
 
-                if switch_count % switches_per_suspend == 0:
-                    self.check_tab_discard(cr, tabs)
+            self.check_tab_discard(cr, tabs)
 
-                    # Suspending and resuming after 10 seconds.
-                    sys_power.do_suspend(suspend_seconds)
-                    suspend_count += 1
+            # Suspending for the specified seconds.
+            try:
+                sys_power.do_suspend(suspend_seconds)
+            except sys_power.SpuriousWakeupError:
+                spurious_wakeup_count += 1
+                if spurious_wakeup_count > MAX_SPURIOUS_WAKEUP:
+                    raise error.TestFail('Too many SpuriousWakeupError.')
+            suspend_count += 1
 
-                    # Additional waiting for system stable, or the
-                    # subsequent tab operations may fail.
-                    time.sleep(additional_sleep)
+            # Waiting for system stable, otherwise the subsequent tab
+            # operations may fail.
+            time.sleep(additional_sleep)
 
-                    self.check_tab_discard(cr, tabs)
+            self.check_tab_discard(cr, tabs)
 
         return suspend_count
 
