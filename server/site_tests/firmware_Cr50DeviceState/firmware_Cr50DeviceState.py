@@ -78,11 +78,11 @@ class firmware_Cr50DeviceState(Cr50Test):
         KEY_RESET : [0, 0],
         KEY_DEEP_SLEEP : [0, DEEP_SLEEP_MAX],
         KEY_TIME : [0, CONSERVATIVE_WAIT_TIME],
-        'S0ix ' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
+        'S0ix' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
         # Cr50 may enter deep sleep an extra time, because of how the test
         # collects taskinfo counts. Just verify that it does enter deep sleep
-        'S3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
-        'G3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        'S3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
         # ARM devices don't enter deep sleep in S3
         ARM + 'S3' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
         ARM + 'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
