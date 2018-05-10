@@ -7,7 +7,7 @@ NAME = 'network_WiFi_MalformedProbeResp'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_matfunc,'
-              'suite:wifi_matfunc_noservo, suite:wifi_matfunc_bcm4371')
+              'suite:wifi_matfunc_noservo')
 DEPENDENCIES = 'wificell'
 
 DOC = """
