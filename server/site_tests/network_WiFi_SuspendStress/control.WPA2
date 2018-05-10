@@ -7,8 +7,7 @@ NAME = 'network_WiFi_SuspendStress.WPA2'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_bcm4371,'
-              'suite:wifi_matfunc_noservo')
+ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
 
 DOC = """
 This test uses powerd_dbus to suspend and resume and checks that the
