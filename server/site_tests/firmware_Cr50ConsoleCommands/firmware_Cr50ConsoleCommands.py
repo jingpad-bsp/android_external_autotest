@@ -82,8 +82,10 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         """Return the expected cr50 console output"""
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), cmd)
         ext_path = path + '.' + self.brdprop
+        logging.info('Using brdprop %x', self.brdprop)
 
         if os.path.isfile(ext_path):
+            logging.info('%s board specific path exists', cmd)
             path = ext_path
 
         logging.info('reading %s', path)
