@@ -12,6 +12,7 @@ from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 
 DECODE_WITH_HW_ACCELERATION = 'jpeg_decode_with_hw'
@@ -52,13 +53,16 @@ class video_JDAPerf(chrome_binary_test.ChromeBinaryTest):
         self._use_ec = False
 
     @chrome_binary_test.nuke_chrome
-    def run_once(self, power_test=False):
+    def run_once(self, capability, power_test=False):
         """
         Runs the video_JDAPerf test.
 
+        @param capability: Capability required for executing this test.
         @param power_test: True for power consumption test.
                            False for cpu usage test.
         """
+        device_capability.DeviceCapability().ensure_capability(capability)
+
         if power_test:
             keyvals = self.test_power()
             self.log_result(keyvals, 'jpeg_decode_energy', 'W')
