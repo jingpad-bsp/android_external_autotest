@@ -163,6 +163,7 @@ def adb_cmd(cmd, **kwargs):
 
     @param cmd: Command to run.
     """
+    # TODO(b/79122489) - Assert if cmd == 'root'
     wait_for_adb_ready()
     return utils.system_output('adb %s' % cmd, **kwargs)
 
@@ -211,8 +212,16 @@ def adb_reboot():
         lambda: not utils.pid_is_alive(int(old_pid)), timeout=10)
 
 
+# This adb_root() function is deceiving in that it works just fine on debug
+# builds of ARC (user-debug, eng). However "adb root" does not work on user
+# builds as run by the autotest machines when testing prerelease images. In fact
+# it will silently fail. You will need to find another way to do do what you
+# need to do as root.
+#
+# TODO(b/79122489) - Remove this function.
 def adb_root():
     """Restart adbd with root permission."""
+
     adb_cmd('root')
 
 
@@ -861,14 +870,17 @@ class ArcTest(test.test):
         """Disables the Google Play Store app."""
         if is_package_disabled(_PLAY_STORE_PKG):
             return
-        from uiautomator import device as d
         adb_shell('am force-stop ' + _PLAY_STORE_PKG)
-        adb_shell('am start -W ' + _SETTINGS_PKG)
-        # N and P have different name. StartsWith("Apps") matches both.
-        d(textStartsWith='Apps', packageName=_SETTINGS_PKG).click.wait()
-        adb_shell('input text Store')
-        d(text='Google Play Store', packageName=_SETTINGS_PKG).click.wait()
-        d(textMatches='(?i)DISABLE').click.wait()
+        adb_shell('am start -a android.settings.APPLICATION_DETAILS_SETTINGS '
+                  '-d package:' + _PLAY_STORE_PKG)
+
+        # Note: the straightforward "pm disable <package>" command would be
+        # better, but that requires root permissions, which aren't available on
+        # a pre-release image being tested. The only other way is through the
+        # Settings UI, but which might change.
+        from uiautomator import device as d
+        d(textMatches='(?i)DISABLE', packageName=_SETTINGS_PKG).wait.exists()
+        d(textMatches='(?i)DISABLE', packageName=_SETTINGS_PKG).click.wait()
         d(textMatches='(?i)DISABLE APP').click.wait()
         ok_button = d(textMatches='(?i)OK')
         if ok_button.exists:
