@@ -44,11 +44,6 @@ WAIT_FOR_IDLE_CPU_TIMEOUT = 60
 # Maximum percent of cpu usage considered as idle.
 CPU_IDLE_USAGE = 0.1
 
-# List of thermal throttling services that should be disabled.
-# - temp_metrics for link.
-# - thermal for daisy, snow, pit etc.
-THERMAL_SERVICES = ['temp_metrics', 'thermal']
-
 # Measurement duration in seconds.
 MEASUREMENT_DURATION = 30
 
@@ -72,7 +67,7 @@ class CpuUsageMeasurer(object):
 
     def __enter__(self):
         # Stop the thermal service that may change the cpu frequency.
-        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
+        self._service_stopper = service_stopper.get_thermal_service_stopper()
         self._service_stopper.stop_services()
 
         if not utils.wait_for_idle_cpu(
