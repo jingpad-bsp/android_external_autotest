@@ -31,9 +31,6 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         'rdd attach, fake_servo on, rdd detach',
         'rdd attach, fake_servo off, rdd detach',
     ]
-    # Used to reset the servo and ccd state after the test.
-    CLEANUP = 'fake_servo on, rdd attach'
-
     ON = 'on'
     OFF = 'off'
     UNDETECTABLE = 'undetectable'
@@ -145,9 +142,10 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
 
     def cleanup(self):
-        """Disable CCD and reenable the EC uart"""
-        self.reset_ccd()
-        self.run_steps(self.CLEANUP)
+        """Reenable the EC uart"""
+        self.fake_servo('on')
+        self.rdd('detach')
+        self.rdd('attach')
         super(firmware_Cr50CCDServoCap, self).cleanup()
 
 
