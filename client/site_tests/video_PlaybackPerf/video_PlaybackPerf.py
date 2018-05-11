@@ -32,11 +32,6 @@ MEASUREMENT_DURATION = 30
 # Time to exclude from calculation after playing a video [seconds].
 STABILIZATION_DURATION = 10
 
-# List of thermal throttling services that should be disabled.
-# - temp_metrics for link.
-# - thermal for daisy, snow, pit etc.
-THERMAL_SERVICES = ['temp_metrics', 'thermal']
-
 # Time in seconds to wait for cpu idle until giveup.
 WAIT_FOR_IDLE_CPU_TIMEOUT = 60.0
 # Maximum percent of cpu usage considered as idle.
@@ -198,7 +193,7 @@ class video_PlaybackPerf(test.test):
             logging.warning('Could not get cold machine pre login.')
 
         # Stop the thermal service that may change the cpu frequency.
-        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
+        self._service_stopper = service_stopper.get_thermal_service_stopper()
         self._service_stopper.stop_services()
         # Set the scaling governor to performance mode to set the cpu to the
         # highest frequency available.
