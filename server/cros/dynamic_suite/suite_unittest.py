@@ -31,6 +31,7 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
+from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite.comparators import StatusContains
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
@@ -58,8 +59,8 @@ class SuiteTest(mox.MoxTestBase):
         """Setup."""
         super(SuiteTest, self).setUp()
         self.maxDiff = None
-        self.use_batch = SuiteBase.ENABLE_CONTROLS_IN_BATCH
-        SuiteBase.ENABLE_CONTROLS_IN_BATCH = False
+        self.use_batch = suite_common.ENABLE_CONTROLS_IN_BATCH
+        suite_common.ENABLE_CONTROLS_IN_BATCH = False
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
 
@@ -94,7 +95,7 @@ class SuiteTest(mox.MoxTestBase):
 
     def tearDown(self):
         """Teardown."""
-        SuiteBase.ENABLE_CONTROLS_IN_BATCH = self.use_batch
+        suite_common.ENABLE_CONTROLS_IN_BATCH = self.use_batch
         super(SuiteTest, self).tearDown()
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
@@ -158,9 +159,9 @@ class SuiteTest(mox.MoxTestBase):
     def testFindAllTestInBatch(self):
         """Test switch on enable_getting_controls_in_batch for function
         find_all_test."""
-        self.use_batch = SuiteBase.ENABLE_CONTROLS_IN_BATCH
+        self.use_batch = suite_common.ENABLE_CONTROLS_IN_BATCH
         self.expect_control_file_parsing_in_batch()
-        SuiteBase.ENABLE_CONTROLS_IN_BATCH = True
+        suite_common.ENABLE_CONTROLS_IN_BATCH = True
 
         self.mox.ReplayAll()
 
@@ -175,7 +176,7 @@ class SuiteTest(mox.MoxTestBase):
         self.assertTrue(self.files['five'] in tests)
         self.assertTrue(self.files['six'] in tests)
         self.assertTrue(self.files['seven'] in tests)
-        SuiteBase.ENABLE_CONTROLS_IN_BATCH = self.use_batch
+        suite_common.ENABLE_CONTROLS_IN_BATCH = self.use_batch
 
 
     def testFindAndParseStableTests(self):
