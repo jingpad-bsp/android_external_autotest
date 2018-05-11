@@ -8,16 +8,23 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import logging
 import re
 
 import common
 
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import tools
+
+ENABLE_CONTROLS_IN_BATCH = global_config.global_config.get_config_value(
+        'CROS', 'enable_getting_controls_in_batch', type=bool, default=False)
 
 
 def canonicalize_suite_name(suite_name):
@@ -167,3 +174,140 @@ def get_control_file_by_build(build, ds, suite_name):
         raise error.ControlFileMalformed(str(e))
 
     return control_file_in
+
+
+def _should_batch_with(cf_getter):
+    """Return whether control files should be fetched in batch.
+
+    This depends on the control file getter and configuration options.
+
+    If cf_getter is a File system ControlFileGetter, the cf_getter will
+    perform a full parse of the root directory associated with the
+    getter. This is the case when it's invoked from suite_preprocessor.
+
+    If cf_getter is a devserver getter, this will look up the suite_name in a
+    suite to control file map generated at build time, and parses the relevant
+    control files alone. This lookup happens on the devserver, so as far
+    as this method is concerned, both cases are equivalent. If
+    enable_controls_in_batch is switched on, this function will call
+    cf_getter.get_suite_info() to get a dict of control files and
+    contents in batch.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter used to list
+           and fetch the content of control files
+    """
+    return (ENABLE_CONTROLS_IN_BATCH
+            and isinstance(cf_getter, control_file_getter.DevServerGetter))
+
+
+def _get_cf_texts_for_suite_batched(cf_getter, suite_name):
+    """Get control file content for given suite with batched getter.
+
+    See get_cf_texts_for_suite for params & returns.
+    """
+    suite_info = cf_getter.get_suite_info(suite_name=suite_name)
+    files = suite_info.keys()
+    filtered_files = _filter_cf_paths(files)
+    for path in filtered_files:
+        yield path, suite_info[path]
+
+
+def _get_cf_texts_for_suite_unbatched(cf_getter, suite_name):
+    """Get control file content for given suite with unbatched getter.
+
+    See get_cf_texts_for_suite for params & returns.
+    """
+    files = cf_getter.get_control_file_list(suite_name=suite_name)
+    filtered_files = _filter_cf_paths(files)
+    for path in filtered_files:
+        yield path, cf_getter.get_control_file_contents(path)
+
+
+def _filter_cf_paths(paths):
+    """Remove certain control file paths.
+
+    @param paths: Iterable of paths
+    @returns: generator yielding paths
+    """
+    matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
+    return (path for path in paths if not matcher.match(path))
+
+
+def get_cf_texts_for_suite(cf_getter, suite_name):
+    """Get control file content for given suite.
+
+    @param cf_getter: A control file getter object, e.g.
+        a control_file_getter.DevServerGetter object.
+    @param suite_name: If specified, this method will attempt to restrain
+                       the search space to just this suite's control files.
+    @returns: generator yielding (path, text) tuples
+    """
+    if _should_batch_with(cf_getter):
+        return _get_cf_texts_for_suite_batched(cf_getter, suite_name)
+    else:
+        return _get_cf_texts_for_suite_unbatched(cf_getter, suite_name)
+
+
+def parse_cf_text(path, text):
+    """Parse control file text.
+
+    @param path: path to control file
+    @param text: control file text contents
+
+    @returns: a ControlData object
+
+    @raises ControlVariableException: There is a syntax error in a
+                                      control file.
+    """
+    test = control_data.parse_control_string(
+            text, raise_warnings=True, path=path)
+    test.text = text
+    return test
+
+
+def parse_cf_text_many(control_file_texts, forgiving_error=False,
+                       test_args=None):
+    """Parse control file texts.
+
+    @param control_file_texts: iterable of (path, text) pairs
+    @param test_args: The test args to be injected into test control file.
+
+    @returns: a dictionary of ControlData objects
+    """
+    tests = {}
+    for path, text in control_file_texts:
+        if test_args:
+            text = tools.inject_vars(test_args, text)
+
+        try:
+            found_test = parse_cf_text(path, text)
+        except control_data.ControlVariableException, e:
+            if not forgiving_error:
+                msg = "Failed parsing %s\n%s" % (path, e)
+                raise control_data.ControlVariableException(msg)
+            logging.warning("Skipping %s\n%s", path, e)
+        except Exception, e:
+            logging.error("Bad %s\n%s", path, e)
+            import traceback
+            logging.error(traceback.format_exc())
+        else:
+            tests[path] = found_test
+    return tests
+
+
+def retrieve_for_suite(cf_getter, suite_name='', forgiving_error=False,
+                       test_args=None):
+    """Scan through all tests and find all tests.
+
+    @param suite_name: If specified, retrieve this suite's control file.
+
+    @raises ControlVariableException: If forgiving_parser is False and there
+                                      is a syntax error in a control file.
+
+    @returns a dictionary of ControlData objects that based on given
+             parameters.
+    """
+    control_file_texts = get_cf_texts_for_suite(cf_getter, suite_name)
+    return parse_cf_text_many(control_file_texts,
+                              forgiving_error=forgiving_error,
+                              test_args=test_args)
