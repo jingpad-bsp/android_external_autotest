@@ -50,8 +50,7 @@ _FILE_BUG_SUITES = ['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_au_beta',
                     'sanity', 'push_to_prod']
 _AUTOTEST_DIR = global_config.global_config.get_config_value(
         'SCHEDULER', 'drone_installation_directory')
-ENABLE_CONTROLS_IN_BATCH = global_config.global_config.get_config_value(
-        'CROS', 'enable_getting_controls_in_batch', type=bool, default=False)
+
 
 class RetryHandler(object):
     """Maintain retry information.
@@ -483,43 +482,6 @@ class _SuiteChildJobCreator(object):
         return keyvals
 
 
-def _get_cf_retriever(cf_getter, forgiving_parser=True, run_prod_code=False,
-                      test_args=None):
-    """Return the correct _ControlFileRetriever instance.
-
-    If cf_getter is a File system ControlFileGetter, return a
-    _ControlFileRetriever.  This performs a full parse of the root
-    directory associated with the getter. This is the case when it's
-    invoked from suite_preprocessor.
-
-    If cf_getter is a devserver getter, return a
-    _BatchControlFileRetriever.  This looks up the suite_name in a suite
-    to control file map generated at build time, and parses the relevant
-    control files alone. This lookup happens on the devserver, so as far
-    as this method is concerned, both cases are equivalent. If
-    enable_controls_in_batch is switched on, this function will call
-    cf_getter.get_suite_info() to get a dict of control files and
-    contents in batch.
-    """
-    if _should_batch_with(cf_getter):
-        cls = _BatchControlFileRetriever
-    else:
-        cls = _ControlFileRetriever
-    return cls(cf_getter, forgiving_parser, run_prod_code, test_args)
-
-
-def _should_batch_with(cf_getter):
-    """Return whether control files should be fetched in batch.
-
-    This depends on the control file getter and configuration options.
-
-    @param cf_getter: a control_file_getter.ControlFileGetter used to list
-           and fetch the content of control files
-    """
-    return (ENABLE_CONTROLS_IN_BATCH
-            and isinstance(cf_getter, control_file_getter.DevServerGetter))
-
-
 class _ControlFileRetriever(object):
     """Retrieves control files.
 
@@ -566,7 +528,7 @@ class _ControlFileRetriever(object):
         """
         path = self._cf_getter.get_control_file_path(test_name)
         text = self._cf_getter.get_control_file_contents(path)
-        return self._parse_cf_text(path, text)
+        return suite_common.parse_cf_text(path, text)
 
 
     def retrieve_for_suite(self, suite_name=''):
@@ -581,95 +543,14 @@ class _ControlFileRetriever(object):
         @returns a dictionary of ControlData objects that based on given
                  parameters.
         """
-        control_file_texts = self._get_cf_texts_for_suite(suite_name)
-        return self._parse_cf_text_many(control_file_texts)
-
-
-    def _filter_cf_paths(self, paths):
-        """Remove certain control file paths
-
-        @param paths: Iterable of paths
-        @returns: generator yielding paths
-        """
-        matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
-        return (path for path in paths if not matcher.match(path))
-
-
-    def _get_cf_texts_for_suite(self, suite_name):
-        """Get control file content for given suite.
-
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
-        @returns: generator yielding (path, text) tuples
-        """
-        files = self._cf_getter.get_control_file_list(suite_name=suite_name)
-        filtered_files = self._filter_cf_paths(files)
-        for path in filtered_files:
-            yield path, self._cf_getter.get_control_file_contents(path)
-
-
-    def _parse_cf_text_many(self, control_file_texts):
-        """Parse control file texts.
-
-        @param control_file_texts: iterable of (path, text) pairs
-        @returns: a dictionary of ControlData objects
-        """
-        tests = {}
-        for path, text in control_file_texts:
-            # Seed test_args into the control file.
-            if self._test_args:
-                text = tools.inject_vars(self._test_args, text)
-            try:
-                found_test = self._parse_cf_text(path, text)
-            except control_data.ControlVariableException, e:
-                if not self._forgiving_parser:
-                    msg = "Failed parsing %s\n%s" % (path, e)
-                    raise control_data.ControlVariableException(msg)
-                logging.warning("Skipping %s\n%s", path, e)
-            except Exception, e:
-                logging.error("Bad %s\n%s", path, e)
-            else:
-                tests[path] = found_test
-        return tests
-
-
-    def _parse_cf_text(self, path, text):
-        """Parse control file text.
-
-        This ignores forgiving_parser because we cannot return a
-        forgiving value.
-
-        @param path: path to control file
-        @param text: control file text contents
-        @returns: a ControlData object
-
-        @raises ControlVariableException: There is a syntax error in a
-                                          control file.
-        """
-        test = control_data.parse_control_string(
-                text, raise_warnings=True, path=path)
-        test.text = text
+        tests = suite_common.retrieve_for_suite(
+                self._cf_getter, suite_name, self._forgiving_parser,
+                self._test_args)
         if self._run_prod_code:
-            test.require_ssp = False
-        return test
+            for test in tests.itervalues():
+                test.require_ssp = False
 
-
-class _BatchControlFileRetriever(_ControlFileRetriever):
-    """Subclass that can retrieve suite control files in batch."""
-
-
-    def _get_cf_texts_for_suite(self, suite_name):
-        """Get control file content for given suite.
-
-        @param suite_name: If specified, this method will attempt to restrain
-                           the search space to just this suite's control files.
-        @returns: generator yielding (path, text) tuples
-        """
-        suite_info = self._cf_getter.get_suite_info(suite_name=suite_name)
-        files = suite_info.keys()
-        filtered_files = self._filter_cf_paths(files)
-        for path in filtered_files:
-            yield path, suite_info[path]
+        return tests
 
 
 def list_all_suites(build, devserver, cf_getter=None):
@@ -888,10 +769,10 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
             on the TIME setting in control file, slowest test comes first.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    retriever = _get_cf_retriever(cf_getter,
-                                  forgiving_parser=forgiving_parser,
-                                  run_prod_code=run_prod_code,
-                                  test_args=test_args)
+    retriever = _ControlFileRetriever(cf_getter,
+                                      forgiving_parser=forgiving_parser,
+                                      run_prod_code=run_prod_code,
+                                      test_args=test_args)
     tests = retriever.retrieve_for_suite(suite_name)
     logging.debug('Parsed %s control files.', len(tests))
     if not add_experimental:
@@ -927,7 +808,7 @@ def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
             match ratio.
     """
     logging.debug('Getting control file list for suite: %s', suite_name)
-    tests = _get_cf_retriever(cf_getter).retrieve_for_suite(suite_name)
+    tests = _ControlFileRetriever(cf_getter).retrieve_for_suite(suite_name)
     logging.debug('Parsed %s control files.', len(tests))
     similarities = {}
     for test in tests.itervalues():
@@ -1765,9 +1646,9 @@ def _load_dummy_test(
             build = suite_common.get_test_source_build(
                     builds, test_source_build=test_source_build)
             cf_getter = _create_ds_getter(build, devserver)
-    retriever = _get_cf_retriever(cf_getter,
-                                  run_prod_code=run_prod_code,
-                                  test_args=test_args)
+    retriever = _ControlFileRetriever(cf_getter,
+                                      run_prod_code=run_prod_code,
+                                      test_args=test_args)
     return retriever.retrieve('dummy_Pass')
 
 
