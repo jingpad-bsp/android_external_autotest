@@ -91,7 +91,7 @@ class AutotestJobInfo(object):
     @property
     def results_url(self):
         """The url where results are stored."""
-        return '%s/results/%s-%s/%s' % (
+        return '%sresults/%s-%s/%s' % (
             RETRIEVE_LOGS_CGI, self.id, self.user, self.dut)
 
     @property
