@@ -160,6 +160,9 @@ class platform_FilePerms(test.test):
         '/sys/fs/selinux': {
             'type': ['selinuxfs'],
             'options': ['rw', 'nosuid', 'noexec']},
+        '/sys/kernel/config': {
+            'type': ['configfs'],
+            'options': standard_rw_options},
         '/sys/kernel/debug': {
             'type': ['debugfs'],
             'options': standard_rw_options},
