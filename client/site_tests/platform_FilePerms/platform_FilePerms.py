@@ -33,9 +33,6 @@ class platform_FilePerms(test.test):
         '/dev': {
             'type': ['devtmpfs'],
             'options': ['rw', 'nosuid', 'noexec', 'mode=755']},
-        '/dev/pstore': {
-            'type': ['pstore'],
-            'options': standard_rw_options},
         '/sys/fs/pstore': {
             'type': ['pstore'],
             'options': standard_rw_options},
