@@ -530,7 +530,7 @@ class Servo(object):
         try:
             self._server.set(gpio_name, gpio_value)
         except  xmlrpclib.Fault as e:
-            err_msg = "Setting '%s' to '%s' :: %s" % \
+            err_msg = "Setting '%s' to %r :: %s" % \
                 (gpio_name, gpio_value, self._get_xmlrpclib_exception(e))
             raise error.TestFail(err_msg)
 
