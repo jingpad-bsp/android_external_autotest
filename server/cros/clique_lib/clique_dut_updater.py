@@ -147,7 +147,7 @@ class CliqueDUTUpdater(object):
         url = self._get_update_url(ds.url(), image)
         logging.debug('Host: %s. Installing image from %s', dut_host, url)
         try:
-            dut_host.machine_install(force_update=True, update_url=url,
+            dut_host.machine_install(update_url=url,
                                      force_full_update=force)
         except error.InstallError as e:
             error_str = 'Host: ' + dut_host + '. ' + e
