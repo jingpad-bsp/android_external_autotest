@@ -121,7 +121,6 @@ class provision_AutoUpdate(test.test):
         try:
             afe_utils.machine_install_and_update_labels(
                     host,
-                    force_update=True,
                     update_url=url,
                     force_full_update=force,
                     with_cheets=with_cheets)
