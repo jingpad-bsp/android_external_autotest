@@ -481,7 +481,7 @@ class APConfiguratorFactory(object):
         # of the AP and skip AFE calls.
         if spec.hostnames is None:
             matching_aps = self._get_aps_by_lab_location(spec.lab_ap,
-                                                        matching_aps)
+                                                         matching_aps)
             # TODO(@rjahagir): Uncomment to use datastore methods.
             # matching_aps = self._get_ds_aps_by_lab_location(spec.lab_ap,
             #                                                 matching_aps)
