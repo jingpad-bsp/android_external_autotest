@@ -168,7 +168,7 @@ class tast(test.test):
             '-remoterunner=' + self._remote_test_runner_path,
         ]
         cmd.extend(extra_subcommand_args)
-        cmd.append(self._host.hostname)
+        cmd.append('%s:%d' % (self._host.hostname, self._host.port))
         cmd.extend(self._test_exprs)
 
         logging.info('Running ' +
@@ -268,13 +268,18 @@ class tast(test.test):
             src/platform/tast/src/chromiumos/cmd/tast/run/results.go for
             details.
         """
+        # If the test didn't run and also didn't report any errors, don't bother
+        # reporting it.
+        if not test.get('errors') and test.get('skipReason'):
+            return
+
         name = self._TEST_NAME_PREFIX + test['name']
         start_time = _rfc3339_time_to_timestamp(test['start'])
         end_time = _rfc3339_time_to_timestamp(test['end'])
 
         self._log_test_event(self._JOB_STATUS_START, name, start_time)
 
-        if not test['errors']:
+        if not test.get('errors'):
             self._log_test_event(self._JOB_STATUS_GOOD, name, end_time)
             end_status = self._JOB_STATUS_END_GOOD
         else:

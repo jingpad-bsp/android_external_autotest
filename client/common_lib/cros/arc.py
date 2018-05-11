@@ -135,7 +135,8 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
 
     exception = error.TestFail('adb is not ready in %d seconds.' % timeout)
 
-    # Keeps track of how many times adb has attempted to establish a connection.
+    # Keeps track of how many times adb has attempted to establish a
+    # connection.
     def _adb_connect_wrapper():
         _adb_connect_wrapper.attempts += 1
         return adb_connect(_adb_connect_wrapper.attempts)
@@ -162,6 +163,7 @@ def adb_cmd(cmd, **kwargs):
 
     @param cmd: Command to run.
     """
+    # TODO(b/79122489) - Assert if cmd == 'root'
     wait_for_adb_ready()
     return utils.system_output('adb %s' % cmd, **kwargs)
 
@@ -198,13 +200,28 @@ def adb_uninstall(apk):
 
 
 def adb_reboot():
-    """Reboots the container. You must connect first."""
-    adb_root()
-    return adb_cmd('reboot', ignore_status=True)
+    """Reboots the container and block until container pid is gone.
+
+    You must connect first.
+    """
+    old_pid = get_container_pid()
+    logging.info('Trying to reboot PID:%s' % old_pid)
+    adb_cmd('reboot', ignore_status=True)
+    # Ensure that the old container is no longer booted
+    utils.poll_for_condition(
+        lambda: not utils.pid_is_alive(int(old_pid)), timeout=10)
 
 
+# This adb_root() function is deceiving in that it works just fine on debug
+# builds of ARC (user-debug, eng). However "adb root" does not work on user
+# builds as run by the autotest machines when testing prerelease images. In fact
+# it will silently fail. You will need to find another way to do do what you
+# need to do as root.
+#
+# TODO(b/79122489) - Remove this function.
 def adb_root():
     """Restart adbd with root permission."""
+
     adb_cmd('root')
 
 
@@ -227,9 +244,9 @@ def get_container_pid_path():
         raise error.TestError('Android container.pid not available')
 
     if len(arc_container_pid_files) > 1:
-        raise error.TestError('Multiple Android container.pid files found: %r. '
-                              'Reboot your DUT to recover.' % (
-                                  arc_container_pid_files))
+        raise error.TestError(
+                'Multiple Android container.pid files found: %r. '
+                'Reboot your DUT to recover.' % (arc_container_pid_files))
 
     return arc_container_pid_files[0]
 
@@ -412,7 +429,15 @@ def _is_in_installed_packages_list(package, option=None):
         command += ' ' + option
     packages = adb_shell(command).splitlines()
     package_entry = 'package:' + package
-    return package_entry in packages
+    ret = package_entry in packages
+
+    # FIXME(ricadoq): remove me.
+    # Temp fix to try to understand why a packages is not being installed on
+    # the server. Cannot reproduce it locally.
+    if not ret:
+        logging.info('Could not find "%s" in %s' %
+                     (package_entry, str(packages)))
+    return ret
 
 
 def is_package_installed(package):
@@ -530,15 +555,14 @@ class ArcTest(test.test):
     redundant codes for container bringup, autotest-dep package(s) including
     uiautomator setup if required, and apks install/remove during
     arc_setup/arc_teardown, respectively. By default arc_setup() is called in
-    initialize() after Android have been brought up. It could also be overridden
-    to perform non-default tasks. For example, a simple ArcHelloWorldTest can be
-    just implemented with print 'HelloWorld' in its run_once() and no other
-    functions are required. We could expect ArcHelloWorldTest would bring up
-    browser and  wait for container up, then print 'Hello World', and shutdown
-    browser after. As a precaution, if you overwrite initialize(), arc_setup(),
-    or cleanup() function(s) in ARC test, remember to call the corresponding
-    function(s) in this base class as well.
-
+    initialize() after Android have been brought up. It could also be
+    overridden to perform non-default tasks. For example, a simple
+    ArcHelloWorldTest can be just implemented with print 'HelloWorld' in its
+    run_once() and no other functions are required. We could expect
+    ArcHelloWorldTest would bring up browser and  wait for container up, then
+    print 'Hello World', and shutdown browser after. As a precaution, if you
+    overwrite initialize(), arc_setup(), or cleanup() function(s) in ARC test,
+    remember to call the corresponding function(s) in this base class as well.
     """
     version = 1
     _PKG_UIAUTOMATOR = 'uiautomator'
@@ -630,7 +654,11 @@ class ArcTest(test.test):
         if apks:
             for apk in apks:
                 logging.info('Installing %s', apk)
-                adb_install('%s/%s' % (apk_path, apk))
+                out = adb_install('%s/%s' % (apk_path, apk))
+                # FIXME(ricardo): Remove me.
+                # Trying to find out why certain APKs don't get installed on
+                # the server. Cannot reproduce it locally.
+                logging.info('Install apk output: %s' % str(out))
             # Verify if package(s) are installed correctly
             if not full_pkg_names:
                 raise error.TestError('Package names of apks expected')
@@ -698,10 +726,11 @@ class ArcTest(test.test):
             full_pkg_names = self._fix_nested_array_level(
                 'full_pkg_names', 2, full_pkg_names)
             if (len(dep_packages) != len(apks) or
-                len(apks) != len(full_pkg_names)):
+                    len(apks) != len(full_pkg_names)):
                 logging.info('dep_packages length is %d', len(dep_packages))
                 logging.info('apks length is %d', len(apks))
-                logging.info('full_pkg_names length is %d', len(full_pkg_names))
+                logging.info('full_pkg_names length is %d',
+                             len(full_pkg_names))
                 raise error.TestFail(
                     'dep_packages/apks/full_pkg_names format error')
 
@@ -812,7 +841,8 @@ class ArcTest(test.test):
         """
         logging.info('Blocking outbound connection')
         _android_shell('iptables -I OUTPUT -j REJECT')
-        _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
+        _android_shell('iptables -I OUTPUT -p tcp -s 100.115.92.2 '
+                       '--sport 5555 '
                        '-j ACCEPT')
         _android_shell('iptables -I OUTPUT -p tcp -d localhost -j ACCEPT')
 
@@ -825,7 +855,8 @@ class ArcTest(test.test):
         """
         logging.info('Unblocking outbound connection')
         _android_shell('iptables -D OUTPUT -p tcp -d localhost -j ACCEPT')
-        _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 --sport 5555 '
+        _android_shell('iptables -D OUTPUT -p tcp -s 100.115.92.2 '
+                       '--sport 5555 '
                        '-j ACCEPT')
         _android_shell('iptables -D OUTPUT -j REJECT')
 
@@ -839,14 +870,17 @@ class ArcTest(test.test):
         """Disables the Google Play Store app."""
         if is_package_disabled(_PLAY_STORE_PKG):
             return
-        from uiautomator import device as d
         adb_shell('am force-stop ' + _PLAY_STORE_PKG)
-        adb_shell('am start -W ' + _SETTINGS_PKG)
-        # N and P have different name. StartsWith("Apps") matches both.
-        d(textStartsWith='Apps', packageName=_SETTINGS_PKG).click.wait()
-        adb_shell('input text Store')
-        d(text='Google Play Store', packageName=_SETTINGS_PKG).click.wait()
-        d(textMatches='(?i)DISABLE').click.wait()
+        adb_shell('am start -a android.settings.APPLICATION_DETAILS_SETTINGS '
+                  '-d package:' + _PLAY_STORE_PKG)
+
+        # Note: the straightforward "pm disable <package>" command would be
+        # better, but that requires root permissions, which aren't available on
+        # a pre-release image being tested. The only other way is through the
+        # Settings UI, but which might change.
+        from uiautomator import device as d
+        d(textMatches='(?i)DISABLE', packageName=_SETTINGS_PKG).wait.exists()
+        d(textMatches='(?i)DISABLE', packageName=_SETTINGS_PKG).click.wait()
         d(textMatches='(?i)DISABLE APP').click.wait()
         ok_button = d(textMatches='(?i)OK')
         if ok_button.exists:

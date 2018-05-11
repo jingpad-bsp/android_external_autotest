@@ -9,7 +9,8 @@ NAME = "enterprise_CFM_Perf"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "enterprise"
-ATTRIBUTES = "suite:hotrod, suite:hotrod-release"
+ATTRIBUTES = "suite:hotrod"
+DEPENDENCIES = "hangout_app"
 TEST_TYPE = "server"
 JOB_RETRIES = 3
 

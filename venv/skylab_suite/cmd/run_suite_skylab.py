@@ -25,15 +25,17 @@ def _parse_suite_specs(options):
     builds = suite_common.make_builds_from_options(options)
     return cros_suite.SuiteSpecs(
             builds = builds,
+            suite_file_name = suite_common.canonicalize_suite_name(
+                    options.suite_name),
             test_source_build = suite_common.get_test_source_build(
-                builds, test_source_build=options.test_source_build)
+                    builds, test_source_build=options.test_source_build),
     )
 
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
     suite_job = cros_suite.Suite(_parse_suite_specs(options))
-    suite_job.stage_suite_artifacts()
+    suite_job.prepare()
     dynamic_suite.run(suite_job)
     return suite_tracking.SuiteResult(
                 suite_tracking.SUITE_RESULT_CODES.OK)

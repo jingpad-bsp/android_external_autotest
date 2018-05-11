@@ -119,6 +119,48 @@ def spawn_starting_job_handler(manager, job):
     return drone
 
 
+# TODO(crbug.com/748234): This is temporary to enable toggling
+# lucifer rollouts with an option.
+def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
+    """Spawn job_reporter to handle a job.
+
+    Pass all arguments by keyword.
+
+    @param manager: scheduler.drone_manager.DroneManager instance
+    @param job: Job instance
+    @param autoserv_exit: autoserv exit status
+    @param pidfile_id: PidfileId instance
+    @returns: Drone instance
+    """
+    manager = _DroneManager(manager)
+    if pidfile_id is None:
+        drone = manager.pick_drone_to_use()
+    else:
+        drone = manager.get_drone_for_pidfile(pidfile_id)
+    results_dir = _results_dir(manager, job)
+    args = [
+            _JOB_REPORTER_PATH,
+
+            # General configuration
+            '--jobdir', _get_jobdir(),
+            '--run-job-path', _get_run_job_path(),
+
+            # Job specific
+            '--job-id', str(job.id),
+            '--lucifer-level', 'GATHERING',
+            '--autoserv-exit', str(autoserv_exit),
+            '--results-dir', results_dir,
+    ]
+    if _get_gcp_creds():
+        args = [
+                'GOOGLE_APPLICATION_CREDENTIALS=%s'
+                % pipes.quote(_get_gcp_creds()),
+        ] + args
+    output_file = os.path.join(results_dir, 'job_reporter_output.log')
+    drone.spawn(_ENV, args, output_file=output_file)
+    return drone
+
+
 _LUCIFER_DIR = 'lucifer'
 
 

@@ -31,9 +31,6 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         'rdd attach, fake_servo on, rdd detach',
         'rdd attach, fake_servo off, rdd detach',
     ]
-    # Used to reset the servo and ccd state after the test.
-    CLEANUP = 'fake_servo on, rdd attach'
-
     ON = 'on'
     OFF = 'off'
     UNDETECTABLE = 'undetectable'
@@ -136,9 +133,7 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         else:
             self.STATE_VALUES[self.ON].append(self.ON_CCD_ACCESSIBLE)
 
-        self._original_ccd_level = self.cr50.get_ccd_level()
-        # Enable testlab mode
-        self._original_testlab_state = self.servo.get('cr50_testlab')
+        self.check_servo_monitor()
         self.cr50.set_ccd_testlab('on')
         if not self.cr50.testlab_is_on():
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
@@ -147,12 +142,23 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
 
     def cleanup(self):
-        """Disable CCD and reenable the EC uart"""
-        self.reset_ccd()
-        self.run_steps(self.CLEANUP)
-        if hasattr(self, '_original_ccd_level'):
-            self.cr50.set_ccd_level(self._original_ccd_level)
+        """Reenable the EC uart"""
+        self.fake_servo('on')
+        self.rdd('detach')
+        self.rdd('attach')
         super(firmware_Cr50CCDServoCap, self).cleanup()
+
+
+    def check_servo_monitor(self):
+        """Make sure cr50 can detect servo connect and disconnect"""
+        servo_detect_error = error.TestNAError("Cannot run on device that does "
+                "not support servo dectection with ec_uart_en:off/on")
+        self.fake_servo('off')
+        if self.get_ccdstate()['Servo'] not in self.STATE_VALUES[self.OFF]:
+            raise servo_detect_error
+        self.fake_servo('on')
+        if self.get_ccdstate()['Servo'] not in self.STATE_VALUES[self.ON]:
+            raise servo_detect_error
 
 
     def get_ccdstate(self):

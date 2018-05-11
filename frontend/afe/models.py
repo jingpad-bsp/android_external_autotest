@@ -1490,9 +1490,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool, default=False)
     FETCH_READONLY_JOBS = global_config.global_config.get_config_value(
         'AUTOTEST_WEB','readonly_heartbeat', type=bool, default=False)
-    READONLY_WHITELIST = global_config.global_config.get_config_value(
-        'AUTOTEST_WEB','readonly_heartbeat_test_whitelist',
-        type=list, default=[])
 
 
     owner = dbmodels.CharField(max_length=255)

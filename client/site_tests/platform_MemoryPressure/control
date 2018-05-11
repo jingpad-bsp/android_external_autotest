@@ -4,7 +4,7 @@ CRITERIA = """
 This test fails if it times out or if the kernel crashes.
 TODO: should also check that no OOM-kills occur.
 """
-ATTRIBUTES = "suite:stress_experimental"
+ATTRIBUTES = "suite:power_daily"
 
 AUTHOR="Luigi Semenzato"
 TIME = "MEDIUM"

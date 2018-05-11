@@ -5,6 +5,7 @@
 import logging
 import pprint
 import time
+import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
@@ -77,11 +78,11 @@ class firmware_Cr50DeviceState(Cr50Test):
         KEY_RESET : [0, 0],
         KEY_DEEP_SLEEP : [0, DEEP_SLEEP_MAX],
         KEY_TIME : [0, CONSERVATIVE_WAIT_TIME],
-        'S0ix ' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
+        'S0ix' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
         # Cr50 may enter deep sleep an extra time, because of how the test
         # collects taskinfo counts. Just verify that it does enter deep sleep
-        'S3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
-        'G3 ' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        'S3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
+        'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
         # ARM devices don't enter deep sleep in S3
         ARM + 'S3' + DEEP_SLEEP_STEP_SUFFIX : [0, 0],
         ARM + 'G3' + DEEP_SLEEP_STEP_SUFFIX : [1, 2],
@@ -104,18 +105,20 @@ class firmware_Cr50DeviceState(Cr50Test):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.cr50.send_command_get_output('taskinfo',
             self.GET_TASKINFO)[0][1].strip()
+        logging.info(output)
         return output
 
 
     def get_irq_counts(self):
         """Return a dict with the irq numbers as keys and counts as values"""
         output = self.get_taskinfo_output()
-        irq_list = output.split('\n')
+        irq_list = re.findall('\d+\s+\d+\r', output)
         # Make sure the regular sleep irq is in the dictionary, even if cr50
         # hasn't seen any interrupts. It's important the test sees that there's
         # never an interrupt.
         irq_counts = { self.KEY_REGULAR_SLEEP : 0 }
         for irq_info in irq_list:
+            logging.debug(irq_info)
             num, count = irq_info.split()
             irq_counts[int(num)] = int(count)
         irq_counts[self.KEY_RESET] = int(self.servo.get('cr50_reset_count'))
@@ -340,10 +343,10 @@ class firmware_Cr50DeviceState(Cr50Test):
 
 
     def run_transition(self, state):
-        """Verify there are no Cr50 interrupt storms in the power state.
+        """Enter the given power state and reenter s0
 
-        Enter the power state, return to S0, and then verify that Cr50 behaved
-        correctly.
+        Enter the power state and return to S0. Wait long enough to ensure cr50
+        will enter sleep mode, so we can verify that as well.
 
         Args:
             state: the power state: S0ix, S3, or G3
@@ -358,6 +361,16 @@ class firmware_Cr50DeviceState(Cr50Test):
 
         # Return to S0
         self.enter_state('S0')
+
+
+    def verify_state(self, state):
+        """Verify cr50 behavior while running through the power state"""
+
+        try:
+            self.run_transition(state)
+        finally:
+            # reset the system to S0 no matter what happens
+            self.trigger_s0()
 
         # Check that the progress of the irq counts seems reasonable
         self.check_for_errors(state)
@@ -381,17 +394,22 @@ class firmware_Cr50DeviceState(Cr50Test):
         # Make sure the DUT is in s0
         self.enter_state('S0')
 
-        # Login before entering S0ix so cr50 will be able to enter regular sleep
-        if not self.is_arm:
+        # Check if the device supports S0ix. The exit status will be 0 if it
+        # does 1 if it doesn't.
+        result = self.host.run('check_powerd_config --suspend_to_idle',
+                ignore_status=True)
+        if not result.exit_status:
+            # Login before entering S0ix so cr50 will be able to enter regular
+            # sleep
             client_at = autotest.Autotest(self.host)
             client_at.run_test('login_LoginSuccess')
-            self.run_transition('S0ix')
+            self.verify_state('S0ix')
 
         # Enter S3
-        self.run_transition('S3')
+        self.verify_state('S3')
 
         # Enter G3
-        self.run_transition('G3')
+        self.verify_state('G3')
         if self.run_errors:
             self.all_errors[self.ccd_str] = self.run_errors
 

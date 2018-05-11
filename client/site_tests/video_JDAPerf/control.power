@@ -25,4 +25,4 @@ jpeg decoding for hardware decode and software decode.
 """
 
 
-job.run_test('video_JDAPerf', power_test=True)
+job.run_test('video_JDAPerf', capability='hw_dec_jpeg', power_test=True)

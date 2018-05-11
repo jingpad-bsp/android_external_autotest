@@ -22,6 +22,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.frontend import setup_django_environment
+from autotest_lib.server import site_utils
 from autotest_lib.site_utils import server_manager_utils
 
 from chromite.lib import metrics
@@ -80,34 +81,37 @@ def parse_options():
 
 def main():
     """Main script."""
-    options = parse_options()
-    log_config = logging_config.LoggingConfig()
-    if options.logfile:
-        log_config.add_file_handler(
-                file_path=os.path.abspath(options.logfile), level=logging.DEBUG)
+    with site_utils.SetupTsMonGlobalState('check_slave_db_delay',
+                                          short_lived=True):
+        options = parse_options()
+        log_config = logging_config.LoggingConfig()
+        if options.logfile:
+            log_config.add_file_handler(
+                file_path=os.path.abspath(options.logfile),
+                level=logging.DEBUG
+            )
+        db_user = CONFIG.get_config_value('AUTOTEST_WEB', 'user')
+        db_password = CONFIG.get_config_value('AUTOTEST_WEB', 'password')
 
-    db_user = CONFIG.get_config_value('AUTOTEST_WEB', 'user')
-    db_password = CONFIG.get_config_value('AUTOTEST_WEB', 'password')
+        global_db_user = CONFIG.get_config_value(
+                    'AUTOTEST_WEB', 'global_db_user', default=db_user)
+        global_db_password = CONFIG.get_config_value(
+                    'AUTOTEST_WEB', 'global_db_password', default=db_password)
 
-    global_db_user = CONFIG.get_config_value(
-                'AUTOTEST_WEB', 'global_db_user', default=db_user)
-    global_db_password = CONFIG.get_config_value(
-                'AUTOTEST_WEB', 'global_db_password', default=db_password)
+        logging.info('Start checking Seconds_Behind_Master of slave databases')
 
-    logging.info('Start checking Seconds_Behind_Master of slave databases')
+        if not options.replicas:
+            logging.warning('No replicas checked.')
+        else:
+            for replica in options.replicas:
+                check_delay(replica, global_db_user, global_db_password)
 
-    if not options.replicas:
-        logging.warning('No replicas checked.')
-    else:
-        for replica in options.replicas:
-            check_delay(replica, global_db_user, global_db_password)
+        slaves = server_manager_utils.get_servers(
+                role='database_slave', status='primary')
+        for slave in slaves:
+            check_delay(slave.hostname, db_user, db_password)
 
-    slaves = server_manager_utils.get_servers(
-            role='database_slave', status='primary')
-    for slave in slaves:
-        check_delay(slave.hostname, db_user, db_password)
-
-    logging.info('Finished checking.')
+        logging.info('Finished checking.')
 
 
 if __name__ == '__main__':

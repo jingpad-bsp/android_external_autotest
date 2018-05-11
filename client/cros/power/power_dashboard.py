@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import json
 import numpy
 import os
+import re
 import time
 import urllib
 import urllib2
@@ -47,7 +49,7 @@ class BaseDashboard(object):
             A dictionary of powerlog
         """
         powerlog_dict = {
-            'format_version': 3,
+            'format_version': 4,
             'timestamp': time.time(),
             'test': self._testname,
             'dut': self._create_dut_info_dict(raw_measurement['data'].keys()),
@@ -70,17 +72,17 @@ class BaseDashboard(object):
 
     def _save_json(self, powerlog_dict, resultsdir, filename='power_log.json'):
         """Convert powerlog dict to human readable formatted JSON and
-        save to <resultsdir>/<filename>.
+        append to <resultsdir>/<filename>.
 
         Args:
             powerlog_dict: dictionary of power data
             resultsdir: directory to save formatted JSON object
-            filename: filename to save
+            filename: filename to append to
         """
         if not os.path.exists(resultsdir):
             raise error.TestError('resultsdir %s does not exist.' % resultsdir)
         filename = os.path.join(resultsdir, filename)
-        with file(filename, 'w') as f:
+        with file(filename, 'a') as f:
             json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
 
     def _upload(self, powerlog_dict, uploadurl):
@@ -168,6 +170,18 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
     """Dashboard class for power_status.MeasurementLogger.
     """
 
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+        super(MeasurementLoggerDashboard, self).__init__(logger, testname,
+                                                         resultsdir, uploadurl)
+        self._unit = None
+        self._type = None
+        self._padded_domains = None
+
+    def _create_padded_domains(self):
+        """Pad the domains name for dashboard to make the domain name better
+        sorted in alphabetical order"""
+        pass
+
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
         power measurement dictionary.
@@ -175,21 +189,31 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         Return:
             raw measurement dictionary
         """
-        power_dict = {
-            'sample_count': len(self._logger.readings),
+        power_dict = collections.defaultdict(dict, {
+            'sample_count': len(self._logger.readings) - 1,
             'sample_duration': 0,
             'average': dict(),
             'data': dict(),
-        }
+        })
         if power_dict['sample_count'] > 1:
             total_duration = self._logger.times[-1] - self._logger.times[0]
             power_dict['sample_duration'] = \
-                    1.0 * total_duration / (power_dict['sample_count'] - 1)
+                    1.0 * total_duration / power_dict['sample_count']
 
+        self._create_padded_domains()
         for i, domain_readings in enumerate(zip(*self._logger.readings)):
-            domain = self._logger.domains[i]
-            power_dict['data'][domain] = domain_readings
-            power_dict['average'][domain] = numpy.average(domain_readings)
+            if self._padded_domains:
+                domain = self._padded_domains[i]
+            else:
+                domain = self._logger.domains[i]
+            # Remove first item because that is the log before the test begin.
+            power_dict['data'][domain] = domain_readings[1:]
+            power_dict['average'][domain] = \
+                    numpy.average(power_dict['data'][domain])
+            if self._unit:
+                power_dict['unit'][domain] = self._unit
+            if self._type:
+                power_dict['type'][domain] = self._type
         return power_dict
 
 
@@ -202,6 +226,9 @@ class PowerLoggerDashboard(MeasurementLoggerDashboard):
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(PowerLoggerDashboard, self).__init__(logger, testname, resultsdir,
                                                    uploadurl)
+        self._unit = 'watt'
+        self._type = 'power'
+
 
 class SimplePowerLoggerDashboard(ClientTestDashboard):
     """Dashboard class for simple system power measurement taken and publishing
@@ -233,3 +260,62 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
             'data': {'vbat': [self._power_watts]}
         }
         return power_dict
+
+
+class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
+    """Dashboard class for power_status.CPUStatsLogger.
+    """
+
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+        if uploadurl is None:
+            uploadurl = 'http://chrome-power.appspot.com/rapl'
+        super(CPUStatsLoggerDashboard, self).__init__(logger, testname,
+                                                      resultsdir, uploadurl)
+        self._unit = 'percent'
+
+    def _convert(self):
+        power_dict = super(CPUStatsLoggerDashboard, self)._convert()
+        for rail in power_dict['data']:
+            power_dict['type'][rail] = rail.rsplit('_', 1)[0]
+        return power_dict
+
+    def _create_padded_domains(self):
+        """Padded number in the domain name with dot to make it sorted
+        alphabetically.
+
+        Example:
+        cpuidle_C1-SKL, cpuidle_C1E-SKL, cpuidle_C2-SKL, cpuidle_C10-SKL
+        will be changed to
+        cpuidle_C.1-SKL, cpuidle_C.1E-SKL, cpuidle_C.2-SKL, cpuidle_C10-SKL
+        which make it in alphabetically order.
+        """
+        longest = collections.defaultdict(int)
+        searcher = re.compile("[0-9]+")
+        number_strs = []
+        # Split cpuidle_C1E-SKL to "cpuidle" and "C1E-SKL"
+        splitted_domains = \
+            [domain.rsplit('_', 1) for domain in self._logger.domains]
+        for domain_type, domain_name in splitted_domains:
+            result = searcher.search(domain_name)
+            if not result:
+                number_strs.append('')
+                continue
+            number_str = result.group(0)
+            number_strs.append(number_str)
+            longest[domain_type] = max(longest[domain_type], len(number_str))
+
+        self._padded_domains = []
+        for i in range(len(self._logger.domains)):
+            if not number_strs[i]:
+                self._padded_domains.append(self._logger.domains[i])
+                continue
+
+            domain_type, domain_name = splitted_domains[i]
+            formatter_component = '{:.>%ds}' % longest[domain_type]
+
+            # Change "cpuidle_C1E-SKL" to "cpuidle_C{:.>2s}E-SKL"
+            formatter_str = domain_type + '_' + \
+                            searcher.sub(formatter_component, domain_name)
+
+            # Run "cpuidle_C{:_>2s}E-SKL".format("1") to get "cpuidle_C.1E-SKL"
+            self._padded_domains.append(formatter_str.format(number_strs[i]))

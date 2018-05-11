@@ -121,8 +121,9 @@ _HOSTNAME_PATTERN = re.compile(
 _REPAIR_LOOP_THRESHOLD = 4
 
 
+_METRICS_PREFIX = 'chromeos/autotest/inventory'
 _UNTESTABLE_PRESENCE_METRIC = metrics.BooleanMetric(
-    'chromeos/autotest/inventory/untestable',
+    '%s/untestable' % _METRICS_PREFIX,
     'DUTs that cannot be scheduled for testing')
 
 
@@ -1246,11 +1247,8 @@ def _parse_command(argv):
                               'recommendation)'))
     parser.add_argument('--report-untestable', action='store_true',
                         help='Check for devices unable to run tests.')
-    parser.add_argument('--debug-metrics', action='store_true',
-                        help='Include debug information about the metrics '
-                             'that would be reported ')
     parser.add_argument('--debug', action='store_true',
-                        help='Print e-mail messages on stdout '
+                        help='Print e-mail, metrics messages on stdout '
                              'without sending them.')
     parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
@@ -1318,22 +1316,31 @@ def main(argv):
     if not arguments:
         sys.exit(1)
     _configure_logging(arguments)
-    try:
-        if arguments.debug_metrics or not arguments.debug:
-            metrics_file = None if not arguments.debug_metrics else '/dev/null'
-            with site_utils.SetupTsMonGlobalState(
-                    'lab_inventory', debug_file=metrics_file,
-                    auto_flush=False):
+
+    if arguments.debug:
+        logging.info('--debug mode: Will not  report metrics to monarch')
+        metrics_file = '/dev/null'
+    else:
+        metrics_file = None
+
+    with site_utils.SetupTsMonGlobalState(
+            'lab_inventory', debug_file=metrics_file,
+            auto_flush=False):
+        success = False
+        try:
+            with metrics.SecondsTimer('%s/duration' % _METRICS_PREFIX):
                 _perform_inventory_reports(arguments)
+            success = True
+        except KeyboardInterrupt:
+            pass
+        except (EnvironmentError, Exception):
+            # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
+            logging.exception('Error escaped main')
+            raise
+        finally:
+            metrics.Counter('%s/tick' % _METRICS_PREFIX).increment(
+                    fields={'success': success})
             metrics.Flush()
-        else:
-            _perform_inventory_reports(arguments)
-    except KeyboardInterrupt:
-        pass
-    except EnvironmentError as e:
-        logging.exception('Unexpected OS error: %s', e)
-    except Exception as e:
-        logging.exception('Unexpected exception: %s', e)
 
 
 def get_inventory(afe):

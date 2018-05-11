@@ -45,6 +45,14 @@ class ServiceStopper(object):
 
     POWER_DRAW_SERVICES = ['powerd', 'update-engine', 'bluetoothd', 'vnc']
 
+    # List of thermal throttling services that should be disabled.
+    # - temp_metrics for link.
+    # - thermal for daisy, snow, pit etc.
+    # - dptf for intel >= baytrail
+    # TODO(ihf): cpu_quiet on nyan isn't a service. We still need to disable it
+    #            on nyan. See crbug.com/357457.
+    THERMAL_SERVICES = ['dptf', 'temp_metrics', 'thermal']
+
     def __init__(self, services_to_stop=[]):
         """Initialize instance of class.
 
@@ -90,3 +98,8 @@ class ServiceStopper(object):
     def close(self):
         """Equivalent to restore_services."""
         self.restore_services()
+
+
+def get_thermal_service_stopper():
+    """Convenience method to retrieve thermal service stopper."""
+    return ServiceStopper(services_to_stop=ServiceStopper.THERMAL_SERVICES)

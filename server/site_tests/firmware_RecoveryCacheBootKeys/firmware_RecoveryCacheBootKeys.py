@@ -130,7 +130,7 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
             'apshutdown',
             ["\[[0-9\.]+ chipset_force_shutdown\(\)"])
         self.ec.send_command_get_output('hostevent set 0x20004000',
-                                        ["Events:\s+0x0000000020004000"])
+                                        ["Events:\s+0x0*20004000"])
         time.sleep(self.APSHUTDOWN_DELAY)
         self.ec.send_command('powerbtn')
         self.switcher.wait_for_client()
