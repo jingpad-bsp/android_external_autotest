@@ -93,6 +93,10 @@
     "master_name": "ChromeOSPower"
   },
   {
+    "autotest_name": "graphics_Chrome",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_dEQP.bvt",
     "master_name": "ChromeOS_Graphics",
     "dashboard_test_name": "graphics_dEQP"
