@@ -566,10 +566,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.debug('No autotest installed directory found.')
 
 
-    def stage_image_for_servo(self, image_name=None):
+    def stage_image_for_servo(self, image_name=None, artifact='test_image'):
         """Stage a build on a devserver and return the update_url.
 
         @param image_name: a name like lumpy-release/R27-3837.0.0
+        @param artifact: a string like 'test_image'. Requests
+            appropriate image to be staged.
         @returns an update URL like:
             http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
         """
@@ -577,8 +579,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             image_name = self.get_cros_repair_image_name()
         logging.info('Staging build for servo install: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
-        devserver.stage_artifacts(image_name, ['test_image'])
-        return devserver.get_test_image_url(image_name)
+        devserver.stage_artifacts(image_name, [artifact])
+        if artifact == 'test_image':
+            return devserver.get_test_image_url(image_name)
+        elif artifact == 'recovery_image':
+            return devserver.get_recovery_image_url(image_name)
+        else:
+            raise error.AutoservError("Bad artifact!")
 
 
     def stage_factory_image_for_servo(self, image_name):
