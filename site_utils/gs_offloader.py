@@ -159,22 +159,6 @@ def _get_metrics_fields(dir_entry):
     return fields;
 
 
-def _get_es_metadata(dir_entry):
-    """Get ES metadata for the given test result directory.
-
-    @param dir_entry: Directory entry to offload.
-    @return A dictionary for the metadata to be uploaded.
-    """
-    fields = _get_metrics_fields(dir_entry)
-    fields['hostname'] = socket.gethostname()
-    # Include more data about the test job in metadata.
-    if dir_entry:
-        fields['dir_entry'] = dir_entry
-        fields['job_id'] = job_directories.get_job_id_or_task_id(dir_entry)
-
-    return fields
-
-
 def _get_cmd_list(multiprocessing, dir_entry, gs_path):
     """Return the command to offload a specified directory.
 
@@ -670,8 +654,7 @@ class GSOffloader(BaseGSOffloader):
             return
         start_time = time.time()
         metrics_fields = _get_metrics_fields(dir_entry)
-        es_metadata = _get_es_metadata(dir_entry)
-        error_obj = _OffloadError(start_time, es_metadata)
+        error_obj = _OffloadError(start_time)
         try:
             sanitize_dir(dir_entry)
             if DEFAULT_CTS_RESULTS_GSURI:
@@ -679,7 +662,6 @@ class GSOffloader(BaseGSOffloader):
 
             if LIMIT_FILE_COUNT:
                 limit_file_count(dir_entry)
-            es_metadata['size_kb'] = file_utils.get_directory_size_kibibytes(dir_entry)
 
             process = None
             with timeout_util.Timeout(OFFLOAD_TIMEOUT_SECS):
@@ -745,10 +727,9 @@ class GSOffloader(BaseGSOffloader):
 class _OffloadError(Exception):
     """Google Storage offload failed."""
 
-    def __init__(self, start_time, es_metadata):
-        super(_OffloadError, self).__init__(start_time, es_metadata)
+    def __init__(self, start_time):
+        super(_OffloadError, self).__init__(start_time)
         self.start_time = start_time
-        self.es_metadata = es_metadata
 
 
 
