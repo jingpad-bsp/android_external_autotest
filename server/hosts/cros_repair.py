@@ -527,7 +527,7 @@ class AutoUpdateRepair(hosts.RepairAction):
         update_url = tools.image_url_pattern() % (
                 devserver.url(), image_name)
         afe_utils.machine_install_and_update_labels(
-                host, update_url=update_url, force_update=True)
+                host, update_url=update_url)
 
     @property
     def description(self):

@@ -431,9 +431,6 @@ def _is_in_installed_packages_list(package, option=None):
     package_entry = 'package:' + package
     ret = package_entry in packages
 
-    # FIXME(ricadoq): remove me.
-    # Temp fix to try to understand why a packages is not being installed on
-    # the server. Cannot reproduce it locally.
     if not ret:
         logging.info('Could not find "%s" in %s' %
                      (package_entry, str(packages)))
@@ -655,9 +652,6 @@ class ArcTest(test.test):
             for apk in apks:
                 logging.info('Installing %s', apk)
                 out = adb_install('%s/%s' % (apk_path, apk))
-                # FIXME(ricardo): Remove me.
-                # Trying to find out why certain APKs don't get installed on
-                # the server. Cannot reproduce it locally.
                 logging.info('Install apk output: %s' % str(out))
             # Verify if package(s) are installed correctly
             if not full_pkg_names:

@@ -530,7 +530,7 @@ class Servo(object):
         try:
             self._server.set(gpio_name, gpio_value)
         except  xmlrpclib.Fault as e:
-            err_msg = "Setting '%s' to '%s' :: %s" % \
+            err_msg = "Setting '%s' to %r :: %s" % \
                 (gpio_name, gpio_value, self._get_xmlrpclib_exception(e))
             raise error.TestFail(err_msg)
 
@@ -623,6 +623,11 @@ class Servo(object):
                     logging.error('Failed to make image noninteractive. '
                                   'Please take a look at Servo Logs.')
 
+    def boot_in_recovery_mode(self):
+        """Boot host DUT in recovery mode."""
+        self._power_state.power_on(rec_mode=self._power_state.REC_ON)
+        self.switch_usbkey('dut')
+
 
     def install_recovery_image(self, image_path=None,
                                make_image_noninteractive=False):
@@ -639,8 +644,7 @@ class Servo(object):
                 after installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
-        self._power_state.power_on(rec_mode=self._power_state.REC_ON)
-        self.switch_usbkey('dut')
+        self.boot_in_recovery_mode()
 
 
     def _scp_image(self, image_path):

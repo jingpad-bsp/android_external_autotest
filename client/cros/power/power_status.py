@@ -38,6 +38,8 @@ class DevStat(object):
 
 
     def read_val(self,  file_name, field_type):
+        """Read a value from file.
+        """
         try:
             path = file_name
             if not file_name.startswith('/'):
@@ -52,11 +54,19 @@ class DevStat(object):
 
 
     def read_all_vals(self):
+        """Read all values.
+        """
         for field, prop in self.fields.iteritems():
             if prop[0]:
                 val = self.read_val(prop[0], prop[1])
                 setattr(self, field, val)
 
+    def update(self):
+        """Update the DevStat.
+
+        Need to implement in subclass.
+        """
+        pass
 
 class ThermalStatACPI(DevStat):
     """
@@ -184,10 +194,10 @@ class ThermalStat(object):
         for thermal_glob_path, thermal_type in thermal_stat_types:
             try:
                 thermal_path = glob.glob(thermal_glob_path)[0]
-                logging.debug('Using %s for thermal info.' % thermal_path)
+                logging.debug('Using %s for thermal info.', thermal_path)
                 self._thermals.append(thermal_type(thermal_path))
             except:
-                logging.debug('Could not find thermal path %s, skipping.' %
+                logging.debug('Could not find thermal path %s, skipping.',
                               thermal_glob_path)
 
 
@@ -346,7 +356,7 @@ class BatteryStat(DevStat):
             self.remaining_time =  self.energy / self.energy_rate
 
 
-class LineStatDummy(object):
+class LineStatDummy(DevStat):
     """
     Dummy line stat for devices which don't provide power_supply related sysfs
     interface.
@@ -492,6 +502,8 @@ class SysStat(object):
 
 
     def percent_current_charge(self):
+        """Returns current charge compare to design capacity in percent.
+        """
         return self.battery[0].charge_now * 100 / \
                self.battery[0].charge_full_design
 
@@ -1545,9 +1557,9 @@ class MeasurementLogger(threading.Thread):
                     meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
                 except ValueError, e:
                     logging.debug('Error logging measurements: %s', str(e))
-                    logging.debug('timestamps %d %s' % (t.len, t))
-                    logging.debug('timestamp start, end %f %f' % (tstart, tend))
-                    logging.debug('measurements %d %s' % (meas.len, meas))
+                    logging.debug('timestamps %d %s', t.len, t)
+                    logging.debug('timestamp start, end %f %f', tstart, tend)
+                    logging.debug('measurements %d %s', meas.len, meas)
 
                 # If sub-test terminated early, avoid calculating avg, std and
                 # min
@@ -1627,6 +1639,8 @@ class CPUStatsLogger(MeasurementLogger):
 
 
 class PowerLogger(MeasurementLogger):
+    """Class to measure power consumption.
+    """
     def save_results(self, resultsdir, fname=None):
         if not fname:
             fname = 'power_results_%.0f.txt' % time.time()
