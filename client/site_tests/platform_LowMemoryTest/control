@@ -1,0 +1,15 @@
+NAME = "platform_LowMemoryTest"
+PURPOSE = "Tab discarding functional tests."
+CRITERIA = """
+
+"""
+AUTHOR="Vovo Yang"
+TIME = "MEDIUM"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "platform"
+TEST_TYPE = "client"
+DOC = """
+
+"""
+
+job.run_test('platform_LowMemoryTest')
