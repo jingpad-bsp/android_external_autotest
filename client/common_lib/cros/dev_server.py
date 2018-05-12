@@ -1690,6 +1690,18 @@ class ImageServer(ImageServerBase):
         return self._get_image_url(image) + '/chromiumos_test_image.bin'
 
 
+    def get_recovery_image_url(self, image):
+        """Returns a URL to a staged recovery image.
+
+        @param image: the image that was fetched.
+
+        @return A fully qualified URL that can be used for downloading the
+                image.
+
+        """
+        return self._get_image_url(image) + '/recovery_image.bin'
+
+
     @remote_devserver_call()
     def get_dependencies_file(self, build):
         """Ask the dev server for the contents of the suite dependencies file.
