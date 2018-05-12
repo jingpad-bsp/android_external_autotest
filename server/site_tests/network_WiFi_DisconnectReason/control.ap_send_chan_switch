@@ -13,7 +13,6 @@ TEST_TYPE = 'Server'
 #       Removing from all test suites for now.
 
 ATTRIBUTES = (
-#             'suite:wifi_correctness_cros_core, '
 #             'suite:wifi_matfunc, '
 #             'suite:wifi_matfunc_noservo'
 )
