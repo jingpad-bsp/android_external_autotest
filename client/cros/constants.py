@@ -131,7 +131,6 @@ TOKEN_AUTH_NEW_URL = '/TokenAuth'
 UI_LOG = '/var/log/ui/ui.LATEST'
 UI_RESPAWN_TIMESTAMPS_FILE = '/tmp/ui-respawn-timestamps'
 UI_TOO_CRASHY_TIMESTAMPS_FILE = '/tmp/ui-too-crashy-timestamps'
-UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
 
 RESOLV_CONF_FILE = '/etc/resolv.conf'
 
