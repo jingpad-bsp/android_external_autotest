@@ -20,6 +20,9 @@ from skylab_suite import suite_parser
 from skylab_suite import suite_tracking
 
 
+PROVISION_SUITE_NAME = 'provision'
+
+
 def _parse_suite_specs(options):
     suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
     builds = suite_common.make_builds_from_options(options)
@@ -30,12 +33,19 @@ def _parse_suite_specs(options):
                     options.suite_name),
             test_source_build=suite_common.get_test_source_build(
                     builds, test_source_build=options.test_source_build),
+            suite_args=options.suite_args,
+            timeout_mins=options.timeout_mins,
     )
 
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
-    suite_job = cros_suite.Suite(_parse_suite_specs(options))
+    suite_specs = _parse_suite_specs(options)
+    if options.suite_name == PROVISION_SUITE_NAME:
+        suite_job = cros_suite.ProvisionSuite(suite_specs)
+    else:
+        suite_job = cros_suite.Suite(suite_specs)
+
     suite_job.prepare()
     dynamic_suite.run(suite_job, options.dry_run)
     return suite_tracking.SuiteResult(
