@@ -2706,16 +2706,17 @@ def poll_for_condition(condition,
                        timeout=10,
                        sleep_interval=0.1,
                        desc=None):
-    """Polls until a condition becomes true.
+    """Polls until a condition is evaluated to true.
 
-    @param condition: function taking no args and returning bool
-    @param exception: exception to throw if condition doesn't become true
+    @param condition: function taking no args and returning anything that will
+                      evaluate to True in a conditional check
+    @param exception: exception to throw if condition doesn't evaluate to true
     @param timeout: maximum number of seconds to wait
     @param sleep_interval: time to sleep between polls
     @param desc: description of default TimeoutError used if 'exception' is
                  None
 
-    @return The true value that caused the poll loop to terminate.
+    @return The evaluated value that caused the poll loop to terminate.
 
     @raise 'exception' arg if supplied; TimeoutError otherwise
     """
