@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
@@ -18,6 +18,8 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
     _MWIFIEX_RESET_PATH = "/sys/kernel/debug/mwifiex/%s/reset"
+    _MWIFIEX_RESET_TIMEOUT = 20
+    _MWIFIEX_RESET_INTERVAL = 0.5
     _NUM_RESETS = 15
     _NUM_SUSPENDS = 5
     _SUSPEND_DELAY = 10
@@ -29,25 +31,6 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
         return self._MWIFIEX_RESET_PATH % self.context.client.wifi_if
 
 
-    def poll_for_condition(self, condition, timeout=20, interval=0.5):
-        """Helper for polling for some condition.
-
-        @param condition: a condition function for checking the state we're
-                          polling; should return True for success, False for
-                          failure
-        @param timeout: max number of seconds to poll for
-        @param interval: polling interval, in seconds
-
-        @returns: False if timed out waiting for condition; True otherwise
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            if condition():
-                return True
-            time.sleep(interval)
-        return False
-
-
     def mwifiex_reset_exists(self):
         """Check if the mwifiex reset file is present (i.e., a mwifiex
         interface is present).
@@ -57,11 +40,7 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def mwifiex_reset(self, client):
-        """Perform mwifiex reset, and wait for the interface to come back up.
-
-        @returns: True if interface comes back up successfully; False for
-        errors (e.g., timeout)
-        """
+        """Perform mwifiex reset and wait for the interface to come back up."""
 
         ssid = self.context.router.get_ssid()
 
@@ -74,11 +53,13 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
                 timeout_seconds=20)
 
         # Now wait for the reset interface file to come back.
-        if not self.poll_for_condition(self.mwifiex_reset_exists):
-            logging.error("Failed, waiting for interface to reappear")
-            return False
-
-        return True
+        utils.poll_for_condition(
+                condition=self.mwifiex_reset_exists,
+                exception=error.TestFail(
+                        'Failed to reset device %s' %
+                        self.context.client.wifi_if),
+                timeout=self._MWIFIEX_RESET_TIMEOUT,
+                sleep_interval=self._MWIFIEX_RESET_INTERVAL)
 
 
     def run_once(self):
@@ -106,10 +87,7 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
             logging.info("Running %d resets", self._NUM_RESETS)
 
             for j in range(self._NUM_RESETS):
-                if not self.mwifiex_reset(client):
-                    raise error.TestFail('Failed to reset device %s' %
-                                         client.wifi_if)
-
+                self.mwifiex_reset(client)
                 client.wait_for_connection(ssid)
                 self.context.assert_ping_from_dut()
 
