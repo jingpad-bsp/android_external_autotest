@@ -41,9 +41,13 @@ STATUS_FIELDS = (
     'NoNewPrivs',
     'Seccomp',
 )
+# These fields are not available via ps or /proc/PID/status.
+EXTRA_FIELDS = (
+    'mountinfo',
+)
 PsOutput = namedtuple("PsOutput",
-                      ' '.join([field.split(':')[0].lower()
-                                for field in PS_FIELDS + STATUS_FIELDS]))
+                      ' '.join([field.split(':')[0].lower() for field in
+                                PS_FIELDS + STATUS_FIELDS + EXTRA_FIELDS]))
 
 # Constants that match the values in /proc/PID/status Seccomp field.
 # See `man 5 proc` for more details.
@@ -56,6 +60,14 @@ SECCOMP_MAP = {
     SECCOMP_MODE_STRICT: 'strict',
     SECCOMP_MODE_FILTER: 'filter',
 }
+
+# These mounts only occur in test images. They should be limited to the init
+# mount namespace, so no service should have them.
+TEST_IMAGE_MOUNTS = (
+    '/usr/local',
+    '/var/db/pkg',
+    '/var/lib/portage',
+)
 
 
 def get_properties(service, init_process):
@@ -82,6 +94,27 @@ def yes_or_no(value):
     """
 
     return 'Yes' if value else 'No'
+
+
+def get_mount_info(pid):
+    """Returns the contents of /proc/PID/mountinfo.
+
+    @param pid: The process id.
+    """
+    try:
+        return tuple(utils.get_mount_info(process=pid))
+    except IOError as e:
+        # This process might have died already.
+        logging.warning('Failed to read mountinfo for pid %s: %s', pid, e)
+        return ()
+
+
+def has_test_image_mounts(mountinfo):
+    """Returns whether a process has test image mounts in its mount namespace.
+
+    @param mountinfo: A list of utils.MountInfo.
+    """
+    return any(m.mount_point in TEST_IMAGE_MOUNTS for m in mountinfo)
 
 
 class security_SandboxedServices(test.test):
@@ -155,7 +188,9 @@ class security_SandboxedServices(test.test):
             # older kernels might not have all the fields).
             pid_data = status_data.get(pid, {})
             status_fields = [pid_data.get(key) for key in STATUS_FIELDS]
-            running_processes.append(PsOutput(*fields + status_fields))
+            extra_fields = [get_mount_info(pid)]
+            running_processes.append(
+                PsOutput(*fields + status_fields + extra_fields))
 
         return running_processes
 
@@ -295,6 +330,11 @@ class security_SandboxedServices(test.test):
             elif (baseline[exe]['mntns'] == 'Yes' and
                   process.mntns == init_process.mntns):
                 logging.error('%s: missing mount ns usage', exe)
+                sandbox_delta.append(exe)
+            elif (baseline[exe]['mntns'] == 'Yes' and
+                  process.mntns != init_process.mntns and
+                  has_test_image_mounts(process.mountinfo)):
+                logging.error('%s: did not call pivot_root(2)', exe)
                 sandbox_delta.append(exe)
             elif (baseline[exe]['caps'] == 'Yes' and
                   process.capeff == init_process.capeff):
