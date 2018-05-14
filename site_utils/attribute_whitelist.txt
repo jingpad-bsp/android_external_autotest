@@ -34,11 +34,8 @@ suite:arc-gts-tot
 suite:arc-unit-test
 suite:audio
 suite:av_webcam
-suite:bluestreak
 suite:bluestreak-partners
-suite:bluestreak-perbuild
 suite:bluestreak-pre-cq
-suite:bluestreak-release
 suite:bluetooth
 suite:bluetooth_chameleon
 suite:bluetooth_qualification
@@ -129,7 +126,6 @@ suite:graphics_per-day
 suite:graphics_system
 suite:gts
 suite:hotrod
-suite:hotrod-release
 suite:hwqual
 suite:jailed_build
 suite:kernel_daily_benchmarks
