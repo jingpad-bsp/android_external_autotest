@@ -513,7 +513,7 @@ class _ControlFileRetriever(object):
         self._test_args = test_args
 
 
-    def retrieve(self, test_name):
+    def retrieve_for_test(self, test_name):
         """Retrieve a test's control data.
 
         This ignores forgiving_parser because we cannot return a
@@ -1649,7 +1649,7 @@ def _load_dummy_test(
     retriever = _ControlFileRetriever(cf_getter,
                                       run_prod_code=run_prod_code,
                                       test_args=test_args)
-    return retriever.retrieve('dummy_Pass')
+    return retriever.retrieve_for_test('dummy_Pass')
 
 
 class _ComposedPredicate(object):
