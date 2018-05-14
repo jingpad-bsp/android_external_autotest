@@ -10,7 +10,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:hotrod"
 DEPENDENCIES = "servo, c920_hotplug_stress"
 JOB_RETRIES = 3
 
