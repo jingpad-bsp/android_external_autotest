@@ -17,7 +17,6 @@ import warnings
 import common
 
 from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -774,15 +773,10 @@ def find_and_parse_tests(cf_getter, predicate, suite_name='',
                                       run_prod_code=run_prod_code,
                                       test_args=test_args)
     tests = retriever.retrieve_for_suite(suite_name)
-    logging.debug('Parsed %s control files.', len(tests))
     if not add_experimental:
         predicate = _ComposedPredicate([predicate,
                                         _non_experimental_tests_predicate])
-    tests = [test for test in tests.itervalues() if predicate(test)]
-    tests.sort(key=lambda t:
-               control_data.ControlData.get_test_time_index(t.time),
-               reverse=True)
-    return tests
+    return suite_common.filter_tests(tests, predicate)
 
 
 def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
