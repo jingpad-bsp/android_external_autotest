@@ -316,13 +316,13 @@ class Cr50Test(FirmwareTest):
         return mismatch
 
 
-    def reset_ccd(self):
+    def _reset_ccd_settings(self):
         """Reset the ccd lock and capability states"""
         current_settings = self.cr50.get_cap_dict()
         if self.original_ccd_settings != current_settings:
             self.servo.set_nocheck('cr50_testlab', 'open')
             self.cr50.set_ccd_level('open')
-            self.cr50.set_ccd_caps(self.original_ccd_settings)
+            self.cr50.set_caps(self.original_ccd_settings)
 
         # First try using testlab open to open the device
         if self.cr50.testlab_is_on() and self.original_ccd_level == 'open':
@@ -345,7 +345,7 @@ class Cr50Test(FirmwareTest):
 
         # Restore the ccd privilege level
         if hasattr(self, 'original_ccd_level'):
-            self.reset_ccd()
+            self._reset_ccd_settings()
 
         super(Cr50Test, self).cleanup()
 
