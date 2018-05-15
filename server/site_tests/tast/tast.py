@@ -99,6 +99,10 @@ class tast(test.test):
         self._remote_test_runner_path = self._get_path(
                 self._REMOTE_TEST_RUNNER_PATH)
 
+        # Register a hook to write the results of individual Tast tests as
+        # top-level entries in the TKO status.log file.
+        self.job.add_post_run_hook(self._log_all_tests)
+
     def run_once(self):
         """Runs a single iteration of the test."""
         self._log_version()
@@ -184,7 +188,12 @@ class tast(test.test):
                              stdout_level=logging.INFO,
                              stderr_level=logging.ERROR)
         except error.CmdError as e:
-            raise error.TestFail('Failed to run tast: %s' % str(e))
+            # The tast command's output generally ends with a line describing
+            # the error that was encountered; include it in the first line of
+            # the TestFail exception.
+            lines = e.result_obj.stdout.strip().split('\n')
+            msg = (' (last line: %s)' % lines[-1]) if lines else ''
+            raise error.TestFail('Failed to run tast%s: %s' % (msg, str(e)))
         except error.CmdTimeoutError as e:
             raise error.TestFail('Got timeout while running tast: %s' % str(e))
 
@@ -220,10 +229,6 @@ class tast(test.test):
 
         @raises error.TestFail if one or more tests failed.
         """
-        # Register a hook to write the results of individual Tast tests as
-        # top-level entries in the TKO status.log file.
-        self.job.add_post_run_hook(self._log_all_tests)
-
         path = os.path.join(self.resultsdir, self._RESULTS_FILENAME)
         failed = []
         with open(path, 'r') as f:
