@@ -151,6 +151,8 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
     def check_servo_monitor(self):
         """Make sure cr50 can detect servo connect and disconnect"""
+        # Detach ccd so EC uart won't interfere with servo detection
+        self.rdd('detach')
         servo_detect_error = error.TestNAError("Cannot run on device that does "
                 "not support servo dectection with ec_uart_en:off/on")
         self.fake_servo('off')
