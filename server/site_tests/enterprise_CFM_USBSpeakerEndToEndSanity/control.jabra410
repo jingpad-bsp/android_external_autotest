@@ -11,7 +11,6 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:hotrod"
 DEPENDENCIES = "jabra410, motor-control-board"
 JOB_RETRIES = 3
 
