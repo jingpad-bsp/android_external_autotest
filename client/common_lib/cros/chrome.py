@@ -11,10 +11,6 @@ from telemetry.core import cros_interface, exceptions, util
 from telemetry.internal.browser import browser_finder, browser_options
 from telemetry.internal.browser import extension_to_load
 
-CAP_USERNAME = 'crosautotest@gmail.com'
-CAP_URL = ('https://sites.google.com/a/chromium.org/dev/chromium-os'
-           '/testing/cros-autotest/cap')
-
 Error = exceptions.Error
 
 def NormalizeEmail(username):
