@@ -8,6 +8,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
+
 from skylab_suite import suite_waiter
 
 
@@ -29,4 +31,5 @@ def schedule(test):
 
     @param test: A single test to run, represented by ControlData object.
     """
+    logging.info('Scheduling test %s', test.name)
     return
