@@ -15,15 +15,9 @@ class login_GaiaLogin(test.test):
     version = 1
 
 
-    def run_once(self, username=None, password=None):
-        if username is None:
-            username = chrome.CAP_USERNAME
-
-        if password is None:
-            with tempfile.NamedTemporaryFile() as cap:
-                file_utils.download_file(chrome.CAP_URL, cap.name)
-                password = cap.read().rstrip()
-
+    def run_once(self, username, password):
+        if not username:
+          raise error.TestFail('User not set.')
         if not password:
           raise error.TestFail('Password not set.')
 

@@ -12,8 +12,8 @@ import time
 from contextlib import contextmanager
 from collections import namedtuple
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
@@ -618,18 +618,15 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return time in seconds took to complete scan request.
 
         """
-        start_time = time.time()
-        while time.time() - start_time < retry_timeout_seconds:
-            scan_result = self.iw_runner.timed_scan(
-                    self.wifi_if, frequencies=frequencies, ssids=ssids)
-
-            if scan_result is not None:
-                break
-
-            time.sleep(0.5)
-        else:
-            raise error.TestFail('Unable to trigger scan on client.')
-
+        # the poll method returns the result of the func
+        scan_result = utils.poll_for_condition(
+                condition=lambda: self.iw_runner.timed_scan(
+                                          self.wifi_if,
+                                          frequencies=frequencies,
+                                          ssids=ssids),
+                exception=error.TestFail('Unable to trigger scan on client'),
+                timeout=retry_timeout_seconds,
+                sleep_interval=0.5)
         # Verify scan operation completed within given timeout
         if scan_result.time > scan_timeout_seconds:
             raise error.TestFail('Scan time %.2fs exceeds the scan timeout' %
@@ -663,16 +660,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param require_match: bool True if we must find |ssids|.
 
         """
-        start_time = time.time()
-        while time.time() - start_time < timeout_seconds:
-            bss_list = self.iw_runner.scan(
-                    self.wifi_if, frequencies=frequencies, ssids=ssids)
-            if bss_list is not None:
-                break
-
-            time.sleep(0.5)
-        else:
-            raise error.TestFail('Unable to trigger scan on client.')
+        bss_list = utils.poll_for_condition(
+                condition=lambda: self.iw_runner.scan(
+                        self.wifi_if,
+                        frequencies=frequencies,
+                        ssids=ssids),
+                exception=error.TestFail('Unable to trigger scan on client'),
+                timeout=timeout_seconds,
+                sleep_interval=0.5)
 
         if require_match:
             self.assert_bsses_include_ssids(bss_list, ssids)
@@ -687,26 +682,28 @@ class WiFiClient(site_linux_system.LinuxSystem):
       @param timeout_seconds int seconds to wait for BSSes to be discovered
 
       """
-      start_time = time.time()
-      while time.time() - start_time < timeout_seconds:
-          bss_list = self.iw_runner.scan(
-                  self.wifi_if, frequencies=[], ssids=[ssid])
+      # If the scan returns None, return 0, else return the matching count
+      def are_all_bsses_discovered():
+          """Determine if all BSSes associated with the SSID from parent
+          function are discovered in the scan
 
-          # Determine number of BSSes found in the scan result.
-          num_bss_found = 0
-          if bss_list is not None:
-              for bss in bss_list:
-                  if bss.ssid == ssid:
-                      num_bss_found += 1
+          @return boolean representing whether the expected bss count matches
+          how many in the scan match the given ssid
+          """
+          scan_results = self.iw_runner.scan(
+                  self.wifi_if,
+                  frequencies=[],
+                  ssids=[ssid])
+          if scan_results is None:
+              return False
+          return num_bss_expected == sum(
+                  ssid == bss.ssid for bss in scan_results)
 
-          # Verify all BSSes are found.
-          if num_bss_found == num_bss_expected:
-              break
-
-          time.sleep(0.5)
-      else:
-          raise error.TestFail('Failed to discover all BSSes.')
-
+      utils.poll_for_condition(
+              condition=are_all_bsses_discovered,
+              exception=error.TestFail('Failed to discover all BSSes.'),
+              timeout=timeout_seconds,
+              sleep_interval=0.5)
 
     def wait_for_service_states(self, ssid, states, timeout_seconds):
         """Waits for a WiFi service to achieve one of |states|.
@@ -1036,22 +1033,33 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param bssid: string bssid to expect a roam to
                 (e.g.  '00:11:22:33:44:55').
         @param timeout_seconds: float number of seconds to wait for a roam.
-        @return True iff we detect an association to the given |bssid| within
+        @return True if we detect an association to the given |bssid| within
                 |timeout_seconds|.
 
         """
-        start_time = time.time()
-        success = False
-        duration = 0.0
-        while time.time() - start_time < timeout_seconds:
-            duration = time.time() - start_time
+        def attempt_roam():
+            """Perform a roam to the given |bssid|
+
+            @return True if there is an assocation between the given |bssid|
+                    and that association is detected within the timeout frame
+            """
             current_bssid = self.iw_runner.get_current_bssid(self.wifi_if)
             logging.debug('Current BSSID is %s.', current_bssid)
-            if current_bssid == bssid:
-                success = True
-                break
-            time.sleep(0.5)
+            return current_bssid == bssid
 
+        start_time = time.time()
+        duration = 0.0
+        try:
+            success = utils.poll_for_condition(
+                    condition=attempt_roam,
+                    timeout=timeout_seconds,
+                    sleep_interval=0.5,
+                    desc='Wait for a roam to the given bssid')
+        # wait_for_roam should return False on timeout
+        except utils.TimeoutError:
+            success = False
+
+        duration = time.time() - start_time
         logging.debug('%s to %s in %f seconds.',
                       'Roamed ' if success else 'Failed to roam ',
                       bssid,
@@ -1067,17 +1075,22 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param ssid: string SSID of the network to require be missing.
 
         """
-        start_time = time.time()
-        while time.time() - start_time < self.MAX_SERVICE_GONE_TIMEOUT_SECONDS:
+        def is_missing_yet():
+            """Determine if the ssid is removed from the service list yet
+
+            @return True if the ssid is not found in the service list
+            """
             visible_ssids = self.get_active_wifi_SSIDs()
             logging.info('Got service list: %r', visible_ssids)
             if ssid not in visible_ssids:
-                return
-
+                return True
             self.scan(frequencies=[], ssids=[], timeout_seconds=30)
-        else:
-            raise error.TestFail('shill should mark the BSS as not present')
 
+        utils.poll_for_condition(
+                condition=is_missing_yet, # func
+                exception=error.TestFail('shill should mark BSS not present'),
+                timeout=self.MAX_SERVICE_GONE_TIMEOUT_SECONDS,
+                sleep_interval=0)
 
     def reassociate(self, timeout_seconds=10):
         """Reassociate to the connected network.
@@ -1124,43 +1137,61 @@ class WiFiClient(site_linux_system.LinuxSystem):
         POLLING_INTERVAL_SECONDS = 1.0
         start_time = time.time()
         duration = lambda: time.time() - start_time
-        success = False
-        while duration() < timeout_seconds:
-            success, state, conn_time  = self.wait_for_service_states(
-                    ssid, self.CONNECTED_STATES,
+        state = [None] # need mutability for the nested method to save state
+
+        def verify_connection():
+            """Verify the connection and perform optional operations
+            as defined in the parent function
+
+            @return False if there is a failure in the connection or
+                    the prescribed verification steps
+                    The named tuple ConnectTime otherwise, with the state
+                    and connection time from waiting for service states
+            """
+            success, state[0], conn_time = self.wait_for_service_states(
+                    ssid,
+                    self.CONNECTED_STATES,
                     int(math.ceil(timeout_seconds - duration())))
             if not success:
-                time.sleep(POLLING_INTERVAL_SECONDS)
-                continue
+                return False
 
             if freq:
                 actual_freq = self.get_iw_link_value(
                         iw_runner.IW_LINK_KEY_FREQUENCY)
                 if str(freq) != actual_freq:
-                    logging.debug('Waiting for desired frequency %s (got %s).',
-                                  freq, actual_freq)
-                    time.sleep(POLLING_INTERVAL_SECONDS)
-                    continue
+                    logging.debug(
+                            'Waiting for desired frequency %s (got %s).',
+                            freq,
+                            actual_freq)
+                    return False
 
             if desired_subnet:
                 actual_subnet = self.wifi_ip_subnet
                 if actual_subnet != desired_subnet:
-                    logging.debug('Waiting for desired subnet %s (got %s).',
-                                  desired_subnet, actual_subnet)
-                    time.sleep(POLLING_INTERVAL_SECONDS)
-                    continue
+                    logging.debug(
+                            'Waiting for desired subnet %s (got %s).',
+                            desired_subnet,
+                            actual_subnet)
+                    return False
 
             if ping_ip:
                 ping_config = ping_runner.PingConfig(ping_ip)
                 self.ping(ping_config)
 
-            return ConnectTime(state, conn_time)
+            return ConnectTime(state[0], conn_time)
 
         freq_error_str = (' on frequency %d Mhz' % freq) if freq else ''
-        raise error.TestFail(
-                'Failed to connect to "%s"%s in %f seconds (state=%s)' %
-                (ssid, freq_error_str, duration(), state))
 
+        return utils.poll_for_condition(
+                condition=verify_connection,
+                exception=error.TestFail(
+                        'Failed to connect to "%s"%s in %f seconds (state=%s)' %
+                        (ssid,
+                        freq_error_str,
+                        duration(),
+                        state[0])),
+                timeout=timeout_seconds,
+                sleep_interval=0)
 
     @contextmanager
     def assert_disconnect_count(self, count):

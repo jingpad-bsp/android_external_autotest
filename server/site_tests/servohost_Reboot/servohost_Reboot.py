@@ -4,11 +4,11 @@
 
 import logging
 
-from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server import test
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 

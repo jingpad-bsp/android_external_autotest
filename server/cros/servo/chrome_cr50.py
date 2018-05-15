@@ -125,7 +125,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """
         caps = {}
         rv = self.send_command_get_output('ccd',
-                ["Capabilities:\s+\d+\s(.*)Use 'ccd help'"])[0][1]
+                ["Capabilities:\s+[\da-f]+\s(.*)Use 'ccd help'"])[0][1]
         for line in rv.splitlines():
             # Line information is separated with an =
             #   RebootECAP      Y 0=Default (IfOpened)

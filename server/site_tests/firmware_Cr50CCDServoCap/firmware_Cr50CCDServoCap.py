@@ -4,6 +4,7 @@
 
 import logging
 import pprint
+import re
 import time
 
 from autotest_lib.client.common_lib import error
@@ -151,6 +152,8 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
     def check_servo_monitor(self):
         """Make sure cr50 can detect servo connect and disconnect"""
+        # Detach ccd so EC uart won't interfere with servo detection
+        self.rdd('detach')
         servo_detect_error = error.TestNAError("Cannot run on device that does "
                 "not support servo dectection with ec_uart_en:off/on")
         self.fake_servo('off')
@@ -168,7 +171,9 @@ class firmware_Cr50CCDServoCap(Cr50Test):
         logging.info(rv)
         # I2C isn't a reliable flag, because the hardware often doesn't support
         # it. Remove any I2C flags from the ccdstate output.
-        ccdstates = rv.replace(' I2C', '').split('\n')
+        rv = rv.replace(' I2C', '')
+        # Extract only the ccdstate output from rv
+        ccdstates = re.findall('[ A-Za-z]+:[ A-Za-z\+_]+\r', rv)
         ccdstate = {}
         for line in ccdstates:
             line = line.strip()
