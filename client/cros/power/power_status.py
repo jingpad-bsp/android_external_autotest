@@ -1610,8 +1610,13 @@ class CPUStatsLogger(MeasurementLogger):
     independent to each other. However, in this case it is not. For example,
     CPU time spent in C0 state is measure by time not spent in all other states.
 
+    CPUStatsLogger also collects the weight average in each time period if the
+    underlying AbstractStats support weight average function.
+
     Private attributes:
        _stats: list of CPU AbstractStats objects to be sampled.
+       _refresh_count: number of times refresh() has been called.
+       _last_wavg: dict of wavg when refresh() was last called.
     """
     def __init__(self, seconds_period=1.0):
         """Initialize a CPUStatsLogger.
@@ -1627,11 +1632,28 @@ class CPUStatsLogger(MeasurementLogger):
         for stat in self._stats:
             self.domains.extend([stat.name + '_' + str(state_name)
                                  for state_name in stat.refresh()])
+            if stat.weighted_average():
+                self.domains.append('wavg_' + stat.name)
+        self._refresh_count = 0
+        self._last_wavg = collections.defaultdict(int)
 
     def refresh(self):
+        self._refresh_count += 1
+        count = self._refresh_count
         ret = []
         for stat in self._stats:
             ret.extend(stat.refresh().values())
+            wavg = stat.weighted_average()
+            if wavg:
+                last_wavg = self._last_wavg[stat.name]
+                self._last_wavg[stat.name] = wavg
+
+                # Calculate weight average in this period using current total
+                # weight average and last total weight average.
+                # The result will lose some precision with higher number of
+                # count but still good enough for 11 significant digits even if
+                # we logged the data every 1 second for a day.
+                ret.append(wavg * count - last_wavg * (count - 1))
         return ret
 
     def save_results(self, resultsdir, fname=None):
