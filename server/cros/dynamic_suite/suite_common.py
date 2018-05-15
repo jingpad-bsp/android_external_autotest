@@ -311,3 +311,19 @@ def retrieve_for_suite(cf_getter, suite_name='', forgiving_error=False,
     return parse_cf_text_many(control_file_texts,
                               forgiving_error=forgiving_error,
                               test_args=test_args)
+
+
+def filter_tests(tests, predicate=lambda t: True):
+    """Filter child tests with predicates.
+
+    @tests: A dict of ControlData objects as tests.
+    @predicate: A test filter. By default it's None.
+
+    @returns a list of ControlData objects as tests.
+    """
+    logging.info('Parsed %s child test control files.', len(tests))
+    tests = [test for test in tests.itervalues() if predicate(test)]
+    tests.sort(key=lambda t:
+               control_data.ControlData.get_test_time_index(t.time),
+               reverse=True)
+    return tests
