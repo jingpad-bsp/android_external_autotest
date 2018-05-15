@@ -6,6 +6,7 @@ import difflib
 import logging
 import os
 import re
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
@@ -37,7 +38,7 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         ['help', HELP_FORMAT, COMPARE_WORDS, SORTED],
         ['gpiocfg', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
     ]
-
+    CCD_HOOK_WAIT = 2
 
     def initialize(self, host, cmdline_args):
         super(firmware_Cr50ConsoleCommands, self).initialize(host, cmdline_args)
@@ -45,6 +46,16 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         self.missing = []
         self.extra = []
         self.past_matches = {}
+
+        # Make sure the console is restricted
+        caps = self.cr50.get_cap_dict()
+        if caps['GscFullConsole'] == 'Always':
+            logging.info('Restricting console')
+            self.cr50.send_command('ccd testlab open')
+            self.cr50.set_ccd_level('open')
+            self.cr50.set_cap('GscFullConsole', 'IfOpened')
+            time.sleep(self.CCD_HOOK_WAIT)
+            self.cr50.set_ccd_level('lock')
 
 
     def parse_output(self, output, split_str):
@@ -82,7 +93,7 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         """Return the expected cr50 console output"""
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), cmd)
         ext_path = path + '.' + self.brdprop
-        logging.info('Using brdprop %x', self.brdprop)
+        logging.info('Using brdprop %s', self.brdprop)
 
         if os.path.isfile(ext_path):
             logging.info('%s board specific path exists', cmd)
