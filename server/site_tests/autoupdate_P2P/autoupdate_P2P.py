@@ -8,7 +8,7 @@ import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros import autoupdater
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.update_engine import update_engine_test
 from chromite.lib import retry_util

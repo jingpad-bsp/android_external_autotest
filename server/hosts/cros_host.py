@@ -15,7 +15,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
-from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants as client_constants
@@ -27,6 +26,7 @@ from autotest_lib.server import afe_utils
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
@@ -35,8 +35,8 @@ from autotest_lib.server.cros.servo import firmware_programmer
 from autotest_lib.server.cros.servo import plankton
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import base_label
-from autotest_lib.server.hosts import cros_label
 from autotest_lib.server.hosts import chameleon_host
+from autotest_lib.server.hosts import cros_label
 from autotest_lib.server.hosts import cros_repair
 from autotest_lib.server.hosts import plankton_host
 from autotest_lib.server.hosts import servo_host
