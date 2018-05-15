@@ -28,6 +28,7 @@ SuiteSpecs = collections.namedtuple(
         'SuiteSpecs',
         [
                 'builds',
+                'suite_name',
                 'suite_file_name',
                 'test_source_build',
         ])
@@ -52,6 +53,7 @@ class Suite(object):
         self.wait = True
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
+        self.suite_name = specs.suite_name
         self.suite_file_name = specs.suite_file_name
 
 
@@ -74,6 +76,7 @@ class Suite(object):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
         self._parse_suite_args()
+        self._find_child_tests()
 
 
     def _stage_suite_artifacts(self):
@@ -96,3 +99,16 @@ class Suite(object):
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
         self.control_file = suite_common.get_control_file_by_build(
                 self.test_source_build, self.ds, self.suite_file_name)
+
+
+    def _find_child_tests(self):
+        """Fetch the child tests."""
+        control_file_getter = autotest.load(
+                'server.cros.dynamic_suite.control_file_getter')
+        suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
+
+        cf_getter = control_file_getter.DevServerGetter(
+                self.test_source_build, self.ds)
+        tests = suite_common.retrieve_for_suite(
+                cf_getter, self.suite_name)
+        self.tests = suite_common.filter_tests(tests)
