@@ -17,6 +17,7 @@ import argparse
 import os
 import re
 import subprocess
+import socket
 import sys
 import time
 
@@ -43,6 +44,7 @@ _RESTART_SERVICES_FILE = os.path.join(os.environ['HOME'],
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
         delay_sec=10)
+HOSTNAME = socket.gethostname()
 
 class DirtyTreeException(Exception):
     """Raised when the tree has been modified in an unexpected way."""
@@ -97,7 +99,7 @@ def verify_repo_clean():
     out = strip_terminal_codes(out).strip()
 
     if not 'working directory clean' in out and not 'working tree clean' in out:
-        raise DirtyTreeException(out)
+        raise DirtyTreeException('%s repo not clean: %s' % (HOSTNAME, out))
 
 
 def _clean_externals():
@@ -250,7 +252,7 @@ def update_command(cmd_tag, dryrun=False, use_chromite_master=False):
                                     cwd=common.autotest_dir,
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            print('FAILED:')
+            print('FAILED %s :' % HOSTNAME)
             print(e.output)
             raise
 
@@ -331,7 +333,8 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
 
     # Report any services having issues.
     if unstable_services:
-        raise UnstableServices(unstable_services)
+      raise UnstableServices('%s service restart failed: %s' %
+                             (HOSTNAME, unstable_services))
 
 
 def run_deploy_actions(cmds_skip=set(), dryrun=False,
@@ -501,7 +504,7 @@ def main(args):
     global_config.global_config.parse_config_file()
 
     behaviors = parse_arguments(args)
-
+    print('Updating server: %s' % HOSTNAME)
     if behaviors.verify:
         print('Checking tree status:')
         verify_repo_clean()
