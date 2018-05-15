@@ -222,6 +222,7 @@ a1598f7
 
     def test_restart_services(self):
         """Test deploy_server_local.restart_services."""
+        dsl.HOSTNAME = 'test_server'
         single_stable = {'foo': ['status_ok', 'status_ok']}
         double_stable = {'foo': ['status_a', 'status_a'],
                          'bar': ['status_b', 'status_b']}
@@ -238,11 +239,13 @@ a1598f7
         # Verify we can handle unstable services and report the right failures.
         with self.assertRaises(dsl.UnstableServices) as unstable:
             self._test_restart_services(single_unstable)
-        self.assertEqual(unstable.exception.args[0], ['foo'])
+        self.assertEqual(unstable.exception.args[0],
+                         "test_server service restart failed: ['foo']")
 
         with self.assertRaises(dsl.UnstableServices) as unstable:
             self._test_restart_services(triple_unstable)
-        self.assertEqual(unstable.exception.args[0], ['bar', 'joe'])
+        self.assertEqual(unstable.exception.args[0],
+                         "test_server service restart failed: ['bar', 'joe']")
 
     @mock.patch('subprocess.check_output', autospec=True)
     def test_report_changes_no_update(self, run_cmd):
