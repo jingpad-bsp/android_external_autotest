@@ -12,6 +12,7 @@ inheritance with, just a collection of static methods.
 # pylint: disable=missing-docstring
 
 import StringIO
+import collections
 import errno
 import inspect
 import itertools
@@ -2744,3 +2745,45 @@ def poll_for_condition(condition,
 class metrics_mock(metrics_mock_class.mock_class_base):
     """mock class for metrics in case chromite is not installed."""
     pass
+
+
+MountInfo = collections.namedtuple('MountInfo', ['root', 'mount_point', 'tags'])
+
+
+def get_mount_info(process='self', mount_point=None):
+    """Retrieves information about currently mounted file systems.
+
+    @param mount_point: (optional) The mount point (a path).  If this is
+                        provided, only information about the given mount point
+                        is returned.  If this is omitted, info about all mount
+                        points is returned.
+    @param process: (optional) The process id (or the string 'self') of the
+                    process whose mountinfo will be obtained.  If this is
+                    omitted, info about the current process is returned.
+
+    @return A generator yielding one MountInfo object for each relevant mount
+            found in /proc/PID/mountinfo.
+    """
+    with open('/proc/{}/mountinfo'.format(process)) as f:
+        for line in f.readlines():
+            # These lines are formatted according to the proc(5) manpage.
+            # Sample line:
+            # 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root \
+            #     rw,errors=continue
+            # Fields (descriptions omitted for fields we don't care about)
+            # 3: the root of the mount.
+            # 4: the mount point.
+            # 5: mount options.
+            # 6: tags.  There can be more than one of these.  This is where
+            #    shared mounts are indicated.
+            # 7: a dash separator marking the end of the tags.
+            mountinfo = line.split()
+            if mount_point is None or mountinfo[4] == mount_point:
+                tags = []
+                for field in mountinfo[6:]:
+                    if field == '-':
+                        break
+                    tags.append(field.split(':')[0])
+                yield MountInfo(root = mountinfo[3],
+                                mount_point = mountinfo[4],
+                                tags = tags)
