@@ -124,7 +124,7 @@ class TradefedTest(test.test):
         permission = (
             stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH
             | stat.S_IXOTH)
-        self._install_files(constants.ADB_DIR, constants.ADB_FILES,
+        self._install_files(constants.SDK_TOOLS_DIR, constants.ADB_FILES,
                             permission)
         self._install_files(constants.SDK_TOOLS_DIR,
                             constants.SDK_TOOLS_FILES, permission)
