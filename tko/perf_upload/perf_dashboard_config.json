@@ -379,7 +379,12 @@
     "dashboard_test_name": "network_WiFi_SimpleConnect"
   },
   {
-    "autotest_name": "network_WiFi_SimpleConnect.wifi_check5VHT80",
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check5VHT80_pure",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SimpleConnect"
+  },
+  {
+    "autotest_name": "network_WiFi_SimpleConnect.wifi_check5VHT80_mixed",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_SimpleConnect"
   },
