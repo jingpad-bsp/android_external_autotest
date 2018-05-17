@@ -256,8 +256,8 @@ def set_capture_mute(is_mute):
 def node_type_is_plugged(node_type, nodes_info):
     """Determine if there is any node of node_type plugged.
 
-    This method is used in has_loopback_dongle in cros_host, where
-    the call is executed on autotest server. Use get_cras_nodes instead if
+    This method is used in the AudioLoopbackDongleLabel class, where the
+    call is executed on autotest server. Use get_cras_nodes instead if
     the call can be executed on Cros device.
 
     Since Cras only reports the plugged node in GetNodes, we can
