@@ -39,6 +39,15 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         ['gpiocfg', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
     ]
     CCD_HOOK_WAIT = 2
+    # Lists connecting the board property values to the labels.
+    #   [ board property, match label, exclude label ]
+    # exclude can be none if there is no label that shoud be excluded based on
+    # the property.
+    BOARD_PROPERTIES = [
+        [0x1, 'sps', 'i2cs'],
+        [0x2, 'i2cs', 'sps'],
+        [0x40, 'plt_rst', 'sys_rst'],
+    ]
 
     def initialize(self, host, cmdline_args):
         super(firmware_Cr50ConsoleCommands, self).initialize(host, cmdline_args)
@@ -92,13 +101,6 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
     def get_expected_output(self, cmd, split_str):
         """Return the expected cr50 console output"""
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), cmd)
-        ext_path = path + '.' + self.brdprop
-        logging.info('Using brdprop %s', self.brdprop)
-
-        if os.path.isfile(ext_path):
-            logging.info('%s board specific path exists', cmd)
-            path = ext_path
-
         logging.info('reading %s', path)
         if not os.path.isfile(path):
             raise error.TestFail('Could not find %s file %s' % (cmd, path))
@@ -148,22 +150,38 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
             self.extra.append('%s-(%s)' % (cmd, ', '.join(extra)))
 
 
-    def get_brdprop(self):
+    def get_image_properties(self):
         """Save the board properties
 
         The saved board property flags will not include oboslete flags or the wp
         setting. These won't change the gpio or pinmux settings.
         """
-        rv = self.cr50.send_command_get_output('brdprop', self.BRDPROP_FORMAT)
-        brdprop = int(rv[0][1], 16)
-        self.brdprop = hex(brdprop & self.RELEVANT_PROPERTIES)
+        brdprop = self.cr50.get_board_properties()
+        self.include = []
+        self.exclude = []
+        for prop, include, exclude in self.BOARD_PROPERTIES:
+            if prop & brdprop:
+                self.include.append(include)
+                if exclude:
+                    self.exclude.append(exclude)
+            else:
+                self.exclude.append(include)
+        # use the major version to determine prePVT or MP. prePVT have even
+        # major versions. prod have odd
+        version = self.cr50.get_version().split('.')[1]
+        if 'mp' in self.servo.get('cr50_version'):
+            self.include.append('mp')
+            self.exclude.append('prepvt')
+        else:
+            self.exclude.append('mp')
+            self.include.append('prepvt')
 
 
     def run_once(self, host):
         """Verify the Cr50 gpiocfg, pinmux, and help output."""
         err = []
         test_err = []
-        self.get_brdprop()
+        self.get_image_properties()
         for command, regexp, split_str, sort in self.TESTS:
             self.check_command(command, regexp, split_str, sort)
 
@@ -180,17 +198,19 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         if len(err):
             raise error.TestFail('\t'.join(err))
 
-        mp = self.past_matches.get('mp', [None])[0]
-        prepvt = self.past_matches.get('prepvt', [None])[0]
-        # If we made it through the whole test, and matched both mp and prepvt,
-        # that means the test needs to be updated to unify mp and prepvt labels.
-        if mp and prepvt:
-            test_err.append('Matched both MP and prePVT labels.')
-
-        is_mp = 'mp' in self.servo.get('cr50_version')
-        if is_mp and prepvt:
-            test_err.append('Matched prePVT labels in MP image.')
-        if not is_mp and mp:
-            test_err.append('Matched mp labels in prePVT image.')
+        # Check all of the labels we did/didn't match. Make sure they match the
+        # expected cr50 settings. Raise a test error if there are any mismatches
+        missing_labels = []
+        for label in self.include:
+            if label in self.past_matches and not self.past_matches[label][0]:
+                missing_labels.append(label)
+        extra_labels = []
+        for label in self.exclude:
+            if label in self.past_matches and self.past_matches[label][0]:
+                extra_labels.append(label)
+        if missing_labels:
+            test_err.append('missing: %s' % ', '.join(missing_labels))
+        if extra_labels:
+            test_err.append('matched: %s' % ', '.join(extra_labels))
         if test_err:
             raise error.TestError('\t'.join(test_err))
