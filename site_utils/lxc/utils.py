@@ -7,6 +7,7 @@
 
 import logging
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -222,6 +223,31 @@ def sudo_commands(commands):
     else:
         for command in commands:
             result = utils.run("sudo %s" % command)
+
+
+def get_lxc_version():
+    """Gets the current version of lxc if available."""
+    cmd = 'sudo lxc-info --version'
+    result = utils.run(cmd)
+    if result and result.exit_status == 0:
+        version = re.split("[.-]", result.stdout.strip())
+        if len(version) < 3:
+            logging.error("LXC version is not expected format %s.",
+                          result.stdout.strip())
+            return None
+        return_value = []
+        for a in version[:3]:
+            try:
+                return_value.append(int(a))
+            except ValueError:
+                logging.error(("LXC version contains non numerical version "
+                               "number %s (%s)."), a, result.stdout.strip())
+                return None
+        return return_value
+    else:
+        logging.error("Unable to determine LXC version.")
+        return None
+
 
 class LXCTests(unittest.TestCase):
     """Thin wrapper to call correct setup for LXC tests."""
