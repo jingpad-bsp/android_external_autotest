@@ -236,7 +236,7 @@ class EnterprisePolicyTest(test.test):
 
         # Remove "Not set" policies and json-ify dicts because the
         # FakeDMServer expects "policy": "{value}" not "policy": {value}
-        # or "policy": ["{value}"] not "policy": [{value}].
+        # and "policy": "[{value}]" not "policy": [{value}].
         for policies_dict in [user_p, s_user_p, device_p]:
             policies_to_pop = []
             for policy in policies_dict:
@@ -246,10 +246,8 @@ class EnterprisePolicyTest(test.test):
                 elif isinstance(value, dict):
                     policies_dict[policy] = encode_json_string(value)
                 elif isinstance(value, list):
-                    if len(value) > 0 and isinstance(value[0], dict):
-                        for i in xrange(len(value)):
-                            value[i] = encode_json_string(value[i])
-                        policies_dict[policy] = value
+                    if value and isinstance(value[0], dict):
+                        policies_dict[policy] = encode_json_string(value)
             for policy in policies_to_pop:
                 policies_dict.pop(policy)
 
