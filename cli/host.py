@@ -184,6 +184,7 @@ class host_list(action_common.atest_list, host):
 
         self.locked = options.locked
         self.unlocked = options.unlocked
+        self.label_map = None
 
         if self.skylab:
             if options.user or options.acl or options.status:
@@ -193,6 +194,9 @@ class host_list(action_common.atest_list, host):
             if self.full_output and self.hostnames_only:
                 self.invalid_syntax('--full-output is conflicted with '
                                     '--hostnames-only.')
+
+            if self.labels:
+                self.label_map = device.convert_to_label_map(self.labels)
         else:
             if options.full_output:
                 self.invalid_syntax('--full_output is only supported with '
@@ -212,7 +216,7 @@ class host_list(action_common.atest_list, host):
             lab,
             'duts',
             self.environment,
-            labels=self.labels,
+            label_map=self.label_map,
             hostnames=self.hosts,
             locked=self.locked,
             unlocked=self.unlocked)
@@ -482,13 +486,17 @@ class BaseHostModCreate(host):
 
         self._parse_lock_options(options)
 
-        if (self.skylab and
-            (options.protection or options.acls or options.alist or
-             options.platform)):
+        self.label_map = None
+        if self.skylab:
             # TODO(nxia): drop these flags when all hosts are migrated to skylab
-            self.invalid_syntax(
-                    '--protection, --acls, --alist or --platform is not '
-                    'supported with --skylab.')
+            if (options.protection or options.acls or options.alist or
+                options.platform):
+                self.invalid_syntax(
+                        '--protection, --acls, --alist or --platform is not '
+                        'supported with --skylab.')
+
+            if self.labels:
+                self.label_map = device.convert_to_label_map(self.labels)
 
         if options.protection:
             self.data['protection'] = options.protection
@@ -658,7 +666,7 @@ class host_mod(BaseHostModCreate):
                         unlock_lock_id=self.unlock_lock_id,
                         attributes=self.attributes,
                         remove_labels=self.remove_labels,
-                        labels=self.labels)
+                        label_map=self.label_map)
                 successes.append(hostname)
             except device.SkylabDeviceActionError as e:
                 print('Cannot modify host %s: %s' % (hostname, e))
