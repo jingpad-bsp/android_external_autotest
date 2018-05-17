@@ -225,12 +225,12 @@ class firmware_Mosys(FirmwareTest):
             if row[1] in emap:
                 emap[row[1]] += 1
             if row[2] == '0x00000000':
-                logging.error('Expect non zero but got %s instead(%s)',
-                              (row[2], line))
+                logging.error('Expect non zero but got %s instead (%s)',
+                              row[2], line)
                 self._tag_failure(command)
             if row[3] == '0x00000000':
-                logging.error('Expect non zero but got %s instead(%s)',
-                              (row[3], line))
+                logging.error('Expect non zero but got %s instead (%s)',
+                              row[3], line)
                 self._tag_failure(command)
         # Check that there are one A and one B.
         if emap['RW_SECTION_A'] != 1 or emap['RW_SECTION_B'] != 1:
