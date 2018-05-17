@@ -970,8 +970,8 @@ def _run_bucket_performance_test(key_id, key_secret, bucket_name,
 # also need to make changes at MoblabRpcHelper.java
 @rpc_utils.moblab_only
 def run_suite(board, build, suite, model=None, ro_firmware=None,
-              rw_firmware=None, pool=None, suite_args=None, bug_id=None,
-              part_id=None):
+              rw_firmware=None, pool=None, suite_args=None, test_args=None,
+              bug_id=None, part_id=None):
     """ RPC handler to run a test suite.
 
     @param board: a board name connected to the moblab.
@@ -982,8 +982,9 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
     @param rw_firmware: Optional rw firmware build number to use.
     @param pool: Optional pool name to run the suite in.
     @param suite_args: Arguments to be used in the suite control file.
-    @param bug_id: Optilnal bug ID used for AVL qualification process.
-    @param part_id: Optilnal part ID used for AVL qualification
+    @param test_args: '\n' delimited key=val pairs passed to test control file.
+    @param bug_id: Optional bug ID used for AVL qualification process.
+    @param part_id: Optional part ID used for AVL qualification
     process.
 
     @return: None
@@ -1007,19 +1008,27 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
     if len(processed_suite_args) == 0:
         processed_suite_args = None
 
-    test_args = {}
+    processed_test_args = {}
+    if test_args:
+        try:
+            for line in test_args.split('\n'):
+                key, value = line.strip().split('=')
+                processed_test_args[key] = value
+        except:
+            raise error.RPCException('Could not parse test args.')
+
 
     ap_name =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_NAME, default=None)
-    test_args['ssid'] = ap_name
+    processed_test_args['ssid'] = ap_name
     ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS, default='')
-    test_args['wifipass'] = ap_pass
+    processed_test_args['wifipass'] = ap_pass
 
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
             pool=pool, run_prod_code=False, test_source_build=build,
             wait_for_results=True, suite_args=processed_suite_args,
-            test_args=test_args, job_retry=True, max_retries=sys.maxint,
-            model=model)
+            test_args=processed_test_args, job_retry=True,
+            max_retries=sys.maxint, model=model)
 
 
 def _enable_notification_using_credentials_in_bucket():
