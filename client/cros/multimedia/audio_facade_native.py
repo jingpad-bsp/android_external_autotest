@@ -67,6 +67,10 @@ class AudioFacadeNative(object):
     _PLAYBACK_DATA_FORMAT = dict(
             file_type='raw', sample_format='S16_LE', channel=2, rate=48000)
 
+    _LISTEN_DATA_FORMATS = [
+            dict(file_type='raw', sample_format='S16_LE',
+                 channel=1, rate=16000)]
+
     def __init__(self, resource, arc_resource=None):
         """Initializes an audio facade.
 
@@ -75,6 +79,7 @@ class AudioFacadeNative(object):
 
         """
         self._resource = resource
+        self._listener = None
         self._recorder = None
         self._player = None
         self._counter = None
@@ -172,10 +177,15 @@ class AudioFacadeNative(object):
         for path in glob.glob('/tmp/capture_*'):
             os.unlink(path)
 
+        for path in glob.glob('/tmp/listen_*'):
+            os.unlink(path)
+
         if self._recorder:
             self._recorder.cleanup()
         if self._player:
             self._player.cleanup()
+        if self._listener:
+            self._listener.cleanup()
 
         if self._arc_resource:
             self._arc_resource.cleanup()
@@ -261,6 +271,52 @@ class AudioFacadeNative(object):
                           'Capture device is not functional')
             return None
         return self._recorder.file_path
+
+
+    def start_listening(self, data_format):
+        """Starts listening to hotword for a given format.
+
+        Currently the format specified in _CAPTURE_DATA_FORMATS is the only
+        formats.
+
+        @param data_format: A dict containing:
+                            file_type: 'raw'.
+                            sample_format: 'S16_LE' for 16-bit signed integer in
+                                           little-endian.
+                            channel: channel number.
+                            rate: sampling rate.
+
+
+        @returns: True
+
+        @raises: AudioFacadeNativeError if data format is not supported.
+
+        """
+        logging.info('AudioFacadeNative record format: %r', data_format)
+
+        if data_format not in self._LISTEN_DATA_FORMATS:
+            raise AudioFacadeNativeError(
+                    'data format %r is not supported' % data_format)
+
+        self._listener = Listener()
+        self._listener.start(data_format)
+
+        return True
+
+
+    def stop_listening(self):
+        """Stops listening to hotword.
+
+        @returns: The path to the recorded file.
+                  None if hotwording is not functional.
+
+        """
+        self._listener.stop()
+        if file_contains_all_zeros(self._listener.file_path):
+            logging.error('Recorded file contains all zeros. '
+                          'Hotwording device is not functional')
+            return None
+        return self._listener.file_path
 
 
     def set_selected_output_volume(self, volume):
