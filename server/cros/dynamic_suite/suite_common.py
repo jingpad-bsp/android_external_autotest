@@ -295,6 +295,23 @@ def parse_cf_text_many(control_file_texts, forgiving_error=False,
     return tests
 
 
+def retrieve_control_data_for_test(cf_getter, test_name):
+    """Retrieve a test's control file.
+
+    @param cf_getter: a control_file_getter.ControlFileGetter object to
+                      list and fetch the control files' content.
+    @param test_name: Name of test to retrieve.
+
+    @raises ControlVariableException: There is a syntax error in a
+                                      control file.
+
+    @returns a ControlData object
+    """
+    path = cf_getter.get_control_file_path(test_name)
+    text = cf_getter.get_control_file_contents(path)
+    return parse_cf_text(path, text)
+
+
 def retrieve_for_suite(cf_getter, suite_name='', forgiving_error=False,
                        test_args=None):
     """Scan through all tests and find all tests.
