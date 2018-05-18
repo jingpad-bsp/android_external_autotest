@@ -44,15 +44,15 @@ class firmware_Cr50CCDServoCap(Cr50Test):
     # isn't setup we can't tell what cr50 is even trying to do with the signal.
     # This test completely ignores the I2C flags, because it is not useful.
     STATE_VALUES = {
-        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC'],
+        OFF : ['off', 'disconnected', 'disabled', 'UARTAP UARTEC', 'UARTEC'],
         ON : ['on', 'connected', 'enabled'],
         UNDETECTABLE : ['undetectable'],
         DETECTABLE : ['disconnected', 'connected'],
     }
     # When CCD is locked out the 'on' state flags will look like this
-    ON_CCD_LOCKOUT = 'UARTAP+TX UARTEC'
+    ON_CCD_LOCKOUT = ['UARTAP+TX UARTEC']
     # When CCD is accessible the 'on' state flags will look like this
-    ON_CCD_ACCESSIBLE = 'UARTAP+TX UARTEC+TX SPI'
+    ON_CCD_ACCESSIBLE = ['UARTAP+TX UARTEC+TX SPI', 'UARTEC+TX SPI']
     # RESULT_ORDER is a list of the CCD state strings. The order corresponds
     # with the order of the key states in EXPECTED_RESULTS.
     RESULT_ORDER = ['State flags', 'CCD EXT', 'Servo']
@@ -128,17 +128,19 @@ class firmware_Cr50CCDServoCap(Cr50Test):
             raise error.TestNAError('Need working servo v4 DTS control')
 
         if self.ccd_lockout:
-            self.STATE_VALUES[self.ON].append(self.ON_CCD_LOCKOUT)
+            self.STATE_VALUES[self.ON].extend(self.ON_CCD_LOCKOUT)
             logging.info('ccd is locked out. Skipping ccd initialization')
             return
         else:
-            self.STATE_VALUES[self.ON].append(self.ON_CCD_ACCESSIBLE)
+            self.STATE_VALUES[self.ON].extend(self.ON_CCD_ACCESSIBLE)
 
         self.check_servo_monitor()
         self.cr50.set_ccd_testlab('on')
         if not self.cr50.testlab_is_on():
             raise error.TestNAError('Cr50 testlab mode needs to be enabled')
+
         self.cr50.send_command('ccd testlab open')
+        logging.info('Cr50 is %s', self.servo.get('cr50_ccd_level'))
         self.cr50.set_cap('UartGscTxECRx', 'Always')
 
 
