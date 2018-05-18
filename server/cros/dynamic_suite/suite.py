@@ -525,9 +525,8 @@ class _ControlFileRetriever(object):
 
         @returns a ControlData object
         """
-        path = self._cf_getter.get_control_file_path(test_name)
-        text = self._cf_getter.get_control_file_contents(path)
-        return suite_common.parse_cf_text(path, text)
+        return suite_common.retrieve_control_data_for_test(
+                self._cf_getter, test_name)
 
 
     def retrieve_for_suite(self, suite_name=''):
