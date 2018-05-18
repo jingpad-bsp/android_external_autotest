@@ -20,12 +20,13 @@ class power_Standby(test.test):
     _min_sample_hours = 0.1
 
     def initialize(self):
+        """Reset force discharge state."""
         self._force_discharge_enabled = False
 
     def run_once(self, test_hours=None, sample_hours=None,
                  max_milliwatts_standby=500, ac_ok=False,
                  force_discharge=False):
-
+        """Put DUT to suspend state for |sample_hours| and measure power."""
         if not power_utils.has_battery():
             raise error.TestNAError('Skipping test because DUT has no battery.')
 
@@ -136,5 +137,6 @@ class power_Standby(test.test):
         time.sleep(10)
 
     def cleanup(self):
+        """Clean up force discharge."""
         if self._force_discharge_enabled:
             power_utils.charge_control_by_ectool(True)
