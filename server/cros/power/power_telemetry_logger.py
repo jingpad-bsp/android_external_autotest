@@ -148,6 +148,7 @@ class PowerTelemetryLogger(object):
         if 'sweetberry_interval' in config:
             self._interval = float(config['sweetberry_interval'])
         self._sweetberry_serial = config.get('sweetberry_serial', None)
+        self._note = config.get('note', '')
         self._logdir = os.path.join(resultsdir, 'power_telemetry_log')
         self._end_flag = threading.Event()
         self._host = host
@@ -318,5 +319,6 @@ class PowerTelemetryLogger(object):
 
         pdash = power_dashboard.PowerTelemetryLoggerDashboard(
                 logger=logger, testname=self._tagged_testname, host=self._host,
-                resultsdir=self._logdir, uploadurl=DASHBOARD_UPLOAD_URL)
+                resultsdir=self._logdir, uploadurl=DASHBOARD_UPLOAD_URL,
+                note=self._note)
         pdash.upload()
