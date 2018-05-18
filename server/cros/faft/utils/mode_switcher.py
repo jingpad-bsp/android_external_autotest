@@ -471,6 +471,11 @@ class _BaseModeSwitcher(object):
             if wait_for_dut_up:
                 self.wait_for_client()
 
+        elif to_mode == 'rec_force_mrc':
+            self._enable_rec_mode_force_mrc_and_reboot(usb_state='dut')
+            if wait_for_dut_up:
+                self.wait_for_client()
+
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
             if wait_for_dut_up:
@@ -590,6 +595,21 @@ class _BaseModeSwitcher(object):
             self.servo.switch_usbkey(usb_state)
         psc.power_on(psc.REC_ON)
 
+
+    def _enable_rec_mode_force_mrc_and_reboot(self, usb_state=None):
+        """Switch to rec mode, enable force mrc cache retraining, and reboot.
+
+        This method emulates the behavior of the old physical recovery switch,
+        i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
+        recovery mode, i.e. just press Power + Esc + Refresh.
+
+        @param usb_state: A string, one of 'dut', 'host', or 'off'.
+        """
+        psc = self.servo.get_power_state_controller()
+        psc.power_off()
+        if usb_state:
+            self.servo.switch_usbkey(usb_state)
+        psc.power_on(psc.REC_ON_FORCE_MRC)
 
     def _disable_rec_mode_and_reboot(self, usb_state=None):
         """Disable the rec mode and reboot.
