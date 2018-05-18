@@ -401,7 +401,8 @@ class Suspender(object):
         warning_regex = re.compile(r' kernel: \[.*WARNING:')
         abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
                 r'| powerd_suspend\[.*Cancel suspend at kernel'
-                r'| kernel: \[.*PM: Wakeup pending, aborting suspend')
+                r'| powerd_suspend\[.*Warning: Device or resource busy on ' \
+                 'write to /sys/power/state')
         # rsyslogd can put this out of order with dmesg, so track in variable
         fail_regex = re.compile(r'powerd_suspend\[\d+\]: Error')
         failed = False
