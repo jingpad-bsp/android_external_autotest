@@ -162,6 +162,9 @@ class WiFiTestContextManager(object):
         if not self.client.is_frequency_supported(ap_config.frequency):
             raise error.TestNAError('DUT does not support frequency: %s' %
                                     ap_config.frequency)
+        if ap_config.require_vht:
+            self.context.client.require_capabilities(
+                    site_linux_system.CAPABILITY_VHT)
         ap_config.security_config.install_router_credentials(self.router.host)
         if is_ibss:
             if multi_interface:
