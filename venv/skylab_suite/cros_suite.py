@@ -36,9 +36,8 @@ SuiteSpecs = collections.namedtuple(
                 'suite_args',
         ])
 
-
-RetryHandlerSpecs = collections.namedtuple(
-        'RetryHandlerSpecs',
+SuiteHandlerSpecs = collections.namedtuple(
+        'SuiteHandlerSpecs',
         [
                 'timeout_mins',
                 'test_retry',
@@ -46,37 +45,119 @@ RetryHandlerSpecs = collections.namedtuple(
                 'provision_num_required',
         ])
 
+TestSpecs= collections.namedtuple(
+        'TestSpecs',
+        [
+                'test',
+                'remaining_retries',
+                'previous_retried_ids',
+        ])
+
 
 class NonValidPropertyError(Exception):
   """Raised if a suite's property is not valid."""
 
 
-class RetryHandler(object):
-    """The class for handling retries for a CrOS suite."""
+class SuiteHandler(object):
+    """The class for handling a CrOS suite run.
+
+    Its responsibility includes handling retries for child tests.
+    """
 
     def __init__(self, specs):
-        self.wait = True
-        self.timeout_mins = specs.timeout_mins
-        self.provision_num_required = specs.provision_num_required
-        self.test_retry = specs.test_retry
-        self.max_retries = specs.max_retries
+        self._wait = True
+        self._timeout_mins = specs.timeout_mins
+        self._provision_num_required = specs.provision_num_required
+        self._test_retry = specs.test_retry
+        self._max_retries = specs.max_retries
 
-        self.suite_id = None
-        self.task_to_test_maps = {}
+        self._suite_id = None
+        self._task_to_test_maps = {}
+
+        # It only maintains the swarming task of the final run of each
+        # child task, i.e. it doesn't include failed swarming tasks of
+        # each child task which will get retried later.
         self._active_child_tasks = []
 
+    def should_wait(self):
+        """Return whether to wait for a suite's result."""
+        return self._wait
+
+    def set_suite_id(self, suite_id):
+        """Set swarming task id for a suite.
+
+        @param suite_id: The swarming task id of this suite.
+        """
+        self._suite_id = suite_id
+
+    def add_test_by_task_id(self, task_id, test_specs):
+        """Record a child test and its swarming task id.
+
+        @param task_id: the swarming task id of a child test.
+        @param test_specs: a TestSpecs object.
+        """
+        self._task_to_test_maps[task_id] = test_specs
+
+    def get_test_by_task_id(self, task_id):
+        """Get a child test by its swarming task id.
+
+        @param task_id: the swarming task id of a child test.
+        """
+        return self._task_to_test_maps[task_id]
+
+    def remove_test_by_task_id(self, task_id):
+        """Delete a child test by its swarming task id.
+
+        @param task_id: the swarming task id of a child test.
+        """
+        self._task_to_test_maps.pop(task_id, None)
+
+    def set_max_retries(self, max_retries):
+        """Set the max retries for a suite.
+
+        @param max_retries: The current maximum retries to set.
+        """
+        self._max_retries = max_retries
+
+    @property
+    def timeout_mins(self):
+        """Get the timeout minutes of a suite."""
+        return self._timeout_mins
+
+    @property
+    def suite_id(self):
+        """Get the swarming task id of a suite."""
+        return self._suite_id
+
+    @property
+    def max_retries(self):
+        """Get the max num of retries of a suite."""
+        return self._max_retries
+
+    @property
+    def active_child_tasks(self):
+        """Get the child tasks which is actively monitored by a suite.
+
+        The active child tasks list includes tasks which are currently running
+        or finished without following retries. E.g.
+        Suite task X:
+            child task 1: x1 (first try x1_1, second try x1_2)
+            child task 2: x2 (first try: x2_1)
+        The final active child task list will include task x1_2 and x2_1, won't
+        include x1_1 since it's a task which is finished but get retried later.
+        """
+        return self._active_child_tasks
 
     def handle_results(self, all_tasks):
         """Handle child tasks' results."""
         self._active_child_tasks = [t for t in all_tasks if t['task_id'] in
-                                    self.task_to_test_maps]
+                                    self._task_to_test_maps]
         self.retried_tasks = [t for t in all_tasks if self._should_retry(t)]
         logging.info('Found %d tests to be retried.', len(self.retried_tasks))
 
-
-    def finished_waiting(self):
+    def is_finished_waiting(self):
         """Check whether the suite should finish its waiting."""
-        if self.provision_num_required > 0:
+        if self._provision_num_required > 0:
             successfully_completed_bots = set()
             for t in self._active_child_tasks:
                 if (t['state'] == swarming_lib.TASK_COMPLETED and
@@ -86,7 +167,7 @@ class RetryHandler(object):
             logging.info('Found %d successfully provisioned bots',
                          len(successfully_completed_bots))
             return (len(successfully_completed_bots) >
-                    self.provision_num_required)
+                    self._provision_num_required)
 
         finished_tasks = [t for t in self._active_child_tasks if
                           t['state'] in swarming_lib.TASK_FINISHED_STATUS]
@@ -95,7 +176,6 @@ class RetryHandler(object):
                      len(self.retried_tasks))
         return (len(finished_tasks) == len(self._active_child_tasks)
                 and not self.retried_tasks)
-
 
     def _should_retry(self, test_result):
         """Check whether a test should be retried.
@@ -116,12 +196,12 @@ class RetryHandler(object):
         task_id = test_result['task_id']
         state = test_result['state']
         is_failure = test_result['failure']
-        return (self.test_retry and
+        return (self._test_retry and
                 ((state == swarming_lib.TASK_COMPLETED and is_failure)
                  or (state in swarming_lib.TASK_FAILED_STATUS))
-                and (task_id in self.task_to_test_maps)
-                and (self.task_to_test_maps[task_id].remain_retries > 0)
-                and (self.max_retries > 0))
+                and (task_id in self._task_to_test_maps)
+                and (self._task_to_test_maps[task_id].remaining_retries > 0)
+                and (self._max_retries > 0))
 
 
 class Suite(object):
