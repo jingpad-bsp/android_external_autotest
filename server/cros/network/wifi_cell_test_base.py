@@ -95,16 +95,16 @@ class WiFiCellTestBase(test.test):
             self._wifi_context.teardown()
 
 
-    def configure_and_connect_to_ap(self, configuration_parameters):
+    def configure_and_connect_to_ap(self, ap_config):
         """
-        Configure the router as an AP with the given parameters and connect
+        Configure the router as an AP with the given config and connect
         the DUT to it.
 
-        @param configuration_parameters HostapConfig object.
+        @param ap_config HostapConfig object.
 
         @return name of the configured AP
         """
-        self.context.configure(configuration_parameters)
+        self.context.configure(ap_config)
         ap_ssid = self.context.router.get_ssid()
         assoc_params = xmlrpc_datatypes.AssociationParameters(ssid=ap_ssid)
         self.context.assert_connect_wifi(assoc_params)
