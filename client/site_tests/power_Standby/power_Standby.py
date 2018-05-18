@@ -9,6 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import rtc
 from autotest_lib.client.cros.power import power_dashboard
 from autotest_lib.client.cros.power import power_status
+from autotest_lib.client.cros.power import power_telemetry_utils
 from autotest_lib.client.cros.power import power_utils
 from autotest_lib.client.cros.power import sys_power
 
@@ -66,8 +67,9 @@ class power_Standby(test.test):
         elapsed_hours = 0
 
         results = {}
-        # TODO (b/68956240): Add wrapper logging perhaps.
         loop = 0
+        power_telemetry_utils.start_measurement()
+
         while elapsed_hours < test_hours:
             charge_before = power_stats.battery[0].charge_now
             before_suspend_secs = rtc.get_seconds()
@@ -98,6 +100,7 @@ class power_Standby(test.test):
                     charge_used)
             loop += 1
 
+        power_telemetry_utils.end_measurement()
         charge_end = power_stats.battery[0].charge_now
         total_charge_used = charge_start - charge_end
         if total_charge_used <= 0:
