@@ -81,12 +81,6 @@ class login_OwnershipApi(test.test):
         else:
             raise error.TestFail('Did not detect bad policy')
 
-        try:
-            sm.StopSession('')
-        except error.TestError as e:
-            logging.error(str(e))
-            raise error.TestFail('Could not stop session for owner')
-
 
     def cleanup(self):
         if self._tempdir: self._tempdir.clean()

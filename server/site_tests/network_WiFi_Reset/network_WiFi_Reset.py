@@ -39,7 +39,7 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
                 self.mwifiex_reset_path, ignore_status=True).exit_status == 0
 
 
-    def mwifiex_reset(self, client):
+    def mwifiex_reset(self):
         """Perform mwifiex reset and wait for the interface to come back up."""
 
         ssid = self.context.router.get_ssid()
@@ -83,11 +83,10 @@ class network_WiFi_Reset(wifi_cell_test_base.WiFiCellTestBase):
         boot_id = client.host.get_boot_id()
 
         logging.info("Running %d suspends", self._NUM_SUSPENDS)
-        for i in range(self._NUM_SUSPENDS):
+        for _ in range(self._NUM_SUSPENDS):
             logging.info("Running %d resets", self._NUM_RESETS)
-
-            for j in range(self._NUM_RESETS):
-                self.mwifiex_reset(client)
+            for __ in range(self._NUM_RESETS):
+                self.mwifiex_reset()
                 client.wait_for_connection(ssid)
                 self.context.assert_ping_from_dut()
 
