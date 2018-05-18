@@ -271,12 +271,16 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
             uploadurl = 'http://chrome-power.appspot.com/rapl'
         super(CPUStatsLoggerDashboard, self).__init__(logger, testname,
                                                       resultsdir, uploadurl)
-        self._unit = 'percent'
 
     def _convert(self):
         power_dict = super(CPUStatsLoggerDashboard, self)._convert()
         for rail in power_dict['data']:
-            power_dict['type'][rail] = rail.rsplit('_', 1)[0]
+            if rail.startswith('wavg_'):
+                power_dict['type'][rail] = 'cpufreq_wavg'
+                power_dict['unit'][rail] = 'kilohertz'
+            else:
+                power_dict['type'][rail] = rail.rsplit('_', 1)[0]
+                power_dict['unit'][rail] = 'percent'
         return power_dict
 
     def _create_padded_domains(self):
