@@ -38,6 +38,7 @@ class _PowerStateController(object):
 
     REC_ON = 'rec'
     REC_OFF = 'on'
+    REC_ON_FORCE_MRC = 'rec_force_mrc'
 
     # Delay in seconds needed between asserting and de-asserting
     # warm reset.

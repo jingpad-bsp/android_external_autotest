@@ -4,7 +4,6 @@
 
 import logging
 import re
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -23,7 +22,6 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
     FIRMWARE_LOG_CMD = 'cbmem -1' + ' | grep ' + REBUILD_CACHE_MSG[:3]
     FMAP_CMD = 'mosys eeprom map'
     RECOVERY_REASON_REBUILD_CMD = 'crossystem recovery_request=0xC4'
-    APSHUTDOWN_DELAY = 5
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_RecoveryCacheBootKeys, self).initialize(host,
@@ -36,9 +34,12 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
     def cleanup(self):
         super(firmware_RecoveryCacheBootKeys, self).cleanup()
 
-    def boot_to_recovery(self):
+    def boot_to_recovery(self, rebuild_mrc_cache=False):
         """Boot device into recovery mode."""
-        self.switcher.reboot_to_mode(to_mode='rec')
+        if rebuild_mrc_cache:
+            self.switcher.reboot_to_mode(to_mode='rec_force_mrc')
+        else:
+            self.switcher.reboot_to_mode(to_mode='rec')
 
         self.check_state((self.checkers.crossystem_checker,
                           {'mainfw_type': 'recovery'}))
@@ -126,13 +127,7 @@ class firmware_RecoveryCacheBootKeys(FirmwareTest):
             raise error.TestFail('[3-Key] - Recovery Cache was not used.')
 
         logging.info('Checking 4-key recovery rebuilt cache boot.')
-        self.ec.send_command_get_output(
-            'apshutdown',
-            ["\[[0-9\.]+ chipset_force_shutdown\(\)"])
-        self.ec.send_command_get_output('hostevent set 0x20004000',
-                                        ["Events:\s+0x0*20004000"])
-        time.sleep(self.APSHUTDOWN_DELAY)
-        self.ec.send_command('powerbtn')
+        self.boot_to_recovery(rebuild_mrc_cache=True)
         self.switcher.wait_for_client()
 
         if not self.check_cache_rebuilt():
