@@ -68,6 +68,7 @@ def get_properties(service, init_process):
     properties = dict(service._asdict())
     properties['exe'] = service.comm
     properties['pidns'] = yes_or_no(service.pidns != init_process.pidns)
+    properties['mntns'] = yes_or_no(service.mntns != init_process.mntns)
     properties['caps'] = yes_or_no(service.capeff != init_process.capeff)
     properties['nonewprivs'] = yes_or_no(service.nonewprivs == '1')
     properties['filter'] = yes_or_no(service.seccomp == SECCOMP_MODE_FILTER)
@@ -290,6 +291,10 @@ class security_SandboxedServices(test.test):
             if (baseline[exe]['pidns'] == 'Yes' and
                     process.pidns == init_process.pidns):
                 logging.error('%s: missing pid ns usage', exe)
+                sandbox_delta.append(exe)
+            elif (baseline[exe]['mntns'] == 'Yes' and
+                  process.mntns == init_process.mntns):
+                logging.error('%s: missing mount ns usage', exe)
                 sandbox_delta.append(exe)
             elif (baseline[exe]['caps'] == 'Yes' and
                   process.capeff == init_process.capeff):
