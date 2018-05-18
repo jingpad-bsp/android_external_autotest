@@ -408,6 +408,7 @@ class atest(object):
         self.topic_parse_info = item_parse_info(attribute_name='not_used')
 
         self.parser = optparse.OptionParser(self._get_usage())
+        # TODO(nxia): add an option to set logging level (default to critical).
         self.parser.add_option('-g', '--debug',
                                help='Print debugging information',
                                action='store_true', default=False)
