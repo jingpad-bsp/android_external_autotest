@@ -18,8 +18,6 @@ The common options are:
 See topic_common.py for a High Level Design and Algorithm.
 """
 
-import logging
-
 import common
 
 from autotest_lib.cli import action_common
@@ -42,10 +40,6 @@ try:
 except ImportError:
     pass
 
-
-# TODO(nxia): add an option to set logging level.
-root = logging.getLogger()
-root.setLevel(logging.CRITICAL)
 
 RESPECT_SKYLAB_SERVERDB = global_config.global_config.get_config_value(
         'SKYLAB', 'respect_skylab_serverdb', type=bool, default=False)
