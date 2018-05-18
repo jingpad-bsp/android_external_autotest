@@ -55,6 +55,7 @@ High Level Algorithm:
    atest.print_*() methods.
 """
 
+import logging
 import optparse
 import os
 import re
@@ -127,6 +128,14 @@ FAIL_TAG = '<XYZ>'
 # Global socket timeout: uploading kernels can take much,
 # much longer than the default
 UPLOAD_SOCKET_TIMEOUT = 60*30
+
+LOGGING_LEVEL_MAP = {
+      'CRITICAL': logging.CRITICAL,
+      'ERROR': logging.ERROR,
+      'WARNING': logging.WARNING,
+      'INFO': logging.INFO,
+      'DEBUG': logging.DEBUG,
+}
 
 
 # Convertion functions to be called for printing,
@@ -433,6 +442,13 @@ class atest(object):
                                'to talk to',
                                action='store', type='string',
                                dest='web_server', default=None)
+        self.parser.add_option('--log-level',
+                               help=('Set the logging level. Must be one of %s.'
+                                     ' Default to ERROR' %
+                                     LOGGING_LEVEL_MAP.keys()),
+                               choices=LOGGING_LEVEL_MAP.keys(),
+                               default='ERROR',
+                               dest='log_level')
 
 
     def add_skylab_options(self):
@@ -573,6 +589,8 @@ class atest(object):
 
         if self.allow_skylab:
             self.parse_skylab_options(options)
+
+        logging.getLogger().setLevel(LOGGING_LEVEL_MAP[options.log_level])
 
         return (options, leftover)
 
