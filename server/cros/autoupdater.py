@@ -6,7 +6,6 @@ import glob
 import logging
 import os
 import re
-import time
 import urllib2
 import urlparse
 
@@ -605,47 +604,63 @@ class ChromiumOSUpdater(object):
                     'within %d seconds' % (event, _KERNEL_UPDATE_TIMEOUT))
 
 
+    def _prepare_host(self):
+        """Make sure the target DUT is working and ready for update.
+
+        Initially, the target DUT's state is unknown.  The DUT is
+        expected to be online, but we strive to be forgiving if Chrome
+        and/or the update engine aren't fully functional.
+        """
+        # Summary of work, and the rationale:
+        #  1. Reboot, because it's a good way to clear out problems.
+        #  2. Touch the PROVISION_FAILED file, to allow repair to detect
+        #     failure later.
+        #  3. Run the hook for host class specific preparation.
+        #  4. Stop Chrome, because the system is designed to eventually
+        #     reboot if Chrome is stuck in a crash loop.
+        #  5. Force `update-engine` to start, because if Chrome failed
+        #     to start properly, the status of the `update-engine` job
+        #     will be uncertain.
+        self._reset_stateful_partition()
+        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
+        self._run('touch %s' % PROVISION_FAILED)
+        self.host.prepare_for_update()
+        self._run('stop ui || true')
+        self._run('start update-engine || true')
+        self._wait_for_update_service()
+        logging.info('Updating from version %s to %s.',
+                     self.host.get_release_version(),
+                     self.update_version)
+
+
+    def _verify_devserver(self):
+        """Check that our chosen devserver is still working."""
+        server = 'http://%s' % urlparse.urlparse(self.update_url)[1]
+        try:
+            if not dev_server.ImageServer.devserver_healthy(server):
+                raise ChromiumOSError(
+                    'Update server at %s not healthy' % server)
+        except Exception as e:
+            raise ChromiumOSError(
+                'Update server at %s is not available' % server)
+
+
     def _install_update(self):
         """Install the requested image on the DUT, but don't start it.
 
         This downloads all content needed for the requested update, and
         installs it in place on the DUT.  This does not reboot the DUT,
-        so the update is merely pending when the function returns.
+        so the update is merely pending when the method returns.
         """
-        booted_version = self.host.get_release_version()
-        logging.info('Updating from version %s to %s.',
-                     booted_version, self.update_version)
-
-        # Check that Dev Server is accepting connections (from autoserv's host).
-        # If we can't talk to it, the machine host probably can't either.
-        auserver_host = 'http://%s' % urlparse.urlparse(self.update_url)[1]
+        logging.info('Installing image at %s onto %s',
+                     self.update_url, self.host.hostname)
         try:
-            if not dev_server.ImageServer.devserver_healthy(auserver_host):
-                raise ChromiumOSError(
-                    'Update server at %s not healthy' % auserver_host)
-        except Exception as e:
-            logging.debug('Error happens in connection to devserver: %r', e)
-            raise ChromiumOSError(
-                'Update server at %s not available' % auserver_host)
-
-        logging.info('Installing from %s to %s', self.update_url,
-                     self.host.hostname)
-
-        # Reset update state.
-        self._reset_update_engine()
-        self._reset_stateful_partition()
-
-        try:
-            try:
-                expected_kernel = self.update_image()
-                self.update_stateful()
-            except:
-                self._revert_boot_partition()
-                self._reset_stateful_partition()
-                raise
-
+            expected_kernel = self.update_image()
+            self.update_stateful()
             logging.info('Update complete.')
         except:
+            self._revert_boot_partition()
+            self._reset_stateful_partition()
             # Collect update engine logs in the event of failure.
             if self.host.job:
                 logging.info('Collecting update engine logs due to failure...')
@@ -654,20 +669,33 @@ class ChromiumOSUpdater(object):
                         preserve_perm=False)
             _list_image_dir_contents(self.update_url)
             raise
-        finally:
-            logging.info('Update engine log has downloaded in '
-                         'sysinfo/update_engine dir. Check the lastest.')
         return expected_kernel
 
 
-    def _post_update_processing(self, expected_kernel):
-        """After the DUT is updated, confirm machine_install succeeded.
+    def _complete_update(self, expected_kernel):
+        """Finish the update, and confirm that it succeeded.
 
-        @param updater: ChromiumOSUpdater instance used to update the DUT.
-        @param expected_kernel: kernel expected to be active after reboot,
-            or `None` to skip rollback checking.
+        Initial condition is that the target build has been downloaded
+        and installed on the DUT, but has not yet been booted.  This
+        function is responsible for rebooting the DUT, and checking that
+        the new build is running successfully.
 
+        @param expected_kernel: kernel expected to be active after reboot.
         """
+        # Regarding the 'crossystem' command below: In some cases,
+        # the update flow puts the TPM into a state such that it
+        # fails verification.  We don't know why.  However, this
+        # call papers over the problem by clearing the TPM during
+        # the reboot.
+        #
+        # We ignore failures from 'crossystem'.  Although failure
+        # here is unexpected, and could signal a bug, the point of
+        # the exercise is to paper over problems; allowing this to
+        # fail would defeat the purpose.
+        self._run('crossystem clear_tpm_owner_request=1',
+                  ignore_status=True)
+        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
+
         # Touch the lab machine file to leave a marker that
         # distinguishes this image from other test images.
         # Afterwards, we must re-run the autoreboot script because
@@ -702,42 +730,15 @@ class ChromiumOSUpdater(object):
             `image_name` is the name of the image installed, and
             `attributes` is new attributes to be applied to the DUT.
         """
-        logging.debug('Update URL is %s', self.update_url)
-
-        # Report provision stats.
         server_name = dev_server.get_hostname(self.update_url)
         (metrics.Counter('chromeos/autotest/provision/install')
          .increment(fields={'devserver': server_name}))
 
-        # Create a file to indicate if provision fails. The file will be
-        # removed by any successful update.
-        self._run('touch %s' % PROVISION_FAILED)
-
-        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
-        self.host.prepare_for_update()
-
+        self._verify_devserver()
+        self._prepare_host()
         expected_kernel = self._install_update()
+        self._complete_update(expected_kernel)
 
-        # Give it some time in case of IO issues.
-        time.sleep(10)
-
-        # Update has returned successfully; reboot the host.
-        #
-        # Regarding the 'crossystem' command below: In some cases,
-        # the update flow puts the TPM into a state such that it
-        # fails verification.  We don't know why.  However, this
-        # call papers over the problem by clearing the TPM during
-        # the reboot.
-        #
-        # We ignore failures from 'crossystem'.  Although failure
-        # here is unexpected, and could signal a bug, the point of
-        # the exercise is to paper over problems; allowing this to
-        # fail would defeat the purpose.
-        self._run('crossystem clear_tpm_owner_request=1',
-                  ignore_status=True)
-        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
-
-        self._post_update_processing(expected_kernel)
         image_name = url_to_image_name(self.update_url)
         # update_url is different from devserver url needed to stage autotest
         # packages, therefore, resolve a new devserver url here.
