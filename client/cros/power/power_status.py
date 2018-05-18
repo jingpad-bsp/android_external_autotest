@@ -1963,3 +1963,264 @@ class S0ixResidencyStats(object):
         @returns S0ix Residency since the class has been initialized.
         """
         return parse_pmc_s0ix_residency_info() - self._initial_residency
+
+
+class DMCFirmwareStats(object):
+    """
+    Collect DMC firmware stats of Intel based system (SKL+), (APL+).
+    """
+    # Intel CPUs only transition to DC6 from DC5. https://git.io/vppcG
+    DC6_ENTRY_KEY = 'DC5 -> DC6 count'
+
+    def __init__(self):
+        self._initial_stat = DMCFirmwareStats._parse_dmc_info()
+
+    def check_fw_loaded(self):
+        """Check that DMC firmware is loaded
+
+        @returns boolean of DMC firmware loaded.
+        """
+        return self._initial_stat['fw loaded']
+
+    def is_dc6_supported(self):
+        """Check that DMC support DC6 state."""
+        return self.DC6_ENTRY_KEY in self._initial_stat
+
+    def get_accumulated_dc6_entry(self):
+        """Check number of DC6 state entry since the class has been initialized.
+
+        @returns number of DC6 state entry.
+        """
+        if not self.is_dc6_supported():
+            return 0
+
+        key = self.DC6_ENTRY_KEY
+        current_stat = DMCFirmwareStats._parse_dmc_info()
+        return current_stat[key] - self._initial_stat[key]
+
+    @staticmethod
+    def _parse_dmc_info():
+        """
+        Parses DMC firmware info for Intel based systems.
+
+        @returns dictionary of dmc_fw info
+        @raises error.TestFail if the debugfs file not found.
+        """
+        path = '/sys/kernel/debug/dri/0/i915_dmc_info'
+        if not os.path.exists(path):
+            raise error.TestFail('DMC info file not found.')
+
+        with open(path, 'r') as f:
+            lines = [line.strip() for line in f.readlines()]
+
+        # For pre 4.16 kernel. https://git.io/vhThb
+        if lines[0] == 'not supported':
+            raise error.TestFail('DMC not supported.')
+
+        ret = dict()
+        for line in lines:
+            key, val = line.rsplit(': ', 1)
+
+            if key == 'fw loaded':
+                val = val == 'yes'
+            elif re.match(r'DC\d -> DC\d count', key):
+                val = int(val)
+            ret[key] = val
+        return ret
+
+
+class RC6ResidencyStats(object):
+    """
+    Collect RC6 residency stats of Intel based system.
+    """
+    def __init__(self):
+        self._rc6_enable_checked = False
+        self._initial_stat = self._parse_rc6_residency_info()
+
+    def get_accumulated_residency_secs(self):
+        """Check number of RC6 state entry since the class has been initialized.
+
+        @returns int of RC6 residency in seconds since instantiation.
+        """
+        current_stat = self._parse_rc6_residency_info()
+        return (current_stat - self._initial_stat) * 1e-3
+
+    def _is_rc6_enable(self):
+        """
+        Verified that RC6 is enable.
+
+        @returns Boolean of RC6 enable status.
+        @raises error.TestFail if the sysfs file not found.
+        """
+        path = '/sys/class/drm/card0/power/rc6_enable'
+        if not os.path.exists(path):
+            raise error.TestFail('RC6 enable file not found.')
+
+        return int(utils.read_one_line(path)) == 1
+
+    def _parse_rc6_residency_info(self):
+        """
+        Parses RC6 residency info for Intel based systems.
+
+        @returns int of RC6 residency in millisec since boot.
+        @raises error.TestFail if the sysfs file not found or RC6 not enabled.
+        """
+        if not self._rc6_enable_checked:
+            if not self._is_rc6_enable():
+                raise error.TestFail('RC6 is not enabled.')
+            self._rc6_enable_checked = True
+
+        path = '/sys/class/drm/card0/power/rc6_residency_ms'
+        if not os.path.exists(path):
+            raise error.TestFail('RC6 residency file not found.')
+
+        return int(utils.read_one_line(path))
+
+
+class PCHPowergatingStats(object):
+    """
+    Collect PCH powergating status of intel based system.
+    """
+    PMC_CORE_PATH = '/sys/kernel/debug/pmc_core/pch_ip_power_gating_status'
+    TELEMETRY_PATH = '/sys/kernel/debug/telemetry/soc_states'
+
+    def __init__(self):
+        self._stat = {}
+
+    def check_s0ix_requirement(self):
+        """
+        Check PCH powergating status with S0ix requirement.
+
+        @returns list of PCH IP block name that need to be powergated for low
+                 power consumption S0ix, empty list if none.
+        """
+        # PCH IP block that is on for S0ix. Ignore these IP block.
+        S0IX_WHITELIST = set([
+                'PMC', 'OPI-DMI', 'SPI / eSPI', 'XHCI', 'xHCI', 'FUSE', 'PCIE0',
+                'NPKVRC', 'NPKVNN'])
+
+        # PCH IP block that is on/off for S0ix depend on features enabled.
+        # Add log when these IPs state are on.
+        S0IX_WARNLIST = set([
+                'HDA-PGD0', 'HDA-PGD2', 'HDA-PGD3', 'LPSS', 'AVSPGD1',
+                'AVSPGD4'])
+
+        on_ip = set(ip['name'] for ip in self._stat if ip['state'])
+        on_ip -= S0IX_WHITELIST
+
+        if on_ip:
+            on_ip_in_warn_list = on_ip & S0IX_WARNLIST
+            if on_ip_in_warn_list:
+                logging.warn('Found PCH IP that may be able to powergate: %s',
+                             ', '.join(on_ip_in_warn_list))
+            on_ip -= S0IX_WARNLIST
+
+        if on_ip:
+            logging.error('Found PCH IP that need to powergate: %s',
+                          ', '.join(on_ip))
+            return False
+        return True
+
+    def read_pch_powergating_info(self, sleep_seconds=1):
+        """
+        Read PCH powergating status info for Intel based systems.
+
+        Intel currently shows powergating status in 2 different place in debugfs
+        depend on which CPU platform.
+
+        @param sleep_seconds: sleep time to make DUT idle before read the data.
+
+        @raises error.TestFail if the debugfs file not found or parsing error.
+        """
+        if os.path.exists(self.PMC_CORE_PATH):
+            logging.info('Use PCH powergating info at %s', self.PMC_CORE_PATH)
+            time.sleep(sleep_seconds)
+            self._read_pcm_core_powergating_info()
+            return
+
+        if os.path.exists(self.TELEMETRY_PATH):
+            logging.info('Use PCH powergating info at %s', self.TELEMETRY_PATH)
+            time.sleep(sleep_seconds)
+            self._read_telemetry_powergating_info()
+            return
+
+        raise error.TestFail('PCH powergating info file not found.')
+
+    def _read_pcm_core_powergating_info(self):
+        """
+        read_pch_powergating_info() for Intel Core KBL+
+
+        @raises error.TestFail if parsing error.
+        """
+        with open(self.PMC_CORE_PATH, 'r') as f:
+            lines = [line.strip() for line in f.readlines()]
+
+        # Example pattern to match:
+        # PCH IP: 0  - PMC                                State: On
+        # PCH IP: 1  - SATA                               State: Off
+        pattern = r'PCH IP:\s+(?P<id>\d+)\s+' \
+                  r'- (?P<name>.*\w)\s+'      \
+                  r'State: (?P<state>Off|On)'
+        matcher = re.compile(pattern)
+        ret = []
+        for i, line in enumerate(lines):
+            match = matcher.match(line)
+            if not match:
+                raise error.TestFail('Can not parse PCH powergating info: ',
+                                     line)
+
+            index = int(match.group('id'))
+            if i != index:
+                raise error.TestFail('Wrong index for PCH powergating info: ',
+                                     line)
+
+            name = match.group('name')
+            state = match.group('state') == 'On'
+
+            ret.append({'name': name, 'state': state})
+        self._stat = ret
+
+    def _read_telemetry_powergating_info(self):
+        """
+        read_pch_powergating_info() for Intel Atom APL+
+
+        @raises error.TestFail if parsing error.
+        """
+        with open(self.TELEMETRY_PATH, 'r') as f:
+            raw_str = f.read()
+
+        # Example pattern to match:
+        # --------------------------------------
+        # South Complex PowerGate Status
+        # --------------------------------------
+        # Device           PG
+        # LPSS             1
+        # SPI              1
+        # FUSE             0
+        #
+        # ---------------------------------------
+        trimed_pattern = r'.*South Complex PowerGate Status\n'    \
+                         r'-+\n'                                  \
+                         r'Device\s+PG\n'                         \
+                         r'(?P<trimmed_section>(\w+\s+[0|1]\n)+)' \
+                         r'\n-+\n.*'
+        trimed_match = re.match(trimed_pattern, raw_str, re.DOTALL)
+        if not trimed_match:
+            raise error.TestFail('Can not parse PCH powergating info: ',
+                                 raw_str)
+        trimmed_str = trimed_match.group('trimmed_section').strip()
+        lines = [line.strip() for line in trimmed_str.split('\n')]
+
+        matcher = re.compile(r'(?P<name>\w+)\s+(?P<state>[0|1])')
+        ret = []
+        for line in lines:
+            match = matcher.match(line)
+            if not match:
+                raise error.TestFail('Can not parse PCH powergating info: %s',
+                                     line)
+
+            name = match.group('name')
+            state = match.group('state') == '0' # 0 means on and 1 means off
+
+            ret.append({'name': name, 'state': state})
+        self._stat = ret
