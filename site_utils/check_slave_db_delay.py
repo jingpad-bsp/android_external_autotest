@@ -81,8 +81,7 @@ def parse_options():
 
 def main():
     """Main script."""
-    with site_utils.SetupTsMonGlobalState('check_slave_db_delay',
-                                          short_lived=True):
+    with site_utils.SetupTsMonGlobalState('check_slave_db_delay',indirect=True):
         options = parse_options()
         log_config = logging_config.LoggingConfig()
         if options.logfile:
@@ -100,16 +99,18 @@ def main():
 
         logging.info('Start checking Seconds_Behind_Master of slave databases')
 
+        for replica in options.replicas:
+            check_delay(replica, global_db_user, global_db_password)
         if not options.replicas:
             logging.warning('No replicas checked.')
-        else:
-            for replica in options.replicas:
-                check_delay(replica, global_db_user, global_db_password)
 
         slaves = server_manager_utils.get_servers(
                 role='database_slave', status='primary')
         for slave in slaves:
             check_delay(slave.hostname, db_user, db_password)
+        if not slaves:
+            logging.warning('No slaves checked.')
+
 
         logging.info('Finished checking.')
 
