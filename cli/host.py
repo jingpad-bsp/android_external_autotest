@@ -23,11 +23,18 @@ import common
 import re
 import socket
 
-from autotest_lib.cli import action_common, rpc, topic_common
+from autotest_lib.cli import action_common, rpc, topic_common, skylab_utils
 from autotest_lib.client.bin import utils as bin_utils
 from autotest_lib.client.common_lib import error, host_protections
 from autotest_lib.server import frontend, hosts
 from autotest_lib.server.hosts import host_info
+
+
+try:
+    from skylab_inventory import text_manager
+    from skylab_inventory.lib import device
+except ImportError:
+    pass
 
 
 class host(topic_common.atest):
@@ -109,17 +116,21 @@ class host_list(action_common.atest_list, host):
         self.parser.add_option('-b', '--label',
                                default='',
                                help='Only list hosts with all these labels '
-                               '(comma separated)')
+                               '(comma separated). When --skylab is provided, '
+                               'a label must be in the format of '
+                               'label-key:label-value (e.g., board:lumpy).')
         self.parser.add_option('-s', '--status',
                                default='',
                                help='Only list hosts with any of these '
                                'statuses (comma separated)')
         self.parser.add_option('-a', '--acl',
                                default='',
-                               help='Only list hosts within this ACL')
+                               help=('Only list hosts within this ACL. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB))
         self.parser.add_option('-u', '--user',
                                default='',
-                               help='Only list hosts available to this user')
+                               help=('Only list hosts available to this user. '
+                                     '%s' % skylab_utils.MSG_INVALID_IN_SKYLAB))
         self.parser.add_option('-N', '--hostnames-only', help='Only return '
                                'hostnames for the machines queried.',
                                action='store_true')
@@ -131,7 +142,14 @@ class host_list(action_common.atest_list, host):
                                default=False,
                                help='Only list unlocked hosts',
                                action='store_true')
+        self.parser.add_option('--full-output',
+                               default=False,
+                               help=('Print out the full content of the hosts. '
+                                     'Only supported with --skylab.'),
+                               action='store_true',
+                               dest='full_output')
 
+        self.add_skylab_options()
 
 
     def parse(self):
@@ -149,13 +167,48 @@ class host_list(action_common.atest_list, host):
         if options.locked and options.unlocked:
             self.invalid_syntax('--locked and --unlocked are '
                                 'mutually exclusive')
+
         self.locked = options.locked
         self.unlocked = options.unlocked
+
+        if self.skylab:
+            if options.user or options.acl or options.status:
+                self.invalid_syntax('--user, --acl or --status is not '
+                                    'supported with --skylab.')
+            self.full_output = options.full_output
+            if self.full_output and self.hostnames_only:
+                self.invalid_syntax('--full-output is conflicted with '
+                                    '--hostnames-only.')
+        else:
+            if options.full_output:
+                self.invalid_syntax('--full_output is only supported with '
+                                    '--skylab.')
+
         return (options, leftover)
+
+
+    def execute_skylab(self):
+        """Execute 'atest host list' with --skylab."""
+        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
+        inventory_repo.initialize()
+        lab = text_manager.load_lab(inventory_repo.get_data_dir())
+
+        # TODO(nxia): support filtering on run-time labels and status.
+        return device.get_devices(
+            lab,
+            'duts',
+            self.environment,
+            labels=self.labels,
+            hostnames=self.hosts,
+            locked=self.locked,
+            unlocked=self.unlocked)
 
 
     def execute(self):
         """Execute 'atest host list'."""
+        if self.skylab:
+            return self.execute_skylab()
+
         filters = {}
         check_results = {}
         if self.hosts:
@@ -200,17 +253,23 @@ class host_list(action_common.atest_list, host):
 
         @param results: the results to be printed.
         """
-        if results:
+        if results and not self.skylab:
             # Remove the platform from the labels.
             for result in results:
                 result['labels'] = self._cleanup_labels(result['labels'],
                                                         result['platform'])
+        if self.skylab and self.full_output:
+            print results
+            return
+
+        if self.skylab:
+            results = device.convert_to_autotest_hosts(results)
+
         if self.hostnames_only:
             self.print_list(results, key='hostname')
         else:
-            keys = ['hostname', 'status',
-                    'shard', 'locked', 'lock_reason', 'locked_by', 'platform',
-                    'labels']
+            keys = ['hostname', 'status', 'shard', 'locked', 'lock_reason',
+                    'locked_by', 'platform', 'labels']
             super(host_list, self).output(results, keys=keys)
 
 
