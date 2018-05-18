@@ -723,27 +723,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         pass
 
 
-    def machine_install(self, update_url, force_full_update=False):
-        """Install the DUT.
+    def machine_install(self, update_url):
+        """Install the image at `update_url` onto the DUT.
 
-        Use stateful update if the DUT is already running the same build.
-        Stateful update does not update kernel and tends to run much faster
-        than a full reimage. If the DUT is running a different build, or it
-        failed to do a stateful update, full update, including kernel update,
-        will be applied to the DUT.
-
-        Once a host enters machine_install its host attribute job_repo_url
-        (used for package install) will be removed and then updated.
-
-        @param update_url: The url to use for the update
-                pattern: http://$devserver:###/update/$build
-                If update_url is None and repair is True we will install the
-                stable image listed in afe_stable_versions table. If the table
-                is not setup, global_config value under CROS.stable_cros_version
-                will be used instead.
-        @param force_full_update: If True, do not attempt to run stateful
-                update, force a full reimage. If False, try stateful update
-                first when the dut is already installed with the same version.
+        @param update_url: The url used to identify the update image on the
+                devserver.
         @raises autoupdater.ChromiumOSError
 
         @returns A tuple of (image_name, host_attributes).
@@ -756,7 +740,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 autotest packages.
         """
         updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
-        return updater.run_update(force_full_update)
+        return updater.run_update()
 
 
     def _clear_fw_version_labels(self, rw_only):
