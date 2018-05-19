@@ -553,3 +553,19 @@ class GitRepo(object):
             raise error.CmdError('Failed to get git status', gitlog)
         else:
             return gitlog.stdout.strip('\n')
+
+
+    def config(self, option_name):
+        """
+        Return the git config value for the given option name.
+
+        @option_name: The name of the git option to get.
+        """
+        cmd = 'config ' + option_name
+        gitlog = self.gitcmd(cmd)
+
+        if gitlog.exit_status != 0:
+            logging.error(gitlog.stderr)
+            raise error.CmdError('Failed to get git config %', option_name)
+        else:
+            return gitlog.stdout.strip('\n')

@@ -18,8 +18,6 @@ The common options are:
 See topic_common.py for a High Level Design and Algorithm.
 """
 
-import logging
-
 import common
 
 from autotest_lib.cli import action_common
@@ -43,16 +41,11 @@ except ImportError:
     pass
 
 
-# TODO(nxia): add an option to set logging level.
-root = logging.getLogger()
-root.setLevel(logging.CRITICAL)
-
 RESPECT_SKYLAB_SERVERDB = global_config.global_config.get_config_value(
         'SKYLAB', 'respect_skylab_serverdb', type=bool, default=False)
 ATEST_DISABLE_MSG = ('Updating server_db via atest server command has been '
                      'disabled. Please use use go/cros-infra-inventory-tool '
                      'to update it in skylab inventory service.')
-SUBMIT_CL_MSG = 'Please submit the CL at %s to make the change effective.'
 
 
 class server(topic_common.atest):
@@ -355,8 +348,7 @@ class server_create(server):
             print results
 
             if self.skylab and not self.dryrun and not self.submit:
-                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
-                        self.change_number)
+                print skylab_utils.get_cl_message(self.change_number)
 
 
 
@@ -421,8 +413,7 @@ class server_delete(server):
                    self.hostname)
 
             if self.skylab and not self.dryrun and not self.submit:
-                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
-                        self.change_number)
+                print skylab_utils.get_cl_message(self.change_number)
 
 
 
@@ -587,5 +578,4 @@ class server_modify(server):
             print results
 
             if self.skylab and not self.dryrun and not self.submit:
-                print SUBMIT_CL_MSG % skylab_utils.get_cl_url(
-                        self.change_number)
+                print skylab_utils.get_cl_message(self.change_number)

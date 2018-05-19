@@ -10,6 +10,7 @@ import re
 import stat
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.video import device_capability
 
 
 class camera_V4L2(test.test):
@@ -25,7 +26,8 @@ class camera_V4L2(test.test):
         utils.make('clean')
         utils.make()
 
-    def run_once(self, test_list=None):
+    def run_once(self, capability, test_list=None):
+        device_capability.DeviceCapability().ensure_capability(capability)
         # Enable USB camera HW timestamp
         path = "/sys/module/uvcvideo/parameters/hwtimestamps"
         if os.path.exists(path):

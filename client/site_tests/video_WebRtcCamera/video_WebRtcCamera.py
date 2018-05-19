@@ -10,6 +10,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 
 EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream']
@@ -79,8 +80,13 @@ class video_WebRtcCamera(test.test):
                   'complete successfully.'))
 
     @helper_logger.video_log_wrapper
-    def run_once(self):
-        """Runs the test."""
+    def run_once(self, capability):
+        """Runs the test.
+
+        @param capability: Capability required for executing this test.
+        """
+        device_capability.DeviceCapability().ensure_capability(capability)
+
         self.board = utils.get_current_board()
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS +\
                            [helper_logger.chrome_vmodule_flag()],

@@ -216,37 +216,6 @@ def _add_repair_subcommand(subcommands):
                            install_test_image=True)
 
 
-def parse_deprecated_command(argv, full_deploy):
-    """Parse arguments for legacy deployment commands.
-
-    Create an argument parser for the `repair_test` or `deployment_test`
-    command.  Then parse the command line arguments, and return an
-    `argparse.Namespace` object with the results.
-
-    @param argv         Standard command line argument vector;
-                        argv[0] is assumed to be the command name.
-    @param full_deploy  Whether this is for full deployment or
-                        repair.
-    @return `Namespace` object with standard fields as described in the
-            module docstring.
-    """
-    parser = _ArgumentParser(
-            prog=os.path.basename(argv[0]),
-            description='Install a test image on newly deployed DUTs')
-    _add_common_options(parser)
-    parser.add_argument('-s', '--nostage',
-                        dest='stageusb', action='store_false',
-                        help='skip staging test image (for script testing)')
-    _add_upload_option(parser, full_deploy)
-    parser.add_argument('board', nargs='?', metavar='BOARD',
-                        help='board for DUTs to be installed')
-    parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
-                        help='host names of DUTs to be installed')
-    parser.set_defaults(install_firmware=full_deploy,
-                        install_test_image=True)
-    return parser.parse_args(argv[1:])
-
-
 def parse_command(argv):
     """Parse arguments for the `deploy` command.
 

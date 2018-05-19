@@ -383,6 +383,22 @@ def get_intel_cpu_uarch(numeric=False):
     return INTEL_UARCH_TABLE.get(family_model, family_model)
 
 
+INTEL_SILVERMONT_BCLK_TABLE = [83333, 100000, 133333, 116667, 80000];
+
+
+def get_intel_bclk_khz():
+    """Return Intel CPU base clock.
+
+    This only worked with SandyBridge (released in 2011) or newer. Older CPU has
+    133 MHz bclk. See turbostat code for implementation that also works with
+    older CPU. https://git.io/vpyKT
+    """
+    if get_intel_cpu_uarch() == 'Silvermont':
+        MSR_FSB_FREQ = 0xcd
+        return INTEL_SILVERMONT_BCLK_TABLE[utils.rdmsr(MSR_FSB_FREQ) & 0xf]
+    return 100000
+
+
 def get_current_kernel_arch():
     """Get the machine architecture, now just a wrap of 'uname -m'."""
     return os.popen('uname -m').read().rstrip()

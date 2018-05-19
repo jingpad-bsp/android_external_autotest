@@ -289,7 +289,7 @@ class HostapConfig(object):
 
 
     @property
-    def _require_vht(self):
+    def require_vht(self):
         """@return True iff clients should be required to support VHT."""
         return self._mode == self.MODE_11AC_PURE
 
@@ -720,7 +720,7 @@ class HostapConfig(object):
             conf['wmm_enabled'] = 1
         if self._require_ht:
             conf['require_ht'] = 1
-        if self._require_vht:
+        if self.require_vht:
             conf['require_vht'] = 1
         if self._beacon_interval:
             conf['beacon_int'] = self._beacon_interval

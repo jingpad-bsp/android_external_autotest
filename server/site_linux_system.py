@@ -686,9 +686,8 @@ class LinuxSystem(object):
         """
         missing = [cap for cap in requirements if not cap in self.capabilities]
         if missing:
-            raise error.TestNAError(
-                    'AP on %s is missing required capabilites: %r' %
-                    (self.role, missing))
+            raise error.TestNAError('%s is missing required capabilites: %r'
+                                    % (self.role, missing))
 
 
     def disable_antennas_except(self, permitted_antennas):

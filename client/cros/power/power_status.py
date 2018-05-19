@@ -663,18 +663,20 @@ class CPUFreqStats(AbstractStats):
     """
     CPU Frequency statistics
     """
+    MSR_PLATFORM_INFO = 0xce
+    MSR_IA32_MPERF = 0xe7
+    MSR_IA32_APERF = 0xe8
 
     def __init__(self, start_cpu=-1, end_cpu=-1):
         cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
                              'time_in_state'
         cpufreq_key_path = '/sys/devices/system/cpu/cpu*/cpufreq/' + \
                            'scaling_available_frequencies'
-        intel_pstate_stats_path = '/sys/devices/system/cpu/intel_pstate/' + \
-                             'aperf_mperf'
+        intel_pstate_msr_path = '/dev/cpu/*/msr'
         self._file_paths = glob.glob(cpufreq_stats_path)
         cpufreq_key_paths = glob.glob(cpufreq_key_path)
         num_cpus = len(self._file_paths)
-        self._intel_pstate_file_paths = glob.glob(intel_pstate_stats_path)
+        intel_pstate_msr_paths = glob.glob(intel_pstate_msr_path)
         self._running_intel_pstate = False
         self._initial_perf = None
         self._current_perf = None
@@ -682,8 +684,9 @@ class CPUFreqStats(AbstractStats):
         name = 'cpufreq'
         if not self._file_paths:
             logging.debug('time_in_state file not found')
-            if self._intel_pstate_file_paths:
-                logging.debug('intel_pstate frequency stats file found')
+            if intel_pstate_msr_paths:
+                logging.debug('intel_pstate msr file found')
+                self._num_cpus = len(intel_pstate_msr_paths)
                 self._running_intel_pstate = True
         else:
             if (start_cpu >= 0 and end_cpu >= 0
@@ -706,20 +709,19 @@ class CPUFreqStats(AbstractStats):
             aperf = 0
             mperf = 0
 
-            for path in self._intel_pstate_file_paths:
-                if not os.path.exists(path):
-                    logging.debug('%s is not found', path)
-                    continue
-                data = utils.read_file(path)
-                for line in data.splitlines():
-                    pair = line.split()
-                    # max_freq is supposed to be the same for all CPUs
-                    # and remain constant throughout.
-                    # So, we set the entry only once
-                    if not self._max_freq:
-                        self._max_freq = int(pair[0])
-                    aperf += int(pair[1])
-                    mperf += int(pair[2])
+            for cpu in range(self._num_cpus):
+                aperf += utils.rdmsr(self.MSR_IA32_APERF, cpu)
+                mperf += utils.rdmsr(self.MSR_IA32_MPERF, cpu)
+
+            # max_freq is supposed to be the same for all CPUs and remain
+            # constant throughout. So, we set the entry only once.
+            # Note that this is max non-turbo frequency, some CPU can run at
+            # higher turbo frequency in some condition.
+            if not self._max_freq:
+                platform_info = utils.rdmsr(self.MSR_PLATFORM_INFO)
+                mul = platform_info >> 8 & 0xff
+                bclk = utils.get_intel_bclk_khz()
+                self._max_freq = mul * bclk
 
             if not self._initial_perf:
                 self._initial_perf = (aperf, mperf)
@@ -1608,8 +1610,13 @@ class CPUStatsLogger(MeasurementLogger):
     independent to each other. However, in this case it is not. For example,
     CPU time spent in C0 state is measure by time not spent in all other states.
 
+    CPUStatsLogger also collects the weight average in each time period if the
+    underlying AbstractStats support weight average function.
+
     Private attributes:
        _stats: list of CPU AbstractStats objects to be sampled.
+       _refresh_count: number of times refresh() has been called.
+       _last_wavg: dict of wavg when refresh() was last called.
     """
     def __init__(self, seconds_period=1.0):
         """Initialize a CPUStatsLogger.
@@ -1625,11 +1632,28 @@ class CPUStatsLogger(MeasurementLogger):
         for stat in self._stats:
             self.domains.extend([stat.name + '_' + str(state_name)
                                  for state_name in stat.refresh()])
+            if stat.weighted_average():
+                self.domains.append('wavg_' + stat.name)
+        self._refresh_count = 0
+        self._last_wavg = collections.defaultdict(int)
 
     def refresh(self):
+        self._refresh_count += 1
+        count = self._refresh_count
         ret = []
         for stat in self._stats:
             ret.extend(stat.refresh().values())
+            wavg = stat.weighted_average()
+            if wavg:
+                last_wavg = self._last_wavg[stat.name]
+                self._last_wavg[stat.name] = wavg
+
+                # Calculate weight average in this period using current total
+                # weight average and last total weight average.
+                # The result will lose some precision with higher number of
+                # count but still good enough for 11 significant digits even if
+                # we logged the data every 1 second for a day.
+                ret.append(wavg * count - last_wavg * (count - 1))
         return ret
 
     def save_results(self, resultsdir, fname=None):
