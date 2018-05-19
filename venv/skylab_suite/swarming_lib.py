@@ -13,7 +13,14 @@ import os
 
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SWARMING_SERVER = 'chrome-swarming.appspot.com'
-TASK_FINISHED_STATUS = ['COMPLETED', 'EXPIRED', 'CANCELED', 'TIMED_OUT']
+TASK_COMPLETED = 'COMPLETED'
+TASK_EXPIRED = 'EXPIRED'
+TASK_CANCELED = 'CANCELED'
+TASK_TIMEDOUT = 'TIMED_OUT'
+TASK_FINISHED_STATUS = [TASK_COMPLETED,
+                        TASK_EXPIRED,
+                        TASK_CANCELED,
+                        TASK_TIMEDOUT]
 
 
 def _get_client():
