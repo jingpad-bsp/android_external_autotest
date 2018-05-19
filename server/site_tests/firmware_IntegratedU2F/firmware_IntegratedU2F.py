@@ -67,11 +67,30 @@ class firmware_IntegratedU2F(FirmwareTest):
         logging.info('u2fd is running')
 
 
+    def find_u2f_device(self):
+        """Find the U2F device
+
+        Returns:
+            0 if the device hasn't been found. Non-zero if it has
+        """
+        self.device = ''
+        path = '/sys/bus/hid/devices/*:%s:%s.*/hidraw' % (self.VID, self.PID)
+        try:
+            self.device = self.host.run('ls ' + path).stdout.strip()
+        except error.AutoservRunError, e:
+            logging.info('Could not find device')
+        return len(self.device)
+
+
     def get_u2f_device(self):
         """Get the integrated u2f device."""
-        name = self.host.run('ls /sys/bus/hid/devices/*:%s:%s.*/hidraw' %
-            (self.VID, self.PID)).stdout.strip()
-        return '/dev/%s' % name
+        start_time = time.time()
+        utils.wait_for_value(self.find_u2f_device, max_threshold=1,
+            timeout_sec=30)
+        wait_time = int(time.time() - start_time)
+        if wait_time:
+            logging.info('Took %ss to find device', wait_time)
+        return '/dev/' + self.device
 
 
     def check_u2ftest_and_press_power_button(self):
