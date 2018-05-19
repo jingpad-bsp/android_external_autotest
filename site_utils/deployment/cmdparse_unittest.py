@@ -89,17 +89,11 @@ class BooleanArgumentTestCase(unittest.TestCase):
         self.assertFalse(arguments.option)
 
 
-def _test_parse_deprecated_command(argv, full_deploy):
-    return cmdparse.parse_deprecated_command(
-        ['command'] + argv, full_deploy)
-
-
 def _test_parse_command(argv):
     return cmdparse.parse_command(['command'] + argv)
 
 
 class _CommandParserTestCase(unittest.TestCase):
-    _ALL_FULL_DEPLOY_OPTIONS = [False, True]
     _ALL_SUBCOMMANDS = ['servo', 'firmware', 'test-image', 'repair']
 
     def _check_common_defaults(self, arguments):
@@ -116,9 +110,6 @@ class _CommandParserTestCase(unittest.TestCase):
         opt_arg = 'servername'
         for option in ['-w', '--web']:
             argv = [option, opt_arg]
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(argv, full_deploy)
-                self.assertEquals(arguments.web, opt_arg)
             for subcmd in self._ALL_SUBCOMMANDS:
                 arguments = _test_parse_command([subcmd] + argv)
                 self.assertEquals(arguments.web, opt_arg)
@@ -128,9 +119,6 @@ class _CommandParserTestCase(unittest.TestCase):
         opt_arg = 'dirname'
         for option in ['-d', '--dir']:
             argv = [option, opt_arg]
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(argv, full_deploy)
-                self.assertEquals(arguments.logdir, opt_arg)
             for subcmd in self._ALL_SUBCOMMANDS:
                 arguments = _test_parse_command([subcmd] + argv)
                 self.assertEquals(arguments.logdir, opt_arg)
@@ -140,9 +128,6 @@ class _CommandParserTestCase(unittest.TestCase):
         # assert False
         for option in ['-n', '--dry-run']:
             argv = [option]
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(argv, full_deploy)
-                self.assertTrue(arguments.dry_run)
             for subcmd in self._ALL_SUBCOMMANDS:
                 arguments = _test_parse_command([subcmd] + argv)
                 self.assertTrue(arguments.dry_run)
@@ -152,9 +137,6 @@ class _CommandParserTestCase(unittest.TestCase):
         opt_arg = 'R66-10447.0.0'
         for option in ['-i', '--build']:
             argv = [option, opt_arg]
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(argv, full_deploy)
-                self.assertEquals(arguments.build, opt_arg)
             for subcmd in self._ALL_SUBCOMMANDS:
                 arguments = _test_parse_command([subcmd] + argv)
                 self.assertEquals(arguments.build, opt_arg)
@@ -164,27 +146,13 @@ class _CommandParserTestCase(unittest.TestCase):
         opt_arg = 'hostfiles.csv'
         for option in ['-f', '--hostname_file']:
             argv = [option, opt_arg]
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(argv, full_deploy)
-                self.assertEquals(arguments.hostname_file, opt_arg)
             for subcmd in self._ALL_SUBCOMMANDS:
                 arguments = _test_parse_command([subcmd] + argv)
                 self.assertEquals(arguments.hostname_file, opt_arg)
 
-    def test_nostage_option(self):
-        """Test handling of `--nostage`, both long and short forms."""
-        for option in ['-s', '--nostage']:
-            for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-                arguments = _test_parse_deprecated_command(
-                        [option], full_deploy)
-                self.assertFalse(arguments.stageusb)
-
     def test_upload_option(self):
         """Test handling of `--upload`, both long and short forms."""
         argv = ['--upload']
-        for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-            arguments = _test_parse_deprecated_command(argv, full_deploy)
-            self.assertTrue(arguments.upload)
         for subcmd in self._ALL_SUBCOMMANDS:
             arguments = _test_parse_command([subcmd] + argv)
             self.assertTrue(arguments.upload)
@@ -192,47 +160,9 @@ class _CommandParserTestCase(unittest.TestCase):
     def test_noupload_option(self):
         """Test handling of `--noupload`, both long and short forms."""
         argv = ['--noupload']
-        for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-            arguments = _test_parse_deprecated_command(argv, full_deploy)
-            self.assertFalse(arguments.upload)
         for subcmd in self._ALL_SUBCOMMANDS:
             arguments = _test_parse_command([subcmd] + argv)
             self.assertFalse(arguments.upload)
-
-    def _check_deprecated_defaults(self, arguments):
-        self._check_common_defaults(arguments)
-        self.assertTrue(arguments.stageusb)
-        self.assertTrue(arguments.install_test_image)
-
-    def test_deprecated_deployment_test_defaults(self):
-        """Test argument defaults for `deployment_test`."""
-        arguments = _test_parse_deprecated_command([], True)
-        self._check_deprecated_defaults(arguments)
-        self.assertTrue(arguments.upload)
-        self.assertTrue(arguments.install_firmware)
-
-    def test_deprecated_repair_test_defaults(self):
-        """Test argument defaults for `repair_test`."""
-        arguments = _test_parse_deprecated_command([], False)
-        self._check_deprecated_defaults(arguments)
-        self.assertFalse(arguments.upload)
-        self.assertFalse(arguments.install_firmware)
-
-    def test_deprecated_board_no_hostnames(self):
-        """Test handling when a board is supplied without hostnames."""
-        for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-            arguments = _test_parse_deprecated_command(
-                    ['board1'], full_deploy)
-            self.assertEquals(arguments.board, 'board1')
-            self.assertEquals(arguments.hostnames, [])
-
-    def test_deprecated_board_and_hostname_arguments(self):
-        """Test handling when both board and hostnames are supplied."""
-        for full_deploy in self._ALL_FULL_DEPLOY_OPTIONS:
-            arguments = _test_parse_deprecated_command(
-                    ['board1', 'host1'], full_deploy)
-            self.assertEquals(arguments.board, 'board1')
-            self.assertEquals(arguments.hostnames, ['host1'])
 
     def test_board_option(self):
         """Test the `--board` option for subcommands."""
