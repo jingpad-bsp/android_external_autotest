@@ -12,6 +12,8 @@ from autotest_lib.client.cros.update_engine import update_engine_util
 class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
     """Base class for update engine client tests."""
 
+    _NETWORK_INTERFACES = ['eth0', 'eth1', 'eth2']
+
     def initialize(self):
         self._internet_was_disabled = False
 
@@ -38,8 +40,8 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         if not self._internet_was_disabled:
             return
 
-        utils.run('ifconfig eth0 up', ignore_status=True)
-        utils.run('ifconfig eth1 up', ignore_status=True)
+        for eth in self._NETWORK_INTERFACES:
+            utils.run('ifconfig %s up' % eth, ignore_status=True)
         utils.start_service('recover_duts', ignore_status=True)
 
         # We can't return right after reconnecting the network or the server
@@ -60,8 +62,8 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
             # back online. We will need to stop this service for the length
             # of this test.
             utils.stop_service('recover_duts', ignore_status=True)
-            utils.run('ifconfig eth0 down')
-            utils.run('ifconfig eth1 down', ignore_status=True)
+            for eth in self._NETWORK_INTERFACES:
+                utils.run('ifconfig %s down' % eth, ignore_status=True)
 
             # Make sure we are offline
             utils.poll_for_condition(lambda: utils.ping(ping_server,
