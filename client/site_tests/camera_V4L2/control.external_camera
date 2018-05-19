@@ -18,7 +18,6 @@ ATTRIBUTES = "suite:usb-camera"
 TIME='MEDIUM'
 TEST_CATEGORY = 'V4L2'
 TEST_TYPE = 'client'
-DEPENDENCIES = ''
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
@@ -33,4 +32,6 @@ This is used for third-party lab to verify camera module. The camera module is
 an external camera device to run all test cases without reading config file.
 """
 
-job.run_test('camera_V4L2', test_list='external-camera', tag='external_camera')
+capability='usb_camera'
+job.run_test('camera_V4L2', test_list='external-camera', tag='external_camera',
+             capability=capability)
