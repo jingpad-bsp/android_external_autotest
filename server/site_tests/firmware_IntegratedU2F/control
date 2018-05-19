@@ -27,6 +27,7 @@ def run(machine):
 
     iterations = int(args_dict.get("iterations", 1))
 
-    job.run_test("firmware_IntegratedU2F", host=host, cmdline_args=args)
+    job.run_test("firmware_IntegratedU2F", host=host, cmdline_args=args,
+                 iterations=iterations)
 
 parallel_simple(run, machines)
