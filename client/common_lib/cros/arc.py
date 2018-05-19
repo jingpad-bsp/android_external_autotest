@@ -453,6 +453,12 @@ def is_package_disabled(package):
     return _is_in_installed_packages_list(package, '-d')
 
 
+def get_package_install_path(package):
+    """Returns the apk install location of the given package."""
+    output = adb_shell('pm path {}'.format(pipes.quote(package)))
+    return output.split(':')[1]
+
+
 def _before_iteration_hook(obj):
     """Executed by parent class before every iteration.
 
