@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import ast
 
 from autotest_lib.client.common_lib import priorities
 
@@ -59,6 +60,10 @@ def make_parser():
               'execute. Each numerical value represents: '+ ', '.join([
                   '(%s: %s)' % (str(v), n) for v, n in
                   zip(priorities.Priority.values, priorities.Priority.names)])))
+    parser.add_argument(
+        "--suite_args", type=ast.literal_eval, default=None,
+        action="store",
+        help="A dict of args passed to the suite control file.")
 
     # Swarming-related parameters.
     parser.add_argument(
@@ -75,6 +80,9 @@ def make_parser():
     parser.add_argument(
         '--max-retries', default=0, type=int, action='store',
         help='Maximum retries allowed at suite level. No retry if it is 0.')
+    parser.add_argument(
+        '--timeout_mins', default=90, type=int, action='store',
+        help='Maximum minutes to wait for a suite to finish.')
     parser.add_argument(
         '--json_dump', action='store_true', default=False,
         help='Dump the output of run_suite to stdout.')
@@ -95,4 +103,7 @@ def make_parser():
 
 def verify_and_clean_options(options):
     """Validate options."""
+    if options.suite_args is None:
+        options.suite_args = {}
+
     return True
