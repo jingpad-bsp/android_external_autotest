@@ -69,6 +69,20 @@ class host(topic_common.atest):
             self.invalid_syntax('Only specify one of '
                                 '--lock and --unlock.')
 
+        if options.skylab and options.unlock and options.unlock_lock_id is None:
+            self.invalid_syntax('Must provide --unlock-lock-id with "--skylab '
+                                '--unlock".')
+
+        if (not (options.skylab and options.unlock) and
+            options.unlock_lock_id is not None):
+            self.invalid_syntax('--unlock-lock-id is only valid with '
+                                '"--skylab --unlock".')
+
+        self.lock = options.lock
+        self.unlock = options.unlock
+        self.lock_reason = options.lock_reason
+        self.unlock_lock_id = options.unlock_lock_id
+
         if options.lock:
             self.data['locked'] = True
             self.messages.append('Locked host')
@@ -399,19 +413,24 @@ class BaseHostModCreate(host):
         self.host_ids = {}
         super(BaseHostModCreate, self).__init__()
         self.parser.add_option('-l', '--lock',
-                               help='Lock hosts',
-                               action='store_true')
-        self.parser.add_option('-u', '--unlock',
-                               help='Unlock hosts',
+                               help='Lock hosts.',
                                action='store_true')
         self.parser.add_option('-r', '--lock_reason',
-                               help='Reason for locking hosts',
+                               help='Reason for locking hosts.',
                                default='')
+        self.parser.add_option('-u', '--unlock',
+                               help='Unlock hosts.',
+                               action='store_true')
+        self.parser.add_option('--unlock-lock-id',
+                               help=('Unlock the lock with the lock-id. Only '
+                                     'useful when unlocking skylab hosts.'),
+                               default=None)
         self.parser.add_option('-p', '--protection', type='choice',
                                help=('Set the protection level on a host.  '
-                                     'Must be one of: %s' %
-                                     ', '.join('"%s"' % p
-                                               for p in self.protections)),
+                                     'Must be one of: %s. %s' %
+                                     (', '.join('"%s"' % p
+                                               for p in self.protections),
+                                      skylab_utils.MSG_INVALID_IN_SKYLAB)),
                                choices=self.protections)
         self._attributes = []
         self.parser.add_option('--attribute', '-i',
@@ -422,19 +441,29 @@ class BaseHostModCreate(host):
                                      'be unset by providing an empty value.'),
                                action='append')
         self.parser.add_option('-b', '--labels',
-                               help='Comma separated list of labels')
+                               help=('Comma separated list of labels. '
+                                     'When --skylab is provided, a label must '
+                                     'be in the format of label-key:label-value'
+                                     ' (e.g., board:lumpy).'))
         self.parser.add_option('-B', '--blist',
                                help='File listing the labels',
                                type='string',
                                metavar='LABEL_FLIST')
         self.parser.add_option('-a', '--acls',
-                               help='Comma separated list of ACLs')
+                               help=('Comma separated list of ACLs. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB))
         self.parser.add_option('-A', '--alist',
-                               help='File listing the acls',
+                               help=('File listing the acls. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                type='string',
                                metavar='ACL_FLIST')
         self.parser.add_option('-t', '--platform',
-                               help='Sets the platform label')
+                               help=('Sets the platform label. This is '
+                                     'deprecated for --skylab. Please set '
+                                     'platform in labels (e.g., '
+                                     '-b platform:platform_name).'))
+
+        self.add_skylab_options()
 
 
     def parse(self):
@@ -452,6 +481,14 @@ class BaseHostModCreate(host):
                                                              req_items='hosts')
 
         self._parse_lock_options(options)
+
+        if (self.skylab and
+            (options.protection or options.acls or options.alist or
+             options.platform)):
+            # TODO(nxia): drop these flags when all hosts are migrated to skylab
+            self.invalid_syntax(
+                    '--protection, --acls, --alist or --platform is not '
+                    'supported with --skylab.')
 
         if options.protection:
             self.data['protection'] = options.protection
@@ -567,7 +604,8 @@ class host_mod(BaseHostModCreate):
                                help='Forcefully lock\unlock a host',
                                action='store_true')
         self.parser.add_option('--remove_acls',
-                               help='Remove all active acls.',
+                               help=('Remove all active acls. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                action='store_true')
         self.parser.add_option('--remove_labels',
                                help='Remove all labels.',
@@ -581,14 +619,72 @@ class host_mod(BaseHostModCreate):
         if options.force_modify_locking:
              self.data['force_modify_locking'] = True
 
+        if self.skylab and options.remove_acls:
+            # TODO(nxia): drop the flag when all hosts are migrated to skylab
+            self.invalid_syntax('--remove_acls is not supported with --skylab.')
+
         self.remove_acls = options.remove_acls
         self.remove_labels = options.remove_labels
 
         return (options, leftover)
 
 
+    def execute_skylab(self):
+        """Execute atest host mod with --skylab.
+
+        @return A list of hostnames which have been successfully modified.
+        """
+        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        lab = text_manager.load_lab(data_dir)
+
+        locked_by = None
+        if self.lock:
+            locked_by = inventory_repo.git_repo.config('user.email')
+
+        successes = []
+        for hostname in self.hosts:
+            try:
+                device.modify(
+                        lab,
+                        'duts',
+                        hostname,
+                        self.environment,
+                        lock=self.lock,
+                        locked_by=locked_by,
+                        lock_reason = self.lock_reason,
+                        unlock=self.unlock,
+                        unlock_lock_id=self.unlock_lock_id,
+                        attributes=self.attributes,
+                        remove_labels=self.remove_labels,
+                        labels=self.labels)
+                successes.append(hostname)
+            except device.SkylabDeviceActionError as e:
+                print('Cannot modify host %s: %s' % (hostname, e))
+
+        if successes:
+            text_manager.dump_lab(data_dir, lab)
+
+            status = inventory_repo.git_repo.status()
+            if not status:
+                print('Nothing is changed for hosts %s.' % successes)
+                return []
+
+            message = skylab_utils.construct_commit_message(
+                    'Modify %d hosts.\n\n%s' % (len(successes), successes))
+            self.change_number = inventory_repo.upload_change(
+                    message, draft=self.draft, dryrun=self.dryrun,
+                    submit=self.submit)
+
+        return successes
+
+
     def execute(self):
         """Execute 'atest host mod'."""
+        if self.skylab:
+            return self.execute_skylab()
+
         successes = []
         for host in self.execute_rpc('get_hosts', hostname__in=self.hosts):
             self.host_ids[host['hostname']] = host['id']
@@ -632,6 +728,11 @@ class host_mod(BaseHostModCreate):
         """
         for msg in self.messages:
             self.print_wrapped(msg, hosts)
+
+        if hosts and self.skylab:
+            print ('Modified hosts: %s.' % ', '.join(hosts))
+            if self.skylab and not self.dryrun and not self.submit:
+                print (skylab_utils.get_cl_message(self.change_number))
 
 
 class HostInfo(object):
