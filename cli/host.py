@@ -883,8 +883,53 @@ class host_create(BaseHostModCreate):
             self._set_attributes(host, self.attributes)
 
 
+    def execute_skylab(self):
+        """Execute atest host create with --skylab.
+
+        @return A list of hostnames which have been successfully created.
+        """
+        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        lab = text_manager.load_lab(data_dir)
+
+        locked_by = None
+        if self.lock:
+            locked_by = inventory_repo.git_repo.config('user.email')
+
+        successes = []
+        for hostname in self.hosts:
+            try:
+                device.create(
+                        lab,
+                        'duts',
+                        hostname,
+                        self.environment,
+                        lock=self.lock,
+                        locked_by=locked_by,
+                        lock_reason = self.lock_reason,
+                        attributes=self.attributes,
+                        label_map=self.label_map)
+                successes.append(hostname)
+            except device.SkylabDeviceActionError as e:
+                print('Cannot create host %s: %s' % (hostname, e))
+
+        if successes:
+            text_manager.dump_lab(data_dir, lab)
+            message = skylab_utils.construct_commit_message(
+                    'Create %d hosts.\n\n%s' % (len(successes), successes))
+            self.change_number = inventory_repo.upload_change(
+                    message, draft=self.draft, dryrun=self.dryrun,
+                    submit=self.submit)
+
+        return successes
+
+
     def execute(self):
         """Execute 'atest host create'."""
+        if self.skylab:
+            return self.execute_skylab()
+
         successful_hosts = []
         for host in self.hosts:
             try:
