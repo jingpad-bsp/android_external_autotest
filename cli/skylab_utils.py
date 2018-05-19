@@ -41,6 +41,11 @@ def get_cl_url(change_number):
     return INTERNAL_GERRIT_HOST_URL + '/' + str(change_number)
 
 
+def get_cl_message(change_number):
+    return ('Please submit the CL at %s to make the change effective.' %
+            get_cl_url(change_number))
+
+
 def construct_commit_message(subject, bug=None, test=None):
     """Construct commit message for skylab inventory repo commit.
 
