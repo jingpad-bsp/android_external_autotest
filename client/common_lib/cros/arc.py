@@ -55,25 +55,12 @@ def setup_adb_host():
     os.environ[_ADB_VENDOR_KEYS] = key_path
 
 
-def _is_adbd_ready_for_connection():
-    """Return whether adbd is supposed to be ready to handle connection."""
-    # We used to check sys.boot_completed system property to detect Android has
-    # booted in Android M, but in Android N it is set long before
-    # BOOT_COMPLETED intent is broadcast. So we read event logs instead.
-    # TODO: there may be a better way to detect the state.
-    log = _android_shell(
-        'logcat -d -b events *:S arc_system_event', ignore_status=True)
-    return 'ArcAppLauncher:started' in log
-
-
 def adb_connect(attempts=1):
     """Attempt to connect ADB to the Android container.
 
     Returns true if successful. Do not call this function directly. Call
-    wait_for_adb_ready() instead."""
-    if not _is_adbd_ready_for_connection():
-        return False
-
+    wait_for_adb_ready() instead.
+    """
     # Kill existing adb server every other invocation to ensure that a full
     # reconnect is performed.
     if attempts % 2 == 1:
@@ -152,9 +139,22 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
         _adb_connect_wrapper.attempts += 1
         return adb_connect(_adb_connect_wrapper.attempts)
     _adb_connect_wrapper.attempts = 0
-    utils.poll_for_condition(_adb_connect_wrapper,
-                             exception,
-                             timeout)
+    try:
+        utils.poll_for_condition(_adb_connect_wrapper,
+                                 exception,
+                                 timeout)
+    except utils.TimeoutError:
+        # The operation has failed, but let's grab some logs.
+        logging.error('ARC booted: %s',
+                      _android_shell('getprop sys.boot_completed',
+                                     ignore_status=True))
+        logging.error('ARC system events: %s',
+                      _android_shell('logcat -d -b events *:S arc_system_event',
+                                     ignore_status=True))
+        logging.error('adbd process: %s', _android_shell('pidof adbd'))
+        logging.error('adb state: %s',
+                      utils.system_output('adb get-state', ignore_status=True))
+        raise
 
 
 def grant_permissions(package, permissions):
