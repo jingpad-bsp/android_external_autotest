@@ -37,8 +37,8 @@ class power_Display(power_test.power_Test):
             # Just measure power in full-screen.
             fullscreen = tab.EvaluateJavaScript('document.webkitIsFullScreen')
             if not fullscreen:
-                keys = keyboard.Keyboard()
-                keys.press_key('f4')
+                with keyboard.Keyboard() as keys:
+                    keys.press_key('f4')
 
             self.start_measurements()
 
