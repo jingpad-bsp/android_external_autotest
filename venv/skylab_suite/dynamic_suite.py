@@ -58,7 +58,8 @@ def run(suite_job, dry_run=False):
 
     suite_id = os.environ.get('SWARMING_TASK_ID')
     if suite_job.wait and suite_id is not None:
-        _wait_for_results(suite_id)
+        suite_job.suite_id = suite_id
+        _wait_for_results(suite_job)
 
 
 def _schedule_test(test, dry_run=False):
@@ -95,17 +96,19 @@ def _fetch_child_tasks(parent_task_id):
         return json.loads(child_tasks.output)
 
 
-def _wait_for_results(parent_task_id):
-    """Wait for child tasks to finish and return their results."""
-    while True:
-        json_output = _fetch_child_tasks(parent_task_id)
-        all_tasks = json_output['items']
-        finished_tasks = [t for t in all_tasks if t['state'] in
-                          swarming_lib.TASK_FINISHED_STATUS]
-        logging.info('Found %d finished child tasks', len(finished_tasks))
-        if len(finished_tasks) == len(all_tasks):
-            break
+def _wait_for_results(suite_job):
+    """Wait for child tasks to finish and return their results.
 
-        time.sleep(30)
+    @param suite_job: a cros_suite.Suite object.
+    """
+    timeout_util = autotest.chromite_load('timeout_util')
+    with timeout_util.Timeout(suite_job.timeout_mins * 60):
+        while True:
+            json_output = _fetch_child_tasks(suite_job.suite_id)
+            suite_job.retry_handler.handle_results(json_output['items'])
+            if suite_job.retry_handler.finished_waiting():
+                break
+
+            time.sleep(30)
 
     logging.info('Finished to wait for child tasks.')
