@@ -26,6 +26,7 @@ rma_auth
 (?P<prepvt>-s3term)?
 -serialno
 shmem
+(?P<prepvt>sleepmask)?
 (?P<mp>-)?spihash
 sysinfo
 sysrst

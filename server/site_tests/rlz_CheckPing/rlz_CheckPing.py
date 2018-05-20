@@ -27,8 +27,11 @@ class rlz_CheckPing(test.test):
 
     def _set_vpd_values(self):
         """Sets the required vpd values for the test."""
-        self._host.run('vpd -i RW_VPD -s should_send_rlz_ping=1')
-        self._host.run('dump_vpd_log --force')
+        try:
+            self._host.run('vpd -i RW_VPD -s should_send_rlz_ping=1')
+            self._host.run('dump_vpd_log --force')
+        except error.AutoservRunError:
+            raise error.TestFail('Failed to set rlz VPD values on the DUT.')
 
 
     def _make_rootfs_writable(self):
