@@ -738,9 +738,9 @@ class host_mod(BaseHostModCreate):
             self.print_wrapped(msg, hosts)
 
         if hosts and self.skylab:
-            print ('Modified hosts: %s.' % ', '.join(hosts))
+            print('Modified hosts: %s.' % ', '.join(hosts))
             if self.skylab and not self.dryrun and not self.submit:
-                print (skylab_utils.get_cl_message(self.change_number))
+                print(skylab_utils.get_cl_message(self.change_number))
 
 
 class HostInfo(object):
@@ -958,4 +958,52 @@ class host_create(BaseHostModCreate):
 
 class host_delete(action_common.atest_delete, host):
     """atest host delete [--mlist <mach_file>] <hosts>"""
-    pass
+
+    def __init__(self):
+        super(host_delete, self).__init__()
+
+        self.add_skylab_options()
+
+
+    def execute_skylab(self):
+        """Execute 'atest host delete' with '--skylab'.
+
+        @return A list of hostnames which have been successfully deleted.
+        """
+        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
+        inventory_repo.initialize()
+        data_dir = inventory_repo.get_data_dir()
+        lab = text_manager.load_lab(data_dir)
+
+        successes = []
+        for hostname in self.hosts:
+            try:
+                device.delete(
+                        lab,
+                        'duts',
+                        hostname,
+                        self.environment)
+                successes.append(hostname)
+            except device.SkylabDeviceActionError as e:
+                print('Cannot delete host %s: %s' % (hostname, e))
+
+        if successes:
+            text_manager.dump_lab(data_dir, lab)
+            message = skylab_utils.construct_commit_message(
+                    'Delete %d hosts.\n\n%s' % (len(successes), successes))
+            self.change_number = inventory_repo.upload_change(
+                    message, draft=self.draft, dryrun=self.dryrun,
+                    submit=self.submit)
+
+        return successes
+
+
+    def execute(self):
+        """Execute 'atest host delete'.
+
+        @return A list of hostnames which have been successfully deleted.
+        """
+        if self.skylab:
+            return self.execute_skylab()
+
+        return super(host_delete, self).execute()
