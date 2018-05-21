@@ -2,8 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/4779680'
+# TODO(ihf): Find a good aapt and update to it.
+SDK_TOOLS_DIR = 'gs://chromeos-arc-images/builds/git_nyc-mr1-arc-linux-static_sdk_tools/3544738'
 SDK_TOOLS_FILES = ['aapt']
+
+# To stabilize adb behavior, we use dynamically linked adb.
+ADB_DIR = 'gs://chromeos-arc-images/builds/git_master/4605730'
 ADB_FILES = ['adb']
 
 ADB_POLLING_INTERVAL_SECONDS = 1
