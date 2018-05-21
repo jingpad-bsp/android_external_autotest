@@ -73,9 +73,8 @@ class server(topic_common.atest):
         self.parser.add_option('-x', '--action',
                                help=('Set to True to apply actions when role '
                                      'or status is changed, e.g., restart '
-                                     'scheduler when a drone is removed. Note: '
-                                     'This is NOT supported when --skylab is '
-                                     'enabled.'),
+                                     'scheduler when a drone is removed. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                action='store_true',
                                default=False,
                                metavar='ACTION')
@@ -142,13 +141,13 @@ class server_list(action_common.atest_list, server):
         """Initializer.
         """
         super(server_list, self).__init__(hostname_required=False)
-        warn_message_for_skylab = 'This is not supported with --skylab.'
 
         self.parser.add_option('-t', '--table',
                                help=('List details of all servers in a table, '
                                      'e.g., \tHostname | Status  | Roles     | '
                                      'note\t\tserver1  | primary | scheduler | '
-                                     'lab. %s' % warn_message_for_skylab),
+                                     'lab. %s' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                action='store_true',
                                default=False)
         self.parser.add_option('-s', '--status',
@@ -161,17 +160,16 @@ class server_list(action_common.atest_list, server):
                                      'only, e.g.,\tscheduler: server1(primary) '
                                      'server2(backup)\t\tdrone: server3(primary'
                                      ') server4(backup). %s' %
-                                     warn_message_for_skylab),
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                action='store_true',
                                default=False)
         self.parser.add_option('--json',
                                help=('Format output as JSON. %s' %
-                                     warn_message_for_skylab),
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
                                action='store_true',
                                default=False)
         self.parser.add_option('-N', '--hostnames-only',
-                               help=('Only return hostnames. %s' %
-                                     warn_message_for_skylab),
+                               help=('Only return hostnames.'),
                                action='store_true',
                                default=False)
 
@@ -188,7 +186,7 @@ class server_list(action_common.atest_list, server):
 
         # TODO(nxia): support all formats for skylab inventory.
         if (self.skylab and (self.json or self.table or self.summary)):
-            self.invalid_syntax('The format (json|summary|json|hostnames-only)'
+            self.invalid_syntax('The format (table|summary|json)'
                                 ' is not supported with --skylab.')
 
         if sum([self.table, self.summary, self.json, self.namesonly]) > 1:
