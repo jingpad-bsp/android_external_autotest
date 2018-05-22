@@ -34,7 +34,16 @@ SuiteSpecs = collections.namedtuple(
                 'suite_file_name',
                 'test_source_build',
                 'suite_args',
+        ])
+
+
+RetryHandlerSpecs = collections.namedtuple(
+        'RetryHandlerSpecs',
+        [
                 'timeout_mins',
+                'test_retry',
+                'max_retries',
+                'provision_num_required',
         ])
 
 
@@ -45,14 +54,24 @@ class NonValidPropertyError(Exception):
 class RetryHandler(object):
     """The class for handling retries for a CrOS suite."""
 
-    def __init__(self, provision_num_required=0):
-        self.provision_num_required = provision_num_required
+    def __init__(self, specs):
+        self.wait = True
+        self.timeout_mins = specs.timeout_mins
+        self.provision_num_required = specs.provision_num_required
+        self.test_retry = specs.test_retry
+        self.max_retries = specs.max_retries
+
+        self.suite_id = None
+        self.task_to_test_maps = {}
         self._active_child_tasks = []
 
 
     def handle_results(self, all_tasks):
         """Handle child tasks' results."""
-        self._active_child_tasks = all_tasks
+        self._active_child_tasks = [t for t in all_tasks if t['task_id'] in
+                                    self.task_to_test_maps]
+        self.retried_tasks = [t for t in all_tasks if self._should_retry(t)]
+        logging.info('Found %d tests to be retried.', len(self.retried_tasks))
 
 
     def finished_waiting(self):
@@ -69,11 +88,40 @@ class RetryHandler(object):
             return (len(successfully_completed_bots) >
                     self.provision_num_required)
 
-        finished_tasks = [t for t in self._active_child_tasks if t['state'] in
-                          swarming_lib.TASK_FINISHED_STATUS]
-        logging.info('%d/%d child tasks finished',
-                     len(finished_tasks), len(self._active_child_tasks))
-        return len(finished_tasks) == len(self._active_child_tasks)
+        finished_tasks = [t for t in self._active_child_tasks if
+                          t['state'] in swarming_lib.TASK_FINISHED_STATUS]
+        logging.info('%d/%d child tasks finished, %d got retried.',
+                     len(finished_tasks), len(self._active_child_tasks),
+                     len(self.retried_tasks))
+        return (len(finished_tasks) == len(self._active_child_tasks)
+                and not self.retried_tasks)
+
+
+    def _should_retry(self, test_result):
+        """Check whether a test should be retried.
+
+        We will retry a test if:
+            1. The test-level retry is enabled for this suite.
+            2. The test fails.
+            3. The test is currently monitored by the suite, i.e.
+               it's not a previous retried test.
+            4. The test has remaining retries based on JOB_RETRIES in
+               its control file.
+            5. The suite-level max retries isn't hit.
+
+        @param test_result: A json test result from swarming API.
+
+        @return True if we should retry the test.
+        """
+        task_id = test_result['task_id']
+        state = test_result['state']
+        is_failure = test_result['failure']
+        return (self.test_retry and
+                ((state == swarming_lib.TASK_COMPLETED and is_failure)
+                 or (state in swarming_lib.TASK_FAILED_STATUS))
+                and (task_id in self.task_to_test_maps)
+                and (self.task_to_test_maps[task_id].remain_retries > 0)
+                and (self.max_retries > 0))
 
 
 class Suite(object):
@@ -87,16 +135,11 @@ class Suite(object):
         self._ds = None
 
         self.control_file = ''
-        self.tests = []
-        self.wait = True
+        self.tests = {}
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
         self.suite_name = specs.suite_name
         self.suite_file_name = specs.suite_file_name
-        self.suite_id = None
-        self.timeout_mins = specs.timeout_mins
-
-        self.retry_handler = RetryHandler()
 
 
     @property
@@ -166,7 +209,6 @@ class ProvisionSuite(Suite):
         # to be decoupled with any lab (RPC) calls. Here to set maximum
         # DUT number for provision as 10 first.
         self._num_max = 2
-        self.retry_handler = RetryHandler(self._num_required)
 
 
     def _find_tests(self):
