@@ -127,8 +127,25 @@ _UNTESTABLE_PRESENCE_METRIC = metrics.BooleanMetric(
     'DUTs that cannot be scheduled for testing')
 
 
+def _host_is_working(history):
+    return history.last_diagnosis()[0] == status_history.WORKING
+
+
+def _host_is_broken(history):
+    return history.last_diagnosis()[0] == status_history.BROKEN
+
+
+def _host_is_idle(history):
+    idle_statuses = {status_history.UNUSED, status_history.UNKNOWN}
+    return history.last_diagnosis()[0] in idle_statuses
+
+
 class _HostSetInventory(object):
     """Maintains a set of related `HostJobHistory` objects.
+
+    Current usage of this class is that all DUTs are part of a single
+    scheduling pool of DUTs for a single model; however, this class make
+    no assumptions about the actual relationship among the DUTs.
 
     The collection is segregated into disjoint categories of "working",
     "broken", and "idle" DUTs.  Accessor methods allow finding both the
@@ -158,10 +175,6 @@ class _HostSetInventory(object):
     `record_host()`) so that it's possible to construct a complete
     `_LabInventory` without making the expensive queries at creation
     time.  `_populate_model_counts()`, below, assumes this behavior.
-
-    Current usage of this class is that all DUTs are part of a single
-    scheduling pool of DUTs; however, this class make no assumptions
-    about the actual relationship among the DUTs.
     """
 
     def __init__(self):
@@ -184,8 +197,8 @@ class _HostSetInventory(object):
     def get_working_list(self):
         """Return a list of all working DUTs in the pool.
 
-        Filter `self._histories` for histories where the last
-        diagnosis is `WORKING`.
+        Filter `self._histories` for histories where the DUT is
+        diagnosed as working.
 
         Cache the result so that we only cacluate it once.
 
@@ -193,7 +206,7 @@ class _HostSetInventory(object):
         """
         if self._working_list is None:
             self._working_list = [h for h in self._histories
-                    if h.last_diagnosis()[0] == status_history.WORKING]
+                                  if _host_is_working(h)]
         return self._working_list
 
     def get_working(self):
@@ -203,8 +216,8 @@ class _HostSetInventory(object):
     def get_broken_list(self):
         """Return a list of all broken DUTs in the pool.
 
-        Filter `self._histories` for histories where the last
-        diagnosis is `BROKEN`.
+        Filter `self._histories` for histories where the DUT is
+        diagnosed as broken.
 
         Cache the result so that we only cacluate it once.
 
@@ -212,7 +225,7 @@ class _HostSetInventory(object):
         """
         if self._broken_list is None:
             self._broken_list = [h for h in self._histories
-                    if h.last_diagnosis()[0] == status_history.BROKEN]
+                                 if _host_is_broken(h)]
         return self._broken_list
 
     def get_broken(self):
@@ -222,17 +235,16 @@ class _HostSetInventory(object):
     def get_idle_list(self):
         """Return a list of all idle DUTs in the pool.
 
-        Filter `self._histories` for histories where the last
-        diagnosis is `UNUSED` or `UNKNOWN`.
+        Filter `self._histories` for histories where the DUT is
+        diagnosed as idle.
 
         Cache the result so that we only cacluate it once.
 
         @return A list of HostJobHistory objects.
         """
-        idle_statuses = {status_history.UNUSED, status_history.UNKNOWN}
         if self._idle_list is None:
             self._idle_list = [h for h in self._histories
-                    if h.last_diagnosis()[0] in idle_statuses]
+                               if _host_is_idle(h)]
         return self._idle_list
 
     def get_idle(self):
@@ -242,6 +254,9 @@ class _HostSetInventory(object):
     def get_total(self):
         """Return the total number of DUTs in the pool."""
         return len(self._histories)
+
+    def get_all_histories(self):
+        return self._histories
 
 
 class _PoolSetInventory(object):
@@ -293,8 +308,8 @@ class _PoolSetInventory(object):
     def get_working_list(self):
         """Return a list of all working DUTs (across all pools).
 
-        Go through all HostJobHistory objects across all pools, selecting the
-        ones where the last diagnosis is `WORKING`.
+        Go through all HostJobHistory objects across all pools,
+        selecting all DUTs identified as working.
 
         @return A list of HostJobHistory objects.
         """
@@ -317,8 +332,8 @@ class _PoolSetInventory(object):
     def get_broken_list(self):
         """Return a list of all broken DUTs (across all pools).
 
-        Go through all HostJobHistory objects in the across all pools,
-        selecting the ones where the last diagnosis is `BROKEN`.
+        Go through all HostJobHistory objects across all pools,
+        selecting all DUTs identified as broken.
 
         @return A list of HostJobHistory objects.
         """
@@ -340,8 +355,8 @@ class _PoolSetInventory(object):
     def get_idle_list(self, pool=None):
         """Return a list of all idle DUTs in the given pool.
 
-        Go through all HostJobHistory objects in the given pool, selecting the
-        ones where the last diagnosis is `UNUSED` or `UNKNOWN`.
+        Go through all HostJobHistory objects across all pools,
+        selecting all DUTs identified as idle.
 
         @param pool: The pool to be counted. If `None`, return the total list
                      across all pools.
@@ -388,6 +403,15 @@ class _PoolSetInventory(object):
         @return The total number of DUTs in the selected pool(s).
         """
         return self._count_pool(_HostSetInventory.get_total, pool)
+
+    def get_all_histories(self, pool=None):
+        if pool is None:
+            for p in self._histories_by_pool.itervalues():
+                for h in p.get_all_histories():
+                    yield h
+        else:
+            for h in self._histories_by_pool[pool].get_all_histories():
+                yield h
 
 
 def _eligible_host(afehost):
@@ -479,21 +503,6 @@ class _LabInventory(collections.Mapping):
     def __iter__(self):
         return self._modeldata.__iter__()
 
-    def reportable_items(self, spare_pool=SPARE_POOL):
-        """Iterate over all items subject to reporting.
-
-        Yields the contents of `self.iteritems()` filtered to include
-        only reportable models.  A model is reportable if it has DUTs in
-        both `spare_pool` and at least one other pool.
-
-        @param spare_pool  The spare pool to be tested for reporting.
-        """
-        for model, histories in self.iteritems():
-            spares = histories.get_total(spare_pool)
-            total = histories.get_total()
-            if spares != 0 and spares != total:
-                yield model, histories
-
     def get_num_duts(self):
         """Return the total number of DUTs in the inventory."""
         return self._dut_count
@@ -511,6 +520,28 @@ class _LabInventory(collections.Mapping):
 
     def get_boards(self):
         return self._boards
+
+
+def _reportable_models(inventory, spare_pool=SPARE_POOL):
+    """Iterate over all models subject to reporting.
+
+    Yields the contents of `inventory.iteritems()` filtered to include
+    only reportable models.  A model is reportable if it has DUTs in
+    both `spare_pool` and at least one other pool.
+
+    @param spare_pool  The spare pool to be tested for reporting.
+    """
+    for model, poolset in inventory.iteritems():
+        spares = poolset.get_total(spare_pool)
+        total = poolset.get_total()
+        if spares != 0 and spares != total:
+            yield model, poolset
+
+
+def _all_dut_histories(inventory):
+    for poolset in inventory.itervalues():
+        for h in poolset.get_all_histories():
+            yield h
 
 
 def _sort_by_location(inventory_list):
@@ -626,7 +657,7 @@ def _generate_repair_recommendation(inventory, num_recommend):
     logging.debug('Creating DUT repair recommendations')
     model_buffer_counts = {}
     broken_list = []
-    for model, counts in inventory.reportable_items():
+    for model, counts in _reportable_models(inventory):
         logging.debug('Listing failed DUTs for %s', model)
         if counts.get_broken() != 0:
             model_buffer_counts[model] = counts.get_spares_buffer()
@@ -700,7 +731,7 @@ def _generate_model_inventory_message(inventory):
     summaries = []
     column_names = (
         'Model', 'Avail', 'Bad', 'Idle', 'Good', 'Spare', 'Total')
-    for model, counts in inventory.reportable_items():
+    for model, counts in _reportable_models(inventory):
         logging.debug('Counting %2d DUTS for model %s',
                       counts.get_total(), model)
         # Summary elements laid out in the same order as the column
@@ -810,7 +841,7 @@ def _generate_idle_inventory_message(inventory):
     """Generate the "idle inventory" e-mail message.
 
     The idle inventory is a host list with corresponding pool and model,
-    where the hosts are idle (`UNKWOWN` or `UNUSED`).
+    where the hosts are identified as idle.
 
     N.B. For sample output text format as users can expect to
     see it in e-mail and log files, refer to the unit tests.
@@ -1015,53 +1046,9 @@ def _report_untestable_dut(history, state):
         'pool': history.host_pool,
         'state': state,
     }
-    logging.info('Untestable DUT: %(dut_hostname)s, model: %(model)s, '
-                 'pool: %(pool)s', fields)
+    logging.info('DUT in state %(state)s: %(dut_hostname)s, '
+                 'model: %(model)s, pool: %(pool)s', fields)
     _UNTESTABLE_PRESENCE_METRIC.set(True, fields=fields)
-
-
-def _report_repair_loop_metrics(inventory):
-    """Find and report DUTs stuck in a repair loop.
-
-    Go through `inventory`, and find and report any DUT identified as
-    being in a repair loop.
-
-    @param inventory  `_LabInventory` object to be reported on.
-    """
-    logging.info('Scanning for DUTs in repair loops.')
-    for counts in inventory.itervalues():
-        for history in counts.get_working_list():
-            # Managed DUTs with names that don't match
-            # _HOSTNAME_PATTERN shouldn't be possible.  However, we
-            # don't want arbitrary strings being attached to the
-            # 'dut_hostname' field, so for safety, we exclude all
-            # anomalies.
-            if not _HOSTNAME_PATTERN.match(history.hostname):
-                continue
-            if _dut_in_repair_loop(history):
-                _report_untestable_dut(history, 'repair_loop')
-
-
-def _report_idle_dut_metrics(inventory):
-    """Find and report idle, unlocked DUTs.
-
-    Go through `inventory`, and find and report any DUT identified as
-    "idle" that is not also locked.
-
-    @param inventory  `_LabInventory` object to be reported on.
-    """
-    logging.info('Scanning for idle, unlocked DUTs.')
-    for counts in inventory.itervalues():
-        for history in counts.get_idle_list():
-            # Managed DUTs with names that don't match
-            # _HOSTNAME_PATTERN shouldn't be possible.  However, we
-            # don't want arbitrary strings being attached to the
-            # 'dut_hostname' field, so for safety, we exclude all
-            # anomalies.
-            if not _HOSTNAME_PATTERN.match(history.hostname):
-                continue
-            if not history.host.locked:
-                _report_untestable_dut(history, 'idle_unlocked')
 
 
 def _report_untestable_dut_metrics(inventory):
@@ -1084,8 +1071,21 @@ def _report_untestable_dut_metrics(inventory):
 
     @param inventory  `_LabInventory` object to be reported on.
     """
-    _report_repair_loop_metrics(inventory)
-    _report_idle_dut_metrics(inventory)
+    logging.info('Scanning for untestable DUTs.')
+    for history in _all_dut_histories(inventory):
+        # Managed DUTs with names that don't match
+        # _HOSTNAME_PATTERN shouldn't be possible.  However, we
+        # don't want arbitrary strings being attached to the
+        # 'dut_hostname' field, so for safety, we exclude all
+        # anomalies.
+        if not _HOSTNAME_PATTERN.match(history.hostname):
+            continue
+        if _host_is_working(history):
+            if _dut_in_repair_loop(history):
+                _report_untestable_dut(history, 'repair_loop')
+        elif _host_is_idle(history):
+            if not history.host.locked:
+                _report_untestable_dut(history, 'idle_unlocked')
 
 
 def _log_startup(arguments, startup_time):
