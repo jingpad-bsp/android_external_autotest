@@ -39,8 +39,9 @@ class tast(test.test):
         'run': 600,
     }
 
-    # JSON file written by the tast command containing test results.
-    _RESULTS_FILENAME = 'results.json'
+    # File written by the tast command containing test results, as
+    # newline-terminated JSON TestResult objects.
+    _STREAMED_RESULTS_FILENAME = 'streamed_results.jsonl'
 
     # Maximum number of failing tests to include in error message.
     _MAX_TEST_NAMES_IN_ERROR = 3
@@ -107,8 +108,11 @@ class tast(test.test):
         """Runs a single iteration of the test."""
         self._log_version()
         self._get_tests_to_run()
-        self._run_tests()
-        self._parse_results()
+        try:
+            self._run_tests()
+        finally:
+            # Parse partial results even if the tast command didn't finish.
+            self._parse_results()
 
     def _get_path(self, path, allow_missing=False):
         """Returns the path to an installed Tast-related file or directory.
@@ -192,7 +196,7 @@ class tast(test.test):
             # the error that was encountered; include it in the first line of
             # the TestFail exception.
             lines = e.result_obj.stdout.strip().split('\n')
-            msg = (' (last line: %s)' % lines[-1]) if lines else ''
+            msg = (' (last line: %s)' % lines[-1].strip()) if lines else ''
             raise error.TestFail('Failed to run tast%s: %s' % (msg, str(e)))
         except error.CmdTimeoutError as e:
             raise error.TestFail('Got timeout while running tast: %s' % str(e))
@@ -229,12 +233,22 @@ class tast(test.test):
 
         @raises error.TestFail if one or more tests failed.
         """
-        path = os.path.join(self.resultsdir, self._RESULTS_FILENAME)
+        path = os.path.join(self.resultsdir, self._STREAMED_RESULTS_FILENAME)
+        if not os.path.exists(path):
+            raise error.TestFail('Results file %s not found' % path)
+
         failed = []
         with open(path, 'r') as f:
-            for test in json.load(f):
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    test = json.loads(line)
+                except ValueError as e:
+                    raise error.TestFail('Failed to parse %s: %s' % (path, e))
                 self._test_results.append(test)
-                if test['errors']:
+                if test.get('errors'):
                     name = test['name']
                     for err in test['errors']:
                         logging.warning('%s: %s', name, err['reason'])
@@ -273,27 +287,38 @@ class tast(test.test):
             src/platform/tast/src/chromiumos/cmd/tast/run/results.go for
             details.
         """
-        # If the test didn't run and also didn't report any errors, don't bother
-        # reporting it.
-        if not test.get('errors') and test.get('skipReason'):
-            return
-
         name = self._TEST_NAME_PREFIX + test['name']
         start_time = _rfc3339_time_to_timestamp(test['start'])
         end_time = _rfc3339_time_to_timestamp(test['end'])
 
+        test_reported_errors = bool(test.get('errors'))
+        test_skipped = bool(test.get('skipReason'))
+        # The test will have a zero (i.e. 0001-01-01 00:00:00 UTC) end time
+        # (preceding the Unix epoch) if it didn't report completion.
+        test_finished = end_time > 0
+
+        # Avoid reporting tests that were skipped.
+        if test_skipped and not test_reported_errors:
+            return
+
         self._log_test_event(self._JOB_STATUS_START, name, start_time)
 
-        if not test.get('errors'):
+        if test_finished and not test_reported_errors:
             self._log_test_event(self._JOB_STATUS_GOOD, name, end_time)
             end_status = self._JOB_STATUS_END_GOOD
         else:
             # The previous START event automatically increases the log
             # indentation level until the following END event.
-            for err in test['errors']:
-                self._log_test_event(self._JOB_STATUS_FAIL, name,
-                                     _rfc3339_time_to_timestamp(err['time']),
-                                     err['reason'])
+            if test_reported_errors:
+                for err in test['errors']:
+                    error_time = _rfc3339_time_to_timestamp(err['time'])
+                    self._log_test_event(self._JOB_STATUS_FAIL, name,
+                                         error_time, err['reason'])
+            if not test_finished:
+                self._log_test_event(self._JOB_STATUS_FAIL, name, start_time,
+                                     'Test did not finish')
+                end_time = start_time
+
             end_status = self._JOB_STATUS_END_FAIL
 
         self._log_test_event(end_status, name, end_time)
@@ -325,12 +350,28 @@ class tast(test.test):
         self.job.record_entry(entry, False)
 
 
+class _LessBrokenParserInfo(dateutil.parser.parserinfo):
+    """dateutil.parser.parserinfo that interprets years before 100 correctly.
+
+    Our version of dateutil.parser.parse misinteprets an unambiguous string like
+    '0001-01-01T00:00:00Z' as having a two-digit year, which it then converts to
+    2001. This appears to have been fixed by
+    https://github.com/dateutil/dateutil/commit/fc696254. This parserinfo
+    implementation always honors the provided year to prevent this from
+    happening.
+    """
+    def convertyear(self, year):
+        return int(year)
+
+
 def _rfc3339_time_to_timestamp(time_str):
     """Converts an RFC3339 time into a Unix timestamp.
 
     @param time_str: RFC3339-compatible time, e.g.
         '2018-02-25T07:45:35.916929332-07:00'.
 
-    @returns Float number of seconds since the Unix epoch.
+    @returns Float number of seconds since the Unix epoch. Negative if the time
+        precedes the epoch.
     """
-    return (dateutil.parser.parse(time_str) - _UNIX_EPOCH).total_seconds()
+    dt = dateutil.parser.parse(time_str, parserinfo=_LessBrokenParserInfo())
+    return (dt - _UNIX_EPOCH).total_seconds()
