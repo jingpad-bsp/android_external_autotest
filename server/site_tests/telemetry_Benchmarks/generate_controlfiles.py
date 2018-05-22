@@ -27,6 +27,7 @@ PERF_PER_BUILD_TESTS = (
     'octane',
     'smoothness.top_25_smooth',
     'speedometer',
+    'speedometer2',
 )
 
 PERF_DAILY_RUN_TESTS = (
