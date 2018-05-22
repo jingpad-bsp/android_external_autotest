@@ -78,6 +78,9 @@ def make_parser():
         '--create-and-return', action='store_true',
         help='Create the child jobs of a suite, then finish immediately.')
     parser.add_argument(
+        '--test_retry', default=False, action='store_true',
+        help='Enable test-level retry.')
+    parser.add_argument(
         '--max-retries', default=0, type=int, action='store',
         help='Maximum retries allowed at suite level. No retry if it is 0.')
     parser.add_argument(
