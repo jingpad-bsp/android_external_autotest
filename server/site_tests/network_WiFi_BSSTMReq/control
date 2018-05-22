@@ -6,8 +6,9 @@ AUTHOR = 'matthewmwang'
 TIME = 'SHORT'
 NAME = 'network_WiFi_BSSTMReq'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_endtoend, suite:wifi_release, '
-              'suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+#ATTRIBUTES = ('suite:wifi_endtoend, suite:wifi_release, '
+#              'suite:wifi_matfunc, suite:wifi_matfunc_noservo')
+ATTRIBUTES = ('suite:wifi_flaky')
 DEPENDENCIES = 'wificell'
 
 DOC = """
