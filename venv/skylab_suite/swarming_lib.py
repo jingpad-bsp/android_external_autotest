@@ -21,6 +21,9 @@ TASK_FINISHED_STATUS = [TASK_COMPLETED,
                         TASK_EXPIRED,
                         TASK_CANCELED,
                         TASK_TIMEDOUT]
+TASK_FAILED_STATUS = [TASK_EXPIRED,
+                      TASK_CANCELED,
+                      TASK_TIMEDOUT]
 
 
 def _get_client():
