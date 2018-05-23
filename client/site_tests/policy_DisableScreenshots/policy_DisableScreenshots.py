@@ -126,15 +126,15 @@ class policy_DisableScreenshots(
             does not match the policy value
 
         """
-        self._ext = self.cr._browser.tabs.New()
-        self._ext.Navigate('https://google.com')
+        tab = self.navigate_to_url('https://google.com')
 
         current_dir = os.path.dirname(os.path.realpath(__file__))
 
         for method in self.CAPTURE_CMDS:
-            self._ext.ExecuteJavaScript('document.title = "%s"' % method)
+            # Set the document.title to the test name
+            tab.ExecuteJavaScript('document.title = "%s"' % method)
 
-            # Call the extensions shortcut to trigger the activeTab permission
+            # Call the extension's shortcut to trigger the API call
             self.player.blocking_playback(
                     input_type='keyboard',
                     filepath=os.path.join(current_dir, 'keyboard_ctrl+shift+y'))
@@ -144,13 +144,16 @@ class policy_DisableScreenshots(
                 self.player.blocking_playback_of_default_file(
                         input_type='keyboard', filename='keyboard_enter')
 
+            # The document.title is used to pass information to and from
+            # the DOM and the extension. The return value of the screenshot
+            # API call is set to the document.title.
             try:
                 utils.poll_for_condition(
-                        lambda: self._ext.EvaluateJavaScript(
+                        lambda: tab.EvaluateJavaScript(
                             'document.title != "%s"' % method
                         ),
                         timeout=POLL_TIMEOUT)
-                capture = self._ext.EvaluateJavaScript('document.title')
+                capture = tab.EvaluateJavaScript('document.title')
             except utils.TimeoutError:
                 capture = None
 
