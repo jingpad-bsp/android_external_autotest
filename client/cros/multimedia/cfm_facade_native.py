@@ -131,8 +131,15 @@ class CFMFacadeNative(object):
         """
         @return The path to the lastest packaged app log file, if any.
         """
+        return max(self.get_all_pa_logs_file_path(), key=os.path.getctime)
+
+
+    def get_all_pa_logs_file_path(self):
+        """
+        @return The paths to the all packaged app log files, if any.
+        """
         try:
-            return max(glob.iglob(self._PA_LOGS_PATTERN), key=os.path.getctime)
+            return glob.glob(self._PA_LOGS_PATTERN)
         except ValueError as e:
             logging.exception('Error while searching for packaged app logs.')
             return None
