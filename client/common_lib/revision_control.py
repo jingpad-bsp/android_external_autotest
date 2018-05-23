@@ -569,3 +569,16 @@ class GitRepo(object):
             raise error.CmdError('Failed to get git config %', option_name)
         else:
             return gitlog.stdout.strip('\n')
+
+
+    def remote(self):
+        """
+        Return repository git remote name.
+        """
+        gitlog = self.gitcmd('remote')
+
+        if gitlog.exit_status != 0:
+            logging.error(gitlog.stderr)
+            raise error.CmdError('Failed to run git remote.')
+        else:
+            return gitlog.stdout.strip('\n')
