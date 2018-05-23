@@ -161,6 +161,7 @@ suite:power_idle
 suite:power_loadtest
 suite:power_loadtest_1hour
 suite:power_loadtest_fast
+suite:power_measurement_wrapper
 suite:power_requirements
 suite:powerplay
 suite:push_to_prod
