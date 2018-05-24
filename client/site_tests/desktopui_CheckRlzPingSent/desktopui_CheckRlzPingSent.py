@@ -39,21 +39,21 @@ class desktopui_CheckRlzPingSent(test.test):
 
         """
         # Setup a keyboard emulator to open new tabs and type a search.
-        self._player = input_playback.InputPlayback()
-        self._player.emulate(input_type='keyboard')
-        self._player.find_connected_inputs()
+        with input_playback.InputPlayback() as player:
+            player.emulate(input_type='keyboard')
+            player.find_connected_inputs()
 
-        while True:
-            # Open a new tab, search in the omnibox.
-            self._player.blocking_playback_of_default_file(
-                input_type='keyboard', filename='keyboard_ctrl+t')
-            self._player.blocking_playback_of_default_file(
-                input_type='keyboard', filename='keyboard_b+a+d+enter')
-            logging.info(cr.browser.tabs[-1].url)
-            if 'rlz=' in cr.browser.tabs[-1].url:
-                break
-            else:
-                time.sleep(10)
+            while True:
+                # Open a new tab, search in the omnibox.
+                player.blocking_playback_of_default_file(
+                    input_type='keyboard', filename='keyboard_ctrl+t')
+                player.blocking_playback_of_default_file(
+                    input_type='keyboard', filename='keyboard_b+a+d+enter')
+                logging.info(cr.browser.tabs[-1].url)
+                if 'rlz=' in cr.browser.tabs[-1].url:
+                    break
+                else:
+                    time.sleep(10)
 
 
     def run_once(self, logged_in=True):

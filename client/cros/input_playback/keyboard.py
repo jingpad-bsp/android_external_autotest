@@ -48,3 +48,6 @@ class Keyboard(object):
         """Clean up the files/handles created in the class."""
         if self.keyboard:
             self.keyboard.close()
+
+    def __exit__(self):
+        self.close()
