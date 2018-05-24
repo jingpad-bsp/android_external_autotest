@@ -47,12 +47,18 @@ public class SuiteRunnerView extends TabView {
   private TextBox partIdTextBox;
   private HorizontalPanel fifthOptionalLine;
 
+  private TextArea testArgsTextArea;
+  private HorizontalPanel sixthOptionalLine;
+  private static String TEST_ARGS_PLACEHOLDER =
+    "line delimited test arguments\nexample:\nmyarg=myval\nmyarg2=myval2";
+
   private HashMap<String, String> modelBoardMap;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq",
       "bvt-inline", "cts_N", "gts", "hardware_storagequal",
-      "hardware_memoryqual", "usb-camera","power_loadtest_fast",
-      "power_loadtest_1hour", "power_loadtest", "power_idle", "moblab_setup");
+      "hardware_memoryqual", "usb-camera","power_measurement_wrapper",
+      "power_loadtest_fast", "power_loadtest_1hour", "power_loadtest",
+      "power_idle", "moblab_setup");
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
 
@@ -106,6 +112,10 @@ public class SuiteRunnerView extends TabView {
     bugIdTextBox = new TextBox();
     partIdTextBox = new TextBox();
 
+    testArgsTextArea = new TextArea();
+    testArgsTextArea.getElement().setPropertyString("placeholder",
+      TEST_ARGS_PLACEHOLDER);
+
     boardSelector.addChangeHandler(new ChangeHandler() {
       @Override
       public void onChange(ChangeEvent event) {
@@ -140,6 +150,7 @@ public class SuiteRunnerView extends TabView {
     poolSelector.setStyleName("run_suite_selector");
 
     suiteArgsTextArea.setStyleName("run_suite_test_args");
+    testArgsTextArea.setStyleName("run_suite_test_args");
     bugIdTextBox.setStyleName("run_suite_avl_args");
     partIdTextBox.setStyleName("run_suite_avl_args");
 
@@ -155,6 +166,9 @@ public class SuiteRunnerView extends TabView {
     fifthOptionalLine = createHorizontalLineItem("AVL part number (Optional):",
                                                  partIdTextBox);
     fifthOptionalLine.setVisible(false);
+    sixthOptionalLine = createHorizontalLineItem("Test args:",
+                                                  testArgsTextArea);
+    sixthOptionalLine.setVisible(false);
     HorizontalPanel fourthLine = createHorizontalLineItem("RW Firmware (Optional):", rwFirmwareSelector);
     HorizontalPanel fifthLine = createHorizontalLineItem("RO Firmware (Optional):", roFirmwareSelector);
     HorizontalPanel sixthLine = createHorizontalLineItem("Pool (Optional):", poolSelector);
@@ -188,6 +202,7 @@ public class SuiteRunnerView extends TabView {
               rwFirmware,
               roFirmware,
               suiteArgsTextArea.getText(),
+              testArgsTextArea.getText(),
               bugIdTextBox.getText(),
               partIdTextBox.getText());
         } else {
@@ -207,6 +222,7 @@ public class SuiteRunnerView extends TabView {
     suiteRunnerMainPanel.add(thirdOptionalLine);
     suiteRunnerMainPanel.add(fourthOptionalLine);
     suiteRunnerMainPanel.add(fifthOptionalLine);
+    suiteRunnerMainPanel.add(sixthOptionalLine);
     suiteRunnerMainPanel.add(fourthLine);
     suiteRunnerMainPanel.add(fifthLine);
     suiteRunnerMainPanel.add(sixthLine);
@@ -249,16 +265,24 @@ public class SuiteRunnerView extends TabView {
       thirdOptionalLine.setVisible(true);
       fourthOptionalLine.setVisible(false);
       fifthOptionalLine.setVisible(false);
+      sixthOptionalLine.setVisible(false);
     } else if(listIndex == suiteNames.indexOf("hardware_storagequal") ||
         listIndex == suiteNames.indexOf("hardware_memoryqual")) {
       thirdOptionalLine.setVisible(false);
       fourthOptionalLine.setVisible(true);
       fifthOptionalLine.setVisible(true);
+      sixthOptionalLine.setVisible(false);
+    } else if(listIndex == suiteNames.indexOf("power_measurement_wrapper")) {
+      thirdOptionalLine.setVisible(false);
+      fourthOptionalLine.setVisible(false);
+      fifthOptionalLine.setVisible(false);
+      sixthOptionalLine.setVisible(true);
     } else {
       suiteArgsTextArea.setText("");
       thirdOptionalLine.setVisible(false);
       fourthOptionalLine.setVisible(false);
       fifthOptionalLine.setVisible(false);
+      sixthOptionalLine.setVisible(false);
     }
   }
 
@@ -393,6 +417,7 @@ public class SuiteRunnerView extends TabView {
    * @param rwFirmware, an optional firmware to use for some qual tests.
    * @param roFirmware, an optional firmware to use for some qual tests.
    * @param suiteArgs, optional params to pass to the suite.
+   * @param testArgs, optional params to pass to tests in the suite.
    * @param bugId, an optional param indicates the bugnizer ticket for
    * memory/hardware avl process.
    * @param partId, an optional param identifies the component involved for
@@ -400,13 +425,13 @@ public class SuiteRunnerView extends TabView {
    */
   private void runSuite(String board, String model, String build, String suite,
       String pool, String rwFirmware, String roFirmware, String suiteArgs,
-      String bugId, String partId) {
+      String testArgs, String bugId, String partId) {
     String realPoolLabel = pool;
     if (pool != null && !pool.isEmpty()) {
       realPoolLabel = pool.trim();
     }
     MoblabRpcHelper.runSuite(board, model, build, suite, realPoolLabel,
-        rwFirmware, roFirmware, suiteArgs, bugId, partId,
+        rwFirmware, roFirmware, suiteArgs, testArgs, bugId, partId,
         new RunSuiteCallback() {
       @Override
       public void onRunSuiteComplete() {
