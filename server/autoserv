@@ -24,8 +24,11 @@ import common
 from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.bin.result_tools import view as result_view
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import host_queue_entry_states
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.server import results_mocker
 from autotest_lib.server.cros.dynamic_suite import suite
 
@@ -52,7 +55,6 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
-from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 from autotest_lib.client.common_lib import pidfile, logging_manager
@@ -625,31 +627,14 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     sys.exit(exit_code)
 
 
-def record_autoserv(options, start_time):
-    """Record autoserv end-to-end time in metadata db.
-
-    @param options: parser options.
-    @param start_time: When autoserv started
-    """
-    # Get machine hostname
-    machines = options.machines.replace(
-            ',', ' ').strip().split() if options.machines else []
-    num_machines = len(machines)
-    if num_machines > 1:
-        # Skip the case where atomic group is used.
-        return
-    elif num_machines == 0:
-        machines.append('hostless')
-
-    # Determine the status that will be reported.
-    status = get_job_status(options)
-    is_special_task = status not in [
-            job_overhead.STATUS.RUNNING, job_overhead.STATUS.GATHERING]
-    job_or_task_id = job_directories.get_job_id_or_task_id(options.results)
-    duration_secs = (datetime.datetime.now() - start_time).total_seconds()
-    job_overhead.record_state_duration(
-            job_or_task_id, machines[0], status, duration_secs,
-            is_special_task=is_special_task)
+# Job breakdown statuses
+_hs = host_states.Status
+_qs = host_queue_entry_states.Status
+_status_list = [
+        _qs.QUEUED, _qs.RESETTING, _qs.VERIFYING,
+        _qs.PROVISIONING, _hs.REPAIRING, _qs.CLEANING,
+        _qs.RUNNING, _qs.GATHERING, _qs.PARSING]
+_JOB_OVERHEAD_STATUS = enum.Enum(*_status_list, string_values=True)
 
 
 def get_job_status(options):
@@ -657,7 +642,7 @@ def get_job_status(options):
 
     @param options: parser options.
     """
-    s = job_overhead.STATUS
+    s = _JOB_OVERHEAD_STATUS
     task_mapping = {
             'reset': s.RESETTING, 'verify': s.VERIFYING,
             'provision': s.PROVISIONING, 'repair': s.REPAIRING,
@@ -830,9 +815,6 @@ def main():
     finally:
         if pid_file_manager:
             pid_file_manager.close_file(exit_code)
-        # Record the autoserv duration time. Must be called
-        # just before the system exits to ensure accuracy.
-        record_autoserv(parser.options, start_time)
     sys.exit(exit_code)
 
 
