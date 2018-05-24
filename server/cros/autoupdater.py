@@ -398,13 +398,14 @@ class ChromiumOSUpdater(object):
             kernel['kernel'], flag, dev)).stdout.strip())
 
 
-    def _get_kernel_priority(self, kernel):
-        """Return numeric priority for the specified kernel.
-
-        @param kernel: information of the given kernel, either _KERNEL_A
-            or _KERNEL_B.
-        """
-        return self._cgpt('-P', kernel)
+    def _get_next_kernel(self):
+        """Return the kernel that has priority for the next boot."""
+        priority_a = self._cgpt('-P', _KERNEL_A)
+        priority_b = self._cgpt('-P', _KERNEL_B)
+        if priority_a > priority_b:
+            return _KERNEL_A
+        else:
+            return _KERNEL_B
 
 
     def _get_kernel_success(self, kernel):
@@ -716,16 +717,13 @@ class ChromiumOSUpdater(object):
             # Give it some time in case of IO issues.
             time.sleep(10)
 
-            # Figure out active and inactive kernel.
-            active_kernel, inactive_kernel = self.get_kernel_state()
-
-            # Ensure inactive kernel has higher priority than active.
-            if (self._get_kernel_priority(inactive_kernel)
-                    < self._get_kernel_priority(active_kernel)):
+            inactive_kernel = self.get_kernel_state()[1]
+            next_kernel = self._get_next_kernel()
+            if next_kernel != inactive_kernel:
                 raise ChromiumOSError(
-                    'Update failed. The priority of the inactive kernel'
-                    ' partition is less than that of the active kernel'
-                    ' partition.')
+                        'Update failed.  The kernel for next boot is %s, '
+                        'but %s was expected.' %
+                        (next_kernel['name'], inactive_kernel['name']))
 
             # Update has returned successfully; reboot the host.
             #
