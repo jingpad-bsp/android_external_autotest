@@ -52,7 +52,7 @@ class autoupdate_Rollback(test.test):
                      'inactive kernel %s.', initial_kernel, updated_kernel)
 
         logging.info('Performing an update.')
-        updater.update_rootfs()
+        updater.update_image()
         host.reboot()
 
         # We should be booting from the new partition.
