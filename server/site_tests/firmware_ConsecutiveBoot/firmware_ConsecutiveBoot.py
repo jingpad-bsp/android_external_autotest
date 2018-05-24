@@ -62,6 +62,8 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         self.faft_client.system.run_shell_command('/sbin/shutdown -P now')
         logging.info('Wait for client to go offline')
         self.switcher.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
+        if self.check_ec_capability(['x86'], suppress_warning=True):
+            self.check_shutdown_power_state("G3", pwr_retries=13)
         # Retry in case power_short_press was not registered.
         for i in xrange(self.POWER_ON_RETRY):
             logging.info("sleep %d, tap power key to boot.",
