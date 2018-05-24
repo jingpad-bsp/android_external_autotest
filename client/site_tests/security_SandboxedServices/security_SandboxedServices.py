@@ -341,4 +341,5 @@ class security_SandboxedServices(test.test):
 
         if len(sandbox_delta) > 0:
             logging.error('Failed sandboxing: %r', sandbox_delta)
-            raise error.TestFail('One or more processes failed sandboxing')
+            raise error.TestFail('One or more processes failed sandboxing: %r' %
+                                 sandbox_delta)
