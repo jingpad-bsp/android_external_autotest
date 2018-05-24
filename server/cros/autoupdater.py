@@ -6,13 +6,17 @@ import glob
 import logging
 import os
 import re
-import urlparse
+import time
 import urllib2
+import urlparse
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import autotest
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
+from autotest_lib.server.cros.dynamic_suite import tools
 from chromite.lib import retry_util
 
 try:
@@ -35,6 +39,16 @@ UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
                              'UPDATE_STATUS_UPDATE_AVAILABLE',
                              'UPDATE_STATUS_DOWNLOADING',
                              'UPDATE_STATUS_FINALIZING']
+
+
+# PROVISION_FAILED - A flag file to indicate provision failures.  The
+# file is created at the start of any AU procedure (see
+# `ChromiumOSUpdater.run_full_update()`).  The file's location in
+# stateful means that on successul update it will be removed.  Thus, if
+# this file exists, it indicates that we've tried and failed in a
+# previous attempt to update.
+PROVISION_FAILED = '/var/tmp/provision_failed'
+
 
 class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -338,6 +352,12 @@ class ChromiumOSUpdater(BaseUpdater):
     # auto update.
     KERNEL_UPDATE_TIMEOUT = 120
 
+    # A flag file used to enable special handling in lab DUTs.  Some
+    # parts of the system in Chromium OS test images will behave in ways
+    # convenient to the test lab when this file is present.  Generally,
+    # we create this immediately after any update completes.
+    _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
+
     def __init__(self, update_url, host=None, interactive=True):
         super(ChromiumOSUpdater, self).__init__(self.UPDATER_BIN, update_url,
                                                 host, interactive=interactive)
@@ -527,10 +547,16 @@ class ChromiumOSUpdater(BaseUpdater):
                     self.host.hostname)
             raise update_error
 
-    def run_update(self, update_root=True):
-        """Update the DUT with image of specific version.
 
-        @param update_root: True to force a rootfs update.
+    def _install_update(self, update_root=True):
+        """Install the requested image on the DUT, but don't start it.
+
+        This downloads all content needed for the requested update, and
+        installs it in place on the DUT.  This does not reboot the DUT,
+        so the update is merely pending when the function returns.
+
+        @param update_root: When true, force a rootfs update; otherwise
+                            update the stateful partition only.
         """
         booted_version = self.host.get_release_version()
         logging.info('Updating from version %s to %s.',
@@ -581,6 +607,165 @@ class ChromiumOSUpdater(BaseUpdater):
         finally:
             logging.info('Update engine log has downloaded in '
                          'sysinfo/update_engine dir. Check the lastest.')
+
+
+    def _try_stateful_update(self):
+        """Try to use stateful update to initialize DUT.
+
+        When DUT is already running the same version that machine_install
+        tries to install, stateful update is a much faster way to clean up
+        the DUT for testing, compared to a full reimage. It is implemeted
+        by calling autoupdater._run_full_update, but skipping updating root,
+        as updating the kernel is time consuming and not necessary.
+
+        @param update_url: url of the image.
+        @param updater: ChromiumOSUpdater instance used to update the DUT.
+        @returns: True if the DUT was updated with stateful update.
+
+        """
+        self.host.prepare_for_update()
+
+        # TODO(jrbarnette):  Yes, I hate this re.match() test case.
+        # It's better than the alternative:  see crbug.com/360944.
+        image_name = url_to_image_name(self.update_url)
+        release_pattern = r'^.*-release/R[0-9]+-[0-9]+\.[0-9]+\.0$'
+        if not re.match(release_pattern, image_name):
+            return False
+        if not self.check_version():
+            return False
+        # Following folders should be rebuilt after stateful update.
+        # A test file is used to confirm each folder gets rebuilt after
+        # the stateful update.
+        folders_to_check = ['/var', '/home', '/mnt/stateful_partition']
+        test_file = '.test_file_to_be_deleted'
+        paths = [os.path.join(folder, test_file) for folder in folders_to_check]
+        self._run('touch %s' % ' '.join(paths))
+
+        self._install_update(update_root=False)
+
+        # Reboot to complete stateful update.
+        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
+
+        # After stateful update and a reboot, all of the test_files shouldn't
+        # exist any more. Otherwise the stateful update is failed.
+        return not any(
+            self.host.path_exists(os.path.join(folder, test_file))
+            for folder in folders_to_check)
+
+
+    def _post_update_processing(self, expected_kernel):
+        """After the DUT is updated, confirm machine_install succeeded.
+
+        @param updater: ChromiumOSUpdater instance used to update the DUT.
+        @param expected_kernel: kernel expected to be active after reboot,
+            or `None` to skip rollback checking.
+
+        """
+        # Touch the lab machine file to leave a marker that
+        # distinguishes this image from other test images.
+        # Afterwards, we must re-run the autoreboot script because
+        # it depends on the _LAB_MACHINE_FILE.
+        autoreboot_cmd = ('FILE="%s" ; [ -f "$FILE" ] || '
+                          '( touch "$FILE" ; start autoreboot )')
+        self._run(autoreboot_cmd % self._LAB_MACHINE_FILE)
+        self.verify_boot_expectations(
+                expected_kernel, rollback_message=
+                'Build %s failed to boot on %s; system rolled back to previous '
+                'build' % (self.update_version, self.host.hostname))
+
+        logging.debug('Cleaning up old autotest directories.')
+        try:
+            installed_autodir = autotest.Autotest.get_installed_autodir(
+                    self.host)
+            self._run('rm -rf ' + installed_autodir)
+        except autotest.AutodirNotFoundError:
+            logging.debug('No autotest installed directory found.')
+
+
+    def run_update(self, force_full_update):
+        """Perform a full update of a DUT in the test lab.
+
+        This downloads and installs the root FS and stateful partition
+        content needed for the update specified in `self.host` and
+        `self.update_url`.  The update is performed according to the
+        requirements for provisioning a DUT for testing the requested
+        build.
+
+        @param force_full_update: When true, update the root file
+            system to the new build, even if the target DUT already has
+            that build installed.
+        @returns A tuple of the form `(image_name, attributes)`, where
+            `image_name` is the name of the image installed, and
+            `attributes` is new attributes to be applied to the DUT.
+        """
+        logging.debug('Update URL is %s', self.update_url)
+
+        # Report provision stats.
+        server_name = dev_server.get_hostname(self.update_url)
+        (metrics.Counter('chromeos/autotest/provision/install')
+         .increment(fields={'devserver': server_name}))
+
+        # Create a file to indicate if provision fails. The file will be
+        # removed by any successful update.
+        self._run('touch %s' % PROVISION_FAILED)
+
+        update_complete = False
+        if not force_full_update:
+            try:
+                # If the DUT is already running the same build, try stateful
+                # update first as it's much quicker than a full re-image.
+                update_complete = self._try_stateful_update()
+            except Exception as e:
+                logging.exception(e)
+
+        inactive_kernel = None
+        if update_complete:
+            logging.info('Install complete without full update')
+        else:
+            logging.info('DUT requires full update.')
+            self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
+            self.host.prepare_for_update()
+
+            self._install_update()
+
+            # Give it some time in case of IO issues.
+            time.sleep(10)
+
+            # Figure out active and inactive kernel.
+            active_kernel, inactive_kernel = self.get_kernel_state()
+
+            # Ensure inactive kernel has higher priority than active.
+            if (self.get_kernel_priority(inactive_kernel)
+                    < self.get_kernel_priority(active_kernel)):
+                raise ChromiumOSError(
+                    'Update failed. The priority of the inactive kernel'
+                    ' partition is less than that of the active kernel'
+                    ' partition.')
+
+            # Update has returned successfully; reboot the host.
+            #
+            # Regarding the 'crossystem' command below: In some cases,
+            # the update flow puts the TPM into a state such that it
+            # fails verification.  We don't know why.  However, this
+            # call papers over the problem by clearing the TPM during
+            # the reboot.
+            #
+            # We ignore failures from 'crossystem'.  Although failure
+            # here is unexpected, and could signal a bug, the point of
+            # the exercise is to paper over problems; allowing this to
+            # fail would defeat the purpose.
+            self._run('crossystem clear_tpm_owner_request=1',
+                      ignore_status=True)
+            self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
+
+        self._post_update_processing(inactive_kernel)
+        image_name = url_to_image_name(self.update_url)
+        # update_url is different from devserver url needed to stage autotest
+        # packages, therefore, resolve a new devserver url here.
+        devserver_url = dev_server.ImageServer.resolve(
+                image_name, self.host.hostname).url()
+        repo_url = tools.get_package_url(devserver_url, image_name)
+        return image_name, {ds_constants.JOB_REPO_URL: repo_url}
 
 
     def check_version(self):
@@ -718,4 +903,3 @@ class ChromiumOSUpdater(BaseUpdater):
                     'After update and reboot, %s '
                     'within %d seconds' % (event,
                                            self.KERNEL_UPDATE_TIMEOUT))
-
