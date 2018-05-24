@@ -10,6 +10,7 @@ import xml.etree.ElementTree
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.video import device_capability
 from sets import Set
 
 class camera_HAL3(test.test):
@@ -57,13 +58,17 @@ class camera_HAL3(test.test):
                     video.get('height'), video.get('frameRate')))
         return '--recording_params=' + ','.join(recording_params)
 
-    def run_once(self, timeout=600, options=[]):
+    def run_once(self, timeout=600, options=[], capability=None):
         """
         Entry point of this test.
 
         @param timeout: Seconds. Timeout for running the test command.
         @param options: Option strings passed to test command. e.g. ['--v=1']
+        @param capability: Capability required for executing this test.
         """
+        if capability:
+            device_capability.DeviceCapability().ensure_capability(capability)
+
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
         # create file to enable camera test mode.
