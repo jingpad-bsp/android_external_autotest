@@ -77,6 +77,14 @@ class firmware_ConsecutiveBoot(FirmwareTest):
                 return
         raise ConnectionError()
 
+    def cleanup(self):
+        try:
+            # Restore the GBB flag in developer mode test.
+            self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY, 0)
+        except Exception as e:
+            logging.error("Caught exception: %s", str(e))
+        super(firmware_ConsecutiveBoot, self).cleanup()
+
     def run_once(self, host, dev_mode=False):
         for i in xrange(self.faft_iterations):
             logging.info('======== Running FAFT ITERATION %d/%s ========',
