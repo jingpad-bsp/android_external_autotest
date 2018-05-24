@@ -168,7 +168,7 @@ def _run_lucifer_job(event_handler, args, job):
             '-hosts', ','.join(jobx.hostnames(job)),
 
             '-x-level', args.lucifer_level,
-            '-x-resultsdir', args.results_dir,
+            '-resultsdir', args.results_dir,
     ])
     _add_level_specific_args(command_args, args, job)
     return eventlib.run_event_command(
