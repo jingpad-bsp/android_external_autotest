@@ -465,7 +465,10 @@ class atest(object):
                                dest='environment',
                                default='prod')
         self.parser.add_option('--inventory-repo-dir',
-                               help=('The path to clone skylab inventory repo. '
+                               help=('The path of directory to clone skylab '
+                                     'inventory repo into. It can be an empty '
+                                     'folder or an existing clean checkout of '
+                                     'infra_internal/skylab_inventory.'
                                      'If not provided, a temporary dir will be '
                                      'created and used as the repo dir.'
                                      'Only useful when --skylab is enabled'),
