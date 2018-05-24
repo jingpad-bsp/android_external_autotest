@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import afe_utils
 from autotest_lib.server import crashcollect
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import cros_firmware
 from autotest_lib.server.hosts import repair
@@ -186,9 +187,9 @@ class UpdateSuccessVerifier(hosts.Verifier):
     Checks that the DUT successfully finished its last provision job.
 
     At the start of any update (e.g. for a Provision job), the code
-    creates a marker file named `host.PROVISION_FAILED`.  The file is
-    located in a part of the stateful partition that will be removed if
-    an update finishes successfully.  Thus, the presence of the file
+    creates a marker file named `PROVISION_FAILED`.  The file is located
+    in a part of the stateful partition that will be removed if an
+    update finishes successfully.  Thus, the presence of the file
     indicates that a prior update failed.
 
     The verifier tests for the existence of the marker file and fails if
@@ -196,7 +197,7 @@ class UpdateSuccessVerifier(hosts.Verifier):
     """
     def verify(self, host):
         # pylint: disable=missing-docstring
-        result = host.run('test -f %s' % host.PROVISION_FAILED,
+        result = host.run('test -f %s' % autoupdater.PROVISION_FAILED,
                           ignore_status=True)
         if result.exit_status == 0:
             raise hosts.AutoservVerifyError(
@@ -721,7 +722,7 @@ def create_moblab_repair_strategy():
         verifier.  TODO(jrbarnette)  This assertion is unproven.
 
     'good_au':  This verifier can't pass, because the Moblab AU
-        procedure doesn't properly delete CrosHost.PROVISION_FAILED.
+        procedure doesn't properly delete the PROVISION_FAILED file.
         TODO(jrbarnette) We should refactor _machine_install() so that
         it can be different for Moblab.
 
