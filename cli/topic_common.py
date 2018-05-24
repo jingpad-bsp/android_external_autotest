@@ -460,8 +460,8 @@ class atest(object):
                                action='store_true', dest='skylab',
                                default=False)
         self.parser.add_option('--env',
-                               help=('Environment of the server. Only useful '
-                                     'when --skylab is enabled'),
+                               help=('Environment of the server. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                dest='environment',
                                default='prod')
         self.parser.add_option('--inventory-repo-dir',
@@ -470,32 +470,32 @@ class atest(object):
                                      'folder or an existing clean checkout of '
                                      'infra_internal/skylab_inventory.'
                                      'If not provided, a temporary dir will be '
-                                     'created and used as the repo dir.'
-                                     'Only useful when --skylab is enabled'),
+                                     'created and used as the repo dir. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                dest='inventory_repo_dir')
         self.parser.add_option('--keep-repo-dir',
                                help=('Keep the repo dir after the command '
                                      'completes, otherwise the dir will be '
-                                     'cleaned up. Only useful when --skylab is '
-                                     'enabled.'),
+                                     'cleaned up. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='keep_repo_dir')
         self.parser.add_option('--draft',
-                               help=('Upload server change CL as a draft. Only'
-                                     ' useful when --skylab is enabled.'),
+                               help=('Upload server change CL as a draft. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='draft',
                                default=False)
         self.parser.add_option('--dryrun',
-                               help=('Execute the action as a dryrun. Only '
-                                     'useful when --skylab is enabled.'),
+                               help=('Execute the action as a dryrun. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='dryrun',
                                default=False)
         self.parser.add_option('--submit',
                                help=('Submit the change CL directly without '
-                                     'reviewing it in Gerrit. Only useful when '
-                                     '--skylab is enabled.'),
+                                     'reviewing it in Gerrit. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='submit',
                                default=False)
