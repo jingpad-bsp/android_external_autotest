@@ -9,9 +9,6 @@
 /usr/lib64/libia_ltm.so
 /usr/lib64/libSkyCamAIC.so
 /usr/lib64/libSkyCamAICKBL.so
-# Remove these after perf is built with clang (https://crbug.com/797835).
-/usr/bin/perf
-/usr/bin/trace
 # Remove these after crosvm is built with compiler-rt.
 # https://crbug.com/814480.
 /usr/bin/crosvm
