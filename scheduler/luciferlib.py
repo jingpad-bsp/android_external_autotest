@@ -147,7 +147,8 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
             # Job specific
             '--job-id', str(job.id),
-            '--lucifer-level', 'GATHERING',
+            '--lucifer-level', 'STARTING',
+            '--parsing-only',
             '--autoserv-exit', str(autoserv_exit),
             '--results-dir', results_dir,
     ]
