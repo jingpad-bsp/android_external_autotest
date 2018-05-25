@@ -75,7 +75,7 @@ class TradefedTestTest(unittest.TestCase):
         # http://pantheon/storage/browser/chromeos-autotest-results/116875512-chromeos-test/
         # When a test case crashed during teardown, tradefed prints the "fail"
         # message twice. Tolerate it and still return an (inconsistent) count.
-        self.assertEquals(2,
+        self.assertEquals(1,
             len(tradefed_test.parse_tradefed_result(
                 _load_data('CtsWidgetTestCases.txt'),
                 waivers=waivers)))
@@ -111,6 +111,14 @@ class TradefedTestTest(unittest.TestCase):
         self.assertEquals(0,
             len(tradefed_test.parse_tradefed_result(
                 _load_data('CtsDeqpTestCases-trimmed.txt'),
+                waivers=waivers)))
+
+        # b/80160772
+        # http://pantheon/storage/browser/chromeos-autotest-results/201962931-kkanchi/
+        # The newer tradefed requires different parsing to count waivers.
+        self.assertEquals(1,
+            len(tradefed_test.parse_tradefed_result(
+                _load_data('CtsAppTestCases_P_simplified.txt'),
                 waivers=waivers)))
 
 if __name__ == '__main__':
