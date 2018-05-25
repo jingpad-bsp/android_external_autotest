@@ -48,7 +48,7 @@ def get_job_id_or_task_id(result_dir):
             For special task:
             /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
 
-    @returns: integer representing the job id or task id. Returns None if fail
+    @returns: str representing the job id or task id. Returns None if fail
               to parse job or task id from the result_dir.
     """
     if not result_dir:
@@ -61,13 +61,13 @@ def get_job_id_or_task_id(result_dir):
     # job ID.
     m_job = re.findall(JOB_PATTERN, result_dir)
     if m_job:
-        return int(m_job[-1])
+        return m_job[-1]
     m_special_task = re.match(SPECIAL_TASK_PATTERN, result_dir)
     if m_special_task:
-        return int(m_special_task.group(1))
+        return m_special_task.group(1)
     m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
     if m_ssp_job_pattern and utils.is_in_container():
-        return int(m_ssp_job_pattern.group(1))
+        return m_ssp_job_pattern.group(1)
 
 
 def get_job_folder_name(result_dir):

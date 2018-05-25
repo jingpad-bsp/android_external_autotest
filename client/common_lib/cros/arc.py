@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import glob
 import logging
 import os
@@ -380,6 +381,30 @@ def _write_android_file(filename, data):
     utils.run(cros_cmd, stdin=data)
 
 
+def get_android_file_stats(filename):
+    """Returns an object of file stats for an Android file.
+
+    The returned object supported limited attributes, but can be easily extended
+    if needed. Note that the value are all string.
+
+    This uses _android_shell to run as root, so that it can access to all files
+    inside the container. On non-debuggable build, adb shell is not rootable.
+    """
+    mapping = {
+        '%a': 'mode',
+        '%g': 'gid',
+        '%h': 'nlink',
+        '%u': 'uid',
+    }
+    output = _android_shell(
+        'stat -c "%s" %s' % (' '.join(mapping.keys()), pipes.quote(filename)))
+    stats = output.split(' ')
+    if len(stats) != len(mapping):
+      raise error.TestError('Unexpected output from stat: %s' % output)
+    _Stats = collections.namedtuple('_Stats', mapping.values())
+    return _Stats(*stats)
+
+
 def remove_android_file(filename):
     """Removes a file in Android filesystem.
 
@@ -566,6 +591,52 @@ def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
     utils.run('inject_powerd_input_event', args=args)
 
 
+class Logcat(object):
+    """Saves the output of logcat to a file."""
+
+    def __init__(self, path=_VAR_LOGCAT_PATH):
+        with open(path, 'w') as f:
+            self._proc = subprocess.Popen(
+                ['android-sh', '-c', 'logcat'],
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                close_fds=True)
+
+    def __enter__(self):
+        """Support for context manager."""
+        return self
+
+    def __exit__(self, *args):
+        """Support for context manager.
+
+        Calls close().
+        """
+        self.close()
+
+    def close(self):
+        """Stop the logcat process gracefully."""
+        if not self._proc:
+            return
+        self._proc.terminate()
+
+        class TimeoutException(Exception):
+            """Termination timeout timed out."""
+
+        try:
+            utils.poll_for_condition(
+                condition=lambda: self._proc.poll() is not None,
+                exception=TimeoutException,
+                timeout=10,
+                sleep_interval=0.1,
+                desc='Waiting for logcat to terminate')
+        except TimeoutException:
+            logging.info('Killing logcat due to timeout')
+            self._proc.kill()
+            self._proc.wait()
+        finally:
+            self._proc = None
+
+
 class ArcTest(test.test):
     """ Base class of ARC Test.
 
@@ -656,7 +727,8 @@ class ArcTest(test.test):
             raise error.TestFail(err)
         finally:
             try:
-                self._stop_logcat()
+                if self.logcat_proc:
+                    self.logcat_proc.close()
             finally:
                 if self._chrome is not None:
                     self._chrome.close()
@@ -762,13 +834,7 @@ class ArcTest(test.test):
             logging.info('Setting up dependent package(s) %s', packages)
             self.job.setup_dep(packages)
 
-        # TODO(b/29341443): Run logcat on non ArcTest test cases too.
-        with open(_VAR_LOGCAT_PATH, 'w') as f:
-            self.logcat_proc = subprocess.Popen(
-                ['android-sh', '-c', 'logcat -v threadtime'],
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                close_fds=True)
+        self.logcat_proc = Logcat()
 
         wait_for_adb_ready()
 
@@ -792,29 +858,6 @@ class ArcTest(test.test):
             self._should_reenable_play_store = True
         if block_outbound:
             self.block_outbound()
-
-    def _stop_logcat(self):
-        """Stop the adb logcat process gracefully."""
-        if not self.logcat_proc:
-            return
-        # Running `adb kill-server` should have killed `adb logcat`
-        # process, but just in case also send termination signal.
-        self.logcat_proc.terminate()
-
-        class TimeoutException(Exception):
-            """Termination timeout timed out."""
-
-        try:
-            utils.poll_for_condition(
-                condition=lambda: self.logcat_proc.poll() is not None,
-                exception=TimeoutException,
-                timeout=10,
-                sleep_interval=0.1,
-                desc='Waiting for adb logcat to terminate')
-        except TimeoutException:
-            logging.info('Killing adb logcat due to timeout')
-            self.logcat_proc.kill()
-            self.logcat_proc.wait()
 
     def arc_teardown(self):
         """ARC test teardown.

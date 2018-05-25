@@ -502,7 +502,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         resultsdir = '118-fubar'
         job = job_directories.RegularJobDirectory(resultsdir)
         self.assertEqual(job.dirname, resultsdir)
-        self.assertEqual(job._id, 118)
+        self.assertEqual(job._id, '118')
 
 
     def test_special_job_fields(self):
@@ -516,7 +516,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         resultsdir = destdir + '/118-reset'
         job = job_directories.SpecialJobDirectory(resultsdir)
         self.assertEqual(job.dirname, resultsdir)
-        self.assertEqual(job._id, 118)
+        self.assertEqual(job._id, '118')
 
 
     def _check_finished_job(self, jobtime, hqetimes, expected):

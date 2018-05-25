@@ -71,7 +71,6 @@ from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
-from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import run_suite_common
 
 CONFIG = global_config.global_config
@@ -1618,9 +1617,6 @@ class ResultCollector(object):
             self.timings.suite_start_time is not None):
             runtime_in_secs = (self.timings.tests_end_time -
                     self.timings.suite_start_time).total_seconds()
-
-        job_overhead.record_suite_runtime(self._suite_job_id, self._suite_name,
-                self._board, self._build, self._num_child_jobs, runtime_in_secs)
 
 
 def _make_child_deps_from_options(options):

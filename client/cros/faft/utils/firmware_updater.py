@@ -211,6 +211,20 @@ class FirmwareUpdater(object):
 
     def _detect_image_paths(self):
         """Scans shellball to find correct bios and ec image paths."""
+        def _extract_path_from_match(match_result, model):
+          """Extract a path from a matched line of setvars.sh.
+
+          Args:
+            match_result: Match object: group 1 contains the quoted filename.
+            model: Name of model to use to resolve ${MODEL_DIR} in the filename.
+
+          Returns:
+            pathname to firmware file (e.g. 'models/grunt/bios.bin').
+          """
+          pathname = match_result.group(1).replace('"', '')
+          pathname = pathname.replace('${MODEL_DIR}', 'models/' + model)
+          return pathname
+
         model_result = self.os_if.run_shell_command_get_output(
             'mosys platform model')
         if model_result:
@@ -222,13 +236,13 @@ class FirmwareUpdater(object):
             if grep_result:
                 match = re.match('IMAGE_MAIN=(.*)', grep_result[0])
                 if match:
-                    self._bios_path = match.group(1).replace('"', '')
+                  self._bios_path = _extract_path_from_match(match, model)
             grep_result = self.os_if.run_shell_command_get_output(
                 'grep IMAGE_EC= %s' % search_path)
             if grep_result:
                 match = re.match('IMAGE_EC=(.*)', grep_result[0])
                 if match:
-                  self._ec_path = match.group(1).replace('"', '')
+                  self._ec_path = _extract_path_from_match(match, model)
 
     def _update_target_fwid(self):
         """Update target fwid/ecid in the setvars.sh."""

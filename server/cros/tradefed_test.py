@@ -167,7 +167,7 @@ class TradefedTest(test.test):
         # Check ChromeOS ARC VERSION. E.g.
         arc_version = set(host.get_arc_version() for host in self._hosts)
         if len(arc_version) > 1:
-            raise error.TestFail('Hosts\' CHROMEOS_ARC_VERSION is different: ',
+            raise error.TestFail('Hosts\' CHROMEOS_ARC_VERSION is different: '
                                  '%s', arc_version)
 
         # Check ChromeOS model for unibuild.
@@ -371,8 +371,8 @@ class TradefedTest(test.test):
         # Kill existing adb server to ensure that the env var is picked up.
         self._run_adb_cmd(verbose=True, args=('kill-server',))
 
-        # TODO(pwang): ready_arc takes 10+ seconds on a single DUT. Parallelize
-        #              it if it becomes a bottleneck.
+        # TODO(pwang): connect_adb takes 10+ seconds on a single DUT.
+        #              Parallelize it if it becomes a bottleneck.
         for host in self._hosts:
             self._connect_adb(host, pubkey_path)
             self._disable_adb_install_dialog(host)
@@ -1125,3 +1125,140 @@ class TradefedTest(test.test):
             'passed=%d, failed=%d, waived=%d%s. %s' %
             (steps, passed, failed, waived, '' if all_done else ', notexec>=1',
              self.summary))
+
+# TODO(ddmail): decide once we are confident that the new way (CL:628711) works
+#               to backport these changes to TradefedTest and clean up
+#               cheets_[C|G]TS_N.
+class TradefedTest_P(TradefedTest):
+    def _tradefed_retry_command(self, template, session_id):
+        raise NotImplementedError('Subclass should override this function')
+
+    def _tradefed_run_command(self, template):
+        raise NotImplementedError('Subclass should override this function')
+
+    def _run_tradefed_with_retries(self,
+                                   test_name,
+                                   run_template,
+                                   retry_template,
+                                   needs_push_media=False,
+                                   target_module=None,
+                                   target_plan=None,
+                                   cts_uri=None,
+                                   login_precondition_commands=[],
+                                   precondition_commands=[]):
+        """Run CTS/GTS with retry logic.
+
+        We first kick off the specified module. Then rerun just the failures
+        on the next MAX_RETRY iterations.
+        """
+        if self._should_skip_test():
+            logging.warning('Skipped test %s', ' '.join(test_name))
+            return
+
+        steps = -1  # For historic reasons the first iteration is not counted.
+        pushed_media = False
+        self.summary = ''
+        board = self._get_board_name()
+        session_id = None
+
+        self._setup_result_directories()
+
+        # This loop retries failures. For this reason please do not raise
+        # TestFail in this loop if you suspect the failure might be fixed
+        # in the next loop iteration.
+        while steps < self._max_retry:
+            steps += 1
+            self._run_precondition_scripts(login_precondition_commands, steps)
+            with self._login_chrome(
+                    board=board,
+                    reboot=self._should_reboot(steps),
+                    dont_override_profile=pushed_media) as current_logins:
+                self._ready_arc()
+                self._run_precondition_scripts(precondition_commands, steps)
+
+                # Only push media for tests that need it. b/29371037
+                if needs_push_media and not pushed_media:
+                    self._push_media(cts_uri)
+                    # copy_media.sh is not lazy, but we try to be.
+                    pushed_media = True
+
+                # Run tradefed.
+                if session_id == None:
+                    if target_plan is not None:
+                        self._install_plan(target_plan)
+
+                    logging.info('Running %s:', test_name)
+                    commands = [self._tradefed_run_command(run_template)]
+                else:
+                    logging.info('Retrying failures of %s with session_id %d:',
+                                 test_name, session_id)
+                    commands = [self._tradefed_retry_command(retry_template,
+                                                             session_id)]
+
+                # TODO(pwang): Evaluate if it is worth it to get the number of
+                #              not-excecuted, for instance, by collecting all
+                #              tests on startup (very expensive, may take 30
+                #              minutes).
+                waived_tests = self._run_and_parse_tradefed(commands)
+                result = self._run_tradefed_list_results()
+                if not result:
+                    logging.error('Did not find any test results. Retry.')
+                    for current_login in current_logins:
+                        current_login.need_reboot()
+                    continue
+
+                waived = len(waived_tests)
+                last_session_id, passed, failed, all_done = result
+                if failed < waived:
+                    logging.error(
+                        'Error: Internal waiver bookkeeping has become '
+                        'inconsistent (f=%d, w=%d)', failed, waived)
+
+                msg = 'run' if session_id == None else ' retry'
+                msg += '(p=%s, f=%s, w=%s)' % (passed, failed, waived)
+                self.summary += msg
+                logging.info('RESULT: %s %s', msg, result)
+
+                # Check for no-test modules. We use the "all_done" indicator
+                # provided by list_results to decide if there are outstanding
+                # modules to iterate over (similar to missing tests just on a
+                # per-module basis).
+                notest = (passed + failed == 0 and all_done)
+                if target_module in self._notest_modules:
+                    if notest:
+                        logging.info('Package has no tests as expected.')
+                        return
+                    else:
+                        # We expected no tests, but the new bundle drop must
+                        # have added some for us. Alert us to the situation.
+                        raise error.TestFail(
+                            'Failed: Remove module %s from '
+                            'notest_modules directory!' % target_module)
+                elif notest:
+                    logging.error('Did not find any tests in module. Hoping '
+                                  'this is transient. Retry after reboot.')
+                    for current_login in current_logins:
+                        current_login.need_reboot()
+                    continue
+
+                session_id = last_session_id
+
+                # Check if all the tests passed.
+                if failed <= waived and all_done:
+                    # TODO(ihf): Make this error.TestPass('...') once
+                    # available.
+                    if steps > 0 and self._warn_on_test_retry:
+                        raise error.TestWarn(
+                            'Passed: after %d retries passing %d tests, '
+                            'waived=%d. %s' % (steps, passed, waived,
+                                               self.summary))
+                    return
+
+        if session_id == None:
+            raise error.TestFail('Error: Could not find any tests in module.')
+        raise error.TestFail(
+            'Failed: after %d retries giving up. '
+            'passed=%d, failed=%d, waived=%d%s. %s' %
+            (steps, passed, failed, waived, '' if all_done else ', notexec>=1',
+             self.summary))
+
