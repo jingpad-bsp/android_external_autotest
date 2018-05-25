@@ -71,6 +71,9 @@ def _parse_args_and_configure_logging(args):
     # STARTING flags
     parser.add_argument('--execution-tag', default=None,
                         help='Autotest execution tag.')
+    parser.add_argument('--parsing-only', action='store_true',
+                        help='Whether to only do parsing'
+                        ' (only with --lucifer-level STARTING)')
 
     # GATHERING flags
     parser.add_argument('--autoserv-exit', type=int, default=None, help='''
@@ -198,6 +201,8 @@ def _add_starting_args(command_args, args, job):
     command_args.extend(
             ['-x-reboot-after',
              RebootAfter.get_string(job.reboot_after).lower()])
+    if args.parsing_only:
+        command_args.append('-x-parsing-only')
     if job.run_reset:
         command_args.append('-x-run-reset')
     command_args.extend(['-x-test-retries', str(job.test_retry)])
