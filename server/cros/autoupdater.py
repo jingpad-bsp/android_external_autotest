@@ -219,10 +219,10 @@ class ChromiumOSUpdater(object):
                                   active_root)
 
 
-    def _cgpt(self, flag, kernel, dev='$(rootdev -s -d)'):
-        """Return numeric cgpt value for the specified flag, kernel, device. """
-        return int(self._run('cgpt show -n -i %d %s %s' % (
-            kernel['kernel'], flag, dev)).stdout.strip())
+    def _cgpt(self, flag, kernel):
+        """Return numeric cgpt value for the specified flag, kernel, device."""
+        return int(self._run('cgpt show -n -i %d %s $(rootdev -s -d)' % (
+            kernel['kernel'], flag)).stdout.strip())
 
 
     def _get_next_kernel(self):
@@ -346,9 +346,8 @@ class ChromiumOSUpdater(object):
 
     def _reset_stateful_partition(self):
         """Clear any pending stateful update request."""
-        statefuldev_cmd = [self.get_stateful_update_script()]
-        statefuldev_cmd += ['--stateful_change=reset', '2>&1']
-        self._run(' '.join(statefuldev_cmd))
+        self._run('%s --stateful_change=reset 2>&1'
+                  % self.get_stateful_update_script())
 
 
     def _revert_boot_partition(self):
@@ -428,7 +427,7 @@ class ChromiumOSUpdater(object):
 
 
     def update_image(self):
-        """Updates the device image and verifies success."""
+        """Updates the device root FS and kernel and verifies success."""
         autoupdate_cmd = ('%s --update --omaha_url=%s' %
                           (_UPDATER_BIN, self.update_url))
         if not self.interactive:
@@ -523,8 +522,7 @@ class ChromiumOSUpdater(object):
         @param clobber: If True, a clean stateful installation.
         """
         logging.info('Updating stateful partition...')
-        statefuldev_url = self.update_url.replace('update',
-                                                  'static')
+        statefuldev_url = self.update_url.replace('update', 'static')
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
@@ -536,10 +534,9 @@ class ChromiumOSUpdater(object):
         try:
             self._run(' '.join(statefuldev_cmd), timeout=1200)
         except error.AutoservRunError:
-            update_error = StatefulUpdateError(
+            raise StatefulUpdateError(
                     'Failed to perform stateful update on %s' %
                     self.host.hostname)
-            raise update_error
 
 
     def verify_boot_expectations(self, expected_kernel, rollback_message):
