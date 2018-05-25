@@ -7,10 +7,8 @@ NAME = 'tast.example'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
-# The tast executable and server test bundle are currently installed via prod
-# pushes rather than SSP, but leaving REQUIRE_SSP enabled at least makes it
-# possible to test changes to the tast server test via tryjobs and to deploy
-# changes to it without waiting for prod pushes.
+# tast.py uses binaries installed from autotest_server_package.tar.bz2.
+REQUIRE_SSP = True
 
 DOC = '''
 Run example Tast tests.
