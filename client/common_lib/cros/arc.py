@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import glob
 import logging
 import os
@@ -378,6 +379,30 @@ def _write_android_file(filename, data):
     android_cmd = 'cat > %s' % pipes.quote(filename)
     cros_cmd = 'android-sh -c %s' % pipes.quote(android_cmd)
     utils.run(cros_cmd, stdin=data)
+
+
+def get_android_file_stats(filename):
+    """Returns an object of file stats for an Android file.
+
+    The returned object supported limited attributes, but can be easily extended
+    if needed. Note that the value are all string.
+
+    This uses _android_shell to run as root, so that it can access to all files
+    inside the container. On non-debuggable build, adb shell is not rootable.
+    """
+    mapping = {
+        '%a': 'mode',
+        '%g': 'gid',
+        '%h': 'nlink',
+        '%u': 'uid',
+    }
+    output = _android_shell(
+        'stat -c "%s" %s' % (' '.join(mapping.keys()), pipes.quote(filename)))
+    stats = output.split(' ')
+    if len(stats) != len(mapping):
+      raise error.TestError('Unexpected output from stat: %s' % output)
+    _Stats = collections.namedtuple('_Stats', mapping.values())
+    return _Stats(*stats)
 
 
 def remove_android_file(filename):
