@@ -72,11 +72,15 @@ class ContainerId(collections.namedtuple('ContainerId',
 
         try:
             with open(src, 'r') as f:
-                return cls(*json.load(f))
+                job_id, ctime, pid = json.load(f)
         except IOError:
             # File not found, or couldn't be opened for some other reason.
             # Treat all these cases as no ID.
             return None
+        # TODO(pprabhu, crbug.com/842343) Remove this once all persistent
+        # container ids have migrated to str.
+        job_id = str(job_id)
+        return cls(job_id, ctime, pid)
 
 
     @classmethod
@@ -93,7 +97,9 @@ class ContainerId(collections.namedtuple('ContainerId',
             ctime = int(time.time())
         if pid is None:
             pid = os.getpid()
-        return cls(job_id, ctime, pid)
+        # TODO(pprabhu) Drop str() cast once
+        # job_directories.get_job_id_or_task_id() starts returning str directly.
+        return cls(str(job_id), ctime, pid)
 
 
 class Container(object):
