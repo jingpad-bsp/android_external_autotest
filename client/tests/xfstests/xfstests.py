@@ -36,6 +36,17 @@ class xfstests(test.test):
         return tests_list
 
 
+    def _copy_result_test(self, test):
+        for ext in ('full', 'dmesg'):
+            result_file = os.path.join('results', '.'.join([test, ext]))
+            result_file_loc = os.path.join(self.XFS_TESTS_PATH, result_file)
+            test_name = test.replace('/','_')
+            result_file_dest = os.path.join(
+                    self.resultsdir, '.'.join([test_name, ext]))
+            if os.path.isfile(result_file_loc):
+                shutil.copyfile(result_file_loc, result_file_dest)
+
+
     def _run_sub_test(self, test):
         os.chdir(self.XFS_TESTS_PATH)
         logging.debug("Environment variables: %s", os.environ)
@@ -45,11 +56,7 @@ class xfstests(test.test):
                 retain_output=True)
         lines = output.split('\n')
         result_line = lines[-2]
-        result_full = os.path.join('results', '.'.join([test, 'full']))
-        result_full_loc = os.path.join(self.XFS_TESTS_PATH, result_full)
-        if os.path.isfile(result_full_loc):
-            shutil.copyfile(result_full_loc,
-                            os.path.join(self.resultsdir, 'full'))
+        self._copy_result_test(test)
 
         if self.NA_RE.match(result_line):
             detail_line = lines[-3]
@@ -91,15 +98,8 @@ class xfstests(test.test):
                 test_failures = failures_line.group('tests')
                 tests = test_failures.split(' ')
                 for test in tests:
-                    result_full = os.path.join('results',
-                                               '.'.join([test, 'full']))
-                    result_full_loc = os.path.join(self.XFS_TESTS_PATH,
-                                                   result_full)
-                    if os.path.isfile(result_full_loc):
-                        test_name = test.replace('/','_')
-                        shutil.copyfile(result_full_loc,
-                                        os.path.join(self.resultsdir,
-                                                     '%s.full' % test_name))
+                    self._copy_result_test(test)
+
             raise error.TestError('%s. Check debug logs for complete '
                                   'test output' % result_line)
 
