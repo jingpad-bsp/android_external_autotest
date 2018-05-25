@@ -360,7 +360,7 @@ class _LessBrokenParserInfo(dateutil.parser.parserinfo):
     implementation always honors the provided year to prevent this from
     happening.
     """
-    def convertyear(self, year):
+    def convertyear(self, year, century_specified=False):
         return int(year)
 
 
