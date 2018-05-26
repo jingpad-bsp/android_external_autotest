@@ -28,15 +28,13 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
     # This information is in ec/board/cr50/scratch_reg1.h
     RELEVANT_PROPERTIES = 0x63
     BRDPROP_FORMAT = ['properties = (0x\d+)\s']
-    HELP_FORMAT = [ 'Known commands:(.*)HELP LIST.*>']
-    GENERAL_FORMAT = [ '\n(.*)>']
     COMPARE_LINES = '\n'
     COMPARE_WORDS = None
     SORTED = True
     TESTS = [
-        ['pinmux', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
-        ['help', HELP_FORMAT, COMPARE_WORDS, SORTED],
-        ['gpiocfg', GENERAL_FORMAT, COMPARE_LINES, not SORTED],
+        ['pinmux', 'pinmux(.*)>', COMPARE_LINES, not SORTED],
+        ['help', 'Known commands:(.*)HELP LIST.*>', COMPARE_WORDS, SORTED],
+        ['gpiocfg', 'gpiocfg(.*)>', COMPARE_LINES, not SORTED],
     ]
     CCD_HOOK_WAIT = 2
     # Lists connecting the board property values to the labels.
@@ -81,7 +79,7 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
 
     def get_output(self, cmd, regexp, split_str, sort):
         """Return the cr50 console output"""
-        output = self.cr50.send_command_get_output(cmd, regexp)[0][1].strip()
+        output = self.cr50.send_command_get_output(cmd, [regexp])[0][1].strip()
         logging.debug('%s output:%s\n', cmd, output)
 
         # Record the original command output

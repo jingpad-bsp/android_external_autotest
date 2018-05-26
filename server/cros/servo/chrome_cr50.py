@@ -305,7 +305,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def rolledback(self):
         """Returns true if cr50 just rolled back"""
         return 'Rollback detected' in self.send_command_get_output('sysinfo',
-                ['.*>'])[0]
+                ['sysinfo.*>'])[0]
 
 
     def get_version_info(self, regexp):
@@ -497,7 +497,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
         # Set testlab mode
         rv = self.send_command_get_output('ccd testlab %s' % request_str,
-                ['.*>'])[0]
+                ['ccd.*>'])[0]
         if 'Access Denied' in rv:
             raise error.TestFail("'ccd %s' %s" % (request_str, rv))
 
@@ -552,7 +552,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 "physical presence or testlab mode enabled")
 
         # Start the unlock process.
-        rv = self.send_command_get_output('ccd %s' % level, ['.*>'])[0]
+        rv = self.send_command_get_output('ccd %s' % level, ['ccd.*>'])[0]
         logging.info(rv)
         if 'Access Denied' in rv:
             raise error.TestFail("'ccd %s' %s" % (level, rv))
