@@ -71,6 +71,10 @@ class Suspender(object):
         # Hard disk sync and overall just slow
         'parrot': 8,
         'kiev': 9,
+
+        # Temporary increased delay for octopus until suspend time is better
+        # b/79782439/
+        'octopus': 5,
     }
 
     # alarm/not_before value guaranteed to raise SpuriousWakeup in _hwclock_ts
