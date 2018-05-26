@@ -154,6 +154,30 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
+    def send_command_retry_get_output(self, command, regexp_list, tries=3):
+        """Retry sending a command if we can't find the output.
+
+        Cr50 may print irrelevant output while printing command output. It may
+        prevent the regex from matching. Send command and get the output. If it
+        fails try again.
+
+        If it fails every time, raise an error.
+
+        Don't use this to set something that should only be set once.
+        """
+        # TODO(b/80319784): once chan is unrestricted, use it to restrict what
+        # output cr50 prints while we are sending commands.
+        for i in range(tries):
+            try:
+                return self.send_command_get_output(command, regexp_list)
+            except error.TestFail, e:
+                logging.info('Failed to get %r output: %r', command, e.message)
+        # Raise the last error, if we never successfully returned the command
+        # output
+        logging.info('Could not get %r output after %d tries', command, tries)
+        raise
+
+
 
     def get_deep_sleep_count(self):
         """Get the deep sleep count from the idle task"""
