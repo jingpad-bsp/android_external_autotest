@@ -181,20 +181,20 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_deep_sleep_count(self):
         """Get the deep sleep count from the idle task"""
-        result = self.send_command_get_output('idle', [self.IDLE_COUNT])
+        result = self.send_command_retry_get_output('idle', [self.IDLE_COUNT])
         return int(result[0][1])
 
 
     def clear_deep_sleep_count(self):
         """Clear the deep sleep count"""
-        result = self.send_command_get_output('idle c', [self.IDLE_COUNT])
+        result = self.send_command_retry_get_output('idle c', [self.IDLE_COUNT])
         if int(result[0][1]):
             raise error.TestFail("Could not clear deep sleep count")
 
 
     def get_board_properties(self):
         """Get information from the version command"""
-        rv = self.send_command_get_output('brdprop',
+        rv = self.send_command_retry_get_output('brdprop',
                 ['properties = (\S+)'])
         return int(rv[0][1], 16)
 
@@ -202,7 +202,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def has_command(self, cmd):
         """Returns 1 if cr50 has the command 0 if it doesn't"""
         try:
-            self.send_command_get_output('help', [cmd])
+            self.send_command_retry_get_output('help', [cmd])
         except:
             logging.info("Image does not include '%s' command", cmd)
             return 0
@@ -310,7 +310,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_version_info(self, regexp):
         """Get information from the version command"""
-        return self.send_command_get_output('ver', [regexp])[0][1::]
+        return self.send_command_retry_get_output('ver', [regexp])[0][1::]
 
 
     def get_inactive_version_info(self):
@@ -325,7 +325,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def using_prod_rw_keys(self):
         """Returns True if the RW keyid is prod"""
-        rv = self.send_command_get_output('sysinfo',
+        rv = self.send_command_retry_get_output('sysinfo',
                 ['RW keyid:.*\(([a-z]+)\)'])
         logging.info(rv)
         return rv[0][1] == 'prod'
@@ -385,7 +385,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         if self.using_ccd():
             return self._servo.get('ccd_state') == 'on'
         else:
-            result = self.send_command_get_output('gpioget',
+            result = self.send_command_retry_get_output('gpioget',
                     ['(0|1)..CCD_MODE_L'])
             return not bool(int(result[0][1]))
 
@@ -599,7 +599,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def gettime(self):
         """Get the current cr50 system time"""
-        result = self.send_command_get_output('gettime', [' = (.*) s'])
+        result = self.send_command_retry_get_output('gettime', [' = (.*) s'])
         return float(result[0][1])
 
 
