@@ -270,36 +270,6 @@
     "dashboard_test_name": "network_WiFi_BluetoothStreamPerf"
   },
   {
-    "autotest_name": "network_WiFi_Perf.11a",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
-    "autotest_name": "network_WiFi_Perf.11a_aes",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
-    "autotest_name": "network_WiFi_Perf.11a_tkip",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
-    "autotest_name": "network_WiFi_Perf.11a_wep",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
-    "autotest_name": "network_WiFi_Perf.11b",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
-    "autotest_name": "network_WiFi_Perf.11b_wep",
-    "master_name": "ChromeOSWiFi",
-    "dashboard_test_name": "network_WiFi_Perf"
-  },
-  {
     "autotest_name": "network_WiFi_Perf.11g",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_Perf"

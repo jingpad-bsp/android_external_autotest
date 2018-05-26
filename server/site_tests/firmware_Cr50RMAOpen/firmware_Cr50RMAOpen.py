@@ -50,7 +50,6 @@ class firmware_Cr50RMAOpen(Cr50Test):
         """Initialize the test"""
         super(firmware_Cr50RMAOpen, self).initialize(host, cmdline_args)
         self.host = host
-        self.restore_state = False
 
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
@@ -66,27 +65,11 @@ class firmware_Cr50RMAOpen(Cr50Test):
         if self.host.run('rma_reset -h', ignore_status=True).exit_status == 127:
             raise error.TestNAError('Cannot test RMA open without rma_reset')
 
+        # Disable all capabilities at the start of the test
+        self.host.run('gsctool -a -r disable', ignore_status=True)
+        self.check_ccd_cap_settings(False)
+
         self.is_prod_mp = self.get_prod_mp_status()
-        self.original_settings = self.get_ccd_cap_settings()
-        # Make sure we can't run on devices that are already open. We can't run
-        # on a device that is open, because we dont know the keys, and we may
-        # not be able to reset the state.
-        #
-        # Devices in the ccd testlab should not be running this test, but if
-        # they do, we don't want this to take down the lab. The test lab uses
-        # prod keys, so we can't easily reopen them remotely.
-        if not self.caps_are_restricted(self.original_settings):
-            raise error.TestNAError('Device is already RMA opened.')
-        self.restore_state = True
-
-
-    def cleanup(self):
-        """Make sure RMA mode is disabled"""
-        if (self.restore_state and self.original_settings !=
-            self.get_ccd_cap_settings()):
-            time.sleep(self.CHALLENGE_INTERVAL)
-            self.rma_ap(disable=True)
-        super(firmware_Cr50RMAOpen, self).cleanup()
 
 
     def get_prod_mp_status(self):
@@ -194,20 +177,6 @@ class firmware_Cr50RMAOpen(Cr50Test):
         return result.stdout
 
 
-    def get_ccd_cap_settings(self):
-        """Get the current cr50 capability settings"""
-        time.sleep(self.CHALLENGE_INTERVAL)
-        caps = self.cr50.send_command_get_output('ccd',
-                ['Capabilities: \S+\s(.*)Use'])[0][1]
-        logging.info(caps)
-        return caps
-
-
-    def caps_are_restricted(self, caps):
-        """Returns True if some capability permissions are still restricted"""
-        return 'IfOpened' in caps or 'IfUnlocked' in caps
-
-
     def check_ccd_cap_settings(self, rma_opened):
         """Verify the ccd capability permissions match the RMA state
 
@@ -218,13 +187,15 @@ class firmware_Cr50RMAOpen(Cr50Test):
             TestFail if Cr50 is opened when it should be closed or it is closed
             when it should be opened.
         """
-        caps = self.get_ccd_cap_settings()
-        still_closed = self.caps_are_restricted(caps)
+        time.sleep(self.SHORT_WAIT)
+        caps = self.cr50.get_cap_dict().values()
+        closed = len(caps) == caps.count('Default')
+        opened = len(caps) == caps.count('Always')
 
-        if still_closed and rma_opened:
-            raise error.TestFail('Some capabilities are still restricted')
-        if not rma_opened and caps != self.original_settings:
-            raise error.TestFail('RMA disable failed to reset capabilities')
+        if rma_opened and not opened:
+            raise error.TestFail('Not all capablities were set to Always')
+        if not rma_opened and not closed:
+            raise error.TestFail('Not all capablities were set to Default')
 
 
     def rma_open(self, challenge_func, auth_func):
