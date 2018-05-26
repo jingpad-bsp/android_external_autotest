@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, struct, time
+import glob, logging, os, re, struct, time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -197,6 +197,16 @@ class graphics_Idle(graphics_utils.GraphicsTest):
 
         return ''
 
+    def get_devfreq_path(self, dev_path):
+        """ Return the path of the devfreq device for a device (if it has one).
+        """
+        g = glob.glob(dev_path + "/devfreq/*")
+
+        if len(g) != 1:
+            raise RuntimeError("Device '" + dev_path + "' has no devfreq device")
+
+        return g[0]
+
     def verify_graphics_dvfs(self):
         """ On systems which support DVFS, check that we get into the lowest
         clock frequency; idle before doing so, and retry every second for 20
@@ -205,9 +215,8 @@ class graphics_Idle(graphics_utils.GraphicsTest):
 
         exynos_node = '/sys/devices/11800000.mali/'
         rk3288_node = '/sys/devices/ffa30000.gpu/'
-        rk3399_node = '/sys/devices/platform/ff9a0000.gpu/devfreq/ff9a0000.gpu/'
-        mt8173_node = ('/sys/devices/soc/13000000.mfgsys-gpu/devfreq/'
-                       '13000000.mfgsys-gpu/')
+        rk3399_node = '/sys/devices/platform/ff9a0000.gpu/'
+        mt8173_node = '/sys/devices/soc/13000000.mfgsys-gpu/'
 
         if self._cpu_type == 'exynos5':
             if os.path.isdir(exynos_node):
@@ -241,6 +250,7 @@ class graphics_Idle(graphics_utils.GraphicsTest):
             return ''
 
         if use_devfreq:
+            node = self.get_devfreq_path(node)
             governor_path = utils.locate_file('governor', node)
             clock_path = utils.locate_file('cur_freq', node)
 
