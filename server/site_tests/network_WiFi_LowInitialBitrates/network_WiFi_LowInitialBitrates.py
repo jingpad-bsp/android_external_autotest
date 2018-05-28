@@ -99,8 +99,6 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
                 raise error.TestError('Expected to generate one packet '
                                       'capture but got %d captures instead.' %
                                       len(results))
-
-            client_ip = self.context.client.wifi_ip
             self.check_bitrates_in_capture(results[0])
             self.context.client.shill.disconnect(assoc_params.ssid)
             self.context.router.deconfig()
