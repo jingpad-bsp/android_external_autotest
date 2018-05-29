@@ -15,12 +15,33 @@ import logging
 
 from lucifer import autotest
 from skylab_suite import cros_suite
-from skylab_suite import dynamic_suite
 from skylab_suite import suite_parser
+from skylab_suite import suite_runner
 from skylab_suite import suite_tracking
 
 
 PROVISION_SUITE_NAME = 'provision'
+
+
+def setup_logging():
+    """Setup the logging for skylab suite."""
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'default': {'format': '%(asctime)s %(levelname)-5s| %(message)s'},
+        },
+        'handlers': {
+            'screen': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+            },
+        },
+        'root': {
+            'level': 'INFO',
+            'handlers': ['screen'],
+        },
+        'disable_existing_loggers': False,
+    })
 
 
 def _parse_suite_specs(options):
@@ -37,12 +58,12 @@ def _parse_suite_specs(options):
     )
 
 
-def _parse_retry_handler_specs(options):
+def _parse_suite_handler_specs(options):
     provision_num_required = 0
     if 'num_required' in options.suite_args:
         provision_num_required = options.suite_args['num_required']
 
-    return cros_suite.RetryHandlerSpecs(
+    return cros_suite.SuiteHandlerSpecs(
             timeout_mins=options.timeout_mins,
             test_retry=options.test_retry,
             max_retries=options.max_retries,
@@ -58,11 +79,14 @@ def _run_suite(options):
         suite_job = cros_suite.Suite(suite_specs)
 
     suite_job.prepare()
-    retry_handler_specs = _parse_retry_handler_specs(options)
-    retry_handler = cros_suite.RetryHandler(retry_handler_specs)
-    dynamic_suite.run(suite_job.tests, retry_handler, options.dry_run)
-    return suite_tracking.SuiteResult(
-                suite_tracking.SUITE_RESULT_CODES.OK)
+    suite_handler_specs = _parse_suite_handler_specs(options)
+    suite_handler = cros_suite.SuiteHandler(suite_handler_specs)
+    suite_runner.run(suite_job.tests, suite_handler, options.dry_run)
+    return_code = suite_tracking.log_suite_results(
+            suite_job.suite_name, suite_handler)
+
+    run_suite_common = autotest.load('site_utils.run_suite_common')
+    return run_suite_common.SuiteResult(return_code)
 
 
 def parse_args():
@@ -85,11 +109,12 @@ def main():
     autotest.monkeypatch()
 
     options = parse_args()
-    suite_tracking.setup_logging()
+    setup_logging()
     result = _run_suite(options)
 
+    run_suite_common = autotest.load('site_utils.run_suite_common')
     if options.json_dump:
-        suite_tracking.dump_json(result)
+        run_suite_common.dump_json(result)
 
     logging.info('Will return from %s with status: %s',
                  os.path.basename(__file__), result.string_code)
