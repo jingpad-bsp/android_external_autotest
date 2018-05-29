@@ -37,10 +37,13 @@ except ImportError:
     pass
 
 
+MIGRATED_HOST_SUFFIX = '-migrated-do-not-use'
+
+
 class host(topic_common.atest):
     """Host class
-    atest host [create|delete|list|stat|mod|jobs] <options>"""
-    usage_action = '[create|delete|list|stat|mod|jobs]'
+    atest host [create|delete|list|stat|mod|jobs|rename] <options>"""
+    usage_action = '[create|delete|list|stat|mod|jobs|rename]'
     topic = msg_topic = 'host'
     msg_items = '<hosts>'
 
@@ -969,3 +972,119 @@ class host_delete(action_common.atest_delete, host):
             return self.execute_skylab()
 
         return super(host_delete, self).execute()
+
+
+class InvalidHostnameError(Exception):
+    """Cannot perform actions on the host because of invalid hostname."""
+
+
+def _add_hostname_suffix(hostname, suffix):
+    """Add the suffix to the hostname."""
+    if hostname.endswith(suffix):
+        raise InvalidHostnameError(
+              'Cannot add "%s" as it already contains the suffix.' % suffix)
+
+    return hostname + suffix
+
+
+def _remove_hostname_suffix(hostname, suffix):
+    """Remove the suffix from the hostname."""
+    if not hostname.endswith(suffix):
+        raise InvalidHostnameError(
+                'Cannot remove "%s" as it doesn\'t contain the suffix.' %
+                suffix)
+
+    return hostname[:len(hostname) - len(suffix)]
+
+
+class host_rename(host):
+    """Host rename is only for migrating hosts between skylab and AFE DB."""
+
+    usage_action = 'rename'
+
+    def __init__(self):
+        """Add the options specific to the rename action."""
+        super(host_rename, self).__init__()
+
+        self.parser.add_option('--for-migration',
+                               help=('Rename hostnames for migration. Rename '
+                                     'each "hostname" to "hostname%s". '
+                                     'The original "hostname" must not contain '
+                                     'suffix.' % MIGRATED_HOST_SUFFIX),
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--for-rollback',
+                               help=('Rename hostnames for migration rollback. '
+                                     'Rename each "hostname%s" to its original '
+                                     '"hostname".' % MIGRATED_HOST_SUFFIX),
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--dryrun',
+                               help='Execute the action as a dryrun.',
+                               action='store_true',
+                               default=False)
+
+
+    def parse(self):
+        """Consume the options common to host rename."""
+        (options, leftovers) = super(host_rename, self).parse()
+        self.for_migration = options.for_migration
+        self.for_rollback = options.for_rollback
+        self.dryrun = options.dryrun
+        self.host_ids = {}
+
+        if not (self.for_migration ^ self.for_rollback):
+            self.invalid_syntax('--for-migration and --for-rollback are '
+                                'exclusive, and one of them must be enabled.')
+
+        if not self.hosts:
+            self.invalid_syntax('Must provide hostname(s).')
+
+        if self.dryrun:
+            print('This will be a dryrun and will not rename hostnames.')
+
+        return (options, leftovers)
+
+
+    def execute(self):
+        """Execute 'atest host rename'."""
+        if not self.prompt_confirmation():
+            return
+
+        successes = []
+        for host in self.execute_rpc('get_hosts', hostname__in=self.hosts):
+            self.host_ids[host['hostname']] = host['id']
+        for host in self.hosts:
+            if host not in self.host_ids:
+                self.failure('Cannot rename non-existant host %s.' % host,
+                              item=host, what_failed='Failed to rename')
+                continue
+            try:
+                if self.for_migration:
+                    new_hostname = _add_hostname_suffix(
+                            host, MIGRATED_HOST_SUFFIX)
+                else:
+                    #for_rollback
+                    new_hostname = _remove_hostname_suffix(
+                            host, MIGRATED_HOST_SUFFIX)
+
+                if not self.dryrun:
+                    data = {'hostname': new_hostname}
+                    self.execute_rpc('modify_host', item=host, id=host, **data)
+                successes.append((host, new_hostname))
+            except InvalidHostnameError as e:
+                self.failure('Cannot rename host %s: %s' % (host, e), item=host,
+                             what_failed='Failed to rename')
+            except topic_common.CliError, full_error:
+                # Already logged by execute_rpc()
+                pass
+
+        return successes
+
+
+    def output(self, results):
+        """Print output of 'atest host rename'."""
+        if results:
+            print('Successfully renamed:')
+            for old_hostname, new_hostname in results:
+                print('%s to %s' % (old_hostname, new_hostname))
