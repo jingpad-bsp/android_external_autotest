@@ -151,6 +151,20 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """
         if not self.using_ccd():
             self.wake_cr50()
+
+        # We have started prepending '\n' to separate cr50 console junk from
+        # the real command. If someone is just searching for .*>, then they will
+        # only get the output from the first '\n' we added. Raise an error to
+        # change the test to look for something more specific ex command.*>.
+        # cr50 will print the command in the output, so that is an easy way to
+        # modify '.*>' to match the real command output.
+        if '.*>' in regexp_list:
+            raise error.TestError('Send more specific regexp %r %r' % (command,
+                    regexp_list))
+
+        # prepend \n to separate the command from any junk that may have been
+        # sent to the cr50 uart.
+        command = '\n' + command
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
