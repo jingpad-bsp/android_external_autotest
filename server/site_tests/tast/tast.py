@@ -46,15 +46,19 @@ class tast(test.test):
     # Maximum number of failing tests to include in error message.
     _MAX_TEST_NAMES_IN_ERROR = 3
 
-    # Default paths where Tast files are installed.
+    # Default paths where Tast files are installed by Portage packages.
     _TAST_PATH = '/usr/bin/tast'
     _REMOTE_BUNDLE_DIR = '/usr/libexec/tast/bundles/remote'
     _REMOTE_DATA_DIR = '/usr/share/tast/data/remote'
     _REMOTE_TEST_RUNNER_PATH = '/usr/bin/remote_test_runner'
 
-    # When Tast is deployed from CIPD packages in the lab, it's installed under
-    # this prefix rather than under the root directory.
-    _CIPD_INSTALL_ROOT = '/opt/infra-tools'
+    # Alternate locations for Tast files when using Server-Side Packaging.
+    # These files are installed from autotest_server_package.tar.bz2.
+    _SSP_ROOT = '/usr/local/tast'
+    _SSP_TAST_PATH = os.path.join(_SSP_ROOT, 'tast')
+    _SSP_REMOTE_BUNDLE_DIR = os.path.join(_SSP_ROOT, 'bundles/remote')
+    _SSP_REMOTE_DATA_DIR = os.path.join(_SSP_ROOT, 'data/remote')
+    _SSP_REMOTE_TEST_RUNNER_PATH = os.path.join(_SSP_ROOT, 'remote_test_runner')
 
     # Prefix added to Tast test names when writing their results to TKO
     # status.log files.
@@ -93,12 +97,15 @@ class tast(test.test):
 
         # The data dir can be missing if no remote tests registered data files,
         # but all other files must exist.
-        self._tast_path = self._get_path(self._TAST_PATH)
-        self._remote_bundle_dir = self._get_path(self._REMOTE_BUNDLE_DIR)
-        self._remote_data_dir = self._get_path(self._REMOTE_DATA_DIR,
+        self._tast_path = self._get_path((self._TAST_PATH, self._SSP_TAST_PATH))
+        self._remote_bundle_dir = self._get_path((self._REMOTE_BUNDLE_DIR,
+                                                  self._SSP_REMOTE_BUNDLE_DIR))
+        self._remote_data_dir = self._get_path((self._REMOTE_DATA_DIR,
+                                                self._SSP_REMOTE_DATA_DIR),
                                                allow_missing=True)
         self._remote_test_runner_path = self._get_path(
-                self._REMOTE_TEST_RUNNER_PATH)
+                (self._REMOTE_TEST_RUNNER_PATH,
+                 self._SSP_REMOTE_TEST_RUNNER_PATH))
 
         # Register a hook to write the results of individual Tast tests as
         # top-level entries in the TKO status.log file.
@@ -114,30 +121,26 @@ class tast(test.test):
             # Parse partial results even if the tast command didn't finish.
             self._parse_results()
 
-    def _get_path(self, path, allow_missing=False):
+    def _get_path(self, paths, allow_missing=False):
         """Returns the path to an installed Tast-related file or directory.
 
-        @param path: Absolute path in root filesystem, e.g. "/usr/bin/tast".
+        @param paths: Tuple or list of absolute paths in root filesystem, e.g.
+            ("/usr/bin/tast", "/usr/local/tast/tast").
         @param allow_missing: True if it's okay for the path to be missing.
 
-        @return: Absolute path within install root, e.g.
-            "/opt/infra-tools/usr/bin/tast", or an empty string if the path
-            wasn't found and allow_missing is True.
+        @return: Absolute path within install root, e.g. "/usr/bin/tast", or an
+            empty string if the path wasn't found and allow_missing is True.
 
         @raises error.TestFail if the path couldn't be found and allow_missing
             is False.
         """
-        if os.path.exists(path):
-            return path
-
-        cipd_path = os.path.join(self._CIPD_INSTALL_ROOT,
-                                 os.path.relpath(path, '/'))
-        if os.path.exists(cipd_path):
-            return cipd_path
+        for path in paths:
+            if os.path.exists(path):
+                return path
 
         if allow_missing:
             return ''
-        raise error.TestFail('Neither %s nor %s exists' % (path, cipd_path))
+        raise error.TestFail('None of %s exist' % list(paths))
 
     def _log_version(self):
         """Runs the tast command locally to log its version."""

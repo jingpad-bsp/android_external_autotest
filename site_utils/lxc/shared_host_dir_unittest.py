@@ -12,7 +12,6 @@ import unittest
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils.lxc import utils as lxc_utils
 
@@ -46,24 +45,6 @@ class SharedHostDirTests(lxc_utils.LXCTests):
         # Clean up, verify that the path is removed.
         host_dir.cleanup()
         self.assertFalse(os.path.isdir(self.shared_host_path))
-
-
-    def testHostDirMissing(self):
-        """Verifies that a missing host dir does not cause cleanup to crash.
-        """
-        host_dir = lxc.SharedHostDir(self.shared_host_path)
-
-        # Manually destroy the host path
-        utils.run('sudo umount %(path)s && sudo rmdir %(path)s' %
-                  {'path': self.shared_host_path})
-
-        # Verify that the host path does not exist.
-        self.assertFalse(os.path.exists(self.shared_host_path))
-        try:
-            host_dir.cleanup()
-        except:
-            self.fail('SharedHostDir.cleanup crashed.\n%s' %
-                      error.format_error())
 
 
     def testHostDirNotMounted(self):
