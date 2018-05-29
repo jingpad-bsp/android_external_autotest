@@ -46,7 +46,7 @@ class firmware_Cr50Testlab(Cr50Test):
         """
         logging.info('Setting ccd testlab %s', mode)
         rv = self.cr50.send_command_get_output('ccd testlab %s' % mode,
-                ['.*>'])[0]
+                ['ccd.*>'])[0]
         logging.info(rv)
         if err not in rv or (not err and self.BASIC_ERROR in rv):
             raise error.TestFail('Unexpected result setting "%s": %r' % (mode,
