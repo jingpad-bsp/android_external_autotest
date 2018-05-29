@@ -8,41 +8,39 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import json
 import logging
 import os
 import time
 
 from lucifer import autotest
+from skylab_suite import cros_suite
 from skylab_suite import swarming_lib
 
 
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
-RetryTestSpecs= collections.namedtuple(
-        'RetryTestSpecs',
-        [
-                'test',
-                'remain_retries',
-        ])
 
 
-def run(tests, retry_handler, dry_run=False):
+def run(tests, suite_handler, dry_run=False):
     """Run a CrOS dynamic test suite.
 
-    @param retry_handler: A cros_suite.RetryHandler object.
+    @param suite_handler: A cros_suite.SuiteHandler object.
     @param dry_run: Whether to kick off dry runs of the tests.
     """
     suite_id = os.environ.get('SWARMING_TASK_ID')
     for test in tests:
         test_task_id = _schedule_test(test, suite_id=suite_id, dry_run=dry_run)
-        retry_handler.task_to_test_maps[test_task_id] = RetryTestSpecs(
-                test=test, remain_retries=test.job_retries - 1)
+        suite_handler.add_test_by_task_id(
+                test_task_id,
+                cros_suite.TestSpecs(
+                        test=test,
+                        remaining_retries=test.job_retries - 1,
+                        previous_retried_ids=[]))
 
-    if suite_id is not None and retry_handler.wait:
-        retry_handler.suite_id = suite_id
-        _wait_for_results(retry_handler, dry_run=dry_run)
+    if suite_id is not None and suite_handler.should_wait():
+        suite_handler.set_suite_id(suite_id)
+        _wait_for_results(suite_handler, dry_run=dry_run)
 
 
 def _make_trigger_swarming_cmd(swarming_client, suite_id, task_name,
@@ -141,20 +139,20 @@ def _fetch_child_tasks(parent_task_id):
         return json.loads(child_tasks.output)
 
 
-def _wait_for_results(retry_handler, dry_run=False):
+def _wait_for_results(suite_handler, dry_run=False):
     """Wait for child tasks to finish and return their results.
 
-    @param retry_handler: a cros_suite.RetryHandler object.
+    @param suite_handler: a cros_suite.SuiteHandler object.
     """
     timeout_util = autotest.chromite_load('timeout_util')
-    with timeout_util.Timeout(retry_handler.timeout_mins * 60):
+    with timeout_util.Timeout(suite_handler.timeout_mins * 60):
         while True:
-            json_output = _fetch_child_tasks(retry_handler.suite_id)
-            retry_handler.handle_results(json_output['items'])
-            for t in retry_handler.retried_tasks:
-                _retry_test(retry_handler, t['task_id'], dry_run=dry_run)
+            json_output = _fetch_child_tasks(suite_handler.suite_id)
+            suite_handler.handle_results(json_output['items'])
+            for t in suite_handler.retried_tasks:
+                _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
 
-            if retry_handler.finished_waiting():
+            if suite_handler.is_finished_waiting():
                 break
 
             time.sleep(30)
@@ -162,7 +160,7 @@ def _wait_for_results(retry_handler, dry_run=False):
     logging.info('Finished to wait for child tasks.')
 
 
-def _retry_test(retry_handler, task_id, dry_run=False):
+def _retry_test(suite_handler, task_id, dry_run=False):
     """Retry test for a suite.
 
     We will execute the following actions for retrying a test:
@@ -173,20 +171,24 @@ def _retry_test(retry_handler, task_id, dry_run=False):
         4. Remove prevous failed test from retry handler since it's not
            actively monitored by the suite.
 
-    @param retry_handler: a cros_suite.RetryHandler object.
+    @param suite_handler: a cros_suite.SuiteHandler object.
     @param task_id: The swarming task id for the retried test.
     @param dry_run: Whether to retry a dry run of the test.
     """
-    last_retry_specs = retry_handler.task_to_test_maps[task_id]
+    last_retry_specs = suite_handler.get_test_by_task_id(task_id)
     logging.info('Retrying test %s, remaining %d retries.',
                  last_retry_specs.test.name,
-                 last_retry_specs.remain_retries - 1)
+                 last_retry_specs.remaining_retries - 1)
     retried_task_id = _schedule_test(
             last_retry_specs.test,
-            suite_id=retry_handler.suite_id,
+            suite_id=suite_handler.suite_id,
             dry_run=dry_run)
-    retry_handler.task_to_test_maps[retried_task_id] = RetryTestSpecs(
-            test=last_retry_specs.test,
-            remain_retries=last_retry_specs.remain_retries - 1)
-    retry_handler.max_retries -= 1
-    retry_handler.task_to_test_maps.pop(task_id, None)
+    previous_retried_ids = last_retry_specs.previous_retried_ids + [task_id]
+    suite_handler.add_test_by_task_id(
+            retried_task_id,
+            cros_suite.TestSpecs(
+                    test=last_retry_specs.test,
+                    remaining_retries=last_retry_specs.remaining_retries - 1,
+                    previous_retried_ids=previous_retried_ids))
+    suite_handler.set_max_retries(suite_handler.max_retries - 1)
+    suite_handler.remove_test_by_task_id(task_id)
