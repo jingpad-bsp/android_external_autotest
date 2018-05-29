@@ -231,7 +231,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         # disable
         if not unsupported_key:
             logging.info(self.cr50.send_command_get_output('wp enable',
-                    ['.*>']))
+                    ['wp.*>']))
 
         # Run RMA disable to reset the capabilities.
         self.rma_ap(disable=True, expected_exit_status=exit_status)
