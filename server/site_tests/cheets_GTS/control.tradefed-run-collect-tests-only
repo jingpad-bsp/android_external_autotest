@@ -19,6 +19,7 @@ def run_GTS(machine):
         'cheets_GTS',
         host=host,
         iterations=1,
+        max_retry=0,
         tag='tradefed-run-collect-tests-only',
         tradefed_args = ['run', 'commandAndExit', 'collect-tests-only',
                 # TODO(kinaba): workaround until ag/3850281 is made public.
