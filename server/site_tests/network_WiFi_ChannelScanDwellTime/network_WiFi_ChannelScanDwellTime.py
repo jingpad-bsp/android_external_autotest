@@ -32,7 +32,7 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
     def _build_ssid_prefix(self):
         """Build ssid prefix."""
         unique_salt = ''.join([random.choice(self.SUFFIX_LETTERS)
-                               for x in range(5)])
+                               for _ in range(5)])
         prefix = self.__class__.__name__[len(self.KNOWN_TEST_PREFIX):]
         prefix = prefix.lstrip('_')
         prefix += '_' + unique_salt + '_'
@@ -113,7 +113,6 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         @return int dwell time in ms.
 
         """
-        dwell_time = 0
         channel = hostap_config.HostapConfig.get_channel_for_frequency(
             self.FREQUENCY_MHZ)
         # Configure an AP to inject beacons.
@@ -161,9 +160,8 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         beacon_frames = tcpdump_analyzer.get_frames(
             pcap_path, tcpdump_analyzer.WLAN_BEACON_ACCEPTOR, bad_fcs='include')
         # Filter beacon frames based on ssid prefix.
-        result_beacon_frames = [beacon_frame for beacon_frame in beacon_frames if
-                                beacon_frame.ssid and
-                                beacon_frame.ssid.startswith(ssid_prefix)]
+        result_beacon_frames = [frame for frame in beacon_frames if frame.ssid
+                                and frame.ssid.startswith(ssid_prefix)]
         if result_beacon_frames is None:
             raise error.TestFail('Failed to find any beacons for this test')
         return self._get_dwell_time(result_list, result_beacon_frames)
