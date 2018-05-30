@@ -118,7 +118,7 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
             # one antenna enabled at a time.
             for bitmap in (3, 1, 2):
                 failures = set()
-                for attempt in range(self.MAX_ASSOCIATION_RETRIES):
+                for _ in range(self.MAX_ASSOCIATION_RETRIES):
                     new_failures = self._antenna_test(bitmap, channel)
                     if not new_failures:
                         break
