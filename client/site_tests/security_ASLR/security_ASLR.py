@@ -65,15 +65,16 @@ class Process(object):
             # This is needed to handle cases where multiple processes share the
             # expected parent name. See crbug.com/741110 for background.
             ppids = _pidsof(self._parent)
-            if len(ppids) > 0:
-                ppid_match = ' '.join('-e " %d$"' % ppid for ppid in ppids)
-                get_pid_command = ('ps -C %s -o pid,ppid | grep %s'
-                    ' | awk \'{print $1}\'') % (self._name, ppid_match)
-                ps_results = utils.system_output(get_pid_command).strip()
-                pids = ps_results.split()
-                if len(pids) == 1:
-                    return pids[0]
-                elif len(pids) > 1:
+            pids = _pidsof(self._name)
+            if ppids and pids:
+                ps_command = ('ps h --ppid %s -o pid' %
+                              ','.join([str(pid) for pid in ppids]))
+                ps_results = utils.system_output(ps_command).strip()
+                child_pids = [int(pid) for pid in ps_results.split()]
+                intersection = set(child_pids).intersection(pids)
+                if len(intersection) == 1:
+                    return next(iter(intersection))
+                elif len(intersection) > 1:
                     # More than one candidate process found - rather than pick
                     # one arbitrarily, continue to wait. This is not expected -
                     # but continuing to wait will avoid weird failures if some
