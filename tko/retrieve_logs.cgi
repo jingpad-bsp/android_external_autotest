@@ -18,7 +18,7 @@ Content-Type: text/plain
 Location: %s\r\n\r
 """
 
-GOOGLE_STORAGE_PATTERN = 'pantheon.corp.google.com/storage/browser/'
+VIEWER_PREFIX = 'stainless.corp.google.com/browse/'
 
 # Define function for retrieving logs
 def _retrieve_logs_dummy(job_path):
@@ -148,7 +148,7 @@ def find_repository_host(job_path):
                     os.path.join('/usr/local/autotest/results',
                                  job_relative_path)):
             gsuri = utils.get_offload_gsuri().split('gs://')[1]
-            return ['https', GOOGLE_STORAGE_PATTERN, gsuri + job_relative_path]
+            return ['https', VIEWER_PREFIX, gsuri + job_relative_path]
 
 
 def get_full_url(info, log_path):
