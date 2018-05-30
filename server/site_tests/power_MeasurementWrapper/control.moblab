@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_MeasurementWrapper"
+NAME = "power_MeasurementWrapper.moblab"
 PURPOSE = "Measure power while running a client test."
 CRITERIA = "This test is a wrapper for a client test."
 ATTRIBUTES = "suite:power_measurement_wrapper"
