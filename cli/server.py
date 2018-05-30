@@ -164,8 +164,7 @@ class server_list(action_common.atest_list, server):
                                action='store_true',
                                default=False)
         self.parser.add_option('--json',
-                               help=('Format output as JSON. %s' %
-                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
+                               help=('Format output as JSON.'),
                                action='store_true',
                                default=False)
         self.parser.add_option('-N', '--hostnames-only',
@@ -185,8 +184,8 @@ class server_list(action_common.atest_list, server):
         self.namesonly = options.hostnames_only
 
         # TODO(nxia): support all formats for skylab inventory.
-        if (self.skylab and (self.json or self.table or self.summary)):
-            self.invalid_syntax('The format (table|summary|json)'
+        if (self.skylab and (self.table or self.summary)):
+            self.invalid_syntax('The format (table|summary)'
                                 ' is not supported with --skylab.')
 
         if sum([self.table, self.summary, self.json, self.namesonly]) > 1:
@@ -237,7 +236,10 @@ class server_list(action_common.atest_list, server):
         """
         if results:
             if self.json:
-                formatter = server_manager_utils.format_servers_json
+                if self.skylab:
+                    formatter = skylab_server.format_servers_json
+                else:
+                    formatter = server_manager_utils.format_servers_json
             elif self.table:
                 formatter = server_manager_utils.format_servers_table
             elif self.summary:
