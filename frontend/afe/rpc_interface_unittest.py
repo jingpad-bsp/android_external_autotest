@@ -38,6 +38,18 @@ class ShardHeartbeatTest(mox.MoxTestBase, unittest.TestCase):
 
     _PRIORITY = priorities.Priority.DEFAULT
 
+
+    def setUp(self):
+        super(ShardHeartbeatTest, self).setUp()
+        self.old_heartbeat_override = models.Job.CHECK_MASTER_IF_EMPTY
+        models.Job.CHECK_MASTER_IF_EMPTY = True
+
+
+    def tearDown(self):
+        models.Job.CHECK_MASTER_IF_EMPTY = self.old_heartbeat_override
+        super(ShardHeartbeatTest, self).tearDown()
+
+
     def _do_heartbeat_and_assert_response(self, shard_hostname='shard1',
                                           upload_jobs=(), upload_hqes=(),
                                           known_jobs=(), known_hosts=(),
@@ -1446,6 +1458,8 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
             self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
         self._frontend_common_setup(fill_data=False)
+        self.old_heartbeat_override = models.Job.CHECK_MASTER_IF_EMPTY
+        models.Job.CHECK_MASTER_IF_EMPTY = True
         self.stored_readonly_setting = models.Job.FETCH_READONLY_JOBS
         models.Job.FETCH_READONLY_JOBS = True
 
@@ -1453,6 +1467,7 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
     def tearDown(self):
         self._frontend_common_teardown()
         models.Job.FETCH_READONLY_JOBS = self.stored_readonly_setting
+        models.Job.CHECK_MASTER_IF_EMPTY = self.old_heartbeat_override
 
 
     def _setupDevserver(self):
