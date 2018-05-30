@@ -70,18 +70,18 @@ def make_parser():
         '--swarming', default=None,
         help='The swarming server to call.')
     parser.add_argument(
-        '--execution-timeout-seconds', type=int, default=30,
+        '--execution_timeout_seconds', type=int, default=30,
         help='Seconds to allow a task to complete, once execution beings.')
 
     # logic-related parameters.
     parser.add_argument(
-        '--create-and-return', action='store_true',
+        '--create_and_return', action='store_true',
         help='Create the child jobs of a suite, then finish immediately.')
     parser.add_argument(
         '--test_retry', default=False, action='store_true',
         help='Enable test-level retry.')
     parser.add_argument(
-        '--max-retries', default=0, type=int, action='store',
+        '--max_retries', default=0, type=int, action='store',
         help='Maximum retries allowed at suite level. No retry if it is 0.')
     parser.add_argument(
         '--timeout_mins', default=90, type=int, action='store',
@@ -90,7 +90,7 @@ def make_parser():
         '--json_dump', action='store_true', default=False,
         help='Dump the output of run_suite to stdout.')
     parser.add_argument(
-        '--run-prod-code', action='store_true', default=False,
+        '--run_prod_code', action='store_true', default=False,
         help='Run the test code that lives in prod aka the test '
         'code currently on the lab servers.')
     parser.add_argument(
