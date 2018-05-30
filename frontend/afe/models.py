@@ -11,6 +11,7 @@ except django.core.exceptions.ImproperlyConfigured:
                        'setup_django_lite_environment from '
                        'autotest_lib.frontend before any imports that '
                        'depend on django models.')
+from django.db import utils as django_utils
 from xml.sax import saxutils
 import common
 from autotest_lib.frontend.afe import model_logic, model_attributes
@@ -1490,6 +1491,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         'AUTOTEST_WEB', 'parse_failed_repair_default', type=bool, default=False)
     FETCH_READONLY_JOBS = global_config.global_config.get_config_value(
         'AUTOTEST_WEB','readonly_heartbeat', type=bool, default=False)
+    CHECK_MASTER_IF_EMPTY = global_config.global_config.get_config_value(
+        'AUTOTEST_WEB','heartbeat_fall_back_to_master',
+        type=bool, default=False)
 
 
     owner = dbmodels.CharField(max_length=255)
@@ -1668,18 +1672,26 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             'check_known_jobs': check_known_jobs_exclude,
             'shard_id': shard.id
         }
+
+        query_master_for_jobs = not cls.FETCH_READONLY_JOBS
+
         if cls.FETCH_READONLY_JOBS:
             #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
             #correct usage would be .raw(..., using='readonly')
             old_db = Job.objects._db
             try:
                 Job.objects._db = 'readonly'
-                job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
+                job_ids = set([j.id for j in Job.objects.raw(raw_sql)])
+                if not job_ids:
+                    query_master_for_jobs = cls.CHECK_MASTER_IF_EMPTY
+            except django_utils.DatabaseError:
+                logging.exception(
+                    'Error attempting to query slave db, will retry on master')
+                query_master_for_jobs = True
             finally:
                 Job.objects._db = old_db
-        if not job_ids:
-            #If the replica is down or we're in a test, fetch from master.
-            job_ids |= set([j.id for j in Job.objects.raw(raw_sql)])
+        if query_master_for_jobs:
+            job_ids = set([j.id for j in Job.objects.raw(raw_sql)])
 
         static_labels, non_static_labels = Host.classify_label_objects(
                 shard.labels.all())
