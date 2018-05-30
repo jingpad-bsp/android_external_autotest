@@ -62,7 +62,7 @@ def _parse_args_and_configure_logging(args):
 
     # General
     parser.add_argument('--lucifer-level', required=True,
-                        help='Lucifer level')
+                        help='Lucifer level', choices=['STARTING'])
     parser.add_argument('--job-id', type=int, required=True,
                         help='Autotest Job ID')
     parser.add_argument('--results-dir', required=True,
@@ -75,33 +75,9 @@ def _parse_args_and_configure_logging(args):
                         help='Whether to only do parsing'
                         ' (only with --lucifer-level STARTING)')
 
-    # GATHERING flags
-    parser.add_argument('--autoserv-exit', type=int, default=None, help='''
-autoserv exit status.  If this is passed, then autoserv will not be run
-as the caller has presumably already run it.
-''')
-    parser.add_argument('--need-gather', action='store_true',
-                        help='Whether to gather logs'
-                        ' (only with --lucifer-level GATHERING)')
-    parser.add_argument('--num-tests-failed', type=int, default=-1,
-                        help='Number of tests failed'
-                        ' (only with --need-gather)')
-
     args = parser.parse_args(args)
-    _validate_args(args)
     loglib.configure_logging_with_args(parser, args)
     return args
-
-
-# TODO(crbug.com/810141): These options are optional to support
-# GATHERING, so validation is done here rather than making them required
-# during argument parsing.  Can be removed and the arguments made
-# required after GATHERING is removed.
-def _validate_args(args):
-    if args.lucifer_level != 'STARTING':
-        return
-    if args.execution_tag is None:
-        raise Exception('--execution-tag must be provided for STARTING')
 
 
 def _main(args):
@@ -125,8 +101,7 @@ def _run_autotest_job(args):
     """
     models = autotest.load('frontend.afe.models')
     job = models.Job.objects.get(id=args.job_id)
-    if args.lucifer_level == 'STARTING':
-        _prepare_autotest_job_files(args, job)
+    _prepare_autotest_job_files(args, job)
     handler = _make_handler(args, job)
     ret = _run_lucifer_job(handler, args, job)
     if handler.completed:
@@ -141,12 +116,10 @@ def _prepare_autotest_job_files(args, job):
 
 def _make_handler(args, job):
     """Make event handler for lucifer_run_job."""
-    assert not (args.lucifer_level == 'GATHERING'
-                and args.autoserv_exit is None)
     return handlers.EventHandler(
             metrics=handlers.Metrics(),
             job=job,
-            autoserv_exit=args.autoserv_exit,
+            autoserv_exit=None,
             results_dir=args.results_dir,
     )
 
