@@ -69,19 +69,9 @@ class host(topic_common.atest):
             self.invalid_syntax('Only specify one of '
                                 '--lock and --unlock.')
 
-        if options.skylab and options.unlock and options.unlock_lock_id is None:
-            self.invalid_syntax('Must provide --unlock-lock-id with "--skylab '
-                                '--unlock".')
-
-        if (not (options.skylab and options.unlock) and
-            options.unlock_lock_id is not None):
-            self.invalid_syntax('--unlock-lock-id is only valid with '
-                                '"--skylab --unlock".')
-
         self.lock = options.lock
         self.unlock = options.unlock
         self.lock_reason = options.lock_reason
-        self.unlock_lock_id = options.unlock_lock_id
 
         if options.lock:
             self.data['locked'] = True
@@ -425,10 +415,7 @@ class BaseHostModCreate(host):
         self.parser.add_option('-u', '--unlock',
                                help='Unlock hosts.',
                                action='store_true')
-        self.parser.add_option('--unlock-lock-id',
-                               help=('Unlock the lock with the lock-id. Only '
-                                     'useful when unlocking skylab hosts.'),
-                               default=None)
+
         self.parser.add_option('-p', '--protection', type='choice',
                                help=('Set the protection level on a host.  '
                                      'Must be one of: %s. %s' %
@@ -462,12 +449,10 @@ class BaseHostModCreate(host):
                                type='string',
                                metavar='ACL_FLIST')
         self.parser.add_option('-t', '--platform',
-                               help=('Sets the platform label. This is '
-                                     'deprecated for --skylab. Please set '
-                                     'platform in labels (e.g., '
-                                     '-b platform:platform_name).'))
-
-        self.add_skylab_options()
+                               help=('Sets the platform label. %s Please set '
+                                     'platform in labels (e.g., -b '
+                                     'platform:platform_name) with --skylab.' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB))
 
 
     def parse(self):
@@ -487,7 +472,7 @@ class BaseHostModCreate(host):
         self._parse_lock_options(options)
 
         self.label_map = None
-        if self.skylab:
+        if self.allow_skylab and self.skylab:
             # TODO(nxia): drop these flags when all hosts are migrated to skylab
             if (options.protection or options.acls or options.alist or
                 options.platform):
@@ -608,6 +593,10 @@ class host_mod(BaseHostModCreate):
     def __init__(self):
         """Add the options specific to the mod action"""
         super(host_mod, self).__init__()
+        self.parser.add_option('--unlock-lock-id',
+                               help=('Unlock the lock with the lock-id. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
+                               default=None)
         self.parser.add_option('-f', '--force_modify_locking',
                                help='Forcefully lock\unlock a host',
                                action='store_true')
@@ -619,10 +608,28 @@ class host_mod(BaseHostModCreate):
                                help='Remove all labels.',
                                action='store_true')
 
+        self.add_skylab_options()
+
+
+    def _parse_unlock_options(self, options):
+        """Parse unlock related options."""
+        if self.skylab and options.unlock and options.unlock_lock_id is None:
+            self.invalid_syntax('Must provide --unlock-lock-id with "--skylab '
+                                '--unlock".')
+
+        if (not (self.skylab and options.unlock) and
+            options.unlock_lock_id is not None):
+            self.invalid_syntax('--unlock-lock-id is only valid with '
+                                '"--skylab --unlock".')
+
+        self.unlock_lock_id = options.unlock_lock_id
+
 
     def parse(self):
         """Consume the specific options"""
         (options, leftover) = super(host_mod, self).parse()
+
+        self._parse_unlock_options(options)
 
         if options.force_modify_locking:
              self.data['force_modify_locking'] = True
@@ -883,53 +890,8 @@ class host_create(BaseHostModCreate):
             self._set_attributes(host, self.attributes)
 
 
-    def execute_skylab(self):
-        """Execute atest host create with --skylab.
-
-        @return A list of hostnames which have been successfully created.
-        """
-        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
-        inventory_repo.initialize()
-        data_dir = inventory_repo.get_data_dir()
-        lab = text_manager.load_lab(data_dir)
-
-        locked_by = None
-        if self.lock:
-            locked_by = inventory_repo.git_repo.config('user.email')
-
-        successes = []
-        for hostname in self.hosts:
-            try:
-                device.create(
-                        lab,
-                        'duts',
-                        hostname,
-                        self.environment,
-                        lock=self.lock,
-                        locked_by=locked_by,
-                        lock_reason = self.lock_reason,
-                        attributes=self.attributes,
-                        label_map=self.label_map)
-                successes.append(hostname)
-            except device.SkylabDeviceActionError as e:
-                print('Cannot create host %s: %s' % (hostname, e))
-
-        if successes:
-            text_manager.dump_lab(data_dir, lab)
-            message = skylab_utils.construct_commit_message(
-                    'Create %d hosts.\n\n%s' % (len(successes), successes))
-            self.change_number = inventory_repo.upload_change(
-                    message, draft=self.draft, dryrun=self.dryrun,
-                    submit=self.submit)
-
-        return successes
-
-
     def execute(self):
         """Execute 'atest host create'."""
-        if self.skylab:
-            return self.execute_skylab()
-
         successful_hosts = []
         for host in self.hosts:
             try:
