@@ -57,8 +57,7 @@ class autoupdate_Rollback(test.test):
 
         # We should be booting from the new partition.
         error_message = 'Failed to set up test by updating DUT.'
-        updater.verify_boot_expectations(expected_kernel_state=updated_kernel,
-                                         rollback_message=error_message)
+        updater.verify_boot_expectations(updated_kernel, error_message)
 
         if powerwash_before_rollback:
             self._powerwash(host)
@@ -71,6 +70,5 @@ class autoupdate_Rollback(test.test):
         # We should be back on our initial partition.
         error_message = ('Autoupdate reported that rollback succeeded but we '
                          'did not boot into the correct partition.')
-        updater.verify_boot_expectations(expected_kernel_state=initial_kernel,
-                                         rollback_message=error_message)
+        updater.verify_boot_expectations(initial_kernel, error_message)
         logging.info('We successfully rolled back to initial kernel.')
