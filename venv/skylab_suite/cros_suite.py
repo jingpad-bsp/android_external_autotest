@@ -166,7 +166,7 @@ class SuiteHandler(object):
 
             logging.info('Found %d successfully provisioned bots',
                          len(successfully_completed_bots))
-            return (len(successfully_completed_bots) >
+            return (len(successfully_completed_bots) >=
                     self._provision_num_required)
 
         finished_tasks = [t for t in self._active_child_tasks if
