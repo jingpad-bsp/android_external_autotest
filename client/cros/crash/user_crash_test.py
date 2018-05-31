@@ -139,10 +139,13 @@ class UserCrashTest(crash_test.CrashTest):
 
 
     def _verify_stack(self, stack, basename, from_crash_reporter):
+        # Should identify cause as SIGSEGV at address 0x16.
         logging.debug('minidump_stackwalk output:\n%s', stack)
 
-        # Should identify cause as SIGSEGV at address 0x16
-        match = re.search(r'Crash reason:\s+(.*)', stack)
+        # Look for a line like:
+        # Crash reason:  SIGSEGV
+        # Crash reason:  SIGSEGV /0x00000000
+        match = re.search(r'Crash reason:\s+([^\s]*)', stack)
         expected_address = '0x16'
         if from_crash_reporter:
             # We cannot yet determine the crash address when coming
