@@ -472,6 +472,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return state.lower() in self.ON_STRINGS
 
 
+    def fast_open(self, enable_testlab=False):
+        """Try to use testlab open. If that fails do regular open
+
+        Args:
+            enable_testlab: If True enable testlab after device is open
+        """
+        self.send_command('ccd testlab open')
+        self.set_ccd_level('open')
+        if enable_testlab:
+            self.set_ccd_testlab('on')
+
+
     def testlab_is_on(self):
         """Returns True of testlab mode is on"""
         return self._state_to_bool(self._servo.get('cr50_testlab'))
