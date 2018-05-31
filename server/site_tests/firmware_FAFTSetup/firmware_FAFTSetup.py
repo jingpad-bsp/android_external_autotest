@@ -30,20 +30,14 @@ class firmware_FAFTSetup(FirmwareTest):
             # Not Chrome EC. Nothing to check.
             return True
         try:
-            self.ec.send_command("chan 0")
-            expected_output = ["Chip:\s+[^\r\n]*\r\n",
-                               "RO:\s+[^\r\n]*\r\n",
-                               "RW_?[AB]?:\s+[^\r\n]*\r\n",
-                               "Build:\s+[^\r\n]*\r\n"]
-            self.ec.send_command_get_output("version",
-                                            expected_output)
-            self.ec.send_command("chan 0xffffffff")
-            return True
+            if self.ec.get_version():
+                return True
         except: # pylint: disable=W0702
-            logging.error("Cannot talk to EC console.")
-            logging.error(
-                    "Please check there is no terminal opened on EC console.")
-            raise error.TestFail("Failed EC console check.")
+            pass
+
+        logging.error("Cannot talk to EC console.")
+        logging.error("Please check there is no terminal opened on EC console.")
+        raise error.TestFail("Failed EC console check.")
 
     def base_keyboard_checker(self, press_action):
         """Press key and check from DUT.
