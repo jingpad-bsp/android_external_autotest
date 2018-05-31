@@ -392,6 +392,14 @@ class ChromiumOSUpdater(object):
             raise RootFSUpdateError('Update did not complete with correct '
                                     'status. Expecting %s, actual %s. %s' %
                                     (UPDATER_NEED_REBOOT, status, error_msg))
+        inactive_kernel = self.get_kernel_state()[1]
+        next_kernel = self._get_next_kernel()
+        if next_kernel != inactive_kernel:
+            raise ChromiumOSError(
+                    'Update failed.  The kernel for next boot is %s, '
+                    'but %s was expected.' %
+                    (next_kernel['name'], inactive_kernel['name']))
+        return inactive_kernel
 
 
     def trigger_update(self):
@@ -437,7 +445,7 @@ class ChromiumOSUpdater(object):
             c = metrics.Counter('chromeos/autotest/autoupdater/update')
             metric_fields.update(self._get_metric_fields())
             c.increment(fields=metric_fields)
-        self._verify_update_completed()
+        return self._verify_update_completed()
 
 
     def get_stateful_update_script(self):
@@ -632,7 +640,7 @@ class ChromiumOSUpdater(object):
 
         try:
             try:
-                self.update_image()
+                expected_kernel = self.update_image()
                 self.update_stateful()
             except:
                 self._revert_boot_partition()
@@ -652,6 +660,7 @@ class ChromiumOSUpdater(object):
         finally:
             logging.info('Update engine log has downloaded in '
                          'sysinfo/update_engine dir. Check the lastest.')
+        return expected_kernel
 
 
     def _post_update_processing(self, expected_kernel):
@@ -710,18 +719,10 @@ class ChromiumOSUpdater(object):
         self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
         self.host.prepare_for_update()
 
-        self._install_update()
+        expected_kernel = self._install_update()
 
         # Give it some time in case of IO issues.
         time.sleep(10)
-
-        inactive_kernel = self.get_kernel_state()[1]
-        next_kernel = self._get_next_kernel()
-        if next_kernel != inactive_kernel:
-            raise ChromiumOSError(
-                    'Update failed.  The kernel for next boot is %s, '
-                    'but %s was expected.' %
-                    (next_kernel['name'], inactive_kernel['name']))
 
         # Update has returned successfully; reboot the host.
         #
@@ -739,7 +740,7 @@ class ChromiumOSUpdater(object):
                   ignore_status=True)
         self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
 
-        self._post_update_processing(inactive_kernel)
+        self._post_update_processing(expected_kernel)
         image_name = url_to_image_name(self.update_url)
         # update_url is different from devserver url needed to stage autotest
         # packages, therefore, resolve a new devserver url here.
