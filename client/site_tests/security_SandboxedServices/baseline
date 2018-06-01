@@ -45,7 +45,7 @@ metrics_daemon,root,root,No,No,No,No,No
 disks,cros-disks,cros-disks,No,No,Yes,Yes,No
 update_engine,root,root,No,No,No,No,No
 bluetoothd,bluetooth,bluetooth,No,No,Yes,Yes,No
-debugd,root,root,No,No,No,No,No
+debugd,root,root,No,Yes,No,No,No
 cras,cras,cras,No,Yes,Yes,Yes,No
 tcsd,tss,root,No,No,Yes,No,No
 cromo,cromo,cromo,No,No,No,No,No
