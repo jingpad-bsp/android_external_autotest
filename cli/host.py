@@ -37,10 +37,13 @@ except ImportError:
     pass
 
 
+MIGRATED_HOST_SUFFIX = '-migrated-do-not-use'
+
+
 class host(topic_common.atest):
     """Host class
-    atest host [create|delete|list|stat|mod|jobs] <options>"""
-    usage_action = '[create|delete|list|stat|mod|jobs]'
+    atest host [create|delete|list|stat|mod|jobs|rename] <options>"""
+    usage_action = '[create|delete|list|stat|mod|jobs|rename]'
     topic = msg_topic = 'host'
     msg_items = '<hosts>'
 
@@ -69,19 +72,9 @@ class host(topic_common.atest):
             self.invalid_syntax('Only specify one of '
                                 '--lock and --unlock.')
 
-        if options.skylab and options.unlock and options.unlock_lock_id is None:
-            self.invalid_syntax('Must provide --unlock-lock-id with "--skylab '
-                                '--unlock".')
-
-        if (not (options.skylab and options.unlock) and
-            options.unlock_lock_id is not None):
-            self.invalid_syntax('--unlock-lock-id is only valid with '
-                                '"--skylab --unlock".')
-
         self.lock = options.lock
         self.unlock = options.unlock
         self.lock_reason = options.lock_reason
-        self.unlock_lock_id = options.unlock_lock_id
 
         if options.lock:
             self.data['locked'] = True
@@ -425,10 +418,7 @@ class BaseHostModCreate(host):
         self.parser.add_option('-u', '--unlock',
                                help='Unlock hosts.',
                                action='store_true')
-        self.parser.add_option('--unlock-lock-id',
-                               help=('Unlock the lock with the lock-id. Only '
-                                     'useful when unlocking skylab hosts.'),
-                               default=None)
+
         self.parser.add_option('-p', '--protection', type='choice',
                                help=('Set the protection level on a host.  '
                                      'Must be one of: %s. %s' %
@@ -462,12 +452,10 @@ class BaseHostModCreate(host):
                                type='string',
                                metavar='ACL_FLIST')
         self.parser.add_option('-t', '--platform',
-                               help=('Sets the platform label. This is '
-                                     'deprecated for --skylab. Please set '
-                                     'platform in labels (e.g., '
-                                     '-b platform:platform_name).'))
-
-        self.add_skylab_options()
+                               help=('Sets the platform label. %s Please set '
+                                     'platform in labels (e.g., -b '
+                                     'platform:platform_name) with --skylab.' %
+                                     skylab_utils.MSG_INVALID_IN_SKYLAB))
 
 
     def parse(self):
@@ -487,7 +475,7 @@ class BaseHostModCreate(host):
         self._parse_lock_options(options)
 
         self.label_map = None
-        if self.skylab:
+        if self.allow_skylab and self.skylab:
             # TODO(nxia): drop these flags when all hosts are migrated to skylab
             if (options.protection or options.acls or options.alist or
                 options.platform):
@@ -608,6 +596,10 @@ class host_mod(BaseHostModCreate):
     def __init__(self):
         """Add the options specific to the mod action"""
         super(host_mod, self).__init__()
+        self.parser.add_option('--unlock-lock-id',
+                               help=('Unlock the lock with the lock-id. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
+                               default=None)
         self.parser.add_option('-f', '--force_modify_locking',
                                help='Forcefully lock\unlock a host',
                                action='store_true')
@@ -619,10 +611,28 @@ class host_mod(BaseHostModCreate):
                                help='Remove all labels.',
                                action='store_true')
 
+        self.add_skylab_options()
+
+
+    def _parse_unlock_options(self, options):
+        """Parse unlock related options."""
+        if self.skylab and options.unlock and options.unlock_lock_id is None:
+            self.invalid_syntax('Must provide --unlock-lock-id with "--skylab '
+                                '--unlock".')
+
+        if (not (self.skylab and options.unlock) and
+            options.unlock_lock_id is not None):
+            self.invalid_syntax('--unlock-lock-id is only valid with '
+                                '"--skylab --unlock".')
+
+        self.unlock_lock_id = options.unlock_lock_id
+
 
     def parse(self):
         """Consume the specific options"""
         (options, leftover) = super(host_mod, self).parse()
+
+        self._parse_unlock_options(options)
 
         if options.force_modify_locking:
              self.data['force_modify_locking'] = True
@@ -883,53 +893,8 @@ class host_create(BaseHostModCreate):
             self._set_attributes(host, self.attributes)
 
 
-    def execute_skylab(self):
-        """Execute atest host create with --skylab.
-
-        @return A list of hostnames which have been successfully created.
-        """
-        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
-        inventory_repo.initialize()
-        data_dir = inventory_repo.get_data_dir()
-        lab = text_manager.load_lab(data_dir)
-
-        locked_by = None
-        if self.lock:
-            locked_by = inventory_repo.git_repo.config('user.email')
-
-        successes = []
-        for hostname in self.hosts:
-            try:
-                device.create(
-                        lab,
-                        'duts',
-                        hostname,
-                        self.environment,
-                        lock=self.lock,
-                        locked_by=locked_by,
-                        lock_reason = self.lock_reason,
-                        attributes=self.attributes,
-                        label_map=self.label_map)
-                successes.append(hostname)
-            except device.SkylabDeviceActionError as e:
-                print('Cannot create host %s: %s' % (hostname, e))
-
-        if successes:
-            text_manager.dump_lab(data_dir, lab)
-            message = skylab_utils.construct_commit_message(
-                    'Create %d hosts.\n\n%s' % (len(successes), successes))
-            self.change_number = inventory_repo.upload_change(
-                    message, draft=self.draft, dryrun=self.dryrun,
-                    submit=self.submit)
-
-        return successes
-
-
     def execute(self):
         """Execute 'atest host create'."""
-        if self.skylab:
-            return self.execute_skylab()
-
         successful_hosts = []
         for host in self.hosts:
             try:
@@ -1007,3 +972,119 @@ class host_delete(action_common.atest_delete, host):
             return self.execute_skylab()
 
         return super(host_delete, self).execute()
+
+
+class InvalidHostnameError(Exception):
+    """Cannot perform actions on the host because of invalid hostname."""
+
+
+def _add_hostname_suffix(hostname, suffix):
+    """Add the suffix to the hostname."""
+    if hostname.endswith(suffix):
+        raise InvalidHostnameError(
+              'Cannot add "%s" as it already contains the suffix.' % suffix)
+
+    return hostname + suffix
+
+
+def _remove_hostname_suffix(hostname, suffix):
+    """Remove the suffix from the hostname."""
+    if not hostname.endswith(suffix):
+        raise InvalidHostnameError(
+                'Cannot remove "%s" as it doesn\'t contain the suffix.' %
+                suffix)
+
+    return hostname[:len(hostname) - len(suffix)]
+
+
+class host_rename(host):
+    """Host rename is only for migrating hosts between skylab and AFE DB."""
+
+    usage_action = 'rename'
+
+    def __init__(self):
+        """Add the options specific to the rename action."""
+        super(host_rename, self).__init__()
+
+        self.parser.add_option('--for-migration',
+                               help=('Rename hostnames for migration. Rename '
+                                     'each "hostname" to "hostname%s". '
+                                     'The original "hostname" must not contain '
+                                     'suffix.' % MIGRATED_HOST_SUFFIX),
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--for-rollback',
+                               help=('Rename hostnames for migration rollback. '
+                                     'Rename each "hostname%s" to its original '
+                                     '"hostname".' % MIGRATED_HOST_SUFFIX),
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--dryrun',
+                               help='Execute the action as a dryrun.',
+                               action='store_true',
+                               default=False)
+
+
+    def parse(self):
+        """Consume the options common to host rename."""
+        (options, leftovers) = super(host_rename, self).parse()
+        self.for_migration = options.for_migration
+        self.for_rollback = options.for_rollback
+        self.dryrun = options.dryrun
+        self.host_ids = {}
+
+        if not (self.for_migration ^ self.for_rollback):
+            self.invalid_syntax('--for-migration and --for-rollback are '
+                                'exclusive, and one of them must be enabled.')
+
+        if not self.hosts:
+            self.invalid_syntax('Must provide hostname(s).')
+
+        if self.dryrun:
+            print('This will be a dryrun and will not rename hostnames.')
+
+        return (options, leftovers)
+
+
+    def execute(self):
+        """Execute 'atest host rename'."""
+        if not self.prompt_confirmation():
+            return
+
+        successes = []
+        for host in self.execute_rpc('get_hosts', hostname__in=self.hosts):
+            self.host_ids[host['hostname']] = host['id']
+        for host in self.hosts:
+            if host not in self.host_ids:
+                self.failure('Cannot rename non-existant host %s.' % host,
+                              item=host, what_failed='Failed to rename')
+                continue
+            try:
+                if self.for_migration:
+                    new_hostname = _add_hostname_suffix(
+                            host, MIGRATED_HOST_SUFFIX)
+                else:
+                    #for_rollback
+                    new_hostname = _remove_hostname_suffix(
+                            host, MIGRATED_HOST_SUFFIX)
+
+                if not self.dryrun:
+                    data = {'hostname': new_hostname}
+                    self.execute_rpc('modify_host', item=host, id=host, **data)
+                successes.append((host, new_hostname))
+            except InvalidHostnameError as e:
+                self.failure('Cannot rename host %s: %s' % (host, e), item=host,
+                             what_failed='Failed to rename')
+            except topic_common.CliError, full_error:
+                # Already logged by execute_rpc()
+                pass
+
+        return successes
+
+
+    def output(self, results):
+        """Print output of 'atest host rename'."""
+        if results:
+            print('Successfully renamed:')
+            for old_hostname, new_hostname in results:
+                print('%s to %s' % (old_hostname, new_hostname))

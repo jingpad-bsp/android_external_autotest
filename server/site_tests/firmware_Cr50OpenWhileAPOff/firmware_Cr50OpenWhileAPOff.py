@@ -106,7 +106,8 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
 
         # Verify the cr50 console responds to commands.
         try:
-            logging.info(self.cr50.send_command_get_output('ccdstate', ['.*>']))
+            logging.info(self.cr50.send_command_get_output('ccdstate',
+                    ['ccdstate.*>']))
         except error.TestFail, e:
             if 'Timeout waiting for response' in e.message:
                 raise error.TestFail('Could not restore Cr50 console')
@@ -182,7 +183,7 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
     def send_ccd_cmd(self, state):
         """Send the cr50 command ccd command. Make sure access is denied"""
         logging.info('running lockout check %s', state)
-        rv = self.cr50.send_command_get_output('ccd %s' % state , ['.*>'])[0]
+        rv = self.cr50.send_command_get_output('ccd %s' % state , ['ccd.*>'])[0]
         logging.info(rv)
         if self.ccd_lockout != ('Access Denied' in rv):
             raise error.TestFail('CCD is not %s' % ('locked out' if

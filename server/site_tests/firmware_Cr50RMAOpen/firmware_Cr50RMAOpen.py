@@ -65,8 +65,11 @@ class firmware_Cr50RMAOpen(Cr50Test):
         if self.host.run('rma_reset -h', ignore_status=True).exit_status == 127:
             raise error.TestNAError('Cannot test RMA open without rma_reset')
 
-        # Disable all capabilities at the start of the test
-        self.host.run('gsctool -a -r disable', ignore_status=True)
+        # Disable all capabilities at the start of the test. Go ahead and enable
+        # testlab mode if it isn't enabled.
+        self.cr50.fast_open(enable_testlab=True)
+        self.cr50.send_command('ccd reset')
+        self.cr50.set_ccd_level('lock')
         self.check_ccd_cap_settings(False)
 
         self.is_prod_mp = self.get_prod_mp_status()
@@ -231,7 +234,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         # disable
         if not unsupported_key:
             logging.info(self.cr50.send_command_get_output('wp enable',
-                    ['.*>']))
+                    ['wp.*>']))
 
         # Run RMA disable to reset the capabilities.
         self.rma_ap(disable=True, expected_exit_status=exit_status)

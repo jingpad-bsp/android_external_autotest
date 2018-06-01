@@ -10,10 +10,11 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
-from autotest_lib.client.cros.video import native_html5_player
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
+from autotest_lib.client.cros.video import histogram_verifier
+from autotest_lib.client.cros.video import native_html5_player
 
 
 class video_ChromeHWDecodeUsed(test.test):
@@ -43,16 +44,20 @@ class video_ChromeHWDecodeUsed(test.test):
         return False
 
     @helper_logger.video_log_wrapper
-    def run_once(self, codec, is_mse, video_file, arc_mode=None):
+    def run_once(self, codec, is_mse, video_file, capability, arc_mode=None):
         """
         Tests whether VDA works by verifying histogram for the loaded video.
 
         @param is_mse: bool, True if the content uses MSE, False otherwise.
         @param video_file: Sample video file to be loaded in Chrome.
-
+        @param capability: Capability required for executing this test.
         """
         if self.is_skipping_test(codec):
             raise error.TestNAError('Skipping test run on this board.')
+
+        if not device_capability.DeviceCapability().have_capability(capability):
+            logging.warning("Missing Capability: %s" % capability)
+            return
 
         with chrome.Chrome(
                 extra_browser_args=helper_logger.chrome_vmodule_flag(),

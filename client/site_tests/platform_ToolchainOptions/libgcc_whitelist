@@ -13,3 +13,4 @@
 # https://crbug.com/814480.
 /usr/bin/crosvm
 /usr/lib*/libqcow_utils.so
+/usr/lib64/libcrosvm_plugin.so

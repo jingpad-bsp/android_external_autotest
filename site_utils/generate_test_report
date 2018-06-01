@@ -686,7 +686,7 @@ class ReportGenerator(object):
         for key in ordered_keys:
             key = str(key)
             if results[key]['status'].lower() == 'pass':
-                color = 'Lime'
+                color = 'LimeGreen'
             elif results[key]['status'].lower() == 'na':
                 color = 'yellow'
             else:
@@ -720,9 +720,9 @@ class ReportGenerator(object):
                         <body>
                             <div class="container">
                                 <h2>Automation Report</h2>
-                                <table class="table table-bordered">
+                                <table class="table table-bordered" border="1">
                                     <thead>
-                                        <tr style="background-color:Gainsboro;">
+                                        <tr style="background-color:LightSkyBlue;">
                                         \n%s
                                         </tr>
                                     </thead>

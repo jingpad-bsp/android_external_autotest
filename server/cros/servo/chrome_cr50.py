@@ -151,6 +151,20 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """
         if not self.using_ccd():
             self.wake_cr50()
+
+        # We have started prepending '\n' to separate cr50 console junk from
+        # the real command. If someone is just searching for .*>, then they will
+        # only get the output from the first '\n' we added. Raise an error to
+        # change the test to look for something more specific ex command.*>.
+        # cr50 will print the command in the output, so that is an easy way to
+        # modify '.*>' to match the real command output.
+        if '.*>' in regexp_list:
+            raise error.TestError('Send more specific regexp %r %r' % (command,
+                    regexp_list))
+
+        # prepend \n to separate the command from any junk that may have been
+        # sent to the cr50 uart.
+        command = '\n' + command
         return super(ChromeCr50, self).send_command_get_output(command,
                                                                regexp_list)
 
@@ -305,7 +319,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def rolledback(self):
         """Returns true if cr50 just rolled back"""
         return 'Rollback detected' in self.send_command_get_output('sysinfo',
-                ['.*>'])[0]
+                ['sysinfo.*>'])[0]
 
 
     def get_version_info(self, regexp):
@@ -458,6 +472,18 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return state.lower() in self.ON_STRINGS
 
 
+    def fast_open(self, enable_testlab=False):
+        """Try to use testlab open. If that fails do regular open
+
+        Args:
+            enable_testlab: If True enable testlab after device is open
+        """
+        self.send_command('ccd testlab open')
+        self.set_ccd_level('open')
+        if enable_testlab:
+            self.set_ccd_testlab('on')
+
+
     def testlab_is_on(self):
         """Returns True of testlab mode is on"""
         return self._state_to_bool(self._servo.get('cr50_testlab'))
@@ -497,7 +523,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
         # Set testlab mode
         rv = self.send_command_get_output('ccd testlab %s' % request_str,
-                ['.*>'])[0]
+                ['ccd.*>'])[0]
         if 'Access Denied' in rv:
             raise error.TestFail("'ccd %s' %s" % (request_str, rv))
 
@@ -552,7 +578,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 "physical presence or testlab mode enabled")
 
         # Start the unlock process.
-        rv = self.send_command_get_output('ccd %s' % level, ['.*>'])[0]
+        rv = self.send_command_get_output('ccd %s' % level, ['ccd.*>'])[0]
         logging.info(rv)
         if 'Access Denied' in rv:
             raise error.TestFail("'ccd %s' %s" % (level, rv))

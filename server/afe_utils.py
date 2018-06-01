@@ -123,8 +123,7 @@ def machine_install_and_update_labels(host, update_url,
         image_name, host_attributes = host.machine_install_by_devserver(
                 update_url, force_full_update=force_full_update)
     else:
-        image_name, host_attributes = host.machine_install(
-                update_url, force_full_update=force_full_update)
+        image_name, host_attributes = host.machine_install(update_url)
 
     info = host.host_info_store.get()
     info.attributes.update(host_attributes)

@@ -8,6 +8,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp, error
+from autotest_lib.client.cros import dbus_util
 from mainloop import ExceptionForward
 from mainloop import GenericTesterMainLoop
 
@@ -55,7 +56,8 @@ class DBusClient(object):
     This class is expected to be used along with a GLib main loop and provides
     some convenient functions for testing the DBus API exposed by a DBus server.
     """
-    def __init__(self, main_loop, bus, bus_name, object_path):
+
+    def __init__(self, main_loop, bus, bus_name, object_path, timeout=None):
         """Initializes the instance.
 
         Args:
@@ -63,13 +65,15 @@ class DBusClient(object):
             bus: The bus where the DBus server is connected to.
             bus_name: The bus name owned by the DBus server.
             object_path: The object path of the DBus server.
+            timeout: Maximum time in seconds to wait for the DBus connection.
         """
         self.__signal_content = {}
         self.main_loop = main_loop
         self.signal_timeout_in_seconds = 10
         logging.debug('Getting D-Bus proxy object on bus "%s" and path "%s"',
                       bus_name, object_path)
-        self.proxy_object = bus.get_object(bus_name, object_path)
+        self.proxy_object = dbus_util.get_dbus_object(bus, bus_name,
+                                                      object_path, timeout)
 
     def clear_signal_content(self, signal_name):
         """Clears the content of the signal.

@@ -154,7 +154,7 @@ class FlashromProgrammer(_BaseProgrammer):
 
             servo_v2_programmer = 'ft2232_spi:type=servo-v2'
             servo_v3_programmer = 'linux_spi'
-            servo_v4_with_micro_programmer = 'raiden_spi'
+            servo_v4_with_micro_programmer = 'raiden_debug_spi'
             servo_v4_with_ccd_programmer = 'raiden_debug_spi:target=AP'
             if self._servo_version == 'servo_v2':
                 programmer = servo_v2_programmer
@@ -168,7 +168,7 @@ class FlashromProgrammer(_BaseProgrammer):
                 # firmware programmer will always use the uServo to program.
                 servo_micro_serial = self._servo_serials.get('servo_micro')
                 programmer = servo_v4_with_micro_programmer
-                programmer += ',serial=%s' % servo_micro_serial
+                programmer += ':serial=%s' % servo_micro_serial
             elif self._servo_version == 'servo_v4_with_ccd_cr50':
                 ccd_serial = self._servo_serials.get('ccd')
                 programmer = servo_v4_with_ccd_programmer

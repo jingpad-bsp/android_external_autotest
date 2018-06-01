@@ -22,7 +22,7 @@ class bluetooth_TurnOnOffUI(graphics_utils.GraphicsTest):
     SETTINGS_BASE_PAGE_CSS = 'settings-basic-page'
     SETTINGS_BT_PAGE = "settings-bluetooth-page"
     SETTINGS_URL = "chrome://settings"
-    ENABLE_BT_CSS = 'paper-toggle-button#enableBluetooth'
+    ENABLE_BT_CSS = 'cr-toggle#enableBluetooth'
     DELAY_BW_TOGGLE_ON_OFF = 3
 
     def initialize(self):

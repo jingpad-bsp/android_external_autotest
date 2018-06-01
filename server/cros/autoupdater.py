@@ -219,10 +219,10 @@ class ChromiumOSUpdater(object):
                                   active_root)
 
 
-    def _cgpt(self, flag, kernel, dev='$(rootdev -s -d)'):
-        """Return numeric cgpt value for the specified flag, kernel, device. """
-        return int(self._run('cgpt show -n -i %d %s %s' % (
-            kernel['kernel'], flag, dev)).stdout.strip())
+    def _cgpt(self, flag, kernel):
+        """Return numeric cgpt value for the specified flag, kernel, device."""
+        return int(self._run('cgpt show -n -i %d %s $(rootdev -s -d)' % (
+            kernel['kernel'], flag)).stdout.strip())
 
 
     def _get_next_kernel(self):
@@ -346,9 +346,8 @@ class ChromiumOSUpdater(object):
 
     def _reset_stateful_partition(self):
         """Clear any pending stateful update request."""
-        statefuldev_cmd = [self.get_stateful_update_script()]
-        statefuldev_cmd += ['--stateful_change=reset', '2>&1']
-        self._run(' '.join(statefuldev_cmd))
+        self._run('%s --stateful_change=reset 2>&1'
+                  % self.get_stateful_update_script())
 
 
     def _revert_boot_partition(self):
@@ -392,6 +391,14 @@ class ChromiumOSUpdater(object):
             raise RootFSUpdateError('Update did not complete with correct '
                                     'status. Expecting %s, actual %s. %s' %
                                     (UPDATER_NEED_REBOOT, status, error_msg))
+        inactive_kernel = self.get_kernel_state()[1]
+        next_kernel = self._get_next_kernel()
+        if next_kernel != inactive_kernel:
+            raise ChromiumOSError(
+                    'Update failed.  The kernel for next boot is %s, '
+                    'but %s was expected.' %
+                    (next_kernel['name'], inactive_kernel['name']))
+        return inactive_kernel
 
 
     def trigger_update(self):
@@ -420,7 +427,7 @@ class ChromiumOSUpdater(object):
 
 
     def update_image(self):
-        """Updates the device image and verifies success."""
+        """Updates the device root FS and kernel and verifies success."""
         autoupdate_cmd = ('%s --update --omaha_url=%s' %
                           (_UPDATER_BIN, self.update_url))
         if not self.interactive:
@@ -437,7 +444,7 @@ class ChromiumOSUpdater(object):
             c = metrics.Counter('chromeos/autotest/autoupdater/update')
             metric_fields.update(self._get_metric_fields())
             c.increment(fields=metric_fields)
-        self._verify_update_completed()
+        return self._verify_update_completed()
 
 
     def get_stateful_update_script(self):
@@ -515,8 +522,7 @@ class ChromiumOSUpdater(object):
         @param clobber: If True, a clean stateful installation.
         """
         logging.info('Updating stateful partition...')
-        statefuldev_url = self.update_url.replace('update',
-                                                  'static')
+        statefuldev_url = self.update_url.replace('update', 'static')
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
@@ -528,19 +534,18 @@ class ChromiumOSUpdater(object):
         try:
             self._run(' '.join(statefuldev_cmd), timeout=1200)
         except error.AutoservRunError:
-            update_error = StatefulUpdateError(
+            raise StatefulUpdateError(
                     'Failed to perform stateful update on %s' %
                     self.host.hostname)
-            raise update_error
 
 
-    def verify_boot_expectations(self, expected_kernel_state, rollback_message):
+    def verify_boot_expectations(self, expected_kernel, rollback_message):
         """Verifies that we fully booted given expected kernel state.
 
         This method both verifies that we booted using the correct kernel
         state and that the OS has marked the kernel as good.
 
-        @param expected_kernel_state: kernel state that we are verifying with
+        @param expected_kernel: kernel that we are verifying with,
             i.e. I expect to be booted onto partition 4 etc. See output of
             get_kernel_state.
         @param rollback_message: string to raise as a ChromiumOSError
@@ -549,11 +554,10 @@ class ChromiumOSUpdater(object):
         @raises ChromiumOSError: If we didn't.
         """
         # Figure out the newly active kernel.
-        active_kernel_state = self.get_kernel_state()[0]
+        active_kernel = self.get_kernel_state()[0]
 
         # Check for rollback due to a bad build.
-        if (expected_kernel_state and
-                active_kernel_state != expected_kernel_state):
+        if active_kernel != expected_kernel:
 
             # Kernel crash reports should be wiped between test runs, but
             # may persist from earlier parts of the test, or from problems
@@ -585,8 +589,8 @@ class ChromiumOSUpdater(object):
         # Make sure chromeos-setgoodkernel runs.
         try:
             utils.poll_for_condition(
-                lambda: (self._get_kernel_tries(active_kernel_state) == 0
-                         and self._get_kernel_success(active_kernel_state)),
+                lambda: (self._get_kernel_tries(active_kernel) == 0
+                         and self._get_kernel_success(active_kernel)),
                 exception=ChromiumOSError(),
                 timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
         except ChromiumOSError:
@@ -601,15 +605,12 @@ class ChromiumOSUpdater(object):
                     'within %d seconds' % (event, _KERNEL_UPDATE_TIMEOUT))
 
 
-    def _install_update(self, update_root=True):
+    def _install_update(self):
         """Install the requested image on the DUT, but don't start it.
 
         This downloads all content needed for the requested update, and
         installs it in place on the DUT.  This does not reboot the DUT,
         so the update is merely pending when the function returns.
-
-        @param update_root: When true, force a rootfs update; otherwise
-                            update the stateful partition only.
         """
         booted_version = self.host.get_release_version()
         logging.info('Updating from version %s to %s.',
@@ -636,11 +637,7 @@ class ChromiumOSUpdater(object):
 
         try:
             try:
-                if not update_root:
-                    logging.info('Root update is skipped.')
-                else:
-                    self.update_image()
-
+                expected_kernel = self.update_image()
                 self.update_stateful()
             except:
                 self._revert_boot_partition()
@@ -660,61 +657,7 @@ class ChromiumOSUpdater(object):
         finally:
             logging.info('Update engine log has downloaded in '
                          'sysinfo/update_engine dir. Check the lastest.')
-
-
-    def _check_version(self):
-        """Check the image running in DUT has the desired version.
-
-        @returns: True if the DUT's image version matches the version that
-            the autoupdater tries to update to.
-
-        """
-        booted_version = self.host.get_release_version()
-        return self.update_version.endswith(booted_version)
-
-
-    def _try_stateful_update(self):
-        """Try to use stateful update to initialize DUT.
-
-        When DUT is already running the same version that machine_install
-        tries to install, stateful update is a much faster way to clean up
-        the DUT for testing, compared to a full reimage. It is implemeted
-        by calling autoupdater._run_full_update, but skipping updating root,
-        as updating the kernel is time consuming and not necessary.
-
-        @param update_url: url of the image.
-        @param updater: ChromiumOSUpdater instance used to update the DUT.
-        @returns: True if the DUT was updated with stateful update.
-
-        """
-        self.host.prepare_for_update()
-
-        # TODO(jrbarnette):  Yes, I hate this re.match() test case.
-        # It's better than the alternative:  see crbug.com/360944.
-        image_name = url_to_image_name(self.update_url)
-        release_pattern = r'^.*-release/R[0-9]+-[0-9]+\.[0-9]+\.0$'
-        if not re.match(release_pattern, image_name):
-            return False
-        if not self._check_version():
-            return False
-        # Following folders should be rebuilt after stateful update.
-        # A test file is used to confirm each folder gets rebuilt after
-        # the stateful update.
-        folders_to_check = ['/var', '/home', '/mnt/stateful_partition']
-        test_file = '.test_file_to_be_deleted'
-        paths = [os.path.join(folder, test_file) for folder in folders_to_check]
-        self._run('touch %s' % ' '.join(paths))
-
-        self._install_update(update_root=False)
-
-        # Reboot to complete stateful update.
-        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
-
-        # After stateful update and a reboot, all of the test_files shouldn't
-        # exist any more. Otherwise the stateful update is failed.
-        return not any(
-            self.host.path_exists(os.path.join(folder, test_file))
-            for folder in folders_to_check)
+        return expected_kernel
 
 
     def _post_update_processing(self, expected_kernel):
@@ -746,7 +689,7 @@ class ChromiumOSUpdater(object):
             logging.debug('No autotest installed directory found.')
 
 
-    def run_update(self, force_full_update):
+    def run_update(self):
         """Perform a full update of a DUT in the test lab.
 
         This downloads and installs the root FS and stateful partition
@@ -755,9 +698,6 @@ class ChromiumOSUpdater(object):
         requirements for provisioning a DUT for testing the requested
         build.
 
-        @param force_full_update: When true, update the root file
-            system to the new build, even if the target DUT already has
-            that build installed.
         @returns A tuple of the form `(image_name, attributes)`, where
             `image_name` is the name of the image installed, and
             `attributes` is new attributes to be applied to the DUT.
@@ -773,53 +713,31 @@ class ChromiumOSUpdater(object):
         # removed by any successful update.
         self._run('touch %s' % PROVISION_FAILED)
 
-        update_complete = False
-        if not force_full_update:
-            try:
-                # If the DUT is already running the same build, try stateful
-                # update first as it's much quicker than a full re-image.
-                update_complete = self._try_stateful_update()
-            except Exception as e:
-                logging.exception(e)
+        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
+        self.host.prepare_for_update()
 
-        inactive_kernel = None
-        if update_complete:
-            logging.info('Install complete without full update')
-        else:
-            logging.info('DUT requires full update.')
-            self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
-            self.host.prepare_for_update()
+        expected_kernel = self._install_update()
 
-            self._install_update()
+        # Give it some time in case of IO issues.
+        time.sleep(10)
 
-            # Give it some time in case of IO issues.
-            time.sleep(10)
+        # Update has returned successfully; reboot the host.
+        #
+        # Regarding the 'crossystem' command below: In some cases,
+        # the update flow puts the TPM into a state such that it
+        # fails verification.  We don't know why.  However, this
+        # call papers over the problem by clearing the TPM during
+        # the reboot.
+        #
+        # We ignore failures from 'crossystem'.  Although failure
+        # here is unexpected, and could signal a bug, the point of
+        # the exercise is to paper over problems; allowing this to
+        # fail would defeat the purpose.
+        self._run('crossystem clear_tpm_owner_request=1',
+                  ignore_status=True)
+        self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
 
-            inactive_kernel = self.get_kernel_state()[1]
-            next_kernel = self._get_next_kernel()
-            if next_kernel != inactive_kernel:
-                raise ChromiumOSError(
-                        'Update failed.  The kernel for next boot is %s, '
-                        'but %s was expected.' %
-                        (next_kernel['name'], inactive_kernel['name']))
-
-            # Update has returned successfully; reboot the host.
-            #
-            # Regarding the 'crossystem' command below: In some cases,
-            # the update flow puts the TPM into a state such that it
-            # fails verification.  We don't know why.  However, this
-            # call papers over the problem by clearing the TPM during
-            # the reboot.
-            #
-            # We ignore failures from 'crossystem'.  Although failure
-            # here is unexpected, and could signal a bug, the point of
-            # the exercise is to paper over problems; allowing this to
-            # fail would defeat the purpose.
-            self._run('crossystem clear_tpm_owner_request=1',
-                      ignore_status=True)
-            self.host.reboot(timeout=self.host.REBOOT_TIMEOUT, wait=True)
-
-        self._post_update_processing(inactive_kernel)
+        self._post_update_processing(expected_kernel)
         image_name = url_to_image_name(self.update_url)
         # update_url is different from devserver url needed to stage autotest
         # packages, therefore, resolve a new devserver url here.
