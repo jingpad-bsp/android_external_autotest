@@ -363,6 +363,14 @@ class ChameleonBoard(object):
         return self._chameleond_proxy.motor_board
 
 
+    def get_usb_printer(self):
+        """Gets the printer device on Chameleon.
+
+        @return: A printer object.
+        """
+        return self._chameleond_proxy.printer
+
+
     def get_mac_address(self):
         """Gets the MAC address of Chameleon.
 
