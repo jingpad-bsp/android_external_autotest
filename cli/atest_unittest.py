@@ -45,8 +45,8 @@ class main_unittest(cli_mock.cli_unittest):
         """Topic level help"""
         self._test_help(argv=['atest', 'host'],
                         out_words_ok=['atest host ',
-                                      '[create|delete|list|stat|mod|jobs]'
-                                      ' [options]'],
+                                      '[create|delete|list|stat|mod|jobs|'
+                                      'rename] [options]'],
                         err_words_ok=[])
 
 
@@ -75,7 +75,7 @@ class main_unittest(cli_mock.cli_unittest):
         """Test output when an invalid action is specified."""
         self.run_cmd(['atest', 'host', 'bad_action'], exit_code=1,
                      out_words_ok=['atest host [create|delete|list|stat|'
-                                   'mod|jobs] [options]'],
+                                   'mod|jobs|rename] [options]'],
                      err_words_ok=['Invalid action bad_action'])
 
 
