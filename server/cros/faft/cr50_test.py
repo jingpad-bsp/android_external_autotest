@@ -335,6 +335,7 @@ class Cr50Test(FirmwareTest):
 
     def cleanup(self):
         """Make sure the device state is the same as the start of the test"""
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
         state_mismatch = self._check_original_state()
 
         if state_mismatch and not self._provision_update:
