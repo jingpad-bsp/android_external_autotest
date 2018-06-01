@@ -4,7 +4,7 @@
 #
 
 AUTHOR = "dhaddock@"
-NAME = "cheets_AppCompat.touchview.com.google.android.gm"
+NAME = "cheets_AppCompatTest.clamshell.com.google.android.gm"
 PURPOSE = "Runs AppCompat's UIAutomator tests."
 ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
@@ -17,5 +17,5 @@ DOC = """
 This runs the AppCompat teams UI Automator tests.
 """
 
-job.run_test('cheets_AppCompat', pkg_name='com.google.android.gm',
-             touch_view_mode=True)
+job.run_test('cheets_AppCompatTest', pkg_name='com.google.android.gm',
+             touch_view_mode=False)
