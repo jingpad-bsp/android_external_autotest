@@ -73,6 +73,7 @@ suite:chameleon_hdmi
 suite:chameleon_hdmi_nightly
 suite:chameleon_hdmi_perbuild
 suite:chameleon_hdmi_stress
+suite:chameleon_peripherals
 suite:chameleon_vga
 suite:chrome-informational
 suite:cr50_stress_experimental
