@@ -46,11 +46,11 @@ disks,cros-disks,cros-disks,No,No,Yes,Yes,No
 update_engine,root,root,No,No,No,No,No
 bluetoothd,bluetooth,bluetooth,No,No,Yes,Yes,No
 debugd,root,root,No,No,No,No,No
-cras,cras,cras,No,No,Yes,Yes,No
+cras,cras,cras,No,Yes,Yes,Yes,No
 tcsd,tss,root,No,No,Yes,No,No
 cromo,cromo,cromo,No,No,No,No,No
 wimax-manager,root,root,No,No,No,No,No
-mtpd,mtp,mtp,No,No,Yes,Yes,Yes
+mtpd,mtp,mtp,Yes,Yes,Yes,Yes,Yes
 tlsdated,tlsdate,tlsdate,No,No,Yes,No,No
 tlsdated-setter,root,root,No,No,No,Yes,Yes
 lid_touchpad_he,root,root,No,No,No,No,No
@@ -59,7 +59,7 @@ daisydog,watchdog,watchdog,Yes,Yes,Yes,Yes,No
 permission_brok,devbroker,root,No,No,Yes,Yes,No
 netfilter-queue,nfqueue,nfqueue,No,No,Yes,No,Yes
 anomaly_collect,root,root,No,No,No,No,No
-attestationd,attestation,attestation,No,No,No,No,No
+attestationd,attestation,attestation,No,No,Yes,Yes,Yes
 periodic_schedu,root,root,No,No,No,No,No
 esif_ufd,root,root,No,No,No,No,No
 easy_unlock,easy-unlock,easy-unlock,No,No,No,No,No
@@ -67,7 +67,7 @@ sslh-fork,sslh,sslh,Yes,Yes,Yes,No,Yes
 upstart-socket-,root,root,No,No,No,No,No
 timberslide,root,root,No,No,No,No,No
 firewalld,firewall,firewall,Yes,Yes,Yes,Yes,No
-conntrackd,nfqueue,nfqueue,No,No,Yes,Yes,Yes
+conntrackd,nfqueue,nfqueue,No,Yes,Yes,Yes,Yes
 avahi-daemon,avahi,avahi,No,No,Yes,No,No
 upstart-udev-br,root,root,No,No,No,No,No
 midis,midis,midis,Yes,Yes,Yes,Yes,Yes
