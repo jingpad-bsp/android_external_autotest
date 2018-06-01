@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import utils
+
 AUTHOR = "Chrome OS Team"
 NAME = "storage_qual_check_setup"
 PURPOSE = "Test that the moblab has the correct setup for storage_qual suite"
@@ -16,8 +18,13 @@ REQUIRE_SSP = False
 PRIORITY = 110
 
 DOC = """
-
+Test that the moblab has correct setup for storage_qual suite
 """
+
+keyval = dict()
+keyval['bug_id'] = bug_id
+keyval['part_id'] = part_id
+utils.write_keyval(job.resultdir, keyval)
 
 def run(machine):
     job.run_test('hardware_StorageQualCheckSetup', host=hosts.create_host(machine))
