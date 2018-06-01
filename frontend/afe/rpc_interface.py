@@ -63,7 +63,6 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
-from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
 from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
@@ -2362,7 +2361,7 @@ def get_tests_by_build(build, ignore_invalid_tests=True):
     """
     # Collect the control files specified in this build
     cfile_getter = control_file_lib._initialize_control_file_getter(build)
-    if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+    if suite_common.ENABLE_CONTROLS_IN_BATCH:
         control_file_info_list = cfile_getter.get_suite_info()
         control_file_list = control_file_info_list.keys()
     else:
@@ -2372,7 +2371,7 @@ def get_tests_by_build(build, ignore_invalid_tests=True):
     _id = 0
     for control_file_path in control_file_list:
         # Read and parse the control file
-        if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+        if suite_common.ENABLE_CONTROLS_IN_BATCH:
             control_file = control_file_info_list[control_file_path]
         else:
             control_file = cfile_getter.get_control_file_contents(
