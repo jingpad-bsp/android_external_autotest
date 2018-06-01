@@ -596,7 +596,7 @@ class CryptohomeProxy(DBusClient):
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 
 
-    def __init__(self, bus_loop=None, autodir=None, job=None):
+    def __init__(self, bus_loop=None, autodir=None, job=None, timeout=None):
         if autodir and job:
             # Install D-Bus protos necessary for some methods.
             dep_dir = os.path.join(autodir, 'deps', DBUS_PROTOS_DEP)
@@ -610,7 +610,8 @@ class CryptohomeProxy(DBusClient):
         self.bus = dbus.SystemBus(mainloop=bus_loop)
         super(CryptohomeProxy, self).__init__(self.main_loop, self.bus,
                                               self.CRYPTOHOME_BUS_NAME,
-                                              self.CRYPTOHOME_OBJECT_PATH)
+                                              self.CRYPTOHOME_OBJECT_PATH,
+                                              timeout)
         self.iface = dbus.Interface(self.proxy_object,
                                     self.CRYPTOHOME_INTERFACE)
         self.properties = dbus.Interface(self.proxy_object,
