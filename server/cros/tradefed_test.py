@@ -136,13 +136,14 @@ class TradefedTest(test.test):
                                         self._get_tradefed_base_dir())
 
         # Load expected test failures to exclude them from re-runs.
-        self._waivers = self._get_expected_failures('expectations')
+        self._waivers = self._get_expected_failures('expectations', bundle)
         if not retry_manual_tests:
             self._waivers.update(
-                self._get_expected_failures('manual_tests'))
+                    self._get_expected_failures('manual_tests', bundle))
 
         # Load modules with no tests.
-        self._notest_modules = self._get_expected_failures('notest_modules')
+        self._notest_modules = self._get_expected_failures('notest_modules',
+                bundle)
 
     def cleanup(self):
         """Cleans up any dirtied state."""
@@ -772,11 +773,12 @@ class TradefedTest(test.test):
         """
         return parse_tradefed_result(result.stdout, waivers)
 
-    def _get_expected_failures(self, *directories):
+    def _get_expected_failures(self, directory, bundle_abi):
         """Return a list of expected failures or no test module.
 
-        @param directories: A list of directories with expected no tests
-                            or failures files.
+        @param directory: A directory with expected no tests or failures files.
+        @param bundle_abi: 'arm' or 'x86' if the test is for the particular ABI.
+                           None otherwise (like GTS, built for multi-ABI.)
         @return: A list of expected failures or no test modules for the current
                  testing device.
         """
@@ -784,14 +786,13 @@ class TradefedTest(test.test):
         expected_fail_files = []
         test_board = self._get_board_name()
         test_arch = self._get_board_arch()
-        for directory in directories:
-            expected_fail_dir = os.path.join(self.bindir, directory)
-            if os.path.exists(expected_fail_dir):
-                expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
+        expected_fail_dir = os.path.join(self.bindir, directory)
+        if os.path.exists(expected_fail_dir):
+            expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
 
         waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
             expected_fail_files)
-        return waivers.find_waivers(test_board, test_arch)
+        return waivers.find_waivers(test_arch, test_board, bundle_abi)
 
     def _get_abilist(self):
         """Return the abilist supported by calling adb command.
