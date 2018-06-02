@@ -50,7 +50,7 @@ class power_LoadTest(arc.ArcTest):
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', wifi_timeout=60, tasks='',
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
-                 ac_ok=False, log_mem_bandwidth=False, gaia_login=True,
+                 ac_ok=False, log_mem_bandwidth=False, gaia_login=None,
                  force_discharge=False):
         """
         percent_initial_charge_min: min battery charge at start of test
@@ -75,7 +75,8 @@ class power_LoadTest(arc.ArcTest):
             sys_low_batt_p to guarantee test completes prior to powerd shutdown
         ac_ok: boolean to allow running on AC
         log_mem_bandwidth: boolean to log memory bandwidth during the test
-        gaia_login: boolean of whether real GAIA login should be attempted.
+        gaia_login: whether real GAIA login should be attempted.  If 'None'
+            (default) then boolean is determined from URL.
         force_discharge: boolean of whether to tell ec to discharge battery even
             when the charger is plugged in.
         """
@@ -108,7 +109,6 @@ class power_LoadTest(arc.ArcTest):
         self._log_mem_bandwidth = log_mem_bandwidth
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
-        self._gaia_login = gaia_login
         self._force_discharge = force_discharge
 
         if not power_utils.has_battery():
@@ -120,6 +120,10 @@ class power_LoadTest(arc.ArcTest):
                 raise error.TestNAError(rsp)
         self._power_status = power_status.get_status()
         self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
+
+        self._gaia_login = gaia_login
+        if gaia_login is None:
+            self._gaia_login = power_load_util.use_gaia_login()
 
         self._username = power_load_util.get_username()
         self._password = power_load_util.get_password()
