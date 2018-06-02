@@ -11,15 +11,18 @@ class ParseKnownCTSFailures(object):
     def __init__(self, failure_files):
         self.waivers_yaml = self._load_failures(failure_files)
 
-    def _validate_waiver_config(self, arch, board, config):
+    def _validate_waiver_config(self, arch, board, bundle_abi, config):
         """Validate if the test environment matches the test config.
 
         @param arch: DUT's arch type.
         @param board: DUT's board name.
+        @param bundle_abi: The test's abi type.
         @param config: config for an expected failing test.
         @return True if test arch or board is part of the config, else False.
         """
         dut_config = ['all', arch, board]
+        if bundle_abi and bundle_abi != arch:
+            dut_config.append('nativebridge')
         return len(set(dut_config).intersection(config)) > 0
 
     def _load_failures(self, failure_files):
@@ -43,16 +46,17 @@ class ParseKnownCTSFailures(object):
                          failure_file)
         return waivers_yaml
 
-    def find_waivers(self, arch, board):
+    def find_waivers(self, arch, board, bundle_abi):
         """Finds waivers for the test board.
 
         @param arch: DUT's arch type.
         @param board: DUT's board name.
+        @param bundle_abi: The test's abi type.
         @return a set of waivers/no-test-modules applied to the test board.
         """
         applied_waiver_list = set()
         for test, config in self.waivers_yaml.iteritems():
-            if self._validate_waiver_config(arch, board, config):
+            if self._validate_waiver_config(arch, board, bundle_abi, config):
                 applied_waiver_list.add(test)
         logging.info('Excluding tests/packages from rerun: %s.',
                      applied_waiver_list)
