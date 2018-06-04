@@ -277,30 +277,17 @@ def gpio_usb_test(dut, gpio_list, device_list, pause, board):
     @param board: board name for CfM
     @returns True
     """
-    if not gpio_list:
-       gpio_list = []
-       for device in device_list:
-           vid, pid  = device.split(':')
-           logging.info('---check gpio for device %s:%s', vid, pid)
-           try:
-               ports = power_cycle_usb_util.get_target_all_gpio(dut, board,
-                                                            vid , pid)
-           except Exception as e:
-               errmsg = 'Fail to get gpio port.'
-               logging.exception('%s.', errmsg)
-               return False, errmsg
-           [gpio_list.append(_port) for _port in ports]
+    for device in device_list:
+       vid, pid  = device.split(':')
+       logging.info('---going to powercyle device %s:%s', vid, pid)
+       try:
+            power_cycle_usb_util.power_cycle_usb_vidpid(dut, board,
+                                                        vid, pid, pause)
+       except Exception as e:
+           errmsg = 'Fail to power cycle device.'
+           logging.exception('%s.', errmsg)
+           return False, errmsg
 
-    for port in gpio_list:
-        if not port:
-            continue
-        logging.info('+++powercycle gpio port %s', port)
-        try:
-            power_cycle_usb_util.power_cycle_usb_gpio(dut, port, pause)
-        except Exception as e:
-            errmsg = 'Fail to powercycle gpio port.'
-            logging.exception('%s.', errmsg)
-            return False, errmsg
     return True, None
 
 
