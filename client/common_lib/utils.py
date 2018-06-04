@@ -572,7 +572,7 @@ def urlretrieve(url, filename, data=None, timeout=300):
         src_file.close()
 
 
-def hash(type, input=None):
+def hash(hashtype, input=None):
     """
     Returns an hash object of type md5 or sha1. This function is implemented in
     order to encapsulate hash objects in a way that is compatible with python
@@ -585,15 +585,15 @@ def hash(type, input=None):
 
     @param input: Optional input string that will be used to update the hash.
     """
-    if type not in ['md5', 'sha1']:
-        raise ValueError("Unsupported hash type: %s" % type)
+    if hashtype not in ['md5', 'sha1']:
+        raise ValueError("Unsupported hash type: %s" % hashtype)
 
     try:
-        hash = hashlib.new(type)
+        hash = hashlib.new(hashtype)
     except NameError:
-        if type == 'md5':
+        if hashtype == 'md5':
             hash = md5.new()
-        elif type == 'sha1':
+        elif hashtype == 'sha1':
             hash = sha.new()
 
     if input:
