@@ -40,7 +40,7 @@ class xfstests_env:
             file_img = os.path.join(
                 self.XFS_MOUNT_PATH, '%s.img' % file_name)
             self.env_vp[name] = partition.virtual_partition(
-                file_img=file_img, file_size=1024)
+                file_img=file_img, file_size=4096)
             self.env_device[name] = self.env_vp[name].device
 
             # You can use real block devices, such as /dev/sdc1 by populating
