@@ -6,7 +6,7 @@ import csv
 import logging
 import os
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -299,62 +299,76 @@ class security_SandboxedServices(test.test):
         baseline_set = set(baseline.keys())
 
         new_services = services_set.difference(baseline_set)
-        stale_baselines = baseline_set.difference(services_set)
+        stale_baselines = defaultdict(list)
+
+        for exe in baseline_set.difference(services_set):
+            stale_baselines[exe].append('unused')
 
         # Check baseline.
-        sandbox_delta = []
+        sandbox_delta = defaultdict(list)
         for exe in services_set.intersection(baseline_set):
             process = running_services[exe]
+            stale_flags = []
+            errors = []
 
             # If the process is not running as the correct user.
             if process.euser != baseline[exe]["euser"]:
-                logging.error('%s: bad user: wanted "%s" but got "%s"',
-                              exe, baseline[exe]['euser'], process.euser)
-
-                sandbox_delta.append(exe)
-                continue
+                errors.append('bad user: wanted "%s" but got "%s"' %
+                              (baseline[exe]['euser'], process.euser))
 
             # If the process is not running as the correct group.
             if process.egroup != baseline[exe]['egroup']:
-                logging.error('%s: bad group: wanted "%s" but got "%s"',
-                              exe, baseline[exe]['egroup'], process.egroup)
-
-                sandbox_delta.append(exe)
-                continue
+                errors.append('bad group: wanted "%s" but got "%s"' %
+                              baseline[exe]['egroup'], process.egroup)
 
             # Check the various sandbox settings.
-            if (baseline[exe]['pidns'] == 'Yes' and
-                    process.pidns == init_process.pidns):
-                logging.error('%s: missing pid ns usage', exe)
-                sandbox_delta.append(exe)
-            elif (baseline[exe]['mntns'] == 'Yes' and
-                  process.mntns == init_process.mntns):
-                logging.error('%s: missing mount ns usage', exe)
-                sandbox_delta.append(exe)
-            elif (baseline[exe]['mntns'] == 'Yes' and
-                  process.mntns != init_process.mntns and
-                  has_test_image_mounts(process.mountinfo)):
-                logging.error('%s: did not call pivot_root(2)', exe)
-                sandbox_delta.append(exe)
-            elif (baseline[exe]['caps'] == 'Yes' and
-                  process.capeff == init_process.capeff):
-                logging.error('%s: missing caps usage', exe)
-                sandbox_delta.append(exe)
-            elif (baseline[exe]['nonewprivs'] == 'Yes' and
-                  process.nonewprivs != '1'):
-                logging.error('%s: missing NoNewPrivs', exe)
-                sandbox_delta.append(exe)
-            elif (baseline[exe]['filter'] == 'Yes' and
-                  process.seccomp != SECCOMP_MODE_FILTER and
-                  not is_asan):
+            if process.pidns == init_process.pidns:
+                if baseline[exe]['pidns'] == 'Yes':
+                    errors.append('missing pid ns usage')
+            elif baseline[exe]['pidns'] != 'Yes':
+                stale_flags.append('pidns')
+
+            if process.mntns == init_process.mntns:
+                if baseline[exe]['mntns'] == 'Yes':
+                    errors.append('missing mount ns usage')
+            elif has_test_image_mounts(process.mountinfo):
+                if baseline[exe]['mntns'] == 'Yes':
+                    errors.append('did not call pivot_root(2)')
+            elif baseline[exe]['mntns'] != 'Yes':
+                stale_flags.append('mntns')
+
+            if process.capeff == init_process.capeff:
+                if baseline[exe]['caps'] == 'Yes':
+                    errors.append('missing caps usage')
+            elif baseline[exe]['caps'] != 'Yes':
+                stale_flags.append('caps')
+
+            if process.nonewprivs != '1':
+                if baseline[exe]['nonewprivs'] == 'Yes':
+                    errors.append('missing NoNewPrivs')
+            elif baseline[exe]['nonewprivs'] != 'Yes':
+                stale_flags.append('nonewprivs')
+
+            if not is_asan:
                 # Since Minijail disables seccomp at runtime when ASAN is
                 # active, we can't enforce it on ASAN bots.  Just ignore
                 # the test entirely.  (Comment applies to "is_asan" above.)
-                logging.error('%s: missing seccomp usage: wanted %s (%s) but '
-                              'got %s (%s)', exe, SECCOMP_MODE_FILTER,
-                              SECCOMP_MAP[SECCOMP_MODE_FILTER], process.seccomp,
-                              SECCOMP_MAP.get(process.seccomp, '???'))
-                sandbox_delta.append(exe)
+                if process.seccomp != SECCOMP_MODE_FILTER:
+                    if baseline[exe]['filter'] == 'Yes':
+                        errors.append(
+                            'missing seccomp usage: '
+                            'wanted %s (%s) but got %s (%s)' %
+                            (SECCOMP_MODE_FILTER,
+                             SECCOMP_MAP[SECCOMP_MODE_FILTER], process.seccomp,
+                             SECCOMP_MAP.get(process.seccomp, '???')))
+                elif baseline[exe]['filter'] != 'Yes':
+                    stale_flags.append('filter')
+
+            if stale_flags:
+                stale_baselines[exe].append('potentially missing flags: %s' %
+                                            ','.join(stale_flags))
+            if errors:
+                sandbox_delta[exe].extend(errors)
 
         # Save current run to results dir.
         running_services_properties = [get_properties(s, init_process)
@@ -372,14 +386,12 @@ class security_SandboxedServices(test.test):
             # with new root services (on the assumption they haven't done any
             # sandboxing work).  If they really need to run as root, they can
             # update the baseline to whitelist it.
-            new_root_services = [x for x in new_services
-                                 if running_services[x].euser == 'root']
-            if new_root_services:
-                logging.error('New services are not allowed to run as root, '
-                              'but these are: %r', new_root_services)
-                sandbox_delta.extend(new_root_services)
+            for exe in new_services:
+                if running_services[exe].euser == 'root':
+                    sandbox_delta[exe].append('missing euser')
 
         if len(sandbox_delta) > 0:
-            logging.error('Failed sandboxing: %r', sandbox_delta)
+            for delta_entry in sandbox_delta:
+                logging.error('Failed sandboxing: %s', delta_entry)
             raise error.TestFail('One or more processes failed sandboxing: %r' %
                                  sandbox_delta)
