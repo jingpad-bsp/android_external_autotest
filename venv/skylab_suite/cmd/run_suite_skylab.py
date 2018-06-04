@@ -81,7 +81,9 @@ def _run_suite(options):
     suite_job.prepare()
     suite_handler_specs = _parse_suite_handler_specs(options)
     suite_handler = cros_suite.SuiteHandler(suite_handler_specs)
-    suite_runner.run(suite_job.tests, suite_handler, options.dry_run)
+    suite_runner.run(suite_job.tests_specs,
+                     suite_handler,
+                     options.dry_run)
     return_code = suite_tracking.log_suite_results(
             suite_job.suite_name, suite_handler)
 

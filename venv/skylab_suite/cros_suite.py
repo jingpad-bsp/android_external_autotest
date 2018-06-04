@@ -45,12 +45,23 @@ SuiteHandlerSpecs = collections.namedtuple(
                 'provision_num_required',
         ])
 
+TestHandlerSpecs= collections.namedtuple(
+        'TestHandlerSpecs',
+        [
+                'test_specs',
+                'remaining_retries',
+                'previous_retried_ids',
+        ])
+
 TestSpecs= collections.namedtuple(
         'TestSpecs',
         [
                 'test',
-                'remaining_retries',
-                'previous_retried_ids',
+                'build',
+                'expiration_secs',
+                'grace_period_secs',
+                'execution_timeout_secs',
+                'io_timeout_secs',
         ])
 
 
@@ -90,13 +101,13 @@ class SuiteHandler(object):
         """
         self._suite_id = suite_id
 
-    def add_test_by_task_id(self, task_id, test_specs):
+    def add_test_by_task_id(self, task_id, test_handler_specs):
         """Record a child test and its swarming task id.
 
         @param task_id: the swarming task id of a child test.
-        @param test_specs: a TestSpecs object.
+        @param test_handler_specs: a TestHandlerSpecs object.
         """
-        self._task_to_test_maps[task_id] = test_specs
+        self._task_to_test_maps[task_id] = test_handler_specs
 
     def get_test_by_task_id(self, task_id):
         """Get a child test by its swarming task id.
@@ -215,7 +226,7 @@ class Suite(object):
         self._ds = None
 
         self.control_file = ''
-        self.tests = {}
+        self.tests_specs = []
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
         self.suite_name = specs.suite_name
@@ -241,8 +252,18 @@ class Suite(object):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
         self._parse_suite_args()
-        self._find_tests()
+        tests = self._find_tests()
+        self._get_test_specs(tests)
 
+    def _get_test_specs(self, tests):
+        for test in tests:
+            self.tests_specs.append(TestSpecs(
+                    test=test,
+                    build=self.test_source_build,
+                    expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
+                    grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                    execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                    io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -276,7 +297,7 @@ class Suite(object):
                 self.test_source_build, self.ds)
         tests = suite_common.retrieve_for_suite(
                 cf_getter, self.suite_name)
-        self.tests = suite_common.filter_tests(tests)
+        return suite_common.filter_tests(tests)
 
 
 class ProvisionSuite(Suite):
@@ -301,4 +322,4 @@ class ProvisionSuite(Suite):
                 self.test_source_build, self.ds)
         dummy_test = suite_common.retrieve_control_data_for_test(
                 cf_getter, 'dummy_Pass')
-        self.tests = [dummy_test] * max(self._num_required, self._num_max)
+        return [dummy_test] * max(self._num_required, self._num_max)
