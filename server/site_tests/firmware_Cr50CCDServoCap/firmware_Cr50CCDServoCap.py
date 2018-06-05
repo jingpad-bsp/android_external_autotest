@@ -168,7 +168,7 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
     def get_ccdstate(self):
         """Get the current Cr50 CCD states"""
-        rv = self.cr50.send_command_get_output('ccdstate',
+        rv = self.cr50.send_command_retry_get_output('ccdstate',
             ['ccdstate(.*)>'])[0][1]
         logging.info(rv)
         # I2C isn't a reliable flag, because the hardware often doesn't support
