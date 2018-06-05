@@ -58,7 +58,7 @@ _KERNEL_UPDATE_TIMEOUT = 120
 
 # PROVISION_FAILED - A flag file to indicate provision failures.  The
 # file is created at the start of any AU procedure (see
-# `ChromiumOSUpdater.run_full_update()`).  The file's location in
+# `ChromiumOSUpdater._prepare_host()`).  The file's location in
 # stateful means that on successul update it will be removed.  Thus, if
 # this file exists, it indicates that we've tried and failed in a
 # previous attempt to update.
@@ -72,16 +72,72 @@ PROVISION_FAILED = '/var/tmp/provision_failed'
 _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
 
 
-class ChromiumOSError(error.InstallError):
-    """Generic error for ChromiumOS-specific exceptions."""
-
-
-class RootFSUpdateError(ChromiumOSError):
+class RootFSUpdateError(error.TestFail):
     """Raised when the RootFS fails to update."""
 
 
-class StatefulUpdateError(ChromiumOSError):
+class StatefulUpdateError(error.TestFail):
     """Raised when the stateful partition fails to update."""
+
+
+class _AttributedUpdateError(error.TestFail):
+    """Update failure with an attributed cause."""
+
+    def __init__(self, attribution, msg):
+        super(_AttributedUpdateError, self).__init__(
+            '%s: %s' % (attribution, msg))
+
+
+class HostUpdateError(_AttributedUpdateError):
+    """Failure updating a DUT attributable to the DUT.
+
+    This class of exception should be raised when the most likely cause
+    of failure was a condition existing on the DUT prior to the update,
+    such as a hardware problem, or a bug in the software on the DUT.
+    """
+
+    def __init__(self, hostname, msg):
+        super(HostUpdateError, self).__init__(
+            'Error on %s prior to update' % hostname, msg)
+
+
+class DevServerError(_AttributedUpdateError):
+    """Failure updating a DUT attributable to the devserver.
+
+    This class of exception should be raised when the most likely cause
+    of failure was the devserver serving the target image for update.
+    """
+
+    def __init__(self, devserver, msg):
+        super(DevServerError, self).__init__(
+            'Devserver error on %s' % devserver, msg)
+
+
+class ImageInstallError(_AttributedUpdateError):
+    """Failure updating a DUT when installing from the devserver.
+
+    This class of exception should be raised when the target DUT fails
+    to download and install the target image from the devserver, and
+    either the devserver or the DUT might be at fault.
+    """
+
+    def __init__(self, hostname, devserver, msg):
+        super(ImageInstallError, self).__init__(
+            'Download and install failed from %s onto %s'
+            % (devserver, hostname), msg)
+
+
+class NewBuildUpdateError(_AttributedUpdateError):
+    """Failure updating a DUT attributable to the target build.
+
+    This class of exception should be raised when updating to a new
+    build fails, and the most likely cause of the failure is a bug in
+    the newly installed target build.
+    """
+
+    def __init__(self, update_version, msg):
+        super(NewBuildUpdateError, self).__init__(
+            'Failure in build %s' % update_version, msg)
 
 
 def _url_to_version(update_url):
@@ -207,15 +263,19 @@ class ChromiumOSUpdater(object):
 
 
     def get_kernel_state(self):
-        """Returns the (<active>, <inactive>) kernel state as a pair."""
+        """Returns the (<active>, <inactive>) kernel state as a pair.
+
+        @raise RootFSUpdateError if the DUT reports a root partition
+                number that isn't one of the known valid values.
+        """
         active_root = int(re.findall('\d+\Z', self._rootdev('-s'))[0])
         if active_root == _KERNEL_A['root']:
             return _KERNEL_A, _KERNEL_B
         elif active_root == _KERNEL_B['root']:
             return _KERNEL_B, _KERNEL_A
         else:
-            raise ChromiumOSError('Encountered unknown root partition: %s' %
-                                  active_root)
+            raise RootFSUpdateError(
+                    'Encountered unknown root partition: %s' % active_root)
 
 
     def _cgpt(self, flag, kernel):
@@ -329,8 +389,9 @@ class ChromiumOSUpdater(object):
 
         # Expect the update engine to be idle.
         if status != UPDATER_IDLE:
-            raise ChromiumOSError('%s is not in an installable state' %
-                                  self.host.hostname)
+            raise RootFSUpdateError(
+                    'Update engine status is %s (%s was expected).'
+                    % (status, UPDATER_IDLE))
 
 
     def _reset_update_engine(self):
@@ -380,34 +441,35 @@ class ChromiumOSUpdater(object):
     def _verify_update_completed(self):
         """Verifies that an update has completed.
 
-        @raise RootFSUpdateError: if verification fails.
+        @raise RootFSUpdateError if the DUT doesn't indicate that
+                download is complete and the DUT is ready for reboot.
+        @raise RootFSUpdateError if the DUT reports that the partition
+                to be booted next is not the currently inactive
+                partition.
         """
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
             error_msg = ''
             if status == UPDATER_IDLE:
                 error_msg = 'Update error: %s' % self._get_last_update_error()
-            raise RootFSUpdateError('Update did not complete with correct '
-                                    'status. Expecting %s, actual %s. %s' %
-                                    (UPDATER_NEED_REBOOT, status, error_msg))
+            raise RootFSUpdateError(
+                    'Update engine status is %s (%s was expected).  %s'
+                    % (status, UPDATER_NEED_REBOOT, error_msg))
         inactive_kernel = self.get_kernel_state()[1]
         next_kernel = self._get_next_kernel()
         if next_kernel != inactive_kernel:
-            raise ChromiumOSError(
+            raise RootFSUpdateError(
                     'Update failed.  The kernel for next boot is %s, '
-                    'but %s was expected.' %
-                    (next_kernel['name'], inactive_kernel['name']))
+                    'but %s was expected.'
+                    % (next_kernel['name'], inactive_kernel['name']))
         return inactive_kernel
 
 
     def trigger_update(self):
-        """Triggers a background update.
-
-        @raise RootFSUpdateError or unknown Exception if anything went wrong.
-        """
-        # If this function is called immediately after reboot (which it is at
-        # this time), there is no guarantee that the update service is up and
-        # running yet, so wait for it.
+        """Triggers a background update."""
+        # If this function is called immediately after reboot (which it
+        # can be), there is no guarantee that the update engine is up
+        # and running yet, so wait for it.
         self._wait_for_update_service()
 
         autoupdate_cmd = ('%s --check_for_update --omaha_url=%s' %
@@ -456,6 +518,8 @@ class ChromiumOSUpdater(object):
 
         If we can find it, we hope it exists already on the DUT, we assert
         otherwise.
+
+        @raise StatefulUpdateError if the script can't be installed.
         """
         stateful_update_file = os.path.join(_STATEFUL_UPDATE_PATH,
                                             _STATEFUL_UPDATE_SCRIPT)
@@ -471,8 +535,8 @@ class ChromiumOSUpdater(object):
                             _REMOTE_STATEFUL_UPDATE_PATH)
             return _REMOTE_STATEFUL_UPDATE_PATH
         else:
-            raise ChromiumOSError('Could not locate %s' %
-                                  _STATEFUL_UPDATE_SCRIPT)
+            raise StatefulUpdateError('Could not locate %s'
+                                      % _STATEFUL_UPDATE_SCRIPT)
 
 
     def rollback_rootfs(self, powerwash):
@@ -481,7 +545,6 @@ class ChromiumOSUpdater(object):
         @param powerwash: If true, powerwash as part of rollback.
 
         @raise RootFSUpdateError if anything went wrong.
-
         """
         version = self.host.get_release_version()
         # Introduced can_rollback in M36 (build 5772). # etc/lsb-release matches
@@ -519,6 +582,9 @@ class ChromiumOSUpdater(object):
         """Updates the stateful partition.
 
         @param clobber: If True, a clean stateful installation.
+
+        @raise StatefulUpdateError if the update script fails to
+                complete successfully.
         """
         logging.info('Updating stateful partition...')
         statefuldev_url = self.update_url.replace('update', 'static')
@@ -547,10 +613,10 @@ class ChromiumOSUpdater(object):
         @param expected_kernel: kernel that we are verifying with,
             i.e. I expect to be booted onto partition 4 etc. See output of
             get_kernel_state.
-        @param rollback_message: string to raise as a ChromiumOSError
+        @param rollback_message: string include in except message text
             if we booted with the wrong partition.
 
-        @raises ChromiumOSError: If we didn't.
+        @raise NewBuildUpdateError if any of the various checks fail.
         """
         # Figure out the newly active kernel.
         active_kernel = self.get_kernel_state()[0]
@@ -583,25 +649,23 @@ class ChromiumOSUpdater(object):
             self._run('cgpt show $(rootdev -s -d)')
             logging.debug('Dumping crossystem for firmware debugging.')
             self._run('crossystem --all')
-            raise ChromiumOSError(rollback_message)
+            raise NewBuildUpdateError(self.update_version, rollback_message)
 
         # Make sure chromeos-setgoodkernel runs.
         try:
             utils.poll_for_condition(
                 lambda: (self._get_kernel_tries(active_kernel) == 0
                          and self._get_kernel_success(active_kernel)),
-                exception=ChromiumOSError(),
+                exception=RootFSUpdateError(),
                 timeout=_KERNEL_UPDATE_TIMEOUT, sleep_interval=5)
-        except ChromiumOSError:
+        except RootFSUpdateError:
             services_status = self._run('status system-services').stdout
             if services_status != 'system-services start/running\n':
                 event = ('Chrome failed to reach login screen')
             else:
                 event = ('update-engine failed to call '
                          'chromeos-setgoodkernel')
-            raise ChromiumOSError(
-                    'After update and reboot, %s '
-                    'within %d seconds' % (event, _KERNEL_UPDATE_TIMEOUT))
+            raise NewBuildUpdateError(self.update_version, event)
 
 
     def _prepare_host(self):
@@ -634,15 +698,18 @@ class ChromiumOSUpdater(object):
 
 
     def _verify_devserver(self):
-        """Check that our chosen devserver is still working."""
+        """Check that our chosen devserver is still working.
+
+        @raise DevServerError if the devserver fails any sanity check.
+        """
         server = 'http://%s' % urlparse.urlparse(self.update_url)[1]
         try:
             if not dev_server.ImageServer.devserver_healthy(server):
-                raise ChromiumOSError(
-                    'Update server at %s not healthy' % server)
+                raise DevServerError(
+                        server, 'Devserver is not healthy')
         except Exception as e:
-            raise ChromiumOSError(
-                'Update server at %s is not available' % server)
+            raise DevServerError(
+                    server, 'Devserver is not up and available')
 
 
     def _install_update(self):
@@ -729,15 +796,43 @@ class ChromiumOSUpdater(object):
         @returns A tuple of the form `(image_name, attributes)`, where
             `image_name` is the name of the image installed, and
             `attributes` is new attributes to be applied to the DUT.
+        @raise HostUpdateError if failure is caused by a problem on
+                the DUT prior to the update.
+        @raise ImageInstallError if the failure occurs during download
+                and install of the update and cannot be definitively
+                blamed on either the DUT or the devserver.
+        @raise NewBuildUpdateError if the failure occurs because the
+                new build fails to function correctly.
         """
         server_name = dev_server.get_hostname(self.update_url)
         (metrics.Counter('chromeos/autotest/provision/install')
          .increment(fields={'devserver': server_name}))
 
         self._verify_devserver()
-        self._prepare_host()
-        expected_kernel = self._install_update()
-        self._complete_update(expected_kernel)
+
+        try:
+            self._prepare_host()
+        except _AttributedUpdateError:
+            raise
+        except Exception as e:
+            logging.exception('Failure preparing host prior to update.')
+            raise HostUpdateError(self.host.hostname, str(e))
+
+        try:
+            expected_kernel = self._install_update()
+        except _AttributedUpdateError:
+            raise
+        except Exception as e:
+            logging.exception('Failure during download and install.')
+            raise ImageInstallError(self.host.hostname, server_name, str(e))
+
+        try:
+            self._complete_update(expected_kernel)
+        except _AttributedUpdateError:
+            raise
+        except Exception as e:
+            logging.exception('Failure from build after update.')
+            raise NewBuildUpdateError(self.update_version, str(e))
 
         image_name = url_to_image_name(self.update_url)
         # update_url is different from devserver url needed to stage autotest
