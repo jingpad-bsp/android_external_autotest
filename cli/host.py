@@ -42,8 +42,8 @@ MIGRATED_HOST_SUFFIX = '-migrated-do-not-use'
 
 class host(topic_common.atest):
     """Host class
-    atest host [create|delete|list|stat|mod|jobs|rename] <options>"""
-    usage_action = '[create|delete|list|stat|mod|jobs|rename]'
+    atest host [create|delete|list|stat|mod|jobs|rename|migrate] <options>"""
+    usage_action = '[create|delete|list|stat|mod|jobs|rename|migrate]'
     topic = msg_topic = 'host'
     msg_items = '<hosts>'
 
@@ -1088,3 +1088,208 @@ class host_rename(host):
             print('Successfully renamed:')
             for old_hostname, new_hostname in results:
                 print('%s to %s' % (old_hostname, new_hostname))
+
+
+class host_migrate(action_common.atest_list, host):
+    """'atest host migrate' to migrate or rollback hosts."""
+
+    usage_action = 'migrate'
+
+    def __init__(self):
+        super(host_migrate, self).__init__()
+
+        self.parser.add_option('--migration',
+                               dest='migration',
+                               help='Migrate the hosts to skylab.',
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--rollback',
+                               dest='rollback',
+                               help='Rollback the hosts migrated to skylab.',
+                               action='store_true',
+                               default=False)
+        self.parser.add_option('--model',
+                               help='Model of the hosts to migrate.',
+                               dest='model',
+                               default=None)
+        self.parser.add_option('--pool',
+                               help=('Pool of the hosts to migrate. Must '
+                                     'specify --model for the pool.'),
+                               dest='pool',
+                               default=None)
+
+        self.add_skylab_options(enforce_skylab=True)
+
+
+    def parse(self):
+        """Consume the specific options"""
+        (options, leftover) = super(host_migrate, self).parse()
+
+        self.migration = options.migration
+        self.rollback = options.rollback
+        self.model = options.model
+        self.pool = options.pool
+        self.host_ids = {}
+
+        if not (self.migration ^ self.rollback):
+            self.invalid_syntax('--migration and --rollback are exclusive, '
+                                'and one of them must be enabled.')
+
+        if self.pool is not None and self.model is None:
+            self.invalid_syntax('Must provide --model with --pool.')
+
+        if not self.hosts and not self.model:
+            self.invalid_syntax('Must provide hosts or --model.')
+
+        return (options, leftover)
+
+
+    def execute(self):
+        """Execute 'atest host migrate'."""
+        hostnames = self.hosts
+        for hostname in hostnames:
+            if hostname.endswith(MIGRATED_HOST_SUFFIX):
+                self.failure('Cannot migrate host with suffix "%s" %s.' %
+                             (MIGRATED_HOST_SUFFIX, hostname),
+                             item=hostname, what_failed='Failed to rename')
+                hostnames.remove(hostname)
+
+        filters = {}
+        check_results = {}
+        if hostnames:
+            check_results['hostname__in'] = 'hostname'
+            if self.migration:
+                filters['hostname__in'] = hostnames
+            else:
+                # rollback
+                hostnames_with_suffix = [
+                        _add_hostname_suffix(h, MIGRATED_HOST_SUFFIX)
+                        for h in hostnames]
+                filters['hostname__in'] = hostnames_with_suffix
+
+        labels = []
+        if self.model:
+            labels.append('model:%s' % self.model)
+        if self.pool:
+            labels.append('pool:%s' % self.pool)
+
+        if labels:
+            if len(labels) == 1:
+                filters['labels__name__in'] = labels
+                check_results['labels__name__in'] = None
+            else:
+                filters['multiple_labels'] = labels
+                check_results['multiple_labels'] = None
+
+        results = super(host_migrate, self).execute(
+                op='get_hosts', filters=filters, check_results=check_results)
+        hostnames = [h['hostname'] for h in results]
+
+        return self.execute_skylab_migration(hostnames)
+
+
+    def execute_skylab_migration(self, hostnames):
+        """Execute migration in skylab_inventory.
+
+        @param hostnames: A list of hostnames to migrate.
+        @return If there're hosts to migrate, return a list of the hostnames and
+                a message instructing actions after the migration; else return
+                None.
+        """
+        if not hostnames:
+            return
+
+        inventory_repo = skylab_utils.InventoryRepo(self.inventory_repo_dir)
+        inventory_repo.initialize()
+
+        subdirs = ['skylab', 'prod', 'staging']
+        data_dirs = skylab_data_dir, prod_data_dir, staging_data_dir = [
+                inventory_repo.get_data_dir(data_subdir=d) for d in subdirs]
+        skylab_lab, prod_lab, staging_lab = [
+                text_manager.load_lab(d) for d in data_dirs]
+
+        label_map = None
+        labels = []
+        if self.model:
+            labels.append('board:%s' % self.model)
+        if self.pool:
+            labels.append('critical_pool:%s' % self.pool)
+        if labels:
+            label_map = device.convert_to_label_map(labels)
+
+        if self.migration:
+            prod_devices = device.move_devices(
+                    prod_lab, skylab_lab, 'duts', label_map=label_map,
+                    hostnames=hostnames)
+            staging_devices = device.move_devices(
+                    staging_lab, skylab_lab, 'duts', label_map=label_map,
+                    hostnames=hostnames)
+
+            all_devices = prod_devices + staging_devices
+            # Hostnames in afe_hosts tabel.
+            device_hostnames = [str(d.common.hostname) for d in all_devices]
+            message = (
+                'Migration: move %s hosts into skylab_inventory.\n\n'
+                'Please run command:\n'
+                'atest host rename --for-migration %s' %
+                (len(all_devices), ' '.join(device_hostnames)))
+        else:
+            # rollback
+            prod_devices = device.move_devices(
+                    skylab_lab, prod_lab, 'duts', environment='prod',
+                    label_map=label_map, hostnames=self.hosts)
+            staging_devices = device.move_devices(
+                    staging_lab, skylab_lab, 'duts', environment='staging',
+                    label_map=label_map, hostnames=self.hosts)
+
+            all_devices = prod_devices + staging_devices
+            # Hostnames in afe_hosts tabel.
+            device_hostnames = [_add_hostname_suffix(str(d.common.hostname),
+                                                     MIGRATED_HOST_SUFFIX)
+                                for d in all_devices]
+            message = (
+                'Rollback: remove %s hosts from skylab_inventory.\n\n'
+                'Please run command:\n'
+                'atest host rename --for-rollback %s' %
+                (len(all_devices), ' '.join(device_hostnames)))
+
+        if all_devices:
+            if prod_devices:
+                text_manager.dump_lab(prod_data_dir, prod_lab)
+
+            if staging_devices:
+                text_manager.dump_lab(staging_data_dir, staging_lab)
+
+            text_manager.dump_lab(skylab_data_dir, skylab_lab)
+
+            self.change_number = inventory_repo.upload_change(
+                    message, draft=self.draft, dryrun=self.dryrun,
+                    submit=self.submit)
+
+            return all_devices, message
+
+
+    def output(self, result):
+        """Print output of 'atest host list'.
+
+        @param result: the result to be printed.
+        """
+        if result:
+            devices, message = result
+
+            if devices:
+                hostnames = [h.common.hostname for h in devices]
+                if self.migration:
+                    print('Migrating hosts: %s' % ','.join(hostnames))
+                else:
+                    # rollback
+                    print('Rolling back hosts: %s' % ','.join(hostnames))
+
+                if not self.dryrun:
+                    if not self.submit:
+                        print(skylab_utils.get_cl_message(self.change_number))
+                    else:
+                        # Print the instruction command for renaming hosts.
+                        print('%s' % message)
+        else:
+            print('No hosts were migrated.')
