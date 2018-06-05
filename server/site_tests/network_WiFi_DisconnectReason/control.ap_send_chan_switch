@@ -34,8 +34,7 @@ def run(machine):
                  host=host,
                  tag=NAME.split('.')[1],
                  disconnect_trigger='AP send channel switch',
-                 req_capabilities=capabilities,
-                 raw_cmdline_args=args)
+                 req_caps=capabilities, raw_cmdline_args=args)
 
 
 parallel_simple(run, machines)
