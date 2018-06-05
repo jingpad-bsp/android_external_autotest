@@ -86,6 +86,7 @@ class SuiteHandler(object):
 
         self._suite_id = None
         self._task_to_test_maps = {}
+        self.successfully_provisioned_duts = set()
 
         # It only maintains the swarming task of the final run of each
         # child task, i.e. it doesn't include failed swarming tasks of
@@ -95,6 +96,10 @@ class SuiteHandler(object):
     def should_wait(self):
         """Return whether to wait for a suite's result."""
         return self._wait
+
+    def is_provision(self):
+        """Return whether the suite handler is for provision suite."""
+        return self._provision_num_required > 0
 
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.
@@ -168,20 +173,8 @@ class SuiteHandler(object):
         self.retried_tasks = [t for t in all_tasks if self._should_retry(t)]
         logging.info('Found %d tests to be retried.', len(self.retried_tasks))
 
-    def is_finished_waiting(self):
-        """Check whether the suite should finish its waiting."""
-        if self._provision_num_required > 0:
-            successfully_completed_bots = set()
-            for t in self._active_child_tasks:
-                if (t['state'] == swarming_lib.TASK_COMPLETED and
-                    (not t['failure'])):
-                    successfully_completed_bots.add(t['bot_id'])
-
-            logging.info('Found %d successfully provisioned bots',
-                         len(successfully_completed_bots))
-            return (len(successfully_completed_bots) >=
-                    self._provision_num_required)
-
+    def _check_all_tasks_finished(self):
+        """Check whether all tasks are finished, including retried tasks."""
         finished_tasks = [t for t in self._active_child_tasks if
                           t['state'] in swarming_lib.TASK_FINISHED_STATUS]
         logging.info('%d/%d child tasks finished, %d got retried.',
@@ -189,6 +182,33 @@ class SuiteHandler(object):
                      len(self.retried_tasks))
         return (len(finished_tasks) == len(self._active_child_tasks)
                 and not self.retried_tasks)
+
+    def _set_successful_provisioned_duts(self):
+        """Set successfully provisioned duts."""
+        for t in self._active_child_tasks:
+            if (swarming_lib.get_task_final_state(t) ==
+                swarming_lib.TASK_COMPLETED_SUCCESS):
+                dut_name = swarming_lib.get_task_dut_name(t)
+                if dut_name is not None:
+                    self.successfully_provisioned_duts.add(dut_name)
+
+    def is_provision_successfully_finished(self):
+        """Check whether provision succeeds."""
+        logging.info('Found %d successfully provisioned duts, '
+                     'the minimum requirement is %d',
+                     len(self.successfully_provisioned_duts),
+                     self._provision_num_required)
+        return (len(self.successfully_provisioned_duts) >=
+                self._provision_num_required)
+
+    def is_finished_waiting(self):
+        """Check whether the suite should finish its waiting."""
+        if self.is_provision():
+            self._set_successful_provisioned_duts()
+            return (self.is_provision_successfully_finished() or
+                    self._check_all_tasks_finished())
+
+        return self._check_all_tasks_finished()
 
     def _should_retry(self, test_result):
         """Check whether a test should be retried.
