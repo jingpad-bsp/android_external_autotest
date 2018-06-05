@@ -193,25 +193,6 @@ class server_list(action_common.atest_list, server):
         return (options, leftover)
 
 
-    def execute_skylab(self):
-        """Execute 'atest server list --skylab'
-
-        @return: A list of servers matched the given hostname and role.
-        """
-        inventory_repo = skylab_utils.InventoryRepo(
-                        self.inventory_repo_dir)
-        inventory_repo.initialize()
-        infrastructure = text_manager.load_infrastructure(
-                inventory_repo.get_data_dir())
-
-        return skylab_server.get_servers(
-                infrastructure,
-                self.environment,
-                hostname=self.hostname,
-                role=self.role,
-                status=self.status)
-
-
     def execute(self):
         """Execute the command.
 
@@ -219,10 +200,20 @@ class server_list(action_common.atest_list, server):
         """
         if self.skylab:
             try:
-                self.execute_skylab()
+                inventory_repo = skylab_utils.InventoryRepo(
+                        self.inventory_repo_dir)
+                inventory_repo.initialize()
+                infrastructure = text_manager.load_infrastructure(
+                        inventory_repo.get_data_dir())
+
+                return skylab_server.get_servers(
+                        infrastructure,
+                        self.environment,
+                        hostname=self.hostname,
+                        role=self.role,
+                        status=self.status)
             except (skylab_server.SkylabServerActionError,
-                    revision_control.GitError,
-                    skylab_utils.InventoryRepoDirNotClean) as e:
+                    revision_control.GitError) as e:
                 self.failure(e, what_failed='Failed to list servers from skylab'
                              ' inventory.', item=self.hostname, fatal=True)
         else:
@@ -331,8 +322,7 @@ class server_create(server):
                 return self.execute_skylab()
             except (skylab_server.SkylabServerActionError,
                     revision_control.GitError,
-                    gob_util.GOBError,
-                    skylab_utils.InventoryRepoDirNotClean) as e:
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to create server in skylab '
                              'inventory.', item=self.hostname, fatal=True)
         else:
@@ -399,8 +389,7 @@ class server_delete(server):
                 return True
             except (skylab_server.SkylabServerActionError,
                     revision_control.GitError,
-                    gob_util.GOBError,
-                    skylab_utils.InventoryRepoDirNotClean) as e:
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to delete server from '
                              'skylab inventory.', item=self.hostname,
                              fatal=True)
@@ -562,8 +551,7 @@ class server_modify(server):
                 return self.execute_skylab()
             except (skylab_server.SkylabServerActionError,
                     revision_control.GitError,
-                    gob_util.GOBError,
-                    skylab_utils.InventoryRepoDirNotClean) as e:
+                    gob_util.GOBError) as e:
                 self.failure(e, what_failed='Failed to modify server in skylab'
                              ' inventory.', item=self.hostname, fatal=True)
         else:
