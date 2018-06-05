@@ -54,7 +54,6 @@ class network_WiFi_UpdateRouter(test.test):
 
     def get_update_url(self, ds_url, image):
         CONFIG = global_config.global_config
-        # pylint: disable-msg=E1120
         IMAGE_URL_PATTERN = CONFIG.get_config_value(
                 'CROS', 'image_url_pattern', type=str)
         return IMAGE_URL_PATTERN % (ds_url, image)
