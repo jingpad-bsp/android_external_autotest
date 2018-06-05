@@ -54,11 +54,22 @@ public class SuiteRunnerView extends TabView {
 
   private HashMap<String, String> modelBoardMap;
 
-  private static List<String> suiteNames = Arrays.asList("bvt-cq",
-      "bvt-inline", "cts_N", "gts", "hardware_storagequal",
-      "hardware_memoryqual", "usb-camera","power_measurement_wrapper",
-      "power_loadtest_fast", "power_loadtest_1hour", "power_loadtest",
-      "power_idle", "moblab_setup");
+  private static List<String> suiteNames = Arrays.asList(
+    "bvt-cq",
+    "bvt-inline",
+    "cts_N",
+    "gts",
+    "hardware_memoryqual",
+    "hardware_storagequal",
+    "hardware_storagequal_quick",
+    "moblab_setup",
+    "power_idle",
+    "power_loadtest",
+    "power_loadtest_1hour",
+    "power_loadtest_fast",
+    "power_measurement_wrapper",
+    "usb-camera"
+  );
 
   private static String TEST_LIST_PLACEHOLDER = "arm.CtsAnimationTestCases, x86.CtsDeqpTestCases";
 
@@ -267,6 +278,7 @@ public class SuiteRunnerView extends TabView {
       fifthOptionalLine.setVisible(false);
       sixthOptionalLine.setVisible(false);
     } else if(listIndex == suiteNames.indexOf("hardware_storagequal") ||
+        listIndex == suiteNames.indexOf("hardware_storagequal_quick") ||
         listIndex == suiteNames.indexOf("hardware_memoryqual")) {
       thirdOptionalLine.setVisible(false);
       fourthOptionalLine.setVisible(true);
