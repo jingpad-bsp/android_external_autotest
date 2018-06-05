@@ -20,7 +20,6 @@ import logging.handlers
 import os
 import re
 import shutil
-import socket
 import stat
 import subprocess
 import sys
@@ -275,7 +274,7 @@ def _replace_symlink_with_file(path):
 
 
 # Maximum number of files in the folder.
-_MAX_FILE_COUNT = 500
+_MAX_FILE_COUNT = 3000
 _FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs', 'autoupdate_logs']
 
 
