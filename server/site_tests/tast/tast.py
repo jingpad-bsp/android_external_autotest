@@ -76,15 +76,21 @@ class tast(test.test):
     _JOB_STATUS_GOOD = 'GOOD'
     _JOB_STATUS_FAIL = 'FAIL'
 
-    def initialize(self, host, test_exprs):
+    def initialize(self, host, test_exprs, ignore_test_failures=False):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
+        @param ignore_test_failures: If False, this test will fail if individual
+            Tast tests report failure. If True, this test will only fail in
+            response to the tast command failing to run successfully. This
+            should generally be False when the test is running inline and True
+            when it's running asynchronously.
 
         @raises error.TestFail if the Tast installation couldn't be found.
         """
         self._host = host
         self._test_exprs = test_exprs
+        self._ignore_test_failures = ignore_test_failures
 
         # List of JSON objects describing tests that will be run. See Test in
         # src/platform/tast/src/chromiumos/tast/testing/test.go for details.
@@ -260,7 +266,7 @@ class tast(test.test):
                     if 'flaky' not in test.get('attr', []):
                         failed.append(name)
 
-        if failed:
+        if failed and not self._ignore_test_failures:
             msg = '%d failed: ' % len(failed)
             msg += ' '.join(sorted(failed)[:self._MAX_TEST_NAMES_IN_ERROR])
             if len(failed) > self._MAX_TEST_NAMES_IN_ERROR:
