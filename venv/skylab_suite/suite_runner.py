@@ -22,20 +22,24 @@ SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
 
 
-def run(tests, suite_handler, dry_run=False):
+def run(tests_specs, suite_handler, dry_run=False):
     """Run a CrOS dynamic test suite.
 
+    @param tests_specs: A list of cros_suite.TestSpecs objects.
     @param suite_handler: A cros_suite.SuiteHandler object.
     @param dry_run: Whether to kick off dry runs of the tests.
     """
     suite_id = os.environ.get('SWARMING_TASK_ID')
-    for test in tests:
-        test_task_id = _schedule_test(test, suite_id=suite_id, dry_run=dry_run)
+    for test_specs in tests_specs:
+        test_task_id = _schedule_test(
+                test_specs,
+                suite_id=suite_id,
+                dry_run=dry_run)
         suite_handler.add_test_by_task_id(
                 test_task_id,
-                cros_suite.TestSpecs(
-                        test=test,
-                        remaining_retries=test.job_retries - 1,
+                cros_suite.TestHandlerSpecs(
+                        test_specs=test_specs,
+                        remaining_retries=test_specs.test.job_retries - 1,
                         previous_retried_ids=[]))
 
     if suite_id is not None and suite_handler.should_wait():
@@ -91,24 +95,24 @@ def _run_swarming_cmd(swarming_cmd, task_name, temp_json_path):
             return result['tasks'][task_name]['task_id']
 
 
-def _schedule_test(test, suite_id=None, dry_run=False):
+def _schedule_test(test_specs, suite_id=None, dry_run=False):
     """Schedule a CrOS test.
 
-    @param test: A single test to run, represented by ControlData object.
+    @param test_specs: A cros_suite.TestSpec object.
     @param suite_id: the suite task id of the test.
     @param dry_run: Whether to kick off a dry run of a swarming cmd.
 
     @return the swarming task id of this task.
     """
-    logging.info('Scheduling test %s', test.name)
+    logging.info('Scheduling test %s', test_specs.test.name)
     swarming_client = os.path.join(
             os.path.expanduser('~'),
             'chromiumos/chromite/third_party/swarming.client/swarming.py')
     cmd = [SKYLAB_DRONE_SWARMING_WORKER, '-client-test', '-task-name',
-           test.name]
+           test_specs.test.name]
     if dry_run:
         cmd = ['/bin/echo'] + cmd
-        test.name = 'Echo ' + test.name
+        test_specs.test.name = 'Echo ' + test_specs.test.name
 
     dimensions = [('pool', SKYLAB_DRONE_POOL)]
 
@@ -116,9 +120,11 @@ def _schedule_test(test, suite_id=None, dry_run=False):
     with osutils.TempDir() as tempdir:
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
         swarming_cmd = _make_trigger_swarming_cmd(
-                swarming_client, suite_id, test.name, temp_json_path,
+                swarming_client, suite_id, test_specs.test.name, temp_json_path,
                 dimensions, cmd)
-        return _run_swarming_cmd(swarming_cmd, test.name, temp_json_path)
+        return _run_swarming_cmd(swarming_cmd,
+                                 test_specs.test.name,
+                                 temp_json_path)
 
 
 def _fetch_child_tasks(parent_task_id):
@@ -177,17 +183,17 @@ def _retry_test(suite_handler, task_id, dry_run=False):
     """
     last_retry_specs = suite_handler.get_test_by_task_id(task_id)
     logging.info('Retrying test %s, remaining %d retries.',
-                 last_retry_specs.test.name,
+                 last_retry_specs.test_specs.test.name,
                  last_retry_specs.remaining_retries - 1)
     retried_task_id = _schedule_test(
-            last_retry_specs.test,
+            last_retry_specs.test_specs,
             suite_id=suite_handler.suite_id,
             dry_run=dry_run)
     previous_retried_ids = last_retry_specs.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(
             retried_task_id,
-            cros_suite.TestSpecs(
-                    test=last_retry_specs.test,
+            cros_suite.TestHandlerSpecs(
+                    test_specs=last_retry_specs.test_specs,
                     remaining_retries=last_retry_specs.remaining_retries - 1,
                     previous_retried_ids=previous_retried_ids))
     suite_handler.set_max_retries(suite_handler.max_retries - 1)

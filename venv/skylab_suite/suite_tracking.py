@@ -56,10 +56,10 @@ def _parse_test_results(suite_handler):
     test_results = {}
     for child_task in suite_handler.active_child_tasks:
         task_id = child_task['task_id']
-        test_specs = suite_handler.get_test_by_task_id(task_id)
-        name = test_specs.test.name
-        retry_count = len(test_specs.previous_retried_ids)
-        all_task_ids = test_specs.previous_retried_ids + [task_id]
+        test_handler_specs = suite_handler.get_test_by_task_id(task_id)
+        name = test_handler_specs.test_specs.test.name
+        retry_count = len(test_handler_specs.previous_retried_ids)
+        all_task_ids = test_handler_specs.previous_retried_ids + [task_id]
         state = swarming_lib.get_task_final_state(child_task)
         test_results[name] = {
                 'state': state,
