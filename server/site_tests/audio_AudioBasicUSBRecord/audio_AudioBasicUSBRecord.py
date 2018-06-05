@@ -54,6 +54,11 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
             audio_test_utils.dump_cros_audio_logs(
                     host, audio_facade, self.resultsdir, 'after_binding')
 
+            audio_test_utils.check_and_set_chrome_active_node_types(
+                    audio_facade, None, 'USB')
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir, 'after_select')
+
             audio_test_utils.check_audio_nodes(audio_facade,
                                                (None, ['USB']))
             logging.info('Setting playback data on Cros device')
@@ -75,7 +80,8 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
                         audio_facade, None, 'USB')
 
                 audio_test_utils.dump_cros_audio_logs(
-                        host, audio_facade, self.resultsdir, 'after_select')
+                        host, audio_facade, self.resultsdir,
+                        'after_resume_select')
 
                 audio_test_utils.check_audio_nodes(audio_facade,
                                                    (None, ['USB']))
