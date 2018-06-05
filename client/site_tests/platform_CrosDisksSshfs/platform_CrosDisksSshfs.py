@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import base64
 import logging
 import json
 import os
@@ -43,7 +44,7 @@ class CrosDisksFuseTester(CrosDisksTester):
         try:
             source = config['test_mount_source_uri']
             fstype = config.get('test_mount_filesystem_type')
-            options = config['test_mount_options']
+            options = config.get('test_mount_options', [])
             expected_mount_completion = {
                 'status': config['expected_mount_status'],
                 'source_path': source,
@@ -91,22 +92,19 @@ class CrosDisksSshfsTester(CrosDisksFuseTester):
             # Make backup of the current authorized_keys
             utils.run('mv -f ' + AUTHORIZED_KEYS + ' ' + AUTHORIZED_KEYS_BACKUP,
                       ignore_status=True)
-        keyfile = config.get('test_ssh_identity_file')
-        if keyfile:
-            self._generate_key(keyfile)
-            self._register_key(keyfile + '.pub')
-        knownhosts = config.get('test_ssh_known_hosts_file')
-        if knownhosts:
-            self._whitelist_host(knownhosts)
+
+        pubkey, privkey = self._generate_keypair()
+        self._register_key(pubkey)
+
+        identity = base64.b64encode(privkey)
+        known_hosts = base64.b64encode(self._generate_known_hosts())
+
+        options = config.get('test_mount_options', [])
+        options.append('IdentityBase64=' + identity)
+        options.append('UserKnownHostsBase64=' + known_hosts)
+        config['test_mount_options'] = options
 
     def teardown_test_case(self, config):
-        keyfile = config.get('test_ssh_identity_file')
-        if keyfile:
-            try_remove(keyfile)
-            try_remove(keyfile + '.pub')
-        knownhosts = config.get('test_ssh_known_hosts_file')
-        if knownhosts:
-            try_remove(knownhosts)
         if os.path.exists(AUTHORIZED_KEYS_BACKUP):
             # Restore authorized_keys from backup.
             utils.run('mv -f ' + AUTHORIZED_KEYS_BACKUP + ' ' + AUTHORIZED_KEYS,
@@ -118,24 +116,33 @@ class CrosDisksSshfsTester(CrosDisksFuseTester):
             if not os.path.exists(f):
                 raise error.TestFail('Expected file "' + f + '" not found')
 
-    def _generate_key(self, keyfile):
+    def _generate_keypair(self):
+        f, keyfile = tempfile.mkstemp()
+        os.close(f)
         try_remove(keyfile)
         try_remove(keyfile + '.pub')
         utils.run('ssh-keygen -b 2048 -t rsa -f "' + keyfile + '" -q -N ""')
-        os.chmod(keyfile, 0644)
+        with open(keyfile, 'rb') as f:
+            privkey = f.read()
+        with open(keyfile + '.pub', 'rb') as f:
+            pubkey = f.read()
+        try_remove(keyfile)
+        try_remove(keyfile + '.pub')
+        return (pubkey, privkey)
 
     def _register_key(self, pubkey):
         utils.run('sudo -u chronos mkdir -p ' + SSH_DIR_PATH,
                   ignore_status=True)
-        utils.run('sudo -u chronos cp -f ' + pubkey + ' ' + AUTHORIZED_KEYS)
+        utils.run('sudo -u chronos touch ' + AUTHORIZED_KEYS)
+        with open(AUTHORIZED_KEYS, 'wb') as f:
+            f.write(pubkey)
+        utils.run('sudo -u chronos chmod 0600 ' + AUTHORIZED_KEYS)
 
-    def _whitelist_host(self, knownhosts):
+    def _generate_known_hosts(self):
         hostkey = '/mnt/stateful_partition/etc/ssh/ssh_host_ed25519_key.pub'
         with open(hostkey, 'rb') as f:
             keydata = f.readline().split()
-        with open(knownhosts, 'wb') as f:
-            f.write('localhost {} {}\n'.format(keydata[0], keydata[1]))
-        os.chmod(knownhosts, 0644)
+        return 'localhost {} {}\n'.format(keydata[0], keydata[1])
 
 
 class platform_CrosDisksSshfs(test.test):
