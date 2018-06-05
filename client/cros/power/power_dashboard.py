@@ -14,6 +14,7 @@ import urllib2
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
 
@@ -95,7 +96,12 @@ class BaseDashboard(object):
         data_obj = {'data': json.dumps(powerlog_dict)}
         encoded = urllib.urlencode(data_obj)
         req = urllib2.Request(uploadurl, encoded)
-        urllib2.urlopen(req)
+
+        @retry.retry(urllib2.URLError)
+        def _do_upload():
+            urllib2.urlopen(req)
+
+        _do_upload()
 
     def _convert(self):
         """Convert data from self._logger object to raw power measurement
