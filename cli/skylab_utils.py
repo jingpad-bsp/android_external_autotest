@@ -38,6 +38,10 @@ class InventoryRepoChangeNotFound(Exception):
     """Error raised when no inventory repo change number is found."""
 
 
+class InventoryRepoDirNotClean(Exception):
+    """Error raised when the given inventory_repo_dir contains local changes."""
+
+
 def get_cl_url(change_number):
     return INTERNAL_GERRIT_HOST_URL + '/' + str(change_number)
 
@@ -109,6 +113,12 @@ class InventoryRepo(object):
                 self.inventory_repo_dir,
                 giturl=INTERNAL_INVENTORY_REPO_URL,
                 abs_work_tree=self.inventory_repo_dir)
+
+        if self.git_repo.status():
+            raise InventoryRepoDirNotClean(
+                    'The inventory_repo_dir "%s" contains uncommitted changes. '
+                    'Please clean up the local repo directory or use another '
+                    'clean directory.' % self.inventory_repo_dir)
 
         if self.git_repo.is_repo_initialized():
             logging.info('Inventory repo was already initialized, start '
