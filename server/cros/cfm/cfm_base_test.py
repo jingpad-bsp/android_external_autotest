@@ -143,6 +143,20 @@ class CfmBaseTest(test.test):
         else:
             logging.warning('No packaged app logs found on DUT.')
 
+    def save_all_packaged_app_logs(self):
+        """
+        Copies the packaged app logs from the client to test's debug directory.
+        """
+        pa_log_paths = self.cfm_facade.get_all_pa_logs_file_path()
+        if not  pa_log_paths:
+            logging.warning('No packaged app logs found on DUT.')
+            return
+        for log_file in pa_log_paths:
+            log_filename = (
+                'packaged_app_log_%s.txt' % os.path.basename(log_file))
+            self._safe_copy_file(
+                log_file, os.path.join(self.debugdir, log_filename))
+
     def _safe_copy_file(self, remote_path, local_path):
         """
         Copies the packaged app log file from CFM to test's debug directory.
