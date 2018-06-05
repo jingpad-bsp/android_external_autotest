@@ -116,6 +116,7 @@ def spawn_starting_job_handler(manager, job):
         ] + args
     drone.spawn(_ENV, args,
                 output_file=_prepare_output_file(drone, results_dir))
+    drone.add_active_processes(1)
     return drone
 
 
@@ -159,6 +160,7 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
         ] + args
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_ENV, args, output_file=output_file)
+    drone.add_active_processes(1)
     return drone
 
 
@@ -251,7 +253,7 @@ def _wrap_drone(old_drone):
     if isinstance(host, local_host.LocalHost):
         return LocalDrone()
     elif isinstance(host, ssh_host.SSHHost):
-        return RemoteDrone(host)
+        return RemoteDrone(old_drone)
     else:
         raise TypeError('Drone has an unknown host type')
 
@@ -325,6 +327,16 @@ class Drone(object):
         implementation defined, e.g., it may be a remote file.
         """
 
+    def add_active_processes(self, count):
+        """Track additional number of active processes.
+
+        This may be used to select drones based on the number of active
+        processes as a proxy for load.  The exact semantics depends on
+        the drone manager implementation; in practice that means process
+        count is used as a proxy for workload, and one process equals
+        the workload of one autoserv or one job.
+        """
+
 
 class LocalDrone(Drone):
     """Local implementation of Drone."""
@@ -344,10 +356,12 @@ class LocalDrone(Drone):
 class RemoteDrone(Drone):
     """Remote implementation of Drone through SSH."""
 
-    def __init__(self, host):
+    def __init__(self, drone):
+        host = drone._host
         if not isinstance(host, ssh_host.SSHHost):
-            raise TypeError('RemoteDrone must be passed an SSHHost')
-        self._host = host
+            raise TypeError('RemoteDrone must be passed a drone with SSHHost')
+        self._drone = drone
+        self._host = drone._host
 
     def hostname(self):
         return self._host.hostname
@@ -368,6 +382,9 @@ class RemoteDrone(Drone):
                        % {'cmd': safe_cmd,
                           'file': safe_file,
                           'null': os.devnull})
+
+    def add_active_processes(self, count):
+        self._drone.active_processes += count
 
 
 def _spawn(path, argv, output_file):
