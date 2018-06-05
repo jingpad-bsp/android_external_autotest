@@ -199,7 +199,7 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('EXT4_USE_FOR_EXT23')
 
-        if utils.compare_versions(kernel_ver, "4.4") >= 0 and \
+        if utils.compare_versions(kernel_ver, "3.18") >= 0 and \
             utils.compare_versions(kernel_ver, "4.12") < 0:
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
