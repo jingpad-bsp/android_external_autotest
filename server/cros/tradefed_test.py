@@ -815,7 +815,8 @@ class TradefedTest(test.test):
     def _get_board_arch(self):
         """Return target DUT arch name."""
         if not self._board_arch:
-            self._board_arch = 'arm' if self._hosts[0] == 'arm' else 'x86'
+            self._board_arch = ('arm' if self._hosts[0].get_cpu_arch() == 'arm'
+                else 'x86')
         return self._board_arch
 
     def _get_board_name(self):
