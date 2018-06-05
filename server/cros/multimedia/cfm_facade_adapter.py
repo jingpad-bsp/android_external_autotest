@@ -152,6 +152,13 @@ class CFMFacadeRemoteAdapter(object):
         return self._cfm_proxy.get_latest_pa_logs_file_path()
 
 
+    def get_all_pa_logs_file_path(self):
+        """
+        @return The path to all packaged app log files, if any.
+        """
+        return self._cfm_proxy.get_all_pa_logs_file_path()
+
+
     def is_in_hangout_session(self):
         """Check if device is in hangout session.
 
