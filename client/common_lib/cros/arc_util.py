@@ -43,11 +43,6 @@ def should_start_arc(arc_mode):
                         arc_common.ARC_MODE_ENABLED_ASYNC]
 
 
-def get_extra_chrome_flags():
-    """Returns extra Chrome flags for ARC tests to run"""
-    return ['--disable-arc-opt-in-verification']
-
-
 def post_processing_after_browser(chrome):
     """
     Called when a new browser instance has been initialized.
@@ -189,7 +184,7 @@ def enable_play_store(autotest_ext, enabled, enable_managed_policy=True):
                     return True
                 logging.info('Returning early since ARC is policy-enforced.')
                 return False
-            logging.info('Forcing ARC %s, ignore managed state.' %
+            logging.info('Forcing ARC %s, ignore managed state.',
                     ('enabled' if enabled else 'disabled'))
 
         autotest_ext.ExecuteJavaScript('''
