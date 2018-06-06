@@ -80,6 +80,45 @@ SSH_DIR_PATH = '/home/chronos/user/.ssh'
 AUTHORIZED_KEYS = os.path.join(SSH_DIR_PATH, 'authorized_keys')
 AUTHORIZED_KEYS_BACKUP = AUTHORIZED_KEYS + '.sshfsbak'
 
+# Some discardable SSH key.
+SSH_PRIVATE_KEY = '''-----BEGIN RSA PRIVATE KEY-----
+MIIEogIBAAKCAQEAvKhQn82O9F+SzDTYgpI+qnCD6E6cYroLvflLp8/onYdqD1xK
+ES4wDTGC68DNbS9tIo1hEjwbD79UltQT9NTmJg8DERUrQbNayYXtwxqZ2tSo1Hg5
+dpAKLd3GBhwK1Eob+bNgcqEu3iIZq+QRVtlM92Uj4vBFuy8qgvGs4x+n3lACsyk8
+4GZGtiFpqTPlTZ6BOEdknZpB0K3HIZ7NjZ8uD9fXJYFuUgQhQvhp1N8aZaf7JtWr
+GLQ8Pwq6UYEVb8veHgLVAJ9p/5ko/WNVWf1h78v95pEHSYrQ0opcSDizbquW/1Fs
+Fk6elrQcKctJ1FsXMxlWYOzN31yNxcPqT6rzhQIDAQABAoIBAAcD50OZ/DfgGfBY
+ArkQQR5LYsxPqAcPzgH5dDPASnEZKPt7PhHXetfywGCN4dWujstbIIHyFDuIrNeS
++U8AX7KIml+XPu2JgtW9kjLQGWqGv+RuuAxNnONJvORbRJfSTaoCXpLEpZ6C/Btl
+NrPZDsCgVS5KKv2j6lvGKtyjP7XHiXIXLvlhOJkpWRk4a1IBISP8HPt2w/bG0raD
+CW6e6XYYPI4ZPwMlPRympQPGo8mVpNkhFAMHKnaN+E7HplsWXvb0daAVUeCBDVId
+QSat88e7PbK2FMsinZvsCZSrHdggS+4u1h6LjMI3GO1PYEjvrMorkHz2w1KS3n1S
+n4Eas50CgYEA9JR6JCauiZqJAV4azOylZaeiClkAtsK1IG98XkHyIDfn634U7o5c
+6w1Uf0zwxRKx12EPQhzKiYRtp+nPirMAZHmm+gJqExakDV7uJlHNo/6qY7m1Z8I7
+Ww/my1Oi5ASQ6Emyrpecvo8xTTl52Kf+l3mQk/EqitZLNWgkX5HdwTMCgYEAxXdh
+/DLRDrBz7b+lYahAvBCr+VqUxWdjiarpnC/NZmXIWsI7U0nFpf3H4JzEQVdu5gdV
+DKLrU8uw1dGwytgH3zA8s1VMWVg1uvVFduQk+pZeRj9ekGEHvViUEkylg3CaNCyO
+2Kl72VS8W/ls5uX74mFcx9fwc9jUue807+406GcCgYAjfpTHQFHeKG4vo5+SE9nh
+CdXrWIVRAKrWnTdYWouv/00KEQ8qm8CCYDneC6V5hEAI+M4FEzaVhIGBd94ly9qH
+ulvwNn98a7G9OwSmzQJiBWhm9qGMAFUq3wDoiye9nagF/gQPcHNP+Gn4Qhobxi2d
+gAfqYHqDEZxykL2OnRWonwKBgBvcl1+9T9ARx5mxI8WettuSQqGhTUJ5Lws6qVGX
+URT0oYtkwngi/ZdJMo2XsP1DN+uO90ocJrYhFGdm+dn1F08/gCERlP86OgKSHuYC
+lNEirFSfFlmqxyvJNsNKO0RLfAaGjvU1HLtygE096Ua/BoZPlIbCCjReUM2XWdHM
+u3xbAoGARqG0gGpNCY7pEjSQ33TdLEXV7O0S4hJiN+IKPS2q8q8k21X7ckkPxsEG
+h4dIuHzdLGZsmIXel4Mx3rvyKbboj93K3ia5rbU05keVi9duMv1PlbdQzu9mq2qu
+A5CmV2fYpStHZTHsv5BcYWxkhc4aAmvUJwyAzlWEhyijwFK5wSQ=
+-----END RSA PRIVATE KEY-----
+'''
+
+SSH_PUBLIC_KEY = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC8qFCfzY' \
+        '70X5LMNNiCkj6qcIPoTpxiugu9+Uunz+idh2oPXEoRLjANMYLrwM1tL' \
+        '20ijWESPBsPv1SW1BP01OYmDwMRFStBs1rJhe3DGpna1KjUeDl2kAot' \
+        '3cYGHArUShv5s2ByoS7eIhmr5BFW2Uz3ZSPi8EW7LyqC8azjH6feUAK' \
+        'zKTzgZka2IWmpM+VNnoE4R2SdmkHQrcchns2Nny4P19clgW5SBCFC+G' \
+        'nU3xplp/sm1asYtDw/CrpRgRVvy94eAtUAn2n/mSj9Y1VZ/WHvy/3mk' \
+        'QdJitDSilxIOLNuq5b/UWwWTp6WtBwpy0nUWxczGVZg7M3fXI3Fw+pP' \
+        'qvOF root@localhost'
+
 
 class CrosDisksSshfsTester(CrosDisksFuseTester):
     """A tester to verify sshfs support in CrosDisks.
@@ -93,10 +132,9 @@ class CrosDisksSshfsTester(CrosDisksFuseTester):
             utils.run('mv -f ' + AUTHORIZED_KEYS + ' ' + AUTHORIZED_KEYS_BACKUP,
                       ignore_status=True)
 
-        pubkey, privkey = self._generate_keypair()
-        self._register_key(pubkey)
+        self._register_key(SSH_PUBLIC_KEY)
 
-        identity = base64.b64encode(privkey)
+        identity = base64.b64encode(SSH_PRIVATE_KEY)
         known_hosts = base64.b64encode(self._generate_known_hosts())
 
         options = config.get('test_mount_options', [])
@@ -115,20 +153,6 @@ class CrosDisksSshfsTester(CrosDisksFuseTester):
             f = config['expected_file']
             if not os.path.exists(f):
                 raise error.TestFail('Expected file "' + f + '" not found')
-
-    def _generate_keypair(self):
-        f, keyfile = tempfile.mkstemp()
-        os.close(f)
-        try_remove(keyfile)
-        try_remove(keyfile + '.pub')
-        utils.run('ssh-keygen -b 2048 -t rsa -f "' + keyfile + '" -q -N ""')
-        with open(keyfile, 'rb') as f:
-            privkey = f.read()
-        with open(keyfile + '.pub', 'rb') as f:
-            pubkey = f.read()
-        try_remove(keyfile)
-        try_remove(keyfile + '.pub')
-        return (pubkey, privkey)
 
     def _register_key(self, pubkey):
         utils.run('sudo -u chronos mkdir -p ' + SSH_DIR_PATH,
