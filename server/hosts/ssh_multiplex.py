@@ -102,7 +102,7 @@ class MasterSsh(object):
                 # startup and its first attempted use, wait for socket file to
                 # exist before returning.
                 try:
-                    socket_file_exists = utils.poll_for_condition(
+                    utils.poll_for_condition(
                             condition=lambda: os.path.exists(self._socket_path),
                             timeout=timeout,
                             sleep_interval=0.2,
