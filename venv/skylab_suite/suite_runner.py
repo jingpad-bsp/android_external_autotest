@@ -18,6 +18,8 @@ from skylab_suite import cros_suite
 from skylab_suite import swarming_lib
 
 
+SKYLAB_SUITE_USER = 'skylab_suite_runner'
+SKYLAB_LUCI_TAG = 'luci_project:chromiumos'
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
 
@@ -33,6 +35,7 @@ def run(tests_specs, suite_handler, dry_run=False):
     for test_specs in tests_specs:
         test_task_id = _schedule_test(
                 test_specs,
+                suite_handler.is_provision(),
                 suite_id=suite_id,
                 dry_run=dry_run)
         suite_handler.add_test_by_task_id(
@@ -47,12 +50,17 @@ def run(tests_specs, suite_handler, dry_run=False):
         _wait_for_results(suite_handler, dry_run=dry_run)
 
 
+def _make_provision_swarming_cmd():
+    basic_swarming_cmd = swarming_lib.get_basic_swarming_cmd('post')
+    return basic_swarming_cmd + ['tasks/new']
+
+
 def _make_trigger_swarming_cmd(cmd, dimensions, test_specs,
                                temp_json_path, suite_id):
     """Form the swarming cmd.
 
     @param cmd: The raw command to run in lab.
-    @param dimensions: The dimensions of this swarming command.
+    @param dimensions: A dict of dimensions used to form the swarming cmd.
     @param test_specs: a cros_suite.TestSpecs object.
     @param temp_json_path: The json file to dump the swarming output.
     @param suite_id: The suite id of the test to kick off.
@@ -67,8 +75,9 @@ def _make_trigger_swarming_cmd(cmd, dimensions, test_specs,
             '--io-timeout', str(test_specs.io_timeout_secs),
             '--raw-cmd']
 
-    for dimension in dimensions:
-        swarming_cmd += ['--dimension', dimension[0], dimension[1]]
+    swarming_cmd += ['--tags=%s' % SKYLAB_LUCI_TAG]
+    for k, v in dimensions.iteritems():
+        swarming_cmd += ['--dimension', k, v]
 
     if suite_id is not None:
         swarming_cmd += ['--tags=%s:%s' % ('parent_task_id', suite_id)]
@@ -92,11 +101,48 @@ def _get_suite_cmd(test_specs, is_provision=False):
     return cmd
 
 
+def _run_provision_cmd(cmd, dimensions, test_specs, suite_id):
+    """Kick off a provision swarming cmd.
+
+    @param cmd: The raw command to run in lab.
+    @param dimensions: A dict of dimensions used to form the swarming cmd.
+    @param test_specs: a cros_suite.TestSpecs object.
+    @param suite_id: The suite id of the test to kick off.
+    """
+    normal_dimensions = dimensions.copy()
+    normal_dimensions['provisionable-cros-version'] = test_specs.build
+    all_dimensions = [normal_dimensions, dimensions]
+    tags = [SKYLAB_LUCI_TAG, 'build:%s' % test_specs.build]
+    if suite_id is not None:
+        tags += ['parent_task_id:%s' % suite_id]
+
+    json_request = swarming_lib.make_fallback_request_dict(
+            cmds=[cmd] * len(all_dimensions),
+            slices_dimensions=all_dimensions,
+            task_name=test_specs.test.name,
+            priority=test_specs.priority,
+            tags=tags,
+            user=SKYLAB_SUITE_USER,
+            expiration_secs=test_specs.expiration_secs,
+            grace_period_secs=test_specs.grace_period_secs,
+            execution_timeout_secs=test_specs.execution_timeout_secs,
+            io_timeout_secs=test_specs.io_timeout_secs)
+
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    provision_cmd = _make_provision_swarming_cmd()
+    result = cros_build_lib.RunCommand(provision_cmd,
+                                       input=json.dumps(json_request),
+                                       env=os.environ.copy(),
+                                       capture_output=True)
+    logging.info('Input: %r', json_request)
+    return json.loads(result.output)['task_id']
+
+
 def _run_swarming_cmd(cmd, dimensions, test_specs, temp_json_path, suite_id):
     """Kick off a swarming cmd.
 
     @param cmd: The raw command to run in lab.
-    @param dimensions: The dimensions of this swarming command.
+    @param dimensions: A dict of dimensions used to form the swarming cmd.
     @param test_specs: a cros_suite.TestSpecs object.
     @param temp_json_path: The json file to dump the swarming output.
     @param suite_id: The suite id of the test to kick off.
@@ -113,7 +159,7 @@ def _run_swarming_cmd(cmd, dimensions, test_specs, temp_json_path, suite_id):
         return result['tasks'][test_specs.test.name]['task_id']
 
 
-def _schedule_test(test_specs, is_provision=False, suite_id=None,
+def _schedule_test(test_specs, is_provision, suite_id=None,
                    dry_run=False):
     """Schedule a CrOS test.
 
@@ -130,13 +176,17 @@ def _schedule_test(test_specs, is_provision=False, suite_id=None,
         cmd = ['/bin/echo'] + cmd
         test_specs.test.name = 'Echo ' + test_specs.test.name
 
-    dimensions = [('pool', SKYLAB_DRONE_POOL)]
+    dimensions = {'pool':SKYLAB_DRONE_POOL}
 
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
-        return _run_swarming_cmd(cmd, dimensions, test_specs,
-                                 temp_json_path, suite_id)
+        if is_provision:
+            return _run_provision_cmd(cmd, dimensions, test_specs,
+                                      suite_id)
+        else:
+            return _run_swarming_cmd(cmd, dimensions, test_specs,
+                                     temp_json_path, suite_id)
 
 
 def _fetch_child_tasks(parent_task_id):
@@ -199,6 +249,7 @@ def _retry_test(suite_handler, task_id, dry_run=False):
                  last_retry_specs.remaining_retries - 1)
     retried_task_id = _schedule_test(
             last_retry_specs.test_specs,
+            suite_handler.is_provision(),
             suite_id=suite_handler.suite_id,
             dry_run=dry_run)
     previous_retried_ids = last_retry_specs.previous_retried_ids + [task_id]
