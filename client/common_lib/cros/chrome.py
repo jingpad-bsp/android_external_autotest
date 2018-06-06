@@ -52,9 +52,10 @@ class Chrome(object):
                  num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, expect_policy_fetch=False,
                  dont_override_profile=False, disable_gaia_services=True,
-                 disable_default_apps = True, auto_login=True, gaia_login=False,
+                 disable_default_apps=True, auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
                  arc_mode=None, disable_arc_opt_in=True,
+                 disable_arc_opt_in_verification=True,
                  init_network_controller=False, login_delay=0):
         """
         Constructor of telemetry wrapper.
@@ -86,6 +87,12 @@ class Chrome(object):
                          start.
         @param disable_arc_opt_in: For opt in flow autotest. This option is used
                                    to disable the arc opt in flow.
+        @param disable_arc_opt_in_verification:
+             Adds --disable-arc-opt-in-verification to browser args. This should
+             generally be enabled when disable_arc_opt_in is enabled. However,
+             for data migration tests where user's home data is already set up
+             with opted-in state before login, this option needs to be set to
+             False with disable_arc_opt_in=True to make ARC container work.
         @param login_delay: Time for idle in login screen to simulate the time
                             required for password typing.
         """
@@ -106,9 +113,9 @@ class Chrome(object):
 
         finder_options = browser_options.BrowserFinderOptions()
         if utils.is_arc_available() and arc_util.should_start_arc(arc_mode):
-            if disable_arc_opt_in:
+            if disable_arc_opt_in and disable_arc_opt_in_verification:
                 finder_options.browser_options.AppendExtraBrowserArgs(
-                        arc_util.get_extra_chrome_flags())
+                        ['--disable-arc-opt-in-verification'])
             logged_in = True
 
         self._browser_type = (self.BROWSER_TYPE_LOGIN
