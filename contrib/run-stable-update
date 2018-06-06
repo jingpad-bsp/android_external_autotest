@@ -23,7 +23,7 @@ SERVER_STATUS=$(cli/atest server list $(hostname) 2>&1 |
 if [ "${SERVER_STATUS}" = "primary" ]; then
   mkdir -p ${LOGDIR}
   NOTIFY=(
-    chromeos-infra-eng@grotations.appspotmail.com
+    chromeos-test-monitors@google.com
   )
 else
   if [ -n "${SERVER_STATUS}" ]; then
