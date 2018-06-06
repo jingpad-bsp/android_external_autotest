@@ -34,6 +34,7 @@ SuiteSpecs = collections.namedtuple(
                 'suite_file_name',
                 'test_source_build',
                 'suite_args',
+                'priority',
         ])
 
 SuiteHandlerSpecs = collections.namedtuple(
@@ -57,6 +58,7 @@ TestSpecs= collections.namedtuple(
         'TestSpecs',
         [
                 'test',
+                'priority',
                 'build',
                 'expiration_secs',
                 'grace_period_secs',
@@ -231,7 +233,7 @@ class Suite(object):
         self.test_source_build = specs.test_source_build
         self.suite_name = specs.suite_name
         self.suite_file_name = specs.suite_file_name
-
+        self.priority = specs.priority
 
     @property
     def ds(self):
@@ -247,7 +249,6 @@ class Suite(object):
 
         return self._ds
 
-
     def prepare(self):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
@@ -259,6 +260,7 @@ class Suite(object):
         for test in tests:
             self.tests_specs.append(TestSpecs(
                     test=test,
+                    priority=self.priority,
                     build=self.test_source_build,
                     expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
@@ -274,7 +276,6 @@ class Suite(object):
         ds, _ = suite_common.stage_build_artifacts(self.test_source_build)
         self._ds = ds
 
-
     def _parse_suite_args(self):
         """Get the suite args.
 
@@ -285,7 +286,6 @@ class Suite(object):
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
         self.control_file = suite_common.get_control_file_by_build(
                 self.test_source_build, self.ds, self.suite_file_name)
-
 
     def _find_tests(self):
         """Fetch the child tests."""
@@ -310,7 +310,6 @@ class ProvisionSuite(Suite):
         # to be decoupled with any lab (RPC) calls. Here to set maximum
         # DUT number for provision as 10 first.
         self._num_max = 2
-
 
     def _find_tests(self):
         """Fetch the child tests for provision suite."""
