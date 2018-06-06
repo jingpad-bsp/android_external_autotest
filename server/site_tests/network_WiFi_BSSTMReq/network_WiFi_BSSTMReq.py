@@ -38,9 +38,9 @@ class network_WiFi_BSSTMReq(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Test body."""
-        self._router0_conf = hostap_config.HostapConfig(channel=48,
+        self._router0_conf = hostap_config.HostapConfig(channel=1)
+        self._router1_conf = hostap_config.HostapConfig(channel=48,
                              mode=hostap_config.HostapConfig.MODE_11A)
-        self._router1_conf = hostap_config.HostapConfig(channel=1)
         self._client_conf = xmlrpc_datatypes.AssociationParameters()
 
         # Configure the initial AP.
@@ -78,8 +78,10 @@ class network_WiFi_BSSTMReq(wifi_cell_test_base.WiFiCellTestBase):
             roam_to_bssid = bssid0
 
         # Send BSS Transition Management Request to client
-        self.context.router.send_bss_tm_req(self.context.client.wifi_mac,
-                                            [roam_to_bssid])
+        if not self.context.router.send_bss_tm_req(self.context.client.wifi_mac,
+                                                   [roam_to_bssid]):
+            raise error.TestNAError('AP does not support BSS Transition '
+                                    'Management')
 
         # Expect that the DUT will re-connect to the new AP
         if not self.context.client.wait_for_roam(
