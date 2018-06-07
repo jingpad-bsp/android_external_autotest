@@ -76,7 +76,12 @@ class tast(test.test):
     _JOB_STATUS_GOOD = 'GOOD'
     _JOB_STATUS_FAIL = 'FAIL'
 
-    def initialize(self, host, test_exprs, ignore_test_failures=False):
+    # Status reasons to use when individual Tast test have problems.
+    _TEST_NOT_RUN_MSG = 'Test was not run'
+    _TEST_DID_NOT_FINISH_MSG = 'Test did not finish'
+
+    def initialize(self, host, test_exprs, ignore_test_failures=False,
+                   install_root='/'):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
@@ -85,12 +90,16 @@ class tast(test.test):
             response to the tast command failing to run successfully. This
             should generally be False when the test is running inline and True
             when it's running asynchronously.
+        @param install_root: Root directory under which Tast binaries are
+            installed. Alternate values may be passed by unit tests.
 
         @raises error.TestFail if the Tast installation couldn't be found.
         """
         self._host = host
         self._test_exprs = test_exprs
         self._ignore_test_failures = ignore_test_failures
+        self._install_root = install_root
+        self._fake_now = None
 
         # List of JSON objects describing tests that will be run. See Test in
         # src/platform/tast/src/chromiumos/tast/testing/test.go for details.
@@ -127,6 +136,13 @@ class tast(test.test):
             # Parse partial results even if the tast command didn't finish.
             self._parse_results()
 
+    def set_fake_now_for_testing(self, now):
+        """Sets a fake timestamp to use in place of time.time() for unit tests.
+
+        @param now Numeric timestamp as would be returned by time.time().
+        """
+        self._fake_now = now
+
     def _get_path(self, paths, allow_missing=False):
         """Returns the path to an installed Tast-related file or directory.
 
@@ -141,8 +157,10 @@ class tast(test.test):
             is False.
         """
         for path in paths:
-            if os.path.exists(path):
-                return path
+            abs_path = os.path.join(self._install_root,
+                                    os.path.relpath(path, '/'))
+            if os.path.exists(abs_path):
+                return abs_path
 
         if allow_missing:
             return ''
@@ -176,7 +194,7 @@ class tast(test.test):
         """
         cmd = [
             self._tast_path,
-            '-verbose',
+            '-verbose=true',
             '-logtime=false',
             subcommand,
             '-build=false',
@@ -216,7 +234,7 @@ class tast(test.test):
         @raises error.TestFail if the tast command fails or times out.
         """
         logging.info('Getting list of tests that will be run')
-        result = self._run_tast('list', ['-json'])
+        result = self._run_tast('list', ['-json=true'])
         try:
             self._tests_to_run = json.loads(result.stdout.strip())
         except ValueError as e:
@@ -296,7 +314,7 @@ class tast(test.test):
             src/platform/tast/src/chromiumos/cmd/tast/run/results.go for
             details.
         """
-        name = self._TEST_NAME_PREFIX + test['name']
+        name = test['name']
         start_time = _rfc3339_time_to_timestamp(test['start'])
         end_time = _rfc3339_time_to_timestamp(test['end'])
 
@@ -325,7 +343,7 @@ class tast(test.test):
                                          error_time, err['reason'])
             if not test_finished:
                 self._log_test_event(self._JOB_STATUS_FAIL, name, start_time,
-                                     'Test did not finish')
+                                     self._TEST_DID_NOT_FINISH_MSG)
                 end_time = start_time
 
             end_status = self._JOB_STATUS_END_FAIL
@@ -336,12 +354,13 @@ class tast(test.test):
         """Writes events to the TKO status.log file describing a Tast test that
         unexpectedly wasn't run.
 
-        @param test_name: Name of the Tast test that wasn't run.
+        @param test_name: Name of the Tast test that wasn't run, e.g.
+            'ui.ChromeLogin'.
         """
-        now = time.time()
+        now = time.time() if self._fake_now is None else self._fake_now
         self._log_test_event(self._JOB_STATUS_START, test_name, now)
         self._log_test_event(self._JOB_STATUS_FAIL, test_name, now,
-                             'Test was not run')
+                             self._TEST_NOT_RUN_MSG)
         self._log_test_event(self._JOB_STATUS_END_FAIL, test_name, now)
 
     def _log_test_event(self, status_code, test_name, timestamp, message=''):
@@ -349,12 +368,13 @@ class tast(test.test):
 
         @param status_code: Event status code, e.g. 'END GOOD'. See
             client/common_lib/log.py for accepted values.
-        @param test_name: Tast test name, e.g. 'ui.ChromeSanity'.
+        @param test_name: Tast test name, e.g. 'ui.ChromeLogin'.
         @param timestamp: Event timestamp (as seconds since Unix epoch).
         @param message: Optional human-readable message.
         """
+        full_name = self._TEST_NAME_PREFIX + test_name
         # The TKO parser code chokes on floating-point timestamps.
-        entry = base_job.status_log_entry(status_code, None, test_name, message,
+        entry = base_job.status_log_entry(status_code, None, full_name, message,
                                           None, timestamp=int(timestamp))
         self.job.record_entry(entry, False)
 
