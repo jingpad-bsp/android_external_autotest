@@ -87,9 +87,6 @@ def make_parser():
         '--timeout_mins', default=90, type=int, action='store',
         help='Maximum minutes to wait for a suite to finish.')
     parser.add_argument(
-        '--json_dump', action='store_true', default=False,
-        help='Dump the output of run_suite to stdout.')
-    parser.add_argument(
         '--run_prod_code', action='store_true', default=False,
         help='Run the test code that lives in prod aka the test '
         'code currently on the lab servers.')
