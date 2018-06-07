@@ -115,11 +115,6 @@ def main():
     options = parse_args()
     setup_logging()
     result = _run_suite(options)
-
-    run_suite_common = autotest.load('site_utils.run_suite_common')
-    if options.json_dump:
-        run_suite_common.dump_json(result)
-
     logging.info('Will return from %s with status: %s',
                  os.path.basename(__file__), result.string_code)
 
