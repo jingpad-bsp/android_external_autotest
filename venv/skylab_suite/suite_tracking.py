@@ -8,7 +8,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import logging.config
+import logging
 
 from lucifer import autotest
 from skylab_suite import swarming_lib
@@ -28,6 +28,7 @@ def log_suite_results(suite_name, suite_handler):
                       'are not parsed because they may still run.'), suite_name)
         return return_code
 
+    logging.info('################# SUITE REPORTING #################')
     logging.info('Suite Job %s %s', suite_name, suite_state)
     _log_test_results(test_results)
 
@@ -36,7 +37,31 @@ def log_suite_results(suite_name, suite_handler):
                  swarming_lib.get_task_link(suite_handler.suite_id))
     _log_test_links(test_results)
 
+    _log_buildbot_links(suite_name, suite_handler.suite_id, test_results)
+
     return return_code
+
+
+def _log_buildbot_links(suite_name, suite_id, test_results):
+    logging.info('Links for buildbot:')
+    annotations = autotest.chromite_load('buildbot_annotations')
+    reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
+    print(annotations.StepLink(
+            'Link to suite: %s' % suite_name,
+            swarming_lib.get_task_link(suite_id)))
+
+    for result in test_results:
+        if result['state'] != swarming_lib.TASK_COMPLETED_SUCCESS:
+          show_text = '[{prefix}]: {anchor}: {info}'.format(
+                  prefix='Test-logs',
+                  anchor=result['test_name'],
+                  info='')
+          print(annotations.StepLink(
+                  show_text,
+                  swarming_lib.get_task_link(result['task_ids'][0])))
+          print(annotations.StepLink(
+                  '[Test-History]: %s' % result['test_name'],
+                  reporting_utils.link_test_history(result['test_name'])))
 
 
 def _log_test_results(test_results):
