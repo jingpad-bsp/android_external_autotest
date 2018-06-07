@@ -117,6 +117,7 @@ def main():
     result = _run_suite(options)
     logging.info('Will return from %s with status: %s',
                  os.path.basename(__file__), result.string_code)
+    return result.return_code
 
 
 if __name__ == "__main__":
