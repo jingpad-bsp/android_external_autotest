@@ -51,7 +51,8 @@ def _log_buildbot_links(suite_name, suite_id, test_results):
             swarming_lib.get_task_link(suite_id)))
 
     for result in test_results:
-        if result['state'] != swarming_lib.TASK_COMPLETED_SUCCESS:
+        if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
+                                   swarming_lib.TASK_RUNNING]:
           show_text = '[{prefix}]: {anchor}: {info}'.format(
                   prefix='Test-logs',
                   anchor=result['test_name'],
