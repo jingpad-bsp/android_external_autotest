@@ -12,6 +12,7 @@ import os
 import sys
 
 import logging
+import logging.config
 
 from lucifer import autotest
 from skylab_suite import cros_suite
