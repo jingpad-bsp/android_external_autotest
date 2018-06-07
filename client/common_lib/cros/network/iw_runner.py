@@ -75,7 +75,12 @@ IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
 IW_LINK_KEY_FREQUENCY = 'freq'
 IW_LINK_KEY_SIGNAL = 'signal'
 IW_LINK_KEY_RX_BITRATE = 'rx bitrate'
+IW_LINK_KEY_RX_DROPS = 'rx drop misc'
+IW_LINK_KEY_RX_PACKETS = 'rx packets'
 IW_LINK_KEY_TX_BITRATE = 'tx bitrate'
+IW_LINK_KEY_TX_FAILURES = 'tx failed'
+IW_LINK_KEY_TX_PACKETS = 'tx packets'
+IW_LINK_KEY_TX_RETRIES = 'tx retries'
 IW_LOCAL_EVENT_LOG_FILE = './debug/iw_event_%d.log'
 
 
@@ -355,21 +360,47 @@ class IwRunner(object):
         parts = re.split(r'^Station ', result.stdout, flags=re.MULTILINE)[1:]
         peer_list_raw = ['Station ' + x for x in parts]
         parsed_peer_info = []
+
         for peer in peer_list_raw:
             peer_link_keys = _get_all_link_keys(peer)
-            rssi_str = peer_link_keys[IW_LINK_KEY_SIGNAL]
-            tx_bitrate = peer_link_keys.get(IW_LINK_KEY_TX_BITRATE)
-            # Station may not have rx_bitrate in station dump
-            rx_bitrate = peer_link_keys.get(IW_LINK_KEY_RX_BITRATE)
+            rssi_str = peer_link_keys.get(IW_LINK_KEY_SIGNAL, '0')
             rssi_int = int(rssi_str.split()[0])
+
+            tx_bitrate = peer_link_keys.get(IW_LINK_KEY_TX_BITRATE, '0')
+            tx_failures = int(peer_link_keys.get(IW_LINK_KEY_TX_FAILURES, 0))
+            tx_packets = int(peer_link_keys.get(IW_LINK_KEY_TX_PACKETS, 0))
+            tx_retries = int(peer_link_keys.get(IW_LINK_KEY_TX_RETRIES, 0))
+
+            rx_bitrate = peer_link_keys.get(IW_LINK_KEY_RX_BITRATE, '0')
+            rx_drops = int(peer_link_keys.get(IW_LINK_KEY_RX_DROPS, 0))
+            rx_packets = int(peer_link_keys.get(IW_LINK_KEY_RX_PACKETS, 0))
+
             mac = _extract_bssid(link_information=peer,
                                  interface_name=interface,
                                  station_dump=True)
-            parsed_peer_info.append({'rssi_int': rssi_int,
-                                     'rssi_str': rssi_str,
-                                     'tx_bitrate': tx_bitrate,
-                                     'rx_bitrate': rx_bitrate,
-                                     'mac': mac})
+
+            # If any of these are missing, they will be None
+            peer_info = {'rssi_int': rssi_int,
+                         'rssi_str': rssi_str,
+                         'tx_bitrate': tx_bitrate,
+                         'tx_failures': tx_failures,
+                         'tx_packets': tx_packets,
+                         'tx_retries': tx_retries,
+                         'rx_bitrate': rx_bitrate,
+                         'rx_drops': rx_drops,
+                         'rx_packets': rx_packets,
+                         'mac': mac}
+
+            # don't evaluate if tx_packets 0
+            if tx_packets:
+                peer_info['tx_retry_rate'] = tx_retries / float(tx_packets)
+                peer_info['tx_failure_rate'] =  tx_failures / float(tx_packets)
+
+            # don't evaluate if rx_packets is 0
+            if rx_packets:
+                peer_info['rx_drop_rate'] = rx_drops / float(rx_packets)
+
+            parsed_peer_info.append(peer_info)
         return sorted(parsed_peer_info, key=operator.itemgetter('mac'))
 
 
