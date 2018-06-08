@@ -53,13 +53,17 @@ class Cr50Test(FirmwareTest):
             self.cr50.testlab_is_on()) and not self.ccd_lockout
         self.original_ccd_level = self.cr50.get_ccd_level()
         self.original_ccd_settings = self.cr50.get_cap_dict()
+
+        # Clear the TPM owner so the FWMP can't disable CCD.
+        self.host = host
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+
         if self.can_set_ccd_level:
             # Lock cr50 so the console will be restricted
             self.cr50.set_ccd_level('lock')
         elif self.original_ccd_level != 'lock':
             raise error.TestNAError('Lock the console before running cr50 test')
 
-        self.host = host
         self._save_original_state()
         # We successfully saved the device state
         self._saved_state |= self.INITIAL_STATE

@@ -1069,6 +1069,7 @@ class host_rename(host):
                             host, MIGRATED_HOST_SUFFIX)
 
                 if not self.dryrun:
+                    # TODO(crbug.com/850737): delete and abort HQE.
                     data = {'hostname': new_hostname}
                     self.execute_rpc('modify_host', item=host, id=host, **data)
                 successes.append((host, new_hostname))
@@ -1144,15 +1145,31 @@ class host_migrate(action_common.atest_list, host):
         return (options, leftover)
 
 
-    def execute(self):
-        """Execute 'atest host migrate'."""
-        hostnames = self.hosts
+    def _remove_invalid_hostnames(self, hostnames, log_failure=False):
+        """Remove hostnames with MIGRATED_HOST_SUFFIX.
+
+        @param hostnames: A list of hostnames.
+        @param log_failure: Bool indicating whether to log invalid hostsnames.
+
+        @return A list of valid hostnames.
+        """
+        invalid_hostnames = set()
         for hostname in hostnames:
             if hostname.endswith(MIGRATED_HOST_SUFFIX):
-                self.failure('Cannot migrate host with suffix "%s" %s.' %
-                             (MIGRATED_HOST_SUFFIX, hostname),
-                             item=hostname, what_failed='Failed to rename')
-                hostnames.remove(hostname)
+                if log_failure:
+                    self.failure('Cannot migrate host with suffix "%s" %s.' %
+                                 (MIGRATED_HOST_SUFFIX, hostname),
+                                 item=hostname, what_failed='Failed to rename')
+                invalid_hostnames.add(hostname)
+
+        hostnames = list(set(hostnames) - invalid_hostnames)
+
+        return hostnames
+
+
+    def execute(self):
+        """Execute 'atest host migrate'."""
+        hostnames = self._remove_invalid_hostnames(self.hosts, log_failure=True)
 
         filters = {}
         check_results = {}
@@ -1166,6 +1183,11 @@ class host_migrate(action_common.atest_list, host):
                         _add_hostname_suffix(h, MIGRATED_HOST_SUFFIX)
                         for h in hostnames]
                 filters['hostname__in'] = hostnames_with_suffix
+        else:
+            # TODO(nxia): add exclude_filter {'hostname__endswith':
+            # MIGRATED_HOST_SUFFIX} for --migration
+            if self.rollback:
+                filters['hostname__endswith'] = MIGRATED_HOST_SUFFIX
 
         labels = []
         if self.model:
@@ -1184,6 +1206,13 @@ class host_migrate(action_common.atest_list, host):
         results = super(host_migrate, self).execute(
                 op='get_hosts', filters=filters, check_results=check_results)
         hostnames = [h['hostname'] for h in results]
+
+        if self.migration:
+            hostnames = self._remove_invalid_hostnames(hostnames)
+        else:
+            # rollback
+            hostnames = [_remove_hostname_suffix(h, MIGRATED_HOST_SUFFIX)
+                         for h in hostnames]
 
         return self.execute_skylab_migration(hostnames)
 
@@ -1230,17 +1259,17 @@ class host_migrate(action_common.atest_list, host):
             device_hostnames = [str(d.common.hostname) for d in all_devices]
             message = (
                 'Migration: move %s hosts into skylab_inventory.\n\n'
-                'Please run command:\n'
+                'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-migration %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
         else:
             # rollback
             prod_devices = device.move_devices(
                     skylab_lab, prod_lab, 'duts', environment='prod',
-                    label_map=label_map, hostnames=self.hosts)
+                    label_map=label_map, hostnames=hostnames)
             staging_devices = device.move_devices(
                     staging_lab, skylab_lab, 'duts', environment='staging',
-                    label_map=label_map, hostnames=self.hosts)
+                    label_map=label_map, hostnames=hostnames)
 
             all_devices = prod_devices + staging_devices
             # Hostnames in afe_hosts tabel.
@@ -1249,7 +1278,7 @@ class host_migrate(action_common.atest_list, host):
                                 for d in all_devices]
             message = (
                 'Rollback: remove %s hosts from skylab_inventory.\n\n'
-                'Please run command:\n'
+                'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-rollback %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
 

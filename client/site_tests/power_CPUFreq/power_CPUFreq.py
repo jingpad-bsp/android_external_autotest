@@ -2,12 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, logging, os
+import glob
+import logging
+import os
+import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
 SYSFS_CPUQUIET_ENABLE = '/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable'
 SYSFS_INTEL_PSTATE_PATH = '/sys/devices/system/cpu/intel_pstate'
+
 
 class power_CPUFreq(test.test):
     version = 1
@@ -26,7 +30,7 @@ class power_CPUFreq(test.test):
 
         cpufreq_path = '/sys/devices/system/cpu/cpu*/cpufreq'
 
-        dirs  = glob.glob(cpufreq_path)
+        dirs = glob.glob(cpufreq_path)
         if not dirs:
             raise error.TestFail('cpufreq not supported')
 
@@ -48,11 +52,11 @@ class power_CPUFreq(test.test):
             else:
                 raise exception
 
-        self.write_perf_keyval(keyvals);
+        self.write_perf_keyval(keyvals)
 
     def test_cores_in_series(self, dirs):
-        for dir in dirs:
-            cpu = cpufreq(dir)
+        for dirname in dirs:
+            cpu = cpufreq(dirname)
 
             if 'userspace' not in cpu.get_available_governors():
                 raise error.TestError('userspace governor not supported')
@@ -71,7 +75,16 @@ class power_CPUFreq(test.test):
             # cycle through all available frequencies
             for freq in available_frequencies:
                 cpu.set_frequency(freq)
-                if freq != cpu.get_current_frequency():
+                # crbug.com/848309 : older kernels have race between setting
+                # governor and access to setting frequency so add a retry
+                try:
+                    cur_freq = cpu.get_current_frequency()
+                except IOError:
+                    logging.warn('Frequency setting failed.  Retrying once.')
+                    time.sleep(.1)
+                    cur_freq = cpu.get_current_frequency()
+
+                if freq != cur_freq:
                     cpu.restore_state()
                     raise error.TestFail('Unable to set frequency')
 
@@ -79,7 +92,7 @@ class power_CPUFreq(test.test):
             cpu.restore_state()
 
     def test_cores_in_parallel(self, dirs):
-        cpus = [cpufreq(dir) for dir in dirs]
+        cpus = [cpufreq(dirname) for dirname in dirs]
         cpu0 = cpus[0]
 
         # Use the first CPU's frequencies for all CPUs.  Assume that they are
@@ -115,20 +128,21 @@ class power_CPUFreq(test.test):
     def cleanup(self):
         # Restore the original setting if system has CPUQuiet feature
         if os.path.exists(SYSFS_CPUQUIET_ENABLE):
-            utils.open_write_close(
-                SYSFS_CPUQUIET_ENABLE, self.is_cpuquiet_enabled)
+            utils.open_write_close(SYSFS_CPUQUIET_ENABLE,
+                                   self.is_cpuquiet_enabled)
+
 
 class cpufreq(object):
+
     def __init__(self, path):
         self.__base_path = path
-        self.__save_files_list = ['scaling_max_freq', 'scaling_min_freq',
-                                  'scaling_governor']
-
+        self.__save_files_list = [
+            'scaling_max_freq', 'scaling_min_freq', 'scaling_governor'
+        ]
 
     def __write_file(self, file_name, data):
         path = os.path.join(self.__base_path, file_name)
         utils.open_write_close(path, data)
-
 
     def __read_file(self, file_name):
         path = os.path.join(self.__base_path, file_name)
@@ -137,64 +151,58 @@ class cpufreq(object):
         f.close()
         return data
 
-
     def save_state(self):
         logging.info('saving state:')
-        for file in self.__save_files_list:
-            data = self.__read_file(file)
-            setattr(self, file, data)
-            logging.info(file + ': '  + data)
-
+        for fname in self.__save_files_list:
+            data = self.__read_file(fname)
+            setattr(self, fname, data)
+            logging.info(fname + ': ' + data)
 
     def restore_state(self):
         logging.info('restoring state:')
-        for file in self.__save_files_list:
+        for fname in self.__save_files_list:
             # Sometimes a newline gets appended to a data string and it throws
             # an error when being written to a sysfs file.  Call strip() to
             # eliminateextra whitespace characters so it can be written cleanly
             # to the file.
-            data = getattr(self, file).strip()
-            logging.info(file + ': '  + data)
-            self.__write_file(file, data)
-
+            data = getattr(self, fname).strip()
+            logging.info(fname + ': ' + data)
+            self.__write_file(fname, data)
 
     def get_available_governors(self):
         governors = self.__read_file('scaling_available_governors')
-        logging.info('available governors: %s' % governors)
+        logging.info('available governors: %s', governors)
         return governors.split()
-
 
     def get_current_governor(self):
         governor = self.__read_file('scaling_governor')
-        logging.info('current governor: %s' % governor)
+        logging.info('current governor: %s', governor)
         return governor.split()[0]
 
-
     def set_governor(self, governor):
-        logging.info('setting governor to %s' % governor)
+        logging.info('setting governor to %s', governor)
         self.__write_file('scaling_governor', governor)
-
 
     def get_available_frequencies(self):
         frequencies = self.__read_file('scaling_available_frequencies')
-        logging.info('available frequencies: %s' % frequencies)
+        logging.info('available frequencies: %s', frequencies)
         return [int(i) for i in frequencies.split()]
-
 
     def get_current_frequency(self):
         freq = int(self.__read_file('scaling_cur_freq'))
-        logging.info('current frequency: %s' % freq)
+        logging.info('current frequency: %s', freq)
         return freq
 
-
     def set_frequency(self, frequency):
-        logging.info('setting frequency to %d' % frequency)
+        logging.info('setting frequency to %d', frequency)
         if frequency >= self.get_current_frequency():
-            file_list = ['scaling_max_freq', 'scaling_min_freq',
-                         'scaling_setspeed']
+            file_list = [
+                'scaling_max_freq', 'scaling_min_freq', 'scaling_setspeed'
+            ]
         else:
-            file_list = ['scaling_min_freq', 'scaling_max_freq',
-                         'scaling_setspeed']
+            file_list = [
+                'scaling_min_freq', 'scaling_max_freq', 'scaling_setspeed'
+            ]
 
-        for file in file_list:
-            self.__write_file(file, str(frequency))
+        for fname in file_list:
+            self.__write_file(fname, str(frequency))

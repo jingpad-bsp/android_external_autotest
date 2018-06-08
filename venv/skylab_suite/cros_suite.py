@@ -34,6 +34,7 @@ SuiteSpecs = collections.namedtuple(
                 'suite_file_name',
                 'test_source_build',
                 'suite_args',
+                'priority',
         ])
 
 SuiteHandlerSpecs = collections.namedtuple(
@@ -45,12 +46,24 @@ SuiteHandlerSpecs = collections.namedtuple(
                 'provision_num_required',
         ])
 
+TestHandlerSpecs= collections.namedtuple(
+        'TestHandlerSpecs',
+        [
+                'test_specs',
+                'remaining_retries',
+                'previous_retried_ids',
+        ])
+
 TestSpecs= collections.namedtuple(
         'TestSpecs',
         [
                 'test',
-                'remaining_retries',
-                'previous_retried_ids',
+                'priority',
+                'build',
+                'expiration_secs',
+                'grace_period_secs',
+                'execution_timeout_secs',
+                'io_timeout_secs',
         ])
 
 
@@ -73,6 +86,7 @@ class SuiteHandler(object):
 
         self._suite_id = None
         self._task_to_test_maps = {}
+        self.successfully_provisioned_duts = set()
 
         # It only maintains the swarming task of the final run of each
         # child task, i.e. it doesn't include failed swarming tasks of
@@ -83,6 +97,10 @@ class SuiteHandler(object):
         """Return whether to wait for a suite's result."""
         return self._wait
 
+    def is_provision(self):
+        """Return whether the suite handler is for provision suite."""
+        return self._provision_num_required > 0
+
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.
 
@@ -90,13 +108,13 @@ class SuiteHandler(object):
         """
         self._suite_id = suite_id
 
-    def add_test_by_task_id(self, task_id, test_specs):
+    def add_test_by_task_id(self, task_id, test_handler_specs):
         """Record a child test and its swarming task id.
 
         @param task_id: the swarming task id of a child test.
-        @param test_specs: a TestSpecs object.
+        @param test_handler_specs: a TestHandlerSpecs object.
         """
-        self._task_to_test_maps[task_id] = test_specs
+        self._task_to_test_maps[task_id] = test_handler_specs
 
     def get_test_by_task_id(self, task_id):
         """Get a child test by its swarming task id.
@@ -155,20 +173,8 @@ class SuiteHandler(object):
         self.retried_tasks = [t for t in all_tasks if self._should_retry(t)]
         logging.info('Found %d tests to be retried.', len(self.retried_tasks))
 
-    def is_finished_waiting(self):
-        """Check whether the suite should finish its waiting."""
-        if self._provision_num_required > 0:
-            successfully_completed_bots = set()
-            for t in self._active_child_tasks:
-                if (t['state'] == swarming_lib.TASK_COMPLETED and
-                    (not t['failure'])):
-                    successfully_completed_bots.add(t['bot_id'])
-
-            logging.info('Found %d successfully provisioned bots',
-                         len(successfully_completed_bots))
-            return (len(successfully_completed_bots) >=
-                    self._provision_num_required)
-
+    def _check_all_tasks_finished(self):
+        """Check whether all tasks are finished, including retried tasks."""
         finished_tasks = [t for t in self._active_child_tasks if
                           t['state'] in swarming_lib.TASK_FINISHED_STATUS]
         logging.info('%d/%d child tasks finished, %d got retried.',
@@ -176,6 +182,33 @@ class SuiteHandler(object):
                      len(self.retried_tasks))
         return (len(finished_tasks) == len(self._active_child_tasks)
                 and not self.retried_tasks)
+
+    def _set_successful_provisioned_duts(self):
+        """Set successfully provisioned duts."""
+        for t in self._active_child_tasks:
+            if (swarming_lib.get_task_final_state(t) ==
+                swarming_lib.TASK_COMPLETED_SUCCESS):
+                dut_name = swarming_lib.get_task_dut_name(t)
+                if dut_name is not None:
+                    self.successfully_provisioned_duts.add(dut_name)
+
+    def is_provision_successfully_finished(self):
+        """Check whether provision succeeds."""
+        logging.info('Found %d successfully provisioned duts, '
+                     'the minimum requirement is %d',
+                     len(self.successfully_provisioned_duts),
+                     self._provision_num_required)
+        return (len(self.successfully_provisioned_duts) >=
+                self._provision_num_required)
+
+    def is_finished_waiting(self):
+        """Check whether the suite should finish its waiting."""
+        if self.is_provision():
+            self._set_successful_provisioned_duts()
+            return (self.is_provision_successfully_finished() or
+                    self._check_all_tasks_finished())
+
+        return self._check_all_tasks_finished()
 
     def _should_retry(self, test_result):
         """Check whether a test should be retried.
@@ -215,12 +248,12 @@ class Suite(object):
         self._ds = None
 
         self.control_file = ''
-        self.tests = {}
+        self.tests_specs = []
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
         self.suite_name = specs.suite_name
         self.suite_file_name = specs.suite_file_name
-
+        self.priority = specs.priority
 
     @property
     def ds(self):
@@ -236,13 +269,23 @@ class Suite(object):
 
         return self._ds
 
-
     def prepare(self):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
         self._parse_suite_args()
-        self._find_tests()
+        tests = self._find_tests()
+        self._get_test_specs(tests)
 
+    def _get_test_specs(self, tests):
+        for test in tests:
+            self.tests_specs.append(TestSpecs(
+                    test=test,
+                    priority=self.priority,
+                    build=self.test_source_build,
+                    expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
+                    grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                    execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                    io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -252,7 +295,6 @@ class Suite(object):
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
         ds, _ = suite_common.stage_build_artifacts(self.test_source_build)
         self._ds = ds
-
 
     def _parse_suite_args(self):
         """Get the suite args.
@@ -265,7 +307,6 @@ class Suite(object):
         self.control_file = suite_common.get_control_file_by_build(
                 self.test_source_build, self.ds, self.suite_file_name)
 
-
     def _find_tests(self):
         """Fetch the child tests."""
         control_file_getter = autotest.load(
@@ -276,7 +317,7 @@ class Suite(object):
                 self.test_source_build, self.ds)
         tests = suite_common.retrieve_for_suite(
                 cf_getter, self.suite_name)
-        self.tests = suite_common.filter_tests(tests)
+        return suite_common.filter_tests(tests)
 
 
 class ProvisionSuite(Suite):
@@ -290,7 +331,6 @@ class ProvisionSuite(Suite):
         # DUT number for provision as 10 first.
         self._num_max = 2
 
-
     def _find_tests(self):
         """Fetch the child tests for provision suite."""
         control_file_getter = autotest.load(
@@ -301,4 +341,4 @@ class ProvisionSuite(Suite):
                 self.test_source_build, self.ds)
         dummy_test = suite_common.retrieve_control_data_for_test(
                 cf_getter, 'dummy_Pass')
-        self.tests = [dummy_test] * max(self._num_required, self._num_max)
+        return [dummy_test] * max(self._num_required, self._num_max)

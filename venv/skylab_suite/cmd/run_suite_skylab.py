@@ -12,6 +12,7 @@ import os
 import sys
 
 import logging
+import logging.config
 
 from lucifer import autotest
 from skylab_suite import cros_suite
@@ -55,6 +56,7 @@ def _parse_suite_specs(options):
             test_source_build=suite_common.get_test_source_build(
                     builds, test_source_build=options.test_source_build),
             suite_args=options.suite_args,
+            priority=options.priority,
     )
 
 
@@ -81,7 +83,9 @@ def _run_suite(options):
     suite_job.prepare()
     suite_handler_specs = _parse_suite_handler_specs(options)
     suite_handler = cros_suite.SuiteHandler(suite_handler_specs)
-    suite_runner.run(suite_job.tests, suite_handler, options.dry_run)
+    suite_runner.run(suite_job.tests_specs,
+                     suite_handler,
+                     options.dry_run)
     return_code = suite_tracking.log_suite_results(
             suite_job.suite_name, suite_handler)
 
@@ -111,13 +115,9 @@ def main():
     options = parse_args()
     setup_logging()
     result = _run_suite(options)
-
-    run_suite_common = autotest.load('site_utils.run_suite_common')
-    if options.json_dump:
-        run_suite_common.dump_json(result)
-
     logging.info('Will return from %s with status: %s',
                  os.path.basename(__file__), result.string_code)
+    return result.return_code
 
 
 if __name__ == "__main__":

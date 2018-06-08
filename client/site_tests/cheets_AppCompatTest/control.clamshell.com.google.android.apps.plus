@@ -4,18 +4,20 @@
 #
 
 AUTHOR = "dhaddock@"
-NAME = "cheets_AppCompat.clamshell.com.google.android.gm"
+NAME = "cheets_AppCompatTest.clamshell.com.google.android.apps.plus"
 PURPOSE = "Runs AppCompat's UIAutomator tests."
 ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-DEPENDENCIES = "arc, board:samus"
+DEPENDENCIES = "arc, board:eve"
 
 DOC = """
-This runs the AppCompat teams UI Automator tests.
+This test starts Android container, then kicks of the UIAutomator tests from
+the AppCompat team. It then saves logcat, bugreport, and screenshots to the
+resultsdir.
 """
 
-job.run_test('cheets_AppCompat', pkg_name='com.google.android.gm',
+job.run_test('cheets_AppCompatTest', pkg_name='com.google.android.apps.plus',
              touch_view_mode=False)

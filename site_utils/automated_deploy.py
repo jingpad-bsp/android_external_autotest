@@ -38,8 +38,6 @@ NOTIFY_GROUP = 'chromeos-infra-discuss@google.com'
 # CIPD packages whose prod refs should be updated.
 _CIPD_PACKAGES = (
         'chromiumos/infra/lucifer',
-        'chromiumos/infra/tast-cmd',
-        'chromiumos/infra/tast-remote-tests-cros',
 )
 
 
