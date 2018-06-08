@@ -79,6 +79,9 @@ _ANDROID_SDK_MAPPING = {
 # Bytes per Megabyte.
 _MB = 1024**2
 
+# Both UID and GID.
+_ANDROID_ROOT_UGID = 655360
+
 
 class RemoteProxy(object):
   """Proxy class to run command line on the remote test device."""
@@ -280,29 +283,6 @@ def _convert_images(simg2img, out, product, push_vendor_image,
     with ContainerImageEditor(mksquashfs_path, unsquashfs_path, system_raw_img,
                               '/', out, loglevel=loglevel) as e:
       file_contexts_path = e.file_contexts_path
-      if 'x86' in product:
-        logging.debug('Creating \'system/lib/arm\' dir and houdini symlinks '
-                      'in the system image')
-        # Create system/lib/arm dir
-        dir_name = os.path.join(e.tmp_dir_name, 'system/lib/arm')
-        logging.debug('Creating directory: %s', dir_name)
-        lib.util.check_call('mkdir', '-p', dir_name, sudo=True)
-        # Create a symlink: system/bin/houdini --> /vendor/bin/houdini
-        lib.util.check_call('ln', '-sf', '/vendor/bin/houdini',
-                            os.path.join(e.tmp_dir_name, 'system/bin/houdini'),
-                            sudo=True)
-        # Create a symlink:
-        # system/lib/libhoudini.so --> /vendor/lib/libhoudini.so
-        lib.util.check_call('ln', '-sf', '/vendor/lib/libhoudini.so',
-                            os.path.join(e.tmp_dir_name,
-                                         'system/lib/libhoudini.so'),
-                            sudo=True)
-
-      # TODO(b/76094710): Remove the system libdrm.so until we have a version
-      # compatible with the Chrome OS version.
-      for lib_path in ('system/lib/libdrm.so', 'system/lib64/libdrm.so'):
-        rm_path = os.path.join(e.tmp_dir_name, lib_path)
-        lib.util.check_call('rm', '-f', rm_path, sudo=True)
 
       # TODO(b/65117245): This needs to be part of the build.
       # Shift the UIDs/GIDs.
@@ -310,6 +290,37 @@ def _convert_images(simg2img, out, product, push_vendor_image,
         logging.info('Detected the UIDs/GIDs are not shifted in system.img. '
                      'Shifting...')
         lib.util.check_call(shift_uid_py_path, e.tmp_dir_name, sudo=True)
+
+      if 'x86' in product:
+        logging.debug('Creating \'system/lib/arm\' dir and houdini symlinks '
+                      'in the system image')
+        # Create system/lib/arm dir
+        system_lib_arm = os.path.join(e.tmp_dir_name, 'system/lib/arm')
+        logging.debug('Creating directory: %s', system_lib_arm)
+        lib.util.check_call('mkdir', '-p', system_lib_arm, sudo=True)
+
+        # Create a symlink: system/bin/houdini --> /vendor/bin/houdini
+        system_bin_houdini = os.path.join(e.tmp_dir_name, 'system/bin/houdini')
+        lib.util.check_call('ln', '-sf', '/vendor/bin/houdini',
+                            system_bin_houdini, sudo=True)
+        # Create a symlink:
+        # system/lib/libhoudini.so --> /vendor/lib/libhoudini.so
+        system_lib_libhoudini_so = os.path.join(e.tmp_dir_name,
+                                                'system/lib/libhoudini.so')
+        lib.util.check_call('ln', '-sf', '/vendor/lib/libhoudini.so',
+                            system_lib_libhoudini_so, sudo=True)
+
+        # Chown to shifted root ugid.
+        lib.util.check_call('chown',
+                            '%d:%d' % (_ANDROID_ROOT_UGID, _ANDROID_ROOT_UGID),
+                            '-h', system_lib_arm, system_bin_houdini,
+                            system_lib_libhoudini_so, sudo=True)
+
+      # TODO(b/76094710): Remove the system libdrm.so until we have a version
+      # compatible with the Chrome OS version.
+      for lib_path in ('system/lib/libdrm.so', 'system/lib64/libdrm.so'):
+        rm_path = os.path.join(e.tmp_dir_name, lib_path)
+        lib.util.check_call('rm', '-f', rm_path, sudo=True)
 
   result_large.append(system_raw_img)
 
@@ -1369,10 +1380,6 @@ def _resolve_args(args):
       not os.path.isfile(args.container_config)):
     sys.exit('The container config file %s does not exist' %
              args.container_config)
-  if ((args.added_build_properties or args.enable_assistant_prop) and
-      (args.use_prebuilt or args.prebuilt_file)):
-    sys.exit('Cannot use "add-build-property" or "enable-assistant-prop" with '
-             'prebuilt images')
 
 
 def _parse_args():
