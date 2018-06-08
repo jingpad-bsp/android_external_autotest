@@ -36,7 +36,7 @@ def main(args):
     logging.info('Starting chrome and logging in.')
     is_arc_available = utils.is_arc_available()
     arc_mode = arc_common.ARC_MODE_ENABLED if is_arc_available else None
-    with chrome.Chrome(arc_mode=arc_mode) as cr:
+    with chrome.Chrome(arc_mode=arc_mode, num_tries=1) as cr:
         # Check that the cryptohome is mounted.
         # is_vault_mounted throws an exception if it fails.
         logging.info('Checking mounted cryptohome.')
