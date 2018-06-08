@@ -17,7 +17,6 @@ This suite wraps the current GTS bundle for autotest.
 """
 
 import common
-from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 
@@ -41,7 +40,6 @@ def predicate(test):
 args_dict['name'] = NAME
 args_dict['job'] = job
 args_dict['add_experimental'] = True
-args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['predicate'] = predicate
 dynamic_suite.reimage_and_run(**args_dict)
 
