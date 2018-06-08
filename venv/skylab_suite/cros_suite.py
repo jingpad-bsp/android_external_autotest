@@ -334,10 +334,6 @@ class ProvisionSuite(Suite):
     def __init__(self, specs):
         super(ProvisionSuite, self).__init__(specs)
         self._num_required = specs.suite_args['num_required']
-        # TODO (xixuan): Ideally the dynamic_suite service is designed
-        # to be decoupled with any lab (RPC) calls. Here to set maximum
-        # DUT number for provision as 10 first.
-        self._num_max = 2
 
     def _find_tests(self):
         """Fetch the child tests for provision suite."""
@@ -349,4 +345,11 @@ class ProvisionSuite(Suite):
                 self.test_source_build, self.ds)
         dummy_test = suite_common.retrieve_control_data_for_test(
                 cf_getter, 'dummy_Pass')
-        return [dummy_test] * max(self._num_required, self._num_max)
+
+        bots_count = swarming_lib.query_bots_count({
+                'pool': swarming_lib.SKYLAB_DRONE_POOL,
+                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
+                'label-board': self.board})
+        available_duts_num = swarming_lib.get_idle_bots_count(bots_count)
+        logging.info('Get %d available DUTs for provision.', available_duts_num)
+        return [dummy_test] * max(self._num_required, available_duts_num)

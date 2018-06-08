@@ -9,11 +9,17 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import json
 import os
+import urllib
+
+from lucifer import autotest
 
 
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SWARMING_SERVER = 'chrome-swarming.appspot.com'
+SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
+
 TASK_COMPLETED = 'COMPLETED'
 TASK_COMPLETED_SUCCESS = 'COMPLETED (SUCCESS)'
 TASK_COMPLETED_FAILURE = 'COMPLETED (FAILURE)'
@@ -209,3 +215,29 @@ def get_task_dut_name(task):
             return dimension['value'][0]
 
     return None
+
+
+def query_bots_count(dimensions):
+    """Get bots count for given requirements.
+
+    @param dimensions: A dict of dimensions for swarming bots.
+
+    @return a dict, which contains counts for different status of bots.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    conditions = [('dimensions', '%s:%s' % (k, v))
+                  for k, v in dimensions.iteritems()]
+    swarming_cmd = basic_swarming_cmd + ['bots/count?%s' %
+                                         urllib.urlencode(conditions)]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)
+
+
+def get_idle_bots_count(outputs):
+    """Get the idle bots count.
+
+    @param outputs: The outputs of |query_bots_count|.
+    """
+    return (int(outputs['count']) - int(outputs['busy']) - int(outputs['dead'])
+            - int(outputs['quarantined']))
