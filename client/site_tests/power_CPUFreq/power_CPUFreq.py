@@ -5,6 +5,7 @@
 import glob
 import logging
 import os
+import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
@@ -74,7 +75,16 @@ class power_CPUFreq(test.test):
             # cycle through all available frequencies
             for freq in available_frequencies:
                 cpu.set_frequency(freq)
-                if freq != cpu.get_current_frequency():
+                # crbug.com/848309 : older kernels have race between setting
+                # governor and access to setting frequency so add a retry
+                try:
+                    cur_freq = cpu.get_current_frequency()
+                except IOError:
+                    logging.warn('Frequency setting failed.  Retrying once.')
+                    time.sleep(.1)
+                    cur_freq = cpu.get_current_frequency()
+
+                if freq != cur_freq:
                     cpu.restore_state()
                     raise error.TestFail('Unable to set frequency')
 
