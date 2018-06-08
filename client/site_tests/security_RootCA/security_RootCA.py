@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import pexpect
 
 
-DEFAULT_BASELINE = 'baseline'
+DEFAULT_BASELINE = 'baseline.json'
 
 FINGERPRINT_RE = re.compile(r'Fingerprint \(SHA1\):\n\s+(\b[:\w]+)\b')
 NSS_ISSUER_RE = re.compile(r'Object Token:(.+?)\s+C,.?,.?')
