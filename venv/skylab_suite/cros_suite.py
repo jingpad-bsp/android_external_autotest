@@ -35,6 +35,8 @@ SuiteSpecs = collections.namedtuple(
                 'test_source_build',
                 'suite_args',
                 'priority',
+                'board',
+                'pool',
         ])
 
 SuiteHandlerSpecs = collections.namedtuple(
@@ -59,6 +61,8 @@ TestSpecs= collections.namedtuple(
         [
                 'test',
                 'priority',
+                'board',
+                'pool',
                 'build',
                 'expiration_secs',
                 'grace_period_secs',
@@ -254,6 +258,8 @@ class Suite(object):
         self.suite_name = specs.suite_name
         self.suite_file_name = specs.suite_file_name
         self.priority = specs.priority
+        self.board = specs.board
+        self.pool = specs.pool
 
     @property
     def ds(self):
@@ -281,6 +287,8 @@ class Suite(object):
             self.tests_specs.append(TestSpecs(
                     test=test,
                     priority=self.priority,
+                    board=self.board,
+                    pool=self.pool,
                     build=self.test_source_build,
                     expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
