@@ -1069,6 +1069,7 @@ class host_rename(host):
                             host, MIGRATED_HOST_SUFFIX)
 
                 if not self.dryrun:
+                    # TODO(crbug.com/850737): delete and abort HQE.
                     data = {'hostname': new_hostname}
                     self.execute_rpc('modify_host', item=host, id=host, **data)
                 successes.append((host, new_hostname))
@@ -1258,7 +1259,7 @@ class host_migrate(action_common.atest_list, host):
             device_hostnames = [str(d.common.hostname) for d in all_devices]
             message = (
                 'Migration: move %s hosts into skylab_inventory.\n\n'
-                'Please run command:\n'
+                'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-migration %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
         else:
@@ -1277,7 +1278,7 @@ class host_migrate(action_common.atest_list, host):
                                 for d in all_devices]
             message = (
                 'Rollback: remove %s hosts from skylab_inventory.\n\n'
-                'Please run command:\n'
+                'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-rollback %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
 
