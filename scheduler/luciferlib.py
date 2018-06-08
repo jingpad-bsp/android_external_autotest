@@ -150,7 +150,6 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
             '--job-id', str(job.id),
             '--lucifer-level', 'STARTING',
             '--parsing-only',
-            '--autoserv-exit', str(autoserv_exit),
             '--results-dir', results_dir,
     ]
     if _get_gcp_creds():
