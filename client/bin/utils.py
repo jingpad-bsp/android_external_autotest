@@ -329,6 +329,7 @@ INTEL_UARCH_TABLE = {
     '06_56': 'Broadwell',
     '06_0D': 'Dothan',
     '06_5C': 'Goldmont',
+    '06_7A': 'Goldmont',
     '06_3C': 'Haswell',
     '06_45': 'Haswell',
     '06_46': 'Haswell',
