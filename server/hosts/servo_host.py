@@ -521,8 +521,6 @@ class ServoHost(ssh_host.SSHHost):
         @raises dev_server.DevServerException: If all the devservers are down.
         @raises site_utils.ParseBuildNameException: If the devserver returns
             an invalid build name.
-        @raises autoupdater.ChromiumOSError: If something goes wrong in the
-            checking update engine client status or applying an update.
         @raises AutoservRunError: If the update_engine_client isn't present on
             the host, and the host is a cros_host.
 

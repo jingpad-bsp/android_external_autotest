@@ -214,7 +214,7 @@ class TestAutoUpdater(mox.MoxTestBase):
         self.mox.ReplayAll()
         # No existing files, no URL, we should assert.
         self.assertRaises(
-                autoupdater.ChromiumOSError,
+                autoupdater.StatefulUpdateError,
                 updater.get_stateful_update_script)
         self.mox.VerifyAll()
 
