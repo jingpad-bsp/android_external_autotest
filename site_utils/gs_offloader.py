@@ -118,6 +118,8 @@ DEFAULT_CTS_DELTA_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'ctsdelta_results_server', default='')
 DEFAULT_CTS_DELTA_APFE_GSURI = global_config.global_config.get_config_value(
         'CROS', 'ctsdelta_apfe_server', default='')
+DEFAULT_CTS_BVT_APFE_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'ctsbvt_apfe_server', default='')
 
 # metadata type
 GS_OFFLOADER_SUCCESS_TYPE = 'gs_offloader_success'
@@ -389,11 +391,28 @@ def _upload_cts_testresult(dir_entry, multiprocessing):
                             (gts_v2_path, CTS_V2_RESULT_PATTERN)]:
             for path in glob.glob(result_path):
                 try:
-                    _upload_files(host, path, result_pattern, multiprocessing,
-                                  DEFAULT_CTS_RESULTS_GSURI, DEFAULT_CTS_APFE_GSURI)
+                    # CTS results from bvt-arc suites need to be only uploaded
+                    # to APFE from its designated gs bucket for early EDI
+                    # entries in APFE. These results need to copied only into
+                    # APFE bucket. Copying to results bucket is not required.
+                    if 'bvt-arc' in path:
+                        _upload_files(host, path, result_pattern,
+                                      multiprocessing,
+                                      None,
+                                      DEFAULT_CTS_BVT_APFE_GSURI)
+                        return
+                    # Non-bvt CTS results need to be uploaded to standard gs
+                    # buckets.
+                    _upload_files(host, path, result_pattern,
+                                  multiprocessing,
+                                  DEFAULT_CTS_RESULTS_GSURI,
+                                  DEFAULT_CTS_APFE_GSURI)
                     # TODO(rohitbm): make better comparison using regex.
+                    # plan_follower CTS results go to plan_follower specific
+                    # gs buckets apart from standard gs buckets.
                     if 'plan_follower' in path:
-                        _upload_files(host, path, result_pattern, multiprocessing,
+                        _upload_files(host, path, result_pattern,
+                                      multiprocessing,
                                       DEFAULT_CTS_DELTA_RESULTS_GSURI,
                                       DEFAULT_CTS_DELTA_APFE_GSURI)
                 except Exception as e:
@@ -421,7 +440,9 @@ def _is_valid_result(build, result_pattern, suite):
     # suite.
     result_patterns = [CTS_RESULT_PATTERN, CTS_V2_RESULT_PATTERN]
     if result_pattern in result_patterns and not (
-            suite.startswith('arc-cts') or suite.startswith('arc-gts') or
+            suite.startswith('arc-cts') or
+            suite.startswith('arc-gts') or
+            suite.startswith('bvt-arc') or
             suite.startswith('test_that_wrapper')):
         return False
 
@@ -473,24 +494,25 @@ def _upload_files(host, path, result_pattern, multiprocessing,
         logging.debug('%s is a CTS Test collector Autotest test run.', package)
         logging.debug('Skipping CTS results upload to APFE gs:// bucket.')
 
-    # Path: bucket/cheets_CTS.*/job_id_timestamp/
-    # or bucket/cheets_GTS.*/job_id_timestamp/
-    test_result_gs_path = os.path.join(
-            result_gs_bucket, package, job_id + '_' + timestamp) + '/'
+    if result_gs_bucket:
+        # Path: bucket/cheets_CTS.*/job_id_timestamp/
+        # or bucket/cheets_GTS.*/job_id_timestamp/
+        test_result_gs_path = os.path.join(
+                result_gs_bucket, package, job_id + '_' + timestamp) + '/'
 
-    for test_result_file in glob.glob(os.path.join(path, result_pattern)):
-        # gzip test_result_file(testResult.xml/test_result.xml)
+        for test_result_file in glob.glob(os.path.join(path, result_pattern)):
+            # gzip test_result_file(testResult.xml/test_result.xml)
 
-        test_result_file_gz =  '%s.gz' % test_result_file
-        with open(test_result_file, 'r') as f_in, (
-                gzip.open(test_result_file_gz, 'w')) as f_out:
-            shutil.copyfileobj(f_in, f_out)
-        utils.run(' '.join(_get_cmd_list(
-                multiprocessing, test_result_file_gz, test_result_gs_path)))
-        logging.debug('Zip and upload %s to %s',
-                      test_result_file_gz, test_result_gs_path)
-        # Remove test_result_file_gz(testResult.xml.gz/test_result.xml.gz)
-        os.remove(test_result_file_gz)
+            test_result_file_gz =  '%s.gz' % test_result_file
+            with open(test_result_file, 'r') as f_in, (
+                    gzip.open(test_result_file_gz, 'w')) as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            utils.run(' '.join(_get_cmd_list(
+                    multiprocessing, test_result_file_gz, test_result_gs_path)))
+            logging.debug('Zip and upload %s to %s',
+                          test_result_file_gz, test_result_gs_path)
+            # Remove test_result_file_gz(testResult.xml.gz/test_result.xml.gz)
+            os.remove(test_result_file_gz)
 
 
 def _emit_gs_returncode_metric(returncode):
