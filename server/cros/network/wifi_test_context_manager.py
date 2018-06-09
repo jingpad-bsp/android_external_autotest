@@ -209,10 +209,8 @@ class WiFiTestContextManager(object):
                         self.CMDLINE_ATTEN_ADDR, None),
                 allow_failure=True)
         if attenuator_addr and ping_helper.simple_ping(attenuator_addr):
-            host = hosts.SSHHost(attenuator_addr, port=22)
-            hosts.send_creation_metric(host,
-                                       context='wifi_test_context_manager')
-            self._attenuator = attenuator_controller.AttenuatorController(host)
+            self._attenuator = attenuator_controller.AttenuatorController(
+                    attenuator_addr)
         # Set up a clean context to conduct WiFi tests in.
         self.client.shill.init_test_network_state()
         if self.CMDLINE_CLIENT_PACKET_CAPTURES in self._cmdline_args:
