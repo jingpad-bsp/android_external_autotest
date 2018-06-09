@@ -1060,6 +1060,7 @@ class host_rename(host):
                               item=host, what_failed='Failed to rename')
                 continue
             try:
+                host_id = self.host_ids[host]
                 if self.for_migration:
                     new_hostname = _add_hostname_suffix(
                             host, MIGRATED_HOST_SUFFIX)
@@ -1071,7 +1072,8 @@ class host_rename(host):
                 if not self.dryrun:
                     # TODO(crbug.com/850737): delete and abort HQE.
                     data = {'hostname': new_hostname}
-                    self.execute_rpc('modify_host', item=host, id=host, **data)
+                    self.execute_rpc('modify_host', item=host, id=host_id,
+                                     **data)
                 successes.append((host, new_hostname))
             except InvalidHostnameError as e:
                 self.failure('Cannot rename host %s: %s' % (host, e), item=host,
