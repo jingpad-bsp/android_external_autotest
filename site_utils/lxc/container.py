@@ -126,6 +126,8 @@ class Container(object):
     The attributes available are defined in ATTRIBUTES constant.
     """
 
+    _LXC_VERSION = None
+
     def __init__(self, container_path, name, attribute_values, src=None,
                  snapshot=False):
         """Initialize an object of LXC container with given attribute values.
@@ -176,6 +178,9 @@ class Container(object):
                 logging.exception('Error loading ID for container %s:',
                                   self.name)
                 self._id = None
+
+        if not self._LXC_VERSION:
+          self._LXC_VERSION = lxc_utils.get_lxc_version()
 
 
     @classmethod
@@ -290,8 +295,12 @@ class Container(object):
 
         @return: Path to the rootfs of the container.
         """
+        lxc_rootfs_config_name = 'lxc.rootfs'
+        # Check to see if the major lxc version is 3 or greater
+        if self._LXC_VERSION[0] >= 3:
+          lxc_rootfs_config_name = 'lxc.rootfs.path'
         if not self._rootfs:
-            lxc_rootfs = self._get_lxc_config('lxc.rootfs')[0]
+            lxc_rootfs = self._get_lxc_config(lxc_rootfs_config_name)[0]
             cloned_from_snapshot = ':' in lxc_rootfs
             if cloned_from_snapshot:
                 self._rootfs = lxc_rootfs.split(':')[-1]

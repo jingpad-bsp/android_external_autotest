@@ -612,7 +612,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
                 first when the dut is already installed with the same version.
-        @raises autoupdater.ChromiumOSError
 
         @returns A tuple of (image_name, host_attributes).
                 image_name is the name of image installed, e.g.,
@@ -728,7 +727,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @param update_url: The url used to identify the update image on the
                 devserver.
-        @raises autoupdater.ChromiumOSError
 
         @returns A tuple of (image_name, host_attributes).
                 image_name is the name of image installed, e.g.,
