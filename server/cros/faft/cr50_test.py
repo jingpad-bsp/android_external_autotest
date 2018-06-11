@@ -324,6 +324,9 @@ class Cr50Test(FirmwareTest):
         """Reset the ccd lock and capability states"""
         current_settings = self.cr50.get_cap_dict()
         if self.original_ccd_settings != current_settings:
+            if not self.can_set_ccd_level:
+                raise error.TestError("CCD state has changed, but we can't "
+                        "restore it")
             self.servo.set_nocheck('cr50_testlab', 'open')
             self.cr50.set_ccd_level('open')
             self.cr50.set_caps(self.original_ccd_settings)
@@ -331,8 +334,7 @@ class Cr50Test(FirmwareTest):
         # First try using testlab open to open the device
         if self.cr50.testlab_is_on() and self.original_ccd_level == 'open':
             self.servo.set_nocheck('cr50_testlab', 'open')
-        if (self.can_set_ccd_level and
-            self.original_ccd_level != self.cr50.get_ccd_level()):
+        if self.original_ccd_level != self.cr50.get_ccd_level():
             self.cr50.set_ccd_level(self.original_ccd_level)
 
 
