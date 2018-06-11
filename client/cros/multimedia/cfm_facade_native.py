@@ -131,19 +131,18 @@ class CFMFacadeNative(object):
         """
         @return The path to the lastest packaged app log file, if any.
         """
-        return max(self.get_all_pa_logs_file_path(), key=os.path.getctime)
+        try:
+            return max(self.get_all_pa_logs_file_path(), key=os.path.getctime)
+        except ValueError as e:
+            logging.exception('Error while searching for packaged app logs.')
+            return None
 
 
     def get_all_pa_logs_file_path(self):
         """
         @return The paths to the all packaged app log files, if any.
         """
-        try:
-            return glob.glob(self._PA_LOGS_PATTERN)
-        except ValueError as e:
-            logging.exception('Error while searching for packaged app logs.')
-            return None
-
+        return glob.iglob(self._PA_LOGS_PATTERN)
 
     def reboot_device_with_chrome_api(self):
         """Reboot device using chrome runtime API."""
@@ -542,4 +541,3 @@ class CFMFacadeNative(object):
                     if type(v) == int:
                         media[k] = float(v)
         return data_points
-
