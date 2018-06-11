@@ -107,7 +107,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         logging.info(stdout)
         # rma_reset generates authcodes with the test key. MP images should use
         # prod keys. Make sure prod signed MP images aren't using the test key.
-        self.prod_keyid = 'Unsupported KeyID' in stdout
+        self.prod_keyid = 'Unsupported' in stdout
         if self.is_prod_mp and not self.prod_keyid:
             raise error.TestFail('MP image cannot use test key')
         return re.search('Authcode: +(\S+)', stdout).group(1), self.prod_keyid
