@@ -65,6 +65,11 @@ class firmware_Cr50RMAOpen(Cr50Test):
         if self.host.run('rma_reset -h', ignore_status=True).exit_status == 127:
             raise error.TestNAError('Cannot test RMA open without rma_reset')
 
+        # Attempt to disable factory mode. If factory mode isn't enabled this
+        # will fail. Ignore the exit status no matter what. Init will make sure
+        # all capabilities are set to default before running the test.
+        logging.info(cr50_utils.GSCTool(self.host, ['-a', '-F', 'disable'],
+                ignore_status=True))
         # Disable all capabilities at the start of the test. Go ahead and enable
         # testlab mode if it isn't enabled.
         self.cr50.fast_open(enable_testlab=True)
@@ -150,7 +155,10 @@ class firmware_Cr50RMAOpen(Cr50Test):
         Raises:
             error.TestFail if there is an unexpected gsctool response
         """
-        cmd = 'disable' if disable else authcode
+        if disable:
+            cmd = '-a -F disable'
+        else:
+            cmd = '-a -r ' + authcode
         get_challenge = not (authcode or disable)
 
         expected_stderr = ''
@@ -162,7 +170,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
             else:
                 expected_stderr = self.LIMIT_AP
 
-        result = cr50_utils.RMAOpen(self.host, cmd,
+        result = cr50_utils.GSCTool(self.host, cmd.split(),
                 ignore_status=expected_stderr)
         logging.info(result)
         # Various connection issues result in warnings. If there is a real issue
