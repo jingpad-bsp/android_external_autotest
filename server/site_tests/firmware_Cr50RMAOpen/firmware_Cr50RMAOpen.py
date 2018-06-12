@@ -31,7 +31,10 @@ class firmware_Cr50RMAOpen(Cr50Test):
     # Various Error Messages from the command line and AP RMA failures
     MISMATCH_CLI = 'Auth code does not match.'
     MISMATCH_AP = 'rma unlock failed, code 6'
-    LIMIT_CLI = 'RMA Auth error 0x504'
+    # Starting in 0.4.8 cr50 doesn't print "RMA Auth error 0x504". It doesn't
+    # print anything. Once prod and prepvt versions do this remove the error
+    # code from the test.
+    LIMIT_CLI = '(RMA Auth error 0x504|rma_auth\s+>)'
     LIMIT_AP = 'error 4'
     ERR_DISABLE_AP = 'error 7'
     DISABLE_WARNING = ('mux_client_request_session: read from master failed: '
@@ -138,13 +141,13 @@ class firmware_Cr50RMAOpen(Cr50Test):
         """
         cmd = 'rma_auth ' + ('disable' if disable else authcode)
         get_challenge = not (authcode or disable)
-        resp = 'rma_auth(.*)>'
+        resp = 'rma_auth(.*generated challenge:)?(.*)>'
         if expected_exit_status:
             resp = self.LIMIT_CLI if get_challenge else self.MISMATCH_CLI
 
         result = self.cr50.send_command_get_output(cmd, [resp])
         logging.info(result)
-        return (self.parse_challenge(result[0][1]) if get_challenge else
+        return (self.parse_challenge(result[0][-1]) if get_challenge else
                 result[0])
 
 
