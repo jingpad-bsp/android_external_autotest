@@ -83,13 +83,14 @@ SYMBOLIC_BID_LENGTH = 4
 
 gsctool = argparse.ArgumentParser()
 gsctool.add_argument('-a', '--any', dest='universal', action='store_true')
-# Send a rma command
-gsctool.add_argument('-r', '--rma_auth', dest='rma_auth', action='store_true')
 # use /dev/tpm0 to send the command
 gsctool.add_argument('-s', '--systemdev', dest='systemdev', action='store_true')
-# fwver, binver, and board id are used to get information about cr50 or an
-# image.
+# Any command used for something other than updating. These commands should
+# never timeout because they forced cr50 to reboot. They should all just
+# return information about cr50 and should only have a nonzero exit status if
+# something went wrong.
 gsctool.add_argument('-b', '--binvers', '-f', '--fwver', '-i', '--board_id',
+                     '-r', '--rma_auth', '-F', '--factory',
                      dest='info_cmd', action='store_true')
 # upstart and post_reset will post resets instead of rebooting immediately
 gsctool.add_argument('-u', '--upstart', '-p', '--post_reset', dest='post_reset',
