@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
+import logging.config
 
 from lucifer import autotest
 from skylab_suite import swarming_lib
@@ -137,3 +138,24 @@ def _log_test_links(child_test_results):
             retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
             logging.info('%s  %s', result['test_name'] + retry_suffix,
                          swarming_lib.get_task_link(task_id))
+
+
+def setup_logging():
+    """Setup the logging for skylab suite."""
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'default': {'format': '%(asctime)s %(levelname)-5s| %(message)s'},
+        },
+        'handlers': {
+            'screen': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+            },
+        },
+        'root': {
+            'level': 'INFO',
+            'handlers': ['screen'],
+        },
+        'disable_existing_loggers': False,
+    })
