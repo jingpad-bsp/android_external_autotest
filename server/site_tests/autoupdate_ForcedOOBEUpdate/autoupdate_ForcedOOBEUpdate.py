@@ -30,6 +30,9 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         Repeated check status of update. It should move from DOWNLOADING to
         FINALIZING to COMPLETE (then reboot) to IDLE.
         """
+        # 20 minute timeout.
+        timeout_minutes = 20
+        timeout = time.time() + 60 * timeout_minutes
         while True:
             status = self._get_update_engine_status(timeout=10)
 
@@ -38,6 +41,9 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
                 if self._UPDATE_STATUS_IDLE == status[self._CURRENT_OP]:
                     break
             time.sleep(1)
+            if time.time() > timeout:
+                raise error.TestFail('OOBE update did not finish in %d '
+                                     'minutes.' % timeout_minutes)
 
 
     def run_once(self, full_payload=True, cellular=False,

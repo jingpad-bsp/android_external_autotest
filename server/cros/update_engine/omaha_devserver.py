@@ -329,7 +329,8 @@ class OmahaDevserver(object):
 
         # 4 rootfs and 1 post reboot
         expected_events_count = 5
-
+        # 10 minute timeout.
+        timeout = time.time() + 60 * 10
         while True:
             try:
                 conn = urllib2.urlopen(omaha_hostlog_url)
@@ -350,6 +351,8 @@ class OmahaDevserver(object):
                     return hostlog
                 else:
                     time.sleep(5)
+                    if time.time() > timeout:
+                        raise error.TestError('Timed out getting hostlog.')
                     continue
             else:
                 return hostlog
