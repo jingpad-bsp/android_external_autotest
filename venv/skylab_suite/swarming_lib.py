@@ -32,6 +32,15 @@ TASK_FAILED_STATUS = [TASK_EXPIRED,
 DEFAULT_EXPIRATION_SECS = 30
 DEFAULT_TIMEOUT_SECS = 60 * 60
 
+# TODO (xixuan): Use proto library or some future APIs instead of hardcoding.
+SWARMING_DUT_POOL_MAP = {
+        'cq': 'DUT_POOL_CQ',
+        'bvt': 'DUT_POOL_BVT',
+        'suites': 'DUT_POOL_SUITES',
+        'cts': 'DUT_POOL_CTS',
+        'arc-presubmit': 'DUT_POOL_CTS_PERBUILD',
+}
+SWARMING_DUT_READY_STATUS = 'ready'
 
 # The structure of fallback swarming task request is:
 # NewTaskRequest:
