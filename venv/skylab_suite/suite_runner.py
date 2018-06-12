@@ -149,6 +149,9 @@ def _run_swarming_cmd(cmd, dimensions, test_specs, temp_json_path, suite_id):
 
     @return the swarming task id of this task.
     """
+    # TODO (xixuan): Add this to provision cmd when cron job for special task
+    # is working.
+    dimensions['dut_state'] = swarming_lib.SWARMING_DUT_READY_STATUS
     trigger_cmd = _make_trigger_swarming_cmd(cmd, dimensions, test_specs,
                                              temp_json_path, suite_id)
     cros_build_lib = autotest.chromite_load('cros_build_lib')
@@ -176,7 +179,10 @@ def _schedule_test(test_specs, is_provision, suite_id=None,
         cmd = ['/bin/echo'] + cmd
         test_specs.test.name = 'Echo ' + test_specs.test.name
 
-    dimensions = {'pool':SKYLAB_DRONE_POOL}
+    dimensions = {'pool':SKYLAB_DRONE_POOL,
+                  'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(
+                          test_specs.pool),
+                  'label-board': test_specs.board}
 
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
