@@ -57,6 +57,8 @@ def _parse_suite_specs(options):
                     builds, test_source_build=options.test_source_build),
             suite_args=options.suite_args,
             priority=options.priority,
+            board=options.board,
+            pool=options.pool,
     )
 
 

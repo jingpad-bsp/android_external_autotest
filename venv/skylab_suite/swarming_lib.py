@@ -9,11 +9,17 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import json
 import os
+import urllib
+
+from lucifer import autotest
 
 
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SWARMING_SERVER = 'chrome-swarming.appspot.com'
+SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
+
 TASK_COMPLETED = 'COMPLETED'
 TASK_COMPLETED_SUCCESS = 'COMPLETED (SUCCESS)'
 TASK_COMPLETED_FAILURE = 'COMPLETED (FAILURE)'
@@ -32,6 +38,15 @@ TASK_FAILED_STATUS = [TASK_EXPIRED,
 DEFAULT_EXPIRATION_SECS = 30
 DEFAULT_TIMEOUT_SECS = 60 * 60
 
+# TODO (xixuan): Use proto library or some future APIs instead of hardcoding.
+SWARMING_DUT_POOL_MAP = {
+        'cq': 'DUT_POOL_CQ',
+        'bvt': 'DUT_POOL_BVT',
+        'suites': 'DUT_POOL_SUITES',
+        'cts': 'DUT_POOL_CTS',
+        'arc-presubmit': 'DUT_POOL_CTS_PERBUILD',
+}
+SWARMING_DUT_READY_STATUS = 'ready'
 
 # The structure of fallback swarming task request is:
 # NewTaskRequest:
@@ -200,3 +215,29 @@ def get_task_dut_name(task):
             return dimension['value'][0]
 
     return None
+
+
+def query_bots_count(dimensions):
+    """Get bots count for given requirements.
+
+    @param dimensions: A dict of dimensions for swarming bots.
+
+    @return a dict, which contains counts for different status of bots.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    conditions = [('dimensions', '%s:%s' % (k, v))
+                  for k, v in dimensions.iteritems()]
+    swarming_cmd = basic_swarming_cmd + ['bots/count?%s' %
+                                         urllib.urlencode(conditions)]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)
+
+
+def get_idle_bots_count(outputs):
+    """Get the idle bots count.
+
+    @param outputs: The outputs of |query_bots_count|.
+    """
+    return (int(outputs['count']) - int(outputs['busy']) - int(outputs['dead'])
+            - int(outputs['quarantined']))
