@@ -20,7 +20,6 @@ from skylab_suite import swarming_lib
 
 SKYLAB_SUITE_USER = 'skylab_suite_runner'
 SKYLAB_LUCI_TAG = 'luci_project:chromiumos'
-SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
 
 
@@ -179,7 +178,7 @@ def _schedule_test(test_specs, is_provision, suite_id=None,
         cmd = ['/bin/echo'] + cmd
         test_specs.test.name = 'Echo ' + test_specs.test.name
 
-    dimensions = {'pool':SKYLAB_DRONE_POOL,
+    dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
                   'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(
                           test_specs.pool),
                   'label-board': test_specs.board}
