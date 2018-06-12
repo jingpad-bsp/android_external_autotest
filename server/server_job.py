@@ -124,14 +124,14 @@ def get_machine_dicts(machine_names, store_dir, in_lab, use_shadow_store,
                 afe_host.attributes.update(host_attributes)
                 info = host_info.HostInfo(attributes=host_attributes)
                 host_info_store.commit(info)
-        else:
+        elif use_shadow_store:
             afe_host = _create_afe_host(machine)
-            if use_shadow_store:
-                host_info_store = _create_afe_backed_host_info_store(store_dir,
-                                                                     machine)
-            else:
-                host_info_store = _create_file_backed_host_info_store(store_dir,
-                                                                      machine)
+            host_info_store = _create_afe_backed_host_info_store(store_dir,
+                                                                 machine)
+        else:
+            afe_host = server_utils.EmptyAFEHost()
+            host_info_store = _create_file_backed_host_info_store(store_dir,
+                                                                  machine)
 
         machine_dict_list.append({
                 'hostname' : machine,
