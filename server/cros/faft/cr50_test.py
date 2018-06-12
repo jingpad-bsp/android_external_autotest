@@ -48,7 +48,7 @@ class Cr50Test(FirmwareTest):
             else:
                 logging.debug('ignoring misformatted arg "%s"', arg)
 
-        self.ccd_lockout = args.get('ccd_lockout', '').lower == 'true'
+        self.ccd_lockout = args.get('ccd_lockout', '').lower() == 'true'
         self.can_set_ccd_level = (not self.cr50.using_ccd() or
             self.cr50.testlab_is_on()) and not self.ccd_lockout
         self.original_ccd_level = self.cr50.get_ccd_level()
