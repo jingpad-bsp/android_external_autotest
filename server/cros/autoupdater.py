@@ -23,11 +23,6 @@ try:
 except ImportError:
     metrics = utils.metrics_mock
 
-try:
-    import devserver
-    _STATEFUL_UPDATE_PATH = devserver.__path__[0]
-except ImportError:
-    _STATEFUL_UPDATE_PATH = '/usr/bin'
 
 # Local stateful update path is relative to the CrOS source directory.
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
@@ -40,10 +35,6 @@ UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
 
 
 _STATEFUL_UPDATE_SCRIPT = 'stateful_update'
-_REMOTE_STATEFUL_UPDATE_PATH = os.path.join(
-        '/usr/local/bin', _STATEFUL_UPDATE_SCRIPT)
-_REMOTE_TMP_STATEFUL_UPDATE = os.path.join(
-        '/tmp', _STATEFUL_UPDATE_SCRIPT)
 
 _UPDATER_BIN = '/usr/bin/update_engine_client'
 _UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
@@ -407,7 +398,7 @@ class ChromiumOSUpdater(object):
     def _reset_stateful_partition(self):
         """Clear any pending stateful update request."""
         self._run('%s --stateful_change=reset 2>&1'
-                  % self.get_stateful_update_script())
+                  % self._get_stateful_update_script())
 
 
     def _revert_boot_partition(self):
@@ -508,35 +499,55 @@ class ChromiumOSUpdater(object):
         return self._verify_update_completed()
 
 
-    def get_stateful_update_script(self):
-        """Returns the path to the stateful update script on the target.
+    def _get_remote_script(self, script_name):
+        """Ensure that `script_name` is present on the DUT.
 
-        When runnning test_that, stateful_update is in chroot /usr/sbin,
-        as installed by chromeos-base/devserver packages.
-        In the lab, it is installed with the python module devserver, by
-        build_externals.py command.
+        The given script (e.g. `stateful_update`) may be present in the
+        stateful partition under /usr/local/bin, or we may have to
+        download it from the devserver.
 
-        If we can find it, we hope it exists already on the DUT, we assert
-        otherwise.
+        Determine whether the script is present or must be downloaded
+        and download if necessary.  Then, return a command fragment
+        sufficient to run the script from whereever it now lives on the
+        DUT.
 
-        @raise StatefulUpdateError if the script can't be installed.
+        @param script_name  The name of the script as expected in
+                            /usr/local/bin and on the devserver.
+        @return A string with the command (minus arguments) that will
+                run the target script.
         """
-        stateful_update_file = os.path.join(_STATEFUL_UPDATE_PATH,
-                                            _STATEFUL_UPDATE_SCRIPT)
-        if os.path.exists(stateful_update_file):
-            self.host.send_file(
-                    stateful_update_file, _REMOTE_TMP_STATEFUL_UPDATE,
-                    delete_dest=True)
-            return _REMOTE_TMP_STATEFUL_UPDATE
+        remote_script = '/usr/local/bin/%s' % script_name
+        if self.host.path_exists(remote_script):
+            return remote_script
+        remote_tmp_script = '/tmp/%s' % script_name
+        server_name = urlparse.urlparse(self.update_url)[1]
+        script_url = 'http://%s/static/%s' % (server_name, script_name)
+        fetch_script = (
+            'curl -o %s %s && head -1 %s | grep "^#!" | sed "s/#!//"') % (
+                   remote_tmp_script, script_url, remote_tmp_script)
+        script_interpreter = self._run(fetch_script,
+                                       ignore_status=True).stdout.strip()
+        if not script_interpreter:
+            return None
+        return '%s %s' % (script_interpreter, remote_tmp_script)
 
-        if self.host.path_exists(_REMOTE_STATEFUL_UPDATE_PATH):
-            logging.warning('Could not chroot %s script, falling back on %s',
-                            _STATEFUL_UPDATE_SCRIPT,
-                            _REMOTE_STATEFUL_UPDATE_PATH)
-            return _REMOTE_STATEFUL_UPDATE_PATH
-        else:
-            raise StatefulUpdateError('Could not locate %s'
+
+    def _get_stateful_update_script(self):
+        """Returns a command to run the stateful update script.
+
+        Find `stateful_update` on the target or install it, as
+        necessary.  If installation fails, raise an exception.
+
+        @raise StatefulUpdateError if the script can't be found or
+            installed.
+        @return A string that can be joined with arguments to run the
+            `stateful_update` command on the DUT.
+        """
+        script_command = self._get_remote_script(_STATEFUL_UPDATE_SCRIPT)
+        if not script_command:
+            raise StatefulUpdateError('Could not install %s on DUT'
                                       % _STATEFUL_UPDATE_SCRIPT)
+        return script_command
 
 
     def rollback_rootfs(self, powerwash):
@@ -591,7 +602,7 @@ class ChromiumOSUpdater(object):
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
-        statefuldev_cmd = [self.get_stateful_update_script(), statefuldev_url]
+        statefuldev_cmd = [self._get_stateful_update_script(), statefuldev_url]
         if clobber:
             statefuldev_cmd.append('--stateful_change=clean')
 
