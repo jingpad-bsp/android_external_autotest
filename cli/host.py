@@ -614,6 +614,13 @@ class host_mod(BaseHostModCreate):
                                action='store_true')
 
         self.add_skylab_options()
+        self.parser.add_option('--new-env',
+                               dest='new_env',
+                               choices=['staging', 'prod'],
+                               help=('The new environment ("staging" or '
+                                     '"prod") of the hosts. %s' %
+                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
+                               default=None)
 
 
     def _parse_unlock_options(self, options):
@@ -645,6 +652,7 @@ class host_mod(BaseHostModCreate):
 
         self.remove_acls = options.remove_acls
         self.remove_labels = options.remove_labels
+        self.new_env = options.new_env
 
         return (options, leftover)
 
@@ -678,7 +686,8 @@ class host_mod(BaseHostModCreate):
                         unlock_lock_id=self.unlock_lock_id,
                         attributes=self.attributes,
                         remove_labels=self.remove_labels,
-                        label_map=self.label_map)
+                        label_map=self.label_map,
+                        new_env=self.new_env)
                 successes.append(hostname)
             except device.SkylabDeviceActionError as e:
                 print('Cannot modify host %s: %s' % (hostname, e))
