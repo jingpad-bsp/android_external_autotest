@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import collections
 import json
+import logging
 import os
 import urllib
 
@@ -19,6 +20,7 @@ from lucifer import autotest
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
 SWARMING_SERVER = 'chrome-swarming.appspot.com'
 SKYLAB_DRONE_POOL = 'ChromeOSSkylab'
+SKYLAB_SUITE_POOL = 'ChromeOSSkylab-suite'
 
 TASK_COMPLETED = 'COMPLETED'
 TASK_COMPLETED_SUCCESS = 'COMPLETED (SUCCESS)'
@@ -241,3 +243,34 @@ def get_idle_bots_count(outputs):
     """
     return (int(outputs['count']) - int(outputs['busy']) - int(outputs['dead'])
             - int(outputs['quarantined']))
+
+
+def query_task_by_tags(tags):
+    """Get tasks for given tags.
+
+    @param tags: A dict of tags for swarming tasks.
+
+    @return a dict, which contains all tasks queried by the given tags.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    conditions = [('tags', '%s:%s' % (k, v)) for k, v in tags.iteritems()]
+    swarming_cmd = basic_swarming_cmd + ['tasks/list?%s' %
+                                         urllib.urlencode(conditions)]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)['items']
+
+
+def abort_task(task_id):
+    """Abort a swarming task by its id.
+
+    @param task_id: A string swarming task id.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('cancel')
+    swarming_cmd = basic_swarming_cmd + ['--kill-running', task_id]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    try:
+        cros_build_lib.RunCommand(swarming_cmd, log_output=True)
+    except cros_build_lib.RunCommandError:
+        logging.error('Task %s probably already gone, skip canceling it.',
+                      task_id)
