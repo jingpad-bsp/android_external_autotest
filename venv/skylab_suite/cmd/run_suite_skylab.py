@@ -12,7 +12,6 @@ import os
 import sys
 
 import logging
-import logging.config
 
 from lucifer import autotest
 from skylab_suite import cros_suite
@@ -22,44 +21,6 @@ from skylab_suite import suite_tracking
 
 
 PROVISION_SUITE_NAME = 'provision'
-
-
-def setup_logging():
-    """Setup the logging for skylab suite."""
-    logging.config.dictConfig({
-        'version': 1,
-        'formatters': {
-            'default': {'format': '%(asctime)s %(levelname)-5s| %(message)s'},
-        },
-        'handlers': {
-            'screen': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'default',
-            },
-        },
-        'root': {
-            'level': 'INFO',
-            'handlers': ['screen'],
-        },
-        'disable_existing_loggers': False,
-    })
-
-
-def _parse_suite_specs(options):
-    suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
-    builds = suite_common.make_builds_from_options(options)
-    return cros_suite.SuiteSpecs(
-            builds=builds,
-            suite_name=options.suite_name,
-            suite_file_name=suite_common.canonicalize_suite_name(
-                    options.suite_name),
-            test_source_build=suite_common.get_test_source_build(
-                    builds, test_source_build=options.test_source_build),
-            suite_args=options.suite_args,
-            priority=options.priority,
-            board=options.board,
-            pool=options.pool,
-    )
 
 
 def _parse_suite_handler_specs(options):
@@ -76,7 +37,7 @@ def _parse_suite_handler_specs(options):
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
-    suite_specs = _parse_suite_specs(options)
+    suite_specs = suite_parser.parse_suite_specs(options)
     if options.suite_name == PROVISION_SUITE_NAME:
         suite_job = cros_suite.ProvisionSuite(suite_specs)
     else:
@@ -115,7 +76,7 @@ def main():
     autotest.monkeypatch()
 
     options = parse_args()
-    setup_logging()
+    suite_tracking.setup_logging()
     result = _run_suite(options)
     logging.info('Will return from %s with status: %s',
                  os.path.basename(__file__), result.string_code)
