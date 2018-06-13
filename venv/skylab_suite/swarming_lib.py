@@ -277,3 +277,31 @@ def abort_task(task_id):
     except cros_build_lib.RunCommandError:
         logging.error('Task %s probably already gone, skip canceling it.',
                       task_id)
+
+
+def query_bots_list(dimensions):
+    """Get bots list for given requirements.
+
+    @param dimensions: A dict of dimensions for swarming bots.
+
+    @return a list of bot dicts.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    conditions = [('dimensions', '%s:%s' % (k, v))
+                  for k, v in dimensions.iteritems()]
+    swarming_cmd = basic_swarming_cmd + ['bots/list?%s' %
+                                         urllib.urlencode(conditions)]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)['items']
+
+
+def bot_available(bot):
+    """Check whether a bot is available.
+
+    @param bot: A dict describes a bot's dimensions, i.e. an element in return
+        list of |query_bots_list|.
+
+    @return True if a bot is available to run task, otherwise False.
+    """
+    return not (bot['is_dead'] or bot['quarantined'])
