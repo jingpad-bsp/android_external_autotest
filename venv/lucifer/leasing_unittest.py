@@ -134,6 +134,24 @@ def test_Lease_abort_with_closed_socket(tmpdir):
                 lease.abort()
 
 
+@pytest.mark.slow
+def test_Lease_abort_with_blocked_socket(tmpdir):
+    """Test Lease.abort() with blocked socket.
+
+    If the behavior this test is looking for is missing (a raised error
+    for nonblock write timeout), this test will hang indefinitely on a
+    blocking socket read.
+    """
+    _make_lease(tmpdir, 123)
+    with _abort_socket_norecv(tmpdir, 123):
+        expired = list(leasing.leases_iter(str(tmpdir)))
+        assert len(expired) == 1
+        lease = expired[0]
+        with pytest.raises(socket.error):
+            while True:
+                lease.abort()
+
+
 @pytest.fixture
 def end_time():
     """Mock out time.time to return a time in the future."""
@@ -188,6 +206,32 @@ def _abort_socket(tmpdir, job_id):
     with subprocess32.Popen(
             [sys.executable, '-um',
              'lucifer.cmd.test.abort_socket', path],
+            stdout=subprocess32.PIPE) as proc:
+        # Wait for socket bind.
+        proc.stdout.readline()
+        try:
+            yield proc
+        finally:
+            proc.terminate()
+
+
+@contextlib.contextmanager
+def _abort_socket_norecv(tmpdir, job_id):
+    """Open a testing abort socket and bad listener for a job.
+
+    The listening process doesn't actually call recv().
+
+    As a context manager, returns the Popen instance for the listener
+    process when entering.
+
+    This uses a slow subprocess; any test that uses this should be
+    marked slow.
+    """
+    path = os.path.join(str(tmpdir), '%d.sock' % job_id)
+    logger.debug('Making abort socket at %s', path)
+    with subprocess32.Popen(
+            [sys.executable, '-um',
+             'lucifer.cmd.test.abort_socket_norecv', path],
             stdout=subprocess32.PIPE) as proc:
         # Wait for socket bind.
         proc.stdout.readline()
