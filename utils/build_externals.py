@@ -17,7 +17,6 @@ import compileall
 import logging
 import os
 import sys
-import textwrap
 
 import common
 from autotest_lib.client.common_lib import logging_config, logging_manager
@@ -97,29 +96,10 @@ def main():
         logging.error(error_msg)
 
     if not errors:
-      logging.info(textwrap.dedent("""
-           _______________________________________
-          / You may see errors above, but this is \\
-          \ still SUCCESS. Moo.                   /
-           ---------------------------------------
-                \   ^__^
-                 \  (oo)\_______
-                    (__)\       )\/\\
-                        ||----w |
-                        ||     ||
-          """))
+      logging.info("Syntax errors from pylint above are expected, not "
+                   "problematic. SUCCESS.")
     else:
-      logging.info(textwrap.dedent("""
-           ________________
-          < I have failed. >
-           ----------------
-                \   ^__^
-                 \  (oo)\_______
-                    (__)\       )\/\\
-                        ||----w |
-                        ||     ||
-          """))
-
+      logging.info("Problematic errors encountered. FAILURE.")
     return len(errors)
 
 
