@@ -122,6 +122,7 @@ def _run_provision_cmd(cmd, dimensions, test_specs, suite_id):
             priority=test_specs.priority,
             tags=tags,
             user=SKYLAB_SUITE_USER,
+            parent_task_id=suite_id,
             expiration_secs=test_specs.expiration_secs,
             grace_period_secs=test_specs.grace_period_secs,
             execution_timeout_secs=test_specs.execution_timeout_secs,
@@ -155,6 +156,10 @@ def _run_swarming_cmd(cmd, dimensions, test_specs, temp_json_path, suite_id):
                                              temp_json_path, suite_id)
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     new_env = os.environ.copy()
+    # Set SWARMING_TASK_ID so swarming command knows the suite task id:
+    # https://chromium.googlesource.com/infra/luci/luci-py/+/
+    # 78083f5977c302721b17ad689b1465871c0c587b/client/swarming.py#1158
+    new_env['SWARMING_TASK_ID'] = suite_id
     cros_build_lib.RunCommand(trigger_cmd, env=new_env)
     with open(temp_json_path) as f:
         result = json.load(f)

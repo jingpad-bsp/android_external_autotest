@@ -78,6 +78,7 @@ NewTaskRequest = collections.namedtuple(
         'NewTaskRequest',
         [
                 'name',
+                'parent_task_id',
                 'priority',
                 'tags',
                 'user',
@@ -99,6 +100,7 @@ def get_basic_swarming_cmd(command):
 
 def make_fallback_request_dict(cmds, slices_dimensions, task_name, priority,
                                tags, user,
+                               parent_task_id='',
                                expiration_secs=DEFAULT_EXPIRATION_SECS,
                                grace_period_secs=DEFAULT_TIMEOUT_SECS,
                                execution_timeout_secs=DEFAULT_TIMEOUT_SECS,
@@ -137,6 +139,7 @@ def make_fallback_request_dict(cmds, slices_dimensions, task_name, priority,
 
     task_request = NewTaskRequest(
         name=task_name,
+        parent_task_id=parent_task_id,
         priority=priority,
         tags=tags,
         user=user,
