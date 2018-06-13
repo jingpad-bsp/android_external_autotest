@@ -12,6 +12,8 @@ import argparse
 import ast
 
 from autotest_lib.client.common_lib import priorities
+from lucifer import autotest
+from skylab_suite import cros_suite
 
 
 def make_parser():
@@ -98,6 +100,12 @@ def make_parser():
         help=('Used for monitoring purposes, to measure no-op swarming proxy '
               'latency or create a dummy run_suite_skylab run.'))
 
+    # Abort-related parameters.
+    parser.add_argument(
+        '--abort_limit', default=1, type=int, action='store',
+        help=('Only abort first N parent tasks which fulfill the search '
+              'requirements.'))
+
     return parser
 
 
@@ -107,3 +115,21 @@ def verify_and_clean_options(options):
         options.suite_args = {}
 
     return True
+
+
+def parse_suite_specs(options):
+    """Parse options to suite_specs."""
+    suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
+    builds = suite_common.make_builds_from_options(options)
+    return cros_suite.SuiteSpecs(
+            builds=builds,
+            suite_name=options.suite_name,
+            suite_file_name=suite_common.canonicalize_suite_name(
+                    options.suite_name),
+            test_source_build=suite_common.get_test_source_build(
+                    builds, test_source_build=options.test_source_build),
+            suite_args=options.suite_args,
+            priority=options.priority,
+            board=options.board,
+            pool=options.pool,
+    )
