@@ -12,6 +12,7 @@ from skylab_suite import swarming_lib
 def test_form_requests():
     """Test raw requests for swarming API."""
     task_name = 'provision_task'
+    parent_task_id = 'fake_parent_task_id'
     priority = 70
     tags = ['parent_task_id:fake_id']
     tags.append('task_name:%s' % task_name)
@@ -28,6 +29,7 @@ def test_form_requests():
     timeout_secs = swarming_lib.DEFAULT_TIMEOUT_SECS
     source_request = {
             'name': task_name,
+            'parent_task_id': parent_task_id,
             'priority': priority,
             'tags': tags,
             'user': user,
@@ -60,5 +62,6 @@ def test_form_requests():
     }
 
     json_request = swarming_lib.make_fallback_request_dict(
-            cmds, dimensions, task_name, priority, tags, user)
+            cmds, dimensions, task_name, priority, tags, user,
+            parent_task_id=parent_task_id)
     assert json_request == source_request
