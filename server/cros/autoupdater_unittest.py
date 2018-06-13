@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import mox
-import os
 import unittest
 
 import common
@@ -12,7 +11,6 @@ import time
 
 import autoupdater
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.test_utils import mock
 
 class TestAutoUpdater(mox.MoxTestBase):
     """Test autoupdater module."""
@@ -154,19 +152,19 @@ class TestAutoUpdater(mox.MoxTestBase):
         """
         self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater, '_run')
         self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater,
-                                 'get_stateful_update_script')
+                                 '_get_stateful_update_script')
         update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
                       'R28-4444.0.0-b2996')
         static_update_url = ('http://172.22.50.205:8082/static/'
                              'lumpy-chrome-perf/R28-4444.0.0-b2996')
+        update_script = '/usr/local/bin/stateful_update'
 
         # Test with clobber=False.
-        autoupdater.ChromiumOSUpdater.get_stateful_update_script().AndReturn(
-                autoupdater._REMOTE_STATEFUL_UPDATE_PATH)
+        autoupdater.ChromiumOSUpdater._get_stateful_update_script().AndReturn(
+                update_script)
         autoupdater.ChromiumOSUpdater._run(
                 mox.And(
-                        mox.StrContains(
-                                autoupdater._REMOTE_STATEFUL_UPDATE_PATH),
+                        mox.StrContains(update_script),
                         mox.StrContains(static_update_url),
                         mox.Not(mox.StrContains('--stateful_change=clean'))),
                 timeout=mox.IgnoreArg())
@@ -178,12 +176,11 @@ class TestAutoUpdater(mox.MoxTestBase):
 
         # Test with clobber=True.
         self.mox.ResetAll()
-        autoupdater.ChromiumOSUpdater.get_stateful_update_script().AndReturn(
-                autoupdater._REMOTE_STATEFUL_UPDATE_PATH)
+        autoupdater.ChromiumOSUpdater._get_stateful_update_script().AndReturn(
+                update_script)
         autoupdater.ChromiumOSUpdater._run(
                 mox.And(
-                        mox.StrContains(
-                                autoupdater._REMOTE_STATEFUL_UPDATE_PATH),
+                        mox.StrContains(update_script),
                         mox.StrContains(static_update_url),
                         mox.StrContains('--stateful_change=clean')),
                 timeout=mox.IgnoreArg())
@@ -193,41 +190,36 @@ class TestAutoUpdater(mox.MoxTestBase):
         self.mox.VerifyAll()
 
 
-    def testGetStatefulUpdateScript(self):
-        """ Test that get_stateful_update_script look for stateful_update.
-
-        Check get_stateful_update_script is trying hard to find
-        stateful_update and assert if it can't.
-
-        """
+    def testGetRemoteScript(self):
+        """Test _get_remote_script() behaviors."""
         update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
                       'R28-4444.0.0-b2996')
-        script_loc = os.path.join(autoupdater._STATEFUL_UPDATE_PATH,
-                                  autoupdater._STATEFUL_UPDATE_SCRIPT)
-        self.god = mock.mock_god()
-        self.god.stub_function(os.path, 'exists')
+        script_name = 'fubar'
+        local_script = '/usr/local/bin/%s' % script_name
         host = self.mox.CreateMockAnything()
         updater = autoupdater.ChromiumOSUpdater(update_url, host=host)
-        os.path.exists.expect_call(script_loc).and_return(False)
-        host.path_exists('/usr/local/bin/stateful_update').AndReturn(False)
+        host.path_exists(local_script).AndReturn(True)
 
         self.mox.ReplayAll()
-        # No existing files, no URL, we should assert.
-        self.assertRaises(
-                autoupdater.StatefulUpdateError,
-                updater.get_stateful_update_script)
+        # Simple case:  file exists on DUT
+        self.assertEqual(updater._get_remote_script(script_name),
+                         local_script)
         self.mox.VerifyAll()
 
-        # No existing files, but stateful URL, we will try.
         self.mox.ResetAll()
-        os.path.exists.expect_call(script_loc).and_return(True)
-        host.send_file(
-                script_loc,
-                '/tmp/stateful_update', delete_dest=True).AndReturn(True)
+        fake_shell = '/bin/ash'
+        tmp_script = '/tmp/%s' % script_name
+        fake_result = self.mox.CreateMockAnything()
+        fake_result.stdout = ' %s\n' % fake_shell
+        host.path_exists(local_script).AndReturn(False)
+        host.run(mox.IgnoreArg(),
+                 ignore_status=True).AndReturn(fake_result)
+
         self.mox.ReplayAll()
+        # Complicated case:  script not on DUT, so try to download it.
         self.assertEqual(
-                updater.get_stateful_update_script(),
-                '/tmp/stateful_update')
+                updater._get_remote_script(script_name),
+                '%s %s' % (fake_shell, tmp_script))
         self.mox.VerifyAll()
 
 
