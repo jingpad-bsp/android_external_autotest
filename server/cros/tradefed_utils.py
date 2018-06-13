@@ -126,9 +126,12 @@ def parse_tradefed_result(result, waivers=None):
                         r' (\d+) passed, (\d+) failed, (\d+) not executed' %
                         (abi_re, module_re))
     fail_re = re.compile(r'I/ConsoleReporter.* (\S+) fail:')
+    inaccurate_re = re.compile(r'IMPORTANT: Some modules failed to run to '
+                                'completion, tests counts may be inaccurate')
     abis = set()
     waived_count = dict()
     failed_tests = set()
+    accurate = True
     for line in result.splitlines():
         match = start_re.search(line)
         if match:
@@ -149,6 +152,12 @@ def parse_tradefed_result(result, waivers=None):
             else:
                 failed_tests.add(testname)
             continue
+        # b/66899135, tradefed may reported inaccuratly with `list results`.
+        # Add warning if summary section shows that the result is inacurrate.
+        match = inaccurate_re.search(line)
+        if match:
+            accurate = False
+
     logging.debug('Total ABIs: %s', abis)
     # TODO(crbug.com/842659): Output to somewhere more convenient.
     if failed_tests:
@@ -169,7 +178,7 @@ def parse_tradefed_result(result, waivers=None):
         waived += [testname] * fail_count
         logging.info('Waived failure for %s %d time(s)', testname, fail_count)
     logging.info('Total waived = %s', waived)
-    return waived
+    return waived, accurate
 
 
 def select_32bit_java():
