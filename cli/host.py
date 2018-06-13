@@ -1230,11 +1230,11 @@ class host_migrate(action_common.atest_list, host):
         return self.execute_skylab_migration(hostnames)
 
 
-    def assign_duts_to_drone(self, infra, all_devices):
-        """Assign dut uids of the devices to a random skylab drone.
+    def assign_duts_to_drone(self, infra, devices):
+        """Assign uids of the devices to a random skylab drone.
 
         @param infra: An instance of lab_pb2.Infrastructure.
-        @all_devices: A list of device_pb2.Device to be assigned to the drone.
+        @devices: A list of device_pb2.Device to be assigned to the drone.
         """
         skylab_drones = skylab_server.get_servers(
                 infra, 'staging', role='skylab_drone', status='primary')
@@ -1246,7 +1246,20 @@ class host_migrate(action_common.atest_list, host):
                 ' drone added in skylab inventory.')
 
         skylab_drone = random.choice(skylab_drones)
-        skylab_server.add_dut_uids(skylab_drone, all_devices)
+        skylab_server.add_dut_uids(skylab_drone, devices)
+
+
+    def remove_duts_from_drone(self, infra, devices):
+        """Remove uids of the devices from their skylab drones.
+
+        @param infra: An instance of lab_pb2.Infrastructure.
+        @devices: A list of device_pb2.Device to be remove from the drone.
+        """
+        skylab_drones = skylab_server.get_servers(
+                infra, 'staging', role='skylab_drone', status='primary')
+
+        for skylab_drone in skylab_drones:
+            skylab_server.remove_dut_uids(skylab_drone, devices)
 
 
     def execute_skylab_migration(self, hostnames):
@@ -1303,7 +1316,7 @@ class host_migrate(action_common.atest_list, host):
                     skylab_lab, prod_lab, 'duts', environment='prod',
                     label_map=label_map, hostnames=hostnames)
             staging_devices = device.move_devices(
-                    staging_lab, skylab_lab, 'duts', environment='staging',
+                    skylab_lab, staging_lab, 'duts', environment='staging',
                     label_map=label_map, hostnames=hostnames)
 
             all_devices = prod_devices + staging_devices
@@ -1316,6 +1329,8 @@ class host_migrate(action_common.atest_list, host):
                 'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-rollback %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
+
+            self.remove_duts_from_drone(infra, all_devices)
 
         if all_devices:
             text_manager.dump_infrastructure(skylab_data_dir, infra)
