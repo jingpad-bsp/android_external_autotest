@@ -1024,6 +1024,7 @@ class TradefedTest(test.test):
         steps = -1  # For historic reasons the first iteration is not counted.
         pushed_media = False
         self.summary = ''
+        accurate = []
         board = self._get_board_name()
         session_id = None
 
@@ -1065,7 +1066,8 @@ class TradefedTest(test.test):
                 #              not-excecuted, for instance, by collecting all
                 #              tests on startup (very expensive, may take 30
                 #              minutes).
-                waived_tests = self._run_and_parse_tradefed(commands)
+                waived_tests, acc = self._run_and_parse_tradefed(commands)
+                accurate.append(acc)
                 result = self._run_tradefed_list_results()
                 if not result:
                     logging.error('Did not find any test results. Retry.')
@@ -1118,14 +1120,20 @@ class TradefedTest(test.test):
                             'Passed: after %d retries passing %d tests, '
                             'waived=%d. %s' % (steps, passed, waived,
                                                self.summary))
+                    if not all(accurate):
+                        raise error.TestWarn(
+                            'Passed: after %d retries passing %d tests, '
+                            'waived=%d. Tests may not be accurate. %s' % (
+                                steps, passed, waived, self.summary))
                     return
 
         if session_id == None:
             raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
-            'passed=%d, failed=%d, waived=%d%s. %s' %
+            'passed=%d, failed=%d, waived=%d%s%s. %s' %
             (steps, passed, failed, waived, '' if all_done else ', notexec>=1',
+             '' if all(accurate) else ', Tests may not be accurate.',
              self.summary))
 
 # TODO(ddmail): decide once we are confident that the new way (CL:628711) works
@@ -1160,11 +1168,11 @@ class TradefedTest_P(TradefedTest):
         steps = -1  # For historic reasons the first iteration is not counted.
         pushed_media = False
         self.summary = ''
+        accurate = []
         board = self._get_board_name()
         session_id = None
 
         self._setup_result_directories()
-
         # This loop retries failures. For this reason please do not raise
         # TestFail in this loop if you suspect the failure might be fixed
         # in the next loop iteration.
@@ -1201,7 +1209,9 @@ class TradefedTest_P(TradefedTest):
                 #              not-excecuted, for instance, by collecting all
                 #              tests on startup (very expensive, may take 30
                 #              minutes).
-                waived_tests = self._run_and_parse_tradefed(commands)
+                waived_tests, acc = self._run_and_parse_tradefed(
+                    commands)
+                accurate.append(acc)
                 result = self._run_tradefed_list_results()
                 if not result:
                     logging.error('Did not find any test results. Retry.')
@@ -1254,13 +1264,18 @@ class TradefedTest_P(TradefedTest):
                             'Passed: after %d retries passing %d tests, '
                             'waived=%d. %s' % (steps, passed, waived,
                                                self.summary))
+                    if not all(accurate):
+                        raise error.TestWarn(
+                            'Passed: after %d retries passing %d tests, '
+                            'waived=%d. Tests may not be accurate. %s' % (
+                                steps, passed, waived, self.summary))
                     return
 
         if session_id == None:
             raise error.TestFail('Error: Could not find any tests in module.')
         raise error.TestFail(
             'Failed: after %d retries giving up. '
-            'passed=%d, failed=%d, waived=%d%s. %s' %
+            'passed=%d, failed=%d, waived=%d%s%s. %s' %
             (steps, passed, failed, waived, '' if all_done else ', notexec>=1',
+             '' if all(accurate) else ', Tests may not be accurate.',
              self.summary))
-
