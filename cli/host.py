@@ -20,6 +20,7 @@ See topic_common.py for a High Level Design and Algorithm.
 
 """
 import common
+import random
 import re
 import socket
 
@@ -33,6 +34,7 @@ from autotest_lib.server.hosts import host_info
 try:
     from skylab_inventory import text_manager
     from skylab_inventory.lib import device
+    from skylab_inventory.lib import server as skylab_server
 except ImportError:
     pass
 
@@ -1219,6 +1221,25 @@ class host_migrate(action_common.atest_list, host):
         return self.execute_skylab_migration(hostnames)
 
 
+    def assign_duts_to_drone(self, infra, all_devices):
+        """Assign dut uids of the devices to a random skylab drone.
+
+        @param infra: An instance of lab_pb2.Infrastructure.
+        @all_devices: A list of device_pb2.Device to be assigned to the drone.
+        """
+        skylab_drones = skylab_server.get_servers(
+                infra, 'staging', role='skylab_drone', status='primary')
+
+        if len(skylab_drones) == 0:
+            raise device.SkylabDeviceActionError(
+                'No skylab drone is found in primary status and staging '
+                'environment. Please confirm there is at least one valid skylab'
+                ' drone added in skylab inventory.')
+
+        skylab_drone = random.choice(skylab_drones)
+        skylab_server.add_dut_uids(skylab_drone, all_devices)
+
+
     def execute_skylab_migration(self, hostnames):
         """Execute migration in skylab_inventory.
 
@@ -1238,6 +1259,7 @@ class host_migrate(action_common.atest_list, host):
                 inventory_repo.get_data_dir(data_subdir=d) for d in subdirs]
         skylab_lab, prod_lab, staging_lab = [
                 text_manager.load_lab(d) for d in data_dirs]
+        infra = text_manager.load_infrastructure(skylab_data_dir)
 
         label_map = None
         labels = []
@@ -1264,6 +1286,8 @@ class host_migrate(action_common.atest_list, host):
                 'Please run this command after the CL is submitted:\n'
                 'atest host rename --for-migration %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
+
+            self.assign_duts_to_drone(infra, all_devices)
         else:
             # rollback
             prod_devices = device.move_devices(
@@ -1285,6 +1309,8 @@ class host_migrate(action_common.atest_list, host):
                 (len(all_devices), ' '.join(device_hostnames)))
 
         if all_devices:
+            text_manager.dump_infrastructure(skylab_data_dir, infra)
+
             if prod_devices:
                 text_manager.dump_lab(prod_data_dir, prod_lab)
 
