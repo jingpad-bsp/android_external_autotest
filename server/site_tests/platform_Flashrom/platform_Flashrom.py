@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import re
 import os
 
 from autotest_lib.client.common_lib import error
@@ -87,11 +86,18 @@ class platform_Flashrom(FirmwareTest):
         self.switcher.mode_aware_reboot()
 
         # 5) Compare flash section B vs shellball section B
-        # 5.1) Extract shellball RW section B.
-        outdir = self.run_cmd('chromeos-firmwareupdate --sb_extract')[-1]
-        shball_path = outdir.split()[-1]
-        shball_bios = os.path.join(shball_path, 'bios.bin')
-        shball_rw_b = os.path.join(shball_path, 'shball_rw_b.bin')
+        # 5.1) Extract shellball RW section B form the appropriate bios.bin
+        # found the firmware tarball on the DUT.
+        self.faft_client.updater.extract_shellball()
+        shball_bios = os.path.join(
+            self.faft_client.updater.get_work_path(),
+            self.faft_client.updater.get_bios_relative_path())
+        # Temp file to store a section read from the chip.
+        shball_rw_b = os.path.join(
+            self.faft_client.updater.get_work_path(),
+            'shball_rw_b.bin')
+        logging.info('Using fw image %s, temp file %s',
+                     shball_bios, shball_rw_b)
 
         # Extract RW B, offset detail
         # Figure out section B start byte and size.
@@ -111,3 +117,11 @@ class platform_Flashrom(FirmwareTest):
         # 6) Report result.
         if ''.join(result_output) != '':
             raise error.TestFail('Mismatch between %s and %s' % (shball_rw_b, rw_b2))
+
+    def cleanup(self):
+        """Remove temporary objects used by the test."""
+        try:
+            self.faft_client.updater.cleanup()
+        except Exception as e:
+            logging.error("Updater cleanup exception: %s", str(e))
+        super(platform_Flashrom, self).cleanup()
