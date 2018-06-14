@@ -40,6 +40,7 @@ class TastTest(unittest.TestCase):
     HOST = 'dut.example.net'
     PORT = 22
     TEST_PATTERNS = ['(bvt)']
+    MAX_RUN_SEC = 300
 
     def setUp(self):
         self._temp_dir = tempfile.mkdtemp('.tast_unittest')
@@ -150,6 +151,7 @@ class TastTest(unittest.TestCase):
         self._test.initialize(FakeHost(self.HOST, self.PORT),
                               self.TEST_PATTERNS,
                               ignore_test_failures=ignore_test_failures,
+                              max_run_sec=self.MAX_RUN_SEC,
                               install_root=self._root_dir)
         self._test.set_fake_now_for_testing(
                 (NOW - tast._UNIX_EPOCH).total_seconds())
@@ -174,9 +176,8 @@ class TastTest(unittest.TestCase):
                  TestInfo('pkg.Test3', 6, 8)]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testFailingTests(self):
         """Tests that failing tests are reported correctly."""
@@ -186,18 +187,16 @@ class TastTest(unittest.TestCase):
         self._init_tast_commands(tests)
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testIgnoreTestFailures(self):
         """Tests that tast.tast can still pass with Tast test failures."""
         tests = [TestInfo('pkg.Test', 0, 2, errors=[('failed', 1)])]
         self._init_tast_commands(tests)
         self._run_test(ignore_test_failures=True)
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testSkippedTest(self):
         """Tests that skipped tests aren't reported."""
@@ -205,9 +204,8 @@ class TastTest(unittest.TestCase):
                  TestInfo('pkg.Skipped', 2, 2, skip_reason='missing deps')]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testSkippedTestWithErrors(self):
         """Tests that skipped tests are reported if they also report errors."""
@@ -217,36 +215,32 @@ class TastTest(unittest.TestCase):
         self._init_tast_commands(tests)
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testMissingTest(self):
         """Tests that a missing test is reported when there's another test."""
         tests = [TestInfo('pkg.Test1', 0, 2), TestInfo('pkg.Test2', None, None)]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testNoTestsRun(self):
         """Tests that a missing test is reported when its the only test."""
         tests = [TestInfo('pkg.Test', None, None)]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testHangingTest(self):
         """Tests that a not-finished test is reported."""
         tests = [TestInfo('pkg.Test1', 0, 2), TestInfo('pkg.Test2', 3, None)]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testNoTestsMatched(self):
         """Tests that an error is raised if no tests are matched."""
@@ -275,9 +269,8 @@ class TastTest(unittest.TestCase):
         self._tast_commands['run'].status = 1
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testRunCommandWritesTrailingGarbage(self):
         """Tests that an error is raised if the run command prints bad data."""
@@ -286,9 +279,8 @@ class TastTest(unittest.TestCase):
         self._tast_commands['run'].file_data += 'not valid JSON data'
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testNoResultsFile(self):
         """Tests that an error is raised if no results file is written."""
@@ -297,9 +289,8 @@ class TastTest(unittest.TestCase):
         self._tast_commands['run'].file_path = None
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
 
     def testMissingTastExecutable(self):
         """Tests that an error is raised if the tast command isn't found."""
@@ -328,9 +319,27 @@ class TastTest(unittest.TestCase):
         tests = [TestInfo('pkg.Test', 0, 1)]
         self._init_tast_commands(tests)
         self._run_test()
-        self.assertEqual(
-                status_string(get_status_entries_from_tests(tests)),
-                status_string(self._job.status_entries))
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
+
+    def testSumTestTimeouts(self):
+        """Tests that test timeouts are summed for the overall timeout."""
+        ns_in_sec = 1000000000
+        tests = [TestInfo('pkg.Test1', 0, 0, timeout_ns=(23 * ns_in_sec)),
+                 TestInfo('pkg.Test2', 0, 0, timeout_ns=(41 * ns_in_sec))]
+        self._init_tast_commands(tests)
+        self._run_test()
+        self.assertEqual(64 + tast.tast._RUN_OVERHEAD_SEC,
+                         self._test._get_run_tests_timeout_sec())
+
+    def testCapTestTimeout(self):
+        """Tests that excessive test timeouts are capped."""
+        timeout_ns = 2 * self.MAX_RUN_SEC * 1000000000
+        tests = [TestInfo('pkg.Test', 0, 0, timeout_ns=timeout_ns)]
+        self._init_tast_commands(tests)
+        self._run_test()
+        self.assertEqual(self.MAX_RUN_SEC,
+                         self._test._get_run_tests_timeout_sec())
 
 
 class TestInfo:
@@ -343,7 +352,7 @@ class TestInfo:
       against what tast.Tast actually recorded
     """
     def __init__(self, name, start_offset, end_offset, errors=None,
-                 skip_reason=None, attr=None):
+                 skip_reason=None, attr=None, timeout_ns=0):
         """
         @param name: Name of the test, e.g. 'ui.ChromeLogin'.
         @param start_offset: Start time as int seconds offset from BASE_TIME,
@@ -358,6 +367,7 @@ class TestInfo:
             None to indicate that it wasn't skipped.
         @param attr: List of string test attributes assigned to the test, or
             None if no attributes are assigned.
+        @param timeout_ns: Test timeout in nanoseconds.
         """
         def from_offset(offset):
             """Returns an offset from BASE_TIME.
@@ -376,6 +386,7 @@ class TestInfo:
                 [(e[0], from_offset(e[1])) for e in errors] if errors else []
         self._skip_reason = skip_reason
         self._attr = list(attr) if attr else []
+        self._timeout_ns = timeout_ns
 
     def start_time(self):
         # pylint: disable=missing-docstring
@@ -386,7 +397,11 @@ class TestInfo:
 
         @return: dict representing a Tast testing.Test struct.
         """
-        return {'name': self._name}
+        return {
+            'name': self._name,
+            'attr': self._attr,
+            'timeout': self._timeout_ns,
+        }
 
     def test_result(self):
         """Returns a dict representing a result written by the 'run' command.
@@ -401,6 +416,7 @@ class TestInfo:
                        for e in self._errors],
             'skipReason': self._skip_reason,
             'attr': self._attr,
+            'timeout': self._timeout_ns,
         }
 
     def status_entries(self):
