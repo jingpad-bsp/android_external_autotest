@@ -34,10 +34,11 @@ class tast(test.test):
 
     # Maximum time to wait for various tast commands to complete, in seconds.
     _VERSION_TIMEOUT_SEC = 10
-    _SUBCOMMAND_TIMEOUT_SEC = {
-        'list': 30,
-        'run': 600,
-    }
+    _LIST_TIMEOUT_SEC = 30
+
+    # Additional time to add to the run timeout (e.g. for collecting crashes and
+    # logs).
+    _RUN_OVERHEAD_SEC = 20
 
     # File written by the tast command containing test results, as
     # newline-terminated JSON TestResult objects.
@@ -81,7 +82,7 @@ class tast(test.test):
     _TEST_DID_NOT_FINISH_MSG = 'Test did not finish'
 
     def initialize(self, host, test_exprs, ignore_test_failures=False,
-                   install_root='/'):
+                   max_run_sec=3600, install_root='/'):
         """
         @param host: remote.RemoteHost instance representing DUT.
         @param test_exprs: Array of strings describing tests to run.
@@ -90,6 +91,8 @@ class tast(test.test):
             response to the tast command failing to run successfully. This
             should generally be False when the test is running inline and True
             when it's running asynchronously.
+        @param max_run_sec: Integer maximum running time for the "tast run"
+            command in seconds.
         @param install_root: Root directory under which Tast binaries are
             installed. Alternate values may be passed by unit tests.
 
@@ -98,6 +101,7 @@ class tast(test.test):
         self._host = host
         self._test_exprs = test_exprs
         self._ignore_test_failures = ignore_test_failures
+        self._max_run_sec = max_run_sec
         self._install_root = install_root
         self._fake_now = None
 
@@ -179,13 +183,15 @@ class tast(test.test):
         except error.CmdError as e:
             logging.error('Failed to log tast version: %s', str(e))
 
-    def _run_tast(self, subcommand, extra_subcommand_args, log_stdout=False):
+    def _run_tast(self, subcommand, extra_subcommand_args, timeout_sec,
+                  log_stdout=False):
         """Runs the tast command locally to e.g. list available tests or perform
         testing against the DUT.
 
         @param subcommand: Subcommand to pass to the tast executable, e.g. 'run'
             or 'list'.
         @param extra_subcommand_args: List of additional subcommand arguments.
+        @param timeout_sec: Integer timeout for the command in seconds.
         @param log_stdout: If true, write stdout to log.
 
         @returns client.common_lib.utils.CmdResult object describing the result.
@@ -211,7 +217,7 @@ class tast(test.test):
         try:
             return utils.run(cmd,
                              ignore_status=False,
-                             timeout=self._SUBCOMMAND_TIMEOUT_SEC[subcommand],
+                             timeout=timeout_sec,
                              stdout_tee=(utils.TEE_TO_LOGS if log_stdout
                                          else None),
                              stderr_tee=utils.TEE_TO_LOGS,
@@ -234,7 +240,7 @@ class tast(test.test):
         @raises error.TestFail if the tast command fails or times out.
         """
         logging.info('Getting list of tests that will be run')
-        result = self._run_tast('list', ['-json=true'])
+        result = self._run_tast('list', ['-json=true'], self._LIST_TIMEOUT_SEC)
         try:
             self._tests_to_run = json.loads(result.stdout.strip())
         except ValueError as e:
@@ -251,9 +257,20 @@ class tast(test.test):
         @raises error.TestFail if the tast command fails or times out (but not
             if individual tests fail).
             """
-        logging.info('Running tests')
-        self._run_tast('run', ['-resultsdir=' + self.resultsdir],
+        timeout_sec = self._get_run_tests_timeout_sec()
+        logging.info('Running tests with timeout of %d sec', timeout_sec)
+        self._run_tast('run', ['-resultsdir=' + self.resultsdir], timeout_sec,
                        log_stdout=True)
+
+    def _get_run_tests_timeout_sec(self):
+        """Computes the timeout for the 'tast run' command.
+
+        @return Integer timeout in seconds.
+        """
+        # Go time.Duration values are serialized to nanoseconds.
+        total_ns = sum([int(t['timeout']) for t in self._tests_to_run])
+        return min(total_ns / 1000000000 + tast._RUN_OVERHEAD_SEC,
+                   self._max_run_sec)
 
     def _parse_results(self):
         """Parses results written by the tast command.
