@@ -45,6 +45,7 @@ class TastTest(unittest.TestCase):
         self._temp_dir = tempfile.mkdtemp('.tast_unittest')
 
         def make_subdir(subdir):
+            # pylint: disable=missing-docstring
             path = os.path.join(self._temp_dir, subdir)
             os.mkdir(path)
             return path
@@ -78,6 +79,12 @@ class TastTest(unittest.TestCase):
             Packaging. Otherwise, install to locations used by Portage packages.
         """
         def create_file(orig_dest, src=None):
+            """Creates a file under self._root_dir.
+
+            @param orig_dest: Original absolute path, e.g. "/usr/bin/tast".
+            @param src: Absolute path to file to copy, or none to create empty.
+            @return: Absolute path to created file.
+            """
             dest = self._get_path_in_root(orig_dest)
             if not os.path.exists(os.path.dirname(dest)):
                 os.makedirs(os.path.dirname(dest))
@@ -353,6 +360,11 @@ class TestInfo:
             None if no attributes are assigned.
         """
         def from_offset(offset):
+            """Returns an offset from BASE_TIME.
+
+            @param offset: Offset as integer seconds.
+            @return: datetime.datetime object.
+            """
             if offset is None:
                 return None
             return BASE_TIME + datetime.timedelta(0, offset)
@@ -366,6 +378,7 @@ class TestInfo:
         self._attr = list(attr) if attr else []
 
     def start_time(self):
+        # pylint: disable=missing-docstring
         return self._start_time
 
     def test(self):
@@ -401,6 +414,13 @@ class TestInfo:
             return []
 
         def make(status_code, dt, msg=''):
+            """Makes a base_job.status_log_entry.
+
+            @param status_code: String status code.
+            @param dt: datetime.datetime object containing entry time.
+            @param msg: String message (typically only set for errors).
+            @return: base_job.status_log_entry object.
+            """
             timestamp = int((dt - tast._UNIX_EPOCH).total_seconds())
             return base_job.status_log_entry(
                     status_code, None,
@@ -439,9 +459,11 @@ class FakeServerJob:
         self.status_entries = []
 
     def add_post_run_hook(self, hook):
+        """Stub implementation of server_job.add_post_run_hook."""
         self.post_run_hook = hook
 
     def record_entry(self, entry, log_in_subdir=True):
+        """Stub implementation of server_job.record_entry."""
         assert(not log_in_subdir)
         self.status_entries.append(entry)
 
@@ -482,7 +504,7 @@ class TastCommand(object):
 def to_rfc3339(t):
     """Returns an RFC3339 timestamp.
 
-    @param t: UTC datetime.DateTime object or None for the zero time.
+    @param t: UTC datetime.datetime object or None for the zero time.
     @return: String RFC3339 time, e.g. '2018-01-02T02:34:28Z'.
     """
     if t is None:
