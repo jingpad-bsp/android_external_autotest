@@ -8,6 +8,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
+import itertools
 import json
 import logging
 import os
@@ -21,6 +23,8 @@ from skylab_suite import swarming_lib
 SKYLAB_SUITE_USER = 'skylab_suite_runner'
 SKYLAB_LUCI_TAG = 'luci_project:chromiumos'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
+
+SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
 
 
 def run(tests_specs, suite_handler, dry_run=False):
@@ -211,10 +215,36 @@ def _fetch_child_tasks(parent_task_id):
     timeout_util = autotest.chromite_load('timeout_util')
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     with timeout_util.Timeout(60):
-        logging.info('Checking child tasks:')
         child_tasks = cros_build_lib.RunCommand(
                 swarming_cmd, capture_output=True)
         return json.loads(child_tasks.output)
+
+
+@contextlib.contextmanager
+def set_logging(iterations, logging_interval):
+    try:
+        if bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS %
+                logging_interval):
+            logging.disable(logging.INFO)
+
+        yield
+    finally:
+        logging.disable(logging.NOTSET)
+
+
+def _if_wait(suite_handler, dry_run):
+    """Check whether to wait suite to finish.
+
+    @param suite_handler: A cros_suite.SuiteHandler object.
+
+    @return a boolean to indicate whether to stop waiting or not.
+    """
+    json_output = _fetch_child_tasks(suite_handler.suite_id)
+    suite_handler.handle_results(json_output['items'])
+    for t in suite_handler.retried_tasks:
+        _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
+
+    return suite_handler.is_finished_waiting()
 
 
 def _wait_for_results(suite_handler, dry_run=False):
@@ -224,16 +254,13 @@ def _wait_for_results(suite_handler, dry_run=False):
     """
     timeout_util = autotest.chromite_load('timeout_util')
     with timeout_util.Timeout(suite_handler.timeout_mins * 60):
-        while True:
-            json_output = _fetch_child_tasks(suite_handler.suite_id)
-            suite_handler.handle_results(json_output['items'])
-            for t in suite_handler.retried_tasks:
-                _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
+        for iterations in itertools.count(0):
+            # Log progress every 300 seconds.
+            with set_logging(iterations, 300):
+                if _if_wait(suite_handler, dry_run):
+                    break
 
-            if suite_handler.is_finished_waiting():
-                break
-
-            time.sleep(30)
+            time.sleep(SUITE_WAIT_SLEEP_INTERVAL_SECONDS)
 
     logging.info('Finished to wait for child tasks.')
 
