@@ -22,6 +22,8 @@ import sys
 
 
 def main():
+    # pylint: disable=missing-docstring
+
     # The config file is written by TastTest._run_test in tast_unittest.py and
     # consists of a dict from command names (e.g. 'list', 'run', etc.) to
     # command definition dicts (see TastCommand in tast_unittest.py).
@@ -69,6 +71,7 @@ def parse_args():
     @returns: argparse.Namespace object containing parsed attributes.
     """
     def to_bool(v):
+        """Converts a boolean flag's value to a Python bool value."""
         if v == 'true' or v == '':
             return True
         if v == 'false':
@@ -83,6 +86,7 @@ def parse_args():
     subparsers = parser.add_subparsers(dest='command')
 
     def add_common_args(subparser):
+        """Adds arguments shared between tast's 'list' and 'run' subcommands."""
         subparser.add_argument('-build', type=to_bool, default=True, nargs='?')
         subparser.add_argument('-remotebundledir')
         subparser.add_argument('-remotedatadir')
