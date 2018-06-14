@@ -35,6 +35,7 @@ UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
 
 
 _STATEFUL_UPDATE_SCRIPT = 'stateful_update'
+_QUICK_PROVISION_SCRIPT = 'quick-provision'
 
 _UPDATER_BIN = '/usr/bin/update_engine_client'
 _UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
@@ -390,8 +391,6 @@ class ChromiumOSUpdater(object):
         self._run('stop ui || true')
         self._run('stop update-engine || true')
         self._run('start update-engine')
-
-        # Wait for update engine to be ready.
         self._wait_for_update_service()
 
 
@@ -429,14 +428,31 @@ class ChromiumOSUpdater(object):
         }
 
 
+    def _verify_kernel_state(self):
+        """Verify that the next kernel to boot is correct for update.
+
+        This tests that the kernel state is correct for a successfully
+        downloaded and installed update.  That is, the next kernel to
+        boot must be the currently inactive kernel.
+
+        @raise RootFSUpdateError if the DUT next kernel isn't the
+                expected next kernel.
+        """
+        inactive_kernel = self.get_kernel_state()[1]
+        next_kernel = self._get_next_kernel()
+        if next_kernel != inactive_kernel:
+            raise RootFSUpdateError(
+                    'Update failed.  The kernel for next boot is %s, '
+                    'but %s was expected.'
+                    % (next_kernel['name'], inactive_kernel['name']))
+        return inactive_kernel
+
+
     def _verify_update_completed(self):
         """Verifies that an update has completed.
 
         @raise RootFSUpdateError if the DUT doesn't indicate that
                 download is complete and the DUT is ready for reboot.
-        @raise RootFSUpdateError if the DUT reports that the partition
-                to be booted next is not the currently inactive
-                partition.
         """
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
@@ -446,14 +462,7 @@ class ChromiumOSUpdater(object):
             raise RootFSUpdateError(
                     'Update engine status is %s (%s was expected).  %s'
                     % (status, UPDATER_NEED_REBOOT, error_msg))
-        inactive_kernel = self.get_kernel_state()[1]
-        next_kernel = self._get_next_kernel()
-        if next_kernel != inactive_kernel:
-            raise RootFSUpdateError(
-                    'Update failed.  The kernel for next boot is %s, '
-                    'but %s was expected.'
-                    % (next_kernel['name'], inactive_kernel['name']))
-        return inactive_kernel
+        return self._verify_kernel_state()
 
 
     def trigger_update(self):
@@ -700,9 +709,7 @@ class ChromiumOSUpdater(object):
         self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
         self._run('touch %s' % PROVISION_FAILED)
         self.host.prepare_for_update()
-        self._run('stop ui || true')
-        self._run('start update-engine || true')
-        self._wait_for_update_service()
+        self._reset_update_engine()
         logging.info('Updating from version %s to %s.',
                      self.host.get_release_version(),
                      self.update_version)
@@ -723,22 +730,77 @@ class ChromiumOSUpdater(object):
                     server, 'Devserver is not up and available')
 
 
+    def _install_via_update_engine(self):
+        """Install an updating using the production AU flow.
+
+        This uses the standard AU flow and the `stateful_update` script
+        to download and install a root FS, kernel and stateful
+        filesystem content.
+
+        @return The kernel expected to be booted next.
+        """
+        logging.info('Installing image using update_engine.')
+        expected_kernel = self.update_image()
+        self.update_stateful()
+        return expected_kernel
+
+
+    def _install_via_quick_provision(self):
+        """Install an updating using the `quick-provision` script.
+
+        This uses the `quick-provision` script to download and install
+        a root FS, kernel and stateful filesystem content.
+
+        @return The kernel expected to be booted next.
+        """
+        build_re = global_config.global_config.get_config_value(
+                'CROS', 'quick_provision_build_regex', type=str, default='')
+        image_name = url_to_image_name(self.update_url)
+        if not build_re or re.match(build_re, image_name) is None:
+            logging.info('Not eligible for quick-provision.')
+            return None
+        logging.info('Installing image using quick-provision.')
+        provision_command = self._get_remote_script(_QUICK_PROVISION_SCRIPT)
+        server_name = urlparse.urlparse(self.update_url)[1]
+        static_url = 'http://%s/static' % server_name
+        command = '%s --noreboot %s %s' % (
+                      provision_command, image_name, static_url)
+        try:
+            self._run(command)
+            return self._verify_kernel_state()
+        except Exception:
+            # N.B.  We handle only `Exception` here.  Non-Exception
+            # classes (such as KeyboardInterrupt) are handled by our
+            # caller.
+            logging.exception('quick-provision script failed; '
+                              'will fall back to update_engine.')
+            self._revert_boot_partition()
+            self._reset_stateful_partition()
+            self._reset_update_engine()
+            return None
+
+
     def _install_update(self):
         """Install the requested image on the DUT, but don't start it.
 
-        This downloads all content needed for the requested update, and
-        installs it in place on the DUT.  This does not reboot the DUT,
-        so the update is merely pending when the method returns.
+        This downloads and installs a root FS, kernel and stateful
+        filesystem content.  This does not reboot the DUT, so the update
+        is merely pending when the method returns.
+
+        @return The kernel expected to be booted next.
         """
         logging.info('Installing image at %s onto %s',
                      self.update_url, self.host.hostname)
         try:
-            expected_kernel = self.update_image()
-            self.update_stateful()
-            logging.info('Update complete.')
+            return (self._install_via_quick_provision()
+                    or self._install_via_update_engine())
         except:
+            # N.B. This handling code includes non-Exception classes such
+            # as KeyboardInterrupt.  We need to clean up, but we also must
+            # re-raise.
             self._revert_boot_partition()
             self._reset_stateful_partition()
+            self._reset_update_engine()
             # Collect update engine logs in the event of failure.
             if self.host.job:
                 logging.info('Collecting update engine logs due to failure...')
@@ -747,7 +809,6 @@ class ChromiumOSUpdater(object):
                         preserve_perm=False)
             _list_image_dir_contents(self.update_url)
             raise
-        return expected_kernel
 
 
     def _complete_update(self, expected_kernel):
