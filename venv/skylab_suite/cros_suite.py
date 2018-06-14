@@ -244,6 +244,7 @@ class SuiteHandler(object):
 
 class Suite(object):
     """The class for a CrOS suite."""
+    EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
     def __init__(self, specs):
         """Initialize a suite.
@@ -296,7 +297,7 @@ class Suite(object):
                     pool=self.pool,
                     build=self.test_source_build,
                     bot_id=bot_id,
-                    expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
+                    expiration_secs=self.EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
@@ -341,6 +342,7 @@ class Suite(object):
 
 class ProvisionSuite(Suite):
     """The class for a CrOS provision suite."""
+    EXPIRATION_SECS = 3 * 60
 
     def __init__(self, specs):
         super(ProvisionSuite, self).__init__(specs)
