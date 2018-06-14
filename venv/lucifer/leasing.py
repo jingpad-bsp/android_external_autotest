@@ -122,6 +122,7 @@ class Lease(object):
         call will raise socket.error with ECONNREFUSED.
         """
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.setblocking(0)
         logger.debug('Connecting to abort socket %s', self._sock_path)
         sock.connect(self._sock_path)
         logger.debug('Sending abort to %s', self._sock_path)
