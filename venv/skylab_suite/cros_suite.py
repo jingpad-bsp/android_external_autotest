@@ -236,7 +236,7 @@ class SuiteHandler(object):
         is_failure = test_result['failure']
         return (self._test_retry and
                 ((state == swarming_lib.TASK_COMPLETED and is_failure)
-                 or (state in swarming_lib.TASK_FAILED_STATUS))
+                 or (state in swarming_lib.TASK_STATUS_TO_RETRY))
                 and (task_id in self._task_to_test_maps)
                 and (self._task_to_test_maps[task_id].remaining_retries > 0)
                 and (self._max_retries > 0))
