@@ -191,6 +191,7 @@ class kernel_ConfigVerify(test.test):
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('SND_PROC_FS')
                     entry['builtin'].append('USB_CONFIGFS_F_FS')
+                    entry['builtin'].append('ESD_FS')
                     entry['enabled'].append('CONFIGFS_FS')
                     entry['module'].append('USB_F_FS')
 
@@ -198,12 +199,6 @@ class kernel_ConfigVerify(test.test):
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('EXT4_USE_FOR_EXT23')
-
-        if utils.compare_versions(kernel_ver, "3.18") >= 0 and \
-            utils.compare_versions(kernel_ver, "4.12") < 0:
-            for entry in self.IS_EXCLUSIVE:
-                if entry['regex'] == '.*_FS$':
-                    entry['builtin'].append('ESD_FS')
 
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MISSING.remove('INET_DIAG')
