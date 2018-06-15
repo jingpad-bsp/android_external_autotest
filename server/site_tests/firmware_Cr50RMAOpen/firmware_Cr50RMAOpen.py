@@ -31,7 +31,10 @@ class firmware_Cr50RMAOpen(Cr50Test):
     # Various Error Messages from the command line and AP RMA failures
     MISMATCH_CLI = 'Auth code does not match.'
     MISMATCH_AP = 'rma unlock failed, code 6'
-    LIMIT_CLI = 'RMA Auth error 0x504'
+    # Starting in 0.4.8 cr50 doesn't print "RMA Auth error 0x504". It doesn't
+    # print anything. Once prod and prepvt versions do this remove the error
+    # code from the test.
+    LIMIT_CLI = '(RMA Auth error 0x504|rma_auth\s+>)'
     LIMIT_AP = 'error 4'
     ERR_DISABLE_AP = 'error 7'
     DISABLE_WARNING = ('mux_client_request_session: read from master failed: '
@@ -46,7 +49,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
     # behave the same and be interchangeable
     CMD_INTERFACES = ['ap', 'cli']
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, ccd_lockout):
         """Initialize the test"""
         super(firmware_Cr50RMAOpen, self).initialize(host, cmdline_args)
         self.host = host
@@ -65,12 +68,24 @@ class firmware_Cr50RMAOpen(Cr50Test):
         if self.host.run('rma_reset -h', ignore_status=True).exit_status == 127:
             raise error.TestNAError('Cannot test RMA open without rma_reset')
 
+        # Attempt to disable factory mode. If factory mode isn't enabled this
+        # will fail. Ignore the exit status no matter what. Init will make sure
+        # all capabilities are set to default before running the test.
+        logging.info(cr50_utils.GSCTool(self.host, ['-a', '-F', 'disable'],
+                ignore_status=True))
         # Disable all capabilities at the start of the test. Go ahead and enable
         # testlab mode if it isn't enabled.
-        self.cr50.fast_open(enable_testlab=True)
-        self.cr50.send_command('ccd reset')
-        self.cr50.set_ccd_level('lock')
-        self.check_ccd_cap_settings(False)
+        if not ccd_lockout:
+            self.cr50.fast_open(enable_testlab=True)
+            self.cr50.send_command('ccd reset')
+            self.cr50.set_ccd_level('lock')
+            self.check_ccd_cap_settings(False)
+
+        # Make sure all capabilities are set to default.
+        try:
+            self.check_ccd_cap_settings(False)
+        except error.TestFail:
+            raise error.TestError('Could not disable rma mode')
 
         self.is_prod_mp = self.get_prod_mp_status()
 
@@ -126,13 +141,13 @@ class firmware_Cr50RMAOpen(Cr50Test):
         """
         cmd = 'rma_auth ' + ('disable' if disable else authcode)
         get_challenge = not (authcode or disable)
-        resp = 'rma_auth(.*)>'
+        resp = 'rma_auth(.*generated challenge:)?(.*)>'
         if expected_exit_status:
             resp = self.LIMIT_CLI if get_challenge else self.MISMATCH_CLI
 
         result = self.cr50.send_command_get_output(cmd, [resp])
         logging.info(result)
-        return (self.parse_challenge(result[0][1]) if get_challenge else
+        return (self.parse_challenge(result[0][-1]) if get_challenge else
                 result[0])
 
 
@@ -150,7 +165,10 @@ class firmware_Cr50RMAOpen(Cr50Test):
         Raises:
             error.TestFail if there is an unexpected gsctool response
         """
-        cmd = 'disable' if disable else authcode
+        if disable:
+            cmd = '-a -F disable'
+        else:
+            cmd = '-a -r ' + authcode
         get_challenge = not (authcode or disable)
 
         expected_stderr = ''
@@ -162,7 +180,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
             else:
                 expected_stderr = self.LIMIT_AP
 
-        result = cr50_utils.RMAOpen(self.host, cmd,
+        result = cr50_utils.GSCTool(self.host, cmd.split(),
                 ignore_status=expected_stderr)
         logging.info(result)
         # Various connection issues result in warnings. If there is a real issue

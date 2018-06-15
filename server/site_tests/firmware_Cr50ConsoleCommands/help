@@ -25,7 +25,7 @@ recbtnforce
 rma_auth
 -serialno
 shmem
-(?P<prepvt>sleepmask)?
+sleepmask
 (?P<mp>-)?spihash
 sysinfo
 sysrst

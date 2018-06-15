@@ -23,11 +23,6 @@ try:
 except ImportError:
     metrics = utils.metrics_mock
 
-try:
-    import devserver
-    _STATEFUL_UPDATE_PATH = devserver.__path__[0]
-except ImportError:
-    _STATEFUL_UPDATE_PATH = '/usr/bin'
 
 # Local stateful update path is relative to the CrOS source directory.
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
@@ -40,10 +35,7 @@ UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
 
 
 _STATEFUL_UPDATE_SCRIPT = 'stateful_update'
-_REMOTE_STATEFUL_UPDATE_PATH = os.path.join(
-        '/usr/local/bin', _STATEFUL_UPDATE_SCRIPT)
-_REMOTE_TMP_STATEFUL_UPDATE = os.path.join(
-        '/tmp', _STATEFUL_UPDATE_SCRIPT)
+_QUICK_PROVISION_SCRIPT = 'quick-provision'
 
 _UPDATER_BIN = '/usr/bin/update_engine_client'
 _UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
@@ -399,15 +391,13 @@ class ChromiumOSUpdater(object):
         self._run('stop ui || true')
         self._run('stop update-engine || true')
         self._run('start update-engine')
-
-        # Wait for update engine to be ready.
         self._wait_for_update_service()
 
 
     def _reset_stateful_partition(self):
         """Clear any pending stateful update request."""
         self._run('%s --stateful_change=reset 2>&1'
-                  % self.get_stateful_update_script())
+                  % self._get_stateful_update_script())
 
 
     def _revert_boot_partition(self):
@@ -438,14 +428,31 @@ class ChromiumOSUpdater(object):
         }
 
 
+    def _verify_kernel_state(self):
+        """Verify that the next kernel to boot is correct for update.
+
+        This tests that the kernel state is correct for a successfully
+        downloaded and installed update.  That is, the next kernel to
+        boot must be the currently inactive kernel.
+
+        @raise RootFSUpdateError if the DUT next kernel isn't the
+                expected next kernel.
+        """
+        inactive_kernel = self.get_kernel_state()[1]
+        next_kernel = self._get_next_kernel()
+        if next_kernel != inactive_kernel:
+            raise RootFSUpdateError(
+                    'Update failed.  The kernel for next boot is %s, '
+                    'but %s was expected.'
+                    % (next_kernel['name'], inactive_kernel['name']))
+        return inactive_kernel
+
+
     def _verify_update_completed(self):
         """Verifies that an update has completed.
 
         @raise RootFSUpdateError if the DUT doesn't indicate that
                 download is complete and the DUT is ready for reboot.
-        @raise RootFSUpdateError if the DUT reports that the partition
-                to be booted next is not the currently inactive
-                partition.
         """
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
@@ -455,14 +462,7 @@ class ChromiumOSUpdater(object):
             raise RootFSUpdateError(
                     'Update engine status is %s (%s was expected).  %s'
                     % (status, UPDATER_NEED_REBOOT, error_msg))
-        inactive_kernel = self.get_kernel_state()[1]
-        next_kernel = self._get_next_kernel()
-        if next_kernel != inactive_kernel:
-            raise RootFSUpdateError(
-                    'Update failed.  The kernel for next boot is %s, '
-                    'but %s was expected.'
-                    % (next_kernel['name'], inactive_kernel['name']))
-        return inactive_kernel
+        return self._verify_kernel_state()
 
 
     def trigger_update(self):
@@ -508,35 +508,55 @@ class ChromiumOSUpdater(object):
         return self._verify_update_completed()
 
 
-    def get_stateful_update_script(self):
-        """Returns the path to the stateful update script on the target.
+    def _get_remote_script(self, script_name):
+        """Ensure that `script_name` is present on the DUT.
 
-        When runnning test_that, stateful_update is in chroot /usr/sbin,
-        as installed by chromeos-base/devserver packages.
-        In the lab, it is installed with the python module devserver, by
-        build_externals.py command.
+        The given script (e.g. `stateful_update`) may be present in the
+        stateful partition under /usr/local/bin, or we may have to
+        download it from the devserver.
 
-        If we can find it, we hope it exists already on the DUT, we assert
-        otherwise.
+        Determine whether the script is present or must be downloaded
+        and download if necessary.  Then, return a command fragment
+        sufficient to run the script from whereever it now lives on the
+        DUT.
 
-        @raise StatefulUpdateError if the script can't be installed.
+        @param script_name  The name of the script as expected in
+                            /usr/local/bin and on the devserver.
+        @return A string with the command (minus arguments) that will
+                run the target script.
         """
-        stateful_update_file = os.path.join(_STATEFUL_UPDATE_PATH,
-                                            _STATEFUL_UPDATE_SCRIPT)
-        if os.path.exists(stateful_update_file):
-            self.host.send_file(
-                    stateful_update_file, _REMOTE_TMP_STATEFUL_UPDATE,
-                    delete_dest=True)
-            return _REMOTE_TMP_STATEFUL_UPDATE
+        remote_script = '/usr/local/bin/%s' % script_name
+        if self.host.path_exists(remote_script):
+            return remote_script
+        remote_tmp_script = '/tmp/%s' % script_name
+        server_name = urlparse.urlparse(self.update_url)[1]
+        script_url = 'http://%s/static/%s' % (server_name, script_name)
+        fetch_script = (
+            'curl -o %s %s && head -1 %s | grep "^#!" | sed "s/#!//"') % (
+                   remote_tmp_script, script_url, remote_tmp_script)
+        script_interpreter = self._run(fetch_script,
+                                       ignore_status=True).stdout.strip()
+        if not script_interpreter:
+            return None
+        return '%s %s' % (script_interpreter, remote_tmp_script)
 
-        if self.host.path_exists(_REMOTE_STATEFUL_UPDATE_PATH):
-            logging.warning('Could not chroot %s script, falling back on %s',
-                            _STATEFUL_UPDATE_SCRIPT,
-                            _REMOTE_STATEFUL_UPDATE_PATH)
-            return _REMOTE_STATEFUL_UPDATE_PATH
-        else:
-            raise StatefulUpdateError('Could not locate %s'
+
+    def _get_stateful_update_script(self):
+        """Returns a command to run the stateful update script.
+
+        Find `stateful_update` on the target or install it, as
+        necessary.  If installation fails, raise an exception.
+
+        @raise StatefulUpdateError if the script can't be found or
+            installed.
+        @return A string that can be joined with arguments to run the
+            `stateful_update` command on the DUT.
+        """
+        script_command = self._get_remote_script(_STATEFUL_UPDATE_SCRIPT)
+        if not script_command:
+            raise StatefulUpdateError('Could not install %s on DUT'
                                       % _STATEFUL_UPDATE_SCRIPT)
+        return script_command
 
 
     def rollback_rootfs(self, powerwash):
@@ -591,7 +611,7 @@ class ChromiumOSUpdater(object):
 
         # Attempt stateful partition update; this must succeed so that the newly
         # installed host is testable after update.
-        statefuldev_cmd = [self.get_stateful_update_script(), statefuldev_url]
+        statefuldev_cmd = [self._get_stateful_update_script(), statefuldev_url]
         if clobber:
             statefuldev_cmd.append('--stateful_change=clean')
 
@@ -689,9 +709,7 @@ class ChromiumOSUpdater(object):
         self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
         self._run('touch %s' % PROVISION_FAILED)
         self.host.prepare_for_update()
-        self._run('stop ui || true')
-        self._run('start update-engine || true')
-        self._wait_for_update_service()
+        self._reset_update_engine()
         logging.info('Updating from version %s to %s.',
                      self.host.get_release_version(),
                      self.update_version)
@@ -712,22 +730,77 @@ class ChromiumOSUpdater(object):
                     server, 'Devserver is not up and available')
 
 
+    def _install_via_update_engine(self):
+        """Install an updating using the production AU flow.
+
+        This uses the standard AU flow and the `stateful_update` script
+        to download and install a root FS, kernel and stateful
+        filesystem content.
+
+        @return The kernel expected to be booted next.
+        """
+        logging.info('Installing image using update_engine.')
+        expected_kernel = self.update_image()
+        self.update_stateful()
+        return expected_kernel
+
+
+    def _install_via_quick_provision(self):
+        """Install an updating using the `quick-provision` script.
+
+        This uses the `quick-provision` script to download and install
+        a root FS, kernel and stateful filesystem content.
+
+        @return The kernel expected to be booted next.
+        """
+        build_re = global_config.global_config.get_config_value(
+                'CROS', 'quick_provision_build_regex', type=str, default='')
+        image_name = url_to_image_name(self.update_url)
+        if not build_re or re.match(build_re, image_name) is None:
+            logging.info('Not eligible for quick-provision.')
+            return None
+        logging.info('Installing image using quick-provision.')
+        provision_command = self._get_remote_script(_QUICK_PROVISION_SCRIPT)
+        server_name = urlparse.urlparse(self.update_url)[1]
+        static_url = 'http://%s/static' % server_name
+        command = '%s --noreboot %s %s' % (
+                      provision_command, image_name, static_url)
+        try:
+            self._run(command)
+            return self._verify_kernel_state()
+        except Exception:
+            # N.B.  We handle only `Exception` here.  Non-Exception
+            # classes (such as KeyboardInterrupt) are handled by our
+            # caller.
+            logging.exception('quick-provision script failed; '
+                              'will fall back to update_engine.')
+            self._revert_boot_partition()
+            self._reset_stateful_partition()
+            self._reset_update_engine()
+            return None
+
+
     def _install_update(self):
         """Install the requested image on the DUT, but don't start it.
 
-        This downloads all content needed for the requested update, and
-        installs it in place on the DUT.  This does not reboot the DUT,
-        so the update is merely pending when the method returns.
+        This downloads and installs a root FS, kernel and stateful
+        filesystem content.  This does not reboot the DUT, so the update
+        is merely pending when the method returns.
+
+        @return The kernel expected to be booted next.
         """
         logging.info('Installing image at %s onto %s',
                      self.update_url, self.host.hostname)
         try:
-            expected_kernel = self.update_image()
-            self.update_stateful()
-            logging.info('Update complete.')
+            return (self._install_via_quick_provision()
+                    or self._install_via_update_engine())
         except:
+            # N.B. This handling code includes non-Exception classes such
+            # as KeyboardInterrupt.  We need to clean up, but we also must
+            # re-raise.
             self._revert_boot_partition()
             self._reset_stateful_partition()
+            self._reset_update_engine()
             # Collect update engine logs in the event of failure.
             if self.host.job:
                 logging.info('Collecting update engine logs due to failure...')
@@ -736,7 +809,6 @@ class ChromiumOSUpdater(object):
                         preserve_perm=False)
             _list_image_dir_contents(self.update_url)
             raise
-        return expected_kernel
 
 
     def _complete_update(self, expected_kernel):

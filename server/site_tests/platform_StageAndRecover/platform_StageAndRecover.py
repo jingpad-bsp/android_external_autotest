@@ -26,6 +26,11 @@ class platform_StageAndRecover(test.test):
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
         self.host.servo.set('dut_hub1_rst1','on')
 
+        # Switch usb_mux_sel1 to enumerate as /dev/sda
+        self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+
+
     def set_servo_usb_recover(self):
         """ Turns USB_HUB_2 servo port to servo, and connects servo to DUT.
         Avoiding peripherals plugged at this servo port.

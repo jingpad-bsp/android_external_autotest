@@ -127,11 +127,10 @@ class platform_PrintJob(test.test):
     def navigate_to_pdf(self):
         """Navigate to the pdf page to print"""
         self.cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-        self.tab = self.cr.browser.tabs[0]
+        tab = self.cr.browser.tabs.New()
         pdf_path = os.path.join(self.bindir, 'to_print.pdf')
-        self.tab.Navigate(
-                self.cr.browser.platform.http_server.UrlOf(pdf_path))
-        self.tab.WaitForDocumentReadyStateToBeInteractiveOrBetter(
+        tab.Navigate(self.cr.browser.platform.http_server.UrlOf(pdf_path))
+        tab.WaitForDocumentReadyStateToBeInteractiveOrBetter(
                 timeout=_CHECK_TIMEOUT);
 
 

@@ -33,7 +33,6 @@ from autotest_lib.client.bin import sysinfo
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import utils
@@ -51,7 +50,6 @@ from autotest_lib.server.hosts import factory as host_factory
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import ssh_multiplex
 from autotest_lib.tko import models as tko_models
-from autotest_lib.tko import status_lib
 from autotest_lib.tko import parser_lib
 
 try:
@@ -124,14 +122,14 @@ def get_machine_dicts(machine_names, store_dir, in_lab, use_shadow_store,
                 afe_host.attributes.update(host_attributes)
                 info = host_info.HostInfo(attributes=host_attributes)
                 host_info_store.commit(info)
-        else:
+        elif use_shadow_store:
             afe_host = _create_afe_host(machine)
-            if use_shadow_store:
-                host_info_store = _create_afe_backed_host_info_store(store_dir,
-                                                                     machine)
-            else:
-                host_info_store = _create_file_backed_host_info_store(store_dir,
-                                                                      machine)
+            host_info_store = _create_afe_backed_host_info_store(store_dir,
+                                                                 machine)
+        else:
+            afe_host = server_utils.EmptyAFEHost()
+            host_info_store = _create_file_backed_host_info_store(store_dir,
+                                                                  machine)
 
         machine_dict_list.append({
                 'hostname' : machine,
