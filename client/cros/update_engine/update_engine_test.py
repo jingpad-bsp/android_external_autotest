@@ -40,6 +40,7 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         if not self._internet_was_disabled:
             return
 
+        self._internet_was_disabled = False
         for eth in self._NETWORK_INTERFACES:
             utils.run('ifconfig %s up' % eth, ignore_status=True)
         utils.start_service('recover_duts', ignore_status=True)
@@ -48,9 +49,10 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         # test may not receive the message. So we wait a bit longer for the
         # DUT to be reconnected.
         utils.poll_for_condition(lambda: utils.ping(ping_server,
-                                                    deadline=5, timeout=5) == 0,
+                                                    tries=3, timeout=10) == 0,
                                  timeout=60,
-                                 sleep_interval=1)
+                                 sleep_interval=1,
+                                 desc='Ping after reconnecting network.')
 
 
     def _disable_internet(self, ping_server='google.com'):
