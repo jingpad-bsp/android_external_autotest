@@ -30,6 +30,7 @@ new changes.
 import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
+args_dict['suite_dependencies'] = 'cr50:prepvt'
 args_dict['name'] = 'faft_cr50_prepvt'
 args_dict['add_experimental'] = True
 args_dict['job'] = job
