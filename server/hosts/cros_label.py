@@ -159,6 +159,29 @@ class ECLabel(base_label.BaseLabel):
         return False
 
 
+class Cr50Label(base_label.StringPrefixLabel):
+    """Label indicating the cr50 version."""
+
+    _NAME = 'cr50'
+
+    def __init__(self):
+        self.ver = None
+
+
+    def exists(self, host):
+        # Make sure the gsctool version command runs ok
+        self.ver = host.run('gsctool -a -f', ignore_status=True)
+        return self.ver.exit_status == 0
+
+
+    def generate_labels(self, host):
+        # Check the major version to determine prePVT vs PVT
+        major_ver = int(re.search('RW \d+\.(\d+)\.\d+[\r\n]',
+                self.ver.stdout).group(1))
+        # PVT images have a odd major version prePVT have even
+        return ['pvt' if (major_ver % 2) else 'prepvt']
+
+
 class AccelsLabel(base_label.BaseLabel):
     """Determine the type of accelerometers on this host."""
 
@@ -610,6 +633,7 @@ CROS_LABELS = [
     ChameleonLabel(),
     ChameleonPeripheralsLabel(),
     common_label.OSLabel(),
+    Cr50Label(),
     CtsArchLabel(),
     DetachableBaseLabel(),
     ECLabel(),
