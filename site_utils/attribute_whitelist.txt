@@ -99,6 +99,8 @@ suite:faft_bios_au_2
 suite:faft_bios_au_3
 suite:faft_bios_ec3po
 suite:faft_bios_tot
+suite:faft_cr50_prepvt
+suite:faft_cr50_pvt
 suite:faft_dev
 suite:faft_dev_ryu
 suite:faft_ec
