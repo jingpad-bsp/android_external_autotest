@@ -12,8 +12,7 @@ JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
-DOC = ('Run package GtsPlacementTestCases of the '
-       'Android Google Test Suite (GTS) in the ARC++ container.')
+DOC = 'Run package GtsPlacementTestCases of the Android Google Test Suite (GTS) in the ARC++ container.'
 
 def run_GTS(machine):
     host = hosts.create_host(machine)
@@ -23,7 +22,11 @@ def run_GTS(machine):
         iterations=1,
         max_retry=2,
         tag='GtsPlacementTestCases',
-        target_package='GtsPlacementTestCases',
+        test_name='cheets_GTS.GtsPlacementTestCases',
+        run_template=['run', 'commandAndExit', 'gts', '--module', 'GtsPlacementTestCases', '--ignore-business-logic-failure'],
+        retry_template=['run', 'commandAndExit', 'gts', '--ignore-business-logic-failure', '--retry', '{session_id}'],
+        target_module='GtsPlacementTestCases',
+        target_plan=None,
 
         timeout=360)
 
