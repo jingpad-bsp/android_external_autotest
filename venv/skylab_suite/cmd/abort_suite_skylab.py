@@ -26,20 +26,9 @@ from skylab_suite import suite_tracking
 from skylab_suite import swarming_lib
 
 
-def _abort_suite(suite_specs, abort_limit):
-    """Abort the suite.
-
-    This method aborts the suite job and its children jobs, including
-    'RUNNING' jobs.
-    """
-    tags = {'pool': swarming_lib.SKYLAB_SUITE_POOL,
-            'board': suite_specs.board,
-            'build': suite_specs.test_source_build,
-            'suite': suite_specs.suite_name}
-    parent_tasks = swarming_lib.query_task_by_tags(tags)
-
+def _abort_suite_tasks(suite_tasks, abort_limit):
     aborted_suite_num = 0
-    for pt in parent_tasks:
+    for pt in suite_tasks:
         logging.info('Aborting suite task %s', pt['task_id'])
         swarming_lib.abort_task(pt['task_id'])
         for ct in pt['children_task_ids']:
@@ -50,6 +39,38 @@ def _abort_suite(suite_specs, abort_limit):
         if aborted_suite_num >= abort_limit:
             break
 
+
+def _get_suite_tasks_by_suite_ids(suite_task_ids):
+    """Return a list of tasks with the given list of suite_task_ids."""
+    suite_tasks = []
+    for suite_task_id in suite_task_ids:
+        suite_tasks.append(swarming_lib.query_task_by_id(suite_task_id))
+
+    return suite_tasks
+
+
+def _get_suite_tasks_by_specs(suite_specs):
+    """Return a list of tasks with given suite_specs."""
+    tags = {'pool': swarming_lib.SKYLAB_SUITE_POOL,
+            'board': suite_specs.board,
+            'build': suite_specs.test_source_build,
+            'suite': suite_specs.suite_name}
+    return swarming_lib.query_task_by_tags(tags)
+
+
+def _abort_suite(options):
+    """Abort the suite.
+
+    This method aborts the suite job and its children jobs, including
+    'RUNNING' jobs.
+    """
+    suite_specs = suite_parser.parse_suite_specs(options)
+    if options.suite_task_ids:
+        parent_tasks = _get_suite_tasks_by_suite_ids(options.suite_task_ids)
+    else:
+        parent_tasks = _get_suite_tasks_by_specs(suite_specs)
+
+    _abort_suite_tasks(parent_tasks, options.abort_limit)
     logging.info('Suite %s/%s has been aborted.', suite_specs.test_source_build,
                  suite_specs.suite_name)
 
@@ -70,9 +91,10 @@ def main():
     autotest.monkeypatch()
 
     options = parse_args()
+    print (options.suite_task_ids)
+    print (options.abort_limit)
     suite_tracking.setup_logging()
-    suite_specs = suite_parser.parse_suite_specs(options)
-    _abort_suite(suite_specs, options.abort_limit)
+    _abort_suite(options)
     return 0
 
 
