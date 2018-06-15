@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
       return 1;
   }
 
-  int fd = syscall(__NR_open, path, flags);
+  int fd = syscall(__NR_openat, AT_FDCWD, path, flags);
   syscall(__NR_close, fd);
   syscall(__NR_exit, 0);
 }

@@ -11,7 +11,7 @@
 
 int main(int argc, char **argv) {
   char buf[SIZE];
-  int fd = syscall(__NR_open, "/dev/zero", O_RDONLY);
+  int fd = syscall(__NR_openat, AT_FDCWD, "/dev/zero", O_RDONLY);
   int n = syscall(__NR_read, fd, buf, SIZE);
   syscall(__NR_close, fd);
   syscall(__NR_exit, 0);

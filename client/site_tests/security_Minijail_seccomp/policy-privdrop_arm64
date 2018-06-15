@@ -7,3 +7,7 @@ read: 1
 close: 1
 exit: 1
 exit_group: 1
+# Privilege-dropping syscalls.
+setgroups: 1
+setresuid: 1
+setresgid: 1
