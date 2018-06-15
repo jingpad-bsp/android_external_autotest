@@ -5,7 +5,6 @@
 import contextlib
 import logging
 import math
-import os
 import re
 import time
 
@@ -18,12 +17,9 @@ from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
-from autotest_lib.server import adb_utils
 from autotest_lib.server import autotest
-from autotest_lib.server import constants as server_constants
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import wpa_cli_proxy
-from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import cast_os_host
 
 # Wake-on-WiFi feature strings
@@ -47,42 +43,10 @@ ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 SHILL_XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
-SHILL_BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
-ANDROID_XMLRPC_SERVER_AUTOTEST_PATH = (
-        '../../../client/cros/networking/android_xmlrpc_server.py')
-# Log dirs/filenames are suffixed with serial number of the DUT
-ANDROID_XMLRPC_DEBUG_DIR_FMT = '/var/log/acts-%s'
-ANDROID_XMLRPC_LOG_FILE_FMT = '/var/log/android_xmlrpc_server-%s.log'
-# Local debug dir name is suffixed by the test name
-ANDROID_LOCAL_DEBUG_DIR_FMT = 'android_debug_%s'
-
-
-def _is_android_host(host):
-    return host.get_os_type() == adb_host.OS_TYPE_ANDROID
-
-
-def _is_brillo_host(host):
-    return host.get_os_type() == adb_host.OS_TYPE_BRILLO
 
 
 def _is_eureka_host(host):
     return host.get_os_type() == cast_os_host.OS_TYPE_CAST_OS
-
-
-def install_android_xmlrpc_server(host, server_port):
-    """Install Android XMLRPC server script on |host|.
-
-    @param host: host object representing a remote device.
-    @param server_port string of port number to start server on.
-
-    """
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    xmlrpc_server_script = os.path.join(
-            current_dir, ANDROID_XMLRPC_SERVER_AUTOTEST_PATH)
-    script_instance = constants.ANDROID_XMLRPC_SERVER_FMT % server_port
-    target_file = (constants.ANDROID_XMLRPC_SERVER_TARGET_DIR + '/'
-                   + script_instance)
-    host.send_file(xmlrpc_server_script, target_file)
 
 
 def get_xmlrpc_proxy(host):
@@ -104,38 +68,10 @@ def get_xmlrpc_proxy(host):
         client_at.install()
     # This is the default port for shill xmlrpc server.
     server_port = constants.SHILL_XMLRPC_SERVER_PORT
-
-    if _is_brillo_host(host):
-        xmlrpc_server_command = constants.SHILL_BRILLO_XMLRPC_SERVER_COMMAND
-        log_path = SHILL_BRILLO_XMLRPC_LOG_PATH
-        command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
-        rpc_server_host = host
-    elif _is_android_host(host):
-        if not host.adb_serial:
-            raise error.TestFail('No serial number detected')
-        debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % host.adb_serial
-        log_path = ANDROID_XMLRPC_LOG_FILE_FMT % host.adb_serial
-        teststation = host.teststation
-        hostname = teststation.hostname.split('.')[0]
-        instance = re.search("(\d+)(?!.*\d)", hostname)
-        val = int(instance.group())
-        server_port = constants.SHILL_XMLRPC_SERVER_PORT + val
-        xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND_FMT % (
-                constants.ANDROID_XMLRPC_SERVER_TARGET_DIR, server_port)
-        command_name = (constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN %
-                       str(server_port))
-        xmlrpc_server_command = (
-                '%s -s %s -l %s -t %s -p %d' % (
-                xmlrpc_server_command, host.adb_serial, debug_dir,
-                hostname, server_port))
-        install_android_xmlrpc_server(teststation, str(server_port))
-        # For android, start the XML RPC server on the accompanying host.
-        rpc_server_host = teststation
-    else:
-        xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
-        log_path = SHILL_XMLRPC_LOG_PATH
-        command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
-        rpc_server_host = host
+    xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
+    log_path = SHILL_XMLRPC_LOG_PATH
+    command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
+    rpc_server_host = host
 
     # Start up the XMLRPC proxy on the client
     proxy = rpc_server_host.rpc_server_tracker.xmlrpc_connect(
@@ -376,8 +312,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._result_dir = result_dir
         self._conductive = None
 
-        if ((_is_android_host(self.host) or _is_eureka_host(self.host)) and
-            use_wpa_cli):
+        if _is_eureka_host(self.host) and use_wpa_cli:
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')
             devs = [dev for dev in devs
@@ -394,13 +329,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
                     self.host, self._wifi_if)
             self._wpa_cli_proxy = self._shill_proxy
         else:
-            if _is_android_host(self.host):
-                adb_utils.install_apk_from_build(
-                        self.host,
-                        server_constants.SL4A_APK,
-                        server_constants.SL4A_ARTIFACT,
-                        package_name=server_constants.SL4A_PACKAGE)
-
             self._shill_proxy = get_xmlrpc_proxy(self.host)
             interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
             if not interfaces:
@@ -484,9 +412,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return True if method is available, False otherwise.
 
         """
-        # Make no assertions about ADBHost support.  We don't use an XMLRPC
-        # proxy with those hosts anyway.
-        supported = (_is_android_host(self.host) or _is_eureka_host(self.host)
+        supported = (_is_eureka_host(self.host)
                      or method_name in self._shill_proxy.system.listMethods())
         if not supported:
             logging.warning('%s() is not supported on older images',
@@ -540,23 +466,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         This invokes the |collect_debug_info| RPC method to trigger
         bugreport/logcat collection and then transfers the logs to the
         server.
-        Only implemented for android DUT's for now.
 
         @param local_save_dir_prefix Used as a prefix for local save directory.
         """
-        if _is_android_host(self.host):
-            # First capture the bugreport to the test station
-            self.shill.collect_debug_info(local_save_dir_prefix)
-            # Now copy the file over from test station to the server.
-            debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % self.host.adb_serial
-            log_file = ANDROID_XMLRPC_LOG_FILE_FMT % self.host.adb_serial
-            local_save_dir = ANDROID_LOCAL_DEBUG_DIR_FMT % local_save_dir_prefix
-            result_dir = os.path.join(self._result_dir, local_save_dir);
-            try:
-                self.host.teststation.get_file(debug_dir, result_dir)
-                self.host.teststation.get_file(log_file, result_dir)
-            except Exception as e:
-                logging.error('Failed to fetch debug info from host: %s', e)
+        pass
 
 
     def check_iw_link_value(self, iw_link_key, desired_value):
@@ -1397,16 +1310,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
         """
         logging.info(message)
-
-        # Skip this command if running on Android, since Android does not
-        # have a /usr/bin/logger (or an equivalent that takes the same
-        # parameters as the Linux logger does.)
-        if not isinstance(self.host, adb_host.ADBHost):
-            logger_command = ('/usr/bin/logger'
-                              ' --tag shill'
-                              ' --priority daemon.debug'
-                              ' "%s"' % utils.sh_escape(message))
-            self.host.run(logger_command)
+        logger_command = ('/usr/bin/logger'
+                          ' --tag shill'
+                          ' --priority daemon.debug'
+                          ' "%s"' % utils.sh_escape(message))
+        self.host.run(logger_command)
 
 
     def is_wake_on_wifi_supported(self):
