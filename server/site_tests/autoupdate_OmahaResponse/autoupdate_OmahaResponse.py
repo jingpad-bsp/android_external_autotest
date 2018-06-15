@@ -23,6 +23,11 @@ class autoupdate_OmahaResponse(update_engine_test.UpdateEngineTest):
                  bad_metadata_size=False, test_backoff=False, backoff=False):
         self._job_repo_url = job_repo_url
 
+        # Reboot DUT if a previous test left update_engine not idle.
+        status = self._get_update_engine_status()
+        if self._UPDATE_STATUS_IDLE != status[self._CURRENT_OP]:
+            self._host.reboot()
+
         # Figure out the payload to use for the current build.
         payload = self._get_payload_url(full_payload=full_payload)
         image_url = self._stage_payload_by_uri(payload)

@@ -29,7 +29,7 @@ class autoupdate_BadMetadata(update_engine_test.UpdateEngineTest):
         @param metadata_size: An invalid metadata_size.
 
         """
-        logging.info('Setting up bad metadata response.')
+        logging.info('Setting up bad metadata response: %s', metadata_size)
         self._omaha.set_image_params(image_url, image_size, sha256,
                                      metadata_size,
                                      public_key=self._IMAGE_PUBLIC_KEY)
@@ -44,7 +44,7 @@ class autoupdate_BadMetadata(update_engine_test.UpdateEngineTest):
         @param sha256: An invalid SHA256 value.
 
         """
-        logging.info('Setting up bad SHA256 response.')
+        logging.info('Setting up bad SHA256 response: %s', sha256)
         self._omaha.set_image_params(image_url, image_size, sha256)
 
 
