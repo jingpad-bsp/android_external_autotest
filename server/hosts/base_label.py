@@ -8,8 +8,7 @@
 import logging
 
 import common
-
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.hosts import host_info
 
 
 def forever_exists_decorate(exists):
@@ -210,6 +209,17 @@ class LabelRetriever(object):
         """
         Checks if the label is a label known to the label detection framework.
 
+        @param label: The label to check if we want to skip or not.
+
+        @returns True to skip (which means to keep this label, False to remove.
+        """
+        return (label in self.label_full_names or
+                any([label.startswith(p) for p in self.label_prefix_names]))
+
+
+    def _carry_over_unknown_labels(self, old_labels, new_labels):
+        """Update new_labels by adding back old unknown labels.
+
         We only delete labels that we might have created earlier.  There are
         some labels we should not be removing (e.g. pool:bvt) that we
         want to keep but won't be part of the new labels detected on the host.
@@ -217,12 +227,15 @@ class LabelRetriever(object):
         and if we get a match, we feel safe knowing we can remove the label.
         Otherwise we leave that label alone since it was generated elsewhere.
 
-        @param label: The label to check if we want to skip or not.
-
-        @returns True to skip (which means to keep this label, False to remove.
+        @param old_labels: List of labels already on the host.
+        @param new_labels: List of newly detected labels. This list will be
+                updated to add back labels that are not tracked by the detection
+                framework.
         """
-        return (label in self.label_full_names or
-                any([label.startswith(p) for p in self.label_prefix_names]))
+        missing_labels = set(old_labels) - set(new_labels)
+        for label in missing_labels:
+            if not self._is_known_label(label):
+                new_labels.append(label)
 
 
     def update_labels(self, host):
@@ -235,23 +248,15 @@ class LabelRetriever(object):
         if not self.label_full_names and not self.label_prefix_names:
             self._populate_known_labels(self._labels)
 
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        old_labels = set(host._afe_host.labels)
-        logging.info('existing labels: %s', old_labels)
-        known_labels = set([l for l in old_labels
-                            if self._is_known_label(l)])
-        new_labels = set(self.get_labels(host))
-
-        # TODO(pprabhu) Replace this update logic using AfeHostInfoBackend.
-        # Remove old labels.
-        labels_to_remove = list(old_labels & (known_labels - new_labels))
-        if labels_to_remove:
-            logging.info('removing labels: %s', labels_to_remove)
-            afe.run('host_remove_labels', id=host.hostname,
-                    labels=labels_to_remove)
-
-        # Add in new labels that aren't already there.
-        labels_to_add = list(new_labels - old_labels)
-        if labels_to_add:
-            logging.info('adding labels: %s', labels_to_add)
-            afe.run('host_add_labels', id=host.hostname, labels=labels_to_add)
+        # Label detection hits the DUT so it can be slow. Do it before reading
+        # old labels from HostInfoStore to minimize the time between read and
+        # commit of the HostInfo.
+        new_labels = self.get_labels(host)
+        old_info = host.host_info_store.get()
+        self._carry_over_unknown_labels(old_info.labels, new_labels)
+        new_info = host_info.HostInfo(
+                labels=new_labels,
+                attributes=old_info.attributes,
+        )
+        if old_info != new_info:
+            host.host_info_store.commit(new_info)
