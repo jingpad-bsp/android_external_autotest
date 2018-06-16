@@ -592,7 +592,7 @@ def _report_results(afe, report_log, hostnames, results):
         else:
             failure_reports.append(_ReportResult(hostname, result))
     if successful_hosts:
-        afe.reverify_hosts(hostnames=successful_hosts)
+        afe.repair_hosts(hostnames=successful_hosts)
         for h in afe.get_hosts(hostnames=successful_hosts):
             for label in h.labels:
                 if label.startswith(constants.Labels.POOL_PREFIX):
