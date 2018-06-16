@@ -1091,12 +1091,10 @@ class _BaseSuite(object):
             self._retry_handler = RetryHandler(
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
-            logging.debug("jobs_to_tests being passed: %s.",
-                          self._jobs_to_tests)
             logging.debug("retry map created: %s ",
                           self._retry_handler._retry_map)
         else:
-            logging.debug("Will not retry jobs from suite %s.", self._tag)
+            logging.info("Will not retry jobs from suite %s.", self._tag)
         return len(scheduled_test_names)
 
 

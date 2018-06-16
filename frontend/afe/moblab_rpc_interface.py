@@ -990,7 +990,9 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
     @return: None
     """
     builds = {'cros-version': build}
+    # TODO(mattmallett b/92031054) Standardize bug id, part id passing for memory/storage qual
     processed_suite_args = dict()
+    processed_test_args = dict()
     if rw_firmware:
         builds['fwrw-version'] = rw_firmware
     if ro_firmware:
@@ -1000,15 +1002,17 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
             [s.strip() for s in suite_args.split(',')]
     if bug_id:
         processed_suite_args['bug_id'] = bug_id
+        processed_test_args['bug_id'] = bug_id
     if part_id:
         processed_suite_args['part_id'] = part_id
+        processed_test_args['part_id'] = part_id
+
 
     # set processed_suite_args to None instead of empty dict when there is no
     # argument in processed_suite_args
     if len(processed_suite_args) == 0:
         processed_suite_args = None
 
-    processed_test_args = {}
     if test_args:
         try:
             for line in test_args.split('\n'):

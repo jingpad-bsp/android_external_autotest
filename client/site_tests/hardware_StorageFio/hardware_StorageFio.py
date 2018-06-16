@@ -44,8 +44,8 @@ class hardware_StorageFio(test.test):
 
         # Obtain the device name by stripping the partition number.
         # For example, sda3 => sda; mmcblk1p3 => mmcblk1, nvme0n1p3 => nvme0n1.
-        device = os.path.basename(
-            re.sub('(sd[a-z]|mmcblk[0-9]+p|nvme[0-9]+n[0-9]+p)[0-9]+', '\\1', self.__filename))
+        device = re.match(r'.*(sd[a-z]|mmcblk[0-9]+|nvme[0-9]+n[0-9]+)p?[0-9]+',
+                          self.__filename).group(1)
         findsys = utils.run('find /sys/devices -name %s' % device)
         device_path = findsys.stdout.rstrip()
 
