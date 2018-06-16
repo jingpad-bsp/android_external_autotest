@@ -19,11 +19,17 @@ $ ./push_to_device.py --use-prebuilt-file ~/cheets_arm-img-4801564.zip --simg2im
 Or run the autotest with:
 
 ```shell
-(chroot) test_that IP provision_CheetsUpdate --args='value=git_nyc-mr1-arc/cheets_arm-user/4801564 -b kevin
+(chroot) $ test_that IP provision_CheetsUpdate --args='value=git_nyc-mr1-arc/cheets_arm-user/4801564' -b kevin
 ```
 
 ## Updating
 
 After you submit your changes, [Chrome OS lab deputy will push it to
 prod](https://sites.google.com/a/google.com/chromeos/for-team-members/infrastructure/chromeos-admin/push-to-prod).
-Send a heads up.
+Send a heads up to [Chrome OS lab
+deputy](https://sites.google.com/a/google.com/chromeos/for-team-members/infrastructure/chrome-os-infrastructure-deputy)
+that this change is there.
+
+Make sure that it is possible to pass
+[presubmit](https://atp.googleplex.com/tests/arc++/presubmit?state=COMPLETED&testLabelName=PRESUBMIT&tabId=test_run)
+after the change is pushed to prod.
