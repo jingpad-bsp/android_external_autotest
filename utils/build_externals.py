@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Please keep this code python 2.4 compatible and stand alone.
+# Please keep this code python 2.4 compatible and standalone.
 
 """
 Fetch, build and install external Python library dependancies.
@@ -17,6 +17,7 @@ import compileall
 import logging
 import os
 import sys
+import textwrap
 
 import common
 from autotest_lib.client.common_lib import logging_config, logging_manager
@@ -41,7 +42,10 @@ INSTALL_ALL = False
 
 
 class BuildExternalsLoggingConfig(logging_config.LoggingConfig):
+    """Logging manager config."""
+
     def configure_logging(self, results_dir=None, verbose=False):
+        """Configure logging."""
         super(BuildExternalsLoggingConfig, self).configure_logging(
                                                                use_console=True,
                                                                verbose=verbose)
@@ -91,6 +95,30 @@ def main():
     errors = fetch_errors + install_errors
     for error_msg in errors:
         logging.error(error_msg)
+
+    if not errors:
+      logging.info(textwrap.dedent("""
+           _______________________________________
+          / You may see errors above, but this is \\
+          \ still SUCCESS. Moo.                   /
+           ---------------------------------------
+                \   ^__^
+                 \  (oo)\_______
+                    (__)\       )\/\\
+                        ||----w |
+                        ||     ||
+          """))
+    else:
+      logging.info(textwrap.dedent("""
+           ________________
+          < I have failed. >
+           ----------------
+                \   ^__^
+                 \  (oo)\_______
+                    (__)\       )\/\\
+                        ||----w |
+                        ||     ||
+          """))
 
     return len(errors)
 
