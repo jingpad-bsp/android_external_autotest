@@ -228,30 +228,30 @@ def _fetch_child_tasks(parent_task_id):
 
 
 @contextlib.contextmanager
-def set_logging(iterations, logging_interval):
+def disable_logging(logging_level):
+    """Context manager for disabling logging of a given logging level."""
     try:
-        if bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS %
-                logging_interval):
-            logging.disable(logging.INFO)
-
+        logging.disable(logging_level)
         yield
     finally:
         logging.disable(logging.NOTSET)
 
 
-def _if_wait(suite_handler, dry_run):
-    """Check whether to wait suite to finish.
+def _loop_and_wait_forever(suite_handler, dry_run):
+    """Wait for child tasks to finish or break."""
+    for iterations in itertools.count(0):
+        # Log progress every 300 seconds.
+        no_logging = bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS % 300)
+        with disable_logging(logging.INFO if no_logging else logging.NOTSET):
+            json_output = _fetch_child_tasks(suite_handler.suite_id)
+            suite_handler.handle_results(json_output['items'])
+            for t in suite_handler.retried_tasks:
+                _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
 
-    @param suite_handler: A cros_suite.SuiteHandler object.
+            if suite_handler.is_finished_waiting():
+                break
 
-    @return a boolean to indicate whether to stop waiting or not.
-    """
-    json_output = _fetch_child_tasks(suite_handler.suite_id)
-    suite_handler.handle_results(json_output['items'])
-    for t in suite_handler.retried_tasks:
-        _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
-
-    return suite_handler.is_finished_waiting()
+        time.sleep(SUITE_WAIT_SLEEP_INTERVAL_SECONDS)
 
 
 def _wait_for_results(suite_handler, dry_run=False):
@@ -260,14 +260,12 @@ def _wait_for_results(suite_handler, dry_run=False):
     @param suite_handler: a cros_suite.SuiteHandler object.
     """
     timeout_util = autotest.chromite_load('timeout_util')
-    with timeout_util.Timeout(suite_handler.timeout_mins * 60):
-        for iterations in itertools.count(0):
-            # Log progress every 300 seconds.
-            with set_logging(iterations, 300):
-                if _if_wait(suite_handler, dry_run):
-                    break
-
-            time.sleep(SUITE_WAIT_SLEEP_INTERVAL_SECONDS)
+    try:
+        with timeout_util.Timeout(suite_handler.timeout_mins * 60):
+            _loop_and_wait_forever(suite_handler, dry_run)
+    except timeout_util.TimeoutError:
+        logging.error('Timeout in waiting for child tasks.')
+        return
 
     logging.info('Finished to wait for child tasks.')
 
