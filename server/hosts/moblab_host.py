@@ -22,9 +22,11 @@ AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value(
 #'/usr/local/autotest'
 SHADOW_CONFIG_PATH = '%s/shadow_config.ini' % AUTOTEST_INSTALL_DIR
 ATEST_PATH = '%s/cli/atest' % AUTOTEST_INSTALL_DIR
+
 SUBNET_DUT_SEARCH_RE = (
-        r'/?.*\((?P<ip>192.168.231.*)\) at '
-        '(?P<mac>[0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])')
+        r'(?P<ip>192.168.231.1[0-1][0-9]) [^ ]+ [^ ]+ [^ ]+ '
+        '(?P<mac>([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]) REACHABLE')
+
 MOBLAB_HOME = '/home/moblab'
 MOBLAB_BOTO_LOCATION = '%s/.boto' % MOBLAB_HOME
 MOBLAB_LAUNCH_CONTROL_KEY_LOCATION = '%s/.launch_control_key' % MOBLAB_HOME
@@ -203,7 +205,7 @@ class MoblabHost(cros_host.CrosHost):
         """
         self._wake_devices()
         existing_hosts = [host.hostname for host in self.afe.get_hosts()]
-        arp_command = self.run('arp -a')
+        arp_command = self.run('ip n')
         for line in arp_command.stdout.splitlines():
             match = re.match(SUBNET_DUT_SEARCH_RE, line)
             if match:
