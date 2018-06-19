@@ -572,8 +572,7 @@ def do_dircrypto_migration(user, password, timeout=600):
 def change_password(user, password, new_password):
     args = [
             CRYPTOHOME_CMD,
-            '--action=migrate_key',
-            '--async',
+            '--action=migrate_key_ex',
             '--user=%s' % user,
             '--old_password=%s' % password,
             '--password=%s' % new_password]
