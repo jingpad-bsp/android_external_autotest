@@ -7,7 +7,7 @@ NAME = 'ml_CheckMlProcesses'
 ATTRIBUTES = 'suite:ml_service'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-JOB_RETIRES = 2
+JOB_RETRIES = 0
 
 DOC = """
 Verifies that the ml_service starts without error, as a test for regressions in
