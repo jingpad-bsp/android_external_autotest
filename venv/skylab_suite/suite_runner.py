@@ -112,9 +112,13 @@ def _run_provision_cmd(cmd, dimensions, test_specs, suite_id):
     @param test_specs: a cros_suite.TestSpecs object.
     @param suite_id: The suite id of the test to kick off.
     """
-    normal_dimensions = dimensions.copy()
+    fallback_dimensions = dimensions.copy()
+    if test_specs.bot_id:
+        fallback_dimensions['id'] = test_specs.bot_id
+
+    normal_dimensions = fallback_dimensions.copy()
     normal_dimensions['provisionable-cros-version'] = test_specs.build
-    all_dimensions = [normal_dimensions, dimensions]
+    all_dimensions = [normal_dimensions, fallback_dimensions]
     tags = [SKYLAB_LUCI_TAG, 'build:%s' % test_specs.build]
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
