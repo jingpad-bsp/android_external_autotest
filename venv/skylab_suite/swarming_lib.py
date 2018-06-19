@@ -254,7 +254,7 @@ def query_task_by_tags(tags):
 
     @param tags: A dict of tags for swarming tasks.
 
-    @return a dict, which contains all tasks queried by the given tags.
+    @return a list, which contains all tasks queried by the given tags.
     """
     basic_swarming_cmd = get_basic_swarming_cmd('query')
     conditions = [('tags', '%s:%s' % (k, v)) for k, v in tags.iteritems()]
@@ -263,6 +263,20 @@ def query_task_by_tags(tags):
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
     return json.loads(result.output)['items']
+
+
+def query_task_by_id(task_id):
+    """Get task for given id.
+
+    @param task_id: A string to indicate a swarming task id.
+
+    @return a dict, which contains the task with the given task_id.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    swarming_cmd = basic_swarming_cmd + ['task/%s/result' % task_id]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)
 
 
 def abort_task(task_id):

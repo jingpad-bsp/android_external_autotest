@@ -105,6 +105,9 @@ def make_parser():
         '--abort_limit', default=1, type=int, action='store',
         help=('Only abort first N parent tasks which fulfill the search '
               'requirements.'))
+    parser.add_argument(
+        '--suite_task_ids', nargs='*', default=[],
+        help=('Specify the parent swarming task id to abort.'))
 
     return parser
 
@@ -113,6 +116,9 @@ def verify_and_clean_options(options):
     """Validate options."""
     if options.suite_args is None:
         options.suite_args = {}
+
+    if options.suite_task_ids:
+        options.abort_limit = len(options.suite_task_ids)
 
     return True
 
