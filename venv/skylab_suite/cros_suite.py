@@ -64,6 +64,7 @@ TestSpecs= collections.namedtuple(
                 'board',
                 'pool',
                 'build',
+                'bot_id',
                 'expiration_secs',
                 'grace_period_secs',
                 'execution_timeout_secs',
@@ -279,21 +280,28 @@ class Suite(object):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
         self._parse_suite_args()
-        tests = self._find_tests()
-        self._get_test_specs(tests)
+        available_bots = self._get_available_bots()
+        tests = self._find_tests(available_bots_num=len(available_bots))
+        self.tests_specs = self._get_test_specs(tests, available_bots)
 
-    def _get_test_specs(self, tests):
-        for test in tests:
-            self.tests_specs.append(TestSpecs(
+    def _get_test_specs(self, tests, available_bots):
+        tests_specs = []
+        for idx, test in enumerate(tests):
+            bot_id = (available_bots[idx]['bot_id'] if idx < len(available_bots)
+                      else '')
+            tests_specs.append(TestSpecs(
                     test=test,
                     priority=self.priority,
                     board=self.board,
                     pool=self.pool,
                     build=self.test_source_build,
+                    bot_id=bot_id,
                     expiration_secs=swarming_lib.DEFAULT_EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
+
+        return tests_specs
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -315,17 +323,20 @@ class Suite(object):
         self.control_file = suite_common.get_control_file_by_build(
                 self.test_source_build, self.ds, self.suite_file_name)
 
-    def _find_tests(self):
+    def _find_tests(self, available_bots_num=0):
         """Fetch the child tests."""
         control_file_getter = autotest.load(
                 'server.cros.dynamic_suite.control_file_getter')
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
-
         cf_getter = control_file_getter.DevServerGetter(
                 self.test_source_build, self.ds)
         tests = suite_common.retrieve_for_suite(
                 cf_getter, self.suite_name)
         return suite_common.filter_tests(tests)
+
+    def _get_available_bots(self):
+        """Get available bots for normal suites."""
+        return []
 
 
 class ProvisionSuite(Suite):
@@ -335,21 +346,22 @@ class ProvisionSuite(Suite):
         super(ProvisionSuite, self).__init__(specs)
         self._num_required = specs.suite_args['num_required']
 
-    def _find_tests(self):
+    def _find_tests(self, available_bots_num=0):
         """Fetch the child tests for provision suite."""
         control_file_getter = autotest.load(
                 'server.cros.dynamic_suite.control_file_getter')
         suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
-
         cf_getter = control_file_getter.DevServerGetter(
                 self.test_source_build, self.ds)
         dummy_test = suite_common.retrieve_control_data_for_test(
                 cf_getter, 'dummy_Pass')
+        logging.info('Get %d available DUTs for provision.', available_bots_num)
+        return [dummy_test] * max(self._num_required, available_bots_num)
 
-        bots_count = swarming_lib.query_bots_count({
+    def _get_available_bots(self):
+        """Get available bots for provision suites."""
+        bots = swarming_lib.query_bots_list({
                 'pool': swarming_lib.SKYLAB_DRONE_POOL,
                 'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
                 'label-board': self.board})
-        available_duts_num = swarming_lib.get_idle_bots_count(bots_count)
-        logging.info('Get %d available DUTs for provision.', available_duts_num)
-        return [dummy_test] * max(self._num_required, available_duts_num)
+        return [bot for bot in bots if swarming_lib.bot_available(bot)]
