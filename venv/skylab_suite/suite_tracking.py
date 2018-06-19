@@ -15,6 +15,7 @@ from lucifer import autotest
 from skylab_suite import swarming_lib
 
 
+
 def log_suite_results(suite_name, suite_handler):
     """Log suite and its child tests' results & links.
 
@@ -104,7 +105,49 @@ def _parse_test_results(suite_handler):
     return test_results
 
 
+def _get_final_suite_states():
+    run_suite_common = autotest.load('site_utils.run_suite_common')
+    return {
+            swarming_lib.TASK_COMPLETED_FAILURE:
+            (
+                    swarming_lib.TASK_COMPLETED_FAILURE,
+                    run_suite_common.RETURN_CODES.ERROR,
+            ),
+            # Task expired means a task is not triggered, could be caused by
+            #   1. No healthy DUTs/bots to run it.
+            #   2. Expiration seconds are too low.
+            #   3. Suite run is too slow to finish.
+            # Deputy should check whether it's infra failure.
+            swarming_lib.TASK_EXPIRED:
+            (
+                    swarming_lib.TASK_EXPIRED,
+                    run_suite_common.RETURN_CODES.INFRA_FAILURE,
+            ),
+            # Task canceled means a task is canceled intentionally. Deputy
+            # should check whether it's infra failure.
+            swarming_lib.TASK_CANCELED:
+            (
+                    swarming_lib.TASK_CANCELED,
+                    run_suite_common.RETURN_CODES.INFRA_FAILURE,
+            ),
+            swarming_lib.TASK_TIMEDOUT:
+            (
+                    swarming_lib.TASK_TIMEDOUT,
+                    run_suite_common.RETURN_CODES.SUITE_TIMEOUT,
+            ),
+            # Task pending means a task is still waiting for picking up, but
+            # the suite already hits deadline. So report it as suite TIMEOUT.
+            # It could also be an INFRA_FAILURE due to DUTs/bots shortage.
+            swarming_lib.TASK_PENDING:
+            (
+                    swarming_lib.TASK_TIMEDOUT,
+                    run_suite_common.RETURN_CODES.SUITE_TIMEOUT,
+            ),
+    }
+
+
 def _get_suite_state(child_test_results, suite_handler):
+    """Get a suite's final state and return code."""
     run_suite_common = autotest.load('site_utils.run_suite_common')
     if (suite_handler.is_provision() and
         suite_handler.is_provision_successfully_finished()):
@@ -114,18 +157,10 @@ def _get_suite_state(child_test_results, suite_handler):
         return (swarming_lib.TASK_COMPLETED_SUCCESS,
                 run_suite_common.RETURN_CODES.OK)
 
+    _final_suite_states = _get_final_suite_states()
     for result in child_test_results:
-        if result['state'] == swarming_lib.TASK_COMPLETED_FAILURE:
-            return (result['state'], run_suite_common.RETURN_CODES.ERROR)
-
-        if result['state'] in [swarming_lib.TASK_EXPIRED,
-                               swarming_lib.TASK_CANCELED]:
-            return (result['state'],
-                    run_suite_common.RETURN_CODES.INFRA_FAILURE)
-
-        if result['state'] == swarming_lib.TASK_TIMEDOUT:
-            return (result['state'],
-                    run_suite_common.RETURN_CODES.SUITE_TIMEOUT)
+        if result['state'] in _final_suite_states:
+            return _final_suite_states[result['state']]
 
     return (swarming_lib.TASK_COMPLETED_SUCCESS,
             run_suite_common.RETURN_CODES.OK)
