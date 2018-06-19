@@ -96,8 +96,11 @@ def _get_suite_cmd(test_specs, is_provision=False):
     @param test_specs: a cros_suite.TestSpecs object.
     @param is_provision: whether the command is for provision.
     """
-    cmd = [SKYLAB_DRONE_SWARMING_WORKER, '-client-test', '-task-name',
-           test_specs.test.name]
+    cmd = [SKYLAB_DRONE_SWARMING_WORKER]
+    if test_specs.test.test_type == 'client':
+      cmd += ['-client-test']
+
+    cmd += ['-task-name', test_specs.test.name]
     if is_provision:
         cmd += ['-provision-labels', 'cros-version:%s' % test_specs.build]
 
