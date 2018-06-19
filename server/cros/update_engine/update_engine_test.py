@@ -396,11 +396,12 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         return payloads[0]
 
 
-    def _get_staged_file_info(self, staged_url):
+    def _get_staged_file_info(self, staged_url, retries=5):
         """
         Gets the staged files info that includes SHA256 and size.
 
         @param staged_url: the staged file url.
+        @param retries: Number of times to try get the file info.
 
         @returns file info (SHA256 and size).
 
@@ -411,12 +412,13 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         devserver_hostname = urlparse.urlparse(file_info_url).hostname
         cmd = 'ssh %s \'curl "%s"\'' % (devserver_hostname,
                                         utils.sh_escape(file_info_url))
-        try:
-            result = utils.run(cmd).stdout
-            return json.loads(result)
-        except error.CmdError as e:
-            logging.error('Failed to read file info: %s', e)
-            raise error.TestFail('Could not reach fileinfo API on devserver.')
+        for i in range(retries):
+            try:
+                result = utils.run(cmd).stdout
+                return json.loads(result)
+            except error.CmdError as e:
+                logging.error('Failed to read file info: %s', e)
+        raise error.TestError('Could not reach fileinfo API on devserver.')
 
 
     def _get_job_repo_url(self):
