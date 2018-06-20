@@ -11,8 +11,7 @@ PURPOSE = "To ensure ASLR is enabled for chrome and debugd"
 CRITERIA = (" Fail if a process can't restart or has address range starts"
     "for any executable stack, or heap memory map to the same location"
     "after restarting")
-# TODO(ihf): add back to suite:smoke. crbug.com/852977
-ATTRIBUTES = "suite:bvt-inline"
+ATTRIBUTES = "suite:bvt-inline, suite:smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
