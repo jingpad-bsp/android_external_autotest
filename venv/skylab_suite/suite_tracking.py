@@ -61,16 +61,21 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
     for result in test_results:
         if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
                                    swarming_lib.TASK_RUNNING]:
-          show_text = '[{prefix}]: {anchor}: {info}'.format(
-                  prefix='Test-logs',
-                  anchor=result['test_name'],
-                  info='')
-          print(annotations.StepLink(
-                  show_text,
-                  swarming_lib.get_task_link(result['task_ids'][0])))
-          print(annotations.StepLink(
-                  '[Test-History]: %s' % result['test_name'],
-                  reporting_utils.link_test_history(result['test_name'])))
+            anchor_test = result['test_name']
+            if suite_handler.is_provision():
+                anchor_test += '-' + result['dut_name']
+
+            show_text = '[{prefix}]: {anchor}'.format(
+                    prefix='Test-logs',
+                    anchor=anchor_test)
+            print(annotations.StepLink(
+                    show_text,
+                    swarming_lib.get_task_link(result['task_ids'][0])))
+
+            if not suite_handler.is_provision():
+                print(annotations.StepLink(
+                        '[Test-History]: %s' % result['test_name'],
+                        reporting_utils.link_test_history(result['test_name'])))
 
 
 def _log_test_results(test_results):
@@ -99,12 +104,14 @@ def _parse_test_results(suite_handler):
         logging.info('Parsing task results of %s', task_id)
         test_handler_specs = suite_handler.get_test_by_task_id(task_id)
         name = test_handler_specs.test_specs.test.name
+        dut_name = test_handler_specs.test_specs.dut_name
         retry_count = len(test_handler_specs.previous_retried_ids)
         all_task_ids = test_handler_specs.previous_retried_ids + [task_id]
         state = swarming_lib.get_task_final_state(child_task)
         test_results.append({
                 'test_name': name,
                 'state': state,
+                'dut_name': dut_name,
                 'retry_count': retry_count,
                 'task_ids': all_task_ids})
 
