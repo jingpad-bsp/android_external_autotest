@@ -166,6 +166,39 @@ class SmbProvider(object):
 
         return error, entries
 
+    def get_metadata(self, mount_id, entry_path):
+        """
+        Gets metadata for an entry.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param entry_path: Path of the entry.
+
+        @return A tuple with the ErrorType and the GetMetadataEntryOptionsProto
+        blob string returned by the D-Bus call.
+
+        """
+
+        logging.info("Getting metadata for %s", entry_path)
+
+        from directory_entry_pb2 import GetMetadataEntryOptionsProto
+        from directory_entry_pb2 import DirectoryEntryProto
+        from directory_entry_pb2 import ERROR_OK
+
+        proto = GetMetadataEntryOptionsProto()
+        proto.mount_id = mount_id
+        proto.entry_path = entry_path
+
+        error, entry_blob = self._smbproviderd.GetMetadataEntry(
+                _proto_to_blob(proto),
+                timeout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
+
+        entry = DirectoryEntryProto()
+        if error == ERROR_OK:
+            entry.ParseFromString(entry_blob)
+
+        return error, entry
+
     class PasswordFd(object):
         """
         Writes password into a file descriptor.
