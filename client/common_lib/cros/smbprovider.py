@@ -199,6 +199,54 @@ class SmbProvider(object):
 
         return error, entry
 
+    def open_file(self, mount_id, file_path, writeable):
+        """
+        Opens a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_path: Path of the file to be opened.
+        @param writeable: Whether the file should be opened with write access.
+
+        @return A tuple with the ErrorType and the File ID of the opened file.
+
+        """
+
+        logging.info("Opening file: %s", file_path)
+
+        from directory_entry_pb2 import OpenFileOptionsProto
+
+        proto = OpenFileOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_path = file_path
+        proto.writeable = writeable
+
+        return self._smbproviderd.OpenFile(_proto_to_blob(proto),
+                                           timeout=self._DEFAULT_TIMEOUT,
+                                           byte_arrays=True)
+
+    def close_file(self, mount_id, file_id):
+        """
+        Closes a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_id: ID of the file to be closed.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Closing file: %s", file_id)
+
+        from directory_entry_pb2 import CloseFileOptionsProto
+
+        proto = CloseFileOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_id = file_id
+
+        return self._smbproviderd.CloseFile(_proto_to_blob(proto),
+                                            timeout=self._DEFAULT_TIMEOUT,
+                                            byte_arrays=True)
+
     class PasswordFd(object):
         """
         Writes password into a file descriptor.
