@@ -21,6 +21,8 @@ more information.
 
 This test runs Tast-based tests that are required to pass against a remote DUT.
 It fails if any individual Tast tests fail.
+
+See http://go/tast-failures for information about investigating failures.
 '''
 
 def run(machine):
