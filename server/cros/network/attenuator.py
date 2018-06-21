@@ -43,6 +43,7 @@ class Attenuator(object):
         self.properties = dict(zip(['model', 'max_freq', 'max_atten'],
                                    config_str.split("-", 2)))
         self.max_atten = float(self.properties['max_atten'])
+        self.min_atten = 0
 
     def is_open(self):
         """Returns true if telnet connection to attenuator is open."""
@@ -66,10 +67,10 @@ class Attenuator(object):
                                   "%d; max available %d" %
                                   (channel, self.num_atten))
 
-        if value > self.max_atten:
-            raise error.TestError("Requested attenuator value greater than "
-                                  "maximum. (%d > %d)" %
-                                  (value, self.max_atten))
+        if not (self.min_atten <= value <= self.max_atten):
+            raise error.TestError("Requested attenuator value %d not in range "
+                                  "(%d - %d)" %
+                                  (value, self.min_atten, self.max_atten))
         # The actual device uses one-based channel for channel numbers.
         if (int(self._tnhelper.cmd("CHAN:%d:SETATT:%d" %
                                   (channel + 1, value))) != 1):
