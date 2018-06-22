@@ -21,6 +21,8 @@ more information.
 This test runs Tast-based informational tests against a remote DUT. It only
 reports failure if the tast process itself (rather than individual Tast tests)
 fails.
+
+See http://go/tast-failures for information about investigating failures.
 '''
 
 def run(machine):
