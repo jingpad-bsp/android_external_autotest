@@ -323,7 +323,7 @@ def mount_vault(user, password, create=False, key_label='bar'):
 
 def mount_guest():
     """Mount the guest vault."""
-    args = [CRYPTOHOME_CMD, '--action=mount_guest', '--async']
+    args = [CRYPTOHOME_CMD, '--action=mount_guest_ex']
     logging.info(__run_cmd(' '.join(args)))
     # Ensure that the guest vault is mounted.
     if not is_guest_vault_mounted(allow_fail=True):
@@ -572,8 +572,7 @@ def do_dircrypto_migration(user, password, timeout=600):
 def change_password(user, password, new_password):
     args = [
             CRYPTOHOME_CMD,
-            '--action=migrate_key',
-            '--async',
+            '--action=migrate_key_ex',
             '--user=%s' % user,
             '--old_password=%s' % password,
             '--password=%s' % new_password]

@@ -25,7 +25,8 @@ ATEST_PATH = '%s/cli/atest' % AUTOTEST_INSTALL_DIR
 
 SUBNET_DUT_SEARCH_RE = (
         r'(?P<ip>192.168.231.1[0-1][0-9]) [^ ]+ [^ ]+ [^ ]+ '
-        '(?P<mac>([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]) REACHABLE')
+        '(?P<mac>([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]) '
+        '(REACHABLE|DELAY)')
 
 MOBLAB_HOME = '/home/moblab'
 MOBLAB_BOTO_LOCATION = '%s/.boto' % MOBLAB_HOME

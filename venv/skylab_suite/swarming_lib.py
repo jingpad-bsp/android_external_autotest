@@ -29,13 +29,14 @@ TASK_EXPIRED = 'EXPIRED'
 TASK_CANCELED = 'CANCELED'
 TASK_TIMEDOUT = 'TIMED_OUT'
 TASK_RUNNING = 'RUNNING'
+TASK_PENDING = 'PENDING'
 TASK_FINISHED_STATUS = [TASK_COMPLETED,
                         TASK_EXPIRED,
                         TASK_CANCELED,
                         TASK_TIMEDOUT]
-TASK_FAILED_STATUS = [TASK_EXPIRED,
-                      TASK_CANCELED,
-                      TASK_TIMEDOUT]
+# The swarming task failure status to retry. TASK_CANCELED won't get
+# retried since it's intentionally aborted.
+TASK_STATUS_TO_RETRY = [TASK_EXPIRED, TASK_TIMEDOUT]
 
 DEFAULT_EXPIRATION_SECS = 30
 DEFAULT_TIMEOUT_SECS = 60 * 60
@@ -253,7 +254,7 @@ def query_task_by_tags(tags):
 
     @param tags: A dict of tags for swarming tasks.
 
-    @return a dict, which contains all tasks queried by the given tags.
+    @return a list, which contains all tasks queried by the given tags.
     """
     basic_swarming_cmd = get_basic_swarming_cmd('query')
     conditions = [('tags', '%s:%s' % (k, v)) for k, v in tags.iteritems()]
@@ -262,6 +263,20 @@ def query_task_by_tags(tags):
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
     return json.loads(result.output)['items']
+
+
+def query_task_by_id(task_id):
+    """Get task for given id.
+
+    @param task_id: A string to indicate a swarming task id.
+
+    @return a dict, which contains the task with the given task_id.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    swarming_cmd = basic_swarming_cmd + ['task/%s/result' % task_id]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)
 
 
 def abort_task(task_id):
@@ -277,3 +292,31 @@ def abort_task(task_id):
     except cros_build_lib.RunCommandError:
         logging.error('Task %s probably already gone, skip canceling it.',
                       task_id)
+
+
+def query_bots_list(dimensions):
+    """Get bots list for given requirements.
+
+    @param dimensions: A dict of dimensions for swarming bots.
+
+    @return a list of bot dicts.
+    """
+    basic_swarming_cmd = get_basic_swarming_cmd('query')
+    conditions = [('dimensions', '%s:%s' % (k, v))
+                  for k, v in dimensions.iteritems()]
+    swarming_cmd = basic_swarming_cmd + ['bots/list?%s' %
+                                         urllib.urlencode(conditions)]
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
+    return json.loads(result.output)['items']
+
+
+def bot_available(bot):
+    """Check whether a bot is available.
+
+    @param bot: A dict describes a bot's dimensions, i.e. an element in return
+        list of |query_bots_list|.
+
+    @return True if a bot is available to run task, otherwise False.
+    """
+    return not (bot['is_dead'] or bot['quarantined'])
