@@ -11,20 +11,24 @@ JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 PRIORITY = 70
-DOC = ('Run tradefed to collect all of the available CTS tests for this device/abi.')
-
+DOC = 'Run all of the Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.'
 
 def run_CTS(machine):
-    host = hosts.create_host(machine)
+    host_list = [hosts.create_host(machine)]
     job.run_test(
         'cheets_CTS_N',
-        host=host,
+        hosts=host_list,
         iterations=1,
         max_retry=0,
         needs_push_media=False,
         tag='tradefed-run-collect-tests-only',
-        tradefed_args = ['run', 'commandAndExit', 'collect-tests-only'],
+        test_name='cheets_CTS_N.x86.tradefed-run-collect-tests-only',
+        run_template=['run', 'commandAndExit', 'collect-tests-only'],
+        retry_template=None,
+        target_module=None,
+        target_plan=None,
         bundle='x86',
+        uri='gs://chromeos-arc-images/cts/bundle/N/android-cts-7.1_r18-linux_x86-x86.zip',
         timeout=3600)
 
 parallel_simple(run_CTS, machines)
