@@ -1,4 +1,6 @@
 /opt/google/chrome/nacl_helper
+# Rust compiler is using libgcc_s, remove this after rust is fixed.
+/usr/sbin/mosys
 # These files are delivered as binaries in Chrome OS.
 # Files from flash player.
 /opt/google/chrome/libwidevinecdm.so
