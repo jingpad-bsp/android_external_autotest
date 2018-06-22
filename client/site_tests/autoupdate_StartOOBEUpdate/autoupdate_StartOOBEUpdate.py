@@ -67,7 +67,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
         try:
             utils.poll_for_condition(self._is_update_started,
                                      error.TestFail('Update did not start.'),
-                                     timeout=60)
+                                     timeout=120)
         except error.TestFail as e:
             if self._critical_update:
                 raise e
@@ -89,7 +89,6 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
                                 response.
 
         """
-        utils.run('restart update-engine')
         self._critical_update = critical_update
 
         if cellular:
