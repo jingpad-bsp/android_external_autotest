@@ -438,6 +438,14 @@ class DroneManager(object):
         heapq.heapify(self._drone_queue)
 
 
+    def reorder_drone_queue(self):
+        """Reorder drone queue according to modified process counts.
+
+        This public API is exposed for luciferlib to wrap.
+        """
+        self._reorder_drone_queue()
+
+
     def _compute_active_processes(self, drone):
         drone.active_processes = 0
         for pidfile_id, contents in self._pidfiles.iteritems():
