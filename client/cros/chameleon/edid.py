@@ -26,7 +26,7 @@ def is_edid_supported(host, width, height):
         if (width, height) in [(1280, 800), (1440, 900), (1600, 900),
                                (3840, 2160)]:
             return False
-    if platform in ('kahlee',):
+    if platform in ('kahlee', 'grunt'):
         if (width, height) in [(3840, 2160)]:
             return False
     return True
