@@ -13,6 +13,7 @@ import subprocess
 import common
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.scheduler.drone_manager import PidfileId
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.frontend.afe import models
 
@@ -117,6 +118,9 @@ def spawn_starting_job_handler(manager, job):
     drone.spawn(_ENV, args,
                 output_file=_prepare_output_file(drone, results_dir))
     drone.add_active_processes(1)
+    manager.reorder_drone_queue()
+    manager.register_pidfile_processes(
+            os.path.join(results_dir, '.autoserv_execute'), 1)
     return drone
 
 
@@ -160,6 +164,9 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
     output_file = os.path.join(results_dir, 'job_reporter_output.log')
     drone.spawn(_ENV, args, output_file=output_file)
     drone.add_active_processes(1)
+    manager.reorder_drone_queue()
+    manager.register_pidfile_processes(
+            os.path.join(results_dir, '.autoserv_execute'), 1)
     return drone
 
 
@@ -244,6 +251,32 @@ class _DroneManager(object):
         The returned path might be remote.
         """
         return self._manager.absolute_path(path)
+
+    def register_pidfile_processes(self, path, count):
+        """Register a pidfile with the given number of processes.
+
+        This should be done to allow the drone manager to check the
+        number of processes still alive.  This may be used to select
+        drones based on the number of active processes as a proxy for
+        load.
+
+        The exact semantics depends on the drone manager implementation;
+        implementation specific comments follow:
+
+        Pidfiles are kept in memory to track process count.  Pidfiles
+        are rediscovered when the scheduler restarts.  Thus, errors in
+        pidfile tracking can be fixed by restarting the scheduler.xo
+        """
+        pidfile_id = PidfileId(path)
+        self._manager.register_pidfile(pidfile_id)
+        self._manager._registered_pidfile_info[pidfile_id].num_processes = count
+
+    def reorder_drone_queue(self):
+        """Reorder drone queue according to modified process counts.
+
+        Call this after Drone.add_active_processes().
+        """
+        self._manager.reorder_drone_queue()
 
 
 def _wrap_drone(old_drone):
@@ -330,10 +363,19 @@ class Drone(object):
         """Track additional number of active processes.
 
         This may be used to select drones based on the number of active
-        processes as a proxy for load.  The exact semantics depends on
-        the drone manager implementation; in practice that means process
-        count is used as a proxy for workload, and one process equals
-        the workload of one autoserv or one job.
+        processes as a proxy for load.
+
+        _DroneManager.register_pidfile_processes() and
+        _DroneManager.reorder_drone_queue() should also be called.
+
+        The exact semantics depends on the drone manager implementation;
+        implementation specific comments follow:
+
+        Process count is used as a proxy for workload, and one process
+        equals the workload of one autoserv or one job.  This count is
+        recalculated during each scheduler tick, using pidfiles tracked
+        by the drone manager (so the count added by this function only
+        applies for one tick).
         """
 
 
