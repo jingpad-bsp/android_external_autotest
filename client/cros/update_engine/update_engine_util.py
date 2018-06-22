@@ -23,6 +23,7 @@ class UpdateEngineUtil(object):
     _UPDATE_ENGINE_DOWNLOADING = 'UPDATE_STATUS_DOWNLOADING'
     _UPDATE_ENGINE_FINALIZING = 'UPDATE_STATUS_FINALIZING'
     _UPDATE_STATUS_UPDATED_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
+    _UPDATE_STATUS_REPORTING_ERROR_EVENT = 'UPDATE_STATUS_REPORTING_ERROR_EVENT'
 
     # Files used by the tests.
     _UPDATE_ENGINE_LOG = '/var/log/update_engine.log'
@@ -68,9 +69,12 @@ class UpdateEngineUtil(object):
             if self._UPDATE_STATUS_IDLE == status[self._CURRENT_OP]:
                 raise error.TestFail('Update status was idle while trying to '
                                      'get download status.')
+            if self._UPDATE_STATUS_REPORTING_ERROR_EVENT == status[
+                self._CURRENT_OP]:
+                raise error.TestFail('Update status reported error.')
             if self._UPDATE_STATUS_UPDATED_NEED_REBOOT == status[
                 self._CURRENT_OP]:
-                raise error.TestFail('Update status was Needs Reboot while '
+                raise error.TestFail('Update status was NEEDS_REBOOT while '
                                      'trying to get download status.')
             # If we call this right after reboot it may not be downloading yet.
             if self._UPDATE_ENGINE_DOWNLOADING != status[self._CURRENT_OP]:
@@ -103,6 +107,9 @@ class UpdateEngineUtil(object):
 
             # During reboot, status will be None
             if status is not None:
+                if self._UPDATE_STATUS_REPORTING_ERROR_EVENT == status[
+                    self._CURRENT_OP]:
+                    raise error.TestFail('Update status reported error.')
                 if status[self._CURRENT_OP] == self._UPDATE_STATUS_IDLE:
                     raise error.TestFail('Update status was unexpectedly '
                                          'IDLE when we were waiting for the '
