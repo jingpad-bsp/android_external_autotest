@@ -33,7 +33,9 @@ class graphics_Stress(graphics_utils.GraphicsTest):
 
 
     def new_chrome(self):
-        return chrome.Chrome(extension_paths=self.ext_paths,
+        browser_args = ['--disable-features=PreferHtmlOverPlugins']
+        return chrome.Chrome(extra_browser_args=browser_args,
+                             extension_paths=self.ext_paths,
                              logged_in=True,
                              autotest_ext=True)
 
