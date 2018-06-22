@@ -13,10 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'MEDIUM'
 MAX_RESULT_SIZE_KB = 307200
 PRIORITY = 50
-
-DOC = ('Run module CtsSecurityHostTestCases of the '
-       'Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.')
-
+DOC = 'Run module CtsSecurityHostTestCases of the Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.'
 
 def run_CTS(machine):
     host_list = [hosts.create_host(machine)]
@@ -27,7 +24,11 @@ def run_CTS(machine):
         max_retry=10,
         needs_push_media=False,
         tag='CtsSecurityHostTestCases',
+        test_name='cheets_CTS_N.x86.CtsSecurityHostTestCases',
+        run_template=['run', 'commandAndExit', 'cts', '--module', 'CtsSecurityHostTestCases', '--precondition-arg', 'skip-media-download', '--disable-reboot', '--logcat-on-failure'],
+        retry_template=['run', 'commandAndExit', 'cts', '--module', 'CtsSecurityHostTestCases', '--precondition-arg', 'skip-media-download', '--disable-reboot', '--logcat-on-failure', '--retry', '{session_id}'],
         target_module='CtsSecurityHostTestCases',
+        target_plan=None,
         bundle='x86',
         warn_on_test_retry=False,
         retry_manual_tests=True,
