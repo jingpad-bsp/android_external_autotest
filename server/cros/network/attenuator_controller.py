@@ -7,6 +7,7 @@ import logging
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.network import attenuator
 
+from chromite.lib import timeout_util
 
 # This map represents the fixed loss overhead on a given antenna line.
 # The map maps from:
@@ -198,3 +199,73 @@ class AttenuatorController(object):
             atten_values = self._fixed_attenuations[atten_num].values()
             max_atten = max(max(atten_values), max_atten)
         return max_atten
+
+
+    def set_signal_level(self, client_context, requested_sig_level,
+            min_sig_level_allowed=-85, tolerance_percent=3, timeout=240):
+        """Set wifi signal to desired level by changing attenuation.
+
+        @param client_context: Client context object.
+        @param requested_sig_level: Negative int value in dBm for wifi signal
+                level to be set.
+        @param min_sig_level_allowed: Minimum signal level allowed; this is to
+                ensure that we don't set a signal that is too weak and DUT can
+                not associate.
+        @param tolerance_percent: Percentage to be used to calculate the desired
+                range for the wifi signal level.
+        """
+        atten_db = 0
+        starting_sig_level = client_context.wifi_signal_level
+        if not starting_sig_level:
+            raise error.TestError("No signal detected.")
+        if not (min_sig_level_allowed <= requested_sig_level <=
+                starting_sig_level):
+            raise error.TestError("Requested signal level (%d) is either "
+                                  "higher than current signal level (%r) with "
+                                  "0db attenuation or lower than minimum "
+                                  "signal level (%d) allowed." %
+                                  (requested_sig_level,
+                                  starting_sig_level,
+                                  min_sig_level_allowed))
+
+        try:
+            with timeout_util.Timeout(timeout):
+                while True:
+                    client_context.reassociate(timeout_seconds=1)
+                    current_sig_level = client_context.wifi_signal_level
+                    logging.info("Current signal level %r", current_sig_level)
+                    if not current_sig_level:
+                        raise error.TestError("No signal detected.")
+                    if self.signal_in_range(requested_sig_level,
+                            current_sig_level, tolerance_percent):
+                        logging.info("Signal level set to %r.",
+                                     current_sig_level)
+                        break
+                    if current_sig_level > requested_sig_level:
+                        self.set_variable_attenuation(atten_db)
+                        atten_db +=1
+                    if current_sig_level < requested_sig_level:
+                        self.set_variable_attenuation(atten_db)
+                        atten_db -= 1
+        except (timeout_util.TimeoutError, error.TestError,
+                error.TestFail) as e:
+            raise error.TestError("Not able to set wifi signal to requested "
+                                  "level. \n%s" % e)
+
+
+    def signal_in_range(self, req_sig_level, curr_sig_level, tolerance_percent):
+        """Check if wifi signal is within the threshold of requested signal.
+
+        @param req_sig_level: Negative int value in dBm for wifi signal
+                level to be set.
+        @param curr_sig_level: Current wifi signal level seen by the DUT.
+        @param tolerance_percent: Percentage to be used to calculate the desired
+                range for the wifi signal level.
+
+        @returns True if wifi signal is in the desired range.
+        """
+        min_sig = req_sig_level + (req_sig_level * tolerance_percent / 100)
+        max_sig = req_sig_level - (req_sig_level * tolerance_percent / 100)
+        if min_sig <= curr_sig_level <= max_sig:
+            return True
+        return False
