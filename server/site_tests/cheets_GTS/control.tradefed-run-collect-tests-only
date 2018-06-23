@@ -11,20 +11,24 @@ JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 PRIORITY = 70
-DOC = ('Run tradefed to collect all of the available GTS tests for this device.')
+DOC = 'Run all of the Android Google Test Suite (GTS) in the ARC++ container.'
 
 def run_GTS(machine):
-    host = hosts.create_host(machine)
+    host_list = [hosts.create_host(machine)]
     job.run_test(
-        'cheets_GTS',
-        host=host,
+        'cheets_GTS_P',
+        hosts=host_list,
         iterations=1,
         max_retry=0,
         tag='tradefed-run-collect-tests-only',
-        tradefed_args = ['run', 'commandAndExit', 'collect-tests-only',
+        test_name='cheets_GTS_P.6.0_r1.tradefed-run-collect-tests-only',
+        run_template=['run', 'commandAndExit', 'collect-tests-only',
                 # TODO(kinaba): workaround until ag/3850281 is made public.
                 '--preparer-whitelist',
                 'com.android.tradefed.targetprep.suite.SuiteApkInstaller'],
+        retry_template=None,
+        target_module=None,
+        target_plan=None,
         timeout=600)
 
 parallel_simple(run_GTS, machines)
