@@ -11,6 +11,7 @@ import tempfile
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import path_utils
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import netblock
@@ -305,39 +306,48 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Wait for confirmation that the router came up.
         logging.info('Waiting for hostapd to startup.')
-        start_time = time.time()
-        while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
-            success = self.router.run(
-                    'grep "Setup of interface done" %s' % log_file,
-                    ignore_status=True).exit_status == 0
-            if success:
-                break
-
-            # A common failure is an invalid router configuration.
-            # Detect this and exit early if we see it.
-            bad_config = self.router.run(
-                    'grep "Interface initialization failed" %s' % log_file,
-                    ignore_status=True).exit_status == 0
-            if bad_config:
-                raise error.TestFail('hostapd failed to initialize AP '
-                                     'interface.')
-
-            if pid:
-                early_exit = self.router.run('kill -0 %d' % pid,
-                                             ignore_status=True).exit_status
-                if early_exit:
-                    raise error.TestFail('hostapd process terminated.')
-
-            time.sleep(self.POLLING_INTERVAL_SECONDS)
-        else:
-            raise error.TestFail('Timed out while waiting for hostapd '
-                                 'to start.')
+        utils.poll_for_condition(
+                condition=lambda: self._has_hostapd_started(log_file, pid),
+                exception=error.TestFail('Timed out while waiting for hostapd '
+                                         'to start.'),
+                timeout=self.STARTUP_TIMEOUT_SECONDS,
+                sleep_interval=self.POLLING_INTERVAL_SECONDS)
 
         if configuration.frag_threshold:
             threshold = self.iw_runner.get_fragmentation_threshold(phy_name)
             if threshold != configuration.frag_threshold:
                 raise error.TestNAError('Router does not support setting '
                                         'fragmentation threshold')
+
+
+    def _has_hostapd_started(self, log_file, pid):
+        """Determines if hostapd has started.
+
+        @return Whether or not hostapd has started.
+        @raise error.TestFail if there was a bad config or hostapd terminated.
+        """
+        success = self.router.run(
+            'grep "Setup of interface done" %s' % log_file,
+            ignore_status=True).exit_status == 0
+        if success:
+            return True
+
+        # A common failure is an invalid router configuration.
+        # Detect this and exit early if we see it.
+        bad_config = self.router.run(
+            'grep "Interface initialization failed" %s' % log_file,
+            ignore_status=True).exit_status == 0
+        if bad_config:
+            raise error.TestFail('hostapd failed to initialize AP '
+                                 'interface.')
+
+        if pid:
+            early_exit = self.router.run('kill -0 %d' % pid,
+                                         ignore_status=True).exit_status
+            if early_exit:
+                raise error.TestFail('hostapd process terminated.')
+
+        return False
 
 
     def _kill_process_instance(self,
@@ -367,20 +377,25 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             search_arg = process
 
         self.host.run('pkill %s' % search_arg, ignore_status=True)
-        is_dead = False
-        start_time = time.time()
-        while not is_dead and time.time() - start_time < timeout_seconds:
-            time.sleep(self.POLLING_INTERVAL_SECONDS)
-            is_dead = self.host.run(
-                    'pgrep -l %s' % search_arg,
-                    ignore_status=True).exit_status != 0
-        if is_dead or ignore_timeouts:
-            return is_dead
 
-        raise error.TestError(
+        # Wait for process to die
+        time.sleep(self.POLLING_INTERVAL_SECONDS)
+        try:
+            utils.poll_for_condition(
+                    condition=lambda: self.host.run(
+                            'pgrep -l %s' % search_arg,
+                            ignore_status=True).exit_status != 0,
+                    timeout=timeout_seconds,
+                    sleep_interval=self.POLLING_INTERVAL_SECONDS)
+        except utils.TimeoutError:
+            if ignore_timeouts:
+                return False
+
+            raise error.TestError(
                 'Timed out waiting for %s%s to die' %
                 (process,
                 '' if instance is None else ' (instance=%s)' % instance))
+        return True
 
 
     def kill_hostapd_instance(self, instance):
