@@ -127,7 +127,7 @@ class InventoryRepo(object):
             self.git_repo.pull()
         else:
             logging.info('No inventory repo was found, start cloning.')
-            self.git_repo.clone()
+            self.git_repo.clone(shallow=True)
 
 
     def get_data_dir(self, data_subdir='skylab'):
