@@ -1156,6 +1156,53 @@ class  MockMetricsTest(unittest.TestCase):
         timer['random_key'] = 'pass'
 
 
+class test_background_sample(unittest.TestCase):
+    """Test that the background sample can sample as desired.
+    """
+
+    def test_can_sample(self):
+        """Test that a simple sample will work with no other complications.
+        """
+        should_be_sampled = 'name'
+
+        def sample_function():
+            """Return value of variable stored in method."""
+            return should_be_sampled
+        still_sampling = True
+
+        t = utils.background_sample_until_condition(
+                function=sample_function,
+                condition=lambda: still_sampling,
+                timeout=5,
+                sleep_interval=0.1)
+        result = t.finish()
+        self.assertIn(should_be_sampled, result)
+
+
+    def test_samples_multiple_values(self):
+        """Test that a sample will work and actually samples at the necessary
+        intervals, such that it will pick up changes.
+        """
+        should_be_sampled = 'name'
+
+        def sample_function():
+            """Return value of variable stored in method."""
+            return should_be_sampled
+        still_sampling = True
+
+        t = utils.background_sample_until_condition(
+                function=sample_function,
+                condition=lambda: still_sampling,
+                timeout=5,
+                sleep_interval=0.1)
+        # Let it sample values some with the initial value.
+        time.sleep(2.5)
+        # It should also sample some with the new value.
+        should_be_sampled = 'noname'
+        result = t.finish()
+        self.assertIn('name', result)
+        self.assertIn('noname', result)
+
 
 if __name__ == "__main__":
     unittest.main()
