@@ -9,6 +9,7 @@ import os
 import pipes
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,9 @@ _ANDROID_CONTAINER_ROOT_PATH = '/opt/google/containers/android/rootfs'
 _SCREENSHOT_DIR_PATH = '/var/log/arc-screenshots'
 _SCREENSHOT_BASENAME = 'arc-screenshot'
 _MAX_SCREENSHOT_NUM = 10
+# This address should match the one present in
+# https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/chromeos-base/arc-sslh-init/files/sslh.conf
+_ADBD_ADDRESS = ('100.115.92.2', 5555)
 _ADBD_PID_PATH = '/run/arc/adbd.pid'
 _SDCARD_PID_PATH = '/run/arc/sdcard.pid'
 _ANDROID_ADB_KEYS_PATH = '/data/misc/adb/adb_keys'
@@ -99,6 +103,16 @@ def get_product():
     return _android_shell('getprop ro.build.product')
 
 
+def _is_tcp_port_reachable(address):
+    """Return whether a TCP port described by |address| is reachable."""
+    try:
+        s = socket.create_connection(address)
+        s.close()
+        return True
+    except socket.error:
+        return False
+
+
 def _wait_for_data_mounted(timeout=_WAIT_FOR_DATA_MOUNTED_SECONDS):
     utils.poll_for_condition(
             condition=_is_android_data_mounted,
@@ -132,7 +146,7 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     _android_shell('setprop sys.usb.config mtp')
     _android_shell('setprop sys.usb.config mtp,adb')
 
-    exception = error.TestFail('adb is not ready in %d seconds.' % timeout)
+    exception = error.TestFail('Failed to connect to adb in %d seconds.' % timeout)
 
     # Keeps track of how many times adb has attempted to establish a
     # connection.
@@ -144,17 +158,39 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
         utils.poll_for_condition(_adb_connect_wrapper,
                                  exception,
                                  timeout)
-    except utils.TimeoutError:
-        # The operation has failed, but let's grab some logs.
-        logging.error('ARC booted: %s',
-                      _android_shell('getprop sys.boot_completed',
-                                     ignore_status=True))
-        logging.error('ARC system events: %s',
-                      _android_shell('logcat -d -b events *:S arc_system_event',
-                                     ignore_status=True))
-        logging.error('adbd process: %s', _android_shell('pidof adbd'))
-        logging.error('adb state: %s',
-                      utils.system_output('adb get-state', ignore_status=True))
+    except (utils.TimeoutError, error.TestFail):
+        # The operation has failed, but let's try to clarify the failure to
+        # avoid shifting blame to adb.
+
+        # First, collect some information and log it.
+        arc_alive = is_android_container_alive()
+        arc_booted = _android_shell('getprop sys.boot_completed',
+                                    ignore_status=True)
+        arc_system_events = _android_shell(
+            'logcat -d -b events *:S arc_system_event', ignore_status=True)
+        adbd_pid = _android_shell('pidof -s adbd', ignore_status=True)
+        adbd_port_reachable = _is_tcp_port_reachable(_ADBD_ADDRESS)
+        adb_state = utils.system_output('adb get-state', ignore_status=True)
+        logging.debug('ARC alive: %s', arc_alive)
+        logging.debug('ARC booted: %s', arc_booted)
+        logging.debug('ARC system events: %s', arc_system_events)
+        logging.debug('adbd process: %s', adbd_pid)
+        logging.debug('adbd port reachable: %s', adbd_port_reachable)
+        logging.debug('adb state: %s', adb_state)
+
+        # Now go through the usual suspects and raise nicer errors to make the
+        # actual failure clearer.
+        if not arc_alive:
+            raise error.TestFail('ARC is not alive.')
+        if not adbd_pid:
+            raise error.TestFail('adbd is not running.')
+        if arc_booted != '1':
+            raise error.TestFail('ARC did not finish booting.')
+        if not adbd_port_reachable:
+            raise error.TestFail('adbd TCP port is not reachable.')
+
+        # We exhausted all possibilities. Fall back to printing the generic
+        # error.
         raise
 
 
