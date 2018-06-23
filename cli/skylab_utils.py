@@ -24,7 +24,7 @@ INTERNAL_GERRIT_HOST_URL = 'https://%s' % INTERNAL_GERRIT_HOST
 INTERNAL_INVENTORY_REPO_URL = ('https://chrome-internal.googlesource.com/'
                                'chromeos/infra_internal/skylab_inventory.git')
 INTERNAL_INVENTORY_CHANGE_PATTERN = (
-        r'https://chrome-internal-review.googlesource.com/#/c/chromeos/'
+        r'https://chrome-internal-review.googlesource.com/c/chromeos/'
         'infra_internal/skylab_inventory/\\+/([0-9]*)')
 MSG_INVALID_IN_SKYLAB = 'This is currently not supported with --skylab.'
 MSG_ONLY_VALID_IN_SKYLAB = 'This is only supported with --skylab.'
@@ -73,7 +73,8 @@ def extract_inventory_change(output):
     m = re.search(INTERNAL_INVENTORY_CHANGE_PATTERN, output)
 
     if not m:
-        raise InventoryRepoChangeNotFound()
+        raise InventoryRepoChangeNotFound(
+                'Could not extract CL number from "%r"' % output)
 
     return int(m.group(1))
 
@@ -127,7 +128,7 @@ class InventoryRepo(object):
             self.git_repo.pull()
         else:
             logging.info('No inventory repo was found, start cloning.')
-            self.git_repo.clone()
+            self.git_repo.clone(shallow=True)
 
 
     def get_data_dir(self, data_subdir='skylab'):

@@ -158,7 +158,7 @@ class GitRepo(object):
         return rv
 
 
-    def clone(self, remote_branch=None):
+    def clone(self, remote_branch=None, shallow=False):
         """
         Clones a repo using giturl and repodir.
 
@@ -168,6 +168,7 @@ class GitRepo(object):
 
         @param remote_branch: Specify the remote branch to clone. None if to
                               clone master branch.
+        @param shallow: If True, do a shallow clone.
 
         @raises GitCloneError: if cloning the master repo fails.
         """
@@ -175,6 +176,8 @@ class GitRepo(object):
         cmd = 'clone %s %s ' % (self.giturl, self.repodir)
         if remote_branch:
             cmd += '-b %s' % remote_branch
+        if shallow:
+            cmd += '--depth 1'
         abs_work_tree = self.work_tree
         self.work_tree = None
         try:

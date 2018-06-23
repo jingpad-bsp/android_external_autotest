@@ -13,12 +13,14 @@ inheritance with, just a collection of static methods.
 
 import StringIO
 import collections
+import datetime
 import errno
 import inspect
 import itertools
 import logging
 import os
 import pickle
+import Queue
 import random
 import re
 import resource
@@ -30,6 +32,7 @@ import string
 import struct
 import subprocess
 import textwrap
+import threading
 import time
 import urllib2
 import urlparse
@@ -2629,6 +2632,96 @@ def poll_for_condition(condition,
             raise TimeoutError(desc)
 
         time.sleep(sleep_interval)
+
+
+def threaded_return(function):
+    """
+    Decorator to add to a function to get that function to return a thread
+    object, but with the added benefit of storing its return value.
+
+    @param function: function object to be run in the thread
+
+    @return a threading.Thread object, that has already been started, is
+            recording its result, and can be completed and its result
+            fetched by calling .finish()
+    """
+    def wrapped_t(queue, *args, **kwargs):
+        """
+        Calls the decorated function as normal, but appends the output into
+        the passed-in threadsafe queue.
+        """
+        ret = function(*args, **kwargs)
+        queue.put(ret)
+
+    def wrapped_finish(threaded_object):
+        """
+        Provides a utility to this thread object, getting its result while
+        simultaneously joining the thread.
+        """
+        ret = threaded_object.get()
+        threaded_object.join()
+        return ret
+
+    def wrapper(*args, **kwargs):
+        """
+        Creates the queue and starts the thread, then assigns extra attributes
+        to the thread to give it result-storing capability.
+        """
+        q = Queue.Queue()
+        t = threading.Thread(target=wrapped_t, args=(q,) + args, kwargs=kwargs)
+        t.start()
+        t.result_queue = q
+        t.get = t.result_queue.get
+        t.finish = lambda: wrapped_finish(t)
+        return t
+
+    # for the decorator
+    return wrapper
+
+
+@threaded_return
+def background_sample_until_condition(
+        function,
+        condition=lambda: True,
+        timeout=10,
+        sleep_interval=1):
+    """
+    Records the value of the function until the condition is False or the
+    timeout is reached. Runs as a background thread, so it's nonblocking.
+    Usage might look something like:
+
+    def function():
+        return get_value()
+    def condition():
+        return self._keep_sampling
+
+    # main thread
+    sample_thread = utils.background_sample_until_condition(
+        function=function,condition=condition)
+    # do other work
+    # ...
+    self._keep_sampling = False
+    # blocking call to get result and join the thread
+    result = sample_thread.finish()
+
+    @param function: function object, 0 args, to be continually polled
+    @param condition: function object, 0 args, to say when to stop polling
+    @param timeout: maximum number of seconds to wait
+    @param number of seconds to wait in between polls
+
+    @return a thread object that has already been started and is running in
+            the background, whose run must be stopped with .finish(), which
+            also returns a list of the results from the sample function
+    """
+    log = []
+
+    end_time = datetime.datetime.now() + datetime.timedelta(
+            seconds = timeout + sleep_interval)
+
+    while condition() and datetime.datetime.now() < end_time:
+        log.append(function())
+        time.sleep(sleep_interval)
+    return log
 
 
 class metrics_mock(metrics_mock_class.mock_class_base):
