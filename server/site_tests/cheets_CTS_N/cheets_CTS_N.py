@@ -30,7 +30,7 @@ _CTS_URI = {
 }
 
 
-class cheets_CTS_N(tradefed_test.TradefedTest_P):
+class cheets_CTS_N(tradefed_test.TradefedTest):
     """Sets up tradefed to run CTS tests."""
     version = 1
 
