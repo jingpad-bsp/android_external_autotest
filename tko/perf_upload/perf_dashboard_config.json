@@ -712,6 +712,10 @@
     "master_name": "ChromeOSVideo"
   },
   {
+    "autotest_name": "video_VDAPerf.cfm",
+    "master_name": "ChromeOSVideo"
+  },
+  {
     "autotest_name": "video_VDAPerf.h264",
     "master_name": "ChromeOSVideo"
   },
@@ -721,6 +725,10 @@
   },
   {
     "autotest_name": "video_VDAPerf.vp9",
+    "master_name": "ChromeOSVideo"
+  },
+  {
+    "autotest_name": "video_VEAPerf.cfm",
     "master_name": "ChromeOSVideo"
   },
   {
