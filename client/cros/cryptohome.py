@@ -594,8 +594,11 @@ class CryptohomeProxy(DBusClient):
     )
     DBUS_PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 
+    # Default timeout in seconds for the D-Bus connection.
+    DEFAULT_DBUS_TIMEOUT = 30
 
-    def __init__(self, bus_loop=None, autodir=None, job=None, timeout=None):
+    def __init__(self, bus_loop=None, autodir=None, job=None,
+                 timeout=DEFAULT_DBUS_TIMEOUT):
         if autodir and job:
             # Install D-Bus protos necessary for some methods.
             dep_dir = os.path.join(autodir, 'deps', DBUS_PROTOS_DEP)
