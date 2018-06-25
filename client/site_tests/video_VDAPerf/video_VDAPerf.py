@@ -58,10 +58,10 @@ def _percentile(values, k):
 
 
 def _remove_if_exists(filepath):
-    try:
-        os.remove(filepath)
-    except OSError, e:
-        if e.errno != errno.ENOENT: # no such file
+    if filepath and os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except OSError, e:
             raise
 
 
@@ -288,6 +288,7 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
     @chrome_binary_test.nuke_chrome
     def run_once(self, test_cases):
         self._perf_keyvals = {}
+        video_path = None
         last_error = None
         dc = device_capability.DeviceCapability()
         for (path, width, height, frame_num, frag_num, profile,
