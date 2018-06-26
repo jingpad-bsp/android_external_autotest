@@ -76,6 +76,7 @@ class security_StatefulPermissions(test.test):
                                "/encrypted/var/log/power_manager"],
                      "pkcs11": [],
                      "root": None,
+                     "shill": ["/encrypted/var/cache/shill"],
                      "sshd": [],
                      "syslog": ["/encrypted/var/log"],
                      "tcpdump": [],
