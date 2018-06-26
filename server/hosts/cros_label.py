@@ -313,6 +313,7 @@ class StorageLabel(base_label.StringPrefixLabel):
              * `storage:hdd` when internal device is hard disk drive
              * `storage:mmc` when internal device is mmc drive
              * `storage:nvme` when internal device is NVMe drive
+             * `storage:ufs` when internal device is ufs drive
              * None          When internal device is something else or
                              when we are unable to determine the type
     """
@@ -367,6 +368,9 @@ class StorageLabel(base_label.StringPrefixLabel):
             link_str = link.stdout.strip()
             if 'usb' in link_str:
                 return False
+            elif 'ufs' in link_str:
+              self.type_str = 'ufs'
+              return True
 
             # Read rotation to determine if the internal device is ssd or hdd.
             rotate_cmd = str('cat /sys/block/%s/queue/rotational'
