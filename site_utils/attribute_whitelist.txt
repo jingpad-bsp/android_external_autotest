@@ -90,6 +90,7 @@ suite:dummyclientretries
 suite:dummyflake
 suite:ent-nightly
 suite:ent-perbuild
+suite:ent-wificell
 suite:experimental
 suite:factory
 suite:faft

@@ -21,7 +21,6 @@ class enterprise_SmbProviderDaemon(test.test):
 
     version = 1
 
-    PATH_TO_MOUNT = 'smb://192.168.50.105/testshare'
     WORKGROUP = ''
     USERNAME = ''
     PASSWORD = ''
@@ -47,21 +46,21 @@ class enterprise_SmbProviderDaemon(test.test):
         # Append path for directory_entry_pb2 imports.
         sys.path.append(self.srcdir)
 
-    def run_once(self):
+    def run_once(self, mount_path):
         """
         Runs smbproviderd D-Bus commands.
 
         """
 
-        self._check_mount()
+        self._check_mount(mount_path)
 
-    def _check_mount(self):
+    def _check_mount(self, mount_path):
         """
         Checks that mount is working.
 
         """
 
-        error, mount_id = self._smbprovider.mount(self.PATH_TO_MOUNT,
+        error, mount_id = self._smbprovider.mount(mount_path,
                                                   self.WORKGROUP,
                                                   self.USERNAME,
                                                   self.PASSWORD)
