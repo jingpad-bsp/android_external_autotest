@@ -72,13 +72,12 @@ class EnterprisePolicyTest(test.test):
         from a server test.
 
         """
-        kwargs.pop('check_client_result', False)
         self._initialize_enterprise_policy_test(**kwargs)
 
 
     def _initialize_enterprise_policy_test(
             self, case='', env='dm-fake', dms_name=None,
-            username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID):
+            username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID, **kwargs):
         """
         Initialize test parameters and fake DM Server.
 
@@ -88,6 +87,7 @@ class EnterprisePolicyTest(test.test):
         @param password: String password login credential.
         @param gaia_id: String gaia_id login credential.
         @param dms_name: String name of test DM Server.
+        @param kwargs: Not used.
 
         """
         self.case = case
