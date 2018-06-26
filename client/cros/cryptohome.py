@@ -721,14 +721,6 @@ class CryptohomeProxy(DBusClient):
         utils.require_mountpoint(system_path(user))
 
 
-    def migrate(self, user, oldkey, newkey, async=True):
-        """Migrates the specified user's cryptohome from one key to another."""
-        if async:
-            return self.__async_call(self.iface.AsyncMigrateKey,
-                                     user, oldkey, newkey)['return_status']
-        return self.__call(self.iface.MigrateKey, user, oldkey, newkey)
-
-
     def remove(self, user, async=True):
         if async:
             return self.__async_call(self.iface.AsyncRemove,
