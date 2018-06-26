@@ -13,6 +13,39 @@ from autotest_lib.client.cros.networking.chrome_testing \
         import chrome_networking_test_api as cnta
 
 
+NETWORK_TEST_EXTENSION_PATH = cntc.NETWORK_TEST_EXTENSION_PATH
+
+
+def create_network_policy(ssid, autoconnect=None):
+    """
+    Generate a network configuration policy dictionary for WiFi networks.
+
+    @param ssid: Service set identifier for wireless local area network.
+    @param autoconnect: Whether network policy should autoconnect.
+
+    @returns conf: A dictionary in the format suitable to setting as a user
+        policy.
+
+    """
+    conf = {
+        'NetworkConfigurations': [
+            {'GUID': 'policy_WiFi*',
+             'Name': ssid,
+             'Type': 'WiFi',
+             'WiFi': {
+                 'SSID': ssid,
+                 'Security': 'None'}
+             }
+        ]
+    }
+
+    if autoconnect is not None:
+        conf['NetworkConfigurations'][0]\
+                ['WiFi']['AutoConnect'] = autoconnect
+
+    return conf
+
+
 class ChromeEnterpriseNetworkContext(object):
     """
     This class contains all the Network API methods required for
@@ -23,10 +56,9 @@ class ChromeEnterpriseNetworkContext(object):
     LONG_TIMEOUT = 120
 
 
-    def __init__(self, browser_instance):
-        self.browser = browser_instance
-        testing_context = cntc.ChromeNetworkingTestContext(browser=self.browser)
-        testing_context.setup()
+    def __init__(self, browser=None):
+        testing_context = cntc.ChromeNetworkingTestContext()
+        testing_context.setup(browser)
         self.chrome_net_context = cnta.ChromeNetworkProvider(testing_context)
         self.enable_wifi_on_dut()
 
@@ -58,6 +90,30 @@ class ChromeEnterpriseNetworkContext(object):
                                 security=network['WiFi']['Security'])
             network_info_list.append(network_data)
         return network_info_list
+
+
+    def list_networks(self):
+        """@returns: List of available WiFi networks."""
+        return self._extract_wifi_network_info(
+                self.chrome_net_context.get_wifi_networks())
+
+
+    def disable_network_device(self, network):
+        """
+        Disable given network device.
+
+        This will fail if called multiple times in a test. Use the version in
+        'chrome_networking_test_api' if this is the case.
+
+        @param network: string name of the network device to be disabled.
+                Options include 'WiFi', 'Cellular', and 'Ethernet'.
+
+        """
+        logging.info('Disabling: %s', network)
+        disable_network_result = self.chrome_net_context.\
+                _chrome_testing.call_test_function_async(
+                    'disableNetworkDevice',
+                    '"' + network + '"')
 
 
     def _get_network_info(self, ssid):
@@ -163,7 +219,7 @@ class ChromeEnterpriseNetworkContext(object):
     def enable_wifi_on_dut(self):
         """Enable the WiFi interface on the DUT if it is disabled."""
         enabled_devices = self.chrome_net_context.get_enabled_devices()
-        if (self.chrome_net_context.WIFI_DEVICE not in enabled_devices):
+        if self.chrome_net_context.WIFI_DEVICE not in enabled_devices:
             self.chrome_net_context.enable_network_device(
                 self.chrome_net_context.WIFI_DEVICE)
 
