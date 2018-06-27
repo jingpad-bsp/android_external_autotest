@@ -267,7 +267,7 @@ class platform_ToolchainOptions(test.test):
                                                   stack_cmd,
                                                   stack_whitelist))
 
-        # Verify all binaries have no W^X LOAD program headers.
+        # Verify no binaries have W+X LOAD program headers.
         loadwx_cmd = ("%s -lW {} 2>&1 | "
                       "grep \"LOAD\" | egrep -v \"(RW |R E|R  )\" | "
                       "wc -l | grep -q \"^0$\"" % readelf_cmd)
