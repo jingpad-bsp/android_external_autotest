@@ -407,6 +407,17 @@ def get_hostname(url):
     return urlparse.urlparse(url).hostname
 
 
+def get_resolved_hostname(url):
+    """Get the symbolic hostname from url.
+
+    If the given `url` uses a numeric IP address, try and find a
+    symbolic name from the hostname map in the config file.
+
+    @param url  The URL with which to perform the conversion/lookup.
+    """
+    return _reverse_lookup_from_config(get_hostname(url))
+
+
 class DevServer(object):
     """Base class for all DevServer-like server stubs.
 
