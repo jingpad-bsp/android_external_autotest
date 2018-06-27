@@ -16,12 +16,12 @@ DOC = 'Run all of the Android Google Test Suite (GTS) in the ARC++ container.'
 def run_GTS(machine):
     host_list = [hosts.create_host(machine)]
     job.run_test(
-        'cheets_GTS_P',
+        'cheets_GTS',
         hosts=host_list,
         iterations=1,
         max_retry=0,
         tag='tradefed-run-collect-tests-only',
-        test_name='cheets_GTS_P.6.0_r1.tradefed-run-collect-tests-only',
+        test_name='cheets_GTS.tradefed-run-collect-tests-only',
         run_template=['run', 'commandAndExit', 'collect-tests-only',
                 # TODO(kinaba): workaround until ag/3850281 is made public.
                 '--preparer-whitelist',
