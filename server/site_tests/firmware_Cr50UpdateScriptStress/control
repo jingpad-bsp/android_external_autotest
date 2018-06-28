@@ -23,7 +23,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    iterations = int(args_dict.get("iterations", 100))
+    iterations = int(args_dict.get("iterations", 10))
 
     job.run_test("firmware_Cr50UpdateScriptStress", host=host,
                  cmdline_args=args, iterations=iterations)
