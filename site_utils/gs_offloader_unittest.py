@@ -485,11 +485,7 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
 
     def setUp(self):
         super(JobDirectorySubclassTests, self).setUp()
-        self.mox.StubOutWithMock(job_directories._AFE, 'get_jobs')
-        self.mox.StubOutWithMock(job_directories._AFE,
-                                 'get_host_queue_entries')
-        self.mox.StubOutWithMock(job_directories._AFE,
-                                 'get_special_tasks')
+        self.mox.StubOutWithMock(job_directories, '_AFE')
 
 
     def test_regular_job_fields(self):
