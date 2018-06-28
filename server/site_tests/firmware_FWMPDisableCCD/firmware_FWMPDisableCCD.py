@@ -19,9 +19,10 @@ class firmware_FWMPDisableCCD(Cr50Test):
     FWMP_DEV_DISABLE_CCD_UNLOCK = (1 << 6)
     GSCTOOL_ERR = 'Error: rv 7, response 7'
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, full_args):
         """Initialize servo check if cr50 exists"""
-        super(firmware_FWMPDisableCCD, self).initialize(host, cmdline_args)
+        super(firmware_FWMPDisableCCD, self).initialize(host, cmdline_args,
+                full_args)
 
         self.host = host
         # Test CCD if servo has access to Cr50, is running with CCD v1, and has

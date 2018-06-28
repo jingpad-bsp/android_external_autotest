@@ -16,9 +16,9 @@ class firmware_Cr50Open(Cr50Test):
     """
     version = 1
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, full_args):
         """Initialize the test"""
-        super(firmware_Cr50Open, self).initialize(host, cmdline_args)
+        super(firmware_Cr50Open, self).initialize(host, cmdline_args, full_args)
 
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')

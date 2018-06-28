@@ -15,9 +15,10 @@ class firmware_Cr50Testlab(Cr50Test):
     INVALID_PARAM = 'Parameter 1 invalid'
     BASIC_ERROR = 'Usage: ccd '
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, full_args):
         """Initialize servo. Check that it can access cr50"""
-        super(firmware_Cr50Testlab, self).initialize(host, cmdline_args)
+        super(firmware_Cr50Testlab, self).initialize(host, cmdline_args,
+                full_args)
 
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
