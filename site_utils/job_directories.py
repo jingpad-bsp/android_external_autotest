@@ -43,7 +43,7 @@ def get_job_id_or_task_id(result_dir):
             /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
 
     @returns: str representing the job id or task id. Returns None if fail
-              to parse job or task id from the result_dir.
+        to parse job or task id from the result_dir.
     """
     if not result_dir:
         return
@@ -62,6 +62,9 @@ def get_job_id_or_task_id(result_dir):
     m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
     if m_ssp_job_pattern and utils.is_in_container():
         return m_ssp_job_pattern.group(1)
+    m_swarming_task = re.match('.*/swarming-([0-9a-fA-F]+)$', result_dir)
+    if m_swarming_task:
+        return m_swarming_task.group(1)
 
 
 def get_job_folder_name(result_dir):
@@ -85,6 +88,9 @@ def get_job_folder_name(result_dir):
     m_job = re.findall(test_job_pattern, result_dir)
     if m_job:
         return m_job[-1]
+    m_swarming_task = re.match('.*/(swarming-[0-9a-fA-F]+)$', result_dir)
+    if m_swarming_task:
+        return m_swarming_task.group(1)
 
 
 class _JobDirectory(object):
