@@ -31,6 +31,7 @@ PERF_PER_BUILD_TESTS = (
 )
 
 PERF_DAILY_RUN_TESTS = (
+    'cros_tab_switching.typical_24',
     'dromaeo.domcoreattr',
     'dromaeo.domcoremodify',
     'dromaeo.domcorequery',
