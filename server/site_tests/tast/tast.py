@@ -50,7 +50,7 @@ class tast(test.test):
     # Default paths where Tast files are installed by Portage packages.
     _TAST_PATH = '/usr/bin/tast'
     _REMOTE_BUNDLE_DIR = '/usr/libexec/tast/bundles/remote'
-    _REMOTE_DATA_DIR = '/usr/share/tast/data/remote'
+    _REMOTE_DATA_DIR = '/usr/share/tast/data'
     _REMOTE_TEST_RUNNER_PATH = '/usr/bin/remote_test_runner'
 
     # Alternate locations for Tast files when using Server-Side Packaging.
@@ -58,7 +58,7 @@ class tast(test.test):
     _SSP_ROOT = '/usr/local/tast'
     _SSP_TAST_PATH = os.path.join(_SSP_ROOT, 'tast')
     _SSP_REMOTE_BUNDLE_DIR = os.path.join(_SSP_ROOT, 'bundles/remote')
-    _SSP_REMOTE_DATA_DIR = os.path.join(_SSP_ROOT, 'data/remote')
+    _SSP_REMOTE_DATA_DIR = os.path.join(_SSP_ROOT, 'data')
     _SSP_REMOTE_TEST_RUNNER_PATH = os.path.join(_SSP_ROOT, 'remote_test_runner')
 
     # Prefix added to Tast test names when writing their results to TKO
