@@ -69,6 +69,18 @@ PROVISION_FAILED = '/var/tmp/provision_failed'
 _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
 
 
+# _TARGET_VERSION - A file containing the new version to which we plan
+# to update.  This file is used by the CrOS shutdown code to detect and
+# handle certain version downgrade cases.  Specifically:  Downgrading
+# may trigger an unwanted powerwash in the target build when the
+# following conditions are met:
+#  * Source build is a v4.4 kernel with R69-10756.0.0 or later.
+#  * Target build predates the R69-10756.0.0 cutoff.
+# When this file is present and indicates a downgrade, the OS shutdown
+# code on the DUT knows how to prevent the powerwash.
+_TARGET_VERSION = '/run/update_target_version'
+
+
 class RootFSUpdateError(error.TestFail):
     """Raised when the RootFS fails to update."""
 
@@ -477,6 +489,13 @@ class ChromiumOSUpdater(object):
         """Clear any pending stateful update request."""
         self._run('%s --stateful_change=reset 2>&1'
                   % self._get_stateful_update_script())
+        self._run('rm -f %s' % _TARGET_VERSION)
+
+
+    def _set_target_version(self):
+        """Set the "target version" for the update."""
+        version_number = self.update_version.split('-')[1]
+        self._run('echo %s > %s' % (version_number, _TARGET_VERSION))
 
 
     def _revert_boot_partition(self):
@@ -800,6 +819,7 @@ class ChromiumOSUpdater(object):
         logging.info('Installing image using update_engine.')
         expected_kernel = self.update_image()
         self.update_stateful()
+        self._set_target_version()
         return expected_kernel
 
 
@@ -825,6 +845,7 @@ class ChromiumOSUpdater(object):
                       provision_command, image_name, static_url)
         try:
             self._run(command)
+            self._set_target_version()
             return self._verify_kernel_state()
         except Exception:
             # N.B.  We handle only `Exception` here.  Non-Exception
