@@ -49,7 +49,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
     # behave the same and be interchangeable
     CMD_INTERFACES = ['ap', 'cli']
 
-    def initialize(self, host, cmdline_args, ccd_lockout):
+    def initialize(self, host, cmdline_args):
         """Initialize the test"""
         super(firmware_Cr50RMAOpen, self).initialize(host, cmdline_args)
         self.host = host
@@ -75,7 +75,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
                 ignore_status=True))
         # Disable all capabilities at the start of the test. Go ahead and enable
         # testlab mode if it isn't enabled.
-        if not ccd_lockout:
+        if not self.ccd_lockout:
             self.cr50.fast_open(enable_testlab=True)
             self.cr50.send_command('ccd reset')
             self.cr50.set_ccd_level('lock')
