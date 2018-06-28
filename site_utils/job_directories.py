@@ -13,13 +13,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
-_AFE = frontend_wrappers.RetryingAFE()
-
 SPECIAL_TASK_PATTERN = '.*/hosts/[^/]+/(\d+)-[^/]+'
-JOB_PATTERN = '.*/(\d+)-[^/]+'
-# Pattern of a job folder, e.g., 123-debug_user, where 123 is job id and
-# debug_user is the name of user starts the job.
-JOB_FOLDER_PATTERN = '.*/(\d+-[^/]+)'
 
 def is_job_expired(age_limit, timestamp):
   """Check whether a job timestamp is older than an age limit.
@@ -59,7 +53,7 @@ def get_job_id_or_task_id(result_dir):
     # Try to get the job ID from the last pattern of number-text. This avoids
     # issue with path like 123-results/456-debug_user, in which 456 is the real
     # job ID.
-    m_job = re.findall(JOB_PATTERN, result_dir)
+    m_job = re.findall('.*/(\d+)-[^/]+', result_dir)
     if m_job:
         return m_job[-1]
     m_special_task = re.match(SPECIAL_TASK_PATTERN, result_dir)
@@ -80,12 +74,15 @@ def get_job_folder_name(result_dir):
             For special task:
             /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
 
-    @returns: The name of the folder of a job. Returns None if fail to parse
-            the name matching pattern JOB_FOLDER_PATTERN from the result_dir.
+    @returns: The name of the folder of a job. Returns None if directory path
+            does not match supported job directories patterns.
     """
     if not result_dir:
         return
-    m_job = re.findall(JOB_FOLDER_PATTERN, result_dir)
+    # Pattern of a job folder, e.g., 123-debug_user, where 123 is job id and
+    # debug_user is the name of user starts the job.
+    test_job_pattern = '.*/(\d+-[^/]+)'
+    m_job = re.findall(test_job_pattern, result_dir)
     if m_job:
         return m_job[-1]
 
@@ -190,11 +187,11 @@ class RegularJobDirectory(_JobDirectory):
     @returns the latest hqe finished_on time. If the finished_on times are null
              returns the job's created_on time.
     """
-    entry = _AFE.get_jobs(id=self._id, finished=True)
+    entry = _cached_afe().get_jobs(id=self._id, finished=True)
     if not entry:
       return None
-    hqes = _AFE.get_host_queue_entries(finished_on__isnull=False,
-                                       job_id=self._id)
+    hqes = _cached_afe().get_host_queue_entries(finished_on__isnull=False,
+                                                job_id=self._id)
     if not hqes:
       return entry[0].created_on
     # While most Jobs have 1 HQE, some can have multiple, so check them all.
@@ -224,5 +221,13 @@ class SpecialJobDirectory(_JobDirectory):
     super(SpecialJobDirectory, self).__init__(resultsdir)
 
   def get_timestamp_if_finished(self):
-    entry = _AFE.get_special_tasks(id=self._id, is_complete=True)
+    entry = _cached_afe().get_special_tasks(id=self._id, is_complete=True)
     return entry[0].time_finished if entry else None
+
+
+_AFE = None
+def _cached_afe():
+  global _AFE
+  if _AFE is None:
+    _AFE = frontend_wrappers.RetryingAFE()
+  return _AFE
