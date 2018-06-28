@@ -49,10 +49,10 @@ class firmware_Cr50SetBoardId(Cr50Test):
     ERROR_BID_SET_DIFFERENTLY = ['Board ID has been set differently.', 3]
     ERROR_FLAG_SET_DIFFERENTLY = ['Flag has been set differently.', 3]
 
-    def initialize(self, host, cmdline_args, dev_path='', bid=''):
+    def initialize(self, host, cmdline_args, full_args, dev_path='', bid=''):
         # Restore the original image, rlz code, and board id during cleanup.
         super(firmware_Cr50SetBoardId, self).initialize(host, cmdline_args,
-            restore_cr50_state=True, cr50_dev_path=dev_path)
+             full_args, restore_cr50_state=True, cr50_dev_path=dev_path)
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
 

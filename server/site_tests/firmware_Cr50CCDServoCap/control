@@ -20,7 +20,10 @@ This must be done using servo instead of CCD, because we need to be able to
 simulate servo disconnect.
 """
 
-args_dict = utils.args_to_dict(args)
+if 'args_dict' not in locals():
+    args_dict = {}
+
+args_dict.update(utils.args_to_dict(args))
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
@@ -28,6 +31,6 @@ def run(machine):
     iterations = int(args_dict.get("iterations", "1"))
 
     job.run_test("firmware_Cr50CCDServoCap", host=host, cmdline_args=args,
-                 iterations=iterations)
+                 full_args=args_dict, iterations=iterations)
 
 parallel_simple(run, machines)

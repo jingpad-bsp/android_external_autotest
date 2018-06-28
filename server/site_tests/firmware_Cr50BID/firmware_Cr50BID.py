@@ -115,9 +115,9 @@ class firmware_Cr50BID(Cr50Test):
     ]
 
     def initialize(self, host, cmdline_args, dev_path='', bid_path='',
-                   release_ver=None, test_subset=None):
+                   release_ver=None, test_subset=None, full_args={}):
         # Restore the original image, rlz code, and board id during cleanup.
-        super(firmware_Cr50BID, self).initialize(host, cmdline_args,
+        super(firmware_Cr50BID, self).initialize(host, cmdline_args, full_args,
                                                  restore_cr50_state=True,
                                                  cr50_dev_path=dev_path)
         if self.cr50.using_ccd():
