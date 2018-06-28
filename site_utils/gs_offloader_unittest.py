@@ -70,8 +70,10 @@ class OffloaderOptionsTests(mox.MoxTestBase):
 
     """
 
-    _REGULAR_ONLY = set([job_directories.RegularJobDirectory])
-    _SPECIAL_ONLY = set([job_directories.SpecialJobDirectory])
+    _REGULAR_ONLY = {job_directories.SwarmingJobDirectory,
+                     job_directories.RegularJobDirectory}
+    _SPECIAL_ONLY = {job_directories.SwarmingJobDirectory,
+                     job_directories.SpecialJobDirectory}
     _BOTH = _REGULAR_ONLY | _SPECIAL_ONLY
 
 
