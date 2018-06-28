@@ -26,7 +26,6 @@ The old release needs to have a version lower than the release image. The
 release image needs to have a version lower than the dev image. The dev image
 has to be newer than all of the images including the original cr50 image on
 the dut to be able to guarantee that the original state can be restored.
-
 If no_release path or old_release_path are given, the test will use
 old_release_ver and release_ver to fetch the images from gs://.
 
@@ -59,7 +58,10 @@ device.
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 
-args_dict = utils.args_to_dict(args)
+if 'args_dict' not in locals():
+    args_dict = {}
+
+args_dict.update(utils.args_to_dict(args))
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 iterations = int(args_dict.get("iterations", 1))
@@ -77,6 +79,6 @@ def run(machine):
                  release_path=release_path, release_ver=release_ver,
                  old_release_path=old_release_path,
                  old_release_ver=old_release_ver, dev_path=dev_path,
-                 test=test, iterations=iterations)
+                 test=test, iterations=iterations, full_args=args_dict)
 
 parallel_simple(run, machines)

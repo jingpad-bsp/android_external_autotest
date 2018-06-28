@@ -35,9 +35,10 @@ class firmware_Cr50Update(Cr50Test):
 
     def initialize(self, host, cmdline_args, release_path="", release_ver="",
                    old_release_path="", old_release_ver="", dev_path="",
-                   test=""):
+                   test="", full_args={}):
         """Initialize servo and process the given images"""
         super(firmware_Cr50Update, self).initialize(host, cmdline_args,
+                                                    full_args,
                                                     restore_cr50_state=True,
                                                     cr50_dev_path=dev_path)
         self.test_post_install = test.lower() == self.POST_INSTALL
