@@ -23,7 +23,7 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
     SLEEP_DELAY = 20
     SHORT_DELAY = 2
 
-    def initialize(self, host, cmdline_args, ccd_lockout):
+    def initialize(self, host, cmdline_args):
         """Initialize the test"""
         self.changed_dut_state = False
         super(firmware_Cr50OpenWhileAPOff, self).initialize(host, cmdline_args)
@@ -36,8 +36,6 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
         # and type c cable.
         if 'servo_v4_with_servo_micro' != self.servo.get_servo_version():
             raise error.TestNAError('Run using servo v4 with servo micro')
-
-        self.ccd_lockout = ccd_lockout
 
         if not self.cr50.has_command('ccdstate'):
             raise error.TestNAError('Cannot test on Cr50 with old CCD version')
