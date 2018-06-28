@@ -19,9 +19,10 @@ class firmware_Cr50Unlock(Cr50Test):
     """
     version = 1
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, full_args):
         """Initialize servo and check that it has access to cr50 with ccd"""
-        super(firmware_Cr50Unlock, self).initialize(host, cmdline_args)
+        super(firmware_Cr50Unlock, self).initialize(host, cmdline_args,
+                full_args)
 
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
