@@ -166,6 +166,18 @@ class Interface:
 
 
     @property
+    def module_name(self):
+        """@return Name of kernel module in use by this interface."""
+        module_readlink_result = self._run('readlink "%s"' %
+                os.path.join(self.device_path, 'driver', 'module'),
+                ignore_status=True)
+        if module_readlink_result.exit_status != 0:
+            return None
+
+        return os.path.basename(module_readlink_result.stdout.strip())
+
+
+    @property
     def device_description(self):
         """@return DeviceDescription object for a WiFi interface, or None."""
         read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
@@ -193,12 +205,8 @@ class Interface:
             logging.error('Device vendor/product pair %r for device %s is '
                           'unknown!', driver_info, product_id)
             device_name = NAME_UNKNOWN
-        module_readlink_result = self._run('readlink "%s"' %
-                os.path.join(device_path, 'driver', 'module'),
-                ignore_status=True)
-        if module_readlink_result.exit_status == 0:
-            module_name = os.path.basename(
-                    module_readlink_result.stdout.strip())
+        module_name = self.module_name
+        if module_name is not None:
             kernel_release = self._run('uname -r').stdout.strip()
             module_path = self._run('find '
                                     '/lib/modules/%s/kernel/drivers/net '
