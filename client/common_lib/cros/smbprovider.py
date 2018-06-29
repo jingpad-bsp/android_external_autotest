@@ -10,6 +10,9 @@ import dbus
 
 from autotest_lib.client.cros import upstart
 
+def _proto_to_blob(proto):
+    return dbus.ByteArray(proto.SerializeToString())
+
 class SmbProvider(object):
     """
     Wrapper for D-Bus calls to SmbProvider Daemon
@@ -106,11 +109,43 @@ class SmbProvider(object):
         proto.username = username
 
         with self.PasswordFd(password) as password_fd:
-            return self._smbproviderd.Mount(
-                    dbus.ByteArray(proto.SerializeToString()),
-                    dbus.types.UnixFd(password_fd),
-                    timeout=self._DEFAULT_TIMEOUT,
-                    byte_arrays=True)
+            return self._smbproviderd.Mount(_proto_to_blob(proto),
+                                            dbus.types.UnixFd(password_fd),
+                                            timeout=self._DEFAULT_TIMEOUT,
+                                            byte_arrays=True)
+
+    def read_directory(self, mount_id, directory_path):
+        """
+        Reads a directory.
+
+        @param mount_id: Mount ID corresponding to the share.
+        @param directory_path: Path of the directory to read.
+
+        @return A tuple with the ErrorType and the DirectoryEntryListProto blob
+        string returned by the D-Bus call.
+
+        """
+
+        logging.info("Reading directory: %s", directory_path)
+
+        from directory_entry_pb2 import ReadDirectoryOptionsProto
+        from directory_entry_pb2 import DirectoryEntryListProto
+        from directory_entry_pb2 import ERROR_OK
+
+        proto = ReadDirectoryOptionsProto()
+        proto.mount_id = mount_id
+        proto.directory_path = directory_path
+
+        error, entries_blob = self._smbproviderd.ReadDirectory(
+                _proto_to_blob(proto),
+                timeout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
+
+        entries = DirectoryEntryListProto()
+        if error == ERROR_OK:
+            entries.ParseFromString(entries_blob)
+
+        return error, entries
 
     class PasswordFd(object):
         """
