@@ -108,7 +108,7 @@ class SmbProvider(object):
         proto.workgroup = workgroup
         proto.username = username
 
-        with self.PasswordFd(password) as password_fd:
+        with self.DataFd(password) as password_fd:
             return self._smbproviderd.Mount(_proto_to_blob(proto),
                                             dbus.types.UnixFd(password_fd),
                                             timeout=self._DEFAULT_TIMEOUT,
@@ -331,33 +331,87 @@ class SmbProvider(object):
                                               timeout=self._DEFAULT_TIMEOUT,
                                               byte_arrays=True)
 
-    class PasswordFd(object):
+    def truncate(self, mount_id, file_path, length):
         """
-        Writes password into a file descriptor.
+        Truncates a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_path: Path of the file to be truncated.
+        @param length: The new size of the file in bytes.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Truncating file: %s", file_path)
+
+        from directory_entry_pb2 import TruncateOptionsProto
+
+        proto = TruncateOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_path = file_path
+        proto.length = length
+
+        return self._smbproviderd.Truncate(_proto_to_blob(proto),
+                                           timeout=self._DEFAULT_TIMEOUT,
+                                           byte_arrays=True)
+
+    def write_file(self, mount_id, file_id, offset, data):
+        """
+        Writes data to a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_id: ID of the file to be written to.
+        @param offset: Offset of the file to start writing to.
+        @param data: Data to be written.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Writing to file: %s", file_id)
+
+        from directory_entry_pb2 import WriteFileOptionsProto
+
+        proto = WriteFileOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_id = file_id
+        proto.offset = offset
+        proto.length = len(data)
+
+        with self.DataFd(data) as data_fd:
+            return self._smbproviderd.WriteFile(_proto_to_blob(proto),
+                                                dbus.types.UnixFd(data_fd),
+                                                timeout=self._DEFAULT_TIMEOUT,
+                                                byte_arrays=True)
+
+    class DataFd(object):
+        """
+        Writes data into a file descriptor.
 
         Use in a 'with' statement to automatically close the returned file
         descriptor.
 
-        @param password: Plaintext password string.
+        @param data: Data string.
 
-        @return A file descriptor (pipe) containing the password.
+        @return A file descriptor (pipe) containing the data.
 
         """
 
-        def __init__(self, password):
-            self._password = password
+        def __init__(self, data):
+            self._data = data
             self._read_fd = None
 
         def __enter__(self):
-            """Creates the password file descriptor."""
+            """Creates the data file descriptor."""
 
             self._read_fd, write_fd = os.pipe()
-            os.write(write_fd, self._password)
+            os.write(write_fd, self._data)
             os.close(write_fd)
             return self._read_fd
 
         def __exit__(self, mytype, value, traceback):
-            """Closes the password file descriptor again."""
+            """Closes the data file descriptor again."""
 
             if self._read_fd:
                 os.close(self._read_fd)
