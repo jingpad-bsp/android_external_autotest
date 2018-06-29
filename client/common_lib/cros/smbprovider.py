@@ -114,6 +114,25 @@ class SmbProvider(object):
                                             timeout=self._DEFAULT_TIMEOUT,
                                             byte_arrays=True)
 
+    def unmount(self, mount_id):
+        """
+        Unmounts a share.
+
+        @param mount_id: Mount ID to be umounted.
+
+        @return: ErrorType from the returned D-Bus call.
+
+        """
+
+        logging.info("Unmounting: %s", mount_id)
+
+        from directory_entry_pb2 import UnmountOptionsProto
+
+        proto = UnmountOptionsProto()
+        proto.mount_id = mount_id
+
+        return self._smbproviderd.Unmount(_proto_to_blob(proto))
+
     def read_directory(self, mount_id, directory_path):
         """
         Reads a directory.
