@@ -305,6 +305,32 @@ class SmbProvider(object):
                                              timeout=self._DEFAULT_TIMEOUT,
                                              byte_arrays=True)
 
+    def delete_entry(self, mount_id, entry_path, recursive):
+        """
+        Deletes an entry.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param entry_path: Path of the entry to be deleted.
+        @param recursive: Boolean indicating whether the delete should be
+        recursive for directories.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Deleting entry: %s", entry_path)
+
+        from directory_entry_pb2 import DeleteEntryOptionsProto
+
+        proto = DeleteEntryOptionsProto()
+        proto.mount_id = mount_id
+        proto.entry_path = entry_path
+        proto.recursive = recursive
+
+        return self._smbproviderd.DeleteEntry(_proto_to_blob(proto),
+                                              timeout=self._DEFAULT_TIMEOUT,
+                                              byte_arrays=True)
+
     class PasswordFd(object):
         """
         Writes password into a file descriptor.
