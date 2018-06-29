@@ -2,6 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
+from chromite.lib import metrics
+
+
+DRONE_ACCESSIBILITY_METRIC = metrics.Boolean(
+    'chromeos/autotest/scheduler/drone_accessibility')
 
 class DroneTaskQueueException(Exception):
     """Generic task queue exception."""
@@ -48,7 +55,21 @@ class DroneTaskQueue(object):
         for drone in drones:
             if not drone.get_calls():
                 continue
-            drone_results = drone.execute_queued_calls()
+            metric_fields = {
+                'drone_hostname': drone.hostname,
+                'call_count': len(drone.get_calls())
+            }
+            drone_reachable = True
+            try:
+                drone_results = drone.execute_queued_calls()
+            except IOError:
+                drone_reachable = False
+                logging.error(
+                    "Drone %s is not reachable by the scheduler.", drone)
+                continue
+            finally:
+                DRONE_ACCESSIBILITY_METRIC.set(
+                  drone_reachable, fields=metric_fields)
             if drone in self.results:
                 raise DroneTaskQueueException(
                         'Task queue has recorded results for drone %s: %s' %
