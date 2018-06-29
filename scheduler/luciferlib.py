@@ -161,8 +161,8 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
                 'GOOGLE_APPLICATION_CREDENTIALS=%s'
                 % pipes.quote(_get_gcp_creds()),
         ] + args
-    output_file = os.path.join(results_dir, 'job_reporter_output.log')
-    drone.spawn(_ENV, args, output_file=output_file)
+    drone.spawn(_ENV, args,
+                output_file=_prepare_output_file(drone, results_dir))
     drone.add_active_processes(1)
     manager.reorder_drone_queue()
     manager.register_pidfile_processes(
