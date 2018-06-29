@@ -39,18 +39,24 @@ def log_suite_results(suite_name, suite_handler):
                  swarming_lib.get_task_link(suite_handler.suite_id))
     _log_test_links(test_results)
 
-    _log_buildbot_links(suite_name, suite_handler.suite_id, test_results)
+    _log_buildbot_links(suite_handler, suite_name, test_results)
 
     return return_code
 
 
-def _log_buildbot_links(suite_name, suite_id, test_results):
+def _log_buildbot_links(suite_handler, suite_name, test_results):
     logging.info('Links for buildbot:')
     annotations = autotest.chromite_load('buildbot_annotations')
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
             'Link to suite: %s' % suite_name,
-            swarming_lib.get_task_link(suite_id)))
+            swarming_lib.get_task_link(suite_handler.suite_id)))
+
+    if (suite_handler.is_provision() and
+        suite_handler.is_provision_successfully_finished()):
+        # There could be some child tasks may still run after provision suite
+        # finishes and claims that it succeeds. Skip logging them in buildbot.
+        return
 
     for result in test_results:
         if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
