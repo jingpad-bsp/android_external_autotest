@@ -2,6 +2,7 @@ import abc
 import datetime
 import glob
 import json
+import logging
 import os
 import re
 import shutil
@@ -11,6 +12,11 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 SPECIAL_TASK_PATTERN = '.*/hosts/[^/]+/(\d+)-[^/]+'
@@ -186,7 +192,6 @@ class RegularJobDirectory(_JobDirectory):
       return False
     return True
 
-
   def get_timestamp_if_finished(self):
     """Get the timestamp to use for finished jobs.
 
@@ -229,6 +234,42 @@ class SpecialJobDirectory(_JobDirectory):
   def get_timestamp_if_finished(self):
     entry = _cached_afe().get_special_tasks(id=self._id, is_complete=True)
     return entry[0].time_finished if entry else None
+
+
+_OFFLOAD_MARKER = ".ready_for_offload"
+_marker_parse_error_metric = metrics.Counter(
+    'chromeos/autotest/gs_offloader/offload_marker_parse_errors',
+    description='Errors parsing the offload marker file')
+
+
+class SwarmingJobDirectory(_JobDirectory):
+  """Subclass of _JobDirectory for Skylab swarming jobs."""
+
+  # .../results/swarming-3e4391423c3a4311/
+  GLOB_PATTERN = 'swarming-[a-f0-9]*/'
+
+  def get_timestamp_if_finished(self):
+    """Get the timestamp to use for finished jobs.
+
+    @returns the latest hqe finished_on time. If the finished_on times are null
+             returns the job's created_on time.
+    """
+    marker_path = os.path.join(self.dirname, _OFFLOAD_MARKER)
+    try:
+      with open(marker_path) as f:
+        ts_string = f.read().strip()
+    except OSError as e:
+      logging.debug('Error opening %s for %s: %s',
+                    _OFFLOAD_MARKER, self.dirname, e)
+      return None
+    try:
+      ts = int(ts_string)
+      return time_utils.epoch_time_to_date_string(ts)
+    except ValueError as e:
+      logging.debug('Error parsing %s for %s: %s',
+                    _OFFLOAD_MARKER, self.dirname, e)
+      _marker_parse_error_metric.increment()
+      return None
 
 
 _AFE = None
