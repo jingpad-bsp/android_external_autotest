@@ -282,6 +282,29 @@ class SmbProvider(object):
 
         return error, data
 
+    def create_file(self, mount_id, file_path):
+        """
+        Creates a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_path: Path of the file to be created.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Creating file: %s", file_path)
+
+        from directory_entry_pb2 import CreateFileOptionsProto
+
+        proto = CreateFileOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_path = file_path
+
+        return self._smbproviderd.CreateFile(_proto_to_blob(proto),
+                                             timeout=self._DEFAULT_TIMEOUT,
+                                             byte_arrays=True)
+
     class PasswordFd(object):
         """
         Writes password into a file descriptor.
