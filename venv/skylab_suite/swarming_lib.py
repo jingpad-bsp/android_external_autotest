@@ -211,16 +211,16 @@ def get_task_final_state(task):
     return state
 
 
-def get_task_dut_name(task):
+def get_task_dut_name(task_dimensions):
     """Get the DUT name of running this task.
 
-    @param task: the json output of a swarming task fetched by API tasks.list.
+    @param task_dimensions: a list of dict, e.g. [{'key': k, 'value': v}, ...]
     """
-    for dimension in task['bot_dimensions']:
+    for dimension in task_dimensions:
         if dimension['key'] == 'dut_name':
             return dimension['value'][0]
 
-    return None
+    return ''
 
 
 def query_bots_count(dimensions):
