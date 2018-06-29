@@ -5,14 +5,14 @@
 
 import logging
 
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.atrus import atrus_base_test
-from autotest_lib.server.cros.atrus import atrus_utils
+from autotest_lib.client.common_lib.cros.cfm.atrus import atrus_utils
 
 
-class enterprise_CFM_AtrusUpdaterStress(atrus_base_test.AtrusBaseTest):
+class enterprise_CFM_AtrusUpdaterStress(test.test):
     """
-    Atrus firmware updater functionality test in Chrome Box.
+    Atrus firmware updater functionality test for Chrome Box for Meetings.
 
     The procedure of the test is:
     1. Trigger forced upgrade of the atrus via atrusctl with dbus.
@@ -25,19 +25,19 @@ class enterprise_CFM_AtrusUpdaterStress(atrus_base_test.AtrusBaseTest):
 
     version = 1
 
-    def run_once(self, repeat):
+    def run_once(self, repeat=1):
         """Main test procedure."""
         successfull_upgrades = 0
 
         # Check if Atrusctl is running and have dbus enabled
-        if not atrus_utils.check_dbus_available(self._host):
+        if not atrus_utils.check_dbus_available():
             raise error.TestError('No DBus support in atrusd.')
 
         for cycle in xrange(repeat):
 
-            atrus_utils.wait_for_atrus_enumeration(self._host)
+            atrus_utils.wait_for_atrus_enumeration()
 
-            if atrus_utils.force_upgrade_atrus(self._host):
+            if atrus_utils.force_upgrade_atrus():
                 successfull_upgrades += 1
 
             logging.info('Successful attempts: {}/{}'
@@ -46,4 +46,3 @@ class enterprise_CFM_AtrusUpdaterStress(atrus_base_test.AtrusBaseTest):
         if successfull_upgrades < repeat:
             raise error.TestFail('Upgrade failed in {}/{} of tries.'
                     .format(repeat - successfull_upgrades, repeat))
-
