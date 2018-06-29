@@ -47,8 +47,9 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         [0x40, 'plt_rst', 'sys_rst'],
     ]
 
-    def initialize(self, host, cmdline_args):
-        super(firmware_Cr50ConsoleCommands, self).initialize(host, cmdline_args)
+    def initialize(self, host, cmdline_args, full_args):
+        super(firmware_Cr50ConsoleCommands, self).initialize(host, cmdline_args,
+                full_args)
         self.host = host
         self.missing = []
         self.extra = []

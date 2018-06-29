@@ -29,8 +29,8 @@ class Cr50Test(FirmwareTest):
     # images are needed to be able to restore the original image and board id.
     IMAGES = 1 << 1
 
-    def initialize(self, host, cmdline_args, restore_cr50_state=False,
-                   cr50_dev_path='', provision_update=False):
+    def initialize(self, host, cmdline_args, full_args,
+            restore_cr50_state=False, cr50_dev_path='', provision_update=False):
         self._saved_state = self.NONE
         self._raise_error_on_mismatch = not restore_cr50_state
         self._provision_update = provision_update
@@ -40,17 +40,8 @@ class Cr50Test(FirmwareTest):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')
 
-        logging.info('cmdline args: %r', cmdline_args)
-
-        args = {}
-        for arg in cmdline_args:
-            if '=' in arg:
-                k, v = arg.split('=')
-                args[k] = v
-            else:
-                logging.debug('ignoring misformatted arg "%s"', arg)
-
-        self.ccd_lockout = args.get('ccd_lockout', '').lower() == 'true'
+        logging.info('Test Args: %r', full_args)
+        self.ccd_lockout = full_args.get('ccd_lockout', '').lower() == 'true'
         logging.info('ccd is%s locked out', '' if self.ccd_lockout else ' not')
 
         self.can_set_ccd_level = (not self.cr50.using_ccd() or

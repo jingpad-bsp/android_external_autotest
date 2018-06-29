@@ -17,16 +17,18 @@ Verify the console can be unlocked with gsctool but not with the console command
 if the password isn't set.
 """
 
-args_dict = utils.args_to_dict(args)
+if 'args_dict' not in locals():
+    args_dict = {}
+
+args_dict.update(utils.args_to_dict(args))
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     iterations = int(args_dict.get("iterations", 1))
-    ccd_lockout = args_dict.get("ccd_lockout", "false").lower() == "true"
 
     job.run_test("firmware_Cr50Unlock", host=host, cmdline_args=args,
-                 ccd_lockout=ccd_lockout, iterations=iterations)
+                 full_args=args_dict, iterations=iterations)
 
 parallel_simple(run, machines)

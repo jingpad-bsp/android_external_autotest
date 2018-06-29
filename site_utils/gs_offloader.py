@@ -896,7 +896,9 @@ class Offloader(object):
             self._gs_offloader = GSOffloader(
                     self.gs_uri, multiprocessing, self._delete_age_limit,
                     console_client)
-        classlist = []
+        classlist = [
+                job_directories.SwarmingJobDirectory,
+        ]
         if options.process_hosts_only or options.process_all:
             classlist.append(job_directories.SpecialJobDirectory)
         if not options.process_hosts_only:

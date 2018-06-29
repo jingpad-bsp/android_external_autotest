@@ -527,15 +527,21 @@ class CFMFacadeNative(object):
                     'Is the ExportMediaInfo mod active? '
                     'The mod is only available for Meet.')
 
+        # Sanitize the timestamp on the JS side to work around crbug.com/851482.
+        # Use JSON stringify/parse to create a deep copy of the data point.
+        get_data_points_js_script = """
+            var dataPoints = window.realtime.media.getMediaInfoDataPoints();
+            dataPoints.map((point) => {
+                var sanitizedPoint = JSON.parse(JSON.stringify(point));
+                sanitizedPoint["timestamp"] /= 1000.0;
+                return sanitizedPoint;
+            });"""
+
         data_points = self._webview_context.EvaluateJavaScript(
-                'window.realtime.media.getMediaInfoDataPoints()')
+            get_data_points_js_script)
+        # XML RCP gives overflow errors when trying to send too large
+        # integers or longs so we convert media stats to floats.
         for data_point in data_points:
-            # XML RCP gives overflow errors when trying to send too large
-            # integers or longs. Convert timestamps to float seconds and media
-            # stats to floats. We do not care if we lose some precision.
-            # When we are at it, convert the timestamp to seconds as
-            # expected in Python.
-            data_point['timestamp'] = data_point['timestamp'] / 1000.0
             for media in data_point['media']:
                 for k, v in media.iteritems():
                     if type(v) == int:

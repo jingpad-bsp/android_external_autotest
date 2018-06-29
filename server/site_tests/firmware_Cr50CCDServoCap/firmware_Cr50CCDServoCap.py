@@ -125,9 +125,9 @@ class firmware_Cr50CCDServoCap(Cr50Test):
     }
 
 
-    def initialize(self, host, cmdline_args, ccd_lockout):
-        self.ccd_lockout = ccd_lockout
-        super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args)
+    def initialize(self, host, cmdline_args, full_args):
+        super(firmware_Cr50CCDServoCap, self).initialize(host, cmdline_args,
+                full_args)
         if not hasattr(self, 'cr50'):
             raise error.TestNAError('Test can only be run on devices with '
                                     'access to the Cr50 console')

@@ -226,6 +226,12 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
+    def module_name(self):
+        """@return Name of kernel module in use by this interface."""
+        return self._interface.module_name
+
+
+    @property
     def wifi_if(self):
         """@return string wifi device on machine (e.g. mlan0)."""
         return self._wifi_if

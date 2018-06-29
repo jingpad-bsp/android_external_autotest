@@ -28,16 +28,18 @@ If the generated challenge has the wrong version, make sure the challenge
 generated with the test key fails.
 """
 
-args_dict = utils.args_to_dict(args)
+if 'args_dict' not in locals():
+    args_dict = {}
+
+args_dict.update(utils.args_to_dict(args))
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     iterations = int(args_dict.get("iterations", 1))
-    ccd_lockout = args_dict.get("ccd_lockout", "").lower() == "true"
 
     job.run_test("firmware_Cr50RMAOpen", host=host, cmdline_args=args,
-                 iterations=iterations, ccd_lockout=ccd_lockout)
+                 full_args=args_dict, iterations=iterations)
 
 parallel_simple(run, machines)

@@ -109,13 +109,14 @@ class policy_AudioOutputAllowed(
             rms_value = audio_helper.reduce_noise_and_get_rms(
                 recorded_file, noise_file)[0]
 
+            logging.info('muted (%s): %s' % (muted, rms_value))
             recorded_rms.append(rms_value)
 
         rms_diff = recorded_rms[0] - recorded_rms[1]
         self.write_perf_keyval({'rms_diff': rms_diff})
 
         if audio_allowed:
-            if rms_diff < 0.75:
+            if rms_diff < 0.4:
                 raise error.TestFail('RMS difference not large enough between '
                                      'mute and ummute: %s' % rms_diff)
         else:

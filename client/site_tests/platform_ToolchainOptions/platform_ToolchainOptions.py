@@ -267,9 +267,9 @@ class platform_ToolchainOptions(test.test):
                                                   stack_cmd,
                                                   stack_whitelist))
 
-        # Verify all binaries have W^X LOAD program headers.
+        # Verify no binaries have W+X LOAD program headers.
         loadwx_cmd = ("%s -lW {} 2>&1 | "
-                      "grep \"LOAD\" | egrep -v \"(RW |R E)\" | "
+                      "grep \"LOAD\" | egrep -v \"(RW |R E|R  )\" | "
                       "wc -l | grep -q \"^0$\"" % readelf_cmd)
         loadwx_whitelist = os.path.join(self.bindir, "loadwx_whitelist")
         option_sets.append(self.create_and_filter("LOAD Writable and Exec",

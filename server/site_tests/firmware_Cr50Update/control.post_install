@@ -59,7 +59,10 @@ device.
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 
-args_dict = utils.args_to_dict(args)
+if 'args_dict' not in locals():
+    args_dict = {}
+
+args_dict.update(utils.args_to_dict(args))
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 iterations = int(args_dict.get("iterations", 1))
@@ -76,6 +79,7 @@ def run(machine):
                  release_path=release_path, release_ver=release_ver,
                  old_release_path=old_release_path,
                  old_release_ver=old_release_ver, dev_path=dev_path,
-                 test="post_install", iterations=iterations)
+                 test="post_install", iterations=iterations,
+                 full_args=args_dict)
 
 parallel_simple(run, machines)

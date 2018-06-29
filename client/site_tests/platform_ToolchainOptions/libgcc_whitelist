@@ -11,8 +11,9 @@
 /usr/lib64/libia_ltm.so
 /usr/lib64/libSkyCamAIC.so
 /usr/lib64/libSkyCamAICKBL.so
-# Remove these after crosvm is built with compiler-rt.
+# Remove these after Rust code is built with compiler-rt.
 # https://crbug.com/814480.
 /usr/bin/crosvm
+/usr/bin/memd
 /usr/lib*/libqcow_utils.so
 /usr/lib64/libcrosvm_plugin.so

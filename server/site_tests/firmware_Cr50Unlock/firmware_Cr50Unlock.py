@@ -19,9 +19,10 @@ class firmware_Cr50Unlock(Cr50Test):
     """
     version = 1
 
-    def initialize(self, host, cmdline_args):
+    def initialize(self, host, cmdline_args, full_args):
         """Initialize servo and check that it has access to cr50 with ccd"""
-        super(firmware_Cr50Unlock, self).initialize(host, cmdline_args)
+        super(firmware_Cr50Unlock, self).initialize(host, cmdline_args,
+                full_args)
 
         if self.cr50.using_ccd():
             raise error.TestNAError('Use a flex cable instead of CCD cable.')
@@ -84,15 +85,15 @@ class firmware_Cr50Unlock(Cr50Test):
         # no matter how it is being set.
 
 
-    def run_once(self, ccd_lockout):
+    def run_once(self):
         """Verify cr50 lock behavior on v1 images and v0 images"""
         logging.info('ccd should %sbe locked out',
-                '' if ccd_lockout else 'not ')
+                '' if self.ccd_lockout else 'not ')
         if self.cr50.has_command('ccdstate'):
-            self.unlock_test(self.gsctool_unlock, not ccd_lockout)
+            self.unlock_test(self.gsctool_unlock, not self.ccd_lockout)
             self.unlock_test(self.console_unlock, False)
-            logging.info('ccd unlock is %s', 'locked out' if ccd_lockout else
-                    'accessible')
+            logging.info('ccd unlock is %s', 'locked out' if self.ccd_lockout
+                    else 'accessible')
         else:
             # pre-v1, cr50 cannot be unlocked. Make sure that's true
             logging.info(self.cr50.send_command_get_output('lock disable',
