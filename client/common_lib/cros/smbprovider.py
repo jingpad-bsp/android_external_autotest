@@ -247,6 +247,41 @@ class SmbProvider(object):
                                             timeout=self._DEFAULT_TIMEOUT,
                                             byte_arrays=True)
 
+    def read_file(self, mount_id, file_id, offset, length):
+        """
+        Reads a file.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param file_id: ID of the file to be read.
+        @param offset: Offset to start reading.
+        @param length: Length in bytes to read.
+
+        @return A tuple with ErrorType and and a buffer containing the data
+        read.
+
+        """
+
+        logging.info("Reading file: %s", file_id)
+
+        from directory_entry_pb2 import ReadFileOptionsProto
+        from directory_entry_pb2 import ERROR_OK
+
+        proto = ReadFileOptionsProto()
+        proto.mount_id = mount_id
+        proto.file_id = file_id
+        proto.offset = offset
+        proto.length = length
+
+        error, fd = self._smbproviderd.ReadFile(_proto_to_blob(proto),
+                                                timeout=self._DEFAULT_TIMEOUT,
+                                                byte_arrays=True)
+
+        data = ''
+        if error == ERROR_OK:
+            data = os.read(fd.take(), length)
+
+        return error, data
+
     class PasswordFd(object):
         """
         Writes password into a file descriptor.
