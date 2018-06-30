@@ -65,6 +65,7 @@ TestSpecs= collections.namedtuple(
                 'pool',
                 'build',
                 'bot_id',
+                'dut_name',
                 'expiration_secs',
                 'grace_period_secs',
                 'execution_timeout_secs',
@@ -193,8 +194,9 @@ class SuiteHandler(object):
         for t in self._active_child_tasks:
             if (swarming_lib.get_task_final_state(t) ==
                 swarming_lib.TASK_COMPLETED_SUCCESS):
-                dut_name = swarming_lib.get_task_dut_name(t)
-                if dut_name is not None:
+                dut_name = self.get_test_by_task_id(
+                        t['task_id']).test_specs.dut_name
+                if dut_name:
                     self.successfully_provisioned_duts.add(dut_name)
 
     def is_provision_successfully_finished(self):
@@ -288,8 +290,13 @@ class Suite(object):
     def _get_test_specs(self, tests, available_bots):
         tests_specs = []
         for idx, test in enumerate(tests):
-            bot_id = (available_bots[idx]['bot_id'] if idx < len(available_bots)
-                      else '')
+            if idx < len(available_bots):
+                bot_id = available_bots[idx]['bot_id']
+                dut_name = swarming_lib.get_task_dut_name(
+                        available_bots[idx]['dimensions'])
+            else:
+                bot_id = ''
+                dut_name = ''
             tests_specs.append(TestSpecs(
                     test=test,
                     priority=self.priority,
@@ -297,6 +304,7 @@ class Suite(object):
                     pool=self.pool,
                     build=self.test_source_build,
                     bot_id=bot_id,
+                    dut_name=dut_name,
                     expiration_secs=self.EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
