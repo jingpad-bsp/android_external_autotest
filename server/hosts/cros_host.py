@@ -1160,16 +1160,21 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 # Remove any cros-version label that does not match
                 # the DUT's installed image.
                 #
-                # TODO(jrbarnette):  Tests sent to the `arc-presubmit`
-                # pool install images matching the format above, but
-                # then apply a label with `-cheetsth` appended.  Probably,
-                # it's wrong for ARC presubmit testing to make that change,
-                # but until it's fixed, this code specifically excuses that
-                # behavior.
-                build_version = label.name[len(ds_constants.VERSION_PREFIX):]
-                if build_version.endswith('-cheetsth'):
-                    build_version = build_version[:-len('-cheetsth')]
-                if build_version != release_builder_path:
+                # TODO(jrbarnette):  We make exceptions for certain
+                # known cases where the version label will not match the
+                # original CHROMEOS_RELEASE_BUILDER_PATH setting:
+                #  * Tests for the `arc-presubmit` pool append
+                #    "-cheetsth" to the label.
+                #  * Moblab use cases based on `cros stage` store images
+                #    under a name with the string "-custom" embedded.
+                #    It's not reliable to match such an image name to the
+                #    label.
+                label_version = label.name[len(ds_constants.VERSION_PREFIX):]
+                if '-custom' in label_version:
+                    continue
+                if label_version.endswith('-cheetsth'):
+                    label_version = label_version[:-len('-cheetsth')]
+                if label_version != release_builder_path:
                     logging.warn(
                         'cros-version label "%s" does not match '
                         'release_builder_path %s. Removing the label.',
