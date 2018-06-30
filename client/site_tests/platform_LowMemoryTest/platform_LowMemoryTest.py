@@ -55,7 +55,6 @@ class platform_LowMemoryTest(test.test):
 
     def run_once(self):
         """Runs the test once."""
-        perf_results = {}
         # 1 for initial tab opened
         n_tabs = 1
 
@@ -75,6 +74,8 @@ class platform_LowMemoryTest(test.test):
         if last_event == 'OOM_KILL':
             raise error.TestFail('OOM Kill happends before a tab is killed')
 
-        perf_results["NumberOfTabsAtFirstDiscard"] = n_tabs
-        self.write_perf_keyval(perf_results)
+        result_title = 'NumberOfTabsAtFirstDiscard'
+        self.write_perf_keyval({result_title : n_tabs})
+        self.output_perf_value(description=result_title, value=n_tabs,
+                               higher_is_better=True)
 
