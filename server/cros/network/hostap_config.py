@@ -478,6 +478,11 @@ class HostapConfig(object):
         """@return bool _use_bridge value, or None."""
         return self._use_bridge
 
+    @property
+    def max_stas(self):
+        """@return int _max_stas value, or None."""
+        return self._max_stas
+
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
@@ -496,7 +501,8 @@ class HostapConfig(object):
                  r1kh_id=None,
                  r0kh=None,
                  r1kh=None,
-                 use_bridge=False):
+                 use_bridge=False,
+                 max_stas=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -536,6 +542,7 @@ class HostapConfig(object):
         @param r0kh string R0KHs in the same mobility domain
         @param r1kh string R1KHs in the same mobility domain
         @param use_bridge True if we should use a bridge
+        @param max_stas int maximum number of STAs allowed to connect to AP.
 
         """
         super(HostapConfig, self).__init__()
@@ -613,6 +620,11 @@ class HostapConfig(object):
         self._r1kh = r1kh
         self._bridge = None
         self._use_bridge = use_bridge
+        # keep _max_stas in [0, 2007], as valid AIDs must be in [1, 2007]
+        if max_stas is None:
+            self._max_stas = None
+        else:
+            self._max_stas = max(0, min(max_stas, 2007))
 
 
     def __repr__(self):
@@ -744,6 +756,8 @@ class HostapConfig(object):
             conf['r1kh'] = self._r1kh
         if self._bridge:
             conf['bridge'] = self._bridge
+        if self._max_stas is not None:
+            conf['max_num_sta'] = self._max_stas
         conf['interface'] = interface
         conf['ctrl_interface'] = control_interface
         if self._spectrum_mgmt_required:
