@@ -58,7 +58,7 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
             """
             try:
                 graphics_utils.take_screenshot(self.resultsdir,
-                                               'temp screenshot', '.png')
+                                               'temp screenshot')
                 return True
             except:
                 return False
@@ -73,7 +73,7 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
         megapixels = (w * h) / 1000000
         filesize_threshold = 25 * megapixels
         screenshot1 = graphics_utils.take_screenshot(self.resultsdir,
-                                                     'oobe or signin', '.png')
+                                                     'oobe or signin')
 
         with chrome.Chrome() as cr:
             tab = cr.browser.tabs[0]
@@ -81,7 +81,7 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
             tab.WaitForDocumentReadyStateToBeComplete()
 
             screenshot2 = graphics_utils.take_screenshot(
-                self.resultsdir, 'settings page', '.png')
+                self.resultsdir, 'settings page')
 
         for screenshot in [screenshot1, screenshot2]:
             file_size_kb = os.path.getsize(screenshot) / 1000
