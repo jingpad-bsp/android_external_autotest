@@ -526,56 +526,6 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     return screenshot_file
 
 
-def take_screenshot_crop_by_height(fullpath, final_height, x_offset_pixels,
-                                   y_offset_pixels):
-    """
-    Take a screenshot, crop to final height starting at given (x, y) coordinate.
-    Image width will be adjusted to maintain original aspect ratio).
-
-    @param fullpath: path, fullpath of the file that will become the image file.
-    @param final_height: integer, height in pixels of resulting image.
-    @param x_offset_pixels: integer, number of pixels from left margin
-                            to begin cropping.
-    @param y_offset_pixels: integer, number of pixels from top margin
-                            to begin cropping.
-    """
-    image = gbm.crtcScreenshot()
-    image.crop()
-    width, height = image.size
-    # Preserve aspect ratio: Wf / Wi == Hf / Hi
-    final_width = int(width * (float(final_height) / height))
-    box = (x_offset_pixels, y_offset_pixels,
-           x_offset_pixels + final_width, y_offset_pixels + final_height)
-    cropped = image.crop(box)
-    cropped.save(fullpath)
-    return fullpath
-
-
-def take_screenshot_crop_x(fullpath, box=None):
-    """
-    Take a screenshot using import tool, crop according to dim given by the box.
-    @param fullpath: path, full path to save the image to.
-    @param box: 4-tuple giving the upper left and lower right pixel coordinates.
-    """
-
-    if box:
-        img_w, img_h, upperx, uppery = box
-        cmd = ('/usr/local/bin/import -window root -depth 8 -crop '
-                      '%dx%d+%d+%d' % (img_w, img_h, upperx, uppery))
-    else:
-        cmd = ('/usr/local/bin/import -window root -depth 8')
-
-    old_exc_type = sys.exc_info()[0]
-    try:
-        utils.system('%s %s' % (cmd, fullpath))
-    except Exception as err:
-        # Do not raise an exception if the screenshot fails while processing
-        # another exception.
-        if old_exc_type is None:
-            raise
-        logging.error(err)
-
-
 def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     """
     Take a screenshot using import tool, crop according to dim given by the box.
