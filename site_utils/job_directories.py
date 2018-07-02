@@ -245,8 +245,8 @@ _marker_parse_error_metric = metrics.Counter(
 class SwarmingJobDirectory(_JobDirectory):
   """Subclass of _JobDirectory for Skylab swarming jobs."""
 
-  # .../results/swarming-3e4391423c3a4311/
-  GLOB_PATTERN = 'swarming-[a-f0-9]*/'
+  # .../results/swarming-3e4391423c3a4311
+  GLOB_PATTERN = 'swarming-[a-f0-9]*'
 
   def get_timestamp_if_finished(self):
     """Get the timestamp to use for finished jobs.
