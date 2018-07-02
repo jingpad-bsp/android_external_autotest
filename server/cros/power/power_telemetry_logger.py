@@ -31,17 +31,18 @@ DEFAULT_SWEETBERRY_INTERVAL = 20.0
 SWEETBERRY_CONFIG_DIR = os.path.join(
         sysconfig.get_python_lib(standard_lib=False), 'servo', 'data')
 
-def ts_to_datetime(ts_str):
-    """Parse autotest log timestamp into datetime object.
+def ts_processing(ts_str):
+    """Parse autotest log timestamp into local seconds since epoch.
 
     @param ts_str: a timestamp string from client.DEBUG file.
-    @returns a datetime object, inserting the current year because ts_str does
-             not include year. This introduces error if PowerTelemetryLogger
-             is running across the turn of the year.
+    @returns seconds since epoch in local time, inserting the current year
+             because ts_str does not include year. This introduces error if
+             PowerTelemetryLogger is running across the turn of the year.
     """
     ts = datetime.datetime.strptime(ts_str, '%m/%d %H:%M:%S.%f ')
     # TODO(mqg): fix the wrong year at turn of the year.
-    return ts.replace(year=datetime.datetime.today().year)
+    ts = ts.replace(year=datetime.datetime.today().year)
+    return time.mktime(ts.timetuple()) + ts.microsecond / 1e6
 
 def get_sweetberry_config_path(filename):
     """Get the absolute path for Sweetberry board and scenario file.
@@ -221,43 +222,49 @@ class PowerTelemetryLogger(object):
                           'Sweetberry measurements.', debug_file_path)
             return
 
-        test_events = collections.defaultdict(dict)
-        test_events['default_start']['str'] = DEFAULT_START
-        test_events['default_end']['str'] = DEFAULT_END
-        test_events['custom_start']['str'] = power_telemetry_utils.CUSTOM_START
-        test_events['custom_end']['str'] = power_telemetry_utils.CUSTOM_END
-        for event in test_events:
-            test_events[event]['re'] = \
-                    re.compile(r'([\d\/\.\:\s]+).+' + test_events[event]['str'])
+        default_test_events = collections.defaultdict(dict)
+        custom_test_events = collections.defaultdict(dict)
+        default_test_events['start']['str'] = DEFAULT_START
+        default_test_events['end']['str'] = DEFAULT_END
+        custom_test_events['start']['str'] = power_telemetry_utils.CUSTOM_START
+        custom_test_events['end']['str'] = power_telemetry_utils.CUSTOM_END
+        for event in default_test_events:
+            default_test_events[event]['re'] = \
+                    re.compile(r'([\d\/\.\:\s]+).+' +
+                               default_test_events[event]['str'])
+        for event in custom_test_events:
+            custom_test_events[event]['re'] = \
+                    re.compile(r'.*' + custom_test_events[event]['str'] +
+                               r'\s+([\d\.]+)')
 
         debug_log = open(debug_file_path, 'r')
 
         for line in debug_log:
-            for event in test_events:
-                match = test_events[event]['re'].match(line)
+            for event in default_test_events:
+                match = default_test_events[event]['re'].match(line)
                 if match:
-                    test_events[event]['ts'] = ts_to_datetime(match.group(1))
+                    default_test_events[event]['ts'] = \
+                            ts_processing(match.group(1))
+            for event in custom_test_events:
+                match = custom_test_events[event]['re'].match(line)
+                if match:
+                    custom_test_events[event]['ts'] = float(match.group(1))
 
         events_ts = {
-            'start': datetime.datetime.min,
-            'end': datetime.datetime.max,
+            'start': 0,
+            'end': time.time(),
         }
         for event in events_ts:
-            if 'ts' in test_events['default_' + event]:
-                events_ts[event] = test_events['default_' + event]['ts']
-                if 'ts' in test_events['custom_' + event]:
-                    events_ts[event] = test_events['custom_' + event]['ts']
-                events_ts[event] += \
-                        datetime.timedelta(seconds=self._interval / 2.)
-            else:
-                logging.warning('Cannot parse client side test %s timestamp '
-                                'from test log file. Please check if client '
-                                'side test properly completed.', event)
+            events_ts[event] = default_test_events[event].get(
+                    'ts', events_ts[event])
+            events_ts[event] = custom_test_events[event].get(
+                    'ts', events_ts[event])
+            events_ts[event] += self._interval / 2.0
 
         for sweetberry_file in os.listdir(self._logdir):
             if sweetberry_file.startswith('sweetberry'):
-                sweetberry_ts = datetime.datetime.fromtimestamp(float(
-                        string.lstrip(sweetberry_file, 'sweetberry')))
+                sweetberry_ts = float(string.lstrip(
+                        sweetberry_file, 'sweetberry'))
                 if (sweetberry_ts < events_ts['start'] or
                         sweetberry_ts > events_ts['end']):
                     shutil.rmtree(os.path.join(self._logdir, sweetberry_file))
