@@ -35,19 +35,19 @@ class provision_CheetsUpdate(test.test):
 
     def initialize(self):
         self.android_build_path = None
+        self.push_to_device_dir_path = None
         self.__build_temp_dir = None
 
 
-    def download_android_build(self, android_build):
+    def download_android_build(self, android_build, ds):
         """
-        Setup devserver and download the Android test build.
+        Download the Android test build from the dev server.
 
-        @param android_build: android build to test.
+        @param android_build: Android build to test.
+        @param ds: Dev server instance for downloading the test build.
         """
         build_filename = self.generate_android_build_filename(android_build)
         logging.info('Generated build name: %s', build_filename)
-        logging.info('Setting up devserver.')
-        ds = dev_server.AndroidBuildServer.resolve(android_build)
         branch, target, build_id = (
                 utils.parse_launch_control_build(android_build))
         ds.stage_artifacts(target, build_id, branch, artifacts=['zip_images'])
@@ -57,7 +57,6 @@ class provision_CheetsUpdate(test.test):
                 build_id,
                 branch)
         logging.info('Downloading the test build.')
-        self.__build_temp_dir = tempfile.mkdtemp()
         test_filepath = os.path.join(self.__build_temp_dir, build_filename)
         logging.info('Android test file download path: %s', test_filepath)
         logging.info('Zip image: %s', zip_image)
@@ -67,6 +66,35 @@ class provision_CheetsUpdate(test.test):
             raise error.TestFail(
                     'Android test build %s download failed' % test_filepath)
         self.android_build_path = test_filepath
+
+
+    def download_push_to_device(self, android_build, ds):
+        """
+        Download and unarchive push_to_device artifact from the dev server.
+
+        @param android_build:
+            Android build containing the push_to_device artifact.
+        @param ds: Dev server instance for downloading push_to_device.
+        """
+        logging.info('Downloading push_to_device.zip.')
+        branch, target, build_id = (
+                utils.parse_launch_control_build(android_build))
+        ds.stage_artifacts(
+                target, build_id, branch, artifacts=['push_to_device_zip'])
+        zip_url = ds.get_staged_file_url(
+                'push_to_device.zip', target, build_id, branch)
+        zip_filepath = os.path.join(self.__build_temp_dir, 'push_to_device.zip')
+        dir_filepath = os.path.join(self.__build_temp_dir, 'push_to_device')
+        ds.download_file(zip_url, zip_filepath, timeout=10)
+        if not os.path.exists(zip_filepath):
+            raise error.TestFail('Failed to download %s' % zip_url)
+        logging.info('Unarchiving push_to_device.zip to %s', dir_filepath)
+        cmd = ['unzip', zip_filepath, '-d', dir_filepath]
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            raise error.TestFail('unzip failed due to: %s' % e.output)
+        self.push_to_device_dir_path = dir_filepath
 
 
     def remove_rootfs(self, host):
@@ -113,17 +141,19 @@ class provision_CheetsUpdate(test.test):
         @param host: DUT on which the new Android image needs to be pushed.
         """
         cmd = ['python3',
-               os.path.join(self.bindir, 'push_to_device.py'),
+               os.path.join(self.push_to_device_dir_path, 'push_to_device.py'),
                '--use-prebuilt-file',
                self.android_build_path,
                '--simg2img-path',
                SIMG2IMG_PATH,
+               '--secilc-path',
+               os.path.join(self.push_to_device_dir_path, 'bin', 'secilc'),
                '--mksquashfs-path',
-               os.path.join(self.bindir, 'mksquashfs'),
+               os.path.join(self.push_to_device_dir_path, 'bin', 'mksquashfs'),
                '--unsquashfs-path',
-               os.path.join(self.bindir, 'unsquashfs'),
+               os.path.join(self.push_to_device_dir_path, 'bin', 'unsquashfs'),
                '--shift-uid-py-path',
-               os.path.join(self.bindir, 'shift_uid.py'),
+               os.path.join(self.push_to_device_dir_path, 'shift_uid.py'),
                host.hostname,
                '--loglevel',
                'DEBUG']
@@ -193,7 +223,11 @@ class provision_CheetsUpdate(test.test):
                          host_android_build,
                          value)
             self.remove_rootfs(host)
-            self.download_android_build(value)
+            logging.info('Setting up devserver.')
+            ds = dev_server.AndroidBuildServer.resolve(value)
+            self.__build_temp_dir = tempfile.mkdtemp()
+            self.download_android_build(value, ds)
+            self.download_push_to_device(value, ds)
             self.run_push_to_device(host)
             info = host.host_info_store.get()
             logging.info('Updating DUT version label: %s:%s', cheets_prefix, value)
