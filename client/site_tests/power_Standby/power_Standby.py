@@ -71,7 +71,7 @@ class power_Standby(test.test):
 
         results = {}
         loop = 0
-        power_telemetry_utils.start_measurement()
+        start_ts = time.time()
 
         while elapsed_hours < test_hours:
             charge_before = power_stats.battery[0].charge_now
@@ -103,7 +103,11 @@ class power_Standby(test.test):
                     charge_used)
             loop += 1
 
-        power_telemetry_utils.end_measurement()
+        end_ts = time.time()
+        offset = (end_ts - start_ts - elapsed_hours * 3600) / 2.
+        offset += suspender.get_suspend_delay()
+        power_telemetry_utils.start_measurement(start_ts + offset)
+        power_telemetry_utils.end_measurement(end_ts - offset)
         charge_end = power_stats.battery[0].charge_now
         total_charge_used = charge_start - charge_end
         if total_charge_used <= 0:
