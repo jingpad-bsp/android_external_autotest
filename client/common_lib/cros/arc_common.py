@@ -91,7 +91,7 @@ def wait_for_android_boot(timeout=None):
     logging.info('Waiting for Android to boot completely.')
 
     start_time = time.time()
-    utils.poll_for_condition(condition=_is_android_booted,
+    utils.poll_for_condition(condition=_is_container_started,
                              desc='Container has started',
                              timeout=timeout,
                              exception=error.TestFail('Android did not boot!'),
