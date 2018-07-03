@@ -37,6 +37,7 @@ SuiteSpecs = collections.namedtuple(
                 'priority',
                 'board',
                 'pool',
+                'job_keyvals',
         ])
 
 SuiteHandlerSpecs = collections.namedtuple(
@@ -64,6 +65,7 @@ TestSpecs= collections.namedtuple(
                 'board',
                 'pool',
                 'build',
+                'keyvals',
                 'bot_id',
                 'dut_name',
                 'expiration_secs',
@@ -264,6 +266,7 @@ class Suite(object):
         self.priority = specs.priority
         self.board = specs.board
         self.pool = specs.pool
+        self.job_keyvals = specs.job_keyvals
 
     @property
     def ds(self):
@@ -279,15 +282,46 @@ class Suite(object):
 
         return self._ds
 
+    def _get_cros_build(self):
+        provision = autotest.load('server.cros.provision')
+        return self.builds.get(provision.CROS_VERSION_PREFIX,
+                               self.builds.values()[0])
+
+    def _create_suite_keyvals(self):
+        constants = autotest.load('server.cros.dynamic_suite.constants')
+        provision = autotest.load('server.cros.provision')
+        cros_build = self._get_cros_build()
+        keyvals = {
+                constants.JOB_BUILD_KEY: cros_build,
+                constants.JOB_SUITE_KEY: self.suite_name,
+                constants.JOB_BUILDS_KEY: self.builds
+        }
+        if (cros_build != self.test_source_build or
+            len(self.builds) > 1):
+            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = (
+                    self.test_source_build)
+            for prefix, build in self.builds.iteritems():
+                if prefix == provision.FW_RW_VERSION_PREFIX:
+                    keyvals[constants.FWRW_BUILD]= build
+                elif prefix == provision.FW_RO_VERSION_PREFIX:
+                    keyvals[constants.FWRO_BUILD] = build
+
+        for key in self.job_keyvals:
+            if key in constants.INHERITED_KEYVALS:
+                keyvals[key] = self.job_keyvals[key]
+
+        return keyvals
+
     def prepare(self):
         """Prepare a suite job for execution."""
         self._stage_suite_artifacts()
         self._parse_suite_args()
+        keyvals = self._create_suite_keyvals()
         available_bots = self._get_available_bots()
         tests = self._find_tests(available_bots_num=len(available_bots))
-        self.tests_specs = self._get_test_specs(tests, available_bots)
+        self.tests_specs = self._get_test_specs(tests, available_bots, keyvals)
 
-    def _get_test_specs(self, tests, available_bots):
+    def _get_test_specs(self, tests, available_bots, keyvals):
         tests_specs = []
         for idx, test in enumerate(tests):
             if idx < len(available_bots):
@@ -305,6 +339,7 @@ class Suite(object):
                     build=self.test_source_build,
                     bot_id=bot_id,
                     dut_name=dut_name,
+                    keyvals=keyvals,
                     expiration_secs=self.EXPIRATION_SECS,
                     grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
