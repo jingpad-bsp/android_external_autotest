@@ -90,12 +90,19 @@ def _make_trigger_swarming_cmd(cmd, dimensions, test_specs,
     return swarming_cmd
 
 
-def _get_suite_cmd(test_specs, is_provision=False):
+def _get_suite_cmd(test_specs, suite_id, is_provision=False):
     """Get the command for running a suite.
 
     @param test_specs: a cros_suite.TestSpecs object.
+    @param suite_id: a string of parent suite's swarming task id.
     @param is_provision: whether the command is for provision.
     """
+    constants = autotest.load('server.cros.dynamic_suite.constants')
+    job_keyvals = test_specs.keyvals.copy()
+    job_keyvals[constants.JOB_EXPERIMENTAL_KEY] = test_specs.test.experimental
+    if suite_id is not None:
+        job_keyvals[constants.PARENT_JOB_ID] = suite_id
+
     cmd = [SKYLAB_DRONE_SWARMING_WORKER]
     if test_specs.test.test_type == 'client':
       cmd += ['-client-test']
@@ -189,7 +196,7 @@ def _schedule_test(test_specs, is_provision, suite_id=None,
     @return the swarming task id of this task.
     """
     logging.info('Scheduling test %s', test_specs.test.name)
-    cmd = _get_suite_cmd(test_specs, is_provision=is_provision)
+    cmd = _get_suite_cmd(test_specs, suite_id, is_provision=is_provision)
     if dry_run:
         cmd = ['/bin/echo'] + cmd
         test_specs.test.name = 'Echo ' + test_specs.test.name
