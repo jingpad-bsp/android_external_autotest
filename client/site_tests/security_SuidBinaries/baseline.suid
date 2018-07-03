@@ -1,4 +1,3 @@
-/opt/google/chrome/chrome-sandbox
 /usr/bin/powerd_setuid_helper
 /usr/bin/sudo
 /usr/libexec/dbus-daemon-launch-helper

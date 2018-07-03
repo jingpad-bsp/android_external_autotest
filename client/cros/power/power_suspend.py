@@ -490,6 +490,11 @@ class Suspender(object):
             return 'unknown'
 
 
+    def get_suspend_delay(self):
+            return self._SUSPEND_DELAY.get(self._get_board(),
+                                           self._DEFAULT_SUSPEND_DELAY)
+
+
     def suspend(self, duration=10, ignore_kernel_warns=False,
                 measure_arc=False):
         """
@@ -515,8 +520,7 @@ class Suspender(object):
                 utils.open_write_close(self.HWCLOCK_FILE, '')
                 self._reset_logs()
                 utils.system('sync')
-                board_delay = self._SUSPEND_DELAY.get(self._get_board(),
-                        self._DEFAULT_SUSPEND_DELAY)
+                board_delay = self.get_suspend_delay()
                 # Clear the ARC logcat to make parsing easier.
                 if measure_arc:
                     command = 'android-sh -c "logcat -c"'
