@@ -81,7 +81,7 @@ def wait_for_android_boot(timeout=None):
         timeout = _WAIT_FOR_ANDROID_BOOT_SECONDS
 
     def _is_container_started():
-        return utils.system('android-sh -c true') == 0
+        return utils.system('android-sh -c true', ignore_status=True) == 0
 
     def _is_android_booted():
         output = utils.system_output(
