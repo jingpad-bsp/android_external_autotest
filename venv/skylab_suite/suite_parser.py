@@ -66,6 +66,10 @@ def make_parser():
         "--suite_args", type=ast.literal_eval, default=None,
         action="store",
         help="A dict of args passed to the suite control file.")
+    parser.add_argument(
+        "--job_keyvals", type=ast.literal_eval, default={},
+        action="store",
+        help="A dict of job keyvals to be passed to child jobs.")
 
     # Swarming-related parameters.
     parser.add_argument(
@@ -138,4 +142,5 @@ def parse_suite_specs(options):
             priority=options.priority,
             board=options.board,
             pool=options.pool,
+            job_keyvals=options.job_keyvals,
     )
