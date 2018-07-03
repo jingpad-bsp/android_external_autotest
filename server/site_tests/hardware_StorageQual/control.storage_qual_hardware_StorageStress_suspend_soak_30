@@ -24,6 +24,7 @@ JOB_RETRIES = 0
 DOC = "hardware_StorageStress_suspend_soak_30"
 
 keyval = dict()
+keyval['storage_qual_version'] = 1
 keyval['bug_id'] = bug_id
 keyval['part_id'] = part_id
 utils.write_keyval(job.resultdir, keyval)
