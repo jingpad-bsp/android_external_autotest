@@ -10,7 +10,6 @@ import pipes
 import re
 import shutil
 import socket
-import subprocess
 import sys
 import tempfile
 
@@ -36,7 +35,6 @@ _PROCESS_CHECK_INTERVAL_SECONDS = 1
 _WAIT_FOR_ADB_READY = 60
 _WAIT_FOR_ANDROID_PROCESS_SECONDS = 60
 _WAIT_FOR_DATA_MOUNTED_SECONDS = 60
-_VAR_LOGCAT_PATH = '/var/log/logcat'
 _PLAY_STORE_PKG = 'com.android.vending'
 _SETTINGS_PKG = 'com.android.settings'
 
@@ -627,50 +625,9 @@ def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
     utils.run('inject_powerd_input_event', args=args)
 
 
-class Logcat(object):
-    """Saves the output of logcat to a file."""
-
-    def __init__(self, path=_VAR_LOGCAT_PATH):
-        with open(path, 'w') as f:
-            self._proc = subprocess.Popen(
-                ['android-sh', '-c', 'logcat'],
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                close_fds=True)
-
-    def __enter__(self):
-        """Support for context manager."""
-        return self
-
-    def __exit__(self, *args):
-        """Support for context manager.
-
-        Calls close().
-        """
-        self.close()
-
-    def close(self):
-        """Stop the logcat process gracefully."""
-        if not self._proc:
-            return
-        self._proc.terminate()
-
-        class TimeoutException(Exception):
-            """Termination timeout timed out."""
-
-        try:
-            utils.poll_for_condition(
-                condition=lambda: self._proc.poll() is not None,
-                exception=TimeoutException,
-                timeout=10,
-                sleep_interval=0.1,
-                desc='Waiting for logcat to terminate')
-        except TimeoutException:
-            logging.info('Killing logcat due to timeout')
-            self._proc.kill()
-            self._proc.wait()
-        finally:
-            self._proc = None
+# Alias Logcat for compatibility.
+# TODO(nya): Remove this as soon as we clean up references in autotests.
+Logcat = arc_common.Logcat
 
 
 class ArcTest(test.test):
