@@ -54,6 +54,13 @@ class UnmuteMicrophone(Action):
     def do_execute(self, context):
         context.cfm_facade.unmute_mic()
 
+class WaitForMeetingsLandingPage(Action):
+  """
+  Wait for landing page to load after reboot.
+  """
+  def do_execute(self, context):
+    context.cfm_facade.wait_for_meetings_landing_page()
+
 class JoinMeeting(Action):
     """
     Joins a meeting.
@@ -406,4 +413,3 @@ def _wait_for_condition(condition, timeout_seconds=10):
             return
     raise TimeoutError('Timeout after %s seconds waiting for condition %s'
                        % (timeout_seconds, condition))
-
