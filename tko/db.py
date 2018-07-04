@@ -10,10 +10,9 @@ import sys
 import time
 
 import common
-import MySQLdb
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend import database_settings_helper
+from autotest_lib.tko import utils
 
 
 def _log_error(msg):
@@ -26,9 +25,9 @@ def _log_error(msg):
 
 
 def _format_operational_error(e):
-    """Format MySQLdb.OperationalError.
+    """Format OperationalError.
 
-    @param e: MySQLdb.OperationalError instance.
+    @param e: OperationalError instance.
     """
     return ("%s: An operational error occurred during a database "
             "operation: %s" % (time.strftime("%X %x"), str(e)))
@@ -39,7 +38,7 @@ class MySQLTooManyRows(Exception):
     pass
 
 
-class _DB(object):
+class db_sql(object):
     """Data access."""
 
     def __init__(self, debug=False, autocommit=True, host=None,
@@ -132,24 +131,9 @@ class _DB(object):
             self.con = None
 
         # create the db connection and cursor
-        self.con = self._connect(self.host, self.database,
+        self.con = self.connect(self.host, self.database,
                                 self.user, self.password, self.port)
         self.cur = self.con.cursor()
-
-
-    @retry.retry(MySQLdb.OperationalError, timeout_min=10, delay_sec=5)
-    def _connect(self, host, database, user, password, port):
-        """Connect to the mysql database."""
-        connection_args = {
-            'host': host,
-            'user': user,
-            'db': database,
-            'passwd': password,
-            'connect_timeout': 20,
-        }
-        if port:
-            connection_args['port'] = int(port)
-        return MySQLdb.connect(**connection_args)
 
 
     def _random_delay(self):
@@ -171,12 +155,14 @@ class _DB(object):
         @param args: The arguments
         @param dargs: The named arguments.
         """
+        OperationalError = _get_error_class("OperationalError")
+
         success = False
         start_time = time.time()
         while not success:
             try:
                 result = function(*args, **dargs)
-            except MySQLdb.OperationalError, e:
+            except OperationalError, e:
                 _log_error("%s; retrying, don't panic yet"
                            % _format_operational_error(e))
                 stop_time = time.time()
@@ -187,7 +173,7 @@ class _DB(object):
                     try:
                         self._random_delay()
                         self._init_db()
-                    except MySQLdb.OperationalError, e:
+                    except OperationalError, e:
                         _log_error('%s; panic now'
                                    % _format_operational_error(e))
             else:
@@ -804,6 +790,33 @@ class _DB(object):
             return None
 
 
+def _get_db_type():
+    """Get the database type name to use from the global config."""
+    get_value = global_config.global_config.get_config_value_with_fallback
+    return "db_" + get_value("AUTOTEST_WEB", "global_db_type", "db_type",
+                             default="mysql")
+
+
+def _get_error_class(class_name):
+    """Retrieves the appropriate error class by name from the database
+    module."""
+    db_module = __import__("autotest_lib.tko." + _get_db_type(),
+                           globals(), locals(), ["driver"])
+    return getattr(db_module.driver, class_name)
+
+
 def db(*args, **dargs):
-    """Forwards to _DB constructor. Kept here tomigrate callers slowly."""
-    return _DB(*args, **dargs)
+    """Creates an instance of the database class with the arguments
+    provided in args and dargs, using the database type specified by
+    the global configuration (defaulting to mysql).
+
+    @param args: The db_type arguments.
+    @param dargs: The db_type named arguments.
+
+    @return: An db object.
+    """
+    db_type = _get_db_type()
+    db_module = __import__("autotest_lib.tko." + db_type, globals(),
+                           locals(), [db_type])
+    db = getattr(db_module, db_type)(*args, **dargs)
+    return db

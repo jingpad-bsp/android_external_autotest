@@ -18,6 +18,7 @@ from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models as django_afe_models
 from autotest_lib.frontend.tko import models as django_tko_models
+from autotest_lib.tko import db as tko_db
 from autotest_lib.tko.site_parse import StackTrace
 
 # Have to import this after setup_django_environment and setup_test_environment.
@@ -177,6 +178,48 @@ class database_selection_test(mox.MoxTestBase,
         # so before the configuration setting was made, therefore reload it:
         reload(database_settings_helper)
         reload(settings)
+
+
+    def testTkoDatabase(self):
+        global_host = 'GLOBAL_HOST'
+        global_user = 'GLOBAL_USER'
+        global_db = 'GLOBAL_DB'
+        global_pw = 'GLOBAL_PW'
+        global_port = ''
+        local_host = 'LOCAL_HOST'
+
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_type', '')
+
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_host', global_host)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_database', global_db)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_user', global_user)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'global_db_password', global_pw)
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'host', local_host)
+
+        class ConnectCalledException(Exception):
+            pass
+
+        # We're only interested in the parameters connect is called with here.
+        # Take the fast path out so we don't have to mock all the other calls
+        # that will later be made on the connection
+        def fake_connect(*args, **kwargs):
+            raise ConnectCalledException
+
+        tko_db.db_sql.connect = None
+        self.mox.StubOutWithMock(tko_db.db_sql, 'connect')
+        tko_db.db_sql.connect(
+                global_host, global_db, global_user, global_pw,
+                global_port).WithSideEffects(fake_connect)
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(ConnectCalledException, tko_db.db_sql)
 
 
 if __name__ == "__main__":
