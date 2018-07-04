@@ -67,6 +67,41 @@ class provision_CheetsUpdate(test.test):
                     'Android test build %s download failed' % test_filepath)
         self.android_build_path = test_filepath
 
+    def download_sepolicy(self, android_build, ds):
+        """
+        Download sepolicy.zip artifact of an Android build.
+
+        @param android_build: Android build to test
+        @param ds: Dev server instance for downloading the test build.
+        """
+        _SEPOLICY_FILENAME = 'sepolicy.zip'
+        branch, target, build_id = (
+                utils.parse_launch_control_build(android_build))
+        try:
+            ds.stage_artifacts(target, build_id, branch, artifacts=[_SEPOLICY_FILENAME])
+        except dev_server.DevServerException as e:
+            # e is DevServerException with response HTML in the message.
+            # We can't simply match ArtifactDownloadError by error type.
+            # Instead, we could only use string match to determine the server error type.
+            if 'ArtifactDownloadError: No artifact found' in str(e):
+                self.sepolicy = None
+                logging.info(
+                        'No artifact sepolicy.zip. Fallback to Android policy only')
+                return
+            else:
+                raise e
+        sepolicy_zip_url = ds.get_staged_file_url(
+                _SEPOLICY_FILENAME,
+                target,
+                build_id,
+                branch)
+        logging.info('Downloading the sepolicy.zip.')
+        sepolicy_zip_filepath = os.path.join(self.__build_temp_dir, 'sepolicy.zip')
+        ds.download_file(sepolicy_zip_url, sepolicy_zip_filepath, timeout=10)
+        if not os.path.exists(sepolicy_zip_filepath):
+            raise error.TestFail('Android sepolicy.zip download failed')
+        self.sepolicy = sepolicy_zip_filepath
+
 
     def download_push_to_device(self, android_build, ds):
         """
@@ -157,6 +192,8 @@ class provision_CheetsUpdate(test.test):
                host.hostname,
                '--loglevel',
                'DEBUG']
+        if self.sepolicy:
+          cmd.extend(['--sepolicy-artifacts-path', self.sepolicy])
         try:
             logging.info('Running push to device:')
             logging.info(
@@ -228,6 +265,7 @@ class provision_CheetsUpdate(test.test):
             self.__build_temp_dir = tempfile.mkdtemp()
             self.download_android_build(value, ds)
             self.download_push_to_device(value, ds)
+            self.download_sepolicy(value, ds)
             self.run_push_to_device(host)
             info = host.host_info_store.get()
             logging.info('Updating DUT version label: %s:%s', cheets_prefix, value)
