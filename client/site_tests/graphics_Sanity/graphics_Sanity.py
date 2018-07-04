@@ -16,10 +16,8 @@ from autotest_lib.client.cros.graphics import graphics_utils
 # cd /usr/local/autotest/deps/glbench
 # stop ui
 # ./windowmanagertest --screenshot1_sec 2 --screenshot2_sec 1 --cooldown_sec 1 \
-#    --screenshot1_cmd \
-#        "/usr/local/autotest/bin/screenshot.py screenshot1_generated.png" \
-#    --screenshot2_cmd \
-#        "/usr/local/autotest/bin/screenshot.py screenshot2_generated.png"
+#    --screenshot1_cmd "screenshot screenshot1_generated.png" \
+#    --screenshot2_cmd "screenshot screenshot2_generated.png"
 # start ui
 
 
@@ -122,7 +120,7 @@ class graphics_Sanity(graphics_utils.GraphicsTest):
         options += ' --screenshot2_sec 1'
         options += ' --cooldown_sec 1'
         # perceptualdiff can handle only 8 bit images.
-        screenshot_cmd = ' "/usr/local/autotest/bin/screenshot.py %s"'
+        screenshot_cmd = ' "screenshot %s"'
         options += ' --screenshot1_cmd' + screenshot_cmd % screenshot1_generated
         options += ' --screenshot2_cmd' + screenshot_cmd % screenshot2_generated
 
