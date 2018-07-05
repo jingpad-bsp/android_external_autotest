@@ -625,11 +625,6 @@ def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
     utils.run('inject_powerd_input_event', args=args)
 
 
-# Alias Logcat for compatibility.
-# TODO(nya): Remove this as soon as we clean up references in autotests.
-Logcat = arc_common.Logcat
-
-
 class ArcTest(test.test):
     """ Base class of ARC Test.
 
@@ -827,7 +822,7 @@ class ArcTest(test.test):
             logging.info('Setting up dependent package(s) %s', packages)
             self.job.setup_dep(packages)
 
-        self.logcat_proc = Logcat()
+        self.logcat_proc = arc_common.Logcat()
 
         wait_for_adb_ready()
 
