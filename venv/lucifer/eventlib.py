@@ -39,8 +39,8 @@ class Event(enum.Enum):
     The value of enum members must be a string, which is printed by
     itself on a line to signal the event.
 
-    This should be backward compatible with all versions of
-    lucifer_run_job, which lives in the infra/lucifer repository.
+    This should be backward compatible with all versions of lucifer,
+    which lives in the infra/lucifer repository.
 
     TODO(crbug.com/748234): Events starting with X are temporary to
     support gradual lucifer rollout.

@@ -6,10 +6,9 @@
 
 See http://goto.google.com/monitor_db_per_job_refactor
 
-See also lucifer_run_job in
-https://chromium.googlesource.com/chromiumos/infra/lucifer
+See also https://chromium.googlesource.com/chromiumos/infra/lucifer
 
-job_reporter is a thin wrapper around lucifer_run_job and only updates the
+job_reporter is a thin wrapper around lucifer and only updates the
 Autotest database according to status events.
 """
 
@@ -55,8 +54,11 @@ def _parse_args_and_configure_logging(args):
     # General configuration
     parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='Path to job leases directory.')
+    # TODO(ayatane): Deprecated, remove after pushing
     parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
-                        help='Path to lucifer_run_job binary')
+                        help='Path to lucifer_run_job binary, deprecated')
+    parser.add_argument('--lucifer-path', default='/usr/bin/lucifer',
+                        help='Path to lucifer binary')
 
     # Job specific
 
@@ -115,7 +117,7 @@ def _prepare_autotest_job_files(args, job):
 
 
 def _make_handler(args, job):
-    """Make event handler for lucifer_run_job."""
+    """Make event handler for lucifer."""
     return handlers.EventHandler(
             metrics=handlers.Metrics(),
             job=job,
@@ -125,16 +127,17 @@ def _make_handler(args, job):
 
 
 def _run_lucifer_job(event_handler, args, job):
-    """Run lucifer_run_job.
+    """Run lucifer test.
 
     Issued events will be handled by event_handler.
 
     @param event_handler: callable that takes an Event
     @param args: parsed arguments
-    @returns: exit status of lucifer_run_job
+    @returns: exit status of lucifer
     """
-    command_args = [args.run_job_path]
+    command_args = [args.lucifer_path]
     command_args.extend([
+            'test',
             '-autotestdir', '/usr/local/autotest',
 
             '-abortsock', _abort_sock_path(args.jobdir, args.job_id),
@@ -149,7 +152,7 @@ def _run_lucifer_job(event_handler, args, job):
 
 
 def _add_level_specific_args(command_args, args, job):
-    """Add level specific arguments for lucifer_run_job.
+    """Add level specific arguments for lucifer test.
 
     command_args is modified in place.
     """
@@ -160,7 +163,7 @@ def _add_level_specific_args(command_args, args, job):
 
 
 def _add_starting_args(command_args, args, job):
-    """Add STARTING level arguments for lucifer_run_job.
+    """Add STARTING level arguments for lucifer test.
 
     command_args is modified in place.
     """
