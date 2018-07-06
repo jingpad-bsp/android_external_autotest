@@ -100,7 +100,7 @@ def spawn_starting_job_handler(manager, job):
 
             # General configuration
             '--jobdir', _get_jobdir(),
-            '--run-job-path', _get_run_job_path(),
+            '--lucifer-path', _get_lucifer_path(),
 
             # Job specific
             '--lucifer-level', 'STARTING',
@@ -148,7 +148,7 @@ def spawn_parsing_job_handler(manager, job, autoserv_exit, pidfile_id=None):
 
             # General configuration
             '--jobdir', _get_jobdir(),
-            '--run-job-path', _get_run_job_path(),
+            '--lucifer-path', _get_lucifer_path(),
 
             # Job specific
             '--job-id', str(job.id),
@@ -183,8 +183,8 @@ def _get_jobdir():
     return _config.get_config_value(_SECTION, 'jobdir')
 
 
-def _get_run_job_path():
-    return os.path.join(_get_binaries_path(), 'lucifer_run_job')
+def _get_lucifer_path():
+    return os.path.join(_get_binaries_path(), 'lucifer')
 
 
 def _get_binaries_path():
