@@ -258,7 +258,7 @@ class SwarmingJobDirectory(_JobDirectory):
     try:
       with open(marker_path) as f:
         ts_string = f.read().strip()
-    except OSError as e:
+    except (OSError, IOError) as e:
       logging.debug('Error opening %s for %s: %s',
                     _OFFLOAD_MARKER, self.dirname, e)
       return None
