@@ -80,8 +80,7 @@ def _main_loop_body(metrics, jobdir):
     _abort_jobs_marked_aborting(active_leases)
     _abort_special_tasks_marked_aborted()
     _clean_up_expired_leases(jobdir)
-    # TODO(crbug.com/748234): abort_jobs_past_max_runtime goes into
-    # lucifer_run_job
+    # TODO(crbug.com/748234): abort_jobs_past_max_runtime goes into lucifer
 
 
 def _mark_expired_jobs_failed(metrics, active_leases):
