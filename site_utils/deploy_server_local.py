@@ -176,7 +176,7 @@ def repo_sync(update_push_servers=False):
                                 Otherwise, update server to prod branch.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
-    subprocess.check_output(['repo', 'sync'])
+    subprocess.check_output(['repo', 'sync', '--force-sync'])
     if update_push_servers:
         print('Updating push servers, checkout cros/master')
         subprocess.check_output(['git', 'checkout', 'cros/master'],
@@ -488,7 +488,8 @@ def _sync_chromiumos_repo():
     """Update ~chromeos-test/chromiumos repo."""
     print('Updating ~chromeos-test/chromiumos')
     with ChangeDir(os.path.expanduser('~chromeos-test/chromiumos')):
-        ret = subprocess.call(['repo', 'sync'], stderr=subprocess.STDOUT)
+        ret = subprocess.call(['repo', 'sync', '--force-sync'],
+                              stderr=subprocess.STDOUT)
         _clean_pyc_files()
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
