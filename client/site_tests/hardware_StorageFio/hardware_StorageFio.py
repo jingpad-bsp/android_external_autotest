@@ -49,14 +49,22 @@ class hardware_StorageFio(test.test):
         findsys = utils.run('find /sys/devices -name %s' % device)
         device_path = findsys.stdout.rstrip()
 
-        vendor_file = device_path.replace('block/%s' % device, 'vendor')
-        model_file = device_path.replace('block/%s' % device, 'model')
-        if os.path.exists(vendor_file) and os.path.exists(model_file):
-            vendor = utils.read_one_line(vendor_file).strip()
-            model = utils.read_one_line(model_file).strip()
-            self.__description = vendor + ' ' + model
+        if "nvme" in device:
+            dir_path = utils.run('dirname %s' % device_path).stdout.rstrip()
+            model_file = '%s/model' % dir_path
+            if os.path.exists(model_file):
+                self.__description = utils.read_one_line(model_file).strip()
+            else:
+                self.__description = ''
         else:
-            self.__description = ''
+            vendor_file = device_path.replace('block/%s' % device, 'vendor')
+            model_file = device_path.replace('block/%s' % device, 'model')
+            if os.path.exists(vendor_file) and os.path.exists(model_file):
+                vendor = utils.read_one_line(vendor_file).strip()
+                model = utils.read_one_line(model_file).strip()
+                self.__description = vendor + ' ' + model
+            else:
+                self.__description = ''
 
 
     def initialize(self, dev='', filesize=DEFAULT_FILE_SIZE):
