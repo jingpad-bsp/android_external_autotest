@@ -1174,6 +1174,71 @@ def get_num_logical_cpus_per_socket(run_function=run):
     return num_siblings[0]
 
 
+def set_high_performance_mode(host=None):
+    """
+    Sets the kernel governor mode to the highest setting.
+    Returns previous governor state.
+    """
+    original_governors = get_scaling_governor_states(host)
+    set_scaling_governors('performance', host)
+    return original_governors
+
+
+def set_scaling_governors(value, host=None):
+    """
+    Sets all scaling governor to string value.
+    Sample values: 'performance', 'interactive', 'ondemand', 'powersave'.
+    """
+    paths = _get_cpufreq_paths('scaling_governor', host)
+    if not paths:
+        logging.info("Could not set governor states, as no files of the form "
+                     "'/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor' "
+                     "were found.")
+    run_func = host.run if host else system
+    for path in paths:
+        cmd = 'echo %s > %s' % (value, path)
+        logging.info('Writing scaling governor mode \'%s\' -> %s', value, path)
+        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
+        run_func(cmd, ignore_status=True)
+
+
+def _get_cpufreq_paths(filename, host=None):
+    """
+    Returns a list of paths to the governors.
+    """
+    run_func = host.run if host else run
+    cmd = 'ls /sys/devices/system/cpu/cpu*/cpufreq/' + filename
+    try:
+        paths = run_func(cmd, verbose=False).stdout.splitlines()
+    except error.CmdError:
+        return []
+    return paths
+
+
+def get_scaling_governor_states(host=None):
+    """
+    Returns a list of (performance governor path, current state) tuples.
+    """
+    paths = _get_cpufreq_paths('scaling_governor', host)
+    path_value_list = []
+    run_func = host.run if host else run
+    for path in paths:
+        value = run_func('head -n 1 %s' % path, verbose=False).stdout
+        path_value_list.append((path, value))
+    return path_value_list
+
+
+def restore_scaling_governor_states(path_value_list, host=None):
+    """
+    Restores governor states. Inverse operation to get_scaling_governor_states.
+    """
+    run_func = host.run if host else system
+    for (path, value) in path_value_list:
+        cmd = 'echo %s > %s' % (value.rstrip('\n'), path)
+        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
+        run_func(cmd, ignore_status=True)
+
+
 def merge_trees(src, dest):
     """
     Merges a source directory tree at 'src' into a destination tree at
