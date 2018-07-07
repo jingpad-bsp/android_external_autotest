@@ -50,7 +50,7 @@ class platform_StageAndRecover(test.test):
         image_path = self.host.stage_image_for_servo(
             self.host.get_release_builder_path(),
             artifact=artifact)
-        logging.info('%s staged at %s', (artifact, image_path))
+        logging.info('%s staged at %s' % (artifact, image_path))
 
         # Make servo sees only DUT_HUB1
         self.set_servo_usb_reimage()
@@ -71,7 +71,7 @@ class platform_StageAndRecover(test.test):
 
         @raise error.TestFail: if timeout is reached
         """
-        logging.info('Started %s. Will wait up to %d seconds to complete',
+        logging.info('Started %s. Will wait up to %d seconds to complete' %
                      (process, timeout))
         start_time = time.time()
         if host.ping_wait_up(timeout=timeout):
