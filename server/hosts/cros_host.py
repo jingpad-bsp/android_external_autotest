@@ -1099,6 +1099,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         cros_ui.wait_for_chrome_ready(prompt, self)
 
 
+    def _start_powerd_if_needed(self):
+        """Start powerd if it isn't already running."""
+        self.run('start powerd', ignore_status=True)
+
+
     def _get_lsb_release_content(self):
         """Return the content of lsb-release file of host."""
         return self.run(
@@ -1201,6 +1206,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raises error.FactoryImageCheckerException
         """
         self._restart_ui()
+        self._start_powerd_if_needed()
 
 
     def cleanup(self):
