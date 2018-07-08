@@ -53,7 +53,7 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
 
         @param num_scans: The number of scans to perform.
         """
-        for i in range(num_scans):
+        for _ in range(num_scans):
             # Request scan through shill rather than iw because iw won't
             # set the random MAC flag in the scan request netlink packet.
             self.context.client.shill.request_scan()
