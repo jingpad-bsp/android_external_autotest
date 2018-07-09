@@ -38,17 +38,27 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     _BOARD_RETRY = {'betty': 0, 'kahlee': 0}
     _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
     _SHARD_CMD = '--shards'
+    # TODO(pwang): b/110966363, remove it once scarlet is fixed.
+    _NEED_DEVICE_INFO_BOARDS = ['scarlet']
 
     def _tradefed_retry_command(self, template, session_id):
         """Build tradefed 'retry' command from template."""
         cmd = []
         for arg in template:
+            if (arg == '--skip-device-info' and
+                self._get_board_name() in self._NEED_DEVICE_INFO_BOARDS):
+                continue
             cmd.append(arg.format(session_id=session_id))
         return cmd
 
     def _tradefed_run_command(self, template):
         """Build tradefed 'run' command from template."""
-        cmd = template[:]
+        cmd = []
+        for arg in template:
+            if (arg == '--skip-device-info' and
+                self._get_board_name() in self._NEED_DEVICE_INFO_BOARDS):
+                continue
+            cmd.append(arg)
         # If we are running outside of the lab we can collect more data.
         if not utils.is_in_container():
             logging.info('Running outside of lab, adding extra debug options.')
