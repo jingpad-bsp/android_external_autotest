@@ -5,7 +5,9 @@ autotestd_monit
 check_ethernet.
 chrome
 chrome-sandbox
+cras_test_clien
 endpoint
+evemu-device
 flock
 grep
 init
