@@ -171,7 +171,8 @@ def _add_starting_args(command_args, args, job):
     command_args.extend([
         '-x-control-file', jobx.control_file_path(args.results_dir),
     ])
-    command_args.extend(['-x-execution-tag', args.execution_tag])
+    if args.execution_tag is not None:
+        command_args.extend(['-x-execution-tag', args.execution_tag])
     command_args.extend(['-x-job-owner', job.owner])
     command_args.extend(['-x-job-name', job.name])
     command_args.extend(
