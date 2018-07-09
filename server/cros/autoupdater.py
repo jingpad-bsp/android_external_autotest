@@ -269,13 +269,33 @@ def _get_metric_fields(update_url):
     }
 
 
-def _emit_provision_metrics(update_url, dut_host_name,
-                            failure_reason, duration):
-    """Send metrics for provision request."""
+def _emit_provision_metrics(name_prefix, build_name, failure_reason,
+                            duration, fields):
+    # reset_after=True is required for String gauges events to ensure that
+    # the metrics are not repeatedly emitted until the server restarts.
+    metrics.String(_metric_name(name_prefix + '_build_by_devserver_dut'),
+                   reset_after=True).set(build_name, fields=fields)
+    if failure_reason:
+        metrics.String(
+                _metric_name(name_prefix + '_failure_reason_by_devserver_dut'),
+                reset_after=True).set(failure_reason, fields=fields)
+    metrics.SecondsDistribution(
+            _metric_name(name_prefix + '_duration_by_devserver_dut')).add(
+                    duration, fields=fields)
+
+
+def _emit_updater_metrics(update_url, dut_host_name,
+                          failure_reason, duration):
+    """Send metrics for one provision request."""
     # The following is high cardinality, but sparse.
     # Each DUT is of a single board type, and likely build type.
-    # The affinity also results in each DUT being attached to the same
-    # dev_server as well.
+    #
+    # TODO(jrbarnette) The devserver-triggered provisioning code
+    # included retries in certain cases.  For that reason, the metrics
+    # distinguished 'provision' metrics which summarized across all
+    # retries, and 'auto_update' which summarized an individual update
+    # attempt.  ChromiumOSUpdater doesn't do retries, so we just report
+    # the same information twice.
     image_fields = _get_metric_fields(update_url)
     fields = {
         'board': image_fields['board'],
@@ -285,19 +305,11 @@ def _emit_provision_metrics(update_url, dut_host_name,
         'success': not failure_reason,
     }
     build_name = url_to_image_name(update_url)
-
-    # reset_after=True is required for String gauges events to ensure that
-    # the metrics are not repeatedly emitted until the server restarts.
-
-    metrics.String(_metric_name('provision_build_by_devserver_dut'),
-                   reset_after=True).set(build_name, fields=fields)
-    if failure_reason:
-        metrics.String(
-                _metric_name('provision_failure_reason_by_devserver_dut'),
-                reset_after=True).set(failure_reason, fields=fields)
-    metrics.SecondsDistribution(
-            _metric_name('provision_duration_by_devserver_dut')).add(
-                    duration, fields=fields)
+    _emit_provision_metrics('auto_update', build_name, failure_reason,
+                            duration, fields)
+    fields['attempt'] = 1
+    _emit_provision_metrics('provision', build_name, failure_reason,
+                            duration, fields)
 
 
 # TODO(garnold) This implements shared updater functionality needed for
@@ -1009,7 +1021,7 @@ class ChromiumOSUpdater(object):
             raise
         finally:
             end_time = time.time()
-            _emit_provision_metrics(
+            _emit_updater_metrics(
                 self.update_url, self.host.hostname,
                 failure_reason, end_time - start_time)
 
