@@ -278,6 +278,28 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
         super(CPUStatsLoggerDashboard, self).__init__(logger, testname,
                                                       resultsdir, uploadurl)
 
+    @staticmethod
+    def _split_domain(domain):
+        """Return domain_type and domain_name for given domain.
+
+        Example: Split ................... to ........... and .......
+                       cpuidle_C1E-SKL        cpuidle         C1E-SKL
+                       cpuidle_0_3_C0         cpuidle_0_3     C0
+                       cpupkg_C0_C1           cpupkg          C0_C1
+                       cpufreq_0_3_1512000    cpufreq_0_3     1512000
+
+        Args:
+            domain: cpu stat domain name to split
+
+        Return:
+            tuple of domain_type and domain_name
+        """
+        # Regex explanation
+        # .*?           matches type non-greedily                 (cpuidle)
+        # (?:_\d+_\d+)? matches cpu part, ?: makes it not a group (_0_3)
+        # .*            matches name greedily                     (C0_C1)
+        return re.match(r'(.*?(?:_\d+_\d+)?)_(.*)', domain).groups()
+
     def _convert(self):
         power_dict = super(CPUStatsLoggerDashboard, self)._convert()
         for rail in power_dict['data']:
@@ -285,7 +307,7 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
                 power_dict['type'][rail] = 'cpufreq_wavg'
                 power_dict['unit'][rail] = 'kilohertz'
             else:
-                power_dict['type'][rail] = rail.rsplit('_', 1)[0]
+                power_dict['type'][rail] = self._split_domain(rail)[0]
                 power_dict['unit'][rail] = 'percent'
         return power_dict
 
@@ -300,11 +322,10 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
         which make it in alphabetically order.
         """
         longest = collections.defaultdict(int)
-        searcher = re.compile("[0-9]+")
+        searcher = re.compile(r'\d+')
         number_strs = []
-        # Split cpuidle_C1E-SKL to "cpuidle" and "C1E-SKL"
         splitted_domains = \
-            [domain.rsplit('_', 1) for domain in self._logger.domains]
+                [self._split_domain(domain) for domain in self._logger.domains]
         for domain_type, domain_name in splitted_domains:
             result = searcher.search(domain_name)
             if not result:
@@ -325,7 +346,7 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
 
             # Change "cpuidle_C1E-SKL" to "cpuidle_C{:.>2s}E-SKL"
             formatter_str = domain_type + '_' + \
-                            searcher.sub(formatter_component, domain_name)
+                    searcher.sub(formatter_component, domain_name, count=1)
 
             # Run "cpuidle_C{:_>2s}E-SKL".format("1") to get "cpuidle_C.1E-SKL"
             self._padded_domains.append(formatter_str.format(number_strs[i]))
