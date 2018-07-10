@@ -1280,18 +1280,27 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     duration, fields=metric_fields)
 
 
-    def suspend(self, **dargs):
+    def suspend(self, suspend_time=60,
+                suspend_cmd=None, allow_early_resume=False):
         """
         This function suspends the site host.
+
+        @param suspend_time: How long to suspend as integer seconds.
+        @param suspend_cmd: Suspend command to execute.
+        @param allow_early_resume: If False and if device resumes before
+                                   |suspend_time|, throw an error.
+
+        @exception AutoservSuspendError Host resumed earlier than
+                                         |suspend_time|.
         """
-        suspend_time = dargs.get('suspend_time', 60)
-        dargs['timeout'] = suspend_time
-        if 'suspend_cmd' not in dargs:
-            dargs['suspend_cmd'] = ' && '.join([
+
+        if suspend_cmd is None:
+            suspend_cmd = ' && '.join([
                 'echo 0 > /sys/class/rtc/rtc0/wakealarm',
                 'echo +%d > /sys/class/rtc/rtc0/wakealarm' % suspend_time,
                 'powerd_dbus_suspend --delay=0'])
-        super(CrosHost, self).suspend(**dargs)
+        super(CrosHost, self).suspend(suspend_time, suspend_cmd,
+                                      allow_early_resume);
 
 
     def upstart_status(self, service_name):
