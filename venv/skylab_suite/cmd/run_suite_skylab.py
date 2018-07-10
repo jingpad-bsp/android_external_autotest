@@ -29,6 +29,7 @@ def _parse_suite_handler_specs(options):
         provision_num_required = options.suite_args['num_required']
 
     return cros_suite.SuiteHandlerSpecs(
+            wait=not options.create_and_return,
             timeout_mins=options.timeout_mins,
             test_retry=options.test_retry,
             max_retries=options.max_retries,
