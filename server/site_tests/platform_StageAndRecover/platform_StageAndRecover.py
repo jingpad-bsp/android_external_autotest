@@ -74,7 +74,7 @@ class platform_StageAndRecover(test.test):
         logging.info('Started %s. Will wait up to %d seconds to complete' %
                      (process, timeout))
         start_time = time.time()
-        if host.ping_wait_up(timeout=timeout):
+        if self.host.ping_wait_up(timeout=timeout):
             logging.info('Device came back up successfully in %d seconds.',
                          time.time() - start_time)
         else:
