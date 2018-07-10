@@ -176,7 +176,6 @@ class touch_playback_test_base(test.test):
         if not self._has_mouse:
             raise error.TestError('Mouse emulation failed!')
 
-
     def _playback(self, filepath, touch_type='touchpad'):
         """Playback a given input file on the given input."""
         self.player.playback(filepath, touch_type)
@@ -305,6 +304,7 @@ class touch_playback_test_base(test.test):
 
 
     def cleanup(self):
+        """ clean up """
         self.player.close()
 
 
