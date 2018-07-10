@@ -1,3 +1,5 @@
+import time
+
 from django.db.backends.mysql.base import DatabaseCreation as MySQLCreation
 from django.db.backends.mysql.base import DatabaseOperations as MySQLOperations
 from django.db.backends.mysql.base import DatabaseWrapper as MySQLDatabaseWrapper
@@ -11,10 +13,13 @@ except ImportError, e:
 
 
 class DatabaseOperations(MySQLOperations):
+    """Custom database backend wrapper."""
     compiler_module = "autotest_lib.frontend.db.backends.afe.compiler"
 
 
 class DatabaseWrapper(MySQLDatabaseWrapper):
+    """Custom database backend wrapper."""
+
     def __init__(self, *args, **kwargs):
         self.connection = None
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
@@ -35,3 +40,11 @@ class DatabaseWrapper(MySQLDatabaseWrapper):
                     self.connection.close()
                     self.connection = None
         return False
+
+    def _cursor(self):
+        # crbug.com/805724 Add a retry for connection errors.
+        try:
+            return super(DatabaseWrapper, self)._cursor()
+        except Database.OperationalError:
+            time.sleep(0.3)
+            return super(DatabaseWrapper, self)._cursor()
