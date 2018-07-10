@@ -4,6 +4,7 @@
 
 import functools
 import logging
+import pprint
 import time
 
 from autotest_lib.client.bin import utils
@@ -114,6 +115,30 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         for cap, config in cap_dict.iteritems():
             if current_cap_settings[cap].lower() != config.lower():
                 raise error.TestFail('Failed to set %s to %s' % (cap, config))
+
+
+    def get_ccd_info(self):
+        """Get the current ccd state.
+
+        Take the output of 'ccd' and convert it to a dictionary.
+
+        Returns:
+            A dictionary with the ccd state name as the key and setting as
+            value.
+        """
+        info = {}
+        rv = self.send_command_get_output('ccd', ["ccd.*>"])[0]
+        for line in rv.splitlines():
+            # CCD information is separated with an :
+            #   State: Opened
+            # Extract the state name and the value.
+            line = line.strip()
+            if ':' not in line or '[' in line:
+                continue
+            key, value = line.split(':')
+            info[key.strip()] = value.strip()
+        logging.info('Current CCD settings:\n%s', pprint.pformat(info))
+        return info
 
 
     def get_cap_dict(self):
