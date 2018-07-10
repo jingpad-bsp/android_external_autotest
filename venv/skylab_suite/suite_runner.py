@@ -34,7 +34,100 @@ def run(tests_specs, suite_handler, dry_run=False):
     @param suite_handler: A cros_suite.SuiteHandler object.
     @param dry_run: Whether to kick off dry runs of the tests.
     """
+    if suite_handler.suite_id:
+        # Resume an existing suite.
+        _resume_suite(tests_specs, suite_handler, dry_run)
+    else:
+        # Make a new suite.
+        _run_suite(tests_specs, suite_handler, dry_run)
+
+
+def _resume_suite(tests_specs, suite_handler, dry_run=False):
+    """Resume a suite and its child tasks by given suite id."""
+    suite_id = suite_handler.suite_id
+    json_output = _fetch_child_tasks(suite_id)
+    not_yet_scheduled = _get_unscheduled_test_specs(
+            tests_specs, suite_handler, json_output['items'])
+
+    logging.info('Not yet scheduled test_specs: %r', not_yet_scheduled)
+    _schedule_tests_specs(not_yet_scheduled, suite_handler, suite_id, dry_run)
+
+    if suite_id is not None and suite_handler.should_wait():
+        _wait_for_results(suite_handler, dry_run=dry_run)
+
+
+def _get_unscheduled_test_specs(tests_specs, suite_handler, all_tasks):
+    not_yet_scheduled = []
+    for test_specs in tests_specs:
+        if suite_handler.is_provision():
+            tasks = [t for t in all_tasks if t['bot_id']==test_specs.bot_id]
+        else:
+            tasks = [t for t in all_tasks if t['name']==test_specs.test.name]
+
+        if not tasks:
+            not_yet_scheduled.append(test_specs)
+            continue
+
+        current_task = _get_current_task(tasks)
+        test_task_id = (current_task['task_id'] if current_task
+                        else tasks[0]['task_id'])
+        remaining_retries = test_specs.test.job_retries - len(tasks)
+        previous_retried_ids = [t['task_id'] for t in tasks
+                                if t['task_id'] != test_task_id]
+        suite_handler.add_test_by_task_id(
+                test_task_id,
+                cros_suite.TestHandlerSpecs(
+                        test_specs=test_specs,
+                        remaining_retries=remaining_retries,
+                        previous_retried_ids=previous_retried_ids))
+
+    return not_yet_scheduled
+
+
+def _get_current_task(tasks):
+    """Get current running task.
+
+    @param tasks: A list of task dicts including task_id, state, etc.
+
+    @return a dict representing the current running task.
+    """
+    current_task = None
+    for t in tasks:
+        if t['state'] not in swarming_lib.TASK_FINISHED_STATUS:
+            if current_task:
+                raise ValueError(
+                        'Parent task has 2 same running child tasks: %s, %s'
+                        % (current_task['task_id'], t['task_id']))
+
+            current_task = t
+
+    return current_task
+
+
+def _run_suite(tests_specs, suite_handler, dry_run=False):
+    """Make a new suite."""
     suite_id = os.environ.get('SWARMING_TASK_ID')
+    _schedule_tests_specs(tests_specs, suite_handler, suite_id, dry_run)
+
+    if suite_id is not None and suite_handler.should_wait():
+        suite_handler.set_suite_id(suite_id)
+        _wait_for_results(suite_handler, dry_run=dry_run)
+
+
+def _schedule_tests_specs(tests_specs, suite_handler, suite_id, dry_run=False):
+    """Schedule a list of tests (TestSpecs).
+
+    Given a list of TestSpecs object, this function will schedule them on
+    swarming one by one, and add them to the swarming_task_id-to-test map
+    of suite_handler to keep monitoring them.
+
+    @param tests_specs: A list of cros_suite.TestSpecs objects to schedule.
+    @param suite_handler: A cros_suite.SuiteHandler object to monitor the
+        test_specs' progress.
+    @param suite_id: A string ID for a suite task, it's the parent task id for
+        these to-be-scheduled test_specs.
+    @param dry_run: Whether to kick off dry runs of the tests.
+    """
     for test_specs in tests_specs:
         test_task_id = _schedule_test(
                 test_specs,
@@ -47,10 +140,6 @@ def run(tests_specs, suite_handler, dry_run=False):
                         test_specs=test_specs,
                         remaining_retries=test_specs.test.job_retries - 1,
                         previous_retried_ids=[]))
-
-    if suite_id is not None and suite_handler.should_wait():
-        suite_handler.set_suite_id(suite_id)
-        _wait_for_results(suite_handler, dry_run=dry_run)
 
 
 def _make_provision_swarming_cmd():
