@@ -52,9 +52,11 @@ class firmware_Cr50BID(Cr50Test):
     UNIVERSAL = 'universal'
     # The board id locked can only run on devices with the right chip board id.
     BID_LOCKED = 'board_id_locked'
-    # BID support was added in 0.0.21. Use this as the universal image if the
-    # image running on the device is board id locked.
-    BID_SUPPORT = '0.0.21'
+    # BID support was added in 0.0.21. Support for keeping the rollback state
+    # after AP boot was added in 0.3.4.
+    #
+    # Use 0.3.4 as the universal image, so we can tell if BID forced a rollback.
+    BID_SUPPORT = '0.3.4'
 
     # Board id locked debug files will use the board id, mask, and flags in the
     # gs filename
@@ -255,7 +257,7 @@ class firmware_Cr50BID(Cr50Test):
             rw_ver: The rw release version to use for the universal image.
         """
         # If the original image is not board id locked, use it as universal
-        # image. If it is board id locked, use 0.0.21 as the universal image.
+        # image. If it is board id locked, use 0.3.4 as the universal image.
         if not original_version[2]:
            self.universal_path = self.get_saved_cr50_original_path()
            universal_ver = original_version
