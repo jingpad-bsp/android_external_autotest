@@ -54,9 +54,6 @@ def _parse_args_and_configure_logging(args):
     # General configuration
     parser.add_argument('--jobdir', default='/usr/local/autotest/leases',
                         help='Path to job leases directory.')
-    # TODO(ayatane): Deprecated, remove after pushing
-    parser.add_argument('--run-job-path', default='/usr/bin/lucifer_run_job',
-                        help='Path to lucifer_run_job binary, deprecated')
     parser.add_argument('--lucifer-path', default='/usr/bin/lucifer',
                         help='Path to lucifer binary')
 
