@@ -138,8 +138,14 @@ class ClientTestDashboard(BaseDashboard):
         Returns:
             DUT info dictionary
         """
+        board = utils.get_board()
+        platform = utils.get_platform()
+
+        if platform != board:
+            board += '_' + platform
+
         dut_info_dict = {
-            'board': utils.get_board(),
+            'board': board,
             'version': {
                 'hw': utils.get_hardware_revision(),
                 'milestone': lsbrelease_utils.get_chromeos_release_milestone(),

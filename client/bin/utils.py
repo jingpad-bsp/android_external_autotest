@@ -1967,6 +1967,28 @@ def get_board_type():
     return get_board_property('DEVICETYPE')
 
 
+def get_platform():
+    """
+    Get the ChromeOS platform name.
+
+    For unibuild this should be equal to model name.  For non-unibuild
+    it will either be board name or empty string.  In the case of
+    empty string return board name to match equivalent logic in
+    server/hosts/cros_host.py
+
+    @returns platform name
+    """
+    platform = ''
+    command = 'mosys platform model'
+    result = utils.run(command, ignore_status=True)
+    if result.exit_status == 0:
+        platform = result.stdout.strip()
+
+    if platform == '':
+        platform = get_board()
+    return platform
+
+
 def get_ec_version():
     """Get the ec version as strings.
 

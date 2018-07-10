@@ -36,8 +36,15 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
         Returns:
             DUT info dictionary
         """
+
+        board = self._host.get_board().replace('board:', '')
+        platform = self._host.get_platform()
+
+        if platform != board:
+            board += '_' + platform
+
         dut_info_dict = {
-            'board': self._host.get_board().replace('board:', ''),
+            'board': board,
             'version': {
                 'hw': self._host.get_hardware_revision(),
                 'milestone': self._host.get_chromeos_release_milestone(),
