@@ -165,13 +165,20 @@ class RemoteHost(base_classes.Host):
         else:
             reboot()
 
-    def suspend(self, timeout, suspend_cmd, **dargs):
+    def suspend(self, timeout, suspend_cmd,
+                allow_early_resume=False):
         """
         Suspend the remote host.
 
         Args:
-                timeout - How long to wait for the suspend.
-                susped_cmd - suspend command to execute.
+                timeout - How long to wait for the suspend in integer seconds.
+                suspend_cmd - suspend command to execute.
+                allow_early_resume - Boolean that indicate whether resume
+                                     before |timeout| is ok.
+        Raises:
+                error.AutoservSuspendError - If |allow_early_resume| is False
+                                             and if device resumes before
+                                             |timeout|.
         """
         # define a function for the supend and run it in a group
         def suspend():
@@ -207,7 +214,8 @@ class RemoteHost(base_classes.Host):
         start_time = time.time()
         self.log_op(self.OP_SUSPEND, suspend)
         lasted = time.time() - start_time
-        if (lasted < timeout):
+        logging.info("Device resumed after %d secs", lasted)
+        if (lasted < timeout and not allow_early_resume):
             raise error.AutoservSuspendError(
                 "Suspend did not last long enough: %d instead of %d" % (
                     lasted, timeout))
