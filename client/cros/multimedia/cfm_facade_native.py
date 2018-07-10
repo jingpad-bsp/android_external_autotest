@@ -147,7 +147,7 @@ class CFMFacadeNative(object):
         """
         @return The paths to the all packaged app log files, if any.
         """
-        return glob.iglob(self._PA_LOGS_PATTERN)
+        return glob.glob(self._PA_LOGS_PATTERN)
 
     def reboot_device_with_chrome_api(self):
         """Reboot device using chrome runtime API."""
