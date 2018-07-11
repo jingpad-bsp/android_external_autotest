@@ -236,16 +236,10 @@ class _FAFTVersionMapHandler(_VersionMapHandler):
     DESCRIPTION = 'FAFT'
 
 
-class _AndroidVersionMapHandler(_VersionMapHandler):
-    TYPE = frontend.AFE.ANDROID_IMAGE_TYPE
-    DESCRIPTION = 'Android'
-
-
 _IMAGE_TYPE_CLASSES = [
     _CrOSVersionMapHandler,
     _FirmwareVersionMapHandler,
     _FAFTVersionMapHandler,
-    _AndroidVersionMapHandler
 ]
 _ALL_IMAGE_TYPES = [cls.TYPE for cls in _IMAGE_TYPE_CLASSES]
 _IMAGE_TYPE_HANDLERS = {cls.TYPE: cls for cls in _IMAGE_TYPE_CLASSES}

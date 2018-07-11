@@ -19,7 +19,6 @@ AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
 _CROS_VERSION_MAP = AFE.get_stable_version_map(AFE.CROS_IMAGE_TYPE)
 _FIRMWARE_VERSION_MAP = AFE.get_stable_version_map(AFE.FIRMWARE_IMAGE_TYPE)
 _FAFT_VERSION_MAP = AFE.get_stable_version_map(AFE.FAFT_IMAGE_TYPE)
-_ANDROID_VERSION_MAP = AFE.get_stable_version_map(AFE.ANDROID_IMAGE_TYPE)
 
 _CONFIG = global_config.global_config
 ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = _CONFIG.get_config_value(
@@ -75,16 +74,6 @@ def get_stable_faft_version(board):
             repair firmware on a DUT used for FAFT testing.
     """
     return _FAFT_VERSION_MAP.get_version(board)
-
-
-def get_stable_android_version(board):
-    """Retrieve the stable Android version a given board.
-
-    @param board: Board to lookup.
-
-    @returns Stable version of Android for the given board.
-    """
-    return _ANDROID_VERSION_MAP.get_version(board)
 
 
 def _clear_host_attributes_before_provision(host, info):
