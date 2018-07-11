@@ -200,9 +200,8 @@ class _StableVersionMap(object):
                         when calling the `get_stable_version` RPC.
     """
 
-    def __init__(self, afe, android):
+    def __init__(self, afe):
         self._afe = afe
-        self._android = android
 
 
     def get_all_versions(self):
@@ -229,8 +228,7 @@ class _StableVersionMap(object):
 
         @return The version mapped for the given board.
         """
-        return self._afe.run('get_stable_version',
-                             board=board, android=self._android)
+        return self._afe.run('get_stable_version', board=board)
 
 
     def set_version(self, board, version):
@@ -306,9 +304,6 @@ class _CrosVersionMap(_OSVersionMap):
     working state.
     """
 
-    def __init__(self, afe):
-        super(_CrosVersionMap, self).__init__(afe, False)
-
     def _version_is_valid(self, version):
         return version is not None and '/' not in version
 
@@ -326,21 +321,6 @@ class _CrosVersionMap(_OSVersionMap):
         return format_cros_image_name(board, self.get_version(board))
 
 
-class _AndroidVersionMap(_OSVersionMap):
-    """
-    Stable version mapping for Android release images.
-
-    This class manages a mapping of Android/Brillo board names to
-    known-good images.
-    """
-
-    def __init__(self, afe):
-        super(_AndroidVersionMap, self).__init__(afe, True)
-
-    def _version_is_valid(self, version):
-        return version is not None and '/' in version
-
-
 class _SuffixHackVersionMap(_StableVersionMap):
     """
     Abstract super class for mappings using a pseudo-board name.
@@ -356,10 +336,6 @@ class _SuffixHackVersionMap(_StableVersionMap):
     # lookup key.  Each subclass must define this value for itself.
     #
     _SUFFIX = None
-
-    def __init__(self, afe):
-        super(_SuffixHackVersionMap, self).__init__(afe, False)
-
 
     def get_all_versions(self):
         # Get all the mappings from the AFE, extract just the mappings
@@ -449,18 +425,15 @@ class AFE(RpcClient):
     # CROS_IMAGE_TYPE - Mappings for Chrome OS images.
     # FAFT_IMAGE_TYPE - Mappings for Firmware images for FAFT repair.
     # FIRMWARE_IMAGE_TYPE - Mappings for released RW Firmware images.
-    # ANDROID_IMAGE_TYPE - Mappings for Android images.
     #
     CROS_IMAGE_TYPE = 'cros'
     FAFT_IMAGE_TYPE = 'faft'
     FIRMWARE_IMAGE_TYPE = 'firmware'
-    ANDROID_IMAGE_TYPE = 'android'
 
     _IMAGE_MAPPING_CLASSES = {
         CROS_IMAGE_TYPE: _CrosVersionMap,
         FAFT_IMAGE_TYPE: _FAFTVersionMap,
         FIRMWARE_IMAGE_TYPE: _FirmwareVersionMap,
-        ANDROID_IMAGE_TYPE: _AndroidVersionMap
     }
 
 
