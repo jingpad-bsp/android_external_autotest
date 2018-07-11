@@ -8,8 +8,19 @@ import unittest
 import common
 from autotest_lib.server.cros import provision
 
-_CROS_VERSION_SAMPLES = ['cave-release/R57-9030.0.0']
-_ANDROID_VERSION_SAMPLES = ['git_mnc-release/shamu-userdebug/2457013']
+_CROS_VERSION_SAMPLES = [
+    'cave-release/R57-9030.0.0',
+    'grunt-llvm-next-toolchain-tryjob/R69-10851.0.0-b2726174'
+    'eve-tot-chrome-pfq-informational/R69-10822.0.0-b2700960',
+]
+_CROS_ANDROID_VERSION_SAMPLES = [
+    'git_nyc-mr1-arc/cheets_arm-user/4866647',
+    'git_nyc-mr1-arc/cheets_arm-user/P6244267',
+    'git_nyc-mr1-arc/cheets_x86-user/P6256537',
+]
+_ANDROID_VERSION_SAMPLES = [
+    'git_mnc-release/shamu-userdebug/2457013'
+]
 
 
 class ActionTestCase(unittest.TestCase):
@@ -41,6 +52,11 @@ class ImageParsingTests(unittest.TestCase):
         """Test handling of Chrome OS version strings."""
         self._do_test_prefixes(provision.CROS_VERSION_PREFIX,
                                _CROS_VERSION_SAMPLES)
+
+    def test_cros_android_prefix(self):
+        """Test handling of Chrome OS version strings."""
+        self._do_test_prefixes(provision.CROS_ANDROID_VERSION_PREFIX,
+                               _CROS_ANDROID_VERSION_SAMPLES)
 
     def test_android_prefix(self):
         """Test handling of Android version strings."""
