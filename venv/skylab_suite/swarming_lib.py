@@ -30,13 +30,15 @@ TASK_CANCELED = 'CANCELED'
 TASK_TIMEDOUT = 'TIMED_OUT'
 TASK_RUNNING = 'RUNNING'
 TASK_PENDING = 'PENDING'
+TASK_BOT_DIED = 'BOT_DIED'
 TASK_FINISHED_STATUS = [TASK_COMPLETED,
                         TASK_EXPIRED,
                         TASK_CANCELED,
-                        TASK_TIMEDOUT]
+                        TASK_TIMEDOUT,
+                        TASK_BOT_DIED]
 # The swarming task failure status to retry. TASK_CANCELED won't get
 # retried since it's intentionally aborted.
-TASK_STATUS_TO_RETRY = [TASK_EXPIRED, TASK_TIMEDOUT]
+TASK_STATUS_TO_RETRY = [TASK_EXPIRED, TASK_TIMEDOUT, TASK_BOT_DIED]
 
 DEFAULT_EXPIRATION_SECS = 30
 DEFAULT_TIMEOUT_SECS = 60 * 60
