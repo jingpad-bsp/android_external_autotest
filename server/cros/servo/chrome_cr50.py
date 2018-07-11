@@ -615,6 +615,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         logging.info(rv)
         if 'Access Denied' in rv:
             raise error.TestFail("%r %s" % (cmd, rv))
+        if 'Busy' in rv:
+            raise error.TestFail("cr50 is too busy to run %r: %s" % (cmd, rv))
 
         # Press the power button once a second, if we need physical presence.
         if req_pp:
