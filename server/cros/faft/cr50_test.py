@@ -336,9 +336,13 @@ class Cr50Test(FirmwareTest):
 
     def cleanup(self):
         """Make sure the device state is the same as the start of the test"""
-        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
-        state_mismatch = self._check_original_state()
+        # reboot to normal mode if the device is in dev mode.
+        if 'dev_mode' in self.cr50.get_ccd_info()['TPM']:
+            self.switcher.reboot_to_mode(to_mode='normal')
 
+        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+
+        state_mismatch = self._check_original_state()
         if state_mismatch and not self._provision_update:
             self._restore_original_state()
             if self._raise_error_on_mismatch:
