@@ -90,7 +90,7 @@ class platform_StageAndRecover(test.test):
         self.stage_copy_recover_with('recovery_image')
         self.wait_for_dut_ping_after('RECOVERY', self._RECOVERY_INSTALL_DELAY)
 
-        stage_copy_recover_with('test_image')
+        self.stage_copy_recover_with('test_image')
         self.wait_for_dut_ping_after('TEST_IMAGE RECOVERY BOOT FROM USB',
                                   self._TEST_IMAGE_BOOT_DELAY)
 
