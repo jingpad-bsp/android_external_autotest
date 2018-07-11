@@ -1217,7 +1217,7 @@ def get_cpu_sibling_groups():
 
 def get_avaliable_cpu_stats():
     """Return CPUFreq/CPUIdleStats groups by big-small siblings groups."""
-    ret = []
+    ret = [CPUPackageStats()]
     cpu_sibling_groups = get_cpu_sibling_groups()
     if not cpu_sibling_groups:
         ret.append(CPUFreqStats())
@@ -1232,9 +1232,7 @@ class StatoMatic(object):
     """Class to aggregate and monitor a bunch of power related statistics."""
     def __init__(self):
         self._start_uptime_secs = kernel_trace.KernelTrace.uptime_secs()
-        self._astats = [USBSuspendStats(),
-                        GPUFreqStats(incremental=False),
-                        CPUPackageStats()]
+        self._astats = [USBSuspendStats(), GPUFreqStats(incremental=False)]
         self._astats.extend(get_avaliable_cpu_stats())
         if os.path.isdir(DevFreqStats._DIR):
             self._astats.extend([DevFreqStats(f) for f in \
