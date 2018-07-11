@@ -1,28 +1,32 @@
-# Android presubmit code locations
+# provision_CheetsUpdate
 
-## Uprevs
+## Running the autotest locally
 
-The files here are copied from Android tree, for example
-https://googleplex-android.googlesource.com/platform/tools/vendor/google_prebuilts/arc/+/master/push_to_device.py
-
-There are several other prebuilds that needs to be maintained too.
-
-## Testing your changes
-
-In order to test your changes, run the test locally.  Copy push_to_device.py
-from Android and obtain prebuilt and run:
+In order to test your changes, run the autotest locally with:
 
 ```shell
-$ ./push_to_device.py --use-prebuilt-file ~/cheets_arm-img-4801564.zip --simg2img /usr/bin/simg2img --mksquashfs-path ./mksquashfs IP --loglevel DEBUG
+(chroot) $ test_that IP provision_CheetsUpdate --args='value=git_nyc-mr1-arc/cheets_arm-user/4885137' -b kevin
 ```
 
-Or run the autotest with:
+## Running push\_to\_device manually
+
+Go to [Android Build Status Dashboard](http://go/ab), select the target build,
+download push\_to\_device.zip and the prebuilt image (e.g. cheets_arm-img-4885137.zip)
+from the Artifacts tab.
+
+![Download push_to_device.zip from go/ab](https://screenshot.googleplex.com/GBajT9u1bis.png)
 
 ```shell
-(chroot) $ test_that IP provision_CheetsUpdate --args='value=git_nyc-mr1-arc/cheets_arm-user/4801564' -b kevin
+$ unzip push_to_device.zip -d ./ptd
+$ python3 ./ptd/push_to_device.py --use-prebuilt-file ./cheets_arm-img-4885137.zip \
+--simg2img /usr/bin/simg2img --mksquashfs-path ./ptd/bin/mksquashfs \
+--unsquashfs-path ./ptd/bin/unsquashfs --shift-uid-py-path ./ptd/shift_uid.py IP --loglevel DEBUG
 ```
 
-## Updating
+Warning: If the command fails, check run\_push\_to\_device method in
+[provision_CheetsUpdate.py](https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/server/site_tests/provision_CheetsUpdate/provision_CheetsUpdate.py) for required params.
+
+## Updating the autotest
 
 After you submit your changes, [Chrome OS lab deputy will push it to
 prod](https://sites.google.com/a/google.com/chromeos/for-team-members/infrastructure/chromeos-admin/push-to-prod).
