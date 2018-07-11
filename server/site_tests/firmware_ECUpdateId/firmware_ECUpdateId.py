@@ -40,7 +40,8 @@ class firmware_ECUpdateId(FirmwareTest):
         # Do it before restore the firmware.
         super(firmware_ECUpdateId, self).cleanup()
         try:
-            self.restore_firmware()
+            if self.is_firmware_saved():
+                self.restore_firmware()
         except Exception as e:
             logging.error("Caught exception: %s", str(e))
 
