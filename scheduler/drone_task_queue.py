@@ -54,6 +54,8 @@ class DroneTaskQueue(object):
                     'through get_results.' % self.results)
         for drone in drones:
             if not drone.get_calls():
+                logging.debug("Drone %s has no work, skipping. crbug.com/853861"
+                              , drone)
                 continue
             metric_fields = {
                 'drone_hostname': drone.hostname,
@@ -62,6 +64,7 @@ class DroneTaskQueue(object):
             drone_reachable = True
             try:
                 drone_results = drone.execute_queued_calls()
+                logging.debug("Drone %s scheduled. crbug.com/853861", drone)
             except IOError:
                 drone_reachable = False
                 logging.error(
