@@ -319,7 +319,7 @@ class security_SandboxedServices(test.test):
             # If the process is not running as the correct group.
             if process.egroup != baseline[exe]['egroup']:
                 errors.append('bad group: wanted "%s" but got "%s"' %
-                              baseline[exe]['egroup'], process.egroup)
+                              (baseline[exe]['egroup'], process.egroup))
 
             # Check the various sandbox settings.
             if process.pidns == init_process.pidns:
