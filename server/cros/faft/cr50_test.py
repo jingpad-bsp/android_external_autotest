@@ -323,8 +323,7 @@ class Cr50Test(FirmwareTest):
             if not self.can_set_ccd_level:
                 raise error.TestError("CCD state has changed, but we can't "
                         "restore it")
-            self.servo.set_nocheck('cr50_testlab', 'open')
-            self.cr50.set_ccd_level('open')
+            self.fast_open(True)
             self.cr50.set_caps(self.original_ccd_settings)
 
         # First try using testlab open to open the device
@@ -623,3 +622,22 @@ class Cr50Test(FirmwareTest):
             raise error.TestFail('ccd open: %s' % stdout)
         else:
             logging.info('Opened Cr50')
+
+
+    def fast_open(self, enable_testlab=False):
+        """Try to use testlab open. If that fails, do regular ap open.
+
+        Args:
+            enable_testlab: If True, enable testlab mode after cr50 is open.
+        """
+        # Try to use testlab open first, so we don't have to wait for the
+        # physical presence check.
+        self.cr50.send_command('ccd testlab open')
+        if self.cr50.get_ccd_level() == 'open':
+            return
+
+        self.switcher.reboot_to_mode(to_mode='dev')
+        self.ccd_open_from_ap()
+        self.switcher.reboot_to_mode(to_mode='normal')
+        if enable_testlab:
+            self.cr50.set_ccd_testlab('on')
