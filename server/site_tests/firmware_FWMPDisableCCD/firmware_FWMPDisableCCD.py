@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
@@ -18,6 +17,7 @@ class firmware_FWMPDisableCCD(Cr50Test):
 
     FWMP_DEV_DISABLE_CCD_UNLOCK = (1 << 6)
     GSCTOOL_ERR = 'Error: rv 7, response 7'
+    PASSWORD = 'Password'
 
     def initialize(self, host, cmdline_args, full_args):
         """Initialize servo check if cr50 exists"""
@@ -30,60 +30,55 @@ class firmware_FWMPDisableCCD(Cr50Test):
         self.test_ccd_unlock = (hasattr(self, 'cr50') and
             self.cr50.has_command('ccdstate') and not self.ccd_lockout)
 
-        logging.info('%sTesting CCD Unlock', '' if self.test_ccd_unlock else
-            'Not ')
+        logging.info('%sTesting CCD', '' if self.test_ccd_unlock else 'Not')
+        if self.test_ccd_unlock:
+            self.fast_open(enable_testlab=True)
 
 
-    def try_ccd_unlock(self, fwmp_disabled_unlock):
-        """Try unlocking cr50 using gsctool
+    def try_setting_password(self, fwmp_disabled_ccd):
+        """Try setting the password. FWMP should block this if set"""
+        # Open the console and reset ccd, so we can set the password.
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
+        try:
+            self.set_ccd_password(self.PASSWORD)
+            if fwmp_disabled_ccd:
+                raise error.TestFail('Set password while FWMP disabled ccd')
+        except error.TestFail, e:
+            logging.info(e)
+            if fwmp_disabled_ccd and 'set_password failed' in str(e):
+                logging.info('Successfully blocked setting password')
+            else:
+                raise
+        # Make sure the password is cleared
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
 
-        The FWMP flags may disable ccd. If they do, unlocking or opening CCD
-        should fail.
 
-        Unlocking has a lot of extra restrictions using the cr50 console, so
-        run it using tpm vendor commands.
+    def try_ccd_open(self, fwmp_disabled_ccd):
+        """Try opening cr50 from the AP
 
-        @param fwmp_disabled_unlock: True if the unlock process should fail
+        The FWMP flags may disable ccd. If it does, opening cr50 should fail.
+
+        @param fwmp_disabled_ccd: True if open should fail
         """
+        # Make sure the password is cleared, ccd is locked, and the device is
+        # in dev mode, so the only thing that could interfere with open is the
+        # FWMP.
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
         self.cr50.send_command('ccd lock')
-
-        result = self.host.run('gsctool -U -a',
-                ignore_status=fwmp_disabled_unlock)
-
-        if fwmp_disabled_unlock and result.stderr.strip() != self.GSCTOOL_ERR:
-            raise error.TestFail('Unexpected gsctool response %r' % result)
-
-        state = self.cr50.get_ccd_level()
-        expected_state = 'lock' if fwmp_disabled_unlock else 'unlock'
-        if state != expected_state:
-            raise error.TestFail('Unexpected ccd state after unlock. expected '
-                    '%s got %s' % (expected_state, state))
-
-
-    def try_ccd_open(self, fwmp_disabled_unlock):
-        """Try opening cr50 using the console
-
-        The FWMP flags may disable ccd. If they do, unlocking or opening CCD
-        should fail.
-
-        @param fwmp_disabled_unlock: True if open should fail
-        """
-        self.cr50.send_command('ccd lock')
-        rv = self.cr50.send_command_get_output('ccd open',
-                ['.*Console unlock(.*) allowed.*>'])[0]
-        logging.info(rv)
-        # The regex matches the 'not' from console unlocked allowed. If we
-        # didn't find the not, that means the console is open. If we found
-        # console unlock wasn't allowed, that means the console is not open.
-        open_allowed = not rv[1]
-        if fwmp_disabled_unlock == open_allowed:
-            state = 'opened' if open_allowed else 'closed'
-            expected_state = 'closed' if fwmp_disabled_unlock else 'opened'
-            raise error.TestFail('CCD %sed when it should be %s' % (state,
-                    expected_state))
-
-        # Wait long enough for ccd open to timeout
-        time.sleep(10)
+        if 'dev_mode' not in self.cr50.get_ccd_info()['TPM']:
+            self.switcher.reboot_to_mode(to_mode='dev')
+        try:
+            self.ccd_open_from_ap()
+            if fwmp_disabled_ccd:
+                raise error.TestFail('FWMP failed to prevent open')
+        except error.TestFail, e:
+            logging.info(e)
+            raise
+        if (self.cr50.get_ccd_level() == 'open') == fwmp_disabled_ccd:
+            raise error.TestFail('Unexpected Open response')
 
 
     def cr50_check_lock_control(self, flags):
@@ -96,20 +91,26 @@ class firmware_FWMPDisableCCD(Cr50Test):
 
         @param flags: A string with the FWMP settings.
         """
+        fwmp_disabled_ccd = not not (self.FWMP_DEV_DISABLE_CCD_UNLOCK &
+                               int(flags, 16))
+
+        if (('fwmp_lock' in self.cr50.get_ccd_info()['TPM']) !=
+            fwmp_disabled_ccd):
+            raise error.TestFail('Unexpected fwmp state with flags %x' % flags)
+
         if not self.test_ccd_unlock:
             return
 
-        fwmp_disabled_unlock = (self.FWMP_DEV_DISABLE_CCD_UNLOCK &
-                               int(flags, 16))
+        logging.info('Flags are set to %s ccd is%s permitted', flags,
+                     ' not' if fwmp_disabled_ccd else '')
 
-        logging.info('Flags are set to %s ccd level change is %s', flags,
-                     'disabled' if fwmp_disabled_unlock else 'enabled')
+        self.try_setting_password(fwmp_disabled_ccd)
+        self.try_ccd_open(fwmp_disabled_ccd)
 
-        # The ccd privilege level can be changed to unlock or open. Make sure
-        # that the fwmp setting affects both the same.
-        self.try_ccd_unlock(fwmp_disabled_unlock)
-        self.try_ccd_open(fwmp_disabled_unlock)
-
+        # Clear the password and relock the console
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
+        self.cr50.send_command('ccd lock')
 
 
     def check_fwmp(self, flags, clear_tpm_owner):
