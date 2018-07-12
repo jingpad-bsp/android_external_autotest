@@ -39,13 +39,12 @@ class graphics_Idle_P(graphics_utils.GraphicsTest):
         if arc_mode:
             self._test_failure_report_enable = False
 
-        # We use kiosk mode to make sure Chrome is idle.
-        self.add_failures('Graphics_Idle')
+        self.add_failures('graphics_Idle')
         with chrome.Chrome(
-                logged_in=False, extra_browser_args=['--kiosk'],
+                logged_in=True,
                 arc_mode=arc_mode):
             # Try to protect against runaway previous tests.
-            if not utils.wait_for_idle_cpu(20.0, 0.1):
+            if not utils.wait_for_idle_cpu(60.0, 0.1):
                 logging.warning('Could not get idle CPU before running tests.')
             self._gpu_type = utils.get_gpu_family()
             self._cpu_type = utils.get_cpu_soc_family()
@@ -61,7 +60,7 @@ class graphics_Idle_P(graphics_utils.GraphicsTest):
             errors += self.verify_short_blanking()
             if errors:
                 raise error.TestFail('Failed: %s' % errors)
-        self.remove_failures('Graphics_Idle')
+        self.remove_failures('graphics_Idle')
 
     def get_valid_path(self, paths):
         for path in paths:
