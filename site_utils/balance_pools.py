@@ -54,6 +54,8 @@ DUTs, if it's necessary to achieve the target COUNT.
 
 
 import argparse
+import os
+import re
 import sys
 import time
 
@@ -78,6 +80,17 @@ _MAX_BROKEN_DEFAULT_RATIO = 3.0 / 8.0
 
 _ALL_CRITICAL_POOLS = 'all_critical_pools'
 _SPARE_DEFAULT = lab_inventory.SPARE_POOL
+
+
+# _VALID_POOL_PATTERN - Regular expression matching pool names that will
+# be accepted on the command line.
+#
+# Note: This pattern was selected merely to recognize all existing pool
+# names; there's no underlying technical restriction motivating this
+# pattern.  No reasonable request to add more special characters to the
+# allowed set should be refused.
+
+_VALID_POOL_PATTERN = re.compile('^[a-zA-z0-9_\-]+$')
 
 
 def _log_message(message, *args):
@@ -502,7 +515,7 @@ def _parse_command(argv):
 
     """
     parser = argparse.ArgumentParser(
-            prog=argv[0],
+            prog=os.path.basename(argv[0]),
             description='Balance pool shortages from spares on reserve')
 
     parser.add_argument(
@@ -582,6 +595,9 @@ def _parse_command(argv):
         arguments.spare != _SPARE_DEFAULT):
         parser.error('Cannot specify --spare pool to be %s when balancing all '
                      'critical pools.' % _SPARE_DEFAULT)
+    for p in (arguments.spare, arguments.pool):
+        if not _VALID_POOL_PATTERN.match(p):
+            parser.error('Invalid pool name: %s' % p)
     return arguments
 
 
