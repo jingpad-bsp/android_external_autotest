@@ -566,12 +566,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self._servo.get('cr50_ccd_level').lower()
 
 
-    def set_ccd_level(self, level):
+    def set_ccd_level(self, level, password=''):
         """Set the Cr50 CCD privilege level.
 
         Args:
             level: a string of the ccd privilege level: 'open', 'lock', or
                    'unlock'.
+            password: send the ccd command with password. This will still
+                    require the same physical presence.
 
         Raises:
             TestFail if the level couldn't be set
@@ -606,13 +608,13 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
         # Start the unlock process.
         try:
-            cmd = 'ccd %s' % level
+            cmd = 'ccd %s%s' % (level, (' ' + password) if password else '')
             rv = self.send_command_get_output(cmd, [cmd + '.*>'])[0]
         finally:
             self._servo.set('cr50_uart_timeout', original_timeout)
         logging.info(rv)
         if 'Access Denied' in rv:
-            raise error.TestFail("'ccd %s' %s" % (level, rv))
+            raise error.TestFail("%r %s" % (cmd, rv))
 
         # Press the power button once a second, if we need physical presence.
         if req_pp:
