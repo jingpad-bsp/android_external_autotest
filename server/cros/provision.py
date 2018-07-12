@@ -23,7 +23,7 @@ FW_RO_VERSION_PREFIX = Key.FIRMWARE_RO_VERSION
 # So far the word cheets is only way to distinguish between ARC and Android
 # build.
 _ANDROID_BUILD_REGEX = r'.+/(?!cheets).+/P?([0-9]+|LATEST)'
-_CROS_ANDROID_BUILD_REGEX = r'.+/(?=cheets).+/P?([0-9]+|LATEST)'
+_CROS_ANDROID_BUILD_REGEX = r'.+/cheets.*/P?([0-9]+|LATEST)'
 
 # Special label to skip provision and run reset instead.
 SKIP_PROVISION = 'skip_provision'
