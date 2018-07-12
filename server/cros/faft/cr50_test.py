@@ -6,6 +6,7 @@ import logging
 import os
 import pprint
 import StringIO
+import subprocess
 import time
 
 from autotest_lib.client.bin import utils
@@ -318,6 +319,13 @@ class Cr50Test(FirmwareTest):
 
     def _reset_ccd_settings(self):
         """Reset the ccd lock and capability states."""
+        # Clear the password if one was set.
+        if self.cr50.get_ccd_info()['Password'] != 'none':
+            self.servo.set_nocheck('cr50_testlab', 'open')
+            self.cr50.send_command('ccd reset')
+            if self.cr50.get_ccd_info()['Password'] != 'none':
+                raise error.TestFail('Could not clear password')
+
         current_settings = self.cr50.get_cap_dict()
         if self.original_ccd_settings != current_settings:
             if not self.can_set_ccd_level:
@@ -641,3 +649,62 @@ class Cr50Test(FirmwareTest):
         self.switcher.reboot_to_mode(to_mode='normal')
         if enable_testlab:
             self.cr50.set_ccd_testlab('on')
+
+
+    def run_gsctool_cmd_with_password(self, password, cmd, name):
+        """Run a gsctool command and input the password"""
+        set_pwd_cmd = utils.sh_escape(cmd)
+        full_ssh_command = '%s "%s"' % (self.host.ssh_command(options='-tt'),
+            set_pwd_cmd)
+        stdout = StringIO.StringIO()
+        # Start running the gsctool Command in the background.
+        gsctool_job = utils.BgJob(full_ssh_command,
+                                  nickname='%s_with_password' % name,
+                                  stdout_tee=stdout,
+                                  stderr_tee=utils.TEE_TO_LOGS,
+                                  stdin=subprocess.PIPE)
+        if gsctool_job == None:
+            raise error.TestFail('could not start gsctool command %r', cmd)
+
+        try:
+            # Wait for enter prompt
+            gsctool_job.process_output()
+            logging.info(stdout.getvalue().strip())
+            # Enter the password
+            gsctool_job.sp.stdin.write(password + '\n')
+
+            # Wait for re-enter prompt
+            gsctool_job.process_output()
+            logging.info(stdout.getvalue().strip())
+            # Re-enter the password
+            gsctool_job.sp.stdin.write(password + '\n')
+            time.sleep(self.cr50.CONSERVATIVE_CCD_WAIT)
+            gsctool_job.process_output()
+        finally:
+            exit_status = utils.nuke_subprocess(gsctool_job.sp)
+            output = stdout.getvalue().strip()
+            logging.info('%s stdout: %s', name, output)
+            logging.info('%s exit status: %s', name, exit_status)
+            if exit_status:
+                raise error.TestFail('gsctool %s failed with password %r: %s '
+                        '%s' % (name, password, exit_status, output))
+
+
+    def set_ccd_password(self, password):
+        """Set the ccd password"""
+        # If for some reason the test sets a password and is interrupted before
+        # we can clear it, we want testlab mode to be enabled, so it's possible
+        # to clear the password without knowing it.
+        if not self.cr50.testlab_is_on():
+            raise error.TestError('Will not set password unless testlab mode '
+                                  'is enabled.')
+        self.run_gsctool_cmd_with_password(
+                password, 'gsctool -a -P', 'set_password')
+
+
+    def ccd_unlock_from_ap(self, password=None):
+        """Unlock cr50"""
+        if not password:
+            self.host.run('gsctool -a -U')
+            return
+        self.run_gsctool_cmd_with_password(password, 'gsctool -a -U', 'unlock')
