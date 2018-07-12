@@ -43,6 +43,7 @@ SuiteSpecs = collections.namedtuple(
 SuiteHandlerSpecs = collections.namedtuple(
         'SuiteHandlerSpecs',
         [
+                'wait',
                 'timeout_mins',
                 'test_retry',
                 'max_retries',
@@ -86,7 +87,7 @@ class SuiteHandler(object):
     """
 
     def __init__(self, specs):
-        self._wait = True
+        self._wait = specs.wait
         self._timeout_mins = specs.timeout_mins
         self._provision_num_required = specs.provision_num_required
         self._test_retry = specs.test_retry
