@@ -54,13 +54,13 @@ SuiteHandlerSpecs = collections.namedtuple(
 TestHandlerSpecs= collections.namedtuple(
         'TestHandlerSpecs',
         [
-                'test_specs',
+                'test_spec',
                 'remaining_retries',
                 'previous_retried_ids',
         ])
 
-TestSpecs= collections.namedtuple(
-        'TestSpecs',
+TestSpec= collections.namedtuple(
+        'TestSpec',
         [
                 'test',
                 'priority',
@@ -199,7 +199,7 @@ class SuiteHandler(object):
             if (swarming_lib.get_task_final_state(t) ==
                 swarming_lib.TASK_COMPLETED_SUCCESS):
                 dut_name = self.get_test_by_task_id(
-                        t['task_id']).test_specs.dut_name
+                        t['task_id']).test_spec.dut_name
                 if dut_name:
                     self.successfully_provisioned_duts.add(dut_name)
 
@@ -260,7 +260,7 @@ class Suite(object):
         self._ds = None
 
         self.control_file = ''
-        self.tests_specs = []
+        self.test_specs = []
         self.builds = specs.builds
         self.test_source_build = specs.test_source_build
         self.suite_name = specs.suite_name
@@ -321,10 +321,10 @@ class Suite(object):
         keyvals = self._create_suite_keyvals()
         available_bots = self._get_available_bots()
         tests = self._find_tests(available_bots_num=len(available_bots))
-        self.tests_specs = self._get_test_specs(tests, available_bots, keyvals)
+        self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
     def _get_test_specs(self, tests, available_bots, keyvals):
-        tests_specs = []
+        test_specs = []
         for idx, test in enumerate(tests):
             if idx < len(available_bots):
                 bot_id = available_bots[idx]['bot_id']
@@ -333,7 +333,7 @@ class Suite(object):
             else:
                 bot_id = ''
                 dut_name = ''
-            tests_specs.append(TestSpecs(
+            test_specs.append(TestSpec(
                     test=test,
                     priority=self.priority,
                     board=self.board,
@@ -347,7 +347,7 @@ class Suite(object):
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
 
-        return tests_specs
+        return test_specs
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
