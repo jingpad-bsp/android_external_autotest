@@ -7,7 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "allenwebb"
 NAME = "firmware_Cr50PinWeaverServer"
 PURPOSE = "Validate PinWeaver functionality on Cr50"
-ATTRIBUTES = "suite:experimental"
+ATTRIBUTES = "suite:experimental, suite:faft_cr50_pvt, suite:faft_cr50_prepvt"
 TIME = "SHORT"
 TEST_TYPE = "server"
 
