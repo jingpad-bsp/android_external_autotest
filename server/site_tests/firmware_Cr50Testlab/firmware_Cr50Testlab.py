@@ -80,7 +80,7 @@ class firmware_Cr50Testlab(Cr50Test):
         if self.cr50.testlab_is_on():
             self.try_testlab('open')
         else:
-            self.cr50.set_ccd_level('open')
+            self.ccd_open_from_ap()
         self.try_testlab('on')
         self.check_reset_count()
 
