@@ -49,12 +49,12 @@ def _get_suite_tasks_by_suite_ids(suite_task_ids):
     return suite_tasks
 
 
-def _get_suite_tasks_by_specs(suite_specs):
-    """Return a list of tasks with given suite_specs."""
+def _get_suite_tasks_by_specs(suite_spec):
+    """Return a list of tasks with given suite_spec."""
     tags = {'pool': swarming_lib.SKYLAB_SUITE_POOL,
-            'board': suite_specs.board,
-            'build': suite_specs.test_source_build,
-            'suite': suite_specs.suite_name}
+            'board': suite_spec.board,
+            'build': suite_spec.test_source_build,
+            'suite': suite_spec.suite_name}
     return swarming_lib.query_task_by_tags(tags)
 
 
@@ -64,15 +64,15 @@ def _abort_suite(options):
     This method aborts the suite job and its children jobs, including
     'RUNNING' jobs.
     """
-    suite_specs = suite_parser.parse_suite_specs(options)
+    suite_spec = suite_parser.parse_suite_spec(options)
     if options.suite_task_ids:
         parent_tasks = _get_suite_tasks_by_suite_ids(options.suite_task_ids)
     else:
-        parent_tasks = _get_suite_tasks_by_specs(suite_specs)
+        parent_tasks = _get_suite_tasks_by_specs(suite_spec)
 
     _abort_suite_tasks(parent_tasks, options.abort_limit)
-    logging.info('Suite %s/%s has been aborted.', suite_specs.test_source_build,
-                 suite_specs.suite_name)
+    logging.info('Suite %s/%s has been aborted.', suite_spec.test_source_build,
+                 suite_spec.suite_name)
 
 
 def parse_args():
