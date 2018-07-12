@@ -31,6 +31,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     provides many interfaces to set and get its behavior via console commands.
     This class is to abstract these interfaces.
     """
+    OPEN = 'open'
+    UNLOCK = 'unlock'
+    LOCK = 'lock'
     # The amount of time you need to show physical presence.
     PP_SHORT = 15
     PP_LONG = 300
@@ -71,6 +74,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     REBOOT_DELAY_WITH_CCD = 60
     REBOOT_DELAY_WITH_FLEX = 3
     ON_STRINGS = ['enable', 'enabled', 'on']
+    CONSERVATIVE_CCD_WAIT = 10
+    CCD_SHORT_PRESSES = 5
 
 
     def __init__(self, servo):
@@ -127,7 +132,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             value.
         """
         info = {}
-        rv = self.send_command_get_output('ccd', ["ccd.*>"])[0]
+        original_timeout = float(self._servo.get('cr50_uart_timeout'))
+        # Change the console timeout to 10s, it may take longer than 3s to read
+        # ccd info
+        self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
+        try:
+            rv = self.send_command_get_output('ccd', ["ccd.*>"])[0]
+        finally:
+            self._servo.set_nocheck('cr50_uart_timeout', original_timeout)
         for line in rv.splitlines():
             # CCD information is separated with an :
             #   State: Opened
@@ -563,9 +575,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_ccd_level(self):
         """Returns the current ccd privilege level"""
-        # TODO(mruthven): delete the part removing the trailing 'ed' once
-        # servo is up to date in the lab
-        return self._servo.get('cr50_ccd_level').lower().rstrip('ed')
+        return self._servo.get('cr50_ccd_level').lower()
 
 
     def set_ccd_level(self, level):
@@ -602,8 +612,16 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError("Wont change privilege level without "
                 "physical presence or testlab mode enabled")
 
+        original_timeout = float(self._servo.get('cr50_uart_timeout'))
+        # Change the console timeout to CONSERVATIVE_CCD_WAIT, running 'ccd' may
+        # take more than 3 seconds.
+        self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
         # Start the unlock process.
-        rv = self.send_command_get_output('ccd %s' % level, ['ccd.*>'])[0]
+        try:
+            cmd = 'ccd %s' % level
+            rv = self.send_command_get_output(cmd, [cmd + '.*>'])[0]
+        finally:
+            self._servo.set('cr50_uart_timeout', original_timeout)
         logging.info(rv)
         if 'Access Denied' in rv:
             raise error.TestFail("'ccd %s' %s" % (level, rv))
