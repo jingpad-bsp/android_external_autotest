@@ -22,6 +22,8 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
 
     SLEEP_DELAY = 20
     SHORT_DELAY = 2
+    PASSWORD = 'Password'
+    PLT_RST = 1 << 6
 
     def initialize(self, host, cmdline_args, full_args):
         """Initialize the test"""
@@ -46,12 +48,22 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             raise error.TestNAError('Plug in servo v4 type c cable into ccd '
                     'port')
 
+        # Asserting warm_reset will hold the AP in reset if the system uses
+        # SYS_RST instead of PLT_RST. If the system uses PLT_RST, we have to
+        # hold the EC in reset to guarantee the device won't turn on during
+        # open.
+        # warm_reset doesn't interfere with rdd, so it's best to use that when
+        # possible.
+        self.reset_signal = ('cold_reset' if self.cr50.get_board_properties() &
+                self.PLT_RST else 'warm_reset')
+        logging.info('Using %r for reset', self.reset_signal)
+
         self.changed_dut_state = True
-        self.hold_ec_in_reset = True
+        self.assert_reset = True
         if not self.reset_device_get_deep_sleep_count(True):
             # Some devices can't tell the AP is off when the EC is off. Try
             # deep sleep with just the AP off.
-            self.hold_ec_in_reset = False
+            self.assert_reset = False
             # If deep sleep doesn't work at all, we can't run the test.
             if not self.reset_device_get_deep_sleep_count(True):
                 raise error.TestNAError('Skipping test on device without deep '
@@ -72,8 +84,15 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             # With ccd accessible and deep sleep working while the EC is reset,
             # the test can fully verify ccd open.
             self.ccd_func = self.cr50.set_ccd_level
-            logging.info('Deep sleep works with the EC in reset. Testing full '
-                    'ccd open')
+            logging.info('Deep sleep works with the device in reset. Testing '
+                    'full ccd open')
+            self.fast_open(enable_testlab=True)
+            # make sure password is cleared.
+            self.cr50.send_command('ccd reset')
+            self.cr50.get_ccd_info()
+            # You can only open cr50 from the console if a password is set. Set
+            # a password, so we can use it to open cr50 while the AP is off.
+            self.set_ccd_password(self.PASSWORD)
 
 
     def cleanup(self):
@@ -116,11 +135,11 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
     def turn_device(self, state):
         """Turn the device off or on.
 
-        If we are testing ccd open fully, it will also assert EC reset so power
-        button presses wont turn on the AP
+        If we are testing ccd open fully, it will also assert device reset so
+        power button presses wont turn on the AP
         """
-        # Make sure to release the EC from reset before trying anything
-        self.servo.set('cold_reset', 'off')
+        # Make sure to release the device from reset before trying anything
+        self.servo.set(self.reset_signal, 'off')
 
         time.sleep(self.SHORT_DELAY)
 
@@ -130,9 +149,11 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             time.sleep(self.SHORT_DELAY)
 
         # Hold the EC in reset or release it from reset based on state
-        if self.hold_ec_in_reset:
-            # cold reset is the inverse of device state, so convert the state
-            self.servo.set('cold_reset', 'on' if state == 'off' else 'off')
+        if self.assert_reset:
+            # The reset control is the inverse of device state, so convert the
+            # state self.servo.set(reset_signal, 'on' if state == 'off' else
+            # 'off')
+            self.servo.set(self.reset_signal, 'on' if state == 'off' else 'off')
             time.sleep(self.SHORT_DELAY)
 
         # Turn on the AP
@@ -179,8 +200,17 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
         return self.cr50.get_deep_sleep_count() - start_count
 
 
-    def send_ccd_cmd(self, state):
-        """Send the cr50 command ccd command. Make sure access is denied"""
+    def send_ccd_cmd(self, state, password):
+        """Send the cr50 command ccd command. Make sure access is denied
+
+        Args:
+            state: desired ccd state: open, unlock, or lock
+            password: ignored. Just used to make this consistent with
+                    set_ccd_level
+
+        Raises:
+            TestFail if ccd isn't locked out
+        """
         logging.info('running lockout check %s', state)
         rv = self.cr50.send_command_get_output('ccd %s' % state , ['ccd.*>'])[0]
         logging.info(rv)
@@ -191,14 +221,14 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
 
     def try_ccd_open(self, cr50_reset):
         """Try 'ccd open' and make sure the console doesn't hang"""
-        self.ccd_func('lock')
+        self.ccd_func('lock', self.PASSWORD)
         try:
             self.turn_device('off')
             if cr50_reset:
                 if not self.deep_sleep_reset_get_count():
                     raise error.TestFail('Did not detect a cr50 reset')
             # Verify ccd open
-            self.ccd_func('open')
+            self.ccd_func('open', self.PASSWORD)
         finally:
             self.restore_dut()
 
