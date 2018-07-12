@@ -20,7 +20,7 @@ from autotest_lib.server.cros import tradefed_test
 
 # Maximum default time allowed for each individual GTS module.
 _GTS_TIMEOUT_SECONDS = 3600
-_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-5.1_r4-4697968.zip'
+_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-6.0_r1-4868992.zip'
 
 
 class cheets_GTS(tradefed_test.TradefedTest):
