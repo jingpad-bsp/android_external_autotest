@@ -1140,6 +1140,7 @@ def get_arch_userspace(run_function=run):
     """
     archs = {
         'arm': 'ELF 32-bit.*, ARM,',
+        'arm64': 'ELF 64-bit.*, ARM aarch64,',
         'i386': 'ELF 32-bit.*, Intel 80386,',
         'x86_64': 'ELF 64-bit.*, x86-64,',
     }
