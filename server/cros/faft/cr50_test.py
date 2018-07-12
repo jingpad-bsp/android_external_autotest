@@ -644,7 +644,8 @@ class Cr50Test(FirmwareTest):
         if self.cr50.get_ccd_level() == 'open':
             return
 
-        self.switcher.reboot_to_mode(to_mode='dev')
+        if 'dev_mode' not in self.cr50.get_ccd_info()['TPM']:
+            self.switcher.reboot_to_mode(to_mode='dev')
         self.ccd_open_from_ap()
         self.switcher.reboot_to_mode(to_mode='normal')
         if enable_testlab:
