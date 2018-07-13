@@ -652,8 +652,15 @@ class Cr50Test(FirmwareTest):
             self.cr50.set_ccd_testlab('on')
 
 
-    def run_gsctool_cmd_with_password(self, password, cmd, name):
-        """Run a gsctool command and input the password"""
+    def run_gsctool_cmd_with_password(self, password, cmd, name, expect_error):
+        """Run a gsctool command and input the password
+
+        Args:
+            password: The cr50 password string
+            cmd: The gsctool command
+            name: The name to give the job
+            expect_error: True if the command should fail
+        """
         set_pwd_cmd = utils.sh_escape(cmd)
         full_ssh_command = '%s "%s"' % (self.host.ssh_command(options='-tt'),
             set_pwd_cmd)
@@ -687,11 +694,18 @@ class Cr50Test(FirmwareTest):
             logging.info('%s stdout: %s', name, output)
             logging.info('%s exit status: %s', name, exit_status)
             if exit_status:
-                raise error.TestFail('gsctool %s failed with password %r: %s '
-                        '%s' % (name, password, exit_status, output))
+                message = ('gsctool %s failed using %r: %s %s' %
+                           (name, password, exit_status, output))
+                if expect_error:
+                    logging.info(message)
+                else:
+                    raise error.TestFail(message)
+            elif expect_error:
+                error.TestFail('%s with %r did not fail when expected' %
+                               (name, password))
 
 
-    def set_ccd_password(self, password):
+    def set_ccd_password(self, password, expect_error=False):
         """Set the ccd password"""
         # If for some reason the test sets a password and is interrupted before
         # we can clear it, we want testlab mode to be enabled, so it's possible
@@ -700,12 +714,13 @@ class Cr50Test(FirmwareTest):
             raise error.TestError('Will not set password unless testlab mode '
                                   'is enabled.')
         self.run_gsctool_cmd_with_password(
-                password, 'gsctool -a -P', 'set_password')
+                password, 'gsctool -a -P', 'set_password', expect_error)
 
 
-    def ccd_unlock_from_ap(self, password=None):
+    def ccd_unlock_from_ap(self, password=None, expect_error=False):
         """Unlock cr50"""
         if not password:
             self.host.run('gsctool -a -U')
             return
-        self.run_gsctool_cmd_with_password(password, 'gsctool -a -U', 'unlock')
+        self.run_gsctool_cmd_with_password(
+                password, 'gsctool -a -U', 'unlock', expect_error)
