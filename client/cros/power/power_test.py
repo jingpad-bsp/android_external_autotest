@@ -1,7 +1,6 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging
 import time
 
 from autotest_lib.client.bin import test
@@ -30,8 +29,8 @@ class power_Test(test.test):
         @var _psr: power_utils.DisplayPanelSelfRefresh object to monitor PSR.
         @var _services: service_stopper.ServiceStopper object.
         @var _start_time: float of time in seconds since Epoch test started.
-        @var _stats = power_status.StatoMatic object.
-        @var _tlog: power_status.TempLogger ojbect to monitor temperatures.
+        @var _stats: power_status.StatoMatic object.
+        @var _tlog: power_status.TempLogger object to monitor temperatures.
         """
         super(power_Test, self).initialize()
         self.backlight = power_utils.Backlight()
@@ -86,7 +85,7 @@ class power_Test(test.test):
         """Checkpoint measurements.
 
         @param name: string name of measurement being checkpointed.
-        @start_time: float of time in seconds since Epoch that
+        @param start_time: float of time in seconds since Epoch that
                 measurements being checkpointed began.
         """
         if not start_time:
@@ -160,6 +159,7 @@ class power_Test(test.test):
         pdash.upload()
 
     def postprocess_iteration(self):
+        """Write keyval and send data to dashboard."""
         power_telemetry_utils.end_measurement()
         super(power_Test, self).postprocess_iteration()
         self._publish_dashboard()
