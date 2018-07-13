@@ -48,7 +48,7 @@ class platform_StageAndRecover(test.test):
         """
         # Stage the image on dev server
         image_path = self.host.stage_image_for_servo(
-            self.host.get_release_builder_path(),
+            self.release_builder_path,
             artifact=artifact)
         logging.info('%s staged at %s' % (artifact, image_path))
 
@@ -86,6 +86,7 @@ class platform_StageAndRecover(test.test):
     def run_once(self, host):
         """ Runs the test."""
         self.host = host
+        self.release_builder_path = self.host.get_release_builder_path()
 
         self.stage_copy_recover_with('recovery_image')
         self.wait_for_dut_ping_after('RECOVERY', self._RECOVERY_INSTALL_DELAY)
