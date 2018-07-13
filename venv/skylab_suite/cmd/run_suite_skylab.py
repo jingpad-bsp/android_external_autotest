@@ -39,11 +39,11 @@ def _parse_suite_handler_specs(options):
 
 def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
-    suite_specs = suite_parser.parse_suite_specs(options)
+    suite_spec = suite_parser.parse_suite_spec(options)
     if options.suite_name == PROVISION_SUITE_NAME:
-        suite_job = cros_suite.ProvisionSuite(suite_specs)
+        suite_job = cros_suite.ProvisionSuite(suite_spec)
     else:
-        suite_job = cros_suite.Suite(suite_specs)
+        suite_job = cros_suite.Suite(suite_spec)
 
     suite_job.prepare()
     suite_handler_specs = _parse_suite_handler_specs(options)
