@@ -59,8 +59,7 @@ class firmware_Cr50ConsoleCommands(Cr50Test):
         caps = self.cr50.get_cap_dict()
         if caps['GscFullConsole'] == 'Always':
             logging.info('Restricting console')
-            self.cr50.send_command('ccd testlab open')
-            self.cr50.set_ccd_level('open')
+            self.fast_open(enable_testlab=True)
             self.cr50.set_cap('GscFullConsole', 'IfOpened')
             time.sleep(self.CCD_HOOK_WAIT)
             self.cr50.set_ccd_level('lock')
