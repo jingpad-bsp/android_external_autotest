@@ -44,6 +44,7 @@ SuiteHandlerSpecs = collections.namedtuple(
         'SuiteHandlerSpecs',
         [
                 'wait',
+                'suite_id',
                 'timeout_mins',
                 'test_retry',
                 'max_retries',
@@ -93,7 +94,7 @@ class SuiteHandler(object):
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
 
-        self._suite_id = None
+        self._suite_id = specs.suite_id
         self._task_to_test_maps = {}
         self.successfully_provisioned_duts = set()
 
