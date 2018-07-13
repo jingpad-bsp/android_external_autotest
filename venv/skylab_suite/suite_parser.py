@@ -130,11 +130,11 @@ def verify_and_clean_options(options):
     return True
 
 
-def parse_suite_specs(options):
-    """Parse options to suite_specs."""
+def parse_suite_spec(options):
+    """Parse options to suite_spec."""
     suite_common = autotest.load('server.cros.dynamic_suite.suite_common')
     builds = suite_common.make_builds_from_options(options)
-    return cros_suite.SuiteSpecs(
+    return cros_suite.SuiteSpec(
             builds=builds,
             suite_name=options.suite_name,
             suite_file_name=suite_common.canonicalize_suite_name(

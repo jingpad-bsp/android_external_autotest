@@ -26,8 +26,8 @@ from lucifer import autotest
 from skylab_suite import swarming_lib
 
 
-SuiteSpecs = collections.namedtuple(
-        'SuiteSpecs',
+SuiteSpec = collections.namedtuple(
+        'SuiteSpec',
         [
                 'builds',
                 'suite_name',
@@ -252,23 +252,23 @@ class Suite(object):
     """The class for a CrOS suite."""
     EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
-    def __init__(self, specs):
+    def __init__(self, spec):
         """Initialize a suite.
 
-        @param specs: A SuiteSpecs object.
+        @param spec: A SuiteSpec object.
         """
         self._ds = None
 
         self.control_file = ''
         self.test_specs = []
-        self.builds = specs.builds
-        self.test_source_build = specs.test_source_build
-        self.suite_name = specs.suite_name
-        self.suite_file_name = specs.suite_file_name
-        self.priority = specs.priority
-        self.board = specs.board
-        self.pool = specs.pool
-        self.job_keyvals = specs.job_keyvals
+        self.builds = spec.builds
+        self.test_source_build = spec.test_source_build
+        self.suite_name = spec.suite_name
+        self.suite_file_name = spec.suite_file_name
+        self.priority = spec.priority
+        self.board = spec.board
+        self.pool = spec.pool
+        self.job_keyvals = spec.job_keyvals
 
     @property
     def ds(self):
@@ -389,9 +389,9 @@ class ProvisionSuite(Suite):
     """The class for a CrOS provision suite."""
     EXPIRATION_SECS = 3 * 60
 
-    def __init__(self, specs):
-        super(ProvisionSuite, self).__init__(specs)
-        self._num_required = specs.suite_args['num_required']
+    def __init__(self, spec):
+        super(ProvisionSuite, self).__init__(spec)
+        self._num_required = spec.suite_args['num_required']
 
     def _find_tests(self, available_bots_num=0):
         """Fetch the child tests for provision suite."""
