@@ -84,6 +84,9 @@ def make_parser():
         '--create_and_return', action='store_true',
         help='Create the child jobs of a suite, then finish immediately.')
     parser.add_argument(
+        '--suite_id', default=None,
+        help='A suite ID, wait for whose child tests to finish.')
+    parser.add_argument(
         '--test_retry', default=False, action='store_true',
         help='Enable test-level retry.')
     parser.add_argument(
