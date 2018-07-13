@@ -126,6 +126,13 @@ def _get_final_suite_states():
                     swarming_lib.TASK_COMPLETED_FAILURE,
                     run_suite_common.RETURN_CODES.ERROR,
             ),
+            # Task No_Resource means no available bots to accept the task.
+            # Deputy should check whether it's infra failure.
+            swarming_lib.TASK_NO_RESOURCE:
+            (
+                    swarming_lib.TASK_NO_RESOURCE,
+                    run_suite_common.RETURN_CODES.INFRA_FAILURE,
+            ),
             # Task expired means a task is not triggered, could be caused by
             #   1. No healthy DUTs/bots to run it.
             #   2. Expiration seconds are too low.
