@@ -23,12 +23,12 @@ from skylab_suite import suite_tracking
 PROVISION_SUITE_NAME = 'provision'
 
 
-def _parse_suite_handler_specs(options):
+def _parse_suite_handler_spec(options):
     provision_num_required = 0
     if 'num_required' in options.suite_args:
         provision_num_required = options.suite_args['num_required']
 
-    return cros_suite.SuiteHandlerSpecs(
+    return cros_suite.SuiteHandlerSpec(
             wait=not options.create_and_return,
             suite_id=options.suite_id,
             timeout_mins=options.timeout_mins,
@@ -46,8 +46,8 @@ def _run_suite(options):
         suite_job = cros_suite.Suite(suite_spec)
 
     suite_job.prepare()
-    suite_handler_specs = _parse_suite_handler_specs(options)
-    suite_handler = cros_suite.SuiteHandler(suite_handler_specs)
+    suite_handler_spec = _parse_suite_handler_spec(options)
+    suite_handler = cros_suite.SuiteHandler(suite_handler_spec)
     suite_runner.run(suite_job.test_specs,
                      suite_handler,
                      options.dry_run)
