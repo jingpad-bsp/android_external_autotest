@@ -60,7 +60,9 @@ def _get_unscheduled_test_specs(test_specs, suite_handler, all_tasks):
     not_yet_scheduled = []
     for test_spec in test_specs:
         if suite_handler.is_provision():
-            tasks = [t for t in all_tasks if t['bot_id']==test_spec.bot_id]
+            # We cannot check bot_id because pending tasks do not have it yet.
+            bot_id_tag = 'id:%s' % test_spec.bot_id
+            tasks = [t for t in all_tasks if bot_id_tag in t['tags']]
         else:
             tasks = [t for t in all_tasks if t['name']==test_spec.test.name]
 
