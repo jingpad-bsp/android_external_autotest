@@ -40,8 +40,8 @@ SuiteSpec = collections.namedtuple(
                 'job_keyvals',
         ])
 
-SuiteHandlerSpecs = collections.namedtuple(
-        'SuiteHandlerSpecs',
+SuiteHandlerSpec = collections.namedtuple(
+        'SuiteHandlerSpec',
         [
                 'wait',
                 'suite_id',
