@@ -26,18 +26,18 @@ from skylab_suite import suite_tracking
 from skylab_suite import swarming_lib
 
 
-def _abort_suite_tasks(suite_tasks, abort_limit):
+def _abort_suite_tasks(suite_tasks):
     aborted_suite_num = 0
     for pt in suite_tasks:
         logging.info('Aborting suite task %s', pt['task_id'])
         swarming_lib.abort_task(pt['task_id'])
+        if 'children_task_ids' not in pt:
+            logging.info('No child tasks for task %s', pt['task_id'])
+            continue
+
         for ct in pt['children_task_ids']:
             logging.info('Aborting task %s', ct)
             swarming_lib.abort_task(ct)
-
-        aborted_suite_num += 1
-        if aborted_suite_num >= abort_limit:
-            break
 
 
 def _get_suite_tasks_by_suite_ids(suite_task_ids):
@@ -70,7 +70,8 @@ def _abort_suite(options):
     else:
         parent_tasks = _get_suite_tasks_by_specs(suite_spec)
 
-    _abort_suite_tasks(parent_tasks, options.abort_limit)
+    _abort_suite_tasks(parent_tasks[:min(options.abort_limit,
+                                         len(parent_tasks))])
     logging.info('Suite %s/%s has been aborted.', suite_spec.test_source_build,
                  suite_spec.suite_name)
 
