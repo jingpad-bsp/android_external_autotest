@@ -103,8 +103,8 @@ def _parse_test_results(suite_handler):
         task_id = child_task['task_id']
         logging.info('Parsing task results of %s', task_id)
         test_handler_specs = suite_handler.get_test_by_task_id(task_id)
-        name = test_handler_specs.test_specs.test.name
-        dut_name = test_handler_specs.test_specs.dut_name
+        name = test_handler_specs.test_spec.test.name
+        dut_name = test_handler_specs.test_spec.dut_name
         retry_count = len(test_handler_specs.previous_retried_ids)
         all_task_ids = test_handler_specs.previous_retried_ids + [task_id]
         state = swarming_lib.get_task_final_state(child_task)
