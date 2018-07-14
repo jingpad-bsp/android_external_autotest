@@ -11,8 +11,8 @@
 
 int main(int argc, char **argv) {
   char buf[SIZE];
-  int fd_z = syscall(__NR_open, "/dev/zero", O_RDONLY);
-  int fd_n = syscall(__NR_open, "/dev/null", O_RDONLY);
+  int fd_z = syscall(__NR_openat, AT_FDCWD, "/dev/zero", O_RDONLY);
+  int fd_n = syscall(__NR_openat, AT_FDCWD, "/dev/null", O_RDONLY);
   int nr = syscall(__NR_read, fd_z, buf, SIZE);
   int nw = syscall(__NR_write, fd_n, buf, SIZE);
   syscall(__NR_close, fd_z);
