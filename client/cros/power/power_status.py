@@ -1632,6 +1632,7 @@ class CPUStatsLogger(MeasurementLogger):
         super(CPUStatsLogger, self).__init__([], seconds_period)
 
         self._stats = get_avaliable_cpu_stats()
+        self._stats.append(GPUFreqStats())
         self.domains = []
         for stat in self._stats:
             self.domains.extend([stat.name + '_' + str(state_name)
