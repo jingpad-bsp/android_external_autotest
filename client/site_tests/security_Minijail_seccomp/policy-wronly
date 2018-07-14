@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # O_WRONLY
-open: arg1 & 01
+openat: arg2 & 01
 read: 1
 close: 1
 exit: 1
