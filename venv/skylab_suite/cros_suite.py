@@ -51,15 +51,15 @@ SuiteHandlerSpec = collections.namedtuple(
                 'provision_num_required',
         ])
 
-TestHandlerSpecs= collections.namedtuple(
-        'TestHandlerSpecs',
+TestHandlerSpec = collections.namedtuple(
+        'TestHandlerSpec',
         [
                 'test_spec',
                 'remaining_retries',
                 'previous_retried_ids',
         ])
 
-TestSpec= collections.namedtuple(
+TestSpec = collections.namedtuple(
         'TestSpec',
         [
                 'test',
@@ -118,13 +118,13 @@ class SuiteHandler(object):
         """
         self._suite_id = suite_id
 
-    def add_test_by_task_id(self, task_id, test_handler_specs):
+    def add_test_by_task_id(self, task_id, test_handler_spec):
         """Record a child test and its swarming task id.
 
         @param task_id: the swarming task id of a child test.
-        @param test_handler_specs: a TestHandlerSpecs object.
+        @param test_handler_spec: a TestHandlerSpec object.
         """
-        self._task_to_test_maps[task_id] = test_handler_specs
+        self._task_to_test_maps[task_id] = test_handler_spec
 
     def get_test_by_task_id(self, task_id):
         """Get a child test by its swarming task id.

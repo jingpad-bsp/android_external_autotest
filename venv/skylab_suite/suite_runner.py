@@ -78,7 +78,7 @@ def _get_unscheduled_test_specs(test_specs, suite_handler, all_tasks):
                                 if t['task_id'] != test_task_id]
         suite_handler.add_test_by_task_id(
                 test_task_id,
-                cros_suite.TestHandlerSpecs(
+                cros_suite.TestHandlerSpec(
                         test_spec=test_spec,
                         remaining_retries=remaining_retries,
                         previous_retried_ids=previous_retried_ids))
@@ -138,7 +138,7 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
                 dry_run=dry_run)
         suite_handler.add_test_by_task_id(
                 test_task_id,
-                cros_suite.TestHandlerSpecs(
+                cros_suite.TestHandlerSpec(
                         test_spec=test_spec,
                         remaining_retries=test_spec.test.job_retries - 1,
                         previous_retried_ids=[]))
@@ -395,7 +395,7 @@ def _retry_test(suite_handler, task_id, dry_run=False):
     previous_retried_ids = last_retry_spec.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(
             retried_task_id,
-            cros_suite.TestHandlerSpecs(
+            cros_suite.TestHandlerSpec(
                     test_spec=last_retry_spec.test_spec,
                     remaining_retries=last_retry_spec.remaining_retries - 1,
                     previous_retried_ids=previous_retried_ids))
