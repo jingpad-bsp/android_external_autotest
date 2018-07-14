@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
@@ -44,30 +42,15 @@ class firmware_Cr50Password(Cr50Test):
             raise error.TestFail('Failed to set password')
 
         # Make sure we can't overwrite the password
-        try:
-            self.set_ccd_password(self.NEW_PASSWORD)
-        except error.TestFail, e:
-            logging.info(e)
-            if 'set_password failed' in str(e):
-                logging.info('successfully blocked setting password')
-            else:
-                raise
+        self.set_ccd_password(self.NEW_PASSWORD, expect_error=True)
 
         self.cr50.set_ccd_level('lock')
         # Make sure you can't clear the password while the console is locked
-        try:
-            self.set_ccd_password('clear:' + self.PASSWORD)
-            raise error.TestFail('Cleared password while console was locked')
-        except error.TestFail, e:
-            if 'set_password failed' in str(e):
-                logging.info('successfully blocked clearing password')
-            else:
-                raise
+        self.set_ccd_password('clear:' + self.PASSWORD, expect_error=True)
 
         self.cr50.send_command('ccd unlock ' + self.PASSWORD)
-
-        # Make sure you can clear the password while the console is unlocked
-        self.set_ccd_password('clear:' + self.PASSWORD)
+        # Make sure you can't clear the password while the console is locked
+        self.set_ccd_password('clear:' + self.PASSWORD, expect_error=True)
 
         self.cr50.send_command('ccd testlab open')
 
@@ -75,16 +58,8 @@ class firmware_Cr50Password(Cr50Test):
         self.set_ccd_password(self.PASSWORD)
 
         # Make sure you can't clear the password with the wrong password
-        try:
-            self.set_ccd_password('clear:' + self.PASSWORD.lower())
-            raise error.TestFail('Cleared password with wrong password')
-        except error.TestFail, e:
-            # TODO: revisit what set_ccd_password raises.
-            if 'set_password failed' in str(e):
-                logging.info('successfully blocked clearing password')
-            else:
-                raise
-
+        self.set_ccd_password('clear:' + self.PASSWORD.lower(),
+                              expect_error=True)
         # Make sure you can clear the password when the console is open
         self.set_ccd_password('clear:' + self.PASSWORD)
         if self.cr50.get_ccd_info()['Password'] != 'none':
