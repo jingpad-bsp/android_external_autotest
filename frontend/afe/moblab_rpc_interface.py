@@ -1002,10 +1002,10 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
             [s.strip() for s in suite_args.split(',')]
     if bug_id:
         processed_suite_args['bug_id'] = bug_id
-        processed_test_args['bug_id'] = bug_id
     if part_id:
         processed_suite_args['part_id'] = part_id
-        processed_test_args['part_id'] = part_id
+    processed_test_args['bug_id'] = bug_id or ''
+    processed_test_args['part_id'] = part_id or ''
 
 
     # set processed_suite_args to None instead of empty dict when there is no
