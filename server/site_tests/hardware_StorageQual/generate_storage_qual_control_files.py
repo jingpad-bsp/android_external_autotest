@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 """
+USAGE: python generate_storage_qual_control_files.py
+
 Creates all the control files required to run the storage qual full two week
 test. The test consists of 3 sub-tests, each runs continuosuly on one DUT, and
 runs stress tests to wear out the DUT's SSD. Each sub-test is broken into 4
@@ -26,10 +28,18 @@ control.storage_qual_hardware_StorageQualBase_retention_before
 control.storeage_qual_hardware_StorageStress_retention_soak_12
 """
 
+STORAGE_QUAL_VERSION = 1
 DAY_IN_HOURS = 24
 MINUTE_IN_SECS = 60
 HOUR_IN_SECS = MINUTE_IN_SECS * 60
 DAY_IN_SECS = HOUR_IN_SECS * DAY_IN_HOURS
+
+CHECK_SETUP = {
+    'test': 'hardware_StorageQualCheckSetup',
+    'args': {},
+    'priority': 110,
+    'length': 'lengthy'
+}
 
 BASE_BEFORE = {
     'test': 'hardware_StorageQualBase',
@@ -66,6 +76,7 @@ SUITES = {
         {
             'label': 'retention',
             'tests': [
+                CHECK_SETUP,
                 BASE_BEFORE,
                 SOAK,
                 {
@@ -119,6 +130,7 @@ SUITES = {
         {
             'label': 'retention',
             'tests': [
+                CHECK_SETUP,
                 BASE_BEFORE,
                 SOAK_QUICK,
                 {
@@ -200,6 +212,7 @@ JOB_RETRIES = 0
 DOC = "{name}"
 
 keyval = dict()
+keyval['storage_qual_version'] = {version}
 keyval['bug_id'] = bug_id
 keyval['part_id'] = part_id
 utils.write_keyval(job.resultdir, keyval)
@@ -251,7 +264,8 @@ for suite in SUITES:
                         priority = test['priority'],
                         test = test['test'],
                         length = test['length'],
-                        attributes = SUITE_ATTRIBUTES[suite]
+                        attributes = SUITE_ATTRIBUTES[suite],
+                        version = STORAGE_QUAL_VERSION,
                     )
                     _write_control_file(_get_control_file_name(
                         suite, label, test, i), control_file)
@@ -264,7 +278,8 @@ for suite in SUITES:
                     priority = test['priority'],
                     test = test['test'],
                     length = test['length'],
-                    attributes = SUITE_ATTRIBUTES[suite]
+                    attributes = SUITE_ATTRIBUTES[suite],
+                    version = STORAGE_QUAL_VERSION
                 )
                 _write_control_file(_get_control_file_name(suite, label, test),
                         control_file)
