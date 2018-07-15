@@ -26,8 +26,8 @@ from lucifer import autotest
 from skylab_suite import swarming_lib
 
 
-SuiteSpecs = collections.namedtuple(
-        'SuiteSpecs',
+SuiteSpec = collections.namedtuple(
+        'SuiteSpec',
         [
                 'builds',
                 'suite_name',
@@ -40,26 +40,27 @@ SuiteSpecs = collections.namedtuple(
                 'job_keyvals',
         ])
 
-SuiteHandlerSpecs = collections.namedtuple(
-        'SuiteHandlerSpecs',
+SuiteHandlerSpec = collections.namedtuple(
+        'SuiteHandlerSpec',
         [
                 'wait',
+                'suite_id',
                 'timeout_mins',
                 'test_retry',
                 'max_retries',
                 'provision_num_required',
         ])
 
-TestHandlerSpecs= collections.namedtuple(
-        'TestHandlerSpecs',
+TestHandlerSpec = collections.namedtuple(
+        'TestHandlerSpec',
         [
-                'test_specs',
+                'test_spec',
                 'remaining_retries',
                 'previous_retried_ids',
         ])
 
-TestSpecs= collections.namedtuple(
-        'TestSpecs',
+TestSpec = collections.namedtuple(
+        'TestSpec',
         [
                 'test',
                 'priority',
@@ -93,7 +94,7 @@ class SuiteHandler(object):
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
 
-        self._suite_id = None
+        self._suite_id = specs.suite_id
         self._task_to_test_maps = {}
         self.successfully_provisioned_duts = set()
 
@@ -117,13 +118,13 @@ class SuiteHandler(object):
         """
         self._suite_id = suite_id
 
-    def add_test_by_task_id(self, task_id, test_handler_specs):
+    def add_test_by_task_id(self, task_id, test_handler_spec):
         """Record a child test and its swarming task id.
 
         @param task_id: the swarming task id of a child test.
-        @param test_handler_specs: a TestHandlerSpecs object.
+        @param test_handler_spec: a TestHandlerSpec object.
         """
-        self._task_to_test_maps[task_id] = test_handler_specs
+        self._task_to_test_maps[task_id] = test_handler_spec
 
     def get_test_by_task_id(self, task_id):
         """Get a child test by its swarming task id.
@@ -198,7 +199,7 @@ class SuiteHandler(object):
             if (swarming_lib.get_task_final_state(t) ==
                 swarming_lib.TASK_COMPLETED_SUCCESS):
                 dut_name = self.get_test_by_task_id(
-                        t['task_id']).test_specs.dut_name
+                        t['task_id']).test_spec.dut_name
                 if dut_name:
                     self.successfully_provisioned_duts.add(dut_name)
 
@@ -251,23 +252,23 @@ class Suite(object):
     """The class for a CrOS suite."""
     EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
-    def __init__(self, specs):
+    def __init__(self, spec):
         """Initialize a suite.
 
-        @param specs: A SuiteSpecs object.
+        @param spec: A SuiteSpec object.
         """
         self._ds = None
 
         self.control_file = ''
-        self.tests_specs = []
-        self.builds = specs.builds
-        self.test_source_build = specs.test_source_build
-        self.suite_name = specs.suite_name
-        self.suite_file_name = specs.suite_file_name
-        self.priority = specs.priority
-        self.board = specs.board
-        self.pool = specs.pool
-        self.job_keyvals = specs.job_keyvals
+        self.test_specs = []
+        self.builds = spec.builds
+        self.test_source_build = spec.test_source_build
+        self.suite_name = spec.suite_name
+        self.suite_file_name = spec.suite_file_name
+        self.priority = spec.priority
+        self.board = spec.board
+        self.pool = spec.pool
+        self.job_keyvals = spec.job_keyvals
 
     @property
     def ds(self):
@@ -320,10 +321,10 @@ class Suite(object):
         keyvals = self._create_suite_keyvals()
         available_bots = self._get_available_bots()
         tests = self._find_tests(available_bots_num=len(available_bots))
-        self.tests_specs = self._get_test_specs(tests, available_bots, keyvals)
+        self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
     def _get_test_specs(self, tests, available_bots, keyvals):
-        tests_specs = []
+        test_specs = []
         for idx, test in enumerate(tests):
             if idx < len(available_bots):
                 bot_id = available_bots[idx]['bot_id']
@@ -332,7 +333,7 @@ class Suite(object):
             else:
                 bot_id = ''
                 dut_name = ''
-            tests_specs.append(TestSpecs(
+            test_specs.append(TestSpec(
                     test=test,
                     priority=self.priority,
                     board=self.board,
@@ -346,7 +347,7 @@ class Suite(object):
                     execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                     io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
 
-        return tests_specs
+        return test_specs
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -388,9 +389,9 @@ class ProvisionSuite(Suite):
     """The class for a CrOS provision suite."""
     EXPIRATION_SECS = 3 * 60
 
-    def __init__(self, specs):
-        super(ProvisionSuite, self).__init__(specs)
-        self._num_required = specs.suite_args['num_required']
+    def __init__(self, spec):
+        super(ProvisionSuite, self).__init__(spec)
+        self._num_required = spec.suite_args['num_required']
 
     def _find_tests(self, available_bots_num=0):
         """Fetch the child tests for provision suite."""

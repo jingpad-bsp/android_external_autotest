@@ -1,7 +1,6 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import logging
 import time
 
 from autotest_lib.client.bin import test
@@ -30,8 +29,10 @@ class power_Test(test.test):
         @var _psr: power_utils.DisplayPanelSelfRefresh object to monitor PSR.
         @var _services: service_stopper.ServiceStopper object.
         @var _start_time: float of time in seconds since Epoch test started.
-        @var _stats = power_status.StatoMatic object.
-        @var _tlog: power_status.TempLogger ojbect to monitor temperatures.
+        @var _stats: power_status.StatoMatic object.
+        @var _tlog: power_status.TempLogger object to monitor temperatures.
+        @var _clog: power_status.CPUStatsLogger object to monitor CPU(s)
+                    frequencies and c-states.
         """
         super(power_Test, self).initialize()
         self.backlight = power_utils.Backlight()
@@ -56,6 +57,7 @@ class power_Test(test.test):
         self._stats = power_status.StatoMatic()
 
         self._tlog = power_status.TempLogger([], seconds_period=seconds_period)
+        self._clog = power_status.CPUStatsLogger(seconds_period=seconds_period)
 
     def warmup(self, warmup_time=30):
         """Warm up.
@@ -70,6 +72,7 @@ class power_Test(test.test):
         """Start measurements."""
         self._plog.start()
         self._tlog.start()
+        self._clog.start()
         self._start_time = time.time()
         power_telemetry_utils.start_measurement()
 
@@ -86,7 +89,7 @@ class power_Test(test.test):
         """Checkpoint measurements.
 
         @param name: string name of measurement being checkpointed.
-        @start_time: float of time in seconds since Epoch that
+        @param start_time: float of time in seconds since Epoch that
                 measurements being checkpointed began.
         """
         if not start_time:
@@ -94,6 +97,7 @@ class power_Test(test.test):
         self.status.refresh()
         self._plog.checkpoint(name, start_time)
         self._tlog.checkpoint(name, start_time)
+        self._clog.checkpoint(name, start_time)
         self._psr.refresh()
 
     def publish_keyvals(self):
@@ -122,6 +126,7 @@ class power_Test(test.test):
 
         keyvals.update(self._plog.calc())
         keyvals.update(self._tlog.calc())
+        keyvals.update(self._clog.calc())
         keyvals.update(self._psr.get_keyvals())
         self.write_perf_keyval(keyvals)
         self.keyvals = keyvals
@@ -158,8 +163,12 @@ class power_Test(test.test):
         pdash = power_dashboard.PowerLoggerDashboard(
             self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()
+        cdash = power_dashboard.CPUStatsLoggerDashboard(
+            self._clog, self.tagged_testname, self.resultsdir)
+        cdash.upload()
 
     def postprocess_iteration(self):
+        """Write keyval and send data to dashboard."""
         power_telemetry_utils.end_measurement()
         super(power_Test, self).postprocess_iteration()
         self._publish_dashboard()

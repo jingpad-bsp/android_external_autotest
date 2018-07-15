@@ -31,6 +31,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     provides many interfaces to set and get its behavior via console commands.
     This class is to abstract these interfaces.
     """
+    OPEN = 'open'
+    UNLOCK = 'unlock'
+    LOCK = 'lock'
     # The amount of time you need to show physical presence.
     PP_SHORT = 15
     PP_LONG = 300
@@ -71,6 +74,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     REBOOT_DELAY_WITH_CCD = 60
     REBOOT_DELAY_WITH_FLEX = 3
     ON_STRINGS = ['enable', 'enabled', 'on']
+    CONSERVATIVE_CCD_WAIT = 10
+    CCD_SHORT_PRESSES = 5
 
 
     def __init__(self, servo):
@@ -127,7 +132,14 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             value.
         """
         info = {}
-        rv = self.send_command_get_output('ccd', ["ccd.*>"])[0]
+        original_timeout = float(self._servo.get('cr50_uart_timeout'))
+        # Change the console timeout to 10s, it may take longer than 3s to read
+        # ccd info
+        self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
+        try:
+            rv = self.send_command_get_output('ccd', ["ccd.*>"])[0]
+        finally:
+            self._servo.set_nocheck('cr50_uart_timeout', original_timeout)
         for line in rv.splitlines():
             # CCD information is separated with an :
             #   State: Opened
@@ -497,18 +509,6 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return state.lower() in self.ON_STRINGS
 
 
-    def fast_open(self, enable_testlab=False):
-        """Try to use testlab open. If that fails do regular open
-
-        Args:
-            enable_testlab: If True enable testlab after device is open
-        """
-        self.send_command('ccd testlab open')
-        self.set_ccd_level('open')
-        if enable_testlab:
-            self.set_ccd_testlab('on')
-
-
     def testlab_is_on(self):
         """Returns True of testlab mode is on"""
         return self._state_to_bool(self._servo.get('cr50_testlab'))
@@ -563,17 +563,17 @@ class ChromeCr50(chrome_ec.ChromeConsole):
 
     def get_ccd_level(self):
         """Returns the current ccd privilege level"""
-        # TODO(mruthven): delete the part removing the trailing 'ed' once
-        # servo is up to date in the lab
-        return self._servo.get('cr50_ccd_level').lower().rstrip('ed')
+        return self._servo.get('cr50_ccd_level').lower()
 
 
-    def set_ccd_level(self, level):
+    def set_ccd_level(self, level, password=''):
         """Set the Cr50 CCD privilege level.
 
         Args:
             level: a string of the ccd privilege level: 'open', 'lock', or
                    'unlock'.
+            password: send the ccd command with password. This will still
+                    require the same physical presence.
 
         Raises:
             TestFail if the level couldn't be set
@@ -602,11 +602,21 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             raise error.TestError("Wont change privilege level without "
                 "physical presence or testlab mode enabled")
 
+        original_timeout = float(self._servo.get('cr50_uart_timeout'))
+        # Change the console timeout to CONSERVATIVE_CCD_WAIT, running 'ccd' may
+        # take more than 3 seconds.
+        self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
         # Start the unlock process.
-        rv = self.send_command_get_output('ccd %s' % level, ['ccd.*>'])[0]
+        try:
+            cmd = 'ccd %s%s' % (level, (' ' + password) if password else '')
+            rv = self.send_command_get_output(cmd, [cmd + '.*>'])[0]
+        finally:
+            self._servo.set('cr50_uart_timeout', original_timeout)
         logging.info(rv)
         if 'Access Denied' in rv:
-            raise error.TestFail("'ccd %s' %s" % (level, rv))
+            raise error.TestFail("%r %s" % (cmd, rv))
+        if 'Busy' in rv:
+            raise error.TestFail("cr50 is too busy to run %r: %s" % (cmd, rv))
 
         # Press the power button once a second, if we need physical presence.
         if req_pp:
