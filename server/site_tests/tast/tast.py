@@ -39,6 +39,8 @@ class tast(test.test):
     # Additional time to add to the run timeout (e.g. for collecting crashes and
     # logs).
     _RUN_OVERHEAD_SEC = 20
+    # Additional time given to the run command to exit before it's killed.
+    _RUN_EXIT_SEC = 5
 
     # File written by the tast command containing test results, as
     # newline-terminated JSON TestResult objects.
@@ -259,7 +261,11 @@ class tast(test.test):
             """
         timeout_sec = self._get_run_tests_timeout_sec()
         logging.info('Running tests with timeout of %d sec', timeout_sec)
-        self._run_tast('run', ['-resultsdir=' + self.resultsdir], timeout_sec,
+        args = [
+            '-resultsdir=' + self.resultsdir,
+            '-timeout=' + str(timeout_sec),
+        ]
+        self._run_tast('run', args, timeout_sec + tast._RUN_EXIT_SEC,
                        log_stdout=True)
 
     def _get_run_tests_timeout_sec(self):
