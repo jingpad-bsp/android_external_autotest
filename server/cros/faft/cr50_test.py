@@ -704,8 +704,8 @@ class Cr50Test(FirmwareTest):
                 else:
                     raise error.TestFail(message)
             elif expect_error:
-                error.TestFail('%s with %r did not fail when expected' %
-                               (name, password))
+                raise error.TestFail('%s with %r did not fail when expected' %
+                                     (name, password))
 
 
     def set_ccd_password(self, password, expect_error=False):
