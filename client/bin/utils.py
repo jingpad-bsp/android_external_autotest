@@ -1893,7 +1893,7 @@ def get_cpu_max_frequency():
     Returns the largest of the max CPU core frequencies. The unit is Hz.
     """
     max_frequency = -1
-    paths = _get_cpufreq_paths('cpuinfo_max_freq')
+    paths = utils._get_cpufreq_paths('cpuinfo_max_freq')
     for path in paths:
         # Convert from kHz to Hz.
         frequency = 1000 * _get_float_from_file(path, 0, None, None)
@@ -1908,7 +1908,7 @@ def get_cpu_min_frequency():
     Returns the smallest of the minimum CPU core frequencies.
     """
     min_frequency = 1e20
-    paths = _get_cpufreq_paths('cpuinfo_min_freq')
+    paths = utils._get_cpufreq_paths('cpuinfo_min_freq')
     for path in paths:
         frequency = _get_float_from_file(path, 0, None, None)
         min_frequency = min(frequency, min_frequency)
@@ -1965,6 +1965,28 @@ def get_board_type():
     @return device type.
     """
     return get_board_property('DEVICETYPE')
+
+
+def get_platform():
+    """
+    Get the ChromeOS platform name.
+
+    For unibuild this should be equal to model name.  For non-unibuild
+    it will either be board name or empty string.  In the case of
+    empty string return board name to match equivalent logic in
+    server/hosts/cros_host.py
+
+    @returns platform name
+    """
+    platform = ''
+    command = 'mosys platform model'
+    result = utils.run(command, ignore_status=True)
+    if result.exit_status == 0:
+        platform = result.stdout.strip()
+
+    if platform == '':
+        platform = get_board()
+    return platform
 
 
 def get_ec_version():
@@ -2120,60 +2142,6 @@ def get_kernel_max():
     # Sanity check.
     assert ((kernel_max > 0) and (kernel_max < 257)), 'Unreasonable kernel_max.'
     return kernel_max
-
-
-def set_high_performance_mode():
-    """
-    Sets the kernel governor mode to the highest setting.
-    Returns previous governor state.
-    """
-    original_governors = get_scaling_governor_states()
-    set_scaling_governors('performance')
-    return original_governors
-
-
-def set_scaling_governors(value):
-    """
-    Sets all scaling governor to string value.
-    Sample values: 'performance', 'interactive', 'ondemand', 'powersave'.
-    """
-    paths = _get_cpufreq_paths('scaling_governor')
-    for path in paths:
-        cmd = 'echo %s > %s' % (value, path)
-        logging.info('Writing scaling governor mode \'%s\' -> %s', value, path)
-        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
-        utils.system(cmd, ignore_status=True)
-
-
-def _get_cpufreq_paths(filename):
-    """
-    Returns a list of paths to the governors.
-    """
-    cmd = 'ls /sys/devices/system/cpu/cpu*/cpufreq/' + filename
-    paths = utils.run(cmd, verbose=False).stdout.splitlines()
-    return paths
-
-
-def get_scaling_governor_states():
-    """
-    Returns a list of (performance governor path, current state) tuples.
-    """
-    paths = _get_cpufreq_paths('scaling_governor')
-    path_value_list = []
-    for path in paths:
-        value = _get_line_from_file(path, 0)
-        path_value_list.append((path, value))
-    return path_value_list
-
-
-def restore_scaling_governor_states(path_value_list):
-    """
-    Restores governor states. Inverse operation to get_scaling_governor_states.
-    """
-    for (path, value) in path_value_list:
-        cmd = 'echo %s > %s' % (value.rstrip('\n'), path)
-        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
-        utils.system(cmd, ignore_status=True)
 
 
 def get_dirty_writeback_centisecs():
