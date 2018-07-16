@@ -54,7 +54,14 @@ class EventHandler(object):
         except AttributeError:
             raise NotImplementedError('%s is not implemented for handling %s',
                                       method_name, event.name)
-        handler(msg)
+        django = autotest.deps_load('django')
+        try:
+            handler(msg)
+        except django.db.utils.DatabaseError as e:
+            # Retry if MySQL server goes away crbug.com/863504
+            logger.debug('Got DatabaseError %s, retrying', e)
+            django.db.close_connection()
+            handler(msg)
 
     def _handle_starting(self, msg):
         # TODO(crbug.com/748234): No event update needed yet.
