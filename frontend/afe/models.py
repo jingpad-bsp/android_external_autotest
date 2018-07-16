@@ -544,6 +544,9 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     @classmethod
     def classify_label_objects(cls, label_objects):
+        if not RESPECT_STATIC_LABELS:
+            return [], label_objects
+
         replaced_labels = ReplacedLabel.objects.filter(label__in=label_objects)
         replaced_ids = [l.label.id for l in replaced_labels]
         non_static_labels = [
