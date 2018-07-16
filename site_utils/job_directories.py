@@ -187,7 +187,7 @@ class RegularJobDirectory(_JobDirectory):
         _remove_log_directory_contents(dirname)
 
     # Finally check if there's anything left to offload.
-    if not os.listdir(self.dirname):
+    if os.path.exists(self.dirname) and not os.listdir(self.dirname):
       shutil.rmtree(self.dirname)
       return False
     return True
