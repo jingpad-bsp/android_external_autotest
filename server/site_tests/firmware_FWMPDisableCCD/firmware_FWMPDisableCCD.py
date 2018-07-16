@@ -35,50 +35,49 @@ class firmware_FWMPDisableCCD(Cr50Test):
             self.fast_open(enable_testlab=True)
 
 
-    def try_setting_password(self, fwmp_disabled_ccd):
-        """Try setting the password. FWMP should block this if set"""
-        # Open the console and reset ccd, so we can set the password.
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
-        try:
-            self.set_ccd_password(self.PASSWORD)
-            if fwmp_disabled_ccd:
-                raise error.TestFail('Set password while FWMP disabled ccd')
-        except error.TestFail, e:
-            logging.info(e)
-            if fwmp_disabled_ccd and 'set_password failed' in str(e):
-                logging.info('Successfully blocked setting password')
-            else:
-                raise
-        # Make sure the password is cleared
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
+    def try_set_ccd_level(self, level, fwmp_disabled_ccd):
+        """Try setting the ccd level with a password.
 
+        The normal Cr50 ccd path requires entering dev mode. Entering dev mode
+        may be disabled by the FWMP flags. Entering dev mode also erases the
+        FWMP. The test uses a password to get around the dev mode requirement.
+        Send CCD commands from the commandline with the password. Check the
+        output to make sure if it fails, it failed because of the FWMP.
 
-    def try_ccd_open(self, fwmp_disabled_ccd):
-        """Try opening cr50 from the AP
-
-        The FWMP flags may disable ccd. If it does, opening cr50 should fail.
-
-        @param fwmp_disabled_ccd: True if open should fail
+        @param level: the desired ccd level: 'open' or 'unlock'.
+        @param fwmp_disabled_ccd: True if 'ccd set $LEVEL' should fail
         """
-        # Make sure the password is cleared, ccd is locked, and the device is
-        # in dev mode, so the only thing that could interfere with open is the
-        # FWMP.
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
-        self.cr50.send_command('ccd lock')
-        if 'dev_mode' not in self.cr50.get_ccd_info()['TPM']:
-            self.switcher.reboot_to_mode(to_mode='dev')
+        # Make sure the console is locked
+        self.cr50.set_ccd_level('lock')
         try:
-            self.ccd_open_from_ap()
+            self.cr50.set_ccd_level(level, self.PASSWORD)
             if fwmp_disabled_ccd:
-                raise error.TestFail('FWMP failed to prevent open')
+                raise error.TestFail('FWMP failed to prevent %r' % level)
         except error.TestFail, e:
             logging.info(e)
+            if fwmp_disabled_ccd:
+                if ("FWMP disabled 'ccd open'" in str(e) or
+                    'Console unlock not allowed' in str(e)):
+                    logging.info('FWMP successfully disabled ccd %s', level)
+                    return
+                else:
+                    raise error.TestFail('FWMP disabled %s in unexpected '
+                                         'manner %r' % (level, str(e)))
             raise
-        if (self.cr50.get_ccd_level() == 'open') == fwmp_disabled_ccd:
-            raise error.TestFail('Unexpected Open response')
+
+
+    def open_cr50_and_setup_ccd(self):
+        """Configure cr50 ccd for the test.
+
+        Open Cr50. Reset ccd, so the capabilities are reset and the password is
+        cleared. Set OpenNoTPMWipe to Always, so the FWMP won't be cleared
+        during open.
+        """
+        # Clear the password and relock the console
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
+        # Set this so when we run the open test, it won't clear the FWMP
+        self.cr50.set_cap('OpenNoTPMWipe', 'Always')
 
 
     def cr50_check_lock_control(self, flags):
@@ -94,8 +93,8 @@ class firmware_FWMPDisableCCD(Cr50Test):
         fwmp_disabled_ccd = not not (self.FWMP_DEV_DISABLE_CCD_UNLOCK &
                                int(flags, 16))
 
-        if (('fwmp_lock' in self.cr50.get_ccd_info()['TPM']) !=
-            fwmp_disabled_ccd):
+        start_state = self.cr50.get_ccd_info()['TPM']
+        if ('fwmp_lock' in start_state) != fwmp_disabled_ccd:
             raise error.TestFail('Unexpected fwmp state with flags %x' % flags)
 
         if not self.test_ccd_unlock:
@@ -104,38 +103,52 @@ class firmware_FWMPDisableCCD(Cr50Test):
         logging.info('Flags are set to %s ccd is%s permitted', flags,
                      ' not' if fwmp_disabled_ccd else '')
 
-        self.try_setting_password(fwmp_disabled_ccd)
-        self.try_ccd_open(fwmp_disabled_ccd)
+        self.open_cr50_and_setup_ccd()
+        # Try setting password after FWMP has been created. Setting password is
+        # always allowed. Open and unlock should still be blocked. Opening cr50
+        # requires the device is in dev mode unless there's a password set. FWMP
+        # flags may disable dev mode. Set a password so we can get around this.
+        self.set_ccd_password(self.PASSWORD)
 
-        # Clear the password and relock the console
-        self.cr50.send_command('ccd testlab open')
-        self.cr50.send_command('ccd reset')
+        # run ccd commands with the password. ccd open and unlock should fail
+        # when the FWMP has disabled ccd.
+        self.try_set_ccd_level('open', fwmp_disabled_ccd)
+        self.try_set_ccd_level('unlock', fwmp_disabled_ccd)
+
+        # Clear the password.
+        self.open_cr50_and_setup_ccd()
         self.cr50.send_command('ccd lock')
 
 
-    def check_fwmp(self, flags, clear_tpm_owner):
+    def check_fwmp(self, flags, clear_tpm_owner, check_lock=True):
         """Set the flags and verify ccd lock/unlock
 
         Args:
-            flags: A string to used set the FWMP flags
+            flags: A string to used set the FWMP flags. If None, skip running
+                   firmware_SetFWMP.
             clear_tpm_owner: True if the TPM owner needs to be cleared before
                              setting the flags and verifying ccd lock/unlock
+            check_lock: Check ccd open
         """
         if clear_tpm_owner:
             logging.info('Clearing TPM owner')
             tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
 
         logging.info('setting flags to %s', flags)
-        autotest.Autotest(self.host).run_test('firmware_SetFWMP', flags=flags,
-                fwmp_cleared=clear_tpm_owner, check_client_result=True)
+        if flags:
+            autotest.Autotest(self.host).run_test('firmware_SetFWMP',
+                    flags=flags, fwmp_cleared=clear_tpm_owner,
+                    check_client_result=True)
 
         # Verify ccd lock/unlock with the current flags works as intended.
-        self.cr50_check_lock_control(flags)
+        if check_lock:
+            self.cr50_check_lock_control(flags if flags else '0')
 
 
     def run_once(self):
         """Verify FWMP disable with different flag values"""
-        self.check_fwmp('0xaa00', True)
+        # Skip checking ccd open, so the DUT doesn't reboot
+        self.check_fwmp('0xaa00', True, check_lock=False)
         # Verify that the flags can be changed on the same boot
         self.check_fwmp('0xbb00', False)
 
@@ -148,5 +161,4 @@ class firmware_FWMPDisableCCD(Cr50Test):
 
         # Clear the TPM owner and verify lock can still be enabled/disabled when
         # the FWMP has not been created
-        tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
-        self.cr50_check_lock_control('0')
+        self.check_fwmp(None, True)
