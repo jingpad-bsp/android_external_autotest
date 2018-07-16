@@ -921,9 +921,7 @@ class Offloader(object):
         new_job_count = 0
         for cls in self._jobdir_classes:
             for resultsdir in cls.get_job_directories():
-                if (
-                        resultsdir in self._open_jobs
-                        or _is_uploaded(resultsdir)):
+                if resultsdir in self._open_jobs:
                     continue
                 self._open_jobs[resultsdir] = cls(resultsdir)
                 new_job_count += 1
