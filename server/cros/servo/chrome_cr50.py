@@ -609,10 +609,12 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # Start the unlock process.
         try:
             cmd = 'ccd %s%s' % (level, (' ' + password) if password else '')
-            rv = self.send_command_get_output(cmd, [cmd + '.*>'])[0]
+            rv = self.send_command_get_output(cmd, [cmd + '(.*)>'])[0][1]
         finally:
             self._servo.set('cr50_uart_timeout', original_timeout)
         logging.info(rv)
+        if 'ccd_open denied: fwmp' in rv:
+            raise error.TestFail('FWMP disabled %r: %s' % (cmd, rv))
         if 'Access Denied' in rv:
             raise error.TestFail("%r %s" % (cmd, rv))
         if 'Busy' in rv:
