@@ -176,7 +176,7 @@ def _add_starting_args(command_args, args, job):
             ['-x-reboot-after',
              RebootAfter.get_string(job.reboot_after).lower()])
     if args.parsing_only:
-        command_args.append('-x-parsing-only')
+        command_args.append('-x-parse-only')
     if job.run_reset:
         command_args.append('-x-run-reset')
     command_args.extend(['-x-test-retries', str(job.test_retry)])
