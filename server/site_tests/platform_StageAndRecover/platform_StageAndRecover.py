@@ -18,7 +18,7 @@ class platform_StageAndRecover(test.test):
 
     def cleanup(self):
         """ Clean up by switching servo usb towards servo host. """
-        self.switch_usbkey('host')
+        self.servo.switch_usbkey('host')
 
 
     def set_servo_usb_reimage(self):
