@@ -26,6 +26,11 @@ _PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-6.0_r1-4868992.zip'
 class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
+
+    # TODO(bmgordon): Remove grunt once the bulk of failing tests are fixed.
+    # TODO(teravest): Remove octopus once the bulk of failing tests are fixed.
+    _BOARD_RETRY = {'betty': 0, 'grunt': 0, 'octopus': 0}
+    _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
     _SHARD_CMD = '--shard-count'
 
     def _tradefed_retry_command(self, template, session_id):
@@ -50,6 +55,18 @@ class cheets_GTS(tradefed_test.TradefedTest):
     def _get_tradefed_base_dir(self):
         return 'android-gts'
 
+    # TODO(ihf): move to tradefed_test, but first unify with CTS.
+    def _get_timeout_factor(self):
+        """Returns the factor to be multiplied to the timeout parameter.
+        The factor roughly grows with the number of ABIs but the fit does not
+        have to be perfect as runtime is hard to predict."""
+        # The list of ABIs recognized by tradefed is taken from
+        # tools/tradefederation/src/com/android/tradefed/util/AbiUtils.java
+        tradefed_abis = set(('armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64',
+            'mips', 'mips64'))
+        self._timeoutfactor = len(set(self._get_abilist()) & tradefed_abis)
+        return self._timeoutfactor
+
     def _run_tradefed(self, commands):
         """Kick off GTS.
 
@@ -60,14 +77,21 @@ class cheets_GTS(tradefed_test.TradefedTest):
         with tradefed_test.adb_keepalive(self._get_adb_targets(),
                                          self._install_paths):
             for command in commands:
-                logging.info('RUN: ./gts-tradefed %s', ' '.join(command))
-                output = self._run(gts_tradefed,
-                                   args=command,
-                                   verbose=True,
-                                   # Tee tradefed stdout/stderr to logs
-                                   # continuously during the test run.
-                                   stdout_tee=utils.TEE_TO_LOGS,
-                                   stderr_tee=utils.TEE_TO_LOGS)
+                timeout = self._timeout * self._get_timeout_factor()
+                logging.info('RUN(timeout=%d): ./gts-tradefed %s', timeout,
+                             ' '.join(command))
+                output = self._run(
+                    gts_tradefed,
+                    args=tuple(command),
+                    timeout=timeout,
+                    verbose=True,
+                    ignore_status=False,
+                    # Make sure to tee tradefed stdout/stderr to autotest logs
+                    # continuously during the test run.
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS,
+                    # Also send the output to the test_that console.
+                    stdout_level=logging.INFO)
                 logging.info('END: ./gts-tradefed %s\n', ' '.join(command))
         return output
 
@@ -106,6 +130,14 @@ class cheets_GTS(tradefed_test.TradefedTest):
         @param login_precondition_commands: a list of scripts to be run on the
         dut before the log-in for the test is performed.
         """
+
+        # On dev and beta channels timeouts are sharp, lenient on stable.
+        self._timeout = timeout
+        if self._get_release_channel() == 'stable':
+            self._timeout += 3600
+        # Retries depend on channel.
+        self._timeoutfactor = None
+
         self._run_tradefed_with_retries(
             test_name=test_name,
             run_template=run_template,
