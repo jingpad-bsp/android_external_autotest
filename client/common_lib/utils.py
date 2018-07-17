@@ -31,6 +31,7 @@ import socket
 import string
 import struct
 import subprocess
+import sys
 import textwrap
 import threading
 import time
@@ -973,6 +974,31 @@ def signal_pid(pid, sig):
 
     # The process is still alive
     return False
+
+
+def before_force_close(func):
+    """
+    Runs a function before the process is forced close by a catchable signal.
+
+    Allows for the process to cleanup before closing due to a ctrl-c, for
+    example. Note that this does not cause func to be called if the process is
+    closed normally. Something like atexit would be more appropriate in such a
+    situation.
+
+    @param func function taking no arguments to be called prior to being killed
+    """
+    def sig_handler(signum, frame):
+        logging.info('Catching signal: %d' % signum)
+        func()
+
+    catch_signals = [signal.SIGINT]
+    if sys.platform == 'win32':
+        catch_signals.extend([signal.CTRL_C_EVENT,
+                              signal.CTRL_BREAK_EVENT,
+                              signal.SIGBREAK])
+    else:
+        catch_signals.append(signal.SIGTERM)
+    map(lambda x: signal.signal(x, sig_handler), catch_signals)
 
 
 def nuke_subprocess(subproc):
