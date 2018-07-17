@@ -199,8 +199,6 @@ class GraphicsTest(test.test):
         target = self._get_failure(name, subtest=subtest)
         if name in target['names']:
             target['names'].remove(name)
-            if len(target['names']) == 0:
-                self._failures.remove(target)
 
 
     def _output_perf(self):
@@ -219,8 +217,9 @@ class GraphicsTest(test.test):
         total_failures = 0
         # Report subtests failures
         for failure in self._failures:
-            logging.debug('GraphicsTest failure: %s' % failure['names'])
-            total_failures += len(failure['names'])
+            if len(failure['names']) > 0:
+                logging.debug('GraphicsTest failure: %s' % failure['names'])
+                total_failures += len(failure['names'])
 
             if not self._test_failure_report_subtest:
                 continue
