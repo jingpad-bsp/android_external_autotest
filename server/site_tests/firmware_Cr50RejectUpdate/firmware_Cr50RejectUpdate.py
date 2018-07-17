@@ -106,7 +106,17 @@ class firmware_Cr50RejectUpdate(Cr50Test):
         # original_path is the image already on cr50, so this won't have any
         # real effect. It will just reboot the device.
         self.try_update('', self.original_path, stdout='image updated')
-        # Wait a bit for the reboot
-        time.sleep(5)
+        # After reboot, if the DUT hasn't responded within 45 seconds, it's not
+        # going to.
+        time.sleep(45)
+        if not self.host.is_up_fast():
+            raise error.TestError('DUT did not respond')
+        # Wait for the host to respond to ping. Make sure it responded within
+        # 60 seconds. The whole point of this case is that cr50 will reject
+        # images in the first 60 seconds of boot, so it won't work if cr50
+        # has been up for a while.
+        if self.cr50.gettime() >= 60:
+            raise error.TestError('Cannot complete test. Took >60 seconds for '
+                                  'DUT to come back online')
         # After any reboot, cr50 will reject images for 60 seconds
         self.try_update('', self.original_path, err=9, wait=False)

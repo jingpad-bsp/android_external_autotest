@@ -626,8 +626,11 @@ class Cr50Test(FirmwareTest):
             logging.info('stdout of ccd open:\n%s', stdout)
         if exit_status:
             logging.info('exit status: %d', exit_status)
+        if 'Error' in stdout:
+            raise error.TestFail('ccd open Error %s' %
+                                 stdout.split('Error')[-1])
         if self.cr50.OPEN != self.cr50.get_ccd_level():
-            raise error.TestFail('ccd open: %s' % stdout)
+            raise error.TestFail('unable to open cr50: %s' % stdout)
         else:
             logging.info('Opened Cr50')
 
@@ -701,8 +704,8 @@ class Cr50Test(FirmwareTest):
                 else:
                     raise error.TestFail(message)
             elif expect_error:
-                error.TestFail('%s with %r did not fail when expected' %
-                               (name, password))
+                raise error.TestFail('%s with %r did not fail when expected' %
+                                     (name, password))
 
 
     def set_ccd_password(self, password, expect_error=False):

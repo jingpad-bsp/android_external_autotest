@@ -625,6 +625,23 @@ def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
     utils.run('inject_powerd_input_event', args=args)
 
 
+def wait_for_userspace_ready():
+    """Waits for userspace apps to be launchable.
+
+    Launches and then closes Android settings as a way to ensure all basic
+    services are ready. This goes a bit beyond waiting for boot-up to complete,
+    as being able to launch an activity requires more of the framework to have
+    started. The boot-complete signal happens fairly early, and the framework
+    system server is still starting services. By waiting for ActivityManager to
+    respond, we automatically wait on more services to be ready.
+    """
+    output = adb_shell('am start -W -a android.settings.SETTINGS')
+    if not output.endswith('Complete'):
+        logging.debug('Output was: %s', output)
+        raise error.TestError('Could not launch SETTINGS')
+    adb_shell('am force-stop com.android.settings')
+
+
 class ArcTest(test.test):
     """ Base class of ARC Test.
 
