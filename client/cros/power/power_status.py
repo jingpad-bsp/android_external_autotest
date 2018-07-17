@@ -1158,6 +1158,10 @@ class GPUFreqStats(AbstractStats):
         return self._trace_read_stats(self._I915_TRACE_CLK_RE)
 
 
+    def _supports_automatic_weighted_average(self):
+        return self._gpu_type is not None
+
+
 class USBSuspendStats(AbstractStats):
     """
     USB active/suspend statistics (over all devices)
