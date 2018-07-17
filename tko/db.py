@@ -25,8 +25,15 @@ import time
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend import database_settings_helper
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 def _log_error(msg):
     """Log an error message.
@@ -49,6 +56,11 @@ def _format_operational_error(e):
 class MySQLTooManyRows(Exception):
     """Too many records."""
     pass
+
+
+def _connection_retry_callback():
+    """Callback method used to increment a retry metric."""
+    metrics.Counter('chromeos/autotest/tko/connection_retries').increment()
 
 
 class db_sql(object):
@@ -155,7 +167,7 @@ class db_sql(object):
 
 
     @retry.retry(driver.OperationalError, timeout_min=10,
-                 delay_sec=5)
+                 delay_sec=5, callback=_connection_retry_callback)
     def connect(self, host, database, user, password, port):
         """Open and return a connection to mysql database."""
         connection_args = {
