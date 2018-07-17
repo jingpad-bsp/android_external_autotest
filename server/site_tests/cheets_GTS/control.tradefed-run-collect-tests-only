@@ -2,15 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# This file has been automatically generated. Do not edit!
 
 AUTHOR = 'ARC++ Team'
 NAME = 'cheets_GTS.tradefed-run-collect-tests-only'
 ATTRIBUTES = 'suite:gts'
 DEPENDENCIES = 'arc'
-JOB_RETRIES = 2
+JOB_RETRIES = 0
 TEST_TYPE = 'server'
 TIME = 'LENGTHY'
-PRIORITY = 70
+MAX_RESULT_SIZE_KB = 512000
 DOC = 'Run all of the Android Google Test Suite (GTS) in the ARC++ container.'
 
 def run_GTS(machine):
@@ -19,16 +20,15 @@ def run_GTS(machine):
         'cheets_GTS',
         hosts=host_list,
         iterations=1,
-        max_retry=0,
+        max_retry=2,
         tag='tradefed-run-collect-tests-only',
         test_name='cheets_GTS.tradefed-run-collect-tests-only',
-        run_template=['run', 'commandAndExit', 'collect-tests-only',
-                # TODO(kinaba): workaround until ag/3850281 is made public.
-                '--preparer-whitelist',
-                'com.android.tradefed.targetprep.suite.SuiteApkInstaller'],
+        run_template=['run', 'commandAndExit', 'collect-tests-only'],
         retry_template=None,
         target_module=None,
         target_plan=None,
-        timeout=600)
+        warn_on_test_retry=False,
+        retry_manual_tests=True,
+        timeout=900)
 
 parallel_simple(run_GTS, machines)
