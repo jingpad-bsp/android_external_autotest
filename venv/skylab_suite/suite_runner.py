@@ -164,6 +164,7 @@ def _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
     basic_swarming_cmd = swarming_lib.get_basic_swarming_cmd('trigger')
     swarming_cmd = basic_swarming_cmd + [
             '--task-name', test_spec.test.name,
+            '--priority', str(test_spec.priority),
             '--dump-json', temp_json_path,
             '--hard-timeout', str(test_spec.execution_timeout_secs),
             '--io-timeout', str(test_spec.io_timeout_secs),
