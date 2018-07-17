@@ -52,7 +52,8 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
                                                     tries=3, timeout=10) == 0,
                                  timeout=60,
                                  sleep_interval=1,
-                                 desc='Ping after reconnecting network.')
+                                 exception=error.TestFail(
+                                     'Ping failed after reconnecting network'))
 
 
     def _disable_internet(self, ping_server='google.com'):
