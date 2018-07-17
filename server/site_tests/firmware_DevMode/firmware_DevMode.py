@@ -21,13 +21,43 @@ class firmware_DevMode(FirmwareTest):
         self.switcher.setup_mode('normal')
         self.setup_usbkey(usbkey=False)
 
+    def bypass_dev_mode_menu_navigation(self):
+        """On tablets/detachables, bypassing the developer warning screen
+        using menu option navigation method.
+        """
+        logging.info("-[bypass_dev_mode]-")
+        logging.info("Bypassing developer warning screen using Menu "
+                     "navigation method.")
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.set_nocheck('volume_up_hold', 100)
+        time.sleep(self.faft_config.confirm_screen)
+        self.servo.set_nocheck('volume_up_hold', 100)
+        time.sleep(self.faft_config.confirm_screen)
+        self.servo.set_nocheck('volume_up_hold', 100)
+        time.sleep(self.faft_config.confirm_screen)
+        logging.info("Selecting power button as enter key to select "
+                     "'Developer Options'.")
+        self.servo.power_short_press()
+        time.sleep(self.faft_config.firmware_screen)
+        logging.info("Selecting power button as enter key to select "
+                     "'Boot Developer Image'.")
+        self.servo.power_short_press()
+
     def run_once(self):
         logging.info("Enable dev mode.")
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '0',
                               'mainfw_type': 'normal',
                               }))
-        self.switcher.reboot_to_mode(to_mode='dev')
+
+        self.switcher._enable_dev_mode_and_reboot()
+        # To validate the Menu navigation method to bypass the developer
+        # warning screen on tablets/detachables.
+        if self.faft_config.fw_bypasser_type == 'tablet_detachable_bypasser':
+            self.bypass_dev_mode_menu_navigation()
+        else:
+            self.switcher.bypass_dev_mode()
+        self.switcher.wait_for_client()
 
         logging.info("Expected developer mode boot and enable normal mode.")
         self.check_state((self.checkers.crossystem_checker, {
