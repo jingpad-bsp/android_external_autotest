@@ -1,0 +1,2 @@
+com.google.android.permission.gts.DefaultPermissionGrantPolicyTest#testDefaultGrants: [eve]
+com.google.android.permission.gts.DefaultPermissionGrantPolicyTest#testDefaultGrantsWithRemoteExceptions: [eve]
