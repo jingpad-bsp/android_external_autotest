@@ -11,6 +11,7 @@ from __future__ import print_function
 import collections
 import json
 import logging
+import operator
 import os
 import urllib
 
@@ -45,6 +46,24 @@ TASK_STATUS_TO_RETRY = [TASK_EXPIRED, TASK_TIMEDOUT, TASK_BOT_DIED,
 
 DEFAULT_EXPIRATION_SECS = 30
 DEFAULT_TIMEOUT_SECS = 60 * 60
+
+# A mapping of priorities for skylab hwtest tasks. In swarming,
+# lower number means high priorities. Priority lower than 48 will
+# be special tasks.
+# Use the same priorities mapping as chromite/lib/constants.py
+SKYLAB_HWTEST_PRIORITIES_MAP = {
+    'Weekly': 160,
+    'Daily': 145,
+    'PostBuild': 130,
+    'Default': 100,
+    'Build': 80,
+    'PFQ': 65,
+    'CQ': 50,
+    'Super': 49,
+}
+SORTED_SKYLAB_HWTEST_PRIORITY = sorted(
+        SKYLAB_HWTEST_PRIORITIES_MAP.items(),
+        key=operator.itemgetter(1))
 
 # TODO (xixuan): Use proto library or some future APIs instead of hardcoding.
 SWARMING_DUT_POOL_MAP = {

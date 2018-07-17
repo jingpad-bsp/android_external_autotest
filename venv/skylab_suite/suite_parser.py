@@ -11,9 +11,9 @@ from __future__ import print_function
 import argparse
 import ast
 
-from autotest_lib.client.common_lib import priorities
 from lucifer import autotest
 from skylab_suite import cros_suite
+from skylab_suite import swarming_lib
 
 
 def make_parser():
@@ -55,13 +55,15 @@ def make_parser():
               '"--firmware_ro_build". Default is to use test code from '
               'the "--build" version (CrOS image)'))
     parser.add_argument(
-        '--priority', type=int, default=priorities.Priority.values[0],
-        choices=priorities.Priority.values,
-        help=('The priority to run the suite. A smaller value means this suite '
+        '--priority', type=int,
+        default=swarming_lib.SKYLAB_HWTEST_PRIORITIES_MAP['Default'],
+        choices=[value for name, value in
+                 swarming_lib.SORTED_SKYLAB_HWTEST_PRIORITY],
+        help=('The priority to run the suite. A high value means this suite '
               'will be executed in a low priority, e.g. being delayed to '
               'execute. Each numerical value represents: '+ ', '.join([
-                  '(%s: %s)' % (str(v), n) for v, n in
-                  zip(priorities.Priority.values, priorities.Priority.names)])))
+                  '(%s: %d)' % (name, value) for name, value in
+                  swarming_lib.SORTED_SKYLAB_HWTEST_PRIORITY])))
     parser.add_argument(
         "--suite_args", type=ast.literal_eval, default=None,
         action="store",
