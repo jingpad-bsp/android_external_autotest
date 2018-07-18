@@ -81,6 +81,13 @@ _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
 _TARGET_VERSION = '/run/update_target_version'
 
 
+# _REBOOT_FAILURE_MESSAGE - This is the standard message text returned
+# when the Host.reboot() method fails.  The source of this text comes
+# from `wait_for_restart()` in client/common_lib/hosts/base_classes.py.
+
+_REBOOT_FAILURE_MESSAGE = 'Host did not return from reboot'
+
+
 class RootFSUpdateError(error.TestFail):
     """Raised when the RootFS fails to update."""
 
@@ -95,6 +102,22 @@ class _AttributedUpdateError(error.TestFail):
     def __init__(self, attribution, msg):
         super(_AttributedUpdateError, self).__init__(
             '%s: %s' % (attribution, msg))
+        self._message = msg
+
+    def _classify(self):
+        for err_pattern, classification in self._CLASSIFIERS:
+            if re.match(err_pattern, self._message):
+                return classification
+        return None
+
+    @property
+    def failure_summary(self):
+        """Summarize this error for metrics reporting."""
+        classification = self._classify()
+        if classification:
+            return '%s: %s' % (self._SUMMARY, classification)
+        else:
+            return self._SUMMARY
 
 
 class HostUpdateError(_AttributedUpdateError):
@@ -105,14 +128,17 @@ class HostUpdateError(_AttributedUpdateError):
     such as a hardware problem, or a bug in the software on the DUT.
     """
 
+    DUT_DOWN = 'No answer to ssh'
+
+    _SUMMARY = 'DUT failed prior to update'
+    _CLASSIFIERS = [
+        (DUT_DOWN, DUT_DOWN),
+        (_REBOOT_FAILURE_MESSAGE, 'Reboot failed'),
+    ]
+
     def __init__(self, hostname, msg):
         super(HostUpdateError, self).__init__(
             'Error on %s prior to update' % hostname, msg)
-
-    @property
-    def failure_summary(self):
-        #pylint: disable=missing-docstring
-        return 'DUT failed prior to update'
 
 
 class DevServerError(_AttributedUpdateError):
@@ -122,14 +148,12 @@ class DevServerError(_AttributedUpdateError):
     of failure was the devserver serving the target image for update.
     """
 
+    _SUMMARY = 'Devserver failed prior to update'
+    _CLASSIFIERS = []
+
     def __init__(self, devserver, msg):
         super(DevServerError, self).__init__(
             'Devserver error on %s' % devserver, msg)
-
-    @property
-    def failure_summary(self):
-        #pylint: disable=missing-docstring
-        return 'Devserver failed prior to update'
 
 
 class ImageInstallError(_AttributedUpdateError):
@@ -140,15 +164,13 @@ class ImageInstallError(_AttributedUpdateError):
     either the devserver or the DUT might be at fault.
     """
 
+    _SUMMARY = 'Image failed to download and install'
+    _CLASSIFIERS = []
+
     def __init__(self, hostname, devserver, msg):
         super(ImageInstallError, self).__init__(
             'Download and install failed from %s onto %s'
             % (devserver, hostname), msg)
-
-    @property
-    def failure_summary(self):
-        #pylint: disable=missing-docstring
-        return 'Image failed to download and install'
 
 
 class NewBuildUpdateError(_AttributedUpdateError):
@@ -158,6 +180,18 @@ class NewBuildUpdateError(_AttributedUpdateError):
     build fails, and the most likely cause of the failure is a bug in
     the newly installed target build.
     """
+
+    CHROME_FAILURE = 'Chrome failed to reach login screen'
+    UPDATE_ENGINE_FAILURE = ('update-engine failed to call '
+                             'chromeos-setgoodkernel')
+    ROLLBACK_FAILURE = 'System rolled back to previous build'
+
+    _SUMMARY = 'New build failed'
+    _CLASSIFIERS = [
+        (CHROME_FAILURE, 'Chrome did not start'),
+        (UPDATE_ENGINE_FAILURE, 'update-engine did not start'),
+        (ROLLBACK_FAILURE, ROLLBACK_FAILURE),
+    ]
 
     def __init__(self, update_version, msg):
         super(NewBuildUpdateError, self).__init__(
@@ -770,10 +804,9 @@ class ChromiumOSUpdater(object):
         except RootFSUpdateError:
             services_status = self._run('status system-services').stdout
             if services_status != 'system-services start/running\n':
-                event = ('Chrome failed to reach login screen')
+                event = NewBuildUpdateError.CHROME_FAILURE
             else:
-                event = ('update-engine failed to call '
-                         'chromeos-setgoodkernel')
+                event = NewBuildUpdateError.UPDATE_ENGINE_FAILURE
             raise NewBuildUpdateError(self.update_version, event)
 
 
@@ -794,6 +827,9 @@ class ChromiumOSUpdater(object):
         #  5. Force `update-engine` to start, because if Chrome failed
         #     to start properly, the status of the `update-engine` job
         #     will be uncertain.
+        if not self.host.is_up():
+            raise HostUpdateError(self.host.hostname,
+                                  HostUpdateError.DUT_DOWN)
         self._reset_stateful_partition()
         self.host.reboot(timeout=self.host.REBOOT_TIMEOUT)
         self._run('touch %s' % PROVISION_FAILED)
@@ -934,9 +970,7 @@ class ChromiumOSUpdater(object):
                           '( touch "$FILE" ; start autoreboot )')
         self._run(autoreboot_cmd % _LAB_MACHINE_FILE)
         self.verify_boot_expectations(
-                expected_kernel, rollback_message=
-                'Build %s failed to boot on %s; system rolled back to previous '
-                'build' % (self.update_version, self.host.hostname))
+                expected_kernel, NewBuildUpdateError.ROLLBACK_FAILURE)
 
         logging.debug('Cleaning up old autotest directories.')
         try:
