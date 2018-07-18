@@ -99,6 +99,72 @@ class RPMFrontendServer(object):
         self._email_handler = email_handler
 
 
+    def set_power_via_poe(self, device_hostname, new_state):
+        """Sets power state of the device to the requested state via POE.
+
+        @param device_hostname: Hostname of the servo to control.
+        @param new_state: [ON, OFF, CYCLE] State to which we want to set the
+                          device's outlet to.
+
+        @return: True if the attempt to change power state was successful,
+                 False otherwise.
+
+        @raise RPMInfrastructureException: No dispatchers are available or can
+                                           be reached.
+        """
+        # Remove any DNS Zone information and simplify down to just the hostname.
+        device_hostname = device_hostname.split('.')[0]
+        new_state = new_state.upper()
+        if new_state not in VALID_STATE_VALUES:
+            logging.error('Received request to set servo %s to invalid '
+                          'state %s', device_hostname, new_state)
+            return False
+        logging.info('Received request to set servo: %s to state: %s',
+                     device_hostname, new_state)
+        powerunit_info = self._get_poe_powerunit_info(device_hostname)
+        try:
+            return self._queue_once(powerunit_info, new_state)
+        except DispatcherDownException:
+            # Retry forwarding the request.
+            return self.set_power_via_poe(device_hostname, new_state)
+
+
+    def set_power_via_rpm(self, device_hostname, rpm_hostname,
+                          rpm_outlet, hydra_hostname, new_state):
+        """Sets power state of a device to the requested state via RPM.
+
+        Unlike the special case of POE, powerunit information is not available
+        on the RPM server, so must be provided as arguments.
+
+        @param device_hostname: Hostname of the servo to control.
+        @param rpm_hostname: Hostname of the RPM to use.
+        @param rpm_outlet: The RPM outlet to control.
+        @param hydra_hostname: If required, the hydra device to SSH through to
+                               get to the RPM.
+        @param new_state: [ON, OFF, CYCLE] State to which we want to set the
+                          device's outlet to.
+
+        @return: True if the attempt to change power state was successful,
+                 False otherwise.
+
+        @raise RPMInfrastructureException: No dispatchers are available or can
+                                           be reached.
+        """
+        powerunit_info = utils.PowerUnitInfo(
+                device_hostname=device_hostname,
+                powerunit_type=utils.PowerUnitInfo.POWERUNIT_TYPES.RPM,
+                powerunit_hostname=rpm_hostname,
+                outlet=rpm_outlet,
+                hydra_hostname=hydra_hostname,
+        )
+        try:
+            return self._queue_once(powerunit_info, new_state)
+        except DispatcherDownException:
+            # Retry forwarding the request.
+            return self.set_power_via_rpm(device_hostname, rpm_hostname,
+                                          rpm_outlet, hydra_hostname, new_state)
+
+
     def queue_request(self, device_hostname, new_state):
         """
         Forwards a request to change a device's (a dut or a servo) power state
