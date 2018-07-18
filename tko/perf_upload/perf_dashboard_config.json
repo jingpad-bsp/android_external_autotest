@@ -159,6 +159,10 @@
     "master_name": "ChromeOS_Graphics"
   },
   {
+    "autotest_name": "graphics_KernelConfig",
+    "master_name": "ChromeOS_Graphics"
+  },
+  {
     "autotest_name": "graphics_Idle",
     "master_name": "ChromeOS_Graphics"
   },
