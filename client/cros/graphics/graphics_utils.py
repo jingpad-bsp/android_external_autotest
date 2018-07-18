@@ -25,7 +25,6 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import test as test_utils
-from autotest_lib.client.cros.graphics import gbm
 from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.power import power_utils
 from functools import wraps
@@ -494,12 +493,11 @@ def activate_focus_at(rel_x, rel_y):
     _uinput_emit(device, 'BTN_TOUCH', 0, syn=True)
 
 
-def take_screenshot(resultsdir, fname_prefix, extension='png'):
+def take_screenshot(resultsdir, fname_prefix):
     """Take screenshot and save to a new file in the results dir.
     Args:
       @param resultsdir:   Directory to store the output in.
       @param fname_prefix: Prefix for the output fname.
-      @param extension:    String indicating file format ('png', 'jpg', etc).
     Returns:
       the path of the saved screenshot file
     """
@@ -507,14 +505,13 @@ def take_screenshot(resultsdir, fname_prefix, extension='png'):
     old_exc_type = sys.exc_info()[0]
 
     next_index = len(glob.glob(
-        os.path.join(resultsdir, '%s-*.%s' % (fname_prefix, extension))))
+        os.path.join(resultsdir, '%s-*.png' % fname_prefix)))
     screenshot_file = os.path.join(
-        resultsdir, '%s-%d.%s' % (fname_prefix, next_index, extension))
+        resultsdir, '%s-%d.png' % (fname_prefix, next_index))
     logging.info('Saving screenshot to %s.', screenshot_file)
 
     try:
-        image = gbm.crtcScreenshot()
-        image.save(screenshot_file)
+        utils.run('screenshot "%s"' % screenshot_file)
     except Exception as err:
         # Do not raise an exception if the screenshot fails while processing
         # another exception.
@@ -530,14 +527,20 @@ def take_screenshot_crop(fullpath, box=None, crtc_id=None):
     Take a screenshot using import tool, crop according to dim given by the box.
     @param fullpath: path, full path to save the image to.
     @param box: 4-tuple giving the upper left and lower right pixel coordinates.
+    @param crtc_id: if set, take a screen shot of the specified CRTC.
     """
+    cmd = 'screenshot'
     if crtc_id is not None:
-        image = gbm.crtcScreenshot(crtc_id)
+        cmd += ' --crtc-id=%d' % crtc_id
     else:
-        image = gbm.crtcScreenshot(get_internal_crtc())
+        cmd += ' --internal'
     if box:
-        image = image.crop(box)
-    image.save(fullpath)
+        x, y, r, b = box
+        w = r - x
+        h = b - y
+        cmd += ' --crop=%dx%d+%d+%d' % (w, h, x, y)
+    cmd += ' "%s"' % fullpath
+    utils.run(cmd)
     return fullpath
 
 
