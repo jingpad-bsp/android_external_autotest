@@ -210,7 +210,6 @@ class _SuiteSpec(object):
     _VERSION_PREFIXES = frozenset((
             provision.CROS_VERSION_PREFIX,
             provision.CROS_ANDROID_VERSION_PREFIX,
-            provision.ANDROID_BUILD_VERSION_PREFIX,
     ))
 
     def __init__(
@@ -379,10 +378,7 @@ class _SuiteSpec(object):
 
     def _init_devserver(self, devserver_url):
         """Initialize devserver attribute."""
-        if provision.ANDROID_BUILD_VERSION_PREFIX in self.builds:
-            self.devserver = dev_server.AndroidBuildServer(devserver_url)
-        else:
-            self.devserver = dev_server.ImageServer(devserver_url)
+        self.devserver = dev_server.ImageServer(devserver_url)
 
     def _init_test_source_build(self, test_source_build):
         """Initialize test_source_build attribute."""

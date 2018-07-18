@@ -18,9 +18,6 @@ _CROS_ANDROID_VERSION_SAMPLES = [
     'git_nyc-mr1-arc/cheets_arm-user/P6244267',
     'git_nyc-mr1-arc/cheets_x86-user/P6256537',
 ]
-_ANDROID_VERSION_SAMPLES = [
-    'git_mnc-release/shamu-userdebug/2457013'
-]
 
 
 class ActionTestCase(unittest.TestCase):
@@ -57,11 +54,6 @@ class ImageParsingTests(unittest.TestCase):
         """Test handling of Chrome OS version strings."""
         self._do_test_prefixes(provision.CROS_ANDROID_VERSION_PREFIX,
                                _CROS_ANDROID_VERSION_SAMPLES)
-
-    def test_android_prefix(self):
-        """Test handling of Android version strings."""
-        self._do_test_prefixes(provision.ANDROID_BUILD_VERSION_PREFIX,
-                               _ANDROID_VERSION_SAMPLES)
 
 
 if __name__ == '__main__':
