@@ -53,6 +53,24 @@ PTZ_PRO_2_CAMERA = usb_device_spec.UsbDeviceSpec(
     interfaces=['uvcvideo', 'uvcvideo', 'usbhid'],
 )
 
+# Devices with Camera and Audio
+
+# Camera in Logitech MeetUp Device
+LOGITECH_MEETUP = usb_device_spec.UsbDeviceSpec(
+    vid='046d',
+    pid='0866',
+    product='Logitech MeetUp',
+    interfaces=['uvcvideo', 'uvcvideo', 'usbhid'],
+)
+
+# Audio peripheral in Logitech MeetUp Device
+LOGITECH_MEETUP_SPEAKERPHONE = usb_device_spec.UsbDeviceSpec(
+    vid='046d',
+    pid='0867',
+    product='Logitech MeetUp Speakerphone',
+    interfaces=['snd-usb-audio', 'snd-usb-audio', 'snd-usb-audio', 'usbhid'],
+)
+
 # Audio peripherals
 ATRUS = usb_device_spec.UsbDeviceSpec(
     vid='18d1',
