@@ -7,6 +7,8 @@ import base64
 import binascii
 import thread
 import urlparse
+
+from string import Template
 from xml.dom import minidom
 
 def _split_url(url):
@@ -39,56 +41,135 @@ class NanoOmahaDevserver(object):
         self._num_urls = num_urls
 
 
-    class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
-        """Inner class for handling HTTP requests."""
-
-        _OMAHA_RESPONSE_TEMPLATE_HEAD = """
-          <response protocol=\"3.0\">
-            <daystart elapsed_seconds=\"44801\"/>
-            <app appid=\"%s\" status=\"ok\">
-              <ping status=\"ok\"/>
-              <updatecheck status=\"ok\">
-                <urls>
+    def create_update_response(self, appid):
         """
-        _OMAHA_RESPONSE_BODY = """
+        Create an update response using the values from set_image_params().
+
+        @param appid: the appid parsed from the request.
+
+        @returns: a string of the response this server should send.
+
+        """
+        EOL_TEMPLATE = Template("""
+          <response protocol="3.0">
+            <daystart elapsed_seconds="44801"/>
+            <app appid="$appid" status="ok">
+              <ping status="ok"/>
+              <updatecheck _eol="eol" status="noupdate"/>
+            </app>
+          </response>
+        """)
+
+        RESPONSE_TEMPLATE = Template("""
+          <response protocol="3.0">
+            <daystart elapsed_seconds="44801"/>
+              <app appid="$appid" status="ok">
+              <ping status="ok"/>
+                <updatecheck ${ROLLBACK_FLAGS}status="ok">
+                <urls>
+                  $PER_URL_TAGS
                 </urls>
-                <manifest version=\"9999.0.0\">
+                <manifest version="$build_number">
                   <packages>
-                    <package hash_sha256=\"%s\" name=\"%s\" size=\"%d\"
-                    required=\"true\"/>
+                    <package hash_sha256="$sha256" name="$image_name"
+                    size="$image_size" required="true"/>
                   </packages>
                   <actions>
-                    <action event=\"postinstall\"
-              ChromeOSVersion=\"9999.0.0\"
-              sha256=\"%s\"
-              needsadmin=\"false\"
-              IsDeltaPayload=\"%s\"
-              MaxFailureCountPerUrl=\"%d\"
-              DisablePayloadBackoff=\"%s\"
-        """
-
-        _OMAHA_RESPONSE_TEMPLATE_TAIL = """ />
+                    <action event="postinstall"
+                    ChromeOSVersion="$build_number"
+                    sha256="$sha256"
+                    needsadmin="false"
+                    IsDeltaPayload="$is_delta"
+                    MaxFailureCountPerUrl="$failures_per_url"
+                    DisablePayloadBackoff="$disable_backoff"
+                    $OPTIONAL_ACTION_FLAGS
+                    />
                   </actions>
                 </manifest>
               </updatecheck>
             </app>
           </response>
-        """
+        """)
+        PER_URL_TEMPLATE = Template('<url codebase="$base/"/>')
+        FLAG_TEMPLATE = Template('$key="$value"')
+        ROLLBACK_TEMPLATE = Template("""
+                _firmware_version="$fw"
+                _firmware_version_0="$fw0"
+                _firmware_version_1="$fw1"
+                _firmware_version_2="$fw2"
+                _firmware_version_3="$fw3"
+                _firmware_version_4="$fw4"
+                _kernel_version="$kern"
+                _kernel_version_0="$kern0"
+                _kernel_version_1="$kern1"
+                _kernel_version_2="$kern2"
+                _kernel_version_3="$kern3"
+                _kernel_version_4="$kern4"
+                _rollback="$is_rollback"
+                """)
 
-        _OMAHA_RESPONSE_EOL = """
-          <response protocol=\"3.0\">
-            <daystart elapsed_seconds=\"44801\"/>
-            <app appid=\"%s\" status=\"ok\">
-              <ping status=\"ok\"/>
-              <updatecheck _eol=\"eol\" status=\"noupdate\"/>
-            </app>
-          </response>
-        """
+        # IF EOL, return a simplified response with _eol tag.
+        if self._eol:
+            return EOL_TEMPLATE.substitute(appid=appid)
 
+        template_keys = {}
+        template_keys['is_delta'] = str(self._is_delta).lower()
+        template_keys['build_number'] = self._build
+        template_keys['sha256'] = (
+            binascii.hexlify(base64.b64decode(self._sha256)))
+        template_keys['image_size'] = self._image_size
+        template_keys['failures_per_url'] = self._failures_per_url
+        template_keys['disable_backoff'] = str(not self._backoff).lower()
+        template_keys['num_urls'] = self._num_urls
+        template_keys['appid'] = appid
+
+        (base, name) = _split_url(self._image_url)
+        template_keys['base'] = base
+        template_keys['image_name'] = name
+
+        # For now, set all version flags to the same value.
+        if self._is_rollback:
+            fw_val = '5'
+            k_val = '7'
+            rollback_flags = ROLLBACK_TEMPLATE.substitute(
+                fw=fw_val, fw0=fw_val, fw1=fw_val, fw2=fw_val, fw3=fw_val,
+                fw4=fw_val, kern=k_val, kern0=k_val, kern1=k_val, kern2=k_val,
+                kern3=k_val, kern4=k_val, is_rollback='true')
+        else:
+            rollback_flags = ''
+        template_keys['ROLLBACK_FLAGS'] = rollback_flags
+
+        per_url = ''
+        for i in xrange(self._num_urls):
+            per_url += PER_URL_TEMPLATE.substitute(template_keys)
+        template_keys['PER_URL_TAGS'] = per_url
+
+        action_flags = []
+        def add_action_flag(key, value):
+            """Helper function for the OPTIONAL_ACTION_FLAGS parameter."""
+            action_flags.append(
+                    FLAG_TEMPLATE.substitute(key=key, value=value))
+        if self._is_delta:
+            add_action_flag('IsDeltaPayload', 'true')
+        if self._critical:
+            add_action_flag('deadline', 'now')
+        if self._metadata_size:
+            add_action_flag('MetadataSize', self._metadata_size)
+        if self._metadata_signature:
+            add_action_flag('MetadataSignatureRsa', self._metadata_signature)
+        if self._public_key:
+            add_action_flag('PublicKeyRsa', self._public_key)
+        template_keys['OPTIONAL_ACTION_FLAGS'] = (
+                '\n                    '.join(action_flags))
+
+        return RESPONSE_TEMPLATE.substitute(template_keys)
+
+
+    class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
+        """Inner class for handling HTTP requests."""
         def do_POST(self):
             """Handler for POST requests."""
             if self.path == '/update':
-
                 # Parse the app id from the request to use in the response.
                 content_len = int(self.headers.getheader('content-length'))
                 request_string = self.rfile.read(content_len)
@@ -96,37 +177,8 @@ class NanoOmahaDevserver(object):
                 app = request_dom.firstChild.getElementsByTagName('app')[0]
                 appid = app.getAttribute('appid')
 
-                if self.server._devserver._eol:
-                    response = self._OMAHA_RESPONSE_EOL % appid
-                else:
-                    (base, name) = _split_url(self.server._devserver._image_url)
-                    response = self._OMAHA_RESPONSE_TEMPLATE_HEAD % appid
-                    for i in range(0, self.server._devserver._num_urls):
-                        response += """<url codebase=\"%s\"/>""" % (base + '/')
-                    response += self._OMAHA_RESPONSE_BODY % (
-                            binascii.hexlify(base64.b64decode(
-                                self.server._devserver._sha256)),
-                            name,
-                            self.server._devserver._image_size,
-                            self.server._devserver._sha256,
-                            str(self.server._devserver._is_delta).lower(),
-                            self.server._devserver._failures_per_url,
-                            str(not self.server._devserver._backoff).lower())
-                    if self.server._devserver._is_delta:
-                        response += '              IsDelta="true"\n'
-                    if self.server._devserver._critical:
-                        response += '              deadline="now"\n'
-                    if self.server._devserver._metadata_size:
-                        response += '              MetadataSize="%d"\n' % (
-                                self.server._devserver._metadata_size)
-                    if self.server._devserver._metadata_signature:
-                        response += '              ' \
-                                    'MetadataSignatureRsa="%s"\n' % (
-                                self.server._devserver._metadata_signature)
-                    if self.server._devserver._public_key:
-                        response += '              PublicKeyRsa="%s"\n' % (
-                                self.server._devserver._public_key)
-                    response += self._OMAHA_RESPONSE_TEMPLATE_TAIL
+                response = self.server._devserver.create_update_response(appid)
+
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/xml')
                 self.end_headers()
@@ -156,10 +208,26 @@ class NanoOmahaDevserver(object):
 
     def set_image_params(self, image_url, image_size, sha256,
                          metadata_size=None, metadata_signature=None,
-                         public_key=None, is_delta=False, critical=True):
-        """Sets the values to return in the Omaha response. Only the
-        |image_url|, |image_size| and |sha256| parameters are
-        mandatory."""
+                         public_key=None, is_delta=False, critical=True,
+                         is_rollback=False, build='999999.0.0'):
+        """
+        Sets the values to return in the Omaha response.
+
+        Only the |image_url|, |image_size| and |sha256| parameters are
+        mandatory.
+
+        @param image_url: the url of the image to install.
+        @param image_size: the size of the image to install.
+        @param sha256: the sha256 hash of the image to install.
+        @param metadata_size: the size of the metadata.
+        @param metadata_signature: the signature of the metadata.
+        @param public_key: the public key.
+        @param is_delta: True if image is a delta, False if a full payload.
+        @param critical: True for forced update, False for regular update.
+        @param is_rollback: True if image is for rollback, False if not.
+        @param build: the build number the response should claim to have.
+
+        """
         self._image_url = image_url
         self._image_size = image_size
         self._sha256 = sha256
@@ -168,3 +236,5 @@ class NanoOmahaDevserver(object):
         self._public_key = public_key
         self._is_delta = is_delta
         self._critical = critical
+        self._is_rollback = is_rollback
+        self._build = build

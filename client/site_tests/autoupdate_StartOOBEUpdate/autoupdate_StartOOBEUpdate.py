@@ -21,26 +21,10 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
     version = 1
 
 
-    def setup(self):
-        utils.run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
-
-
-    def _setup_custom_lsb_release(self, update_url):
-        """Create a custom lsb-release file.
-
-        In order to tell OOBE to ping a different update server than the
-        default we need to create our own lsb-release. We will include a
-        deserver update URL.
-
-        @param update_url: The update url to use.
-
-        """
-        utils.run('mkdir /mnt/stateful_partition/etc', ignore_status=True)
-        utils.run('touch %s' % self._CUSTOM_LSB_RELEASE)
-        utils.run('echo CHROMEOS_RELEASE_VERSION=0.0.0.0 >> %s' %
-                  self._CUSTOM_LSB_RELEASE)
-        utils.run('echo CHROMEOS_AUSERVER=%s >> %s' %
-                  (update_url, self._CUSTOM_LSB_RELEASE))
+    def initialize(self):
+        """Test setup."""
+        super(autoupdate_StartOOBEUpdate).initialize()
+        self._clear_custom_lsb_release()
 
 
     def _skip_to_oobe_update_screen(self):
@@ -58,7 +42,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
         @param url: The omaha update URL we expect to call.
 
         """
-        self._setup_custom_lsb_release(url)
+        self._create_custom_lsb_release(url)
         # Start chrome instance to interact with OOBE.
         self._chrome = chrome.Chrome(auto_login=False)
         self._oobe = self._chrome.browser.oobe
@@ -115,8 +99,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
 
                     # Remove the custom omaha server from lsb release because
                     # after we reboot it will no longer be running.
-                    utils.run('rm %s' % self._CUSTOM_LSB_RELEASE,
-                              ignore_status=True)
+                    self._clear_custom_lsb_release()
 
                     # We need to return from the client test before OOBE
                     # reboots or the server side test will hang. But we cannot
