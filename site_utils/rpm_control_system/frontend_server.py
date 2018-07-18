@@ -44,6 +44,10 @@ MAPPING_FILE = os.path.join(
 LRU_SIZE = rpm_config.getint('RPM_INFRASTRUCTURE', 'lru_size')
 
 
+class DispatcherDownException(Exception):
+    """Raised when a particular RPMDispatcher is down."""
+
+
 class RPMFrontendServer(object):
     """
     This class is the frontend server of the RPM Infrastructure. All clients
@@ -102,8 +106,8 @@ class RPMFrontendServer(object):
 
         This call will block until the forwarded request returns.
 
-        @param device_hostname: Hostname of the device whose power state we want to
-                             change.
+        @param device_hostname: Hostname of the device whose power state we want
+                                to change.
         @param new_state: [ON, OFF, CYCLE] State to which we want to set the
                           device's outlet to.
 
@@ -124,6 +128,15 @@ class RPMFrontendServer(object):
         logging.info('Received request to set device: %s to state: %s',
                      device_hostname, new_state)
         powerunit_info = self._get_powerunit_info(device_hostname)
+        try:
+            return self._queue_once(powerunit_info, new_state)
+        except DispatcherDownException:
+            # Retry forwarding the request.
+            return self.queue_request(device_hostname, new_state)
+
+
+    def _queue_once(self, powerunit_info, new_state):
+        """Queue one request to the dispatcher."""
         dispatcher_uri = self._get_dispatcher(powerunit_info)
         if not dispatcher_uri:
             # No dispatchers available.
@@ -146,8 +159,7 @@ class RPMFrontendServer(object):
             logging.error('Unregistering %s due to error. Recommend resetting '
                           'that dispatch server.', dispatcher_uri)
             self.unregister_dispatcher(dispatcher_uri)
-            # Retry forwarding the request.
-            return self.queue_request(device_hostname, new_state)
+            raise DispatcherDownException(dispatcher_uri)
 
 
     def is_network_infrastructure_down(self):
