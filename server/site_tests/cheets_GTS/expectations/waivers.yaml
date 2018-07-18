@@ -3,3 +3,4 @@ com.google.android.gts.telephony.TelephonyHostTest#testCarrierConfigManagerUpdat
 com.google.android.placement.gts.CoreGmsAppsTest#testCoreGmsAppsPreloaded: [all]
 com.google.android.placement.gts.CoreGmsAppsTest#testGoogleDuoPreloaded: [all]
 com.google.android.placement.gts.UiPlacementTest#testPlayStore: [all]
+com.google.android.webview.gts.WebViewTest#testWebViewFrameworkConfigSettingIsSet: [all]
