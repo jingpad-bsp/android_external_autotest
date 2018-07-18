@@ -4,17 +4,91 @@
 # found in the LICENSE file.
 
 import mox
+import time
 import unittest
 
 import common
-import time
-
-import autoupdater
 from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros import autoupdater
+
+
+class _StubUpdateError(autoupdater._AttributedUpdateError):
+    STUB_MESSAGE = 'Stub message'
+    STUB_PATTERN = 'Stub pattern matched'
+    _SUMMARY = 'Stub summary'
+    _CLASSIFIERS = [
+        (STUB_MESSAGE, STUB_MESSAGE),
+        ('Stub .*', STUB_PATTERN),
+    ]
+
+    def __init__(self, info, msg):
+        super(_StubUpdateError, self).__init__(
+            'Stub %s' % info, msg)
+
+
+class TestErrorClassifications(unittest.TestCase):
+    """Test error message handling in `_AttributedUpdateError`."""
+
+    def test_exception_message(self):
+        """Test that the exception string includes its arguments."""
+        info = 'info marker'
+        msg = 'an error message'
+        stub = _StubUpdateError(info, msg)
+        self.assertIn(info, str(stub))
+        self.assertIn(msg, str(stub))
+
+    def test_classifier_message(self):
+        """Test that the exception classifier can match a simple string."""
+        info = 'info marker'
+        stub = _StubUpdateError(info, _StubUpdateError.STUB_MESSAGE)
+        self.assertNotIn(info, stub.failure_summary)
+        self.assertIn(_StubUpdateError._SUMMARY, stub.failure_summary)
+        self.assertIn(_StubUpdateError.STUB_MESSAGE, stub.failure_summary)
+
+    def test_classifier_pattern(self):
+        """Test that the exception classifier can match a regex."""
+        info = 'info marker'
+        stub = _StubUpdateError(info, 'Stub this is a test')
+        self.assertNotIn(info, stub.failure_summary)
+        self.assertIn(_StubUpdateError._SUMMARY, stub.failure_summary)
+        self.assertIn(_StubUpdateError.STUB_PATTERN, stub.failure_summary)
+
+    def test_classifier_unmatched(self):
+        """Test exception summary when no classifier matches."""
+        info = 'info marker'
+        stub = _StubUpdateError(info, 'This matches no pattern')
+        self.assertNotIn(info, stub.failure_summary)
+        self.assertIn(_StubUpdateError._SUMMARY, stub.failure_summary)
+
+    def test_host_update_error(self):
+        """Sanity test the `HostUpdateError` classifier."""
+        exception = autoupdater.HostUpdateError(
+                'chromeos6-row3-rack3-host19', 'Fake message')
+        self.assertTrue(isinstance(exception.failure_summary, str))
+
+    def test_dev_server_error(self):
+        """Sanity test the `DevServerError` classifier."""
+        exception = autoupdater.DevServerError(
+                'chromeos4-devserver7.cros', 'Fake message')
+        self.assertTrue(isinstance(exception.failure_summary, str))
+
+    def test_image_install_error(self):
+        """Sanity test the `ImageInstallError` classifier."""
+        exception = autoupdater.ImageInstallError(
+                'chromeos6-row3-rack3-host19',
+                'chromeos4-devserver7.cros',
+                'Fake message')
+        self.assertTrue(isinstance(exception.failure_summary, str))
+
+    def test_new_build_update_error(self):
+        """Sanity test the `NewBuildUpdateError` classifier."""
+        exception = autoupdater.NewBuildUpdateError(
+                'R68-10621.0.0', 'Fake message')
+        self.assertTrue(isinstance(exception.failure_summary, str))
+
 
 class TestAutoUpdater(mox.MoxTestBase):
     """Test autoupdater module."""
-
 
     def testParseBuildFromUpdateUrlwithUpdate(self):
         """Test that we properly parse the build from an update_url."""
@@ -23,7 +97,6 @@ class TestAutoUpdater(mox.MoxTestBase):
         expected_value = 'lumpy-release/R27-3837.0.0'
         self.assertEqual(autoupdater.url_to_image_name(update_url),
                          expected_value)
-
 
     def _host_run_for_update(self, cmd, exception=None,
                              bad_update_status=False):
@@ -44,7 +117,6 @@ class TestAutoUpdater(mox.MoxTestBase):
                 result.stdout = 'UPDATE_STATUS_IDLE'
             result.status = 0
             self.host.run(command=cmd).AndReturn(result)
-
 
     def testTriggerUpdate(self):
         """Tests that we correctly handle updater errors."""
@@ -146,7 +218,6 @@ class TestAutoUpdater(mox.MoxTestBase):
 
         self.mox.VerifyAll()
 
-
     def testUpdateStateful(self):
         """Tests that we call the stateful update script with the correct args.
         """
@@ -189,7 +260,6 @@ class TestAutoUpdater(mox.MoxTestBase):
         updater.update_stateful(clobber=True)
         self.mox.VerifyAll()
 
-
     def testGetRemoteScript(self):
         """Test _get_remote_script() behaviors."""
         update_url = ('http://172.22.50.205:8082/update/lumpy-chrome-perf/'
@@ -221,7 +291,6 @@ class TestAutoUpdater(mox.MoxTestBase):
                 updater._get_remote_script(script_name),
                 '%s %s' % (fake_shell, tmp_script))
         self.mox.VerifyAll()
-
 
     def testRollbackRootfs(self):
         """Tests that we correctly rollback the rootfs when requested."""
