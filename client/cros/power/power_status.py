@@ -1650,15 +1650,17 @@ class CPUStatsLogger(MeasurementLogger):
             ret.extend(stat.refresh().values())
             wavg = stat.weighted_average()
             if wavg:
-                last_wavg = self._last_wavg[stat.name]
-                self._last_wavg[stat.name] = wavg
-
-                # Calculate weight average in this period using current total
-                # weight average and last total weight average.
-                # The result will lose some precision with higher number of
-                # count but still good enough for 11 significant digits even if
-                # we logged the data every 1 second for a day.
-                ret.append(wavg * count - last_wavg * (count - 1))
+                if stat.incremental:
+                    last_wavg = self._last_wavg[stat.name]
+                    self._last_wavg[stat.name] = wavg
+                    # Calculate weight average in this period using current
+                    # total weight average and last total weight average.
+                    # The result will lose some precision with higher number of
+                    # count but still good enough for 11 significant digits even
+                    # if we logged the data every 1 second for a day.
+                    ret.append(wavg * count - last_wavg * (count - 1))
+                else:
+                    ret.append(wavg)
         return ret
 
     def save_results(self, resultsdir, fname=None):
