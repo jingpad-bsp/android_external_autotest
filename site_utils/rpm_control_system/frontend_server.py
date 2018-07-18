@@ -197,40 +197,77 @@ class RPMFrontendServer(object):
                 unit info.
 
         """
+        if device_hostname.endswith('servo'):
+            return self._get_poe_powerunit_info(device_hostname)
+        else:
+            return self._get_rpm_powerunit_info(device_hostname)
+
+
+    def _get_poe_powerunit_info(self, device_hostname):
+        """Get the power management unit information for a POE controller.
+
+        Servo is managed by POE. The related information we need to know
+        include poe hostname, poe interface. Such information is
+        stored in a local file and read into memory.
+
+        @param device_hostname: A string representing the device's hostname.
+
+        @returns: A PowerUnitInfo object.
+        @raises RPMInfrastructureException if failed to get the power
+                unit info.
+
+        """
         with self._lock:
-            if device_hostname.endswith('servo'):
-                # Servos are managed by Cisco POE switches.
-                reload_info = utils.reload_servo_interface_mapping_if_necessary(
-                        self._mapping_last_modified)
-                if reload_info:
-                    self._mapping_last_modified, self._servo_interface = reload_info
-                switch_if_tuple = self._servo_interface.get(device_hostname)
-                if not switch_if_tuple:
-                    raise RPMInfrastructureException(
-                            'Could not determine POE hostname for %s. '
-                            'Please check the servo-interface mapping file.',
-                            device_hostname)
-                else:
-                    return utils.PowerUnitInfo(
-                            device_hostname=device_hostname,
-                            powerunit_type=utils.PowerUnitInfo.POWERUNIT_TYPES.POE,
-                            powerunit_hostname=switch_if_tuple[0],
-                            outlet=switch_if_tuple[1],
-                            hydra_hostname=None)
+            reload_info = utils.reload_servo_interface_mapping_if_necessary(
+                    self._mapping_last_modified)
+            if reload_info:
+                self._mapping_last_modified, self._servo_interface = reload_info
+            switch_if_tuple = self._servo_interface.get(device_hostname)
+            if not switch_if_tuple:
+                raise RPMInfrastructureException(
+                        'Could not determine POE hostname for %s. '
+                        'Please check the servo-interface mapping file.',
+                        device_hostname)
             else:
-                # Regular DUTs are managed by RPMs.
-                if device_hostname in self._rpm_info:
-                    return self._rpm_info[device_hostname]
+                return utils.PowerUnitInfo(
+                        device_hostname=device_hostname,
+                        powerunit_type=utils.PowerUnitInfo.POWERUNIT_TYPES.POE,
+                        powerunit_hostname=switch_if_tuple[0],
+                        outlet=switch_if_tuple[1],
+                        hydra_hostname=None)
+
+
+
+    def _get_rpm_powerunit_info(self, device_hostname):
+        """Get the power management unit information for an RPM controller.
+
+        Chromeos dut is managed by RPM. The related information
+        we need to know include rpm hostname, rpm outlet, hydra hostname.
+        Such information can be retrieved from afe_host_attributes table
+        from afe. A local LRU cache is used avoid hitting afe too often.
+
+        @param device_hostname: A string representing the device's hostname.
+
+        @returns: A PowerUnitInfo object.
+        @raises RPMInfrastructureException if failed to get the power
+                unit info.
+
+        """
+        with self._lock:
+            # Regular DUTs are managed by RPMs.
+            if device_hostname in self._rpm_info:
+                return self._rpm_info[device_hostname]
+            else:
+                hosts = self._afe.get_hosts(hostname=device_hostname)
+                if not hosts:
+                    raise RPMInfrastructureException(
+                            'Can not retrieve rpm information '
+                            'from AFE for %s, no host found.' % device_hostname)
                 else:
-                    hosts = self._afe.get_hosts(hostname=device_hostname)
-                    if not hosts:
-                        raise RPMInfrastructureException(
-                                'Can not retrieve rpm information '
-                                'from AFE for %s, no host found.' % device_hostname)
-                    else:
-                        info = utils.PowerUnitInfo.get_powerunit_info(hosts[0])
-                        self._rpm_info[device_hostname] = info
-                        return info
+                    info = utils.PowerUnitInfo.get_powerunit_info(hosts[0])
+                    self._rpm_info[device_hostname] = info
+                    return info
+
 
 
     def _get_dispatcher(self, powerunit_info):
