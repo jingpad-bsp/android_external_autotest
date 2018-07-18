@@ -4,7 +4,6 @@
 
 import datetime
 import errno
-import functools
 import logging
 import os
 import re
@@ -24,12 +23,10 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
-from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import adb_label
 from autotest_lib.server.hosts import base_label
-from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import teststation_host
 
 
@@ -142,17 +139,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
 
     VERSION_PREFIX = provision.ANDROID_BUILD_VERSION_PREFIX
-    _LABEL_FUNCTIONS = []
-    _DETECTABLE_LABELS = []
-    label_decorator = functools.partial(utils.add_label_detector,
-                                        _LABEL_FUNCTIONS,
-                                        _DETECTABLE_LABELS)
-
-    # Minimum build id that supports server side packaging. Older builds may
-    # not have server side package built or with Autotest code change to support
-    # server-side packaging.
-    MIN_VERSION_SUPPORT_SSP = CONFIG.get_config_value(
-            'AUTOSERV', 'min_launch_control_build_id_support_ssp', type=int)
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -435,7 +421,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return android_utils.AndroidAliases.get_board_name(product)
 
 
-    @label_decorator()
     def get_board(self):
         """Determine the correct board label for the device.
 
@@ -865,63 +850,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         logging.debug('Device state is %sready', '' if is_ready else 'NOT ')
         return is_ready
-
-
-    def verify_connectivity(self):
-        """Verify we can connect to the device."""
-        if not self.is_device_ready():
-            raise error.AutoservHostError('device state is not in the '
-                                          '\'device\' state.')
-
-
-    def verify_software(self):
-        """Verify working software on an adb_host.
-
-        """
-        # Check if adb and fastboot are present.
-        self.teststation.run('which adb')
-        self.teststation.run('which fastboot')
-        self.teststation.run('which unzip')
-
-        # Apply checks only for Android device.
-        if self.get_os_type() == OS_TYPE_ANDROID:
-            # Make sure ro.boot.hardware and ro.build.product match.
-            hardware = self._run_output_with_retry('getprop ro.boot.hardware')
-            product = self._run_output_with_retry('getprop ro.build.product')
-            if hardware != product:
-                raise error.AutoservHostError('ro.boot.hardware: %s does not '
-                                              'match to ro.build.product: %s' %
-                                              (hardware, product))
-
-
-    def verify_job_repo_url(self, tag=''):
-        """Make sure job_repo_url of this host is valid.
-
-        TODO (crbug.com/532223): Actually implement this method.
-
-        @param tag: The tag from the server job, in the format
-                    <job_id>-<user>/<hostname>, or <hostless> for a server job.
-        """
-        return
-
-
-    def repair(self):
-        """Attempt to get the DUT to pass `self.verify()`."""
-        if self.is_up():
-            logging.debug('The device is up and accessible by adb. No need to '
-                          'repair.')
-            return
-        # Force to do a reinstall in repair first. The reason is that it
-        # requires manual action to put the device into fastboot mode.
-        # If repair tries to switch the device back to adb mode, one will
-        # have to change it back to fastboot mode manually again.
-        logging.debug('Verifying the device is accessible via fastboot.')
-        self.ensure_bootloader_mode()
-        if not self.job.run_test(
-                'provision_AndroidUpdate', host=self, value=None, force=True,
-                repair=True):
-            raise error.AutoservRepairTotalFailure(
-                    'Unable to repair the device.')
 
 
     def send_file(self, source, dest, delete_dest=False,
@@ -1657,57 +1585,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.GenericHostRunError('Uninstall of "%s" failed.'
                                             % package, result)
 
-    def save_info(self, results_dir, include_build_info=True):
-        """Save info about this device.
-
-        @param results_dir: The local directory to store the info in.
-        @param include_build_info: If true this will include the build info
-                                   artifact.
-        """
-        if include_build_info:
-            teststation_temp_dir = self.teststation.get_tmp_dir()
-
-            try:
-                info = self.host_info_store.get()
-            except host_info.StoreError:
-                logging.warning(
-                    'Device %s could not get repo url for build info.',
-                    self.adb_serial)
-                return
-
-            job_repo_url = info.attributes.get(self.job_repo_url_attribute, '')
-            if not job_repo_url:
-                logging.warning(
-                    'Device %s could not get repo url for build info.',
-                    self.adb_serial)
-                return
-
-            build_info = ADBHost.get_build_info_from_build_url(job_repo_url)
-
-            target = build_info['target']
-            branch = build_info['branch']
-            build_id = build_info['build_id']
-
-            devserver_url = dev_server.AndroidBuildServer.get_server_url(
-                    job_repo_url)
-            ds = dev_server.AndroidBuildServer(devserver_url)
-
-            ds.trigger_download(target, build_id, branch, files='BUILD_INFO',
-                                synchronous=True)
-
-            pull_base_url = ds.get_pull_url(target, build_id, branch)
-
-            source_path = os.path.join(teststation_temp_dir, 'BUILD_INFO')
-
-            self.download_file(pull_base_url, 'BUILD_INFO',
-                               teststation_temp_dir)
-
-            destination_path = os.path.join(
-                    results_dir, 'BUILD_INFO-%s' % self.adb_serial)
-            self.teststation.get_file(source_path, destination_path)
-
-
-
     @retry.retry(error.GenericHostRunError, timeout_min=0.2)
     def _confirm_apk_installed(self, package_name):
         """Confirm if apk is already installed with the given name.
@@ -1789,75 +1666,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def update_labels(self):
         """Update the labels for this testbed."""
         self.labels.update_labels(self)
-
-
-    def stage_server_side_package(self, image=None):
-        """Stage autotest server-side package on devserver.
-
-        @param image: A build name, e.g., git_mnc_dev/shamu-eng/123
-
-        @return: A url to the autotest server-side package.
-
-        @raise: error.AutoservError if fail to locate the build to test with, or
-                fail to stage server-side package.
-        """
-        # If enable_drone_in_restricted_subnet is False, do not set hostname
-        # in devserver.resolve call, so a devserver in non-restricted subnet
-        # is picked to stage autotest server package for drone to download.
-        hostname = self.hostname
-        if not utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
-            hostname = None
-        if image:
-            ds = dev_server.AndroidBuildServer.resolve(image, hostname)
-        else:
-            info = self.host_info_store.get()
-            job_repo_url = info.attributes.get(self.job_repo_url_attribute)
-            if job_repo_url is not None:
-                devserver_url, image = (
-                        tools.get_devserver_build_from_package_url(
-                                job_repo_url, True))
-                # If enable_drone_in_restricted_subnet is True, use the
-                # existing devserver. Otherwise, resolve a new one in
-                # non-restricted subnet.
-                if utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
-                    ds = dev_server.AndroidBuildServer(devserver_url)
-                else:
-                    ds = dev_server.AndroidBuildServer.resolve(image)
-            elif info.build is not None:
-                ds = dev_server.AndroidBuildServer.resolve(info.build, hostname)
-            else:
-                raise error.AutoservError(
-                        'Failed to stage server-side package. The host has '
-                        'no job_report_url attribute or version label.')
-
-        branch, target, build_id = utils.parse_launch_control_build(image)
-        build_target, _ = utils.parse_launch_control_target(target)
-
-        # For any build older than MIN_VERSION_SUPPORT_SSP, server side
-        # packaging is not supported.
-        try:
-            # Some build ids may have special character before the actual
-            # number, skip such characters.
-            actual_build_id = build_id
-            if build_id.startswith('P'):
-                actual_build_id = build_id[1:]
-            if int(actual_build_id) < self.MIN_VERSION_SUPPORT_SSP:
-                raise error.AutoservError(
-                        'Build %s is older than %s. Server side packaging is '
-                        'disabled.' % (image, self.MIN_VERSION_SUPPORT_SSP))
-        except ValueError:
-            raise error.AutoservError(
-                    'Failed to compare build id in %s with the minimum '
-                    'version that supports server side packaging. Server '
-                    'side packaging is disabled.' % image)
-
-        ds.stage_artifacts(target, build_id, branch,
-                           artifacts=['autotest_server_package'])
-        autotest_server_package_name = (AUTOTEST_SERVER_PACKAGE_FILE_FMT %
-                                        {'build_target': build_target,
-                                         'build_id': build_id})
-        return '%s/static/%s/%s' % (ds.url(), image,
-                                    autotest_server_package_name)
 
 
     def _sync_time(self):
