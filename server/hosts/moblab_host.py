@@ -243,14 +243,14 @@ class MoblabHost(cros_host.CrosHost):
             # device.
             self._verify_upstart_service(service, timeout_m)
         except error.TimeoutException:
-            raise error.UpstartServiceNotRunning(service)
+            raise UpstartServiceNotRunning(service)
 
         for service in MOBLAB_SERVICES[1:]:
             try:
                 # Follow up services should come up quickly.
                 self._verify_upstart_service(service, 0.5)
             except error.TimeoutException:
-                raise error.UpstartServiceNotRunning(service)
+                raise UpstartServiceNotRunning(service)
 
         for process in MOBLAB_PROCESSES:
             try:
