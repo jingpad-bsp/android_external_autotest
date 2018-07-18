@@ -950,13 +950,13 @@ class GPUFreqStats(AbstractStats):
 
     _I915_ROOT = '/sys/kernel/debug/dri/0'
     _I915_EVENTS = ['i915:intel_gpu_freq_change']
-    _I915_CLK = os.path.join(_I915_ROOT, 'i915_cur_delayinfo')
+    _I915_CLKS_FILES = ['i915_cur_delayinfo', 'i915_frequency_info']
     _I915_TRACE_CLK_RE = r'(\d+.\d+): intel_gpu_freq_change: new_freq=(\d+)'
     _I915_CUR_FREQ_RE = r'CAGF:\s+(\d+)MHz'
     _I915_MIN_FREQ_RE = r'Lowest \(RPN\) frequency:\s+(\d+)MHz'
     _I915_MAX_FREQ_RE = r'Max non-overclocked \(RP0\) frequency:\s+(\d+)MHz'
-    # TODO(dbasehore) parse this from debugfs if/when this value is added
-    _I915_FREQ_STEP = 50
+    # There are 6 frequency steps per 100 MHz
+    _I915_FREQ_STEPS = [0, 17, 33, 50, 67, 83]
 
     _gpu_type = None
 
@@ -1007,6 +1007,7 @@ class GPUFreqStats(AbstractStats):
         max_mhz = None
         cur_mhz = None
         events = None
+        i915_path = None
         self._freqs = []
         self._prev_sample = None
         self._trace = None
@@ -1014,12 +1015,17 @@ class GPUFreqStats(AbstractStats):
         if os.path.exists(self._MALI_DEV) and \
            not os.path.exists(os.path.join(self._MALI_DEV, "devfreq")):
             self._set_gpu_type('mali')
-        elif os.path.exists(self._I915_CLK):
-            self._set_gpu_type('i915')
         else:
-            # We either don't know how to track GPU stats (yet) or the stats are
-            # tracked in DevFreqStats.
-            self._set_gpu_type(None)
+            for file_name in self._I915_CLKS_FILES:
+                full_path = os.path.join(self._I915_ROOT, file_name)
+                if os.path.exists(full_path):
+                    self._set_gpu_type('i915')
+                    i915_path = full_path
+                    break
+            else:
+                # We either don't know how to track GPU stats (yet) or the stats
+                # are tracked in DevFreqStats.
+                self._set_gpu_type(None)
 
         logging.debug("gpu_type is %s", self._gpu_type)
 
@@ -1032,7 +1038,7 @@ class GPUFreqStats(AbstractStats):
 
         elif self._gpu_type is 'i915':
             events = self._I915_EVENTS
-            with open(self._I915_CLK) as fd:
+            with open(i915_path) as fd:
                 for ln in fd.readlines():
                     logging.debug("ln = %s", ln)
                     result = re.findall(self._I915_CUR_FREQ_RE, ln)
@@ -1048,9 +1054,9 @@ class GPUFreqStats(AbstractStats):
                         max_mhz = result[0]
                         continue
                 if min_mhz and max_mhz:
-                    for i in xrange(int(min_mhz), int(max_mhz) +
-                                    self._I915_FREQ_STEP, self._I915_FREQ_STEP):
-                        self._freqs.append(str(i))
+                    for i in xrange(int(min_mhz), int(max_mhz) + 1):
+                        if i % 100 in self._I915_FREQ_STEPS:
+                            self._freqs.append(str(i))
 
         logging.debug("cur_mhz = %s, min_mhz = %s, max_mhz = %s", cur_mhz,
                       min_mhz, max_mhz)
