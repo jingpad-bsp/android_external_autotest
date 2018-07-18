@@ -191,11 +191,10 @@ def get_build_from_afe(hostname, afe):
              were multiple build labels assigned to this host.
 
     """
-    for prefix in [provision.CROS_VERSION_PREFIX,
-                   provision.ANDROID_BUILD_VERSION_PREFIX]:
-        build = get_label_from_afe(hostname, prefix + ':', afe)
-        if build:
-            return build
+    prefix = provision.CROS_VERSION_PREFIX
+    build = get_label_from_afe(hostname, prefix + ':', afe)
+    if build:
+        return build
     return None
 
 
