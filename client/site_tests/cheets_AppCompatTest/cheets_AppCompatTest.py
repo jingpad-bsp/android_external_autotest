@@ -24,8 +24,8 @@ class cheets_AppCompatTest(arc.ArcTest):
     version = 1
 
     _PLAY_STORE_ACTIVITY = 'com.android.vending'
-    _TEST_FILES_LOCATION = ('https://storage.googleapis.com/chromiumos-test'
-                            '-assets-public/app_compat/')
+    _TEST_FILES_LOCATION = ('https://storage.googleapis.com/chromeos-throw'
+                            '-away-bucket/app_compat/')
     _TEST_FILES = ['app-debug.apk', 'app-debug-androidTest.apk',
                    'autresources.xml']
     _TMP_LOCATION = '/tmp/app_compat/'

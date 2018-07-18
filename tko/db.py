@@ -2,6 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+try:
+    import MySQLdb as driver
+except ImportError:
+    # This module (tko) is unconditionally imported by autoserv,
+    # even in environments where MyQSLdb is unavailable. Thus, we
+    # need to cope with import failure here.
+    # See https://bugs.chromium.org/p/chromium/issues/detail?id=860166#c17 for
+    # context.
+    class UtterlyFakeDb(object):
+        """Lame fake of MySQLdb for import time needs of this file."""
+        OperationalError = object()
+
+    driver = UtterlyFakeDb
+
 import math
 import os
 import random
@@ -11,8 +25,14 @@ import time
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend import database_settings_helper
-from autotest_lib.tko import utils
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 def _log_error(msg):
@@ -36,6 +56,11 @@ def _format_operational_error(e):
 class MySQLTooManyRows(Exception):
     """Too many records."""
     pass
+
+
+def _connection_retry_callback():
+    """Callback method used to increment a retry metric."""
+    metrics.Counter('chromeos/autotest/tko/connection_retries').increment()
 
 
 class db_sql(object):
@@ -141,6 +166,22 @@ class db_sql(object):
         time.sleep(delay)
 
 
+    @retry.retry(driver.OperationalError, timeout_min=10,
+                 delay_sec=5, callback=_connection_retry_callback)
+    def connect(self, host, database, user, password, port):
+        """Open and return a connection to mysql database."""
+        connection_args = {
+            'host': host,
+            'user': user,
+            'db': database,
+            'passwd': password,
+            'connect_timeout': 20,
+        }
+        if port:
+            connection_args['port'] = int(port)
+        return driver.connect(**connection_args)
+
+
     def run_with_retry(self, function, *args, **dargs):
         """Call function(*args, **dargs) until either it passes
         without an operational error, or a timeout is reached.
@@ -155,14 +196,12 @@ class db_sql(object):
         @param args: The arguments
         @param dargs: The named arguments.
         """
-        OperationalError = _get_error_class("OperationalError")
-
         success = False
         start_time = time.time()
         while not success:
             try:
                 result = function(*args, **dargs)
-            except OperationalError, e:
+            except driver.OperationalError, e:
                 _log_error("%s; retrying, don't panic yet"
                            % _format_operational_error(e))
                 stop_time = time.time()
@@ -173,7 +212,7 @@ class db_sql(object):
                     try:
                         self._random_delay()
                         self._init_db()
-                    except OperationalError, e:
+                    except driver.OperationalError, e:
                         _log_error('%s; panic now'
                                    % _format_operational_error(e))
             else:
@@ -790,21 +829,6 @@ class db_sql(object):
             return None
 
 
-def _get_db_type():
-    """Get the database type name to use from the global config."""
-    get_value = global_config.global_config.get_config_value_with_fallback
-    return "db_" + get_value("AUTOTEST_WEB", "global_db_type", "db_type",
-                             default="mysql")
-
-
-def _get_error_class(class_name):
-    """Retrieves the appropriate error class by name from the database
-    module."""
-    db_module = __import__("autotest_lib.tko." + _get_db_type(),
-                           globals(), locals(), ["driver"])
-    return getattr(db_module.driver, class_name)
-
-
 def db(*args, **dargs):
     """Creates an instance of the database class with the arguments
     provided in args and dargs, using the database type specified by
@@ -815,8 +839,4 @@ def db(*args, **dargs):
 
     @return: An db object.
     """
-    db_type = _get_db_type()
-    db_module = __import__("autotest_lib.tko." + db_type, globals(),
-                           locals(), [db_type])
-    db = getattr(db_module, db_type)(*args, **dargs)
-    return db
+    return db_sql(*args, **dargs)

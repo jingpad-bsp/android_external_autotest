@@ -51,10 +51,13 @@ def _run_suite(options):
     suite_runner.run(suite_job.test_specs,
                      suite_handler,
                      options.dry_run)
-    return_code = suite_tracking.log_suite_results(
-            suite_job.suite_name, suite_handler)
 
     run_suite_common = autotest.load('site_utils.run_suite_common')
+    if options.create_and_return:
+        return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
+
+    return_code = suite_tracking.log_suite_results(
+                suite_job.suite_name, suite_handler)
     return run_suite_common.SuiteResult(return_code)
 
 

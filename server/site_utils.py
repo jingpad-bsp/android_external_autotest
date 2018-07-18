@@ -191,11 +191,10 @@ def get_build_from_afe(hostname, afe):
              were multiple build labels assigned to this host.
 
     """
-    for prefix in [provision.CROS_VERSION_PREFIX,
-                   provision.ANDROID_BUILD_VERSION_PREFIX]:
-        build = get_label_from_afe(hostname, prefix + ':', afe)
-        if build:
-            return build
+    prefix = provision.CROS_VERSION_PREFIX
+    build = get_label_from_afe(hostname, prefix + ':', afe)
+    if build:
+        return build
     return None
 
 
@@ -677,31 +676,6 @@ def parse_job_name(name):
             except ValueError:
                 pass
     return info
-
-
-def add_label_detector(label_function_list, label_list=None, label=None):
-    """Decorator used to group functions together into the provided list.
-
-    This is a helper function to automatically add label functions that have
-    the label decorator.  This is to help populate the class list of label
-    functions to be retrieved by the get_labels class method.
-
-    @param label_function_list: List of label detecting functions to add
-                                decorated function to.
-    @param label_list: List of detectable labels to add detectable labels to.
-                       (Default: None)
-    @param label: Label string that is detectable by this detection function
-                  (Default: None)
-    """
-    def add_func(func):
-        """
-        @param func: The function to be added as a detector.
-        """
-        label_function_list.append(func)
-        if label and label_list is not None:
-            label_list.append(label)
-        return func
-    return add_func
 
 
 def verify_not_root_user():

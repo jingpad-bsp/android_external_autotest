@@ -702,9 +702,6 @@ def main():
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 
-    site_utils.SetupTsMonGlobalState('tko_parse', indirect=False,
-                                     short_lived=True)
-
     pid_file_manager = pidfile.PidFileManager("parser", results_dir)
 
     if options.write_pidfile:
@@ -752,10 +749,20 @@ def main():
         raise
     else:
         pid_file_manager.close_file(0)
-    finally:
-        metrics.Flush()
     duration_secs = (datetime.datetime.now() - start_time).total_seconds()
 
 
 if __name__ == "__main__":
-    main()
+    # We are obliged to use indirect=False, not use the SetupTsMonGlobalState
+    # context manager, and add a manual flush, because tko/parse is expected to
+    # be a very short lived (<1 min) script when working effectively, and we
+    # can't afford to either a) wait for up to 1min for metrics to flush at the
+    # end or b) drop metrics that were sent within the last minute of execution.
+    site_utils.SetupTsMonGlobalState('tko_parse', indirect=False,
+                                     short_lived=True)
+    try:
+        with metrics.SuccessCounter('chromeos/autotest/tko_parse/runs'):
+            main()
+    finally:
+        metrics.Flush()
+

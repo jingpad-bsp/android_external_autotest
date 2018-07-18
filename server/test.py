@@ -297,6 +297,7 @@ def runtest(job, url, tag, args, dargs):
             existing_hook(mytest)
     logging_args[0] = log_kernel_hook
 
+    utils.before_force_close(lambda: logger.cleanup() if logger else None)
     try:
         common_test.runtest(job, url, tag, args, dargs, locals(), globals(),
                             *logging_args)
