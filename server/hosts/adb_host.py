@@ -9,7 +9,6 @@ import os
 import re
 import signal
 import stat
-import sys
 import time
 
 import common
@@ -18,11 +17,9 @@ from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
-from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import adb_label
@@ -72,8 +69,6 @@ FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
 DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
 # Default maximum number of seconds to wait for a device to be up.
 DEFAULT_WAIT_UP_TIME_SECONDS = 300
-# Maximum number of seconds to wait for a device to be up after it's wiped.
-WAIT_UP_AFTER_WIPE_TIME_SECONDS = 1200
 
 # Default timeout for retrying adb/fastboot command.
 DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS = 10
@@ -81,33 +76,7 @@ DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS = 10
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
 
-# Regex to parse build name to get the detailed build information.
-BUILD_REGEX = ('(?P<BRANCH>([^/]+))/(?P<BUILD_TARGET>([^/]+))-'
-               '(?P<BUILD_TYPE>([^/]+))/(?P<BUILD_ID>([^/]+))')
-# Regex to parse devserver url to get the detailed build information. Sample
-# url: http://$devserver:8080/static/branch/target/build_id
-DEVSERVER_URL_REGEX = '.*/%s/*' % BUILD_REGEX
-
-ANDROID_IMAGE_FILE_FMT = '%(build_target)s-img-%(build_id)s.zip'
-
-BRILLO_VENDOR_PARTITIONS_FILE_FMT = (
-        '%(build_target)s-vendor_partitions-%(build_id)s.zip')
-AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
-        '%(build_target)s-autotest_server_package-%(build_id)s.tar.bz2')
 ADB_DEVICE_PREFIXES = ['product:', 'model:', 'device:']
-
-# Command to provision a Brillo device.
-# os_image_dir: The full path of the directory that contains all the Android image
-# files (from the image zip file).
-# vendor_partition_dir: The full path of the directory that contains all the
-# Brillo vendor partitions, and provision-device script.
-BRILLO_PROVISION_CMD = (
-        'sudo ANDROID_PROVISION_OS_PARTITIONS=%(os_image_dir)s '
-        'ANDROID_PROVISION_VENDOR_PARTITIONS=%(vendor_partition_dir)s '
-        '%(vendor_partition_dir)s/provision-device')
-
-# Default timeout in minutes for fastboot commands.
-DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN = 10
 
 # Default permissions for files/dirs copied from the device.
 _DEFAULT_FILE_PERMS = 0o600
@@ -131,14 +100,8 @@ BRILLO_NATIVE_CRASH_LOG_DIR = '/data/misc/crash_reporter/crash'
 # A specific string value to return when a timeout has occurred.
 TIMEOUT_MSG = 'TIMEOUT_OCCURRED'
 
-class AndroidInstallError(error.InstallError):
-    """Generic error for Android installation related exceptions."""
-
-
 class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
-
-    VERSION_PREFIX = provision.ANDROID_BUILD_VERSION_PREFIX
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -297,19 +260,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Refer to _device_run method for docstring for parameters.
         """
         return self._device_run(FASTBOOT_CMD, command, **kwargs)
-
-
-    # pylint: disable=missing-docstring
-    @retry.retry(error.GenericHostRunError,
-                 timeout_min=DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN)
-    def _fastboot_run_with_retry(self, command, **kwargs):
-        """Runs an fastboot command with retry.
-
-        This command will launch on the test station.
-
-        Refer to _device_run method for docstring for parameters.
-        """
-        return self.fastboot_run(command, **kwargs)
 
 
     def _log_adb_pid(self):
@@ -1155,21 +1105,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         super(ADBHost, self).disconnect_ssh_tunnel(tunnel_proc, port)
 
 
-    def ensure_bootloader_mode(self):
-        """Ensure the device is in bootloader mode.
-
-        @raise: error.AutoservError if the device failed to reboot into
-                bootloader mode.
-        """
-        if self.is_up(command=FASTBOOT_CMD):
-            return
-        self.adb_run('reboot bootloader')
-        if not self.wait_up(command=FASTBOOT_CMD):
-            raise error.AutoservError(
-                    'Device %s failed to reboot into bootloader mode.' %
-                    self.fastboot_serial)
-
-
     def ensure_adb_mode(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS):
         """Ensure the device is up and can be accessed by adb command.
 
@@ -1189,32 +1124,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     'Device %s failed to reboot into adb mode.' %
                     self.adb_serial)
         self._reset_adbd_connection()
-
-
-    @classmethod
-    def get_build_info_from_build_url(cls, build_url):
-        """Get the Android build information from the build url.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/branch/target/build_id
-
-        @return: A dictionary of build information, including keys:
-                 build_target, branch, target, build_id.
-        @raise AndroidInstallError: If failed to parse build_url.
-        """
-        if not build_url:
-            raise AndroidInstallError('Need build_url to download image files.')
-
-        try:
-            match = re.match(DEVSERVER_URL_REGEX, build_url)
-            return {'build_target': match.group('BUILD_TARGET'),
-                    'branch': match.group('BRANCH'),
-                    'target': ('%s-%s' % (match.group('BUILD_TARGET'),
-                                          match.group('BUILD_TYPE'))),
-                    'build_id': match.group('BUILD_ID')}
-        except (AttributeError, IndexError, ValueError) as e:
-            raise AndroidInstallError(
-                    'Failed to parse build url: %s\nError: %s' % (build_url, e))
 
 
     @retry.retry(error.GenericHostRunError, timeout_min=10)
@@ -1249,264 +1158,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
-    def stage_android_image_files(self, build_url):
-        """Download required image files from the given build_url to a local
-        directory in the machine runs fastboot command.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/branch/target/build_id
-
-        @return: Path to the directory contains image files.
-        """
-        build_info = self.get_build_info_from_build_url(build_url)
-
-        zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
-        image_dir = self.teststation.get_tmp_dir()
-
-        try:
-            self.download_file(build_url, zipped_image_file, image_dir,
-                               unzip=True)
-            images = android_utils.AndroidImageFiles.get_standalone_images(
-                    build_info['build_target'])
-            for image_file in images:
-                self.download_file(build_url, image_file, image_dir)
-
-            return image_dir
-        except:
-            self.teststation.run('rm -rf %s' % image_dir)
-            raise
-
-
-    def stage_brillo_image_files(self, build_url):
-        """Download required brillo image files from the given build_url to a
-        local directory in the machine runs fastboot command.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/branch/target/build_id
-
-        @return: Path to the directory contains image files.
-        """
-        build_info = self.get_build_info_from_build_url(build_url)
-
-        zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
-        vendor_partitions_file = BRILLO_VENDOR_PARTITIONS_FILE_FMT % build_info
-        image_dir = self.teststation.get_tmp_dir()
-
-        try:
-            self.download_file(build_url, zipped_image_file, image_dir,
-                               unzip=True)
-            self.download_file(build_url, vendor_partitions_file, image_dir,
-                               unzip=True,
-                               unzip_dest=os.path.join(image_dir, 'vendor'))
-            return image_dir
-        except:
-            self.teststation.run('rm -rf %s' % image_dir)
-            raise
-
-
-    def stage_build_for_install(self, build_name, os_type=None):
-        """Stage a build on a devserver and return the build_url and devserver.
-
-        @param build_name: a name like git-master/shamu-userdebug/2040953
-
-        @returns a tuple with an update URL like:
-            http://172.22.50.122:8080/git-master/shamu-userdebug/2040953
-            and the devserver instance.
-        """
-        os_type = os_type or self.get_os_type()
-        logging.info('Staging build for installation: %s', build_name)
-        devserver = dev_server.AndroidBuildServer.resolve(build_name,
-                                                          self.hostname)
-        build_name = devserver.translate(build_name)
-        branch, target, build_id = utils.parse_launch_control_build(build_name)
-        devserver.trigger_download(target, build_id, branch,
-                                   os=os_type, synchronous=False)
-        return '%s/static/%s' % (devserver.url(), build_name), devserver
-
-
-    def install_android(self, build_url, build_local_path=None, wipe=True,
-                        flash_all=False, disable_package_verification=True,
-                        skip_setup_wizard=True):
-        """Install the Android DUT.
-
-        Following are the steps used here to provision an android device:
-        1. If build_local_path is not set, download the image zip file, e.g.,
-           shamu-img-2284311.zip, unzip it.
-        2. Run fastboot to install following artifacts:
-           bootloader, radio, boot, system, vendor(only if exists)
-
-        Repair is not supported for Android devices yet.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/$build
-        @param build_local_path: The path to a local folder that contains the
-                image files needed to provision the device. Note that the folder
-                is in the machine running adb command, rather than the drone.
-        @param wipe: If true, userdata will be wiped before flashing.
-        @param flash_all: If True, all img files found in img_path will be
-                flashed. Otherwise, only boot and system are flashed.
-
-        @raises AndroidInstallError if any error occurs.
-        """
-        # If the build is not staged in local server yet, clean up the temp
-        # folder used to store image files after the provision is completed.
-        delete_build_folder = bool(not build_local_path)
-
-        try:
-            # Download image files needed for provision to a local directory.
-            if not build_local_path:
-                build_local_path = self.stage_android_image_files(build_url)
-
-            # Device needs to be in bootloader mode for flashing.
-            self.ensure_bootloader_mode()
-
-            if wipe:
-                self._fastboot_run_with_retry('-w')
-
-            # Get all *.img file in the build_local_path.
-            list_file_cmd = 'ls -d %s' % os.path.join(build_local_path, '*.img')
-            image_files = self.teststation.run(
-                    list_file_cmd).stdout.strip().split()
-            images = dict([(os.path.basename(f), f) for f in image_files])
-            build_info = self.get_build_info_from_build_url(build_url)
-            board = build_info['build_target']
-            all_images = (
-                    android_utils.AndroidImageFiles.get_standalone_images(board)
-                    + android_utils.AndroidImageFiles.get_zipped_images(board))
-
-            # Sort images to be flashed, bootloader needs to be the first one.
-            bootloader = android_utils.AndroidImageFiles.BOOTLOADER
-            sorted_images = sorted(
-                    images.items(),
-                    key=lambda pair: 0 if pair[0] == bootloader else 1)
-            for image, image_file in sorted_images:
-                if image not in all_images:
-                    continue
-                logging.info('Flashing %s...', image_file)
-                self._fastboot_run_with_retry('-S 256M flash %s %s' %
-                                              (image[:-4], image_file))
-                if image == android_utils.AndroidImageFiles.BOOTLOADER:
-                    self.fastboot_run('reboot-bootloader')
-                    self.wait_up(command=FASTBOOT_CMD)
-        except Exception as e:
-            logging.error('Install Android build failed with error: %s', e)
-            # Re-raise the exception with type of AndroidInstallError.
-            raise AndroidInstallError, sys.exc_info()[1], sys.exc_info()[2]
-        finally:
-            if delete_build_folder:
-                self.teststation.run('rm -rf %s' % build_local_path)
-            timeout = (WAIT_UP_AFTER_WIPE_TIME_SECONDS if wipe else
-                       DEFAULT_WAIT_UP_TIME_SECONDS)
-            self.ensure_adb_mode(timeout=timeout)
-            if disable_package_verification:
-                # TODO: Use a whitelist of devices to do this for rather than
-                # doing it by default.
-                self.disable_package_verification()
-            if skip_setup_wizard:
-                try:
-                    self.skip_setup_wizard()
-                except error.GenericHostRunError:
-                    logging.error('Could not skip setup wizard.')
-        logging.info('Successfully installed Android build staged at %s.',
-                     build_url)
-
-
-    def install_brillo(self, build_url, build_local_path=None):
-        """Install the Brillo DUT.
-
-        Following are the steps used here to provision an android device:
-        1. If build_local_path is not set, download the image zip file, e.g.,
-           dragonboard-img-123456.zip, unzip it. And download the vendor
-           partition zip file, e.g., dragonboard-vendor_partitions-123456.zip,
-           unzip it to vendor folder.
-        2. Run provision_device script to install OS images and vendor
-           partitions.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/$build
-        @param build_local_path: The path to a local folder that contains the
-                image files needed to provision the device. Note that the folder
-                is in the machine running adb command, rather than the drone.
-
-        @raises AndroidInstallError if any error occurs.
-        """
-        # If the build is not staged in local server yet, clean up the temp
-        # folder used to store image files after the provision is completed.
-        delete_build_folder = bool(not build_local_path)
-
-        try:
-            # Download image files needed for provision to a local directory.
-            if not build_local_path:
-                build_local_path = self.stage_brillo_image_files(build_url)
-
-            # Device needs to be in bootloader mode for flashing.
-            self.ensure_bootloader_mode()
-
-            # Run provision_device command to install image files and vendor
-            # partitions.
-            vendor_partition_dir = os.path.join(build_local_path, 'vendor')
-            cmd = (BRILLO_PROVISION_CMD %
-                   {'os_image_dir': build_local_path,
-                    'vendor_partition_dir': vendor_partition_dir})
-            if self.fastboot_serial:
-                cmd += ' -s %s ' % self.fastboot_serial
-            self.teststation.run(cmd)
-        except Exception as e:
-            logging.error('Install Brillo build failed with error: %s', e)
-            # Re-raise the exception with type of AndroidInstallError.
-            raise AndroidInstallError, sys.exc_info()[1], sys.exc_info()[2]
-        finally:
-            if delete_build_folder:
-                self.teststation.run('rm -rf %s' % build_local_path)
-            self.ensure_adb_mode()
-        logging.info('Successfully installed Android build staged at %s.',
-                     build_url)
-
-
     @property
     def job_repo_url_attribute(self):
         """Get the host attribute name for job_repo_url, which should append the
         adb serial.
         """
         return '%s_%s' % (constants.JOB_REPO_URL, self.adb_serial)
-
-
-    def machine_install(self, build_url=None, build_local_path=None, wipe=True,
-                        flash_all=False, os_type=None):
-        """Install the DUT.
-
-        @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/$build.  If not set,
-                machine_install will fail.
-        @param build_local_path: The path to a local directory that contains the
-                image files needed to provision the device.
-        @param wipe: If true, userdata will be wiped before flashing.
-        @param flash_all: If True, all img files found in img_path will be
-                flashed. Otherwise, only boot and system are flashed.
-
-        @returns A tuple of (image_name, host_attributes).
-                image_name is the name of image installed, e.g.,
-                git_mnc-release/shamu-userdebug/1234
-                host_attributes is a dictionary of (attribute, value), which
-                can be saved to afe_host_attributes table in database. This
-                method returns a dictionary with a single entry of
-                `job_repo_url_[adb_serial]`: devserver_url, where devserver_url
-                is a url to the build staged on devserver.
-        """
-        os_type = os_type or self.get_os_type()
-        if os_type == OS_TYPE_ANDROID:
-            self.install_android(
-                    build_url=build_url, build_local_path=build_local_path,
-                    wipe=wipe, flash_all=flash_all)
-        elif os_type == OS_TYPE_BRILLO:
-            self.install_brillo(
-                    build_url=build_url, build_local_path=build_local_path)
-        else:
-            raise error.InstallError(
-                    'Installation of os type %s is not supported.' %
-                    self.get_os_type())
-        return (build_url.split('static/')[-1],
-                {self.job_repo_url_attribute: build_url})
 
 
     def list_files_glob(self, path_glob):
@@ -1613,40 +1270,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return True
         except:
             return False
-
-    @retry.retry(error.GenericHostRunError, timeout_min=1)
-    def skip_setup_wizard(self):
-        """Skip the setup wizard.
-
-        Skip the starting setup wizard that normally shows up on android.
-        """
-        logging.info('Skipping setup wizard on %s.', self.adb_serial)
-        self.check_boot_to_adb_complete()
-        result = self.run('am start -n com.google.android.setupwizard/'
-                          '.SetupWizardExitActivity')
-
-        if result.exit_status != 0:
-            if result.stdout.startswith('ADB_CMD_OUTPUT:255'):
-                # If the result returns ADB_CMD_OUTPUT:255, then run the above
-                # as root.
-                logging.debug('Need root access to bypass setup wizard.')
-                self._restart_adbd_with_root_permissions()
-                result = self.run('am start -n com.google.android.setupwizard/'
-                                  '.SetupWizardExitActivity')
-
-            if result.stdout == 'ADB_CMD_OUTPUT:0':
-                # If the result returns ADB_CMD_OUTPUT:0, Error type 3, then the
-                # setup wizard does not exist, so we do not have to bypass it.
-                if result.stderr and not \
-                        result.stderr.startswith('Error type 3\n'):
-                    logging.error('Unrecoverable skip setup wizard failure:'
-                                  ' %s', result.stderr)
-                    raise error.TestError()
-                logging.debug('Skip setup wizard received harmless error: '
-                              'No setup to bypass.')
-
-        logging.debug('Bypass setup wizard was successful.')
-
 
     def get_attributes_to_clear_before_provision(self):
         """Get a list of attributes to be cleared before machine_install starts.
