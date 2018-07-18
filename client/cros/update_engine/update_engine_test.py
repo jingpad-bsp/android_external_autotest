@@ -14,15 +14,15 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
 
     _NETWORK_INTERFACES = ['eth0', 'eth1', 'eth2']
 
-    def initialize(self):
-        self._internet_was_disabled = False
 
-        # Define functions to be used in update_engine_util.
-        self._run = utils.run
-        self._get_file = shutil.copy
+    def initialize(self):
+        """Initialize for this test."""
+        self._create_update_engine_variables()
+        self._internet_was_disabled = False
 
 
     def cleanup(self):
+        """Cleanup for this test."""
         # Make sure to grab the update engine log for every test run.
         shutil.copy(self._UPDATE_ENGINE_LOG, self.resultsdir)
 

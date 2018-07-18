@@ -4,9 +4,15 @@
 
 import logging
 import os
+import shutil
 import time
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+
+
+_DEFAULT_RUN = utils.run
+_DEFAULT_COPY = shutil.copy
 
 class UpdateEngineUtil(object):
     """Utility code shared between client and server update_engine autotests"""
@@ -34,6 +40,28 @@ class UpdateEngineUtil(object):
     # Public key used to force update_engine to verify omaha response data on
     # test images.
     _IMAGE_PUBLIC_KEY = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxZE03Z25kNDNjV2ZRenlydDE2UQpESEUrVDB5eGcxOE9aTys5c2M4aldwakMxekZ0b01Gb2tFU2l1OVRMVXArS1VDMjc0ZitEeElnQWZTQ082VTVECkpGUlBYVXp2ZTF2YVhZZnFsalVCeGMrSlljR2RkNlBDVWw0QXA5ZjAyRGhrckduZi9ya0hPQ0VoRk5wbTUzZG8Kdlo5QTZRNUtCZmNnMUhlUTA4OG9wVmNlUUd0VW1MK2JPTnE1dEx2TkZMVVUwUnUwQW00QURKOFhtdzRycHZxdgptWEphRm1WdWYvR3g3K1RPbmFKdlpUZU9POUFKSzZxNlY4RTcrWlppTUljNUY0RU9zNUFYL2xaZk5PM1JWZ0cyCk83RGh6emErbk96SjNaSkdLNVI0V3daZHVobjlRUllvZ1lQQjBjNjI4NzhxWHBmMkJuM05wVVBpOENmL1JMTU0KbVFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=='
+
+
+    def __init__(self, run_func=_DEFAULT_RUN, get_file=_DEFAULT_COPY):
+        """
+        Initialize this class.
+
+        @param run_func: the function to use to run commands on the client.
+                         Defaults for use by client tests, but can be
+                         overwritten to run remotely from a server test.
+        @param get_file: the function to use when copying a file.  Defaults
+                         for use by client tests.  Called with
+                         (file, destination) syntax.
+
+        """
+        self._create_update_engine_variables(run_func, get_file)
+
+
+    def _create_update_engine_variables(self, run_func=_DEFAULT_RUN,
+                                        get_file=_DEFAULT_COPY):
+        """See __init__()."""
+        self._run = run_func
+        self._get_file = get_file
 
 
     def _wait_for_progress(self, progress):
@@ -239,3 +267,35 @@ class UpdateEngineUtil(object):
                           self._UPDATE_ENGINE_LOG_DIR).stdout.splitlines()
         return self._run('cat %s%s' % (self._UPDATE_ENGINE_LOG_DIR,
                                        files[1])).stdout
+
+
+    def _create_custom_lsb_release(self, update_url, build='0.0.0.0'):
+        """
+        Create a custom lsb-release file.
+
+        In order to tell OOBE to ping a different update server than the
+        default we need to create our own lsb-release. We will include a
+        deserver update URL.
+
+        @param update_url: String of url to use for update check.
+        @param build: String of the build number to use. Represents the
+                      Chrome OS build this device thinks it is on.
+
+        """
+        self._run('mkdir %s' % os.path.dirname(self._CUSTOM_LSB_RELEASE),
+                  ignore_status=True)
+        self._run('touch %s' % self._CUSTOM_LSB_RELEASE)
+        self._run('echo CHROMEOS_RELEASE_VERSION=%s > %s' %
+                  (build, self._CUSTOM_LSB_RELEASE))
+        self._run('echo CHROMEOS_AUSERVER=%s >> %s' %
+                  (update_url, self._CUSTOM_LSB_RELEASE))
+
+
+    def _clear_custom_lsb_release(self):
+        """
+        Delete the custom release file, if any.
+
+        Intended to clear work done by _create_custom_lsb_release().
+
+        """
+        self._run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
