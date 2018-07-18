@@ -5,10 +5,14 @@
 import logging
 import os
 
+from PIL import Image
+
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.graphics import gbm
+
+
+_SCREENSHOT_PATH = '/tmp/screenshot.png'
 
 
 class desktopui_MashLogin(test.test):
@@ -19,7 +23,8 @@ class desktopui_MashLogin(test.test):
     def __screen_visual_sanity_test(self):
         """Capture the screen and sanity check it (more than 5 colors)."""
         try:
-            image = gbm.crtcScreenshot()
+            utils.run('screenshot "%s"' % _SCREENSHOT_PATH)
+            image = Image.open(_SCREENSHOT_PATH)
         except Exception as e:
             logging.warning('Unable to capture screenshot. %s', e)
             return
