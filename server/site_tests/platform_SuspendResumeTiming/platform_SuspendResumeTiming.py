@@ -12,7 +12,7 @@ from autotest_lib.server import test
 
 _POWERD_LOG_PATH = '/var/log/power_manager/powerd.LATEST'
 _RESUME_END_LOG = '\"daemon.* Chrome is using normal display mode$\"'
-_RESUME_START_LOG = '\"suspender.* Finishing request [0-9]+ successfully$\"'
+_RESUME_START_LOG = '\"suspender.*Finishing request [0-9]+ successfully after [0-9]+s\"'
 _SERVO_USB_NUM = 2
 _SHORT_WAIT_ = 5
 _SUSPEND_END_LOG = '\"suspender.* Starting suspend$\"'
