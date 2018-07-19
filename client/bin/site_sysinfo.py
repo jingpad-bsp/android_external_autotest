@@ -385,6 +385,12 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
 
 
     def log_test_keyvals(self, test_sysinfodir):
+        """Generate keyval for the sysinfo.
+
+        Collects keyval entries to be written in the test keyval.
+
+        @param test_sysinfodir: The test's system info directory.
+        """
         keyval = super(site_sysinfo, self).log_test_keyvals(test_sysinfodir)
 
         lsb_lines = utils.system_output(
