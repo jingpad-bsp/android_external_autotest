@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import logging
 import os
+import re
 import shutil
 import time
 
@@ -316,6 +318,52 @@ class UpdateEngineUtil(object):
 
         """
         self._run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
+
+
+    def _get_update_requests(self):
+        """
+        Get the contents of all the update requests from the most recent log.
+
+        @returns: a sequential list of <request> xml blocks or None if none.
+
+        """
+        update_log = ''
+        with open(self._UPDATE_ENGINE_LOG) as fh:
+            update_log = fh.read()
+
+        # Matches <request> ... </request>.  The match can be on multiple
+        # lines and the search is not greedy so it only matches one block.
+        return re.findall(r'<request>.?</request>', update_log, re.DOTALL)
+
+
+    def _get_time_of_last_update_request(self):
+        """
+        Get the time of the last update request from most recent logfile.
+
+        @returns: seconds since epoch of when last update request happened
+                  (second accuracy), or None if no such timestamp exists.
+
+        """
+        update_log = ''
+        with open(self._UPDATE_ENGINE_LOG) as fh:
+            update_log = fh.read()
+
+        # Matches any single line with "MMDD/HHMMSS ... Request ... xml", e.g.
+        # "[0723/133526:INFO:omaha_request_action.cc(794)] Request: <?xml".
+        result = re.findall(r'([0-9]{4}/[0-9]{6}).*Request.*xml', update_log)
+        if not result:
+            return None
+
+        LOG_TIMESTAMP_FORMAT = '%m%d/%H%M%S'
+        match = result[-1]
+
+        # The log does not include the year, so set it as this year.
+        # This assumption could cause incorrect behavior, but is unlikely to.
+        current_year = datetime.datetime.now().year
+        log_datetime = datetime.datetime.strptime(match, LOG_TIMESTAMP_FORMAT)
+        log_datetime = log_datetime.replace(year=current_year)
+
+        return time.mktime(log_datetime.timetuple())
 
 
     def _take_screenshot(self, filename):
