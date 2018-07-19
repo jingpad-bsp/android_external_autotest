@@ -286,7 +286,8 @@ def query_task_by_tags(tags):
                                          urllib.urlencode(conditions)]
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output)['items']
+    json_output = json.loads(result.output)
+    return json_output.get('items', [])
 
 
 def query_task_by_id(task_id):
