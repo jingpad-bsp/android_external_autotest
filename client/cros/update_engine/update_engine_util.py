@@ -120,6 +120,7 @@ class UpdateEngineUtil(object):
                                                        raise_error=False):
                 break
             time.sleep(1)
+            self._get_update_engine_status()
             if time.time() > timeout:
                 raise error.TestFail('Update did not fail as expected. Timeout'
                                      ': %d minutes.' % timeout_minutes)
@@ -161,6 +162,8 @@ class UpdateEngineUtil(object):
         if status is None:
             return None
         logging.debug(status)
+        if status.exit_status != 0:
+            return None
         status_dict = {}
         for line in status.stdout.splitlines():
             entry = line.partition('=')
