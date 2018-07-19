@@ -29,7 +29,7 @@ class Cr50Test(FirmwareTest):
     # Saved the original image, the device image, and the debug image. These
     # images are needed to be able to restore the original image and board id.
     IMAGES = 1 << 1
-    ONE_SECOND = 1
+    PP_SHORT_INTERVAL = 3
 
     def initialize(self, host, cmdline_args, full_args,
             restore_cr50_state=False, cr50_dev_path='', provision_update=False):
@@ -579,10 +579,21 @@ class Cr50Test(FirmwareTest):
             raise error.TestFail('could not start ccd open')
 
         try:
-            # Quickly run the short presses
-            for i in range(self.cr50.CCD_SHORT_PRESSES):
+            # Cr50 starts out by requesting 5 quick presses then 4 longer
+            # power button presses. Run the quick presses without looking at the
+            # command output, because getting the output can take some time. For
+            # the presses that require a 1 minute wait check the output between
+            # presses, so we can catch errors
+            #
+            # run quick presses for 30 seconds. It may take a couple of seconds
+            # for open to start. 10 seconds should be enough. 30 is just used
+            # because it will definitely be enough, and this process takes 300
+            # seconds, so doing quick presses for 30 seconds won't matter.
+            end_time = time.time() + 30
+            while time.time() < end_time:
                 self.servo.power_short_press()
-                time.sleep(self.ONE_SECOND)
+                logging.info('short int power button press')
+                time.sleep(self.PP_SHORT_INTERVAL)
             # Poll the output and press the power button for the longer presses.
             utils.wait_for_value(self._check_open_and_press_power_button,
                 expected_value=True, timeout_sec=self.cr50.PP_LONG)
@@ -602,8 +613,7 @@ class Cr50Test(FirmwareTest):
         """
         logging.info(self._get_ccd_open_output())
         self.servo.power_short_press()
-        logging.info('pressed power button')
-        time.sleep(self.ONE_SECOND)
+        logging.info('long int power button press')
         return (self._ccd_open_job.sp.poll() is not None or 'Open' in
                 self.cr50.get_ccd_info()['State'])
 
