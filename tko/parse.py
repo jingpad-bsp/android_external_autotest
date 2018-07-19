@@ -683,14 +683,31 @@ def _detach_from_parent_process():
     if os.getpid() != os.getpgid(0):
         os.setsid()
 
+
 def main():
-    """Main entrance."""
+    """tko_parse entry point."""
+    options, args = parse_args()
+
+    # We are obliged to use indirect=False, not use the SetupTsMonGlobalState
+    # context manager, and add a manual flush, because tko/parse is expected to
+    # be a very short lived (<1 min) script when working effectively, and we
+    # can't afford to either a) wait for up to 1min for metrics to flush at the
+    # end or b) drop metrics that were sent within the last minute of execution.
+    site_utils.SetupTsMonGlobalState('tko_parse', indirect=False,
+                                     short_lived=True)
+    try:
+        with metrics.SuccessCounter('chromeos/autotest/tko_parse/runs'):
+            _main_with_options(options, args)
+    finally:
+        metrics.Flush()
+
+
+def _main_with_options(options, args):
+    """Entry point with options parsed and metrics already set up."""
     start_time = datetime.datetime.now()
     # Record the processed jobs so that
     # we can send the duration of parsing to metadata db.
     processed_jobs = set()
-
-    options, args = parse_args()
 
     if options.detach:
         _detach_from_parent_process()
@@ -753,16 +770,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # We are obliged to use indirect=False, not use the SetupTsMonGlobalState
-    # context manager, and add a manual flush, because tko/parse is expected to
-    # be a very short lived (<1 min) script when working effectively, and we
-    # can't afford to either a) wait for up to 1min for metrics to flush at the
-    # end or b) drop metrics that were sent within the last minute of execution.
-    site_utils.SetupTsMonGlobalState('tko_parse', indirect=False,
-                                     short_lived=True)
-    try:
-        with metrics.SuccessCounter('chromeos/autotest/tko_parse/runs'):
-            main()
-    finally:
-        metrics.Flush()
-
+    main()

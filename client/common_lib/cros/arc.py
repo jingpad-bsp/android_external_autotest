@@ -565,12 +565,9 @@ def _after_iteration_hook(obj):
         if obj.num_screenshots <= _MAX_SCREENSHOT_NUM:
             logging.warning('Iteration %d failed, taking a screenshot.',
                             obj.iteration)
-            from cros.graphics.gbm import crtcScreenshot
             try:
-                image = crtcScreenshot()
-                image.save('{}/{}_iter{}.png'.format(_SCREENSHOT_DIR_PATH,
-                                                     _SCREENSHOT_BASENAME,
-                                                     obj.iteration))
+                utils.run('screenshot "{}/{}_iter{}.png"'.format(
+                    _SCREENSHOT_DIR_PATH, _SCREENSHOT_BASENAME, obj.iteration))
             except Exception as e:
                 logging.warning('Unable to capture screenshot. %s', e)
         else:
