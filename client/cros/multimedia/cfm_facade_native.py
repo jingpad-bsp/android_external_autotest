@@ -52,8 +52,11 @@ class CFMFacadeNative(object):
 
     def enroll_device(self):
         """Enroll device into CFM."""
-        self._resource.start_custom_chrome({"auto_login": False,
-                                            "disable_gaia_services": False})
+        extra_browser_args = ["--force-devtools-available"]
+        self._resource.start_custom_chrome({
+            "auto_login": False,
+            "disable_gaia_services": False,
+            "extra_browser_args": extra_browser_args})
         enrollment.RemoraEnrollment(self._resource._browser, self._USER_ID,
                 self._PWD)
         # Timeout to allow for the device to stablize and go back to the
@@ -72,8 +75,10 @@ class CFMFacadeNative(object):
                                "disable_gaia_services": False,
                                "disable_default_apps": False,
                                "auto_login": False}
+        custom_chrome_setup["extra_browser_args"] = (
+            ["--force-devtools-available"])
         if extra_chrome_args:
-            custom_chrome_setup["extra_browser_args"] = extra_chrome_args
+            custom_chrome_setup["extra_browser_args"].extend(extra_chrome_args)
         self._resource.start_custom_chrome(custom_chrome_setup)
 
 
