@@ -13,16 +13,16 @@ class firmware_Cr50DevMode(Cr50Test):
 
     def check_dev_mode(self, dev_mode):
         """Verify the cr50 tpm info matches the devmode state."""
-        if ('dev_mode' in self.cr50.get_ccd_info()['TPM']) != dev_mode:
+        if self.cr50.in_dev_mode() != dev_mode:
             raise error.TestFail('Cr50 should%s think dev mode is active' %
                     ('' if dev_mode else "n't"))
 
 
     def run_once(self):
         """Check cr50 can see dev mode correctly."""
-        self.switcher.reboot_to_mode(to_mode='normal')
+        self.enter_mode_after_checking_tpm_state('normal')
         self.check_dev_mode(False)
-        self.switcher.reboot_to_mode(to_mode='dev')
+        self.enter_mode_after_checking_tpm_state('dev')
         self.check_dev_mode(True)
-        self.switcher.reboot_to_mode(to_mode='normal')
+        self.enter_mode_after_checking_tpm_state('normal')
         self.check_dev_mode(False)
