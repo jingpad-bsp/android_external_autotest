@@ -41,9 +41,13 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
             return
 
         self._internet_was_disabled = False
+        logging.debug('Before reconnect: %s', utils.run('ifconfig'))
         for eth in self._NETWORK_INTERFACES:
             utils.run('ifconfig %s up' % eth, ignore_status=True)
         utils.start_service('recover_duts', ignore_status=True)
+
+        # Print ifconfig to help debug DUTs that stay offline.
+        logging.debug('After reconnect: %s', utils.run('ifconfig'))
 
         # We can't return right after reconnecting the network or the server
         # test may not receive the message. So we wait a bit longer for the
@@ -60,13 +64,18 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         """Disable the internet connection"""
         self._internet_was_disabled = True
         try:
+            logging.debug('Before disconnect: %s', utils.run('ifconfig'))
             # DUTs in the lab have a service called recover_duts that is used to
             # check that the DUT is online and if it is not it will bring it
             # back online. We will need to stop this service for the length
             # of this test.
             utils.stop_service('recover_duts', ignore_status=True)
             for eth in self._NETWORK_INTERFACES:
-                utils.run('ifconfig %s down' % eth, ignore_status=True)
+                result = utils.run('ifconfig %s down' % eth, ignore_status=True)
+                logging.debug(result)
+
+            # Print ifconfig to help debug DUTs that stay online.
+            logging.debug('After disconnect: %s', utils.run('ifconfig'))
 
             # Make sure we are offline
             utils.poll_for_condition(lambda: utils.ping(ping_server,
