@@ -345,8 +345,7 @@ class Cr50Test(FirmwareTest):
     def cleanup(self):
         """Make sure the device state is the same as the start of the test"""
         # reboot to normal mode if the device is in dev mode.
-        if 'dev_mode' in self.cr50.get_ccd_info()['TPM']:
-            self.switcher.reboot_to_mode(to_mode='normal')
+        self.enter_mode_after_checking_tpm_state('normal')
 
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
 
@@ -657,10 +656,9 @@ class Cr50Test(FirmwareTest):
         if self.cr50.get_ccd_level() == 'open':
             return
 
-        if 'dev_mode' not in self.cr50.get_ccd_info()['TPM']:
-            self.switcher.reboot_to_mode(to_mode='dev')
+        self.enter_mode_after_checking_tpm_state('dev')
         self.ccd_open_from_ap()
-        self.switcher.reboot_to_mode(to_mode='normal')
+        self.enter_mode_after_checking_tpm_state('normal')
         if enable_testlab:
             self.cr50.set_ccd_testlab('on')
 
@@ -737,3 +735,16 @@ class Cr50Test(FirmwareTest):
             return
         self.run_gsctool_cmd_with_password(
                 password, 'gsctool -a -U', 'unlock', expect_error)
+
+
+    def enter_mode_after_checking_tpm_state(self, mode):
+        """Reboot to mode if cr50 doesn't already match the state"""
+        # If the device is already in the correct mode, don't do anything
+        if (mode == 'dev') == self.cr50.in_dev_mode():
+            logging.info('already in %r mode', mode)
+            return
+
+        self.switcher.reboot_to_mode(to_mode=mode)
+
+        if (mode == 'dev') != self.cr50.in_dev_mode():
+            raise error.TestError('Unable to enter %r mode' % mode)

@@ -122,6 +122,11 @@ class ChromeCr50(chrome_ec.ChromeConsole):
                 raise error.TestFail('Failed to set %s to %s' % (cap, config))
 
 
+    def in_dev_mode(self):
+        """Return True if cr50 thinks the device is in dev mode"""
+        return 'dev_mode' in self.get_ccd_info()['TPM']
+
+
     def get_ccd_info(self):
         """Get the current ccd state.
 
