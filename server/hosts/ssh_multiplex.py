@@ -82,7 +82,8 @@ class MasterSsh(object):
             # Start a new master SSH connection.
             if not self._master_job:
                 # Create a shared socket in a temp location.
-                self._master_tempdir = autotemp.tempdir(unique_id='ssh-master')
+                self._master_tempdir = autotemp.tempdir(
+                        unique_id='ssh-master', dir='/tmp')
 
                 # Start the master SSH connection in the background.
                 master_cmd = _MASTER_SSH_COMMAND_TEMPLATE % {
