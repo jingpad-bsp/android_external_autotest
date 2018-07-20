@@ -1,5 +1,3 @@
-com.google.android.gts.telephony.TelephonyHostTest#testCarrierId: [all]
-com.google.android.gts.telephony.TelephonyHostTest#testCarrierConfigManagerUpdateConfigForPhoneId: [all]
 com.google.android.placement.gts.CoreGmsAppsTest#testCoreGmsAppsPreloaded: [all]
 com.google.android.placement.gts.CoreGmsAppsTest#testGoogleDuoPreloaded: [all]
 com.google.android.placement.gts.UiPlacementTest#testPlayStore: [all]
