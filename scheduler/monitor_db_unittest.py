@@ -1,6 +1,6 @@
 #!/usr/bin/python
+# pylint: disable=missing-docstring
 
-import gc
 import time
 import unittest
 
@@ -15,7 +15,7 @@ from autotest_lib.scheduler import agent_task
 from autotest_lib.scheduler import luciferlib
 from autotest_lib.scheduler import monitor_db, drone_manager
 from autotest_lib.scheduler import pidfile_monitor
-from autotest_lib.scheduler import scheduler_config, gc_stats
+from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 
@@ -418,21 +418,6 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
         self._do_query('UPDATE afe_hosts SET status="Repair Failed"')
         self._run_scheduler()
         self._check_for_extra_schedulings()
-
-
-    def test_garbage_collection(self):
-        self.god.stub_with(self._dispatcher, '_seconds_between_garbage_stats',
-                           999999)
-        self.god.stub_function(gc, 'collect')
-        self.god.stub_function(gc_stats, '_log_garbage_collector_stats')
-        gc.collect.expect_call().and_return(0)
-        gc_stats._log_garbage_collector_stats.expect_call()
-        # Force a garbage collection run
-        self._dispatcher._last_garbage_stats_time = 0
-        self._dispatcher._garbage_collection()
-        # The previous call should have reset the time, it won't do anything
-        # the second time.  If it does, we'll get an unexpected call.
-        self._dispatcher._garbage_collection()
 
 
 class DispatcherThrottlingTest(BaseSchedulerTest):
