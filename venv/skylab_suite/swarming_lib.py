@@ -49,15 +49,15 @@ DEFAULT_TIMEOUT_SECS = 60 * 60
 
 # A mapping of priorities for skylab hwtest tasks. In swarming,
 # lower number means high priorities. Priority lower than 48 will
-# be special tasks.
+# be special tasks. The upper bound for priority is 255.
 # Use the same priorities mapping as chromite/lib/constants.py
 SKYLAB_HWTEST_PRIORITIES_MAP = {
-    'Weekly': 160,
-    'Daily': 145,
-    'PostBuild': 130,
-    'Default': 100,
-    'Build': 80,
-    'PFQ': 65,
+    'Weekly': 230,
+    'Daily': 200,
+    'PostBuild': 170,
+    'Default': 140,
+    'Build': 110,
+    'PFQ': 80,
     'CQ': 50,
     'Super': 49,
 }
