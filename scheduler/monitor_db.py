@@ -8,7 +8,6 @@ Autotest scheduler
 
 import datetime
 import functools
-import gc
 import logging
 import optparse
 import os
@@ -26,7 +25,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task, drone_manager
-from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
+from autotest_lib.scheduler import email_manager, host_scheduler
 from autotest_lib.scheduler import luciferlib
 from autotest_lib.scheduler import monitor_db_cleanup, prejob_task
 from autotest_lib.scheduler import postjob_task
@@ -323,11 +322,6 @@ class Dispatcher(object):
         self._host_agents = {}
         self._queue_entry_agents = {}
         self._tick_count = 0
-        self._last_garbage_stats_time = time.time()
-        self._seconds_between_garbage_stats = 60 * (
-                global_config.global_config.get_config_value(
-                        scheduler_config.CONFIG_SECTION,
-                        'gc_stats_interval_mins', type=int, default=6*60))
         self._tick_debug = global_config.global_config.get_config_value(
                 scheduler_config.CONFIG_SECTION, 'tick_debug', type=bool,
                 default=False)
@@ -378,8 +372,6 @@ class Dispatcher(object):
             self._log_tick_msg('New tick')
             system_utils.DroneCache.refresh()
 
-            with breakdown_timer.Step('garbage_collection'):
-                self._garbage_collection()
             with breakdown_timer.Step('trigger_refresh'):
                 self._log_tick_msg('Starting _drone_manager.trigger_refresh')
                 _drone_manager.trigger_refresh()
@@ -433,22 +425,6 @@ class Dispatcher(object):
     def _run_cleanup(self):
         self._periodic_cleanup.run_cleanup_maybe()
         self._24hr_upkeep.run_cleanup_maybe()
-
-
-    @_calls_log_tick_msg
-    def _garbage_collection(self):
-        threshold_time = time.time() - self._seconds_between_garbage_stats
-        if threshold_time < self._last_garbage_stats_time:
-            # Don't generate these reports very often.
-            return
-
-        self._last_garbage_stats_time = time.time()
-        # Force a full level 0 collection (because we can, it doesn't hurt
-        # at this interval).
-        gc.collect()
-        logging.info('Logging garbage collector stats on tick %d.',
-                     self._tick_count)
-        gc_stats._log_garbage_collector_stats()
 
 
     def _gather_tick_metrics(self):
