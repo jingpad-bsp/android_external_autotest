@@ -141,6 +141,7 @@ def _stage_ssp(parser, resultsdir):
     )
 
     namespace = {'machines': machines_list,
+                 'isolate_hash': parser.options.isolate,
                  'image': parser.options.test_source_build}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
