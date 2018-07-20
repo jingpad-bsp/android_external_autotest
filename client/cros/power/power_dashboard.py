@@ -141,7 +141,7 @@ class ClientTestDashboard(BaseDashboard):
         board = utils.get_board()
         platform = utils.get_platform()
 
-        if platform != board:
+        if not platform.startswith(board):
             board += '_' + platform
 
         dut_info_dict = {
