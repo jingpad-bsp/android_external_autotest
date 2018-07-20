@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import argparse
 import ast
+import sys
 
 from lucifer import autotest
 from skylab_suite import cros_suite
@@ -111,7 +112,7 @@ def make_parser():
 
     # Abort-related parameters.
     parser.add_argument(
-        '--abort_limit', default=1, type=int, action='store',
+        '--abort_limit', default=sys.maxint, type=int, action='store',
         help=('Only abort first N parent tasks which fulfill the search '
               'requirements.'))
     parser.add_argument(
@@ -125,9 +126,6 @@ def verify_and_clean_options(options):
     """Validate options."""
     if options.suite_args is None:
         options.suite_args = {}
-
-    if options.suite_task_ids:
-        options.abort_limit = len(options.suite_task_ids)
 
     return True
 
