@@ -199,6 +199,7 @@ def _get_suite_cmd(test_spec, suite_id, is_provision=False):
     if test_spec.test.test_type == 'client':
       cmd += ['-client-test']
 
+    cmd += ['-keyvals', _convert_dict_to_string(job_keyvals)]
     cmd += ['-task-name', test_spec.test.name]
     if is_provision:
         cmd += ['-provision-labels', 'cros-version:%s' % test_spec.build]
@@ -403,3 +404,17 @@ def _retry_test(suite_handler, task_id, dry_run=False):
                     previous_retried_ids=previous_retried_ids))
     suite_handler.set_max_retries(suite_handler.max_retries - 1)
     suite_handler.remove_test_by_task_id(task_id)
+
+
+def _convert_dict_to_string(input_dict):
+    """Convert dictionary to a string.
+
+    @param input_dict: A dictionary.
+    """
+    for k, v in input_dict.iteritems():
+        if isinstance(v, dict):
+            input_dict[k] = _convert_dict_to_string(v)
+        else:
+            input_dict[k] = str(v)
+
+    return json.dumps(input_dict)
