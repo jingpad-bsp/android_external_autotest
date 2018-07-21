@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import collections
 import logging
+import os
 
 from lucifer import autotest
 from skylab_suite import swarming_lib
@@ -96,7 +97,11 @@ class SuiteHandler(object):
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
 
+        # The swarming task id of the suite that this suite_handler is handling.
         self._suite_id = specs.suite_id
+        # The swarming task id of current run_suite_skylab process. It could be
+        # different from self._suite_id if a suite_id is passed in.
+        self._task_id = os.environ.get('SWARMING_TASK_ID')
         self._task_to_test_maps = {}
         self.successfully_provisioned_duts = set()
 
@@ -163,6 +168,11 @@ class SuiteHandler(object):
     def suite_id(self):
         """Get the swarming task id of a suite."""
         return self._suite_id
+
+    @property
+    def task_id(self):
+        """Get swarming task id of current process."""
+        return self._task_id
 
     @property
     def max_retries(self):
