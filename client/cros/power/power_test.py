@@ -37,7 +37,7 @@ class power_Test(test.test):
         super(power_Test, self).initialize()
         self.backlight = power_utils.Backlight()
         self.backlight.set_default()
-        self.keyvals = None
+        self.keyvals = dict()
         self.status = power_status.get_status()
 
         measurements = []
@@ -128,35 +128,25 @@ class power_Test(test.test):
         keyvals.update(self._tlog.calc())
         keyvals.update(self._clog.calc())
         keyvals.update(self._psr.get_keyvals())
-        self.write_perf_keyval(keyvals)
-        self.keyvals = keyvals
+
+        self.keyvals.update(keyvals)
+        self.write_perf_keyval(self.keyvals)
 
     def _publish_dashboard(self):
         """Report results to chromeperf & power dashboard."""
 
-        if not self.keyvals:
-            self.publish_keyvals()
+        self.publish_keyvals()
 
         # publish power values
-        publish = {
-            key: self.keyvals[key]
-            for key in self.keyvals.keys()
-            if key.endswith('pwr')
-        }
-
-        for key, values in publish.iteritems():
-            self.output_perf_value(description=key, value=values, units='W',
+        for key, values in self.keyvals.iteritems():
+            if key.endswith('pwr'):
+                self.output_perf_value(description=key, value=values, units='W',
                                    higher_is_better=False, graph='power')
 
         # publish temperature values
-        publish = {
-            key: self.keyvals[key]
-            for key in self.keyvals.keys()
-            if key.endswith('temp')
-        }
-
-        for key, values in publish.iteritems():
-            self.output_perf_value(description=key, value=values, units='C',
+        for key, values in self.keyvals.iteritems():
+            if key.endswith('temp'):
+                self.output_perf_value(description=key, value=values, units='C',
                                    higher_is_better=False, graph='temperature')
 
         # publish to power dashboard
