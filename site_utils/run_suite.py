@@ -55,6 +55,8 @@ import warnings
 import common
 from chromite.lib import buildbot_annotations as annotations
 
+from django.core import exceptions as django_exceptions
+
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -70,7 +72,17 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.site_utils import diagnosis_utils
+try:
+    from autotest_lib.site_utils import diagnosis_utils
+except django_exceptions.ImproperlyConfigured as e:
+    if 'Error loading MySQLdb module: libmariadbclient' in str(e):
+        logging.error('Unable to import a necessary MySQLdb module. This is '
+                      'commonly caused by running a command inside[outside] '
+                      'of the chroot but having autotest utility packages '
+                      'that were build outside[inside] the chroot. '
+                      'Please re-run utils/build_externals.py inside[outside] '
+                      'of the chroot accordingly.')
+    raise
 from autotest_lib.site_utils import run_suite_common
 
 CONFIG = global_config.global_config
