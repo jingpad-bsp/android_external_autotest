@@ -23,7 +23,7 @@ class autoupdate_StartOOBEUpdate(update_engine_test.UpdateEngineTest):
 
     def initialize(self):
         """Test setup."""
-        super(autoupdate_StartOOBEUpdate).initialize()
+        super(autoupdate_StartOOBEUpdate, self).initialize()
         self._clear_custom_lsb_release()
 
 

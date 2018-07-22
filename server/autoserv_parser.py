@@ -174,6 +174,13 @@ class autoserv_parser(object):
                                  dest='no_use_packaging', default=False,
                                  help=('Disable install modes that use the '
                                        'packaging system.'))
+        self.parser.add_argument('--source_isolate', action='store',
+                                 type=str, default='',
+                                 dest='isolate',
+                                 help=('Hash for isolate containing build '
+                                       'contents needed for server-side '
+                                       'packaging. Takes precedence over '
+                                       'test_source_build, if present.'))
         self.parser.add_argument('--test_source_build', action='store',
                                  type=str, default='',
                                  dest='test_source_build',

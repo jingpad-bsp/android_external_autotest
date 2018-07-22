@@ -141,6 +141,7 @@ def _stage_ssp(parser, resultsdir):
     )
 
     namespace = {'machines': machines_list,
+                 'isolate_hash': parser.options.isolate,
                  'image': parser.options.test_source_build}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
@@ -553,7 +554,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             'AUTOSERV', 'auto_start_servod', type=bool, default=False)
 
     site_utils.SetupTsMonGlobalState('autoserv', indirect=False,
-                                     auto_flush=False, short_lived=True)
+                                     short_lived=True)
     try:
         try:
             if repair:
