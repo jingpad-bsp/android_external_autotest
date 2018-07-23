@@ -64,7 +64,7 @@ class bluetooth_IDCheck(bluetooth_semiauto_helper.BluetoothSemiAutoHelper):
         if not self.supports_bluetooth():
             return
 
-        self._device = utils.get_board()
+        self._device = utils.get_platform()
         if self._device in self._REFERENCE_ONLY:
             return
 
