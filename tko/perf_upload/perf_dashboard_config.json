@@ -567,24 +567,9 @@
     "dashboard_test_name": "cros_ui_smoothness"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoreattr",
+    "autotest_name": "telemetry_Benchmarks.dromaeo",
     "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "dromaeo.domcoreattr"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoremodify",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "dromaeo.domcoremodify"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcorequery",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "dromaeo.domcorequery"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.dromaeo.domcoretraverse",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "dromaeo.domcoretraverse"
+    "dashboard_test_name": "dromaeo"
   },
   {
     "autotest_name": "telemetry_Benchmarks.image_decoding.image_decoding_measurement",
