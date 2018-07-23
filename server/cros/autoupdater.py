@@ -6,7 +6,6 @@ import glob
 import logging
 import os
 import re
-import time
 import urllib2
 import urlparse
 
@@ -231,6 +230,31 @@ def url_to_image_name(update_url):
     return '/'.join(urlparse.urlparse(update_url).path.split('/')[-2:])
 
 
+def get_update_failure_reason(exception):
+    """Convert an exception into a failure reason for metrics.
+
+    The passed in `exception` should be one raised by failure of
+    `ChromiumOSUpdater.run_update`.  The returned string will describe
+    the failure.  If the input exception value is not a truish value
+    the return value will be `None`.
+
+    The number of possible return strings is restricted to a limited
+    enumeration of values so that the string may be safely used in
+    Monarch metrics without worrying about cardinality of the range of
+    string values.
+
+    @param exception  Exception to be converted to a failure reason.
+
+    @return A string suitable for use in Monarch metrics, or `None`.
+    """
+    if exception:
+        if isinstance(exception, _AttributedUpdateError):
+            return exception.failure_summary
+        else:
+            return 'Unknown Error: %s' % type(exception).__name__
+    return None
+
+
 def _get_devserver_build_from_update_url(update_url):
     """Get the devserver and build from the update url.
 
@@ -301,49 +325,6 @@ def _get_metric_fields(update_url):
         'build_type': build_type,
         'milestone': milestone,
     }
-
-
-def _emit_provision_metrics(name_prefix, build_name, failure_reason,
-                            duration, fields):
-    # reset_after=True is required for String gauges events to ensure that
-    # the metrics are not repeatedly emitted until the server restarts.
-    metrics.String(_metric_name(name_prefix + '_build_by_devserver_dut'),
-                   reset_after=True).set(build_name, fields=fields)
-    if failure_reason:
-        metrics.String(
-                _metric_name(name_prefix + '_failure_reason_by_devserver_dut'),
-                reset_after=True).set(failure_reason, fields=fields)
-    metrics.SecondsDistribution(
-            _metric_name(name_prefix + '_duration_by_devserver_dut')).add(
-                    duration, fields=fields)
-
-
-def _emit_updater_metrics(update_url, dut_host_name,
-                          failure_reason, duration):
-    """Send metrics for one provision request."""
-    # The following is high cardinality, but sparse.
-    # Each DUT is of a single board type, and likely build type.
-    #
-    # TODO(jrbarnette) The devserver-triggered provisioning code
-    # included retries in certain cases.  For that reason, the metrics
-    # distinguished 'provision' metrics which summarized across all
-    # retries, and 'auto_update' which summarized an individual update
-    # attempt.  ChromiumOSUpdater doesn't do retries, so we just report
-    # the same information twice.
-    image_fields = _get_metric_fields(update_url)
-    fields = {
-        'board': image_fields['board'],
-        'build_type': image_fields['build_type'],
-        'dut_host_name': dut_host_name,
-        'dev_server': image_fields['dev_server'],
-        'success': not failure_reason,
-    }
-    build_name = url_to_image_name(update_url)
-    _emit_provision_metrics('auto_update', build_name, failure_reason,
-                            duration, fields)
-    fields['attempt'] = 1
-    _emit_provision_metrics('provision', build_name, failure_reason,
-                            duration, fields)
 
 
 # TODO(garnold) This implements shared updater functionality needed for
@@ -981,21 +962,26 @@ class ChromiumOSUpdater(object):
             logging.debug('No autotest installed directory found.')
 
 
-    def _run_update_steps(self):
-        """Perform a full update of a DUT, with diagnosis for failures.
+    def run_update(self):
+        """Perform a full update of a DUT in the test lab.
 
-        Run the individual steps of the update.  If a step fails, make
-        sure that the exception raised describes the failure with a
-        diagnosis based on the step that failed.
+        This downloads and installs the root FS and stateful partition
+        content needed for the update specified in `self.host` and
+        `self.update_url`.  The update is performed according to the
+        requirements for provisioning a DUT for testing the requested
+        build.
 
-        @raise HostUpdateError if a failure is caused by a problem on
-                the DUT prior to the update.
-        @raise ImageInstallError if a failure occurs during download
-                and install of the update and cannot be definitively
-                blamed on either the DUT or the devserver.
-        @raise NewBuildUpdateError if a failure occurs because the
-                new build fails to function correctly.
+        At the end of the procedure, metrics are reported describing the
+        outcome of the operation.
+
+        @returns A tuple of the form `(image_name, attributes)`, where
+            `image_name` is the name of the image installed, and
+            `attributes` is new attributes to be applied to the DUT.
         """
+        server_name = dev_server.get_resolved_hostname(self.update_url)
+        metrics.Counter(_metric_name('install')).increment(
+                fields={'devserver': server_name})
+
         self._verify_devserver()
 
         try:
@@ -1022,42 +1008,6 @@ class ChromiumOSUpdater(object):
         except Exception as e:
             logging.exception('Failure from build after update.')
             raise NewBuildUpdateError(self.update_version, str(e))
-
-
-    def run_update(self):
-        """Perform a full update of a DUT in the test lab.
-
-        This downloads and installs the root FS and stateful partition
-        content needed for the update specified in `self.host` and
-        `self.update_url`.  The update is performed according to the
-        requirements for provisioning a DUT for testing the requested
-        build.
-
-        At the end of the procedure, metrics are reported describing the
-        outcome of the operation.
-
-        @returns A tuple of the form `(image_name, attributes)`, where
-            `image_name` is the name of the image installed, and
-            `attributes` is new attributes to be applied to the DUT.
-        """
-        start_time = time.time()
-        failure_reason = None
-        server_name = dev_server.get_resolved_hostname(self.update_url)
-        metrics.Counter(_metric_name('install')).increment(
-                fields={'devserver': server_name})
-        try:
-            self._run_update_steps()
-        except _AttributedUpdateError as e:
-            failure_reason = e.failure_summary
-            raise
-        except Exception as e:
-            failure_reason = 'Unknown failure'
-            raise
-        finally:
-            end_time = time.time()
-            _emit_updater_metrics(
-                self.update_url, self.host.hostname,
-                failure_reason, end_time - start_time)
 
         image_name = url_to_image_name(self.update_url)
         # update_url is different from devserver url needed to stage autotest

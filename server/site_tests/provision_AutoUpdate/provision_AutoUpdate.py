@@ -5,6 +5,7 @@
 import logging
 import re
 import sys
+import time
 import urllib2
 
 from autotest_lib.client.common_lib import error
@@ -12,13 +13,78 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
+from autotest_lib.server import utils
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import provision
+
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 
 _CONFIG = global_config.global_config
 # pylint: disable-msg=E1120
 _IMAGE_URL_PATTERN = _CONFIG.get_config_value(
         'CROS', 'image_url_pattern', type=str)
+
+
+def _metric_name(base_name):
+    return 'chromeos/autotest/provision/' + base_name
+
+
+def _get_build_metrics_fields(build_name):
+    try:
+        return utils.ParseBuildName(build_name)[0 : 2]
+    except utils.ParseBuildNameException:
+        logging.warning('Unable to parse build name %s for metrics. '
+                        'Continuing anyway.', build_name)
+        return ('', '')
+
+
+def _emit_updater_metrics(name_prefix, build_name, failure_reason,
+                          duration, fields):
+    # reset_after=True is required for String gauges events to ensure that
+    # the metrics are not repeatedly emitted until the server restarts.
+    metrics.String(_metric_name(name_prefix + '_build_by_devserver_dut'),
+                   reset_after=True).set(build_name, fields=fields)
+    if failure_reason:
+        metrics.String(
+                _metric_name(name_prefix + '_failure_reason_by_devserver_dut'),
+                reset_after=True).set(failure_reason, fields=fields)
+    metrics.SecondsDistribution(
+            _metric_name(name_prefix + '_duration_by_devserver_dut')).add(
+                    duration, fields=fields)
+
+
+def _emit_provision_metrics(update_url, dut_host_name,
+                          exception, duration):
+    # The following is high cardinality, but sparse.
+    # Each DUT is of a single board type, and likely build type.
+    #
+    # TODO(jrbarnette) The devserver-triggered provisioning code
+    # includes retries in certain cases.  For that reason, the metrics
+    # distinguish 'provision' metrics which summarizes across all
+    # retries, and 'auto_update' which summarizes an individual update
+    # attempt.  ChromiumOSUpdater doesn't do retries, so we just report
+    # the same information twice.  We should replace the metrics with
+    # something better tailored to the current implementation.
+    build_name = autoupdater.url_to_image_name(update_url)
+    board, build_type = _get_build_metrics_fields(build_name)
+    fields = {
+        'board': board,
+        'build_type': build_type,
+        'dut_host_name': dut_host_name,
+        'dev_server': dev_server.get_resolved_hostname(update_url),
+        'success': not exception,
+    }
+    failure_reason = autoupdater.get_update_failure_reason(exception)
+    _emit_updater_metrics('provision', build_name, failure_reason,
+                          duration, fields)
+    fields['attempt'] = 1
+    _emit_updater_metrics('auto_update', build_name, failure_reason,
+                          duration, fields)
 
 
 class provision_AutoUpdate(test.test):
@@ -118,13 +184,18 @@ class provision_AutoUpdate(test.test):
         url = _IMAGE_URL_PATTERN % (ds.url(), image)
 
         logging.debug('Installing image')
+        start_time = time.time()
+        failure = None
         try:
             afe_utils.machine_install_and_update_labels(
                     host,
                     update_url=url,
                     force_full_update=force,
                     with_cheets=with_cheets)
-        except error.InstallError as e:
-            logging.error(e)
-            raise error.TestFail, str(e), sys.exc_info()[2]
+        except BaseException as e:
+            failure = e
+            raise
+        finally:
+            _emit_provision_metrics(
+                url, host.hostname, failure, time.time() - start_time)
         logging.debug('Finished provisioning %s to %s', host, value)
