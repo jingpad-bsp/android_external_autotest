@@ -74,6 +74,11 @@ class Cr50Test(FirmwareTest):
                 raise
 
 
+    def after_run_once(self):
+        """Log which iteration just ran"""
+        logging.info('successfully ran iteration %d', self.iteration)
+
+
     def _save_node_locked_dev_image(self, cr50_dev_path):
         """Save or download the node locked dev image.
 
