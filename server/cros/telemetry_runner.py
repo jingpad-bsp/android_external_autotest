@@ -26,10 +26,7 @@ FAILED_STATUS = 'FAILED'
 # A list of benchmarks with that the telemetry test harness can run on dut.
 ON_DUT_WHITE_LIST = ['cros_tab_switching.typical_24',
                      'cros_ui_smoothness',
-                     'dromaeo.domcoreattr',
-                     'dromaeo.domcoremodify',
-                     'dromaeo.domcorequery',
-                     'dromaeo.domcoretraverse',
+                     'dromaeo',
                      'image_decoding.image_decoding_measurement',
                      'jetstream',
                      'kraken',
