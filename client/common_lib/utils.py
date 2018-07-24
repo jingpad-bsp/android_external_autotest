@@ -1903,19 +1903,20 @@ WIRELESS_SSID_PATTERN = 'wireless_ssid_(.*)/(\d+)'
 
 
 def get_moblab_serial_number():
-    """Gets the moblab public network interface.
+    """Gets a unique identifier for the moblab.
 
-    If the eth0 is an USB interface, try to use eth1 instead. Otherwise
-    use eth0 by default.
+    Serial number is the prefered identifier, use it if
+    present, however fallback is the ethernet mac address.
     """
-    try:
-        cmd_result = run('sudo vpd -g serial_number')
-        if cmd_result.stdout:
-          return cmd_result.stdout
-    except error.CmdError as e:
-        logging.error(str(e))
-        logging.info('Serial number ')
-        pass
+    for vpd_key in ['serial_number', 'ethernet_mac']:
+      try:
+          cmd_result = run('sudo vpd -g %s' % vpd_key)
+          if cmd_result and cmd_result.stdout:
+            return cmd_result.stdout
+      except error.CmdError as e:
+          logging.error(str(e))
+          logging.info(vpd_key)
+          pass
     return 'NoSerialNumber'
 
 
