@@ -60,7 +60,7 @@ tests = [
     Test('dEQP-GLES31-master',     Suite.daily, shards=1,  hasty=False, time='LENGTHY',  tag='gles31-master', test_file=GLES31_MASTER_FILE, perf_failure_description='Failures_GLES31'),
     #Test('dEQP-GLES31-master',     Suite.bvtpb, shards=10, hasty=True,  time='FAST',     tag='gles31-master', test_file=GLES31_MASTER_FILE, perf_failure_description=None),
     Test('dEQP-GLES31.stress',     Suite.daily, shards=1,  hasty=False, time='LONG',     tag='stress',        test_file=None,               perf_failure_description=None),
-    Test('dEQP-VK-master',         Suite.bvtpb, shards=1,  hasty=True,  time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE,     perf_failure_description='Failures_VK'),
+    Test('dEQP-VK-master',         Suite.daily, shards=1,  hasty=True,  time='LENGTHY',  tag='vk-master',     test_file=VK_MASTER_FILE,     perf_failure_description='Failures_VK'),
 ]
 
 CONTROLFILE_TEMPLATE = Template(
