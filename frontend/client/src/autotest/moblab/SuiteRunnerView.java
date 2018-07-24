@@ -58,6 +58,7 @@ public class SuiteRunnerView extends TabView {
     "bvt-cq",
     "bvt-inline",
     "cts_N",
+    "cts_P",
     "gts",
     "hardware_memoryqual",
     "hardware_storagequal",
@@ -272,7 +273,8 @@ public class SuiteRunnerView extends TabView {
     }
 
     if (listIndex  == suiteNames.indexOf("gts") ||
-      listIndex == suiteNames.indexOf("cts_N")) {
+      listIndex == suiteNames.indexOf("cts_N") ||
+      listIndex == suiteNames.indexOf("cts_P")) {
       thirdOptionalLine.setVisible(true);
       fourthOptionalLine.setVisible(false);
       fifthOptionalLine.setVisible(false);
