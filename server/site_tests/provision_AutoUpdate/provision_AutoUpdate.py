@@ -135,9 +135,6 @@ class provision_AutoUpdate(test.test):
         # If the host is already on the correct build, we have nothing to do.
         # Note that this means we're not doing any sort of stateful-only
         # update, and that we're relying more on cleanup to do cleanup.
-        # We could just not pass |force_update=True| to |machine_install|,
-        # but I'd like the semantics that a provision test 'returns' TestNA
-        # if the machine is already properly provisioned.
         if not force:
             info = host.host_info_store.get()
             if info.build == value:
@@ -190,7 +187,6 @@ class provision_AutoUpdate(test.test):
             afe_utils.machine_install_and_update_labels(
                     host,
                     update_url=url,
-                    force_full_update=force,
                     with_cheets=with_cheets)
         except BaseException as e:
             failure = e
