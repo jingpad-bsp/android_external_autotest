@@ -1200,3 +1200,37 @@ class GraphicsApiHelper(object):
             self.DEQP_EXECUTABLE[api]
         )
         return executable
+
+# Possible paths of the kernel DRI debug text file.
+_DRI_DEBUG_FILE_PATH_0 = "/sys/kernel/debug/dri/0/state"
+_DRI_DEBUG_FILE_PATH_1 = "/sys/kernel/debug/dri/1/state"
+
+# The DRI debug file will have a lot of information, including the position and
+# sizes of each plane, in lines starting with "crtc-pos="; many of them will be
+# zeros, this regex is used to filter those out.
+_CRTC_POS_PATTERN = re.compile(r'crtc-pos=(?!0x0\+0\+0)')
+
+def get_num_hardware_overlays():
+    """
+    Counts the amount of hardware overlay planes in use.  There's always at
+    least 2 overlays active: the whole screen and the cursor -- unless the
+    cursor has never moved (e.g. in autotests), and it's not present.
+
+    Raises: RuntimeError if the DRI debug file is not present.
+            OSError/IOError if the file cannot be open()ed or read().
+    """
+    file_path = _DRI_DEBUG_FILE_PATH_0;
+    if os.path.exists(_DRI_DEBUG_FILE_PATH_0):
+        file_path = _DRI_DEBUG_FILE_PATH_0;
+    elif os.path.exists(_DRI_DEBUG_FILE_PATH_1):
+        file_path = _DRI_DEBUG_FILE_PATH_1;
+    else:
+        raise RuntimeError('No DRI debug file exists (%s, %s)' %
+            (_DRI_DEBUG_FILE_PATH_0, _DRI_DEBUG_FILE_PATH_1))
+
+    filetext = open(file_path).read()
+    logging.debug(filetext)
+    matches = re.findall(_CRTC_POS_PATTERN, filetext)
+
+    # TODO(crbug.com/865112): return also the sizes/locations.
+    return len(matches)
