@@ -118,13 +118,14 @@ class UpdateEngineUtil(object):
         while True:
             if self._check_update_engine_log_for_entry('Reached max attempts ',
                                                        raise_error=False):
-                break
+                logging.debug('Found log entry for failed update.')
+                if self._is_update_engine_idle():
+                    break
             time.sleep(1)
             self._get_update_engine_status()
             if time.time() > timeout:
                 raise error.TestFail('Update did not fail as expected. Timeout'
                                      ': %d minutes.' % timeout_minutes)
-
 
 
     def _wait_for_update_to_complete(self, finalizing_ok=False):
@@ -204,6 +205,19 @@ class UpdateEngineUtil(object):
             else:
                 return False
         return True
+
+
+    def _is_update_finished_downloading(self):
+        """Checks if the update has moved to the final stages."""
+        s = self._get_update_engine_status()
+        return s[self._CURRENT_OP] in [self._UPDATE_ENGINE_FINALIZING,
+                                       self._UPDATE_STATUS_UPDATED_NEED_REBOOT]
+
+
+    def _is_update_engine_idle(self):
+        """Checks if the update engine is idle."""
+        status = self._get_update_engine_status()
+        return status[self._CURRENT_OP] == self._UPDATE_STATUS_IDLE
 
 
     def _update_continued_where_it_left_off(self, progress):
@@ -302,3 +316,19 @@ class UpdateEngineUtil(object):
 
         """
         self._run('rm %s' % self._CUSTOM_LSB_RELEASE, ignore_status=True)
+
+
+    def _take_screenshot(self, filename):
+        """
+        Take a screenshot and save in resultsdir.
+
+        @param filename: The name of the file to save
+
+        """
+        try:
+            file_location = os.path.join('/tmp', filename)
+            screenshot_cmd = '/usr/local/autotest/bin/screenshot.py %s'
+            self._host.run(screenshot_cmd % file_location)
+            self._host.get_file(file_location, self.resultsdir)
+        except error.AutoservRunError:
+            logging.exception('Failed to take screenshot.')
