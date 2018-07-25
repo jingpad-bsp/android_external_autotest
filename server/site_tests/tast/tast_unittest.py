@@ -169,6 +169,19 @@ class TastTest(unittest.TestCase):
             if self._job.post_run_hook:
                 self._job.post_run_hook()
 
+    def _run_test_for_failure(self, failed, missing):
+        """Calls _run_test and checks the resulting failure message.
+
+        @param failed: List of TestInfo objects for expected-to-fail tests.
+        @param missing: List of TestInfo objects for expected-missing tests.
+        """
+        with self.assertRaises(error.TestFail) as cm:
+            self._run_test()
+
+        msg = self._test._get_failure_message([t.name() for t in failed],
+                                              [t.name() for t in missing])
+        self.assertEqual(msg, str(cm.exception))
+
     def testPassingTests(self):
         """Tests that passing tests are reported correctly."""
         tests = [TestInfo('pkg.Test1', 0, 2),
@@ -185,8 +198,7 @@ class TastTest(unittest.TestCase):
                  TestInfo('pkg.Test2', 3, 6),
                  TestInfo('pkg.Test2', 7, 8, errors=[('another', 7)])]
         self._init_tast_commands(tests)
-        with self.assertRaises(error.TestFail) as _:
-            self._run_test()
+        self._run_test_for_failure([tests[0], tests[2]], [])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
@@ -213,8 +225,7 @@ class TastTest(unittest.TestCase):
                  TestInfo('pkg.SkippedWithErrors', 2, 2, skip_reason='bad deps',
                           errors=[('bad deps', 2)])]
         self._init_tast_commands(tests)
-        with self.assertRaises(error.TestFail) as _:
-            self._run_test()
+        self._run_test_for_failure([tests[1]], [])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
@@ -222,25 +233,28 @@ class TastTest(unittest.TestCase):
         """Tests that a missing test is reported when there's another test."""
         tests = [TestInfo('pkg.Test1', 0, 2), TestInfo('pkg.Test2', None, None)]
         self._init_tast_commands(tests)
-        self._run_test()
+        self._run_test_for_failure([], [tests[1]])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
     def testNoTestsRun(self):
-        """Tests that a missing test is reported when its the only test."""
+        """Tests that a missing test is reported when it's the only test."""
         tests = [TestInfo('pkg.Test', None, None)]
         self._init_tast_commands(tests)
-        self._run_test()
+        self._run_test_for_failure([], [tests[0]])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
     def testHangingTest(self):
         """Tests that a not-finished test is reported."""
-        tests = [TestInfo('pkg.Test1', 0, 2), TestInfo('pkg.Test2', 3, None)]
+        tests = [TestInfo('pkg.Test1', 0, 2),
+                 TestInfo('pkg.Test2', 3, None),
+                 TestInfo('pkg.Test3', None, None)]
         self._init_tast_commands(tests)
-        self._run_test()
-        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
-                         status_string(self._job.status_entries))
+        self._run_test_for_failure([tests[1]], [tests[2]])
+        self.assertEqual(
+                status_string(get_status_entries_from_tests(tests[:2])),
+                status_string(self._job.status_entries))
 
     def testNoTestsMatched(self):
         """Tests that an error is raised if no tests are matched."""
@@ -364,6 +378,31 @@ class TastTest(unittest.TestCase):
         self.assertEqual(self.MAX_RUN_SEC,
                          self._test._get_run_tests_timeout_sec())
 
+    def testFailureMessage(self):
+        """Tests that appropriate failure messages are generated."""
+        # Just do this to initialize the self._test.
+        self._init_tast_commands([TestInfo('pkg.Test', 0, 0)])
+        self._run_test()
+
+        msg = lambda f, m: self._test._get_failure_message(f, m)
+        self.assertEqual('', msg([], []))
+        self.assertEqual('1 failed: t1', msg(['t1'], []))
+        self.assertEqual('2 failed: t1 t2', msg(['t1', 't2'], []))
+        self.assertEqual('1 missing: t1', msg([], ['t1']))
+        self.assertEqual('1 failed: t1; 1 missing: t2', msg(['t1'], ['t2']))
+
+    def testFailureMessageIgnoreTestFailures(self):
+        """Tests that test failures are ignored in messages when requested."""
+        # Just do this to initialize the self._test.
+        self._init_tast_commands([TestInfo('pkg.Test', 0, 0)])
+        self._run_test(ignore_test_failures=True)
+
+        msg = lambda f, m: self._test._get_failure_message(f, m)
+        self.assertEqual('', msg([], []))
+        self.assertEqual('', msg(['t1'], []))
+        self.assertEqual('1 missing: t1', msg([], ['t1']))
+        self.assertEqual('1 missing: t2', msg(['t1'], ['t2']))
+
 
 class TestInfo:
     """Wraps information about a Tast test.
@@ -411,6 +450,10 @@ class TestInfo:
         self._attr = list(attr) if attr else []
         self._timeout_ns = timeout_ns
 
+    def name(self):
+        # pylint: disable=missing-docstring
+        return self._name
+
     def start_time(self):
         # pylint: disable=missing-docstring
         return self._start_time
@@ -452,6 +495,11 @@ class TestInfo:
         if self._skip_reason and not self._errors:
             return []
 
+        # Tests that weren't even started (e.g. because of an earlier issue)
+        # shouldn't have status entries.
+        if not self._start_time:
+            return []
+
         def make(status_code, dt, msg=''):
             """Makes a base_job.status_log_entry.
 
@@ -466,19 +514,15 @@ class TestInfo:
                     tast.tast._TEST_NAME_PREFIX + self._name, msg, None,
                     timestamp=timestamp)
 
-        # Not-reported tests should use 'now' in status entries.
-        entries = [make(tast.tast._JOB_STATUS_START, self._start_time or NOW)]
+        entries = [make(tast.tast._JOB_STATUS_START, self._start_time)]
 
-        if self._start_time and self._end_time and not self._errors:
+        if self._end_time and not self._errors:
             entries.append(make(tast.tast._JOB_STATUS_GOOD, self._end_time))
             entries.append(make(tast.tast._JOB_STATUS_END_GOOD, self._end_time))
         else:
             for e in self._errors:
                 entries.append(make(tast.tast._JOB_STATUS_FAIL, e[1], e[0]))
-            if not self._start_time:
-                entries.append(make(tast.tast._JOB_STATUS_FAIL, NOW,
-                                    tast.tast._TEST_NOT_RUN_MSG))
-            elif not self._end_time:
+            if not self._end_time:
                 entries.append(make(tast.tast._JOB_STATUS_FAIL,
                                     self._start_time,
                                     tast.tast._TEST_DID_NOT_FINISH_MSG))
