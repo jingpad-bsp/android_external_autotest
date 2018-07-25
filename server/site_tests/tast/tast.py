@@ -136,11 +136,16 @@ class tast(test.test):
         """Runs a single iteration of the test."""
         self._log_version()
         self._get_tests_to_run()
+
+        run_failed = False
         try:
             self._run_tests()
+        except:
+            run_failed = True
+            raise
         finally:
             # Parse partial results even if the tast command didn't finish.
-            self._parse_results()
+            self._parse_results(run_failed)
 
     def set_fake_now_for_testing(self, now):
         """Sets a fake timestamp to use in place of time.time() for unit tests.
@@ -278,13 +283,22 @@ class tast(test.test):
         return min(total_ns / 1000000000 + tast._RUN_OVERHEAD_SEC,
                    self._max_run_sec)
 
-    def _parse_results(self):
+    def _parse_results(self, ignore_missing_file):
         """Parses results written by the tast command.
 
-        @raises error.TestFail if one or more tests failed.
+        @param ignore_missing_file: If True, return without raising an exception
+            if the Tast results file is missing. This is used to avoid raising a
+            new error if there was already an earlier error while running the
+            tast process.
+
+        @raises error.TestFail if results file is missing and
+            ignore_missing_file is False, or one or more tests failed and
+            _ignore_test_failures is false.
         """
         path = os.path.join(self.resultsdir, self._STREAMED_RESULTS_FILENAME)
         if not os.path.exists(path):
+            if ignore_missing_file:
+                return
             raise error.TestFail('Results file %s not found' % path)
 
         failed = []

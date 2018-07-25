@@ -266,9 +266,14 @@ class TastTest(unittest.TestCase):
         """Tests that an error is raised if the run command fails."""
         tests = [TestInfo('pkg.Test1', 0, 1), TestInfo('pkg.Test2', 2, 3)]
         self._init_tast_commands(tests)
+        FAILURE_MSG = "this is the failure"
         self._tast_commands['run'].status = 1
-        with self.assertRaises(error.TestFail) as _:
+        self._tast_commands['run'].stdout = 'blah blah\n%s\n' % FAILURE_MSG
+
+        with self.assertRaises(error.TestFail) as cm:
             self._run_test()
+        self.assertTrue(FAILURE_MSG in str(cm.exception),
+                        '"%s" not in "%s"' % (FAILURE_MSG, str(cm.exception)))
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
@@ -289,6 +294,24 @@ class TastTest(unittest.TestCase):
         self._tast_commands['run'].file_path = None
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
+        self.assertEqual(status_string(get_status_entries_from_tests(tests)),
+                         status_string(self._job.status_entries))
+
+    def testNoResultsFileAfterRunCommandFails(self):
+        """Tests that stdout is included in error after missing results."""
+        tests = [TestInfo('pkg.Test1', None, None)]
+        self._init_tast_commands(tests)
+        FAILURE_MSG = "this is the failure"
+        self._tast_commands['run'].status = 1
+        self._tast_commands['run'].file_path = None
+        self._tast_commands['run'].stdout = 'blah blah\n%s\n' % FAILURE_MSG
+
+        # The exception should include the last line of output from tast rather
+        # than a message about the missing results file.
+        with self.assertRaises(error.TestFail) as cm:
+            self._run_test()
+        self.assertTrue(FAILURE_MSG in str(cm.exception),
+                        '"%s" not in "%s"' % (FAILURE_MSG, str(cm.exception)))
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
