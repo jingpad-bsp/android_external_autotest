@@ -309,9 +309,12 @@ class CPUStatsLoggerDashboard(MeasurementLoggerDashboard):
     def _convert(self):
         power_dict = super(CPUStatsLoggerDashboard, self)._convert()
         for rail in power_dict['data']:
-            if rail.startswith('wavg_'):
+            if rail.startswith('wavg_cpu'):
                 power_dict['type'][rail] = 'cpufreq_wavg'
                 power_dict['unit'][rail] = 'kilohertz'
+            elif rail.startswith('wavg_gpu'):
+                power_dict['type'][rail] = 'gpufreq_wavg'
+                power_dict['unit'][rail] = 'megahertz'
             else:
                 power_dict['type'][rail] = self._split_domain(rail)[0]
                 power_dict['unit'][rail] = 'percent'
