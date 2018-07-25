@@ -5,7 +5,6 @@
 import json
 import logging
 import os
-import time
 
 import dateutil.parser
 
@@ -46,7 +45,7 @@ class tast(test.test):
     # newline-terminated JSON TestResult objects.
     _STREAMED_RESULTS_FILENAME = 'streamed_results.jsonl'
 
-    # Maximum number of failing tests to include in error message.
+    # Maximum number of failing and missing tests to include in error messages.
     _MAX_TEST_NAMES_IN_ERROR = 3
 
     # Default paths where Tast files are installed by Portage packages.
@@ -79,8 +78,7 @@ class tast(test.test):
     _JOB_STATUS_GOOD = 'GOOD'
     _JOB_STATUS_FAIL = 'FAIL'
 
-    # Status reasons to use when individual Tast test have problems.
-    _TEST_NOT_RUN_MSG = 'Test was not run'
+    # Status reason used when an individual Tast test doesn't finish running.
     _TEST_DID_NOT_FINISH_MSG = 'Test did not finish'
 
     def initialize(self, host, test_exprs, ignore_test_failures=False,
@@ -161,7 +159,7 @@ class tast(test.test):
             ("/usr/bin/tast", "/usr/local/tast/tast").
         @param allow_missing: True if it's okay for the path to be missing.
 
-        @return: Absolute path within install root, e.g. "/usr/bin/tast", or an
+        @returns Absolute path within install root, e.g. "/usr/bin/tast", or an
             empty string if the path wasn't found and allow_missing is True.
 
         @raises error.TestFail if the path couldn't be found and allow_missing
@@ -276,7 +274,7 @@ class tast(test.test):
     def _get_run_tests_timeout_sec(self):
         """Computes the timeout for the 'tast run' command.
 
-        @return Integer timeout in seconds.
+        @returns Integer timeout in seconds.
         """
         # Go time.Duration values are serialized to nanoseconds.
         total_ns = sum([int(t['timeout']) for t in self._tests_to_run])
@@ -302,6 +300,7 @@ class tast(test.test):
             raise error.TestFail('Results file %s not found' % path)
 
         failed = []
+        seen_test_names = set()
         with open(path, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -312,21 +311,56 @@ class tast(test.test):
                 except ValueError as e:
                     raise error.TestFail('Failed to parse %s: %s' % (path, e))
                 self._test_results.append(test)
+
+                name = test['name']
+                seen_test_names.add(name)
+
                 if test.get('errors'):
-                    name = test['name']
                     for err in test['errors']:
                         logging.warning('%s: %s', name, err['reason'])
-                    # TODO(derat): Report failures in flaky tests in some other
-                    # way.
-                    if 'flaky' not in test.get('attr', []):
+                    failed.append(name)
+                else:
+                    # The test will have a zero (i.e. 0001-01-01 00:00:00 UTC)
+                    # end time (preceding the Unix epoch) if it didn't report
+                    # completion.
+                    if _rfc3339_time_to_timestamp(test['end']) <= 0:
                         failed.append(name)
 
+        missing = [t['name'] for t in self._tests_to_run
+                   if t['name'] not in seen_test_names]
+
+        failure_msg = self._get_failure_message(failed, missing)
+        if failure_msg:
+            raise error.TestFail(failure_msg)
+
+    def _get_failure_message(self, failed, missing):
+        """Returns an error message describing failed and/or missing tests.
+
+        @param failed: List of string names of Tast tests that failed.
+        @param missing: List of string names of Tast tests with missing results.
+
+        @returns String to be used as error.TestFail message.
+        """
+        def list_tests(names):
+            """Returns a string listing tests.
+
+            @param names: List of string test names.
+
+            @returns String listing tests.
+            """
+            s = ' '.join(sorted(names)[:self._MAX_TEST_NAMES_IN_ERROR])
+            if len(names) > self._MAX_TEST_NAMES_IN_ERROR:
+                s += ' ...'
+            return s
+
+        msg = ''
         if failed and not self._ignore_test_failures:
-            msg = '%d failed: ' % len(failed)
-            msg += ' '.join(sorted(failed)[:self._MAX_TEST_NAMES_IN_ERROR])
-            if len(failed) > self._MAX_TEST_NAMES_IN_ERROR:
-                msg += ' ...'
-            raise error.TestFail(msg)
+            msg = '%d failed: %s' % (len(failed), list_tests(failed))
+        if missing:
+            if msg:
+                msg += '; '
+            msg += '%d missing: %s' % (len(missing), list_tests(missing))
+        return msg
 
     def _log_all_tests(self):
         """Writes entries to the TKO status.log file describing the results of
@@ -336,11 +370,6 @@ class tast(test.test):
         for test in self._test_results:
             self._log_test(test)
             seen_test_names.add(test['name'])
-
-        # Report any tests that unexpectedly weren't run.
-        for test in self._tests_to_run:
-            if test['name'] not in seen_test_names:
-                self._log_missing_test(test['name'])
 
     def _log_test(self, test):
         """Writes events to the TKO status.log file describing the results from
@@ -386,19 +415,6 @@ class tast(test.test):
             end_status = self._JOB_STATUS_END_FAIL
 
         self._log_test_event(end_status, name, end_time)
-
-    def _log_missing_test(self, test_name):
-        """Writes events to the TKO status.log file describing a Tast test that
-        unexpectedly wasn't run.
-
-        @param test_name: Name of the Tast test that wasn't run, e.g.
-            'ui.ChromeLogin'.
-        """
-        now = time.time() if self._fake_now is None else self._fake_now
-        self._log_test_event(self._JOB_STATUS_START, test_name, now)
-        self._log_test_event(self._JOB_STATUS_FAIL, test_name, now,
-                             self._TEST_NOT_RUN_MSG)
-        self._log_test_event(self._JOB_STATUS_END_FAIL, test_name, now)
 
     def _log_test_event(self, status_code, test_name, timestamp, message=''):
         """Logs a single event to the TKO status.log file.
