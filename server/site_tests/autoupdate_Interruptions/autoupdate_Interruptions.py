@@ -51,6 +51,10 @@ class autoupdate_Interruptions(update_engine_test.UpdateEngineTest):
         # Reboot the DUT during the update.
         self._host.reboot()
         self._check_for_update(server=server, port=parsed_url.port)
+        if self._is_update_finished_downloading():
+            raise error.TestError('Reboot interrupt: Update finished '
+                                  'downloading before any more interruptions. '
+                                  'Started interrupting at: %f' % progress)
         if not self._update_continued_where_it_left_off(completed):
             raise error.TestFail('The update did not continue where it '
                                  'left off before rebooting.')
@@ -58,6 +62,10 @@ class autoupdate_Interruptions(update_engine_test.UpdateEngineTest):
 
         # Disconnect the network
         self._disconnect_then_reconnect_network(update_url)
+        if self._is_update_finished_downloading():
+            raise error.TestError('Network interrupt: Update finished '
+                                  'downloading before any more interruptions. '
+                                  'Started interrupting at: %f' % progress)
         if not self._update_continued_where_it_left_off(completed):
             raise error.TestFail('The update did not continue where it '
                                  'left off before disconnecting network.')
@@ -65,6 +73,10 @@ class autoupdate_Interruptions(update_engine_test.UpdateEngineTest):
 
         # Suspend / Resume
         self._suspend_then_resume()
+        if self._is_update_finished_downloading():
+            raise error.TestError('Suspend interrupt: Update finished '
+                                  'downloading before any more interruptions. '
+                                  'Started interrupting at: %f' % progress)
         if not self._update_continued_where_it_left_off(completed):
             raise error.TestFail('The update did not continue where it '
                                  'left off after suspend/resume.')
