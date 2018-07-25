@@ -55,6 +55,22 @@ class enterprise_SmbProviderDaemon(test.test):
 
         self.sanity_test(mount_path)
 
+    def _generate_random_id(self, size):
+        """
+        Generates a random string of size N.
+
+        @param size: Size of the generated string.
+
+        @return: Returns a random alphanumeric string of size N.
+
+        """
+
+        import string
+        import random
+
+        return ''.join(random.choice(string.ascii_uppercase +
+                                string.digits) for i in range(size))
+
     def sanity_test(self, mount_path):
         """
         Sanity test that runs through all filesystem operations
@@ -65,6 +81,14 @@ class enterprise_SmbProviderDaemon(test.test):
         """
 
         mount_id = self._check_mount(mount_path)
+
+        # Generate random directory
+        rand_dir_id = self._generate_random_id(10)
+
+        test_dir = '/autotest_' + rand_dir_id + '/'
+
+        self._check_create_directory(mount_id, test_dir, False)
+
         self._check_unmount(mount_id)
 
     def _check_mount(self, mount_path):
@@ -88,7 +112,6 @@ class enterprise_SmbProviderDaemon(test.test):
             error.TestFail('Unexpected failure with mount id.')
 
         self._check_result('Mount', error)
-
         return mount_id
 
     def _check_unmount(self, mount_id):
@@ -102,6 +125,25 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.unmount(mount_id)
 
         self._check_result('Unmount', error)
+
+    def _check_create_directory(self, mount_id,
+                                      directory_path,
+                                      recursive):
+        """
+        Checks that create directory is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param directory_path: Path for the test directory.
+        @param recursive: Boolean to indicate whether directories should be
+                created recursively.
+
+        """
+
+        error = self._smbprovider.create_directory(mount_id,
+                                                   directory_path,
+                                                   recursive)
+
+        self._check_result('Create Directory', error)
 
     def _check_result(self, method_name, result, expected=None):
         """
