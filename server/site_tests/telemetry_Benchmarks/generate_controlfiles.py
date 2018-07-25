@@ -35,9 +35,7 @@ PERF_DAILY_RUN_TESTS = (
     'image_decoding.image_decoding_measurement',
     'memory.desktop',
     'page_cycler_v2.typical_25',
-    'robohornet_pro',
     'smoothness.tough_pinch_zoom_cases',
-    'sunspider',
     'webrtc',
 )
 

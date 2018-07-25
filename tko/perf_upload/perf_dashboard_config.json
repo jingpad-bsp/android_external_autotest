@@ -612,11 +612,6 @@
     "dashboard_test_name": "page_cycler_v2.typical_25"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.robohornet_pro",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "robohornet_pro"
-  },
-  {
     "autotest_name": "telemetry_Benchmarks.session_restore.cold.typical_25",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "session_restore.cold.typical_25"
@@ -660,11 +655,6 @@
     "autotest_name": "telemetry_Benchmarks.speedometer",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "speedometer"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.sunspider",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "sunspider"
   },
   {
     "autotest_name": "telemetry_Benchmarks.tab_switching.top_10",
