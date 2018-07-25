@@ -9,8 +9,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-DEPENDENCIES = "servo"
-ATTRIBUTES = "suite:bvt-perbuild"
 DOC = """
 This tests that users timezone, input methods, and Downloads file are kept
 during and update.

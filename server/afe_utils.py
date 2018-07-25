@@ -90,15 +90,11 @@ def _clear_host_attributes_before_provision(host, info):
         info.attributes.pop(key, None)
 
 
-def machine_install_and_update_labels(host, update_url,
-                                      force_full_update=False,
-                                      with_cheets=False):
+def machine_install_and_update_labels(host, update_url, with_cheets=False):
     """Calls machine_install and updates the version labels on a host.
 
     @param host: Host object to run machine_install on.
     @param update_url: URL of the build to install.
-    @param force_update: If true, force update even if the target is
-        already running the requested version.
     @param with_cheets: If true, installation is for a specific, custom
         version of Android for a target running ARC.
     """
@@ -106,13 +102,7 @@ def machine_install_and_update_labels(host, update_url,
     info.clear_version_labels()
     _clear_host_attributes_before_provision(host, info)
     host.host_info_store.commit(info)
-    # If ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE is enabled for this type
-    # of host, devserver will be used to trigger auto-update.
-    if host.support_devserver_provision:
-        image_name, host_attributes = host.machine_install_by_devserver(
-                update_url, force_full_update=force_full_update)
-    else:
-        image_name, host_attributes = host.machine_install(update_url)
+    image_name, host_attributes = host.machine_install(update_url)
 
     info = host.host_info_store.get()
     info.attributes.update(host_attributes)
