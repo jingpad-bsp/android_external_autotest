@@ -20,6 +20,9 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
     """
     version = 1
 
+    # Sometimes when network is disabled update_engine progress will move a
+    # little. To prevent false positives we fail only for > 1.5% movement.
+    _ACCEPTED_MOVEMENT = 0.015
 
     def _has_progress_stopped(self):
         """Checks that the update_engine progress has stopped moving."""
@@ -58,10 +61,14 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
 
         if progress_before != progress_after:
             if progress_before < progress_after:
-                raise error.TestFail('The update continued while the network '
-                                     'was supposedly disabled. Before: '
-                                     '%s, After: %s' % (progress_before,
-                                                        progress_after))
+                if progress_after - progress_before > self._ACCEPTED_MOVEMENT:
+                    raise error.TestFail('The update continued while the '
+                                         'network was supposedly disabled. '
+                                         'Before: %s, After: %s' % (
+                                         progress_before, progress_after))
+                else:
+                    logging.warning('The update progress moved slightly while '
+                                    'network was off.')
             else:
                 raise error.TestFail('The update appears to have restarted. '
                                      'Before: %s, After: %s' % (progress_before,
