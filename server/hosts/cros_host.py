@@ -733,6 +733,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         `self._repair_strategy` to coordinate the verification and
         repair steps needed to get the DUT working.
         """
+        message = 'Beginning repair for host %s board %s model %s'
+        info = self.host_info_store.get()
+        message %= (self.hostname, info.board, info.model)
+        self.record('INFO', None, None, message)
         self._repair_strategy.repair(self)
         # Sometimes, hosts with certain ethernet dongles get stuck in a
         # bad network state where they're reachable from this code, but
@@ -1164,6 +1168,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def verify(self):
         """Verify Chrome OS system is in good state."""
+        message = 'Beginning verify for host %s board %s model %s'
+        info = self.host_info_store.get()
+        message %= (self.hostname, info.board, info.model)
+        self.record('INFO', None, None, message)
         self._repair_strategy.verify(self)
 
 
