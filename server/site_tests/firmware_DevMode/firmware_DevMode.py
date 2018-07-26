@@ -7,6 +7,7 @@ import time
 
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.server.cros.servo import chrome_ec
+from autotest_lib.server.cros import vboot_constants as vboot
 
 
 class firmware_DevMode(FirmwareTest):
@@ -44,6 +45,7 @@ class firmware_DevMode(FirmwareTest):
         self.servo.power_short_press()
 
     def run_once(self):
+        """Method which actually runs the test."""
         logging.info("Enable dev mode.")
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '0',
@@ -75,6 +77,13 @@ class firmware_DevMode(FirmwareTest):
         if (self.check_ec_capability() and
             self.faft_config.mode_switcher_type in
                 ['keyboard_dev_switcher', 'tablet_detachable_switcher']):
+            if self.gbb_flags & vboot.GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC:
+                # In order to test that entering dev mode does not work when
+                # EC_IN_RW=1, EC software sync must be enabled.  If EC software
+                # sync is disabled, then we must skip this portion of the test.
+                logging.info("Skipping dev mode transition in EC RW test.")
+                return
+
             logging.info("Rebooting into fake recovery mode (EC still in RW).")
             self.servo.get_power_state_controller().power_off()
             self.ec.set_hostevent(chrome_ec.HOSTEVENT_KEYBOARD_RECOVERY)
