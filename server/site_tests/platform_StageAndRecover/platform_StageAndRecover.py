@@ -77,14 +77,15 @@ class platform_StageAndRecover(test.test):
             logging.info('Device came back up successfully in %d seconds.',
                          time.time() - start_time)
         else:
-            raise error.TestFail('Host failed to come back up after '
-                                 '%d seconds.' % timeout)
-
+            self.error_messages.append('Host failed to come back after %s '
+                                       'in %d seconds.' % (process, timeout))
 
 
     def run_once(self, host):
         """ Runs the test."""
         self.host = host
+        self.error_messages = []
+
         self.release_builder_path = self.host.get_release_builder_path()
 
         self.stage_copy_recover_with('recovery_image')
@@ -98,3 +99,6 @@ class platform_StageAndRecover(test.test):
         self.host.run('chromeos-install --yes',
                       timeout=self._INSTALL_DELAY_TIMEOUT)
         self.host.reboot()
+
+        if self.error_messages:
+            raise error.TestFail('Failures: %s' % ' '.join(self.error_messages))
