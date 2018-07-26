@@ -662,6 +662,15 @@ class ServoHost(ssh_host.SSHHost):
         return self._servo
 
 
+    def close(self):
+        """Stop UART logging and close the host object."""
+        if self._servo:
+            self._servo.dump_uart_streams(self.job.resultdir)
+            self._servo.close()
+
+        super(ServoHost, self).close()
+
+
 def make_servo_hostname(dut_hostname):
     """Given a DUT's hostname, return the hostname of its servo.
 
