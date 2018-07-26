@@ -41,6 +41,11 @@ class firmware_IntegratedU2F(FirmwareTest):
         return 'running' in self.host.run('status u2fd').stdout
 
 
+    def cryptohome_ready(self):
+        """Return True if cryptohome is running."""
+        return 'running' in self.host.run('status cryptohomed').stdout
+
+
     def setup_u2fd(self):
         """Start u2fd on the host"""
         self.start_u2fd = not self.u2fd_is_running()
@@ -50,6 +55,10 @@ class firmware_IntegratedU2F(FirmwareTest):
 
         # Login
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+
+        # Wait for cryptohome to show the TPM is ready before logging in.
+        utils.wait_for_value(self.cryptohome_ready, True, timeout_sec=180)
+
         client_at = autotest.Autotest(self.host)
         client_at.run_test('login_LoginSuccess')
 
