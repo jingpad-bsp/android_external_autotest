@@ -665,7 +665,9 @@ class ServoHost(ssh_host.SSHHost):
     def close(self):
         """Stop UART logging and close the host object."""
         if self._servo:
-            self._servo.dump_uart_streams(self.job.resultdir)
+            # In some cases when we run as lab-tools, the job object is None.
+            if self.job:
+                self._servo.dump_uart_streams(self.job.resultdir)
             self._servo.close()
 
         super(ServoHost, self).close()
