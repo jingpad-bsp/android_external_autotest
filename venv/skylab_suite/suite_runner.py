@@ -263,6 +263,7 @@ def _run_swarming_cmd(cmd, dimensions, test_spec, temp_json_path, suite_id):
     # TODO (xixuan): Add this to provision cmd when cron job for special task
     # is working.
     dimensions['dut_state'] = swarming_lib.SWARMING_DUT_READY_STATUS
+    dimensions['provisionable-cros-version'] = test_spec.build
     trigger_cmd = _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
                                              temp_json_path, suite_id)
     cros_build_lib = autotest.chromite_load('cros_build_lib')
