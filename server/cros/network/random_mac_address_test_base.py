@@ -7,7 +7,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
-from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
@@ -34,9 +33,6 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
     def warmup(self, host, raw_cmdline_args, additional_params=None):
         super(RandomMACAddressTestBase, self).warmup(
                 host, raw_cmdline_args, additional_params)
-
-        self.context.router.require_capabilities(
-                [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
 
         self.context.configure(self._ap_config)
 
