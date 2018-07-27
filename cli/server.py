@@ -57,7 +57,7 @@ class server(topic_common.atest):
     topic = msg_topic = 'server'
     msg_items = '<server>'
 
-    def __init__(self, hostname_required=True):
+    def __init__(self, hostname_required=True, allow_multiple_hostname=False):
         """Add to the parser the options common to all the server actions.
 
         @param hostname_required: True to require the command has hostname
@@ -85,6 +85,7 @@ class server(topic_common.atest):
                 attribute_name='hostname', use_leftover=True)
 
         self.hostname_required = hostname_required
+        self.allow_multiple_hostname = allow_multiple_hostname
 
 
     def parse(self):
@@ -103,13 +104,21 @@ class server(topic_common.atest):
 
         # self.hostname is a list. Action on server only needs one hostname at
         # most.
-        if ((not self.hostname and self.hostname_required) or
+        if (not self.hostname and self.hostname_required):
+            self.invalid_syntax('`server` topic requires hostname. '
+                                'Use -h to see available options.')
+
+        if (self.hostname_required and not self.allow_multiple_hostname and
             len(self.hostname) > 1):
             self.invalid_syntax('`server` topic can only manipulate 1 server. '
                                 'Use -h to see available options.')
+
         if self.hostname:
-            # Override self.hostname with the first hostname in the list.
-            self.hostname = self.hostname[0]
+            if not self.allow_multiple_hostname or not self.skylab:
+                # Only support create multiple servers in skylab.
+                # Override self.hostname with the first hostname in the list.
+                self.hostname = self.hostname[0]
+
         self.role = options.role
 
         if self.skylab and self.role:
@@ -271,7 +280,7 @@ class server_create(server):
     def __init__(self):
         """Initializer.
         """
-        super(server_create, self).__init__()
+        super(server_create, self).__init__(allow_multiple_hostname=True)
         self.parser.add_option('-n', '--note',
                                help='note of the server',
                                type='string',
@@ -299,12 +308,14 @@ class server_create(server):
         data_dir = inventory_repo.get_data_dir()
         infrastructure = text_manager.load_infrastructure(data_dir)
 
-        new_server = skylab_server.create(
-                infrastructure,
-                self.hostname,
-                self.environment,
-                role=self.role,
-                note=self.note)
+        new_servers = []
+        for hostname in self.hostname:
+            new_servers.append(skylab_server.create(
+                    infrastructure,
+                    hostname,
+                    self.environment,
+                    role=self.role,
+                    note=self.note))
         text_manager.dump_infrastructure(data_dir, infrastructure)
 
         message = skylab_utils.construct_commit_message(
@@ -313,7 +324,7 @@ class server_create(server):
                 message, draft=self.draft, dryrun=self.dryrun,
                 submit=self.submit)
 
-        return new_server
+        return new_servers
 
 
     def execute(self):
