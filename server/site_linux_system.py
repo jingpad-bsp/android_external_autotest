@@ -38,6 +38,7 @@ class LinuxSystem(object):
     CAPABILITY_SEND_MANAGEMENT_FRAME = 'send_management_frame'
     CAPABILITY_TDLS = 'tdls'
     CAPABILITY_VHT = 'vht'
+    CAPABILITY_SME = 'sme'
     BRIDGE_INTERFACE_NAME = 'br0'
     HOSTAP_BRIDGE_INTERFACE_PREFIX = 'hostapbr'
     MIN_SPATIAL_STREAMS = 2
@@ -296,6 +297,8 @@ class LinuxSystem(object):
                 'tdls_oper' in phy.commands or
                 'T-DLS' in phy.features):
                 caps.add(self.CAPABILITY_TDLS)
+            if 'authenticate' in phy.commands:
+                caps.add(self.CAPABILITY_SME)
             if phy.support_vht:
                 caps.add(self.CAPABILITY_VHT)
         if any([iw_runner.DEV_MODE_IBSS in phy.modes
