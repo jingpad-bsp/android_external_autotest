@@ -21,7 +21,6 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import afe_utils
 from autotest_lib.server import utils as server_utils
-from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
@@ -532,25 +531,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         required before updating.
         """
         pass
-
-
-    def machine_install(self, update_url):
-        """Install the image at `update_url` onto the DUT.
-
-        @param update_url: The url used to identify the update image on the
-                devserver.
-
-        @returns A tuple of (image_name, host_attributes).
-                image_name is the name of image installed, e.g.,
-                veyron_jerry-release/R50-7871.0.0
-                host_attributes is a dictionary of (attribute, value), which
-                can be saved to afe_host_attributes table in database. This
-                method returns a dictionary with a single entry of
-                `job_repo_url`: repo_url, where repo_url is a devserver url to
-                autotest packages.
-        """
-        updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
-        return updater.run_update()
 
 
     def _clear_fw_version_labels(self, rw_only):

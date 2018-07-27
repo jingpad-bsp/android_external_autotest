@@ -527,8 +527,7 @@ class AutoUpdateRepair(hosts.RepairAction):
         devserver.trigger_download(image_name, synchronous=False)
         update_url = tools.image_url_pattern() % (
                 devserver.url(), image_name)
-        afe_utils.machine_install_and_update_labels(
-                host, update_url=update_url)
+        afe_utils.machine_install_and_update_labels(host, update_url)
 
     @property
     def description(self):
@@ -723,8 +722,8 @@ def create_moblab_repair_strategy():
 
     'good_au':  This verifier can't pass, because the Moblab AU
         procedure doesn't properly delete the PROVISION_FAILED file.
-        TODO(jrbarnette) We should refactor _machine_install() so that
-        it can be different for Moblab.
+        TODO(jrbarnette) We should refactor ChromiumOSUpdater so
+        that it can be different for Moblab.
 
     'firmware':  Moblab DUTs shouldn't be in FAFT pools, so we don't try
         this.
