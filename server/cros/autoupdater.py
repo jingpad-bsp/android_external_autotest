@@ -334,17 +334,21 @@ def _get_metric_fields(update_url):
 class ChromiumOSUpdater(object):
     """Chromium OS specific DUT update functionality."""
 
-    def __init__(self, update_url, host=None, interactive=True):
+    def __init__(self, update_url, host=None, interactive=True,
+                 use_quick_provision=False):
         """Initializes the object.
 
         @param update_url: The URL we want the update to use.
         @param host: A client.common_lib.hosts.Host implementation.
         @param interactive: Bool whether we are doing an interactive update.
+        @param use_quick_provision: Whether we should attempt to perform
+            the update using the quick-provision script.
         """
         self.update_url = update_url
         self.host = host
         self.interactive = interactive
         self.update_version = _url_to_version(update_url)
+        self._use_quick_provision = use_quick_provision
 
 
     def _run(self, cmd, *args, **kwargs):
@@ -860,6 +864,8 @@ class ChromiumOSUpdater(object):
 
         @return The kernel expected to be booted next.
         """
+        if not self._use_quick_provision:
+            return None
         build_re = global_config.global_config.get_config_value(
                 'CROS', 'quick_provision_build_regex', type=str, default='')
         image_name = url_to_image_name(self.update_url)
