@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import test
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
 
@@ -116,8 +117,4 @@ class network_WiFi_UpdateRouter(test.test):
             raise error.TestFail(str(e))
 
         url = self.get_update_url(ds.url(), desired.builder_version)
-        try:
-            router_host.machine_install(update_url=url)
-        except error.InstallError as e:
-            logging.error(e)
-            raise error.TestFail(str(e))
+        autoupdater.ChromiumOSUpdater(url, host=router_host).run_update()
