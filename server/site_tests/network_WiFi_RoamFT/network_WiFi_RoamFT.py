@@ -184,5 +184,6 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
     def cleanup(self):
         """Cleanup function."""
 
-        self.context.router.delete_link(self.veth0)
+        if hasattr(self, "veth0"):
+            self.context.router.delete_link(self.veth0)
         super(network_WiFi_RoamFT, self).cleanup()
