@@ -11,6 +11,7 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
@@ -91,9 +92,9 @@ def _clear_host_attributes_before_provision(host, info):
 
 
 def machine_install_and_update_labels(host, update_url, with_cheets=False):
-    """Calls machine_install and updates the version labels on a host.
+    """Install a build and update the version labels on a host.
 
-    @param host: Host object to run machine_install on.
+    @param host: Host object where the build is to be installed.
     @param update_url: URL of the build to install.
     @param with_cheets: If true, installation is for a specific, custom
         version of Android for a target running ARC.
@@ -102,8 +103,8 @@ def machine_install_and_update_labels(host, update_url, with_cheets=False):
     info.clear_version_labels()
     _clear_host_attributes_before_provision(host, info)
     host.host_info_store.commit(info)
-    image_name, host_attributes = host.machine_install(update_url)
-
+    updater = autoupdater.ChromiumOSUpdater(update_url, host=host)
+    image_name, host_attributes = updater.run_update()
     info = host.host_info_store.get()
     info.attributes.update(host_attributes)
     if with_cheets:
