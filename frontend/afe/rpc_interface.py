@@ -2305,7 +2305,7 @@ def get_servers(hostname=None, role=None, status=None):
 
 
 @rpc_utils.route_rpc_to_master
-def get_stable_version(board=stable_version_utils.DEFAULT, android=False):
+def get_stable_version(board=stable_version_utils.DEFAULT):
     """Get stable version for the given board.
 
     @param board: Name of the board.
@@ -2316,7 +2316,7 @@ def get_stable_version(board=stable_version_utils.DEFAULT, android=False):
              of CROS.stable_cros_version if stable_versinos table does not have
              entry of board DEFAULT.
     """
-    return stable_version_utils.get(board=board, android=android)
+    return stable_version_utils.get(board=board)
 
 
 @rpc_utils.route_rpc_to_master
