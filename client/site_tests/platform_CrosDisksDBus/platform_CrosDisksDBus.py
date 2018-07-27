@@ -43,7 +43,6 @@ class CrosDisksAPITester(CrosDisksTester):
             ('DeviceMountPaths', dbus.Array),
             ('DevicePresentationHide', dbus.Boolean),
             ('DeviceSize', dbus.UInt64),
-            ('DriveIsRotational', dbus.Boolean),
             ('DriveModel', dbus.String),
             ('IdLabel', dbus.String),
             ('NativePath', dbus.String),
