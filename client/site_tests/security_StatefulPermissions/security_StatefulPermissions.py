@@ -22,7 +22,10 @@ class security_StatefulPermissions(test.test):
     # Note that chronos permissions in /home are covered in greater detail
     # by 'security_ProfilePermissions'.
     _masks_byuser = {"adm": [],
-                     "android-root": ["/encrypted/var/log/android.kmsg"],
+                     "android-root": ["/encrypted/var/log/android.kmsg",
+                                      "/unencrypted/art-data/dalvik-cache/arm",
+                                      "/unencrypted/art-data/dalvik-cache/x86",
+                                      "/unencrypted/art-data/dalvik-cache/x86_64"],
                      "attestation": ["/unencrypted/preserve",
                                      "/unencrypted/preserve/attestation.epb"],
                      "avfs": [],
