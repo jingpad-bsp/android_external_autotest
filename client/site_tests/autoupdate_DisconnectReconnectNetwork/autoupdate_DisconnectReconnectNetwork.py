@@ -35,6 +35,9 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
 
 
     def run_once(self, update_url, time_without_network=120):
+        if self._is_update_finished_downloading():
+            raise error.TestFail('The update has already finished before we '
+                                 'can disconnect network.')
         self._update_server = urlparse.urlparse(update_url).hostname
         self._disable_internet()
 
@@ -49,7 +52,8 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
                                  desc='Waiting for update progress to stop.')
 
         # Get the update progress as the network is down
-        progress_before = self._get_update_engine_status()[self._PROGRESS]
+        progress_before = float(self._get_update_engine_status()[
+            self._PROGRESS])
 
         seconds = 1
         while seconds < time_without_network:
@@ -57,19 +61,24 @@ class autoupdate_DisconnectReconnectNetwork(uet.UpdateEngineTest):
             time.sleep(1)
             seconds += 1
 
-        progress_after = self._get_update_engine_status()[self._PROGRESS]
+        progress_after = float(self._get_update_engine_status()[
+            self._PROGRESS])
 
         if progress_before != progress_after:
             if progress_before < progress_after:
                 if progress_after - progress_before > self._ACCEPTED_MOVEMENT:
                     raise error.TestFail('The update continued while the '
                                          'network was supposedly disabled. '
-                                         'Before: %s, After: %s' % (
+                                         'Before: %f, After: %f' % (
                                          progress_before, progress_after))
                 else:
                     logging.warning('The update progress moved slightly while '
                                     'network was off.')
+            elif self._is_update_finished_downloading():
+                raise error.TestFail('The update finished while the network '
+                                     'was disabled. Before: %f, After: %f' %
+                                     (progress_before, progress_after))
             else:
                 raise error.TestFail('The update appears to have restarted. '
-                                     'Before: %s, After: %s' % (progress_before,
+                                     'Before: %f, After: %f' % (progress_before,
                                                                 progress_after))
