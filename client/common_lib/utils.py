@@ -404,8 +404,10 @@ def open_write_close(filename, data):
 def locate_file(path, base_dir=None):
     """Locates a file.
 
-    @param path: The path of the file being located. Could be absolute or relative
-        path. For relative path, it tries to locate the file from base_dir.
+    @param path: The path of the file being located. Could be absolute or
+        relative path. For relative path, it tries to locate the file from
+        base_dir.
+
     @param base_dir (optional): Base directory of the relative path.
 
     @returns Absolute path of the file if found. None if path is None.
@@ -2065,14 +2067,15 @@ def get_offload_gsuri():
     @returns gsuri to offload test results to.
     """
     # For non-moblab, use results_storage_server or default.
-    if not is_moblab():
+    if not is_moblab():  # pylint: disable=undefined-variable
         return DEFAULT_OFFLOAD_GSURI
 
     # For moblab, use results_storage_server or image_storage_server as bucket
     # name and mac-address/moblab_id as path.
     gsuri = DEFAULT_OFFLOAD_GSURI
     if not gsuri:
-        gsuri = "%sresults/" % CONFIG.get_config_value('CROS', 'image_storage_server')
+        gsuri = "%sresults/" % CONFIG.get_config_value('CROS',
+                                                       'image_storage_server')
 
     return '%s%s/%s/' % (gsuri, get_moblab_serial_number(), get_moblab_id())
 
@@ -2376,7 +2379,8 @@ def restart_service(service_name, ignore_status=True):
 
     @return: status code of the executed command.
     """
-    return control_service(service_name, action='restart', ignore_status=ignore_status)
+    return control_service(service_name, action='restart',
+                           ignore_status=ignore_status)
 
 
 def start_service(service_name, ignore_status=True):
@@ -2388,7 +2392,8 @@ def start_service(service_name, ignore_status=True):
 
     @return: status code of the executed command.
     """
-    return control_service(service_name, action='start', ignore_status=ignore_status)
+    return control_service(service_name, action='start',
+                           ignore_status=ignore_status)
 
 
 def stop_service(service_name, ignore_status=True):
@@ -2400,7 +2405,8 @@ def stop_service(service_name, ignore_status=True):
 
     @return: status code of the executed command.
     """
-    return control_service(service_name, action='stop', ignore_status=ignore_status)
+    return control_service(service_name, action='stop',
+                           ignore_status=ignore_status)
 
 
 def sudo_require_password():
