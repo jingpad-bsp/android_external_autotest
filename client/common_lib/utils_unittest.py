@@ -1,11 +1,12 @@
 #!/usr/bin/python
 
+# pylint: disable=missing-docstring
+
 import StringIO
 import errno
 import logging
 import os
 import select
-import shutil
 import socket
 import subprocess
 import time
@@ -14,7 +15,6 @@ import urllib2
 
 import common
 from autotest_lib.client.common_lib import autotemp
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock
 
