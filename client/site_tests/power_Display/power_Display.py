@@ -5,25 +5,25 @@ import logging
 import os
 import time
 
-from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.input_playback import keyboard
 from autotest_lib.client.cros.power import power_test
 
 class power_Display(power_test.power_Test):
-    """class for power_Idle test.
+    """class for power_Display test.
     """
     version = 1
 
     # TODO(tbroch) find more patterns that typical display vendors use to show
     # average and worstcase display power.
     PAGES = ['checker1', 'black', 'white', 'red', 'green', 'blue']
-    def run_once(self, pages=None, secs_per_page=60):
+    def run_once(self, pages=None, secs_per_page=60, max_brightness=False):
         """run_once method.
 
         @param pages: list of pages names that must be in
             <testdir>/html/<name>.html
         @param secs_per_page: time in seconds to display page and measure power.
+        @param max_brightness: flag to use maximum brightness for testing.
         """
         if pages is None:
             pages = self.PAGES
@@ -39,6 +39,9 @@ class power_Display(power_test.power_Test):
             if not fullscreen:
                 with keyboard.Keyboard() as keys:
                     keys.press_key('f4')
+
+            if max_brightness:
+                self.backlight.set_percent(100)
 
             self.start_measurements()
 
