@@ -327,8 +327,7 @@ class UpdateEngineUtil(object):
         """
         try:
             file_location = os.path.join('/tmp', filename)
-            screenshot_cmd = '/usr/local/autotest/bin/screenshot.py %s'
-            self._host.run(screenshot_cmd % file_location)
+            self._host.run('screenshot %s' % file_location)
             self._host.get_file(file_location, self.resultsdir)
         except error.AutoservRunError:
             logging.exception('Failed to take screenshot.')
