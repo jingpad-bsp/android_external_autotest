@@ -198,6 +198,22 @@ class TradefedTest(test.test):
                                  abilist)
         self._abilist = str(list(abilist)[0]).split(',')
 
+    def _calculate_timeout_factor(self, bundle):
+        """ Calculate the multiplicative factor for timeout.
+
+        The value equals to the times each test case is run, which is determined
+        by the intersection of the supported ABIs of the CTS/GTS bundle and that
+        of the tested device."""
+        arm_abis = set(('armeabi-v7a', 'arm64-v8a'))
+        x86_abis = set(('x86', 'x86_64'))
+        if bundle == 'arm':
+            tradefed_abis = arm_abis
+        elif bundle == 'x86':
+            tradefed_abis = x86_abis
+        else:
+            tradefed_abis = arm_abis | x86_abis
+        self._timeout_factor = len(set(self._get_abilist()) & tradefed_abis)
+
     @contextlib.contextmanager
     def _login_chrome(self, **cts_helper_kwargs):
         """Returns Chrome log-in context manager.
@@ -1013,6 +1029,7 @@ class TradefedTest(test.test):
                                    needs_push_media=False,
                                    target_module=None,
                                    target_plan=None,
+                                   bundle=None,
                                    cts_uri=None,
                                    login_precondition_commands=[],
                                    precondition_commands=[]):
@@ -1044,6 +1061,7 @@ class TradefedTest(test.test):
                     reboot=self._should_reboot(steps),
                     dont_override_profile=pushed_media) as current_logins:
                 self._ready_arc()
+                self._calculate_timeout_factor(bundle)
                 self._run_precondition_scripts(precondition_commands, steps)
 
                 # Only push media for tests that need it. b/29371037
