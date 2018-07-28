@@ -74,18 +74,6 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
     def _get_tradefed_base_dir(self):
         return 'android-cts'
 
-    def _get_timeout_factor(self):
-        """Returns the factor to be multiplied to the timeout parameter.
-        The factor is determined by the number of ABIs to run."""
-        if self._timeoutfactor is None:
-            abilist = self._get_abilist()
-            prefix = {'x86': 'x86', 'arm': 'armeabi-'}.get(self._abi)
-            self._timeoutfactor = 1
-            if prefix:
-                self._timeoutfactor = sum(1 for abi in abilist
-                    if abi.startswith(prefix))
-        return self._timeoutfactor
-
     def _run_tradefed(self, commands):
         """Kick off CTS.
 
@@ -101,7 +89,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                 output = self._run(
                     cts_tradefed,
                     args=tuple(command),
-                    timeout=self._timeout * self._get_timeout_factor(),
+                    timeout=self._timeout * self._timeout_factor,
                     verbose=True,
                     ignore_status=False,
                     # Make sure to tee tradefed stdout/stderr to autotest logs
@@ -130,6 +118,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
                  target_class=None,
                  target_method=None,
                  needs_push_media=False,
+                 bundle=None,
                  precondition_commands=[],
                  login_precondition_commands=[],
                  timeout=_CTS_TIMEOUT_SECONDS):
@@ -150,19 +139,19 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
         @param target_class: the name of the class to be tested.
         @param target_method: the name of the method to be tested.
         @param needs_push_media: need to push test media streams.
-        @param timeout: time after which tradefed can be interrupted.
+        @param bundle: the type of the CTS bundle: 'arm' or 'x86'
         @param precondition_commands: a list of scripts to be run on the
         dut before the test is run, the scripts must already be installed.
         @param login_precondition_commands: a list of scripts to be run on the
         dut before the log-in for the test is performed.
+        @param timeout: time after which tradefed can be interrupted.
         """
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
         if self._get_release_channel() == 'stable':
             self._timeout += 3600
-        # Retries depend on channel.
-        self._timeoutfactor = None
+
         self._run_tradefed_with_retries(
             test_name=test_name,
             run_template=run_template,
@@ -170,6 +159,7 @@ class cheets_CTS_N(tradefed_test.TradefedTest):
             target_module=target_module,
             target_plan=target_plan,
             needs_push_media=needs_push_media,
+            bundle=bundle,
             cts_uri=_CTS_URI,
             login_precondition_commands=login_precondition_commands,
             precondition_commands=precondition_commands)
