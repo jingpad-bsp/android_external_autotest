@@ -8,7 +8,7 @@ AUTHOR = 'ARC++ Team'
 NAME = 'cheets_CTS_P.arm.tradefed-run-collect-tests'
 ATTRIBUTES = 'suite:cts_P'
 DEPENDENCIES = 'arc'
-JOB_RETRIES = 0
+JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'MEDIUM'
 MAX_RESULT_SIZE_KB = 1024000
@@ -32,6 +32,6 @@ def run_CTS(machine):
         bundle='arm',
         warn_on_test_retry=False,
         retry_manual_tests=True,
-        timeout=3600)
+        timeout=5400)
 
 parallel_simple(run_CTS, machines)
