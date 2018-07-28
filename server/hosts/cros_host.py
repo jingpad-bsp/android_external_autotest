@@ -738,17 +738,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         message %= (self.hostname, info.board, info.model)
         self.record('INFO', None, None, message)
         self._repair_strategy.repair(self)
-        # Sometimes, hosts with certain ethernet dongles get stuck in a
-        # bad network state where they're reachable from this code, but
-        # not from the devservers during provisioning.  Rebooting the
-        # DUT fixes it.
-        #
-        # TODO(jrbarnette):  Ideally, we'd get rid of the problem
-        # dongles, and drop this code.  Failing that, we could be smart
-        # enough not to reboot if repair rebooted the DUT (e.g. by
-        # looking at DUT uptime after repair completes).
-
-        self.reboot()
 
 
     def close(self):
