@@ -54,18 +54,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
     def _get_tradefed_base_dir(self):
         return 'android-gts'
 
-    # TODO(ihf): move to tradefed_test, but first unify with CTS.
-    def _get_timeout_factor(self):
-        """Returns the factor to be multiplied to the timeout parameter.
-        The factor roughly grows with the number of ABIs but the fit does not
-        have to be perfect as runtime is hard to predict."""
-        # The list of ABIs recognized by tradefed is taken from
-        # tools/tradefederation/src/com/android/tradefed/util/AbiUtils.java
-        tradefed_abis = set(('armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64',
-            'mips', 'mips64'))
-        self._timeoutfactor = len(set(self._get_abilist()) & tradefed_abis)
-        return self._timeoutfactor
-
     def _run_tradefed(self, commands):
         """Kick off GTS.
 
@@ -76,7 +64,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
         with tradefed_test.adb_keepalive(self._get_adb_targets(),
                                          self._install_paths):
             for command in commands:
-                timeout = self._timeout * self._get_timeout_factor()
+                timeout = self._timeout * self._timeout_factor
                 logging.info('RUN(timeout=%d): ./gts-tradefed %s', timeout,
                              ' '.join(command))
                 output = self._run(
@@ -134,8 +122,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         self._timeout = timeout
         if self._get_release_channel() == 'stable':
             self._timeout += 3600
-        # Retries depend on channel.
-        self._timeoutfactor = None
 
         self._run_tradefed_with_retries(
             test_name=test_name,
