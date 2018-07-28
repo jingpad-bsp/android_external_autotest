@@ -609,6 +609,10 @@ class ServoHost(ssh_host.SSHHost):
         # the lab of the old images, we need to make sure powerd
         # isn't running.
         self.run('stop powerd', ignore_status=True)
+
+        message = 'Beginning verify for servo host %s port %s serial %s'
+        message %= (self.hostname, self.servo_port, self.servo_serial)
+        self.record('INFO', None, None, message)
         try:
             self._repair_strategy.verify(self, silent)
         except:
@@ -621,6 +625,9 @@ class ServoHost(ssh_host.SSHHost):
 
         @param silent   If true, suppress logging in `status.log`.
         """
+        message = 'Beginning repair for servo host %s port %s serial %s'
+        message %= (self.hostname, self.servo_port, self.servo_serial)
+        self.record('INFO', None, None, message)
         try:
             self._repair_strategy.repair(self, silent)
         except:
