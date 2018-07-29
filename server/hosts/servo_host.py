@@ -570,10 +570,6 @@ class ServoHost(ssh_host.SSHHost):
                 logging.error('Abandoning update for this cycle.')
             else:
                 try:
-                    # TODO(jrbarnette): This 'touch' is a gross hack
-                    # to get us past crbug.com/613603.  Once that
-                    # bug is resolved, we should remove this code.
-                    self.run('touch /home/chronos/.oobe_completed')
                     updater.trigger_update()
                 except autoupdater.RootFSUpdateError as e:
                     trigger_download_status = 'failed with %s' % str(e)
@@ -600,15 +596,9 @@ class ServoHost(ssh_host.SSHHost):
 
         @param silent   If true, suppress logging in `status.log`.
         """
-        # TODO(jrbarnette) Old versions of beaglebone_servo include
-        # the powerd package.  If you touch the .oobe_completed file
-        # (as we do to work around an update_engine problem), then
-        # powerd will eventually shut down the beaglebone for lack
-        # of (apparent) activity.  Current versions of
-        # beaglebone_servo don't have powerd, but until we can purge
-        # the lab of the old images, we need to make sure powerd
-        # isn't running.
-        self.run('stop powerd', ignore_status=True)
+        message = 'Beginning verify for servo host %s port %s serial %s'
+        message %= (self.hostname, self.servo_port, self.servo_serial)
+        self.record('INFO', None, None, message)
         try:
             self._repair_strategy.verify(self, silent)
         except:
@@ -621,6 +611,9 @@ class ServoHost(ssh_host.SSHHost):
 
         @param silent   If true, suppress logging in `status.log`.
         """
+        message = 'Beginning repair for servo host %s port %s serial %s'
+        message %= (self.hostname, self.servo_port, self.servo_serial)
+        self.record('INFO', None, None, message)
         try:
             self._repair_strategy.repair(self, silent)
         except:
@@ -660,6 +653,17 @@ class ServoHost(ssh_host.SSHHost):
         @return: a servo.Servo object.
         """
         return self._servo
+
+
+    def close(self):
+        """Stop UART logging and close the host object."""
+        if self._servo:
+            # In some cases when we run as lab-tools, the job object is None.
+            if self.job:
+                self._servo.dump_uart_streams(self.job.resultdir)
+            self._servo.close()
+
+        super(ServoHost, self).close()
 
 
 def make_servo_hostname(dut_hostname):

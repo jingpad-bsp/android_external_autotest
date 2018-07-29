@@ -335,8 +335,8 @@ def get_removable_media_pid():
     job_pid = get_job_pid('arc-removable-media')
     # |job_pid| is the minijail process, obtain the PID of the process running
     # inside the mount namespace.
-    # FUSE process is the only process running as chronos in the process group.
-    return utils.system_output('pgrep -u chronos -g %s' % job_pid)
+    # FUSE process is the only process running as chronos in the session.
+    return utils.system_output('pgrep -u chronos -s %s' % job_pid)
 
 
 def get_obb_mounter_pid():

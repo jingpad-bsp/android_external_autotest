@@ -41,6 +41,17 @@ class firmware_IntegratedU2F(FirmwareTest):
         return 'running' in self.host.run('status u2fd').stdout
 
 
+    def cryptohome_ready(self):
+        """Return True if cryptohome is running."""
+        return 'running' in self.host.run('status cryptohomed').stdout
+
+
+    def owner_key_exists(self):
+        """Return True if /var/lib/whitelist/owner.key exists."""
+        logging.info('checking for owner key')
+        return self.host.path_exists('/var/lib/whitelist/owner.key')
+
+
     def setup_u2fd(self):
         """Start u2fd on the host"""
         self.start_u2fd = not self.u2fd_is_running()
@@ -50,8 +61,20 @@ class firmware_IntegratedU2F(FirmwareTest):
 
         # Login
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+
+        # Wait for cryptohome to show the TPM is ready before logging in.
+        if not utils.wait_for_value(self.cryptohome_ready, True,
+                                    timeout_sec=60):
+            raise error.TestError('Crytpohome did not start')
+
+
         client_at = autotest.Autotest(self.host)
         client_at.run_test('login_LoginSuccess')
+
+        # Wait for the owner key to exist before trying to start u2fd.
+        if not utils.wait_for_value(self.owner_key_exists, True,
+                                    timeout_sec=60):
+            raise error.TestError('Device did not create owner key')
 
         self.create_g2f_force = not self.host.path_exists(self.G2FFORCE_PATH)
         if self.create_g2f_force:

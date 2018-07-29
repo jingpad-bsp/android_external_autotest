@@ -367,6 +367,7 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
             self.join_meeting()
         else:
             self.start_hangout()
+        self.cfm_facade.unmute_mic()
 
         self.collect_perf_data()
 

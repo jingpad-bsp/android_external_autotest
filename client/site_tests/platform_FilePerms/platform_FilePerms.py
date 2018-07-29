@@ -84,10 +84,6 @@ class platform_FilePerms(test.test):
             'device': loop_device,
             'type': ['squashfs'],
             'options': ['ro', 'noexec']},
-        '/opt/google/containers/arc-removable-media/mountpoints/container-root': {
-            'device': loop_device,
-            'type': ['squashfs'],
-            'options': ['ro', 'noexec']},
         '/run/arc/adbd': {
             'type': ['tmpfs'],
             'options': standard_rw_options + ['mode=770']},

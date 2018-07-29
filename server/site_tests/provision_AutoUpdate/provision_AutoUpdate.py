@@ -91,12 +91,11 @@ class provision_AutoUpdate(test.test):
     """A test that can provision a machine to the correct ChromeOS version."""
     version = 1
 
-    def initialize(self, host, value, force=False, is_test_na=False):
+    def initialize(self, host, value, is_test_na=False):
         """Initialize.
 
         @param host: The host object to update to |value|.
         @param value: The build type and version to install on the host.
-        @param force: not used by initialize.
         @param is_test_na: boolean, if True, will simply skip the test
                            and emit TestNAError. The control file
                            determines whether the test should be skipped
@@ -113,16 +112,17 @@ class provision_AutoUpdate(test.test):
             raise error.TestFail('No build version specified.')
 
 
-    def run_once(self, host, value, force=False):
+    def run_once(self, host, value, force_update_engine=False):
         """The method called by the control file to start the test.
 
         @param host: The host object to update to |value|.
         @param value: The host object to provision with a build corresponding
                       to |value|.
-        @param force: True iff we should re-provision the machine regardless of
-                      the current image version.  If False and the image
-                      version matches our expected image version, no
-                      provisioning will be done.
+        @param force_update_engine: When true, the update flow must
+                      perform the update unconditionally, using
+                      update_engine.  Optimizations that could suppress
+                      invoking update_engine, including quick-provision,
+                      mustn't be used.
         """
         with_cheets = False
         logging.debug('Start provisioning %s to %s.', host, value)
@@ -135,7 +135,7 @@ class provision_AutoUpdate(test.test):
         # If the host is already on the correct build, we have nothing to do.
         # Note that this means we're not doing any sort of stateful-only
         # update, and that we're relying more on cleanup to do cleanup.
-        if not force:
+        if not force_update_engine:
             info = host.host_info_store.get()
             if info.build == value:
                 # We can't raise a TestNA, as would make sense, as that makes
@@ -158,15 +158,18 @@ class provision_AutoUpdate(test.test):
         # fetch autotest in the background here, and then wait on it after
         # reimaging finishes or at some other point in the provisioning.
         ds = None
+        use_quick_provision = False
         try:
             ds = dev_server.ImageServer.resolve(image, host.hostname)
             ds.stage_artifacts(image, ['full_payload', 'stateful',
                                        'autotest_packages'])
-            try:
-                ds.stage_artifacts(image, ['quick_provision'])
-            except dev_server.DevServerException as e:
-                logging.warning('Unable to stage quick provision payload: %s',
-                                e)
+            if not force_update_engine:
+                try:
+                    ds.stage_artifacts(image, ['quick_provision'])
+                    use_quick_provision = True
+                except dev_server.DevServerException as e:
+                    logging.warning('Unable to stage quick provision '
+                                    'payload: %s', e)
         except dev_server.DevServerException as e:
             raise error.TestFail, str(e), sys.exc_info()[2]
         finally:
@@ -185,9 +188,7 @@ class provision_AutoUpdate(test.test):
         failure = None
         try:
             afe_utils.machine_install_and_update_labels(
-                    host,
-                    update_url=url,
-                    with_cheets=with_cheets)
+                    host, url, use_quick_provision, with_cheets)
         except BaseException as e:
             failure = e
             raise

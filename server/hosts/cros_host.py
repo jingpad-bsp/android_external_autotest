@@ -21,7 +21,6 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.server import afe_utils
 from autotest_lib.server import utils as server_utils
-from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
@@ -534,25 +533,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         pass
 
 
-    def machine_install(self, update_url):
-        """Install the image at `update_url` onto the DUT.
-
-        @param update_url: The url used to identify the update image on the
-                devserver.
-
-        @returns A tuple of (image_name, host_attributes).
-                image_name is the name of image installed, e.g.,
-                veyron_jerry-release/R50-7871.0.0
-                host_attributes is a dictionary of (attribute, value), which
-                can be saved to afe_host_attributes table in database. This
-                method returns a dictionary with a single entry of
-                `job_repo_url`: repo_url, where repo_url is a devserver url to
-                autotest packages.
-        """
-        updater = autoupdater.ChromiumOSUpdater(update_url, host=self)
-        return updater.run_update()
-
-
     def _clear_fw_version_labels(self, rw_only):
         """Clear firmware version labels from the machine.
 
@@ -753,18 +733,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         `self._repair_strategy` to coordinate the verification and
         repair steps needed to get the DUT working.
         """
+        message = 'Beginning repair for host %s board %s model %s'
+        info = self.host_info_store.get()
+        message %= (self.hostname, info.board, info.model)
+        self.record('INFO', None, None, message)
         self._repair_strategy.repair(self)
-        # Sometimes, hosts with certain ethernet dongles get stuck in a
-        # bad network state where they're reachable from this code, but
-        # not from the devservers during provisioning.  Rebooting the
-        # DUT fixes it.
-        #
-        # TODO(jrbarnette):  Ideally, we'd get rid of the problem
-        # dongles, and drop this code.  Failing that, we could be smart
-        # enough not to reboot if repair rebooted the DUT (e.g. by
-        # looking at DUT uptime after repair completes).
-
-        self.reboot()
 
 
     def close(self):
@@ -1184,6 +1157,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def verify(self):
         """Verify Chrome OS system is in good state."""
+        message = 'Beginning verify for host %s board %s model %s'
+        info = self.host_info_store.get()
+        message %= (self.hostname, info.board, info.model)
+        self.record('INFO', None, None, message)
         self._repair_strategy.verify(self)
 
 
