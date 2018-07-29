@@ -1317,7 +1317,17 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
 
 
 def is_virtual_machine():
-    return 'QEMU' in platform.processor()
+    if 'QEMU' in platform.processor():
+        return True
+
+    try:
+        with open('/sys/devices/virtual/dmi/id/sys_vendor') as f:
+            if 'QEMU' in f.read():
+                return True
+    except IOError:
+        pass
+
+    return False
 
 
 def save_vm_state(checkpoint):
