@@ -88,12 +88,16 @@ def ResetAuth(client, auxilary_hashes, reset_secret, cred_metadata):
                 (auxilary_hashes, reset_secret, cred_metadata))
 
 
-def GetLog(client, root):
+def GetLog(client, root=None):
     """Returns a dictionary with keys result_code, root_hash, and a list of
     entry[#] sub dictionaries for each log entry.
 
     @param client: client object to run commands on.
+    @param root: root hash of the log entry to search for.
     """
+    if root is None:
+        root = ('0' * 64)
+
     return __execute_for_dict(client, 'pinweaver_client getlog %s' % (root))
 
 
