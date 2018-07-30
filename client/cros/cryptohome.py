@@ -288,7 +288,7 @@ def remove_all_vaults():
             shutil.rmtree(abs_item)
 
 
-def mount_vault(user, password, create=False, key_label='bar'):
+def mount_vault(user, password, create=False, key_label=None):
     """Mount the given user's vault. Mounts should be created by calling this
     function with create=True, and can be used afterwards with create=False.
     Only try to mount existing vaults created with this function.
@@ -297,7 +297,11 @@ def mount_vault(user, password, create=False, key_label='bar'):
     args = [CRYPTOHOME_CMD, '--action=mount_ex', '--user=%s' % user,
             '--password=%s' % password, '--async']
     if create:
-        args += ['--key_label=%s' % key_label, '--create']
+        args += ['--create']
+        if key_label is None:
+            key_label = 'bar'
+    if key_label is not None:
+        args += ['--key_label=%s' % key_label]
     logging.info(__run_cmd(' '.join(args)))
     # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
@@ -338,7 +342,34 @@ def test_auth(user, password):
     return 'Key authenticated.' in out
 
 
-def unmount_vault(user):
+def add_le_key(user, password, new_password, new_key_label):
+    args = [CRYPTOHOME_CMD, '--action=add_key_ex', '--key_policy=le',
+            '--user=%s' % user, '--password=%s' % password,
+            '--new_key_label=%s' % new_key_label,
+            '--new_password=%s' % new_password]
+    logging.info(__run_cmd(' '.join(args)))
+
+
+def remove_key(user, password, remove_key_label):
+    args = [CRYPTOHOME_CMD, '--action=remove_key_ex', '--user=%s' % user,
+            '--password=%s' % password,
+            '--remove_key_label=%s' % remove_key_label]
+    logging.info(__run_cmd(' '.join(args)))
+
+
+def get_supported_key_policies():
+    args = [CRYPTOHOME_CMD, '--action=get_supported_key_policies']
+    out = __run_cmd(' '.join(args))
+    logging.info(out)
+    policies = {}
+    for line in out.splitlines():
+        match = re.search('  ([^:]+): (true|false)', line)
+        if match:
+            policies[match.group(1)] = match.group(2) == 'true'
+    return policies
+
+
+def unmount_vault(user=None):
     """Unmount the given user's vault.
 
     Once unmounting for a specific user is supported, the user parameter will
@@ -346,7 +377,7 @@ def unmount_vault(user):
     """
     __run_cmd(CRYPTOHOME_CMD + ' --action=unmount')
     # Ensure that the vault is not mounted.
-    if is_vault_mounted(user, allow_fail=True):
+    if user is not None and is_vault_mounted(user, allow_fail=True):
         raise ChromiumOSError('Cryptohome did not unmount the user.')
 
 
