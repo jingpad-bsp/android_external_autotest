@@ -287,23 +287,27 @@ bool V4L2Device::Run(uint32_t time_in_sec) {
   if (!time_in_sec)
     return false;
 
-  uint64_t start_in_nanosec = Now();
+  uint64_t start_in_nanosec = 0;
   uint32_t buffer_index, data_size;
   while (!stopped_) {
     int32_t r = ReadOneFrame(&buffer_index, &data_size);
     if (r < 0)
       return false;
     if (r) {
+      if (start_in_nanosec == 0)
+        start_in_nanosec = Now();
       ProcessImage(v4l2_buffers_[buffer_index].start);
       if (!EnqueueBuffer(buffer_index))
         return false;
     }
-    uint64_t end_in_nanosec = Now();
-    if ( end_in_nanosec - start_in_nanosec >= time_in_sec * 1000000000ULL)
-      break;
+    if (start_in_nanosec) {
+      uint64_t end_in_nanosec = Now();
+      if (end_in_nanosec - start_in_nanosec >= time_in_sec * 1000000000ULL)
+        break;
+    }
   }
   // All resolutions should have at least 1 fps.
-  float actual_fps = static_cast<float>(GetNumFrames()) / time_in_sec;
+  float actual_fps = static_cast<float>(GetNumFrames() - 1) / time_in_sec;
   printf("\n<<< Info: Actual fps is %f on %s.>>>\n", actual_fps, dev_name_);
   return true;
 }
