@@ -2,6 +2,7 @@ import json
 import os
 
 from autotest_lib.client.common_lib import utils
+from autotest_lib.tko import tast
 from autotest_lib.tko import utils as tko_utils
 
 
@@ -165,7 +166,11 @@ class test(object):
         """
         tko_utils.dprint("parsing test %s %s" % (subdir, testname))
 
-        if subdir:
+        if tast.is_tast_test(testname):
+            attributes, perf_values = tast.load_tast_test_aux_results(job,
+                                                                      testname)
+            iterations = []
+        elif subdir:
             # Grab iterations from the results keyval.
             iteration_keyval = os.path.join(job.dir, subdir,
                                             'results', 'keyval')
@@ -411,4 +416,3 @@ class perf_value_iteration(object):
 
         """
         raise NotImplementedError
-
