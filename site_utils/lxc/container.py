@@ -22,6 +22,7 @@ try:
 except ImportError:
     metrics = utils.metrics_mock
 
+from chromite.lib import constants as chromite_constants
 
 # Naming convention of test container, e.g., test_300_1422862512_2424, where:
 # 300:        The test job ID.
@@ -524,6 +525,35 @@ class Container(object):
         utils.run('sudo mkdir -p %s'% usr_local_path)
 
         lxc.download_extract(ssp_url, autotest_pkg_path, usr_local_path)
+
+    def install_ssp_isolate(self, isolate_hash, dest_path=None):
+        """Downloads and install the contents of the given isolate.
+        This places the isolate contents under /usr/local or a provided path.
+        Most commonly this is a copy of a specific autotest version, in which
+        case:
+          /usr/local/autotest contains the autotest code
+          /usr/local/logs contains logs from the installation process.
+
+        @param isolate_hash: The hash string which serves as a key to retrieve
+                             the desired isolate
+        @param dest_path: Path to the directory to place the isolate in.
+                          Defaults to /usr/local/
+
+        @return: Exit status of the installation command.
+        """
+        dest_path = dest_path or os.path.join(self.rootfs, 'usr', 'local')
+        isolate_log_path = os.path.join(
+            self.rootfs, 'usr', 'local', 'logs', 'isolate')
+        log_file = os.path.join(isolate_log_path,
+            'contents.' + time.strftime('%Y-%m-%d-%H.%M.%S'))
+
+        utils.run('sudo mkdir -p %s' % isolate_log_path)
+        _command = ("sudo isolated download -isolated {sha} -I {server}"
+                    " -output-dir {dest_dir} -output-files {log_file}")
+
+        return utils.run(_command.format(
+            sha=isolate_hash, dest_dir=dest_path,
+            log_file=log_file, server=chromite_constants.ISOLATESERVER))
 
 
     def install_control_file(self, control_file):
