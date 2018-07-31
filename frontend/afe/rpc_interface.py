@@ -1986,6 +1986,8 @@ def create_suite_job(
     # 'tests' is not passed.  Can be removed after R64.
     elif name.rpartition('/')[-1] in {'control.cts_N',
                                       'control.cts_N_preconditions',
+                                      'control.cts_P',
+                                      'control.cts_P_preconditions',
                                       'control.gts'}:
         suite_args_raw = ''
     else:
