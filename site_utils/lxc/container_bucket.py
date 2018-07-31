@@ -151,7 +151,7 @@ class ContainerBucket(object):
     @cleanup_if_fail()
     def setup_test(self, container_id, job_id, server_package_url, result_path,
                    control=None, skip_cleanup=False, job_folder=None,
-                   dut_name=None):
+                   dut_name=None, isolate_hash=None):
         """Setup test container for the test job to run.
 
         The setup includes:
@@ -175,6 +175,9 @@ class ContainerBucket(object):
         @param job_folder: Folder name of the job, e.g., 123-debug_user.
         @param dut_name: Name of the dut to run test, used as the hostname of
                          the container. Default is None.
+        @param isolate_hash: String key to look up the isolate package needed
+                             to run test. Default is None, supersedes
+                             server_package_url if present.
         @return: A Container object for the test container.
 
         @raise ContainerError: If container does not exist, or not running.
@@ -202,7 +205,10 @@ class ContainerBucket(object):
         container = self._factory.create_container(container_id)
 
         # Deploy server side package
-        container.install_ssp(server_package_url)
+        if isolate_hash:
+          container.install_ssp_isolate(isolate_hash)
+        else:
+          container.install_ssp(server_package_url)
 
         deploy_config_manager = lxc_config.DeployConfigManager(container)
         deploy_config_manager.deploy_pre_start()
