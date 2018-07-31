@@ -4,6 +4,10 @@
 This file generates all telemetry_Benchmarks control files from a master list.
 """
 
+from datetime import datetime
+import os
+import re
+
 # This test list is a subset of telemetry benchmark tests. The full list can be
 # obtained by executing
 # /build/${BOARD}/usr/local/telemetry/src/tools/perf/list_benchmarks
@@ -25,6 +29,7 @@ PERF_PER_BUILD_TESTS = (
     'jetstream',
     'kraken',
     'octane',
+    'page_cycler_v2.typical_25',
     'speedometer',
     'speedometer2',
 )
@@ -34,7 +39,6 @@ PERF_DAILY_RUN_TESTS = (
     'dromaeo',
     'image_decoding.image_decoding_measurement',
     'memory.desktop',
-    'page_cycler_v2.typical_25',
     'smoothness.tough_pinch_zoom_cases',
     'webrtc',
 )
@@ -52,8 +56,12 @@ ALL_TESTS = (PERF_PER_BUILD_TESTS +
              PERF_WEEKLY_RUN_TESTS +
              PERF_NO_SUITE)
 
+DEFAULT_YEAR = str(datetime.now().year)
+
+DEFAULT_AUTHOR = 'Chrome OS Team'
+
 CONTROLFILE_TEMPLATE = (
-"""# Copyright 2018 The Chromium OS Authors. All rights reserved.
+"""# Copyright {year} The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -61,7 +69,7 @@ CONTROLFILE_TEMPLATE = (
 
 from autotest_lib.client.common_lib import utils
 
-AUTHOR = 'sbasi, achuith, rohitbm'
+AUTHOR = '{author}'
 NAME = 'telemetry_Benchmarks.{test}'
 {attributes}
 TIME = 'LONG'
@@ -97,10 +105,57 @@ def _get_suite(test):
     return ''
 
 
-for test in ALL_TESTS:
+def get_existing_fields(filename):
+    """Returns the existing copyright year and author of the control file."""
+    if not os.path.isfile(filename):
+        return (DEFAULT_YEAR, DEFAULT_AUTHOR)
+
+    copyright_year = DEFAULT_YEAR
+    author = DEFAULT_AUTHOR
+    copyright_pattern = re.compile(
+            '# Copyright (\d+) The Chromium OS Authors.')
+    author_pattern = re.compile("AUTHOR = '(.+)'")
+    with open(filename) as f:
+        for line in f:
+            match_year = copyright_pattern.match(line)
+            if match_year:
+                copyright_year = match_year.group(1)
+            match_author = author_pattern.match(line)
+            if match_author:
+                author = match_author.group(1)
+    return (copyright_year, author)
+
+
+def generate_control(test):
+    """Generates control file from the template."""
     filename = 'control.%s' % test
+    copyright_year, author = get_existing_fields(filename)
+
     with open(filename, 'w+') as f:
         content = CONTROLFILE_TEMPLATE.format(
                 test=test,
+                year=copyright_year,
+                author=author,
                 attributes=_get_suite(test))
         f.write(content)
+
+
+def check_unmanaged_control_files():
+    """Prints warning if there is unmanaged control file."""
+    for filename in os.listdir('.'):
+        if not filename.startswith('control.'):
+            continue
+        test = filename[len('control.'):]
+        if test not in ALL_TESTS:
+            print 'warning, unmanaged control file:', test
+
+
+def main():
+    """The main function."""
+    for test in ALL_TESTS:
+        generate_control(test)
+    check_unmanaged_control_files()
+
+
+if __name__ == "__main__":
+    main()
