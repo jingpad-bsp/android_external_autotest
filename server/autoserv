@@ -43,7 +43,6 @@ except ImportError:
 
 _CONFIG = global_config.global_config
 
-
 # Number of seconds to wait before returning if testing mode is enabled
 TESTING_MODE_SLEEP_SECS = 1
 
@@ -173,7 +172,8 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
         test_container = bucket.setup_test(container_id, job_id, ssp_url,
                                            results, control=control,
                                            job_folder=job_folder,
-                                           dut_name=dut_name)
+                                           dut_name=dut_name,
+                                           isolate_hash=parser.options.isolate)
     except Exception as e:
         job.record('FAIL', None, None,
                    'Failed to setup container for test: %s. Check logs in '
