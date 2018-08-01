@@ -121,10 +121,10 @@ def patch_consumed_list(to_consume=None, consumed=None):
 
 class CustomImportsChecker(imports.ImportsChecker):
     """Modifies stock imports checker to suit autotest."""
-    def visit_from(self, node):
+    def visit_importfrom(self, node):
         """Patches modnames so pylints understands autotest_lib."""
         node.modname = patch_modname(node.modname)
-        return super(CustomImportsChecker, self).visit_from(node)
+        return super(CustomImportsChecker, self).visit_importfrom(node)
 
 
 class CustomVariablesChecker(variables.VariablesChecker):
@@ -146,10 +146,10 @@ class CustomVariablesChecker(variables.VariablesChecker):
         patch_consumed_list(scoped_names[0],scoped_names[1])
         self._to_consume.append(scoped_names)
 
-    def visit_from(self, node):
+    def visit_importfrom(self, node):
         """Patches modnames so pylints understands autotest_lib."""
         node.modname = patch_modname(node.modname)
-        return super(CustomVariablesChecker, self).visit_from(node)
+        return super(CustomVariablesChecker, self).visit_importfrom(node)
 
 
 class CustomDocStringChecker(base.DocStringChecker):
@@ -164,7 +164,7 @@ class CustomDocStringChecker(base.DocStringChecker):
         pass
 
 
-    def visit_function(self, node):
+    def visit_functiondef(self, node):
         """
         Don't request docstrings for commonly overridden autotest functions.
 
@@ -184,7 +184,7 @@ class CustomDocStringChecker(base.DocStringChecker):
         if _is_test_case_method(node):
             return
 
-        super(CustomDocStringChecker, self).visit_function(node)
+        super(CustomDocStringChecker, self).visit_functiondef(node)
 
 
     @staticmethod
