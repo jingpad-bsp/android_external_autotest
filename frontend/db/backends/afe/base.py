@@ -1,5 +1,3 @@
-import time
-
 from django.db.backends.mysql.base import DatabaseCreation as MySQLCreation
 from django.db.backends.mysql.base import DatabaseOperations as MySQLOperations
 from django.db.backends.mysql.base import DatabaseWrapper as MySQLDatabaseWrapper
@@ -40,11 +38,3 @@ class DatabaseWrapper(MySQLDatabaseWrapper):
                     self.connection.close()
                     self.connection = None
         return False
-
-    def _cursor(self):
-        # crbug.com/805724 Add a retry for connection errors.
-        try:
-            return super(DatabaseWrapper, self)._cursor()
-        except Database.OperationalError:
-            time.sleep(0.3)
-            return super(DatabaseWrapper, self)._cursor()
