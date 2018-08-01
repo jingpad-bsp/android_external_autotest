@@ -11,7 +11,7 @@ TEST_CATEGORY = "Install"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo, recovery_test"
-ATTRIBUTES = "suite:usb_detect"
+ATTRIBUTES = "suite:platform_test_nightly"
 
 DOC = """
 This test stages and installs the same build recovery image onto a
