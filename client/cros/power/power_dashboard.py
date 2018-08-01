@@ -269,7 +269,9 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
             'sample_count': 1,
             'sample_duration': self._duration_secs,
             'average': {'vbat': self._power_watts},
-            'data': {'vbat': [self._power_watts]}
+            'data': {'vbat': [self._power_watts]},
+            'unit': {'vbat': self._unit},
+            'type': {'vbat': self._type},
         }
         return power_dict
 
