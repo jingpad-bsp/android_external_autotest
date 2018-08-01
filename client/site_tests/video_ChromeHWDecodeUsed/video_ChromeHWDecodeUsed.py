@@ -24,7 +24,8 @@ class video_ChromeHWDecodeUsed(test.test):
     def is_skipping_test(self, codec):
         """Determine whether this test should skip.
 
-        @param codec: the codec to be tested. Example values: 'vp8', 'vp9', 'h264'.
+        @param codec: the codec to be tested. Example values: 'vp8', 'vp9',
+                      'h264'.
         """
         blacklist = [
                 # (board, milestone, codec); None if don't care.
@@ -56,13 +57,18 @@ class video_ChromeHWDecodeUsed(test.test):
             raise error.TestNAError('Skipping test run on this board.')
 
         if not device_capability.DeviceCapability().have_capability(capability):
-            logging.warning("Missing Capability: %s" % capability)
+            logging.warning("Missing Capability: %s", capability)
             return
 
         with chrome.Chrome(
                 extra_browser_args=helper_logger.chrome_vmodule_flag(),
                 arc_mode=arc_mode,
                 init_network_controller=True) as cr:
+            init_status_differ = histogram_verifier.HistogramDiffer(
+                cr, constants.MEDIA_GVD_INIT_STATUS)
+            error_differ = histogram_verifier.HistogramDiffer(
+                cr, constants.MEDIA_GVD_ERROR)
+
             # This will execute for MSE video by accesing shaka player
             if is_mse:
                  tab1 = cr.browser.tabs.New()
@@ -95,18 +101,21 @@ class video_ChromeHWDecodeUsed(test.test):
                  player.wait_ended_or_error()
 
             # Waits for histogram updated for the test video.
-            histogram_verifier.verify(
-                 cr,
-                 constants.MEDIA_GVD_INIT_STATUS,
-                 constants.MEDIA_GVD_BUCKET)
 
-            # Verify no GPU error happens.
-            if histogram_verifier.is_histogram_present(
-                    cr,
-                    constants.MEDIA_GVD_ERROR):
-                logging.info(histogram_verifier.get_histogram(
-                             cr, constants.MEDIA_GVD_ERROR))
-                raise error.TestError('GPU Video Decoder Error.')
+            diff_init_status = init_status_differ.end()
+            if constants.MEDIA_GVD_BUCKET not in diff_init_status:
+                raise error.TestError('Expect GpuVideoDecoderInitializeStatus '
+                                      'has OK status. Histogram diff: %r' %
+                                      diff_init_status)
+            if len(diff_init_status) != 1:
+                raise error.TestError('GpuVideoDecoderInitializeStatus '
+                                      'has status other than OK: %r' %
+                                      diff_init_status)
+
+            diff_error = error_differ.end()
+            if diff_error:
+                raise error.TestError(
+                    'GPU Video Decoder Error. Histogram diff: %r' % diff_error)
 
             # Verify the video ends successully for normal videos.
             if not is_mse and player.check_error():
