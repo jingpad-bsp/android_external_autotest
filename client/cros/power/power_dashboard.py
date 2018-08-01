@@ -18,6 +18,46 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
 
+_HTML_CHART_STR = '''
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js">
+</script>
+<script type="text/javascript">
+    google.charts.load('current', {{'packages':['corechart']}});
+    google.charts.setOnLoadCallback(drawChart);
+    function drawChart() {{
+        var data = google.visualization.arrayToDataTable([
+{data}
+        ]);
+        var unit = '{unit}';
+        var options = {{
+            width: 1600,
+            height: 1200,
+            lineWidth: 1,
+            legend: {{ position: 'top', maxLines: 3 }},
+            vAxis: {{ viewWindow: {{min: 0}}, title: '{type} ({unit})' }},
+            hAxis: {{ viewWindow: {{min: 0}}, title: 'time (second)' }},
+        }};
+        var element = document.getElementById('{type}');
+        var chart;
+        if (unit == 'percent') {{
+            options['isStacked'] = true;
+            chart = new google.visualization.SteppedAreaChart(element);
+        }} else {{
+            chart = new google.visualization.LineChart(element);
+        }}
+        chart.draw(data, options);
+    }}
+</script>
+</head>
+<body>
+<div id="{type}"></div>
+</body>
+</html>
+'''
+
 
 class BaseDashboard(object):
     """Base class that implements method for prepare and upload data to power
@@ -86,6 +126,53 @@ class BaseDashboard(object):
         with file(filename, 'a') as f:
             json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
 
+    def _save_html(self, powerlog_dict, resultsdir, filename='power_log.html'):
+        """Convert powerlog dict to chart in HTML page and append to
+        <resultsdir>/<filename>.
+
+        Note that this results in multiple HTML objects in one file but Chrome
+        can render all of it in one page.
+
+        Args:
+            powerlog_dict: dictionary of power data
+            resultsdir: directory to save HTML page
+            filename: filename to append to
+        """
+        # Create dict from type to sorted list of rail names.
+        rail_type = collections.defaultdict(list)
+        for r, t in powerlog_dict['power']['type'].iteritems():
+            rail_type[t].append(r)
+        for t in rail_type:
+            rail_type[t] = sorted(rail_type[t])
+
+        html_str = ''
+        row_indent = ' ' * 12
+        for t in rail_type:
+            data_str_list = []
+
+            # Generate rail name data string.
+            header = ['time'] + rail_type[t]
+            header_str = row_indent + "['" + "', '".join(header) + "']"
+            data_str_list.append(header_str)
+
+            # Generate measurements data string.
+            for i in range(powerlog_dict['power']['sample_count']):
+                row = [str(i * powerlog_dict['power']['sample_duration'])]
+                for r in rail_type[t]:
+                    row.append(str(powerlog_dict['power']['data'][r][i]))
+                row_str = row_indent + '[' + ', '.join(row) + ']'
+                data_str_list.append(row_str)
+
+            data_str = ',\n'.join(data_str_list)
+            unit = powerlog_dict['power']['unit'][rail_type[t][0]]
+            html_str += _HTML_CHART_STR.format(data=data_str, unit=unit, type=t)
+
+        if not os.path.exists(resultsdir):
+            raise error.TestError('resultsdir %s does not exist.' % resultsdir)
+        filename = os.path.join(resultsdir, filename)
+        with file(filename, 'a') as f:
+            f.write(html_str)
+
     def _upload(self, powerlog_dict, uploadurl):
         """Convert powerlog dict to minimal size JSON and upload to dashboard.
 
@@ -121,6 +208,7 @@ class BaseDashboard(object):
         powerlog_dict = self._create_powerlog_dict(raw_measurement)
         if self._resultsdir is not None:
             self._save_json(powerlog_dict, self._resultsdir)
+            self._save_html(powerlog_dict, self._resultsdir)
         if self._uploadurl is not None:
             self._upload(powerlog_dict, self._uploadurl)
 
@@ -269,7 +357,9 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
             'sample_count': 1,
             'sample_duration': self._duration_secs,
             'average': {'vbat': self._power_watts},
-            'data': {'vbat': [self._power_watts]}
+            'data': {'vbat': [self._power_watts]},
+            'unit': {'vbat': self._unit},
+            'type': {'vbat': self._type},
         }
         return power_dict
 
