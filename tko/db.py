@@ -612,7 +612,11 @@ class db_sql(object):
         for key, value in test.attributes.iteritems():
             data = {'test_idx': test_idx, 'attribute': key,
                     'value': value}
-            self.insert('tko_test_attributes', data, commit=commit)
+            try:
+                self.insert('tko_test_attributes', data, commit=commit)
+            except:
+                _log_error('Uploading attribute %r' % (data))
+                raise
 
         if not is_update:
             for label_index in test.labels:
