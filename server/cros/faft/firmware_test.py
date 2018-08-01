@@ -130,6 +130,10 @@ class FirmwareTest(FAFTBase):
                                       'as "%s".'
                                        % (host.POWER_CONTROL_VALID_ARGS,
                                        self.power_control))
+        self._no_ec_sync = False
+        if 'no_ec_sync' in args:
+            if 'true' in args['no_ec_sync'].lower():
+                self._no_ec_sync = True
 
         if not self.faft_client.system.dev_tpm_present():
             raise error.TestError('/dev/tpm0 does not exist on the client')
@@ -476,6 +480,7 @@ class FirmwareTest(FAFTBase):
         """
         gbb_flags = self.faft_client.bios.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
+        self.gbb_flags = new_flags
         if new_flags != gbb_flags:
             self._backup_gbb_flags = gbb_flags
             logging.info('Changing GBB flags from 0x%x to 0x%x.',
@@ -829,13 +834,15 @@ class FirmwareTest(FAFTBase):
             return
 
         logging.info('Set proper GBB flags for test.')
-        self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
-                                 vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
-                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
-                                 vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK |
-                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_FASTBOOT_FULL_CAP,
-                                 vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM |
-                                 vboot.GBB_FLAG_FAFT_KEY_OVERIDE)
+        # Ensure that GBB flags are set to 0x140.
+        flags_to_set = (vboot.GBB_FLAG_FAFT_KEY_OVERIDE |
+                        vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM)
+        # And if the "no_ec_sync" argument is set, then disable EC software
+        # sync.
+        if self._no_ec_sync:
+            flags_to_set |= vboot.GBB_FLAG_DISABLE_EC_SOFTWARE_SYNC
+
+        self.clear_set_gbb_flags(0xffffffff, flags_to_set)
         self.mark_setup_done('gbb_flags')
 
     def drop_backup_gbb_flags(self):
