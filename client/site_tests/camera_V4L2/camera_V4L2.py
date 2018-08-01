@@ -26,8 +26,9 @@ class camera_V4L2(test.test):
         utils.make('clean')
         utils.make()
 
-    def run_once(self, capability, test_list=None):
-        device_capability.DeviceCapability().ensure_capability(capability)
+    def run_once(self, capability=None, test_list=None):
+        if capability is not None:
+            device_capability.DeviceCapability().ensure_capability(capability)
         # Enable USB camera HW timestamp
         path = "/sys/module/uvcvideo/parameters/hwtimestamps"
         if os.path.exists(path):
