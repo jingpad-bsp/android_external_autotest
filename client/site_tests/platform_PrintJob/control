@@ -13,9 +13,9 @@ The test fails in cases of DUT is:
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform, desktopui"
-ATTRIBUTES = "suite:chameleon_peripherals"
+ATTRIBUTES = "suite:platform_test_nightly"
 JOB_RETRIES = 1
-DEPENDENCIES = "test_usbprinting"
+DEPENDENCIES = "test_usbprinting, chameleon"
 
 DOC = """
 This is a test that emulates a printer using chameleon board

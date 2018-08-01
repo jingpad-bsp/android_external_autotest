@@ -3,20 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "kalin"
-NAME = "chameleon_peripherals"
-PURPOSE = "A Chameleon test suite for peripherals testing."
+NAME = "platform_test_nightly"
+PURPOSE = "Test suite for platform team nightly tests."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"
 TEST_CLASS = "suite"
-TEST_TYPE = "Client"
+TEST_TYPE = "Server"
 
 DOC = """
-Tests that require chameleon connected.
-The Chameleon board can emulate usb peripherals, including
-- USB printer
-- USB audio(currently tested with chameleon_audio_perbuild|nightly)
-- External Display(currently tested with chameleon_hdmi_perbuild|nightly)
+Some of the tests require chameleon connected.
+Others require servo.
 
 
 @param build: The name of the image to test.
@@ -32,7 +29,6 @@ import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 args_dict['name'] = NAME
-args_dict['suite_dependencies'] = 'chameleon'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
 args_dict['max_runtime_mins'] = 240
