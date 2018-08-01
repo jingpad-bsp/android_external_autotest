@@ -322,6 +322,7 @@ class PowerTelemetryLogger(object):
             # with power so far. When we start to work with voltage or current,
             # read the units from the .json files.
             'unit': {k: 'milliwatt' for k in data},
+            'type': {k: 'sweetberry' for k in data},
         }
 
         pdash = power_dashboard.PowerTelemetryLoggerDashboard(
