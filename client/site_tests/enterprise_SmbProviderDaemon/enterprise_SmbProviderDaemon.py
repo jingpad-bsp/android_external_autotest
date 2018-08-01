@@ -50,21 +50,58 @@ class enterprise_SmbProviderDaemon(test.test):
         """
         Runs smbproviderd D-Bus commands.
 
+        @param mount_path: Address of the SMB share.
         """
 
-        self._check_mount(mount_path)
+        self.sanity_test(mount_path)
+
+    def sanity_test(self, mount_path):
+        """
+        Sanity test that runs through all filesystem operations
+        on the SmbProvider Daemon.
+
+        @param mount_path: Address of the SMB share.
+
+        """
+
+        mount_id = self._check_mount(mount_path)
+        self._check_unmount(mount_id)
 
     def _check_mount(self, mount_path):
         """
         Checks that mount is working.
 
+        @param mount_path: Address of the SMB share.
+
+        @return mount_id: Unique identifier of the mount.
+
         """
+
+        from directory_entry_pb2 import ERROR_OK
 
         error, mount_id = self._smbprovider.mount(mount_path,
                                                   self.WORKGROUP,
                                                   self.USERNAME,
                                                   self.PASSWORD)
-        self._check_result("Mount", error)
+
+        if mount_id < 0 :
+            error.TestFail('Unexpected failure with mount id.')
+
+        self._check_result('Mount', error)
+
+        return mount_id
+
+    def _check_unmount(self, mount_id):
+        """
+        Checks that unmount is working.
+
+        @param mount_id: Unique identifier of the mount.
+
+        """
+
+        error = self._smbprovider.unmount(mount_id)
+
+        self._check_result('Unmount', error)
 
     def _check_result(self, method_name, result, expected=None):
         """
@@ -89,7 +126,6 @@ class enterprise_SmbProviderDaemon(test.test):
         if result != expected:
             logging.error('Failed to run %s', method_name)
             raise error.TestFail(
-                    '%s failed with error %s (%s), expected %s (%s)' %
+                    '%s failed with error %s (%s), expected %s (%s)' % (
                     method_name, result, ErrorType.Name(result), expected,
-                    ErrorType.Name(expected))
-
+                    ErrorType.Name(expected)))
