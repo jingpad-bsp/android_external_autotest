@@ -41,6 +41,7 @@ ROLES_REQUIRE_TKO_ACCESS = {
         'scheduler',
         'sentinel',
         'shard',
+        'skylab_drone',
 }
 
 
