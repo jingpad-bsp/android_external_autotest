@@ -224,7 +224,6 @@ const SupportedFormat* GetResolutionForCropping(
 
 // This is for Android testCameraToSurfaceTextureMetadata CTS test case.
 bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
-                            uint32_t capture_time_in_sec,
                             float require_fps) {
   // Timestamps are from driver. We only allow 1.5% error buffer for the frame
   // duration. The margin is aligned to CTS tests.
@@ -418,7 +417,7 @@ bool TestResolutions(const std::string& dev_name,
           break;
         }
 
-        float actual_fps = device->GetNumFrames() /
+        float actual_fps = (device->GetNumFrames() - 1) /
             static_cast<float>(time_to_capture);
         // 1 fps buffer is because |time_to_capture| may be too short.
         // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
@@ -430,8 +429,7 @@ bool TestResolutions(const std::string& dev_name,
           continue;
         }
 
-        if (!CheckConstantFramerate(device->GetFrameTimestamps(),
-                                    time_to_capture, kFrameRate)) {
+        if (!CheckConstantFramerate(device->GetFrameTimestamps(), kFrameRate)) {
           printf("[Error] Capture test %dx%d (%08X) failed and didn't meet "
                  "constant framerate in %s\n", test_format->width,
                  test_format->height, test_format->fourcc, dev_name.c_str());
