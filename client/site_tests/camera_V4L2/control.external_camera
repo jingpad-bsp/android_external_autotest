@@ -29,9 +29,7 @@ For more information on V4L2 see:
 http://www.linuxfordevices.com/c/a/Linux-For-Devices-Articles/Intro-to-V4L2/
 
 This is used for third-party lab to verify camera module. The camera module is
-an external camera device to run all test cases without reading config file.
+an external camera device to run all test cases.
 """
 
-capability='usb_camera'
-job.run_test('camera_V4L2', test_list='external-camera', tag='external_camera',
-             capability=capability)
+job.run_test('camera_V4L2', test_list='external-camera', tag='external_camera')
