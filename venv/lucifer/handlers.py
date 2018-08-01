@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import datetime
 import logging
+import time
 
 from lucifer import autotest
 from lucifer import jobx
@@ -54,14 +55,7 @@ class EventHandler(object):
         except AttributeError:
             raise NotImplementedError('%s is not implemented for handling %s',
                                       method_name, event.name)
-        django = autotest.deps_load('django')
-        try:
-            handler(msg)
-        except django.db.utils.DatabaseError as e:
-            # Retry if MySQL server goes away crbug.com/863504
-            logger.debug('Got DatabaseError %s, retrying', e)
-            django.db.close_connection()
-            handler(msg)
+        _retry_db_errors(lambda: handler(msg))
 
     def _handle_starting(self, msg):
         # TODO(crbug.com/748234): No event update needed yet.
@@ -347,3 +341,25 @@ def _get_prejob_hqes(job, include_active=True):
         statuses = list(models.HostQueueEntry.IDLE_PRE_JOB_STATUSES)
     return models.HostQueueEntry.objects.filter(
             job=job, status__in=statuses)
+
+
+def _retry_db_errors(func):
+    """Call func, retrying multiple times if database errors are raised.
+
+    crbug.com/863504
+    """
+    django = autotest.deps_load('django')
+    MySQLdb = autotest.deps_load('MySQLdb')
+    max_retries = 10
+    # n ... 0 means n + 1 tries, or 1 try plus n retries
+    for i in xrange(max_retries, -1, -1):
+        try:
+            func()
+        except (django.db.utils.DatabaseError, MySQLdb.OperationalError) as e:
+            if i == 0:
+                raise
+            logger.debug('Got database error %s, retrying', e)
+            django.db.close_connection()
+            time.sleep(5)
+        else:
+            break
