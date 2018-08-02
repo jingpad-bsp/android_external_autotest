@@ -441,6 +441,6 @@ class JobSerializer(object):
                 value = vartype()
             elif not isinstance(value, vartype):
                 logging.warning('Unexpected type %s for attr %s, should be %s',
-                                (type(value), attr, vartype))
+                                type(value), attr, vartype)
 
             setattr(var, attr, vartype(value))
