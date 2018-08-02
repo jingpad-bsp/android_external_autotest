@@ -9,10 +9,12 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import test
 from autotest_lib.server.cros import autoupdater
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
 
@@ -74,42 +76,63 @@ class network_WiFi_UpdateRouter(test.test):
                         CMDLINE_ROUTER_ADDR)
 
 
-    def run_once(self, host):
-        """Update route associated with host.
+    def run_once(self, host, is_pcap=False):
+        """Update router / packet capture associated with host.
 
-        @param host DUT connected to AP that needs update
+        @param host DUT connected to AP/Pcap that needs update
 
         """
-        router_hostname = site_linux_router.build_router_hostname(
+        if is_pcap:
+            device_hostname = dnsname_mangler.get_pcap_addr(
+                    client_hostname=host.hostname)
+        else:
+            device_hostname = site_linux_router.build_router_hostname(
                 client_hostname=host.hostname,
                 router_hostname=self._router_hostname_from_cmdline)
-        # Use CrosHost for all router hosts and avoid host detection.
+
+        ping_helper = ping_runner.PingRunner()
+        if not ping_helper.simple_ping(device_hostname):
+            raise error.TestError('%s not found / is down.' % device_hostname)
+
+        # Use CrosHost for all router/pcap hosts and avoid host detection.
         # Host detection would use JetstreamHost for Whirlwind routers.
         # JetstreamHost assumes ap-daemons are running.
         # Testbed routers run the testbed-ap profile with no ap-daemons.
         # TODO(ecgh): crbug.com/757075 Fix testbed-ap JetstreamHost detection.
-        router_host = hosts.create_host(router_hostname,
-                                        host_class=hosts.CrosHost)
-        board = router_host.get_board().split(':', 1)[1]  # Remove 'board:'
-        desired = self.STABLE_VERSIONS.get(board, None)
-        if desired is None:
-            raise error.TestFail('No stable version found for for router with '
-                                 'board=%s.' % board)
+        device_host = hosts.create_host(device_hostname,
+                                        host_class=hosts.CrosHost,
+                                        allow_failure=True)
+        self.update_device(device_host)
 
-        logging.info('Checking whether router is at the latest '
-                     'stable version: %s', desired.release_version)
-        current_release_version = self.get_release_version(router_host)
+
+    def update_device(self, device_host):
+        """Update router and pcap associated with host.
+
+        @param device_host: router / pcap host object
+        @param device_board: router / pcap board name
+
+        """
+        device_board = device_host.get_board().split(':', 1)[1]
+        desired = self.STABLE_VERSIONS.get(device_board, None)
+        if desired is None:
+            raise error.TestFail('No stable version found for %s with board=%s.'
+                                 % (device_host.hostname, device_board))
+
+        logging.info('Checking whether %s is at the latest stable version: %s',
+                     device_host.hostname, desired.release_version)
+        current_release_version = self.get_release_version(device_host)
         if desired.release_version == current_release_version:
             raise error.TestNAError('%s is already at latest version %s.' %
-                                    (router_hostname, desired.release_version))
+                                    (device_host.hostname,
+                                     desired.release_version))
 
         logging.info('Updating %s to image %s from %s',
-                     router_hostname, desired.release_version,
+                     device_host.hostname, desired.release_version,
                      current_release_version)
         logging.info('Staging artifacts.')
         try:
             ds = dev_server.ImageServer.resolve(desired.builder_version,
-                                                router_hostname)
+                                                device_host.hostname)
             ds.stage_artifacts(desired.builder_version,
                                ['full_payload', 'stateful'])
         except dev_server.DevServerException as e:
@@ -117,4 +140,4 @@ class network_WiFi_UpdateRouter(test.test):
             raise error.TestFail(str(e))
 
         url = self.get_update_url(ds.url(), desired.builder_version)
-        autoupdater.ChromiumOSUpdater(url, host=router_host).run_update()
+        autoupdater.ChromiumOSUpdater(url, host=device_host).run_update()
