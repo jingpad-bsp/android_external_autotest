@@ -66,7 +66,8 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         # Setup two APs on |channel|. configure() will spread these across
         # radios.
         n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
-        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
+        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode,
+                                               min_streams=1)
         self.context.configure(ap_config)
         self.context.configure(ap_config, multi_interface=True)
         failures = []
