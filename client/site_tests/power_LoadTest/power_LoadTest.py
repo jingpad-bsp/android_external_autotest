@@ -269,13 +269,16 @@ class power_LoadTest(arc.ArcTest):
         self._plog = power_status.PowerLogger(measurements, seconds_period=20)
         self._tlog = power_status.TempLogger([], seconds_period=20)
         self._clog = power_status.CPUStatsLogger(seconds_period=20)
-        self._plog.start()
-        self._tlog.start()
-        self._clog.start()
+        self._meas_logs = [self._plog, self._tlog, self._clog]
+        for log in self._meas_logs:
+            log.start()
         if self._log_mem_bandwidth:
             self._mlog = memory_bandwidth_logger.MemoryBandwidthLogger(
                 raw=False, seconds_period=2)
             self._mlog.start()
+
+        # record start time and end time for each task
+        self._task_tracker = []
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
         self._tmp_keyvals['username'] = self._username
@@ -365,8 +368,8 @@ class power_LoadTest(arc.ArcTest):
 
             script_logging.set();
             pagetime_tracking.set();
-            self._plog.checkpoint('loop%d' % (i), start_time)
-            self._tlog.checkpoint('loop%d' % (i), start_time)
+            for log in self._meas_logs:
+                log.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
                 logging.debug('loop %d completed', i)
 
@@ -379,7 +382,6 @@ class power_LoadTest(arc.ArcTest):
         psr.refresh()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
         self._tmp_keyvals.update(psr.get_keyvals())
-
 
     def postprocess_iteration(self):
         """Postprocess: write keyvals / log and send data to power dashboard."""
@@ -412,9 +414,13 @@ class power_LoadTest(arc.ArcTest):
                 _log_stats(kname, self._stats[kname])
 
 
-        keyvals = self._plog.calc()
-        keyvals.update(self._tlog.calc())
-        keyvals.update(self._clog.calc())
+        for task, tstart, tend in self._task_tracker:
+            for log in self._meas_logs:
+                log.checkpoint(task, tstart, tend)
+
+        keyvals = {}
+        for log in self._meas_logs:
+            keyvals.update(log.calc())
         keyvals.update(self._statomatic.publish())
 
         if self._log_mem_bandwidth:
@@ -500,9 +506,11 @@ class power_LoadTest(arc.ArcTest):
                                            higher_is_better=False)
 
         self.write_perf_keyval(keyvals)
-        self._plog.save_results(self.resultsdir)
-        self._tlog.save_results(self.resultsdir)
-        self._clog.save_results(self.resultsdir)
+        for log in self._meas_logs:
+            log.save_results(self.resultsdir)
+        # checkpoint data for all measurement loggers should be the same
+        # just save checkpoint data for one of them
+        self._plog.save_checkpoint_data(self.resultsdir)
         pdash = power_dashboard.PowerLoggerDashboard( \
                 self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()
@@ -794,7 +802,25 @@ def _extension_page_time_info_handler(handler, form, loop_number,
         # httpd adds them automatically so we remove them again
         del handler.server._form_entries[field]
 
-    # TODO: use TaskLogger to store to somewhere
+    page_base = 'loop%d_web_page_' % loop_number
+    for page in page_timestamps:
+        page_failed = "_failed"
+        # timestamps from javascript are in milliseconds, change to seconds
+        scale = 1.0/1000
+        if page['end_load_time']:
+            tagname = page_base + page['url'] + "_load"
+            test_instance._task_tracker.append((tagname,
+                page['start_time'] * scale, page['end_load_time'] * scale))
+
+            tagname = page_base + page['url'] + "_browse"
+            test_instance._task_tracker.append((tagname,
+                page['end_load_time'] * scale, page['end_browse_time'] * scale))
+
+            page_failed = ""
+
+        tagname = page_base + page['url'] + page_failed
+        test_instance._task_tracker.append((tagname,
+            page['start_time'] * scale, page['end_browse_time'] * scale))
 
     loadtime_measurements = numpy.array(loadtime_measurements)
     stats_vals = [loadtime_measurements.mean(), loadtime_measurements.min(),
