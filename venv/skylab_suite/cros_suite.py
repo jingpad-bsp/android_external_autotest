@@ -389,7 +389,7 @@ class Suite(object):
 
 class ProvisionSuite(Suite):
     """The class for a CrOS provision suite."""
-    EXPIRATION_SECS = 3 * 60
+    EXPIRATION_SECS = swarming_lib.DEFAULT_EXPIRATION_SECS
 
     def __init__(self, spec):
         super(ProvisionSuite, self).__init__(spec)
