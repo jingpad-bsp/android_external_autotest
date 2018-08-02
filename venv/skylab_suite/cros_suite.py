@@ -43,6 +43,7 @@ SuiteSpec = collections.namedtuple(
 SuiteHandlerSpec = collections.namedtuple(
         'SuiteHandlerSpec',
         [
+                'suite_name',
                 'wait',
                 'suite_id',
                 'timeout_mins',
@@ -88,6 +89,7 @@ class SuiteHandler(object):
     """
 
     def __init__(self, specs):
+        self._suite_name = specs.suite_name
         self._wait = specs.wait
         self._timeout_mins = specs.timeout_mins
         self._provision_num_required = specs.provision_num_required
@@ -109,7 +111,7 @@ class SuiteHandler(object):
 
     def is_provision(self):
         """Return whether the suite handler is for provision suite."""
-        return self._provision_num_required > 0
+        return self._suite_name == 'provision'
 
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.
