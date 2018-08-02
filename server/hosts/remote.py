@@ -43,6 +43,7 @@ class RemoteHost(base_classes.Host):
 
 
     def close(self):
+        # pylint: disable=missing-docstring
         super(RemoteHost, self).close()
         self.stop_loggers()
 
@@ -87,6 +88,7 @@ class RemoteHost(base_classes.Host):
 
 
     def sysrq_reboot(self):
+        # pylint: disable=missing-docstring
         self.run_background('echo b > /proc/sysrq-trigger')
 
 
@@ -134,6 +136,7 @@ class RemoteHost(base_classes.Host):
         def reboot():
             # pylint: disable=missing-docstring
             self.record("GOOD", None, "reboot.start")
+            current_boot_id = None
             try:
                 current_boot_id = self.get_boot_id()
 
@@ -150,7 +153,7 @@ class RemoteHost(base_classes.Host):
                 # successfully in progress. This is difficult to be avoided,
                 # because we have no much control on remote machine after
                 # "reboot" starts.
-                if not wait:
+                if not wait or current_boot_id is None:
                     # TODO(b/37652392): Revisit no-wait case, later.
                     self.record("ABORT", None, "reboot.start",
                                 "reboot command failed")
@@ -221,6 +224,7 @@ class RemoteHost(base_classes.Host):
                     lasted, timeout))
 
     def reboot_followup(self, *args, **dargs):
+        # pylint: disable=missing-docstring
         super(RemoteHost, self).reboot_followup(*args, **dargs)
         if self.job:
             self.job.profilers.handle_reboot(self)
@@ -238,6 +242,7 @@ class RemoteHost(base_classes.Host):
 
 
     def cleanup(self):
+        # pylint: disable=missing-docstring
         super(RemoteHost, self).cleanup()
         self.reboot()
 
