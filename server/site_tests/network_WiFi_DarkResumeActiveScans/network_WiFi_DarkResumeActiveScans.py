@@ -8,7 +8,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
-from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import lucid_sleep_test_base
 from autotest_lib.server.cros.network import wifi_client
@@ -53,9 +52,6 @@ class network_WiFi_DarkResumeActiveScans(
 
     def run_once(self):
         """Body of the test."""
-        self.context.router.require_capabilities(
-                [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
-
         ap_config = hostap_config.HostapConfig(channel=1)
         self.configure_and_connect_to_ap(ap_config)
         self.context.assert_ping_from_dut()
