@@ -6,7 +6,9 @@ AUTHOR = 'Chromium OS team'
 NAME = 'tast.mustpass-chrome'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:bvt-tast'
+# Android changes can't break Chrome tests (so we don't need to run them in the
+# Android PFQ), but OS changes can (so we need to run them in the CQ).
+ATTRIBUTES = 'suite:bvt-tast-cq, suite:bvt-tast-chrome-pfq'
 
 # tast.py uses binaries installed from autotest_server_package.tar.bz2.
 REQUIRE_SSP = True

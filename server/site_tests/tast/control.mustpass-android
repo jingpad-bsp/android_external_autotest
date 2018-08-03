@@ -3,10 +3,12 @@
 # found in the LICENSE file.
 
 AUTHOR = 'Chromium OS team'
-NAME = 'tast.mustpass-arc'
+NAME = 'tast.mustpass-android'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:bvt-tast'
+# Android tests can also be broken by Chrome and OS changes, so these tests need
+# to run in both PFQs and the CQ.
+ATTRIBUTES = 'suite:bvt-tast-cq, suite:bvt-tast-android-pfq, suite:bvt-tast-chrome-pfq'
 
 # tast.py uses binaries installed from autotest_server_package.tar.bz2.
 REQUIRE_SSP = True
