@@ -18,6 +18,7 @@ that runs the test on channels 149 and 153 to serve two purposes:
 certain Intel SoCs.
 """
 
+from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
 
 def run(machine):
@@ -28,10 +29,12 @@ def run(machine):
             mode=mode, n_capabilities=caps))
     config_second_ap = (hostap_config.HostapConfig(channel=153,
             mode=mode, n_capabilities=caps, min_streams=1))
-    configs=[config_first_ap, config_second_ap]
+    params = [config_first_ap,
+              config_second_ap,
+              [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND]]
     job.run_test('network_WiFi_BgscanBackoff',
                  host=host,
                  raw_cmdline_args=args,
-                 additional_params=configs)
+                 additional_params=params)
 
 parallel_simple(run, machines)
