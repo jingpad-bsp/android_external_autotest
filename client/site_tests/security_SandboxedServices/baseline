@@ -35,7 +35,7 @@ session_manager,root,root,No,No,No,No,No
 rsyslogd,syslog,syslog,No,Yes,Yes,No,No
 dbus-daemon,messagebus,messagebus,No,No,Yes,No,No
 wpa_supplicant,wpa,wpa,No,No,Yes,Yes,No
-shill,shill,shill,No,No,Yes,Yes,No
+shill,root,root,No,No,No,No,No
 chapsd,chaps,chronos-access,No,No,Yes,Yes,No
 cryptohomed,root,root,No,No,No,No,No
 powerd,power,power,No,No,Yes,No,No
