@@ -42,16 +42,6 @@ _BUG_TEMPLATE = {
     'title': None,
 }
 
-# TODO(crbug.com/758427): suite_args needed to support being run by old Autotest
-if 'tests' not in args_dict:
-    try:
-       arguments = test_that.parse_arguments(shlex.split(suite_args))
-    except SystemExit:
-        logging.error('Unable to parse test_that arguments %s, suite aborting',
-                      shlex.split(suite_args))
-        raise
-    args_dict['tests'] = arguments.tests
-
 parsed_test_arguments = [test_runner_utils.get_predicate_for_test_arg(test_arg)
                          for test_arg in args_dict['tests']]
 sub_predicates, descriptions = zip(*parsed_test_arguments)
