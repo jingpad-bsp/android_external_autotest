@@ -28,8 +28,7 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
                 channel=self.PROBE_RESPONSE_TEST_CHANNEL,
                 mode=hostap_config.HostapConfig.MODE_11B)
         self.context.router.require_capabilities(
-            [site_linux_system.LinuxSystem.CAPABILITY_SEND_MANAGEMENT_FRAME,
-             site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
+            [site_linux_system.LinuxSystem.CAPABILITY_SEND_MANAGEMENT_FRAME])
 
         self.context.configure(configuration)
         # Configure 2nd AP to inject the malformed probe responses.
