@@ -4,7 +4,7 @@ brdprop
 ccd
 -ccdblock
 ccdstate
-(?P<mp>-)?chan
+chan
 ecrst
 gettime
 gpiocfg
