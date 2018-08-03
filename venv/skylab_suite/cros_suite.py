@@ -150,6 +150,11 @@ class SuiteHandler(object):
         self._max_retries = max_retries
 
     @property
+    def task_to_test_maps(self):
+        """Get the task_to_test_maps of a suite."""
+        return self._task_to_test_maps
+
+    @property
     def timeout_mins(self):
         """Get the timeout minutes of a suite."""
         return self._timeout_mins

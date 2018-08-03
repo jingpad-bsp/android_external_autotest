@@ -55,6 +55,7 @@ def _run_suite(options):
 
     run_suite_common = autotest.load('site_utils.run_suite_common')
     if options.create_and_return:
+        suite_tracking.print_child_test_annotations(suite_handler)
         return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
 
     return_code = suite_tracking.log_suite_results(
