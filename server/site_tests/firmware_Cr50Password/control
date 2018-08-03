@@ -7,8 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50Password"
 PURPOSE = "Verify cr50 password"
-# TODO(mruthven): Add to pvt suite when support is moved to prod
-ATTRIBUTES = "suite:faft_cr50_prepvt"
+ATTRIBUTES = "suite:faft_cr50_prepvt, suite:faft_cr50_pvt"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
