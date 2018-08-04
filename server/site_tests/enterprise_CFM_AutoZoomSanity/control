@@ -11,7 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
-DEPENDENCIES = "huddly, mimo"
+DEPENDENCIES = "meet_app, huddly, mimo"
 JOB_RETRIES = 3
 
 DOC = """
