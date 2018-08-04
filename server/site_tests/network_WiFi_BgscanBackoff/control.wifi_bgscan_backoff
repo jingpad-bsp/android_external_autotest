@@ -20,8 +20,8 @@ def run(machine):
     host = hosts.create_host(machine)
     mode = hostap_config.HostapConfig.MODE_11N_MIXED
     config_first_ap = (hostap_config.HostapConfig(channel=1, mode=mode))
-    config_second_ap = (hostap_config.HostapConfig(channel=149, mode=mode))
-    params = [config_first_ap, config_second_ap, []]
+    config_second_ap = (hostap_config.HostapConfig(channel=36, mode=mode))
+    params = [config_first_ap, config_second_ap]
     job.run_test('network_WiFi_BgscanBackoff',
                  host=host,
                  raw_cmdline_args=args,
