@@ -55,13 +55,10 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         """
         # Antenna can only be configured when the wireless interface is down.
         self.context.router.deconfig()
-        # Set the bitmasks to both antennas on before turning one off.
-        self.context.router.disable_antennas_except(3)
+        self.context.router.disable_antennas_except(bitmap)
         # This seems to increase the probability that our association
         # attempts pass.  It is the very definition of a dark incantation.
         time.sleep(5)
-        if bitmap != 3:
-            self.context.router.disable_antennas_except(bitmap)
         # Setup two APs on |channel|. configure() will spread these across
         # radios.
         n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
