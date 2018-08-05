@@ -7,7 +7,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
@@ -66,7 +65,8 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         # Setup two APs on |channel|. configure() will spread these across
         # radios.
         n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
-        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
+        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode,
+                                               min_streams=1)
         self.context.configure(ap_config)
         self.context.configure(ap_config, multi_interface=True)
         failures = []
@@ -108,9 +108,6 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Verify that all radios on this router are functional."""
-        self.context.router.require_capabilities(
-                [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
-
         all_failures = []
         # Run antenna test for 2GHz band and 5GHz band
         for channel in (6, 149):

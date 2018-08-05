@@ -147,8 +147,7 @@ def get_frames(local_pcap_path, display_filter, bad_fcs):
         if rate:
             rate = atof(rate)
         else:
-            logging.debug('Found bad capture frame: %s', frame)
-            continue
+            logging.debug('Capture frame missing rate: %s', frame)
 
         frametime = frame.sniff_time
 

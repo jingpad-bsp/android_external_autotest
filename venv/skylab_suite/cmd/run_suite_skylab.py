@@ -29,6 +29,7 @@ def _parse_suite_handler_spec(options):
         provision_num_required = options.suite_args['num_required']
 
     return cros_suite.SuiteHandlerSpec(
+            suite_name=options.suite_name,
             wait=not options.create_and_return,
             suite_id=options.suite_id,
             timeout_mins=options.timeout_mins,
@@ -54,6 +55,7 @@ def _run_suite(options):
 
     run_suite_common = autotest.load('site_utils.run_suite_common')
     if options.create_and_return:
+        suite_tracking.print_child_test_annotations(suite_handler)
         return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
 
     return_code = suite_tracking.log_suite_results(
