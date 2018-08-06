@@ -102,6 +102,7 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
             logging.info('We will start interrupting the update.')
 
             # Reboot the DUT during the update.
+            self._take_screenshot('before_reboot.png')
             completed = self._get_update_progress()
             self._host.reboot()
             # Screenshot to check that if OOBE was not skipped by interruption.
