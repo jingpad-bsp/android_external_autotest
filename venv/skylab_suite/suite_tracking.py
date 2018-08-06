@@ -88,6 +88,16 @@ def _print_logs_link_for_task(anchor_test, task_id):
             show_text, swarming_lib.get_task_link(task_id)))
 
 
+def _get_task_id_for_task_summaries(task_id):
+    """Adjust the swarming task id to end in 0 for showing task summaries.
+
+    Milo results are only generated for task summaries, that is, tasks whose
+    ids end in 0. This function adjusts the last digit of the task_id. See
+    https://goo.gl/LE4rwV for details.
+    """
+    return task_id[:-1] + '0'
+
+
 def _log_buildbot_links(suite_handler, suite_name, test_results):
     logging.info('Links for buildbot:')
     annotations = autotest.chromite_load('buildbot_annotations')
