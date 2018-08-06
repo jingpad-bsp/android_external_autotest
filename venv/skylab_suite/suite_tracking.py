@@ -134,8 +134,12 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
 def _log_test_results(test_results):
     """Log child results for a suite."""
     logging.info('Start outputing test results:')
-    name_column_width = max(len(result['test_name']) for result in
-                            test_results) + 3
+    _log_test_results_with_logging(test_results)
+
+
+def _log_test_results_with_logging(test_results):
+    name_column_width = max(len(result['test_name'])
+                            for result in test_results) + 3
     for result in test_results:
         padded_name = result['test_name'].ljust(name_column_width)
         logging.info('%s%s', padded_name, result['state'])
