@@ -93,8 +93,12 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
     annotations = autotest.chromite_load('buildbot_annotations')
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
-            'Link to suite: %s' % suite_name,
+            'Link to the suite create task: %s' % suite_name,
             swarming_lib.get_task_link(suite_handler.suite_id)))
+    if suite_handler.task_id is not None:
+        print(annotations.StepLink(
+                'Link to the suite wait task: %s' % suite_name,
+                swarming_lib.get_task_link(suite_handler.task_id)))
 
     if (suite_handler.is_provision() and
         suite_handler.is_provision_successfully_finished()):
