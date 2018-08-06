@@ -23,4 +23,7 @@ class telemetry_Benchmarks(test.test):
         if telemetry_on_dut:
             optional["telemetry_on_dut"] = telemetry_on_dut == "True"
         telemetry = telemetry_runner.TelemetryRunner(host, local, **optional)
-        telemetry.run_telemetry_benchmark(benchmark, perf_value_writer=self)
+        perf_value_writer = self
+        extra_args = args.get("extra_args", [])
+        telemetry.run_telemetry_benchmark(benchmark, perf_value_writer,
+                                          *extra_args)
