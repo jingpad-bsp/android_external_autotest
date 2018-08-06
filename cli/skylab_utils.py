@@ -27,7 +27,7 @@ INTERNAL_INVENTORY_CHANGE_PATTERN = (
         r'https://chrome-internal-review.googlesource.com/c/chromeos/'
         'infra_internal/skylab_inventory/\\+/([0-9]*)')
 MSG_INVALID_IN_SKYLAB = 'This is currently not supported with --skylab.'
-MSG_ONLY_VALID_IN_SKYLAB = 'This is only supported with --skylab.'
+MSG_ONLY_VALID_IN_SKYLAB = 'This only applies to actions on skylab inventory.'
 
 
 class SkylabInventoryNotImported(Exception):
