@@ -56,6 +56,9 @@ ALL_TESTS = (PERF_PER_BUILD_TESTS +
              PERF_WEEKLY_RUN_TESTS +
              PERF_NO_SUITE)
 
+EXTRA_ARGS_MAP = {
+}
+
 DEFAULT_YEAR = str(datetime.now().year)
 
 DEFAULT_AUTHOR = 'Chrome OS Team'
@@ -87,10 +90,12 @@ Pass local=True to run with local telemetry and no AFE server.
 
 def run_benchmark(machine):
     host = hosts.create_host(machine)
+    dargs = utils.args_to_dict(args)
+    dargs['extra_args'] = '{extra_args}'.split()
     job.run_test('telemetry_Benchmarks', host=host,
                  benchmark='{test}',
                  tag='{test}',
-                 args=utils.args_to_dict(args))
+                 args=dargs)
 
 parallel_simple(run_benchmark, machines)""")
 
@@ -130,13 +135,15 @@ def generate_control(test):
     """Generates control file from the template."""
     filename = 'control.%s' % test
     copyright_year, author = get_existing_fields(filename)
+    extra_args = EXTRA_ARGS_MAP.get(test, '')
 
     with open(filename, 'w+') as f:
         content = CONTROLFILE_TEMPLATE.format(
-                test=test,
-                year=copyright_year,
+                attributes=_get_suite(test),
                 author=author,
-                attributes=_get_suite(test))
+                extra_args=extra_args,
+                test=test,
+                year=copyright_year)
         f.write(content)
 
 
