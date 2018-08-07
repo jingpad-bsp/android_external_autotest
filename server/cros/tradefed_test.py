@@ -640,7 +640,6 @@ class TradefedTest(test.test):
             # We always copy files to give tradefed a clean copy of the
             # bundle.
             unzipped_local = self._instance_copytree(cache_unzipped)
-        self._abi = 'x86' if 'x86-x86' in gs_uri else 'arm'
         return unzipped_local
 
     def _install_files(self, gs_dir, files, permission):
@@ -975,7 +974,7 @@ class TradefedTest(test.test):
                 'Error: failed to copy test subplan %s to CTS bundle. %s' %
                 test_subplan_file, e)
 
-    def _should_skip_test(self):
+    def _should_skip_test(self, bundle):
         """Some tests are expected to fail and are skipped.
 
         Subclasses should override with specific details.
@@ -1038,7 +1037,7 @@ class TradefedTest(test.test):
         We first kick off the specified module. Then rerun just the failures
         on the next MAX_RETRY iterations.
         """
-        if self._should_skip_test():
+        if self._should_skip_test(bundle):
             logging.warning('Skipped test %s', ' '.join(test_name))
             return
 
