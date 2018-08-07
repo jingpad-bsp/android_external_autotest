@@ -17,6 +17,7 @@ import tast
 
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 
 
 # Arbitrary base time to use in tests.
@@ -51,7 +52,7 @@ class TastTest(unittest.TestCase):
             os.mkdir(path)
             return path
 
-        self._job = FakeServerJob(make_subdir('job'))
+        self._job = FakeServerJob(make_subdir('job'), make_subdir('tmp'))
         self._bin_dir = make_subdir('bin')
         self._out_dir = make_subdir('out')
         self._root_dir = make_subdir('root')
@@ -115,10 +116,7 @@ class TastTest(unittest.TestCase):
     def _init_tast_commands(self, tests):
         """Sets fake_tast.py's behavior for 'list' and 'run' commands.
 
-        @param list_tests: List of test dicts from make_test that should be
-            printed in response to 'list' commands.
-        @param run_results: List of test result dicts from make_test_result that
-            should be written in response to 'run' commands.
+        @param tests: List of TestInfo objects.
         """
         list_args = [
             'build=False',
@@ -182,6 +180,16 @@ class TastTest(unittest.TestCase):
                                               [t.name() for t in missing])
         self.assertEqual(msg, str(cm.exception))
 
+    def _load_job_keyvals(self):
+        """Loads job keyvals.
+
+        @return Keyvals as a str-to-str dict, or None if keyval file is missing.
+        """
+        if not os.path.exists(os.path.join(self._job.resultdir,
+                                           'keyval')):
+            return None
+        return utils.read_keyval(self._job.resultdir)
+
     def testPassingTests(self):
         """Tests that passing tests are reported correctly."""
         tests = [TestInfo('pkg.Test1', 0, 2),
@@ -191,6 +199,7 @@ class TastTest(unittest.TestCase):
         self._run_test()
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertIs(self._load_job_keyvals(), None)
 
     def testFailingTests(self):
         """Tests that failing tests are reported correctly."""
@@ -201,6 +210,7 @@ class TastTest(unittest.TestCase):
         self._run_test_for_failure([tests[0], tests[2]], [])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertIs(self._load_job_keyvals(), None)
 
     def testIgnoreTestFailures(self):
         """Tests that tast.tast can still pass with Tast test failures."""
@@ -218,6 +228,7 @@ class TastTest(unittest.TestCase):
         self._run_test()
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertIs(self._load_job_keyvals(), None)
 
     def testSkippedTestWithErrors(self):
         """Tests that skipped tests are reported if they also report errors."""
@@ -228,14 +239,20 @@ class TastTest(unittest.TestCase):
         self._run_test_for_failure([tests[1]], [])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertIs(self._load_job_keyvals(), None)
 
-    def testMissingTest(self):
-        """Tests that a missing test is reported when there's another test."""
-        tests = [TestInfo('pkg.Test1', 0, 2), TestInfo('pkg.Test2', None, None)]
+    def testMissingTests(self):
+        """Tests that missing tests are reported when there's another test."""
+        tests = [TestInfo('pkg.Test1', None, None),
+                 TestInfo('pkg.Test2', 0, 2),
+                 TestInfo('pkg.Test3', None, None)]
         self._init_tast_commands(tests)
-        self._run_test_for_failure([], [tests[1]])
+        self._run_test_for_failure([], [tests[0], tests[2]])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertEqual(self._load_job_keyvals(),
+                         {'tast_missing_test.0': 'pkg.Test1',
+                          'tast_missing_test.1': 'pkg.Test3'})
 
     def testNoTestsRun(self):
         """Tests that a missing test is reported when it's the only test."""
@@ -244,6 +261,8 @@ class TastTest(unittest.TestCase):
         self._run_test_for_failure([], [tests[0]])
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
+        self.assertEqual(self._load_job_keyvals(),
+                         {'tast_missing_test.0': 'pkg.Test'})
 
     def testHangingTest(self):
         """Tests that a not-finished test is reported."""
@@ -255,6 +274,8 @@ class TastTest(unittest.TestCase):
         self.assertEqual(
                 status_string(get_status_entries_from_tests(tests[:2])),
                 status_string(self._job.status_entries))
+        self.assertEqual(self._load_job_keyvals(),
+                         {'tast_missing_test.0': 'pkg.Test3'})
 
     def testNoTestsMatched(self):
         """Tests that an error is raised if no tests are matched."""
@@ -439,13 +460,13 @@ class TestInfo:
             """
             if offset is None:
                 return None
-            return BASE_TIME + datetime.timedelta(0, offset)
+            return BASE_TIME + datetime.timedelta(seconds=offset)
 
         self._name = name
         self._start_time = from_offset(start_offset)
         self._end_time = from_offset(end_offset)
-        self._errors = \
-                [(e[0], from_offset(e[1])) for e in errors] if errors else []
+        self._errors = (
+                [(e[0], from_offset(e[1])) for e in errors] if errors else [])
         self._skip_reason = skip_reason
         self._attr = list(attr) if attr else []
         self._timeout_ns = timeout_ns
@@ -534,9 +555,10 @@ class TestInfo:
 
 class FakeServerJob:
     """Fake implementation of server_job from server/server_job.py."""
-    def __init__(self, tmp_dir):
+    def __init__(self, result_dir, tmp_dir):
         self.pkgmgr = None
         self.autodir = None
+        self.resultdir = result_dir
         self.tmpdir = tmp_dir
         self.post_run_hook = None
         self.status_entries = []
