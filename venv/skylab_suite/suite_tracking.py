@@ -88,13 +88,27 @@ def _print_logs_link_for_task(anchor_test, task_id):
             show_text, swarming_lib.get_task_link(task_id)))
 
 
+def _get_task_id_for_task_summaries(task_id):
+    """Adjust the swarming task id to end in 0 for showing task summaries.
+
+    Milo results are only generated for task summaries, that is, tasks whose
+    ids end in 0. This function adjusts the last digit of the task_id. See
+    https://goo.gl/LE4rwV for details.
+    """
+    return task_id[:-1] + '0'
+
+
 def _log_buildbot_links(suite_handler, suite_name, test_results):
     logging.info('Links for buildbot:')
     annotations = autotest.chromite_load('buildbot_annotations')
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
-            'Link to suite: %s' % suite_name,
+            'Link to the suite create task: %s' % suite_name,
             swarming_lib.get_task_link(suite_handler.suite_id)))
+    if suite_handler.task_id is not None:
+        print(annotations.StepLink(
+                'Link to the suite wait task: %s' % suite_name,
+                swarming_lib.get_task_link(suite_handler.task_id)))
 
     if (suite_handler.is_provision() and
         suite_handler.is_provision_successfully_finished()):
@@ -120,8 +134,12 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
 def _log_test_results(test_results):
     """Log child results for a suite."""
     logging.info('Start outputing test results:')
-    name_column_width = max(len(result['test_name']) for result in
-                            test_results) + 3
+    _log_test_results_with_logging(test_results)
+
+
+def _log_test_results_with_logging(test_results):
+    name_column_width = max(len(result['test_name'])
+                            for result in test_results) + 3
     for result in test_results:
         padded_name = result['test_name'].ljust(name_column_width)
         logging.info('%s%s', padded_name, result['state'])
