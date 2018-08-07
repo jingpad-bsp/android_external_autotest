@@ -2311,14 +2311,17 @@ def get_stable_version(board=stable_version_utils.DEFAULT, android=False):
     """Get stable version for the given board.
 
     @param board: Name of the board.
-    @param android: If True, the given board is an Android-based device. If
-                    False, assume its a Chrome OS-based device.
+    @param android: Unused legacy parameter.  This is maintained for the
+            sake of clients on old branches that still pass the
+            parameter.  TODO(jrbarnette) Remove this completely once R68
+            drops off stable.
 
     @return: Stable version of the given board. Return global configure value
              of CROS.stable_cros_version if stable_versinos table does not have
              entry of board DEFAULT.
     """
-    return stable_version_utils.get(board=board, android=android)
+    assert not android, 'get_stable_version no longer supports `android`.'
+    return stable_version_utils.get(board=board)
 
 
 @rpc_utils.route_rpc_to_master
