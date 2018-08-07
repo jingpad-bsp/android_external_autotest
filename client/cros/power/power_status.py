@@ -946,12 +946,14 @@ class GPUFreqStats(AbstractStats):
 
     _MALI_DEV = '/sys/class/misc/mali0/device'
     _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
-    _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)\d{6}'
+    _MALI_TRACE_CLK_RE = \
+            r'kworker.* (\d+\.\d+): mali_dvfs_set_clock: frequency=(\d+)\d{6}'
 
     _I915_ROOT = '/sys/kernel/debug/dri/0'
     _I915_EVENTS = ['i915:intel_gpu_freq_change']
     _I915_CLKS_FILES = ['i915_cur_delayinfo', 'i915_frequency_info']
-    _I915_TRACE_CLK_RE = r'(\d+.\d+): intel_gpu_freq_change: new_freq=(\d+)'
+    _I915_TRACE_CLK_RE = \
+            r'kworker.* (\d+\.\d+): intel_gpu_freq_change: new_freq=(\d+)'
     _I915_CUR_FREQ_RE = r'CAGF:\s+(\d+)MHz'
     _I915_MIN_FREQ_RE = r'Lowest \(RPN\) frequency:\s+(\d+)MHz'
     _I915_MAX_FREQ_RE = r'Max non-overclocked \(RP0\) frequency:\s+(\d+)MHz'
