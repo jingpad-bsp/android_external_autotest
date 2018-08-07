@@ -1246,8 +1246,10 @@ class host_migrate(action_common.atest_list, host):
                 'environment. Please confirm there is at least one valid skylab'
                 ' drone added in skylab inventory.')
 
-        skylab_drone = random.choice(skylab_drones)
-        skylab_server.add_dut_uids(skylab_drone, devices)
+        for device in devices:
+            # Randomly distribute each device to a skylab_drone.
+            skylab_drone = random.choice(skylab_drones)
+            skylab_server.add_dut_uids(skylab_drone, [device])
 
 
     def remove_duts_from_drone(self, infra, devices):
