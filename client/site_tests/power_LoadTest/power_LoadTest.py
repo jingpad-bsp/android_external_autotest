@@ -7,6 +7,7 @@ import logging
 import numpy
 import os
 import time
+import json
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -336,6 +337,14 @@ class power_LoadTest(arc.ArcTest):
                     _extension_page_load_info_handler(handler, forms,
                                                       loop_counter, self)))
 
+            pagetime_tracking = self._testServer.add_wait_url(url='/pagetime')
+
+            self._testServer.add_url_handler(url='/pagetime',\
+                handler_func=(lambda handler, forms,
+                              loop_counter=i:\
+                    _extension_page_time_info_handler(handler, forms,
+                                                      loop_counter)))
+
             # setup a handler to simulate waking up the base of a detachable
             # on user interaction. On scrolling, wake for 1s, on page
             # navigation, wake for 10s.
@@ -363,6 +372,7 @@ class power_LoadTest(arc.ArcTest):
 
             script_logging.set();
             pagelt_tracking.set();
+            pagetime_tracking.set();
             self._plog.checkpoint('loop%d' % (i), start_time)
             self._tlog.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
@@ -794,3 +804,29 @@ def _extension_page_load_info_handler(handler, form, loop_number, tracker):
         message += "\t%s w/ %d ms" % (url, msecs)
 
     logging.debug("%s\n", message)
+
+def _extension_page_time_info_handler(handler, form, loop_number):
+    page_timestamps = []
+
+    if not form:
+        logging.debug("no page time information returned")
+        return;
+
+    for field in form.keys():
+        url = field[str.find(field, "http"):]  # remove unique url salt
+        page = json.loads(form[field].value)
+        logging.debug("[extension] @ loop_%d url: %s start_time: %d",
+            loop_number, url, page['start_time'])
+        if page['end_load_time']:
+            logging.debug("[extension] @ loop_%d url: %s end_load_time: %d",
+                loop_number, url, page['end_load_time'])
+        logging.debug("[extension] @ loop_%d url: %s end_browse_time: %d",
+            loop_number, url, page['end_browse_time'])
+
+        page_timestamps.append(page)
+
+        # we don't want to add url information to our keyvals.
+        # httpd adds them automatically so we remove them again
+        del handler.server._form_entries[field]
+
+    # TODO: use TaskLogger to store to somewhere
