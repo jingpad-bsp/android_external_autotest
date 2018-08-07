@@ -132,6 +132,7 @@ def _log_test_results(test_results):
     """Log child results for a suite."""
     logging.info('Start outputing test results:')
     _log_test_results_with_logging(test_results)
+    _print_test_result_links_in_logdog(test_results)
 
 
 def _get_show_test_name(result):
@@ -155,6 +156,22 @@ def _log_test_results_with_logging(test_results):
         if result['retry_count'] > 0:
             logging.info('%s  retry_count: %s', padded_name,
                          result['retry_count'])
+
+
+def _print_test_result_links_in_logdog(test_results):
+    with _annotate_step('Test Results'):
+        for result in test_results:
+            _print_single_test_result_link(result)
+
+
+def _print_single_test_result_link(result):
+    anchor_test = _get_show_test_name(result)
+    for idx, task_id in enumerate(result['task_ids']):
+        retry_suffix = ' (%dth retry)' % idx if idx > 0 else ''
+        anchor_test += retry_suffix
+        _print_task_link_annotation(
+                task_id,
+                '[%s]: %s' % (anchor_test, result['state']))
 
 
 def _parse_test_results(suite_handler):
