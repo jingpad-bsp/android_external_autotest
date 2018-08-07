@@ -183,12 +183,15 @@ def _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
     return swarming_cmd
 
 
-def _get_suite_cmd(test_spec, suite_id, is_provision=False):
-    """Get the command for running a suite.
+def _get_suite_cmd(test_spec, suite_id):
+    """Return the commands for running a suite with or without provision.
 
     @param test_spec: a cros_suite.TestSpec object.
     @param suite_id: a string of parent suite's swarming task id.
-    @param is_provision: whether the command is for provision.
+
+    @return a list of commands: [cmd, cmd_with_fallback], in which cmd is the
+        normal cmd to kick off a test, cmd_with_fallback is the cmd to
+        provision the DUT before, then kick off the test.
     """
     constants = autotest.load('server.cros.dynamic_suite.constants')
     job_keyvals = test_spec.keyvals.copy()
@@ -202,16 +205,16 @@ def _get_suite_cmd(test_spec, suite_id, is_provision=False):
 
     cmd += ['-keyvals', _convert_dict_to_string(job_keyvals)]
     cmd += ['-task-name', test_spec.test.name]
-    if is_provision:
-        cmd += ['-provision-labels', 'cros-version:%s' % test_spec.build]
 
-    return cmd
+    return [cmd, cmd + ['-provision-labels',
+                        'cros-version:%s' % test_spec.build]]
 
 
-def _run_swarming_cmd_with_fallback(cmd, dimensions, test_spec, suite_id):
+def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     """Kick off a fallback swarming cmd.
 
-    @param cmd: The raw command to run in lab.
+    @param cmds: A list of commands: [cmd, cmd_with_fallback]. Each of the cmd
+        is a list.
     @param dimensions: A dict of dimensions used to form the swarming cmd.
     @param test_spec: a cros_suite.TestSpec object.
     @param suite_id: The suite id of the test to kick off.
@@ -227,8 +230,12 @@ def _run_swarming_cmd_with_fallback(cmd, dimensions, test_spec, suite_id):
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
 
+    # Use first slice to kick off normal cmd without '-provision-labels',
+    # since the assigned DUT is already provisioned by given build.
+    # Use second slice to kick off cmd_with_fallback to enable provision before
+    # running tests, as the assigned DUT hasn't been provisioned.
     json_request = swarming_lib.make_fallback_request_dict(
-            cmds=[cmd] * len(all_dimensions),
+            cmds=cmds,
             slices_dimensions=all_dimensions,
             task_name=test_spec.test.name,
             priority=test_spec.priority,
@@ -290,7 +297,7 @@ def _schedule_test(test_spec, is_provision, suite_id=None,
     @return the swarming task id of this task.
     """
     logging.info('Scheduling test %s', test_spec.test.name)
-    cmd = _get_suite_cmd(test_spec, suite_id, is_provision=is_provision)
+    cmd, cmd_with_fallback = _get_suite_cmd(test_spec, suite_id)
     if dry_run:
         cmd = ['/bin/echo'] + cmd
         test_spec.test.name = 'Echo ' + test_spec.test.name
@@ -305,7 +312,7 @@ def _schedule_test(test_spec, is_provision, suite_id=None,
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
         if is_provision or use_fallback:
             return _run_swarming_cmd_with_fallback(
-                    cmd, dimensions, test_spec, suite_id)
+                    [cmd, cmd_with_fallback], dimensions, test_spec, suite_id)
         else:
             return _run_swarming_cmd(cmd, dimensions, test_spec,
                                      temp_json_path, suite_id)
