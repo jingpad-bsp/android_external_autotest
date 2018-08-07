@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.client.cros.multimedia import local_facade_factory
 
-EXTRA_BROWSER_ARGS = ['--enable-canvas-2d-image-chromium']
+EXTRA_BROWSER_ARGS = ['--enable-experimental-web-platform-features']
 
 class graphics_HwOverlays(graphics_utils.GraphicsTest,
                           chrome_binary_test.ChromeBinaryTest):
@@ -54,6 +54,10 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
             display_facade.set_display_rotation(display.display_id, rotation=0)
 
     def run_once(self, html_file):
+        if not graphics_utils.is_drm_atomic_supported():
+            logging.info('Skipping test: platform does not support DRM atomic')
+            return
+
         logging.info('Starting test, navigating to %s', html_file)
 
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
