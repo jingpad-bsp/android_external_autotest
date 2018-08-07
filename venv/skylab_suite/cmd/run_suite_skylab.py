@@ -35,6 +35,7 @@ def _parse_suite_handler_spec(options):
             timeout_mins=options.timeout_mins,
             test_retry=options.test_retry,
             max_retries=options.max_retries,
+            use_fallback=options.use_fallback,
             provision_num_required=provision_num_required)
 
 
