@@ -1,0 +1,22 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "allenwebb"
+NAME = "security_Usbguard"
+PURPOSE = "Sanity checks for usbguard"
+ATTRIBUTES = "suite:experimental"
+TIME = "SHORT"
+TEST_CLASS = "security"
+TEST_TYPE = "client"
+
+DOC = """
+Run "usbguard generate-policy" because it verifies much of the
+functionality of the usbguard-daemon binary and is a preliminary
+step used to generate /run/usbguard/rules.conf. The minijail
+policy is enforced in the test to catch any policy issues that
+come up in the future such as syscalls missing from the
+whitelist.
+"""
+
+job.run_test('security_Usbguard')
