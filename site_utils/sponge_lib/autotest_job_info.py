@@ -117,7 +117,8 @@ class AutotestTaskInfo(object):
     tags = ['autotest']
 
     # A list of logs to upload for this task.
-    logs = ['debug', 'status.log', 'crash', 'keyval', 'control', 'control.srv']
+    logs = ['debug', 'status.log', 'crash', 'keyval', 'control', 'control.srv',
+            'results/results-chart.json']
 
     # Version of the data stored.
     version = 2
