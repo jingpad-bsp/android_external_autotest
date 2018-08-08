@@ -28,10 +28,6 @@ class CrashTest(test.test):
     bugs. The system crash sender normally is always running, but can be paused
     by creating _PAUSE_FILE. When crash sender sees this, it pauses operation.
 
-    The pid of the system crash sender is stored in _CRASH_SENDER_RUN_PATH so
-    we can use this to kill the system crash sender for when we want to run
-    our own.
-
     For testing purposes we sometimes want to run the crash sender manually.
     In this case we can set 'OVERRIDE_PAUSE_SENDING=1' in the environment and
     run the crash sender manually (as a child process).
@@ -78,7 +74,6 @@ class CrashTest(test.test):
     _CRASH_REPORTER_PATH = '/sbin/crash_reporter'
     _CRASH_SENDER_PATH = '/sbin/crash_sender'
     _CRASH_SENDER_RATE_DIR = '/var/lib/crash_sender'
-    _CRASH_SENDER_RUN_PATH = '/run/crash_sender.pid'
     _CRASH_SENDER_LOCK_PATH = '/run/lock/crash_sender'
     _CRASH_RUN_STATE_DIR = '/run/crash_reporter'
     _CRASH_TEST_IN_PROGRESS = _CRASH_RUN_STATE_DIR + '/crash-test-in-progress'
@@ -172,17 +167,8 @@ class CrashTest(test.test):
 
 
     def _kill_running_sender(self):
-        """Kill the the crash_sender process if running.
-
-        We use the PID file to find the process ID, then kill it with signal 9.
-        """
-        if not os.path.exists(self._CRASH_SENDER_RUN_PATH):
-            return
-        running_pid = int(utils.read_file(self._CRASH_SENDER_RUN_PATH))
-        logging.warning('Detected running crash sender (%d), killing',
-                        running_pid)
-        utils.system('kill -9 %d' % running_pid)
-        os.remove(self._CRASH_SENDER_RUN_PATH)
+        """Kill the the crash_sender process if running."""
+        utils.system('pkill -9 -e crash_sender', ignore_status=True)
 
 
     def _set_sending_mock(self, mock_enabled, send_success=True):
