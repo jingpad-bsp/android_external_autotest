@@ -119,10 +119,7 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
     for result in test_results:
         if result['state'] not in [swarming_lib.TASK_COMPLETED_SUCCESS,
                                    swarming_lib.TASK_RUNNING]:
-            anchor_test = result['test_name']
-            if suite_handler.is_provision():
-                anchor_test += '-' + result['dut_name']
-
+            anchor_test = _get_show_test_name(result)
             _print_logs_link_for_task(anchor_test, result['task_ids'][0])
 
             if not suite_handler.is_provision():
@@ -137,11 +134,23 @@ def _log_test_results(test_results):
     _log_test_results_with_logging(test_results)
 
 
+def _get_show_test_name(result):
+    """Get the test_name to show.
+
+    @param result: a test result dictionary, which is one item of the returned
+        list of _parse_test_results.
+    """
+    if result['dut_name']:
+        return result['test_name'] + '-' + result['dut_name']
+
+    return result['test_name']
+
+
 def _log_test_results_with_logging(test_results):
-    name_column_width = max(len(result['test_name'])
+    name_column_width = max(len(result['test_name']) + len(result['dut_name'])
                             for result in test_results) + 3
     for result in test_results:
-        padded_name = result['test_name'].ljust(name_column_width)
+        padded_name = _get_show_test_name(result).ljust(name_column_width)
         logging.info('%s%s', padded_name, result['state'])
         if result['retry_count'] > 0:
             logging.info('%s  retry_count: %s', padded_name,
