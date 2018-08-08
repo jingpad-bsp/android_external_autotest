@@ -22,7 +22,6 @@ DOC = """
 This test runs camera3 test to verify JEA function.
 """
 
-job.run_test('camera_HAL3', timeout=5,
-             options=['--camera_hal_path=/usr/lib64/camera_hal/usb.so',
-                      '--gtest_filter=*/Camera3SimpleStillCaptureTest.TakePictureTest/0'],
+job.run_test('camera_HAL3', cmd_timeout=5,
+             options=['--gtest_filter=*/Camera3SimpleStillCaptureTest.TakePictureTest/0'],
              capability='hw_enc_jpeg')
