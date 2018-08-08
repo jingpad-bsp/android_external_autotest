@@ -39,6 +39,7 @@ def _parse_suite_handler_spec(options):
 
 
 def _run_suite(options):
+    run_suite_common = autotest.load('site_utils.run_suite_common')
     logging.info('Kicked off suite %s', options.suite_name)
     suite_spec = suite_parser.parse_suite_spec(options)
     if options.suite_name == PROVISION_SUITE_NAME:
@@ -46,14 +47,19 @@ def _run_suite(options):
     else:
         suite_job = cros_suite.Suite(suite_spec)
 
-    suite_job.prepare()
+    try:
+        suite_job.prepare()
+    except Exception as e:
+        logging.error('Infra failure in setting up suite job: %s', str(e))
+        return run_suite_common.SuiteResult(
+                run_suite_common.RETURN_CODES.INFRA_FAILURE)
+
     suite_handler_spec = _parse_suite_handler_spec(options)
     suite_handler = cros_suite.SuiteHandler(suite_handler_spec)
     suite_runner.run(suite_job.test_specs,
                      suite_handler,
                      options.dry_run)
 
-    run_suite_common = autotest.load('site_utils.run_suite_common')
     if options.create_and_return:
         suite_tracking.print_child_test_annotations(suite_handler)
         return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
