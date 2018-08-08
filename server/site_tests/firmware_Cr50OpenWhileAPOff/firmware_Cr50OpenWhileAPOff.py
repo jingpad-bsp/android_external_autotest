@@ -22,6 +22,7 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
 
     SLEEP_DELAY = 20
     SHORT_DELAY = 2
+    CCD_PASSWORD_RATE_LIMIT = 3
     PASSWORD = 'Password'
     PLT_RST = 1 << 6
 
@@ -212,6 +213,10 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             TestFail if ccd isn't locked out
         """
         logging.info('running lockout check %s', state)
+        logging.info('waiting %d seconds, the minimum time between'
+                     ' ccd password attempts',
+                     self.CCD_PASSWORD_RATE_LIMIT)
+        time.sleep(self.CCD_PASSWORD_RATE_LIMIT)
         rv = self.cr50.send_command_get_output('ccd %s' % state , ['ccd.*>'])[0]
         logging.info(rv)
         if self.ccd_lockout != ('Access Denied' in rv):
