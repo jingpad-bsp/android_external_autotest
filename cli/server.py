@@ -79,7 +79,7 @@ class server(topic_common.atest):
                                default=False,
                                metavar='ACTION')
 
-        self.add_skylab_options()
+        self.add_skylab_options(enforce_skylab=True)
 
         self.topic_parse_info = topic_common.item_parse_info(
                 attribute_name='hostname', use_leftover=True)
@@ -151,27 +151,11 @@ class server_list(action_common.atest_list, server):
         """
         super(server_list, self).__init__(hostname_required=False)
 
-        self.parser.add_option('-t', '--table',
-                               help=('List details of all servers in a table, '
-                                     'e.g., \tHostname | Status  | Roles     | '
-                                     'note\t\tserver1  | primary | scheduler | '
-                                     'lab. %s' %
-                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
-                               action='store_true',
-                               default=False)
         self.parser.add_option('-s', '--status',
                                help='Only show servers with given status.',
                                type='string',
                                default=None,
                                metavar='STATUS')
-        self.parser.add_option('-u', '--summary',
-                               help=('Show the summary of roles and status '
-                                     'only, e.g.,\tscheduler: server1(primary) '
-                                     'server2(backup)\t\tdrone: server3(primary'
-                                     ') server4(backup). %s' %
-                                     skylab_utils.MSG_INVALID_IN_SKYLAB),
-                               action='store_true',
-                               default=False)
         self.parser.add_option('--json',
                                help=('Format output as JSON.'),
                                action='store_true',
@@ -180,6 +164,7 @@ class server_list(action_common.atest_list, server):
                                help=('Only return hostnames.'),
                                action='store_true',
                                default=False)
+        # TODO(crbug.com/850344): support '--table' and '--summary' formats.
 
 
     def parse(self):
@@ -187,17 +172,10 @@ class server_list(action_common.atest_list, server):
         """
         (options, leftover) = super(server_list, self).parse()
         self.json = options.json
-        self.table = options.table
         self.status = options.status
-        self.summary = options.summary
         self.namesonly = options.hostnames_only
 
-        # TODO(nxia): support all formats for skylab inventory.
-        if (self.skylab and (self.table or self.summary)):
-            self.invalid_syntax('The format (table|summary)'
-                                ' is not supported with --skylab.')
-
-        if sum([self.table, self.summary, self.json, self.namesonly]) > 1:
+        if sum([self.json, self.namesonly]) > 1:
             self.invalid_syntax('May only specify up to 1 output-format flag.')
         return (options, leftover)
 
@@ -258,10 +236,6 @@ class server_list(action_common.atest_list, server):
                     formatter = skylab_server.format_servers_json
                 else:
                     formatter = server_manager_utils.format_servers_json
-            elif self.table:
-                formatter = server_manager_utils.format_servers_table
-            elif self.summary:
-                formatter = server_manager_utils.format_servers_summary
             elif self.namesonly:
                 formatter = server_manager_utils.format_servers_nameonly
             else:

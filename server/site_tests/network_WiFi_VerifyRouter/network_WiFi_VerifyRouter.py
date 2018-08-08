@@ -45,9 +45,12 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         this works in an obvious way. That is, each call to this method
         exercises phy0 and phy1.
 
-        For whirlwind, we still cover all radios, but in a less obvious way.
-        Calls with a 2.4 GHz channel exercise phy0 and phy2, while calls
-        with a 5 GHz channel exercise phy1 and phy2.
+        For whirlwind, we do not cover the 3rd radio. phy0 is 2.4 GHz, phy1 is
+        5 GHz, and phy2 is a 1x1 radio that covers both. Because phy2 isn't
+        normally used (and validated) as a transmitter, and because our
+        conductive setups don't even wire up its antennas, we try not to use it
+        in practice. So in effect, this test will be double-testing phy0 and
+        phy1 with the 2.4 GHz and 5 GHz portions of the test, respectively.
 
         @param bitmap: int bitmask controlling which antennas to enable.
         @param channel: int Wifi channel to conduct test on
@@ -62,8 +65,7 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         # Setup two APs on |channel|. configure() will spread these across
         # radios.
         n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
-        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode,
-                                               min_streams=1)
+        ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
         self.context.configure(ap_config)
         self.context.configure(ap_config, multi_interface=True)
         failures = []

@@ -456,15 +456,15 @@ class atest(object):
         self.allow_skylab = True
         self.enforce_skylab = enforce_skylab
 
-        if not self.enforce_skylab:
-            self.parser.add_option('--skylab',
-                                   help=('Use the skylab inventory as the data '
-                                         'source.'),
-                                   action='store_true', dest='skylab',
-                                   default=False)
-
+        self.parser.add_option('--skylab',
+                                help=('Use the skylab inventory as the data '
+                                      'source. Default to %s.' %
+                                       self.enforce_skylab),
+                                action='store_true', dest='skylab',
+                                default=self.enforce_skylab)
         self.parser.add_option('--env',
-                               help=('Environment of the server. %s' %
+                               help=('Environment ("prod" or "staging") of the '
+                                     'machine. Default to "prod". %s' %
                                      skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                dest='environment',
                                default='prod')
@@ -472,20 +472,20 @@ class atest(object):
                                help=('The path of directory to clone skylab '
                                      'inventory repo into. It can be an empty '
                                      'folder or an existing clean checkout of '
-                                     'infra_internal/skylab_inventory.'
+                                     'infra_internal/skylab_inventory. '
                                      'If not provided, a temporary dir will be '
                                      'created and used as the repo dir. %s' %
                                      skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                dest='inventory_repo_dir')
         self.parser.add_option('--keep-repo-dir',
-                               help=('Keep the repo dir after the command '
-                                     'completes, otherwise the dir will be '
-                                     'cleaned up. %s' %
+                               help=('Keep the inventory-repo-dir after the '
+                                     'action completes, otherwise the dir will '
+                                     'be cleaned up. %s' %
                                      skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='keep_repo_dir')
         self.parser.add_option('--draft',
-                               help=('Upload server change CL as a draft. %s' %
+                               help=('Upload a change CL as a draft. %s' %
                                      skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='draft',
@@ -497,9 +497,9 @@ class atest(object):
                                dest='dryrun',
                                default=False)
         self.parser.add_option('--submit',
-                               help=('Submit the change CL directly without '
-                                     'reviewing it in Gerrit. %s' %
-                                     skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
+                               help=('Submit a change CL directly without '
+                                     'reviewing and submitting it in Gerrit. %s'
+                                     % skylab_utils.MSG_ONLY_VALID_IN_SKYLAB),
                                action='store_true',
                                dest='submit',
                                default=False)
@@ -525,7 +525,7 @@ class atest(object):
 
         @param: options: Option values parsed by the parser.
         """
-        self.skylab = self.enforce_skylab or options.skylab
+        self.skylab = options.skylab
         if not self.skylab:
             return
 
@@ -558,9 +558,10 @@ class atest(object):
             self.temp_dir = autotemp.tempdir(
                     prefix='inventory_repo',
                     auto_clean=not self.keep_repo_dir)
+
             self.inventory_repo_dir = self.temp_dir.name
-            if self.debug:
-                print('No inventory-repo-dir was provided, using %s' %
+            if self.debug or self.keep_repo_dir:
+                print('The inventory_repo_dir is created at %s' %
                       self.inventory_repo_dir)
 
 

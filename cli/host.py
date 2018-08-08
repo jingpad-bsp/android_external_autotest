@@ -1230,14 +1230,15 @@ class host_migrate(action_common.atest_list, host):
         return self.execute_skylab_migration(hostnames)
 
 
-    def assign_duts_to_drone(self, infra, devices):
+    def assign_duts_to_drone(self, infra, devices, environment):
         """Assign uids of the devices to a random skylab drone.
 
         @param infra: An instance of lab_pb2.Infrastructure.
-        @devices: A list of device_pb2.Device to be assigned to the drone.
+        @param devices: A list of device_pb2.Device to be assigned to the drone.
+        @param environment: 'staging' or 'prod'.
         """
         skylab_drones = skylab_server.get_servers(
-                infra, 'staging', role='skylab_drone', status='primary')
+                infra, environment, role='skylab_drone', status='primary')
 
         if len(skylab_drones) == 0:
             raise device.SkylabDeviceActionError(
@@ -1245,8 +1246,10 @@ class host_migrate(action_common.atest_list, host):
                 'environment. Please confirm there is at least one valid skylab'
                 ' drone added in skylab inventory.')
 
-        skylab_drone = random.choice(skylab_drones)
-        skylab_server.add_dut_uids(skylab_drone, devices)
+        for device in devices:
+            # Randomly distribute each device to a skylab_drone.
+            skylab_drone = random.choice(skylab_drones)
+            skylab_server.add_dut_uids(skylab_drone, [device])
 
 
     def remove_duts_from_drone(self, infra, devices):
@@ -1309,7 +1312,8 @@ class host_migrate(action_common.atest_list, host):
                 'atest host rename --for-migration %s' %
                 (len(all_devices), ' '.join(device_hostnames)))
 
-            self.assign_duts_to_drone(infra, all_devices)
+            self.assign_duts_to_drone(infra, prod_devices, 'prod')
+            self.assign_duts_to_drone(infra, staging_devices, 'staging')
         else:
             # rollback
             prod_devices = device.move_devices(

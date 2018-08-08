@@ -55,6 +55,12 @@ USERNAME = 'fake-user@managedchrome.com'
 PASSWORD = 'fakepassword'
 GAIA_ID = 'fake-gaia-id'
 
+# Convert from chrome://policy name to what fake dms expects.
+DEVICE_POLICY_DICT = {
+    'DeviceAutoUpdateDisabled': 'update_disabled',
+    'DeviceTargetVersionPrefix': 'target_version_prefix',
+    'DeviceRollbackToTargetVersion': 'rollback_to_target_version'
+}
 
 class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
@@ -80,6 +86,9 @@ class EnterprisePolicyTest(test.test):
             username=USERNAME, password=PASSWORD, gaia_id=GAIA_ID, **kwargs):
         """
         Initialize test parameters and fake DM Server.
+
+        This function exists so that ARC++ tests (which inherit from the
+        ArcTest class) can also initialize a policy setup.
 
         @param case: String name of the test case to run.
         @param env: String environment of DMS and Gaia servers.
@@ -234,10 +243,17 @@ class EnterprisePolicyTest(test.test):
         s_user_p = copy.deepcopy(suggested_user_policies)
         device_p = copy.deepcopy(device_policies)
 
+        # Replace all device policies with their FakeDMS-friendly names.
+        fixed_device_p = {}
+        for policy in device_p:
+            if policy not in DEVICE_POLICY_DICT:
+                raise error.TestError('Cannot convert %s!' % policy)
+            fixed_device_p[DEVICE_POLICY_DICT[policy]] = device_p[policy]
+
         # Remove "Not set" policies and json-ify dicts because the
         # FakeDMServer expects "policy": "{value}" not "policy": {value}
         # and "policy": "[{value}]" not "policy": [{value}].
-        for policies_dict in [user_p, s_user_p, device_p]:
+        for policies_dict in [user_p, s_user_p, fixed_device_p]:
             policies_to_pop = []
             for policy in policies_dict:
                 value = policies_dict[policy]
@@ -267,9 +283,8 @@ class EnterprisePolicyTest(test.test):
                 user_modes_dict['recommended'] = s_user_p
             management_dict['google/chromeos/user'] = user_modes_dict
 
-        if device_p:
-            management_dict['google/chromeos/device'] = device_p
-
+        if fixed_device_p:
+            management_dict['google/chromeos/device'] = fixed_device_p
 
         logging.info('Created policy blob: %s', management_dict)
         return encode_json_string(management_dict)
@@ -532,34 +547,37 @@ class EnterprisePolicyTest(test.test):
         logging.info('  gaia_login: %s', not self.dms_is_fake)
 
         if enroll:
-            self.cr = chrome.Chrome(auto_login=False,
-                                    extra_browser_args=extra_flags,
-                                    expect_policy_fetch=True)
+            self.cr = chrome.Chrome(
+                    auto_login=False,
+                    extra_browser_args=extra_flags,
+                    expect_policy_fetch=True)
             if self.dms_is_fake:
                 enrollment.EnterpriseFakeEnrollment(
-                    self.cr.browser, self.username, self.password, self.gaia_id,
-                    auto_login=auto_login)
+                        self.cr.browser, self.username, self.password,
+                        self.gaia_id, auto_login=auto_login)
             else:
                 enrollment.EnterpriseEnrollment(
-                    self.cr.browser, self.username, self.password,
-                    auto_login=auto_login)
+                        self.cr.browser, self.username, self.password,
+                        auto_login=auto_login)
 
         elif auto_login:
-            self.cr = chrome.Chrome(extra_browser_args=extra_flags,
-                                    username=self.username,
-                                    password=self.password,
-                                    gaia_login=not self.dms_is_fake,
-                                    disable_gaia_services=self.dms_is_fake,
-                                    autotest_ext=True,
-                                    init_network_controller=init_network_controller,
-                                    expect_policy_fetch=True,
-                                    extension_paths=extension_paths)
+            self.cr = chrome.Chrome(
+                    extra_browser_args=extra_flags,
+                    username=self.username,
+                    password=self.password,
+                    gaia_login=not self.dms_is_fake,
+                    disable_gaia_services=self.dms_is_fake,
+                    autotest_ext=True,
+                    init_network_controller=init_network_controller,
+                    expect_policy_fetch=True,
+                    extension_paths=extension_paths)
         else:
-            self.cr = chrome.Chrome(auto_login=False,
-                                    extra_browser_args=extra_flags,
-                                    disable_gaia_services=self.dms_is_fake,
-                                    autotest_ext=True,
-                                    expect_policy_fetch=True)
+            self.cr = chrome.Chrome(
+                    auto_login=False,
+                    extra_browser_args=extra_flags,
+                    disable_gaia_services=self.dms_is_fake,
+                    autotest_ext=True,
+                    expect_policy_fetch=True)
 
         if auto_login:
             if not cryptohome.is_vault_mounted(user=self.username,
