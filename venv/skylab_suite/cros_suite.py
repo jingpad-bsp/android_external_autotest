@@ -24,6 +24,7 @@ import logging
 import os
 
 from lucifer import autotest
+from skylab_suite import errors
 from skylab_suite import swarming_lib
 
 
@@ -77,10 +78,6 @@ TestSpec = collections.namedtuple(
                 'execution_timeout_secs',
                 'io_timeout_secs',
         ])
-
-
-class NonValidPropertyError(Exception):
-  """Raised if a suite's property is not valid."""
 
 
 class SuiteHandler(object):
@@ -295,7 +292,7 @@ class Suite(object):
         for it.
         """
         if self._ds is None:
-            raise NonValidPropertyError(
+            raise errors.InValidPropertyError(
                 'Property self.ds is None. Please call stage_suite_artifacts() '
                 'before calling it.')
 
@@ -420,6 +417,12 @@ class ProvisionSuite(Suite):
         dummy_test = suite_common.retrieve_control_data_for_test(
                 cf_getter, 'dummy_Pass')
         logging.info('Get %d available DUTs for provision.', available_bots_num)
+        if available_bots_num < self._num_required:
+            logging.warning('Not enough available DUTs for provision.')
+            raise errors.NoAvailableDUTsError(
+                    'Require %d DUTs for provision, but only %d DUTs '
+                    'available.' % (self._num_required, available_bots_num))
+
         return [dummy_test] * max(self._num_required, available_bots_num)
 
     def _get_available_bots(self):
