@@ -338,11 +338,9 @@ class Suite(object):
         available_bots = self._get_available_bots()
         if len(available_bots) < self.minimum_duts:
             raise errors.NoAvailableDUTsError(
-                    'The total number of DUTs for %s in pool:%s is %d, '
-                    'which is less than %d, the required minimum number of'
-                    ' available DUTS.' %
-                    (self.board, self.pool, len(available_bots),
-                     self.minimum_duts))
+                    self.board, self.pool, len(available_bots),
+                    self.minimum_duts)
+
         tests = self._find_tests(available_bots_num=len(available_bots))
         self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
@@ -426,8 +424,8 @@ class ProvisionSuite(Suite):
         if available_bots_num < self._num_required:
             logging.warning('Not enough available DUTs for provision.')
             raise errors.NoAvailableDUTsError(
-                    'Require %d DUTs for provision, but only %d DUTs '
-                    'available.' % (self._num_required, available_bots_num))
+                    self.board, self.pool, available_bots_num,
+                    self._num_required)
 
         return [dummy_test] * max(self._num_required, available_bots_num)
 
