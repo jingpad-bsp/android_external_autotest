@@ -73,6 +73,9 @@ def make_parser():
         "--job_keyvals", type=ast.literal_eval, default={},
         action="store",
         help="A dict of job keyvals to be passed to child jobs.")
+    parser.add_argument(
+        "--minimum_duts", type=int, default=1, action="store",
+        help="A minimum required numbers of DUTs to run this suite.")
 
     # Swarming-related parameters.
     parser.add_argument(
@@ -146,4 +149,5 @@ def parse_suite_spec(options):
             board=options.board,
             pool=options.pool,
             job_keyvals=options.job_keyvals,
+            minimum_duts=options.minimum_duts,
     )
