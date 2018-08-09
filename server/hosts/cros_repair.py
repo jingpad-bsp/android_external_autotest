@@ -75,26 +75,20 @@ class ACPowerVerifier(hosts.Verifier):
 
     def verify(self, host):
         # pylint: disable=missing-docstring
-        # Temporarily work around a problem caused by some old FSI
-        # builds that don't have the power_supply_info command by
-        # ignoring failures.  The repair triggers believe that this
-        # verifier can't be fixed by re-installing, which means if a DUT
-        # gets stuck with one of those old builds, it can't be repaired.
-        #
-        # TODO(jrbarnette): This is for crbug.com/599158; we need a
-        # better solution.
         try:
             info = host.get_power_supply_info()
-        except:
-            logging.exception('get_power_supply_info() failed')
-            return
+        except error.AutoservRunError:
+            raise hosts.AutoservVerifyError(
+                    'Failed to get power supply info')
+
         try:
             if info['Line Power']['online'] != 'yes':
                 raise hosts.AutoservVerifyError(
                         'AC power is not plugged in')
         except KeyError:
-            logging.info('Cannot determine AC power status - '
-                         'skipping check.')
+            raise hosts.AutoservVerifyError(
+                    'Cannot determine AC power status')
+
         try:
             if float(info['Battery']['percentage']) < 50.0:
                 raise hosts.AutoservVerifyError(

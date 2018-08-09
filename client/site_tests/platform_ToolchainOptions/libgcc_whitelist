@@ -15,5 +15,6 @@
 # https://crbug.com/814480.
 /usr/bin/crosvm
 /usr/bin/memd
+/usr/bin/9s
 /usr/lib*/libqcow_utils.so
 /usr/lib64/libcrosvm_plugin.so

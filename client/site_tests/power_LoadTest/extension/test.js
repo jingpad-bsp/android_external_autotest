@@ -8,8 +8,6 @@ var time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
 var preexisting_windows = [];
 var log_lines = [];
 var error_codes = {}; //for each active tabId
-var page_load_times = [];
-var page_load_time_counter = {};
 var page_timestamps = [];
 var page_timestamps_recorder = {};
 var unique_url_salt = 1;
@@ -25,8 +23,6 @@ function setupTest() {
     }
     var end = 3600 * 1000 / time_ratio;
     log_lines = [];
-    page_load_times = [];
-    page_load_time_counter = {};
     page_timestamps = [];
     page_timestamps_recorder = {};
     record_log_entry(dateToString(new Date()) + " Loop started");
@@ -55,12 +51,6 @@ function testListener(request, sender, sendResponse) {
   if (sender.tab.id in cycle_tabs) {
     cycle = cycle_tabs[sender.tab.id];
     cycle.successful_loads++;
-    unique_url = page['url'];
-    var page_load_time = page['end_load_time'] - page['start_time'];
-    page_load_times.push({'url': unique_url,
-                          'time': page_load_time});
-    console.log("page_load_times:");
-    console.log(JSON.stringify(page_load_times));
     url = get_active_url(cycle);
     record_log_entry(dateToString(new Date()) + " [load success] " + url);
     if (request.action == "should_scroll" && cycle.focus) {
@@ -210,7 +200,7 @@ function launch_task(task) {
 
 function page_timestamps_new_record(tab_id, url, start) {
   page_timestamps_recorder[tab_id] = {
-    'url': (unique_url_salt++) + url,
+    'url': url,
     'start_time': start,
     'end_load_time': null,
     'end_browse_time': null
@@ -275,25 +265,11 @@ function send_keyvals() {
   console.log(post.join("&"));
 }
 
-function send_raw_page_load_time_info() {
-  var post = [];
-  page_load_times.forEach(function (item, index, array) {
-    var key = encodeURIComponent(item.url);
-    post.push(key + "=" + item.time);
-  })
-
-  var pagelt_info_url = 'http://localhost:8001/pagelt';
-  var req = new XMLHttpRequest();
-  req.open('POST', pagelt_info_url, true);
-  req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-  req.send(post.join("&"));
-  console.log(post.join("&"));
-}
-
 function send_raw_page_time_info() {
   var post = [];
   page_timestamps.forEach(function (item) {
-    var key = "pt" + encodeURIComponent(item.url);
+    var unique_url = (unique_url_salt++) + item.url;
+    var key = encodeURIComponent(unique_url);
     post.push(key + "=" + JSON.stringify(item));
   })
 
@@ -307,7 +283,6 @@ function send_raw_page_time_info() {
 
 function send_summary() {
   send_log_entries();
-  send_raw_page_load_time_info();
   send_raw_page_time_info();
   send_keyvals();
 }

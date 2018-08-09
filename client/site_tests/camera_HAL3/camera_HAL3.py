@@ -10,8 +10,10 @@ import xml.etree.ElementTree
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.camera import camera_utils
 from autotest_lib.client.cros.video import device_capability
 from sets import Set
+
 
 class camera_HAL3(test.test):
     """
@@ -34,8 +36,15 @@ class camera_HAL3(test.test):
         self.job.setup_dep([self.dep])
         logging.debug('mydep is at %s', self.dep_dir)
 
+    def initialize(self):
+        """Autotest initialize function.
+
+        It is run by common_lib/test.py.
+        """
+        open(self.enable_test_mode_path, 'a').close()
+
     def cleanup(self):
-        """Autotest cleanup function
+        """Autotest cleanup function.
 
         It is run by common_lib/test.py.
         """
@@ -45,9 +54,10 @@ class camera_HAL3(test.test):
         """
         Get recording parameters from media profiles
         """
-        xml_content = utils.system_output(
-            ' '.join(['android-sh', '-c', '\"cat',
-                      self.media_profiles_path + '\"']))
+        xml_content = utils.system_output([
+            'android-sh', '-c',
+            'cat "%s"' % utils.sh_escape(self.media_profiles_path)
+        ])
         root = xml.etree.ElementTree.fromstring(xml_content)
         recording_params = Set()
         for camcorder_profiles in root.findall('CamcorderProfiles'):
@@ -58,34 +68,45 @@ class camera_HAL3(test.test):
                     video.get('height'), video.get('frameRate')))
         return '--recording_params=' + ','.join(recording_params)
 
-    def run_once(self, timeout=600, options=[], capability=None):
+    def run_once(self,
+                 cmd_timeout=600,
+                 camera_hals=None,
+                 options=None,
+                 capability=None):
         """
         Entry point of this test.
 
-        @param timeout: Seconds. Timeout for running the test command.
+        @param cmd_timeout: Seconds. Timeout for running the test command.
+        @param camera_hals: The camera HALs to be tested. e.g. ['usb.so']
         @param options: Option strings passed to test command. e.g. ['--v=1']
         @param capability: Capability required for executing this test.
         """
+        if options is None:
+            options = []
+
         if capability:
             device_capability.DeviceCapability().ensure_capability(capability)
 
         self.job.install_pkg(self.dep, 'dep', self.dep_dir)
 
-        # create file to enable camera test mode.
-        # Why don't we put it in setup()? The setup() is called in compile
-        # time and it causes compile error.
-        open(self.enable_test_mode_path, 'a').close()
+        camera_hal_paths = camera_utils.get_camera_hal_paths_for_test()
+        if camera_hals is not None:
+            name_map = dict((os.path.basename(path), path)
+                            for path in camera_hal_paths)
+            camera_hal_paths = []
+            for name in camera_hals:
+                path = name_map.get(name)
+                if path is None:
+                    msg = 'HAL %r is not available for test' % name
+                    raise error.TestNAError(msg)
+                camera_hal_paths.append(path)
+
+        binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
 
         with service_stopper.ServiceStopper([self.cros_camera_service]):
-            cmd = [ os.path.join(self.dep_dir, 'bin', self.test_binary) ]
+            cmd = [binary_path]
             for option in options:
-                # if we specify camera hal in option, we need to check if
-                # there is a camera hal in DUT.
-                if 'camera_hal_path' in option:
-                    hal = option.split('=')[1]
-                    if not os.path.exists(hal):
-                        raise error.TestNAError('There is no hal %s' % hal)
-                elif 'gtest_filter' in option:
+                if 'gtest_filter' in option:
                     filters = option.split('=')[1]
                     if 'Camera3DeviceTest' in filters.split('-')[0]:
                         if utils.get_current_board() in self.tablet_board_list:
@@ -95,4 +116,8 @@ class camera_HAL3(test.test):
                         cmd.append(self.get_recording_params())
                 cmd.append(option)
 
-            utils.system(' '.join(cmd), timeout=timeout)
+            for camera_hal_path in camera_hal_paths:
+                logging.info('Run test with %r', camera_hal_path)
+                cmd.append('--camera_hal_path=%s' % camera_hal_path)
+                utils.system(cmd, timeout=cmd_timeout)
+                cmd.pop()
