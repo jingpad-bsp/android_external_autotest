@@ -103,11 +103,13 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
             'Link to the suite create task: %s' % suite_name,
-            swarming_lib.get_task_link(suite_handler.suite_id)))
+            swarming_lib.get_task_link(_get_task_id_for_task_summaries(
+                    suite_handler.suite_id))))
     if suite_handler.task_id is not None:
         print(annotations.StepLink(
                 'Link to the suite wait task: %s' % suite_name,
-                swarming_lib.get_task_link(suite_handler.task_id)))
+                swarming_lib.get_task_link(_get_task_id_for_task_summaries(
+                        suite_handler.task_id))))
 
     if (suite_handler.is_provision() and
         suite_handler.is_provision_successfully_finished()):
