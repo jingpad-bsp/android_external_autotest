@@ -135,6 +135,7 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
                 test_spec,
                 suite_handler.is_provision(),
                 suite_id=suite_id,
+                use_fallback=suite_handler.use_fallback,
                 dry_run=dry_run)
         suite_handler.add_test_by_task_id(
                 test_task_id,
@@ -144,7 +145,7 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
                         previous_retried_ids=[]))
 
 
-def _make_provision_swarming_cmd():
+def _make_new_swarming_cmd():
     basic_swarming_cmd = swarming_lib.get_basic_swarming_cmd('post')
     return basic_swarming_cmd + ['tasks/new']
 
@@ -207,8 +208,8 @@ def _get_suite_cmd(test_spec, suite_id, is_provision=False):
     return cmd
 
 
-def _run_provision_cmd(cmd, dimensions, test_spec, suite_id):
-    """Kick off a provision swarming cmd.
+def _run_swarming_cmd_with_fallback(cmd, dimensions, test_spec, suite_id):
+    """Kick off a fallback swarming cmd.
 
     @param cmd: The raw command to run in lab.
     @param dimensions: A dict of dimensions used to form the swarming cmd.
@@ -240,8 +241,7 @@ def _run_provision_cmd(cmd, dimensions, test_spec, suite_id):
             io_timeout_secs=test_spec.io_timeout_secs)
 
     cros_build_lib = autotest.chromite_load('cros_build_lib')
-    provision_cmd = _make_provision_swarming_cmd()
-    result = cros_build_lib.RunCommand(provision_cmd,
+    result = cros_build_lib.RunCommand( _make_new_swarming_cmd(),
                                        input=json.dumps(json_request),
                                        env=os.environ.copy(),
                                        capture_output=True)
@@ -279,7 +279,7 @@ def _run_swarming_cmd(cmd, dimensions, test_spec, temp_json_path, suite_id):
 
 
 def _schedule_test(test_spec, is_provision, suite_id=None,
-                   dry_run=False):
+                   use_fallback=False, dry_run=False):
     """Schedule a CrOS test.
 
     @param test_spec: A cros_suite.TestSpec object.
@@ -303,9 +303,9 @@ def _schedule_test(test_spec, is_provision, suite_id=None,
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
-        if is_provision:
-            return _run_provision_cmd(cmd, dimensions, test_spec,
-                                      suite_id)
+        if is_provision or use_fallback:
+            return _run_swarming_cmd_with_fallback(
+                    cmd, dimensions, test_spec, suite_id)
         else:
             return _run_swarming_cmd(cmd, dimensions, test_spec,
                                      temp_json_path, suite_id)
@@ -395,6 +395,7 @@ def _retry_test(suite_handler, task_id, dry_run=False):
             last_retry_spec.test_spec,
             suite_handler.is_provision(),
             suite_id=suite_handler.suite_id,
+            use_fallback=suite_handler.use_fallback,
             dry_run=dry_run)
     previous_retried_ids = last_retry_spec.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(
