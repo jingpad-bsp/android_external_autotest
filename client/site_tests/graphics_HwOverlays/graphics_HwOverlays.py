@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import constants as cros_constants
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.multimedia import local_facade_factory
 
 EXTRA_BROWSER_ARGS = ['--enable-experimental-web-platform-features']
@@ -53,7 +53,7 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
                (display.display_id, display.name));
             display_facade.set_display_rotation(display.display_id, rotation=0)
 
-    def run_once(self, html_file):
+    def run_once(self, html_file, data_file_url = None):
         if not graphics_utils.is_drm_atomic_supported():
             logging.info('Skipping test: platform does not support DRM atomic')
             return
@@ -61,7 +61,7 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
         logging.info('Starting test, navigating to %s', html_file)
 
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
-                           extension_paths=[cros_constants.DISPLAY_TEST_EXTENSION],
+                           extension_paths=[constants.DISPLAY_TEST_EXTENSION],
                            autotest_ext=True,
                            init_network_controller=True) as cr:
             self.set_rotation_to_zero(cr)
@@ -73,6 +73,8 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
                     os.path.join(self.bindir, html_file)))
             tab.WaitForDocumentReadyStateToBeComplete()
 
+            if data_file_url:
+                tab.EvaluateJavaScript('load_data_url("%s")' % data_file_url)
 
             # Draw something; this also triggers JS parsing and execution.
             tab.EvaluateJavaScript('draw_pass()')
