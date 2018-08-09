@@ -133,9 +133,8 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
     for test_spec in test_specs:
         test_task_id = _schedule_test(
                 test_spec,
-                suite_handler.is_provision(),
                 suite_id=suite_id,
-                use_fallback=suite_handler.use_fallback,
+                use_fallback=suite_handler.should_use_fallback(),
                 dry_run=dry_run)
         suite_handler.add_test_by_task_id(
                 test_task_id,
@@ -285,13 +284,14 @@ def _run_swarming_cmd(cmd, dimensions, test_spec, temp_json_path, suite_id):
         return result['tasks'][test_spec.test.name]['task_id']
 
 
-def _schedule_test(test_spec, is_provision, suite_id=None,
-                   use_fallback=False, dry_run=False):
+def _schedule_test(test_spec,suite_id=None, use_fallback=False,
+                   dry_run=False):
     """Schedule a CrOS test.
 
     @param test_spec: A cros_suite.TestSpec object.
-    @param is_provision: A boolean, whether to kick off a provision test.
     @param suite_id: the suite task id of the test.
+    @param use_fallback: A boolean, whether to kick off a fallback swarming
+        request.
     @param dry_run: Whether to kick off a dry run of a swarming cmd.
 
     @return the swarming task id of this task.
@@ -310,7 +310,7 @@ def _schedule_test(test_spec, is_provision, suite_id=None,
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
-        if is_provision or use_fallback:
+        if use_fallback:
             return _run_swarming_cmd_with_fallback(
                     [cmd, cmd_with_fallback], dimensions, test_spec, suite_id)
         else:
@@ -400,9 +400,8 @@ def _retry_test(suite_handler, task_id, dry_run=False):
                  last_retry_spec.remaining_retries - 1)
     retried_task_id = _schedule_test(
             last_retry_spec.test_spec,
-            suite_handler.is_provision(),
             suite_id=suite_handler.suite_id,
-            use_fallback=suite_handler.use_fallback,
+            use_fallback=suite_handler.should_use_fallback(),
             dry_run=dry_run)
     previous_retried_ids = last_retry_spec.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(
