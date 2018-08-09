@@ -133,6 +133,35 @@ class SmbProvider(object):
 
         return self._smbproviderd.Unmount(_proto_to_blob(proto))
 
+    def create_directory(self, mount_id, directory_path, recursive):
+        """
+        Creates a directory.
+
+        @param mount_id: Mount ID corresponsding to the share.
+        @param directory_path: Path of the directory to read.
+        @param recursive: Boolean to indicate whether directories should be
+                created recursively.
+
+        @return: ErrorType from the returned D-Bus call.
+
+        """
+
+        logging.info("Creating directory: %s", directory_path)
+
+        from directory_entry_pb2 import CreateDirectoryOptionsProto
+        from directory_entry_pb2 import ERROR_OK
+
+        proto = CreateDirectoryOptionsProto()
+        proto.mount_id = mount_id
+        proto.directory_path = directory_path
+        proto.recursive = recursive
+
+        return self._smbproviderd.CreateDirectory(
+                _proto_to_blob(proto),
+                timout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
+
+
     def read_directory(self, mount_id, directory_path):
         """
         Reads a directory.
