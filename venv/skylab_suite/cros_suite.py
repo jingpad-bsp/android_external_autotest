@@ -40,6 +40,7 @@ SuiteSpec = collections.namedtuple(
                 'board',
                 'pool',
                 'job_keyvals',
+                'minimum_duts',
         ])
 
 SuiteHandlerSpec = collections.namedtuple(
@@ -283,6 +284,7 @@ class Suite(object):
         self.board = spec.board
         self.pool = spec.pool
         self.job_keyvals = spec.job_keyvals
+        self.minimum_duts = spec.minimum_duts
 
     @property
     def ds(self):
@@ -334,6 +336,13 @@ class Suite(object):
         self._parse_suite_args()
         keyvals = self._create_suite_keyvals()
         available_bots = self._get_available_bots()
+        if len(available_bots) < self.minimum_duts:
+            raise errors.NoAvailableDUTsError(
+                    'The total number of DUTs for %s in pool:%s is %d, '
+                    'which is less than %d, the required minimum number of'
+                    ' available DUTS.' %
+                    (self.board, self.pool, len(available_bots),
+                     self.minimum_duts))
         tests = self._find_tests(available_bots_num=len(available_bots))
         self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
@@ -388,8 +397,12 @@ class Suite(object):
         return suite_common.filter_tests(tests)
 
     def _get_available_bots(self):
-        """Get available bots for normal suites."""
-        return []
+        """Get available bots for suites."""
+        bots = swarming_lib.query_bots_list({
+                'pool': swarming_lib.SKYLAB_DRONE_POOL,
+                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
+                'label-board': self.board})
+        return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
 
 class ProvisionSuite(Suite):
@@ -417,14 +430,6 @@ class ProvisionSuite(Suite):
                     'available.' % (self._num_required, available_bots_num))
 
         return [dummy_test] * max(self._num_required, available_bots_num)
-
-    def _get_available_bots(self):
-        """Get available bots for provision suites."""
-        bots = swarming_lib.query_bots_list({
-                'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
-                'label-board': self.board})
-        return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
     def _get_test_specs(self, tests, available_bots, keyvals):
         test_specs = []
