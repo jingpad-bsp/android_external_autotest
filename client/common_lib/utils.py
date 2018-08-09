@@ -2663,8 +2663,71 @@ def which(exec_file):
 
 
 class TimeoutError(error.TestError):
-    """Error raised when we time out when waiting on a condition."""
-    pass
+    """Error raised when poll_for_condition() failed to poll within time.
+
+    It may embed a reason (either a string or an exception object) so that
+    the caller of poll_for_condition() can handle failure better.
+    """
+
+    def __init__(self, message=None, reason=None):
+        """Constructor.
+
+        It supports three invocations:
+        1) TimeoutError()
+        2) TimeoutError(message): with customized message.
+        3) TimeoutError(message, reason): with message and reason for timeout.
+        """
+        self.reason = reason
+        if self.reason:
+            reason_str = 'Reason: ' + repr(self.reason)
+            if message:
+                message += '. ' + reason_str
+            else:
+                message = reason_str
+
+        if message:
+            super(TimeoutError, self).__init__(message)
+        else:
+            super(TimeoutError, self).__init__()
+
+
+class Timer(object):
+    """A synchronous timer to evaluate if timout is reached.
+
+    Usage:
+      timer = Timer(timeout_sec)
+      while timer.sleep(sleep_interval):
+        # do something...
+    """
+    def __init__(self, timeout):
+        """Constructor.
+
+        Note that timer won't start until next() is called.
+
+        @param timeout: timer timeout in seconds.
+        """
+        self.timeout = timeout
+        self.deadline = 0
+
+    def sleep(self, interval):
+        """Checks if it has sufficient time to sleep; sleeps if so.
+
+        It blocks for |interval| seconds if it has time to sleep.
+        If timer is not ticked yet, kicks it off and returns True without
+        sleep.
+
+        @param interval: sleep interval in seconds.
+        @return True if it has sleeped or just kicked off the timer. False
+                otherwise.
+        """
+        now = time.time()
+        if not self.deadline:
+            self.deadline = now + self.timeout
+            return True
+        if now + interval < self.deadline:
+            time.sleep(interval)
+            return True
+        return False
 
 
 def poll_for_condition(condition,
@@ -2702,9 +2765,48 @@ def poll_for_condition(condition,
             else:
                 desc = 'Timed out waiting for unnamed condition'
             logging.error(desc)
-            raise TimeoutError(desc)
+            raise TimeoutError(message=desc)
 
         time.sleep(sleep_interval)
+
+
+def poll_for_condition_ex(condition, timeout=10, sleep_interval=0.1, desc=None):
+    """Polls until a condition is evaluated to true or until timeout.
+
+    Similiar to poll_for_condition, except that it handles exceptions
+    condition() raises. If timeout is not reached, the exception is dropped and
+    poll for condition after a sleep; otherwise, the exception is embedded into
+    TimeoutError to raise.
+
+    @param condition: function taking no args and returning anything that will
+                      evaluate to True in a conditional check
+    @param timeout: maximum number of seconds to wait
+    @param sleep_interval: time to sleep between polls
+    @param desc: description of the condition
+
+    @return The evaluated value that caused the poll loop to terminate.
+
+    @raise TimeoutError. If condition() raised exception, it is embedded in
+           raised TimeoutError.
+    """
+    timer = Timer(timeout)
+    while timer.sleep(sleep_interval):
+        reason = None
+        try:
+            value = condition()
+            if value:
+                return value
+        except BaseException as e:
+            reason = e
+
+    if desc is None:
+        desc = 'unamed condition'
+    if reason is None:
+        reason = 'condition evaluted as false'
+    to_raise = TimeoutError(message='Timed out waiting for ' + desc,
+                            reason=reason)
+    logging.error(str(to_raise))
+    raise to_raise
 
 
 def threaded_return(function):
