@@ -272,11 +272,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         # Figure out the correct interface.
-        if configuration.min_streams is None:
-            interface = self.get_wlanif(configuration.frequency, 'managed')
-        else:
-            interface = self.get_wlanif(
-                configuration.frequency, 'managed', configuration.min_streams)
+        interface = self.get_wlanif(configuration.frequency, 'managed',
+                                    configuration.min_streams)
         phy_name = self.iw_runner.get_interface(interface).phy
 
         conf_file = self.HOSTAPD_CONF_FILE_PATTERN % interface
