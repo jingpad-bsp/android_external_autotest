@@ -52,6 +52,7 @@ SuiteHandlerSpec = collections.namedtuple(
                 'timeout_mins',
                 'test_retry',
                 'max_retries',
+                'use_fallback',
                 'provision_num_required',
         ])
 
@@ -94,6 +95,7 @@ class SuiteHandler(object):
         self._provision_num_required = specs.provision_num_required
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
+        self.use_fallback = specs.use_fallback
 
         # The swarming task id of the suite that this suite_handler is handling.
         self._suite_id = specs.suite_id
