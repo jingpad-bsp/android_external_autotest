@@ -337,31 +337,24 @@ class Suite(object):
         tests = self._find_tests(available_bots_num=len(available_bots))
         self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
-    def _get_test_specs(self, tests, available_bots, keyvals):
-        test_specs = []
-        for idx, test in enumerate(tests):
-            if idx < len(available_bots):
-                bot_id = available_bots[idx]['bot_id']
-                dut_name = swarming_lib.get_task_dut_name(
-                        available_bots[idx]['dimensions'])
-            else:
-                bot_id = ''
-                dut_name = ''
-            test_specs.append(TestSpec(
-                    test=test,
-                    priority=self.priority,
-                    board=self.board,
-                    pool=self.pool,
-                    build=self.test_source_build,
-                    bot_id=bot_id,
-                    dut_name=dut_name,
-                    keyvals=keyvals,
-                    expiration_secs=self.EXPIRATION_SECS,
-                    grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
-                    execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
-                    io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
+    def _create_test_spec(self, test, keyvals, bot_id='', dut_name=''):
+        return TestSpec(
+                test=test,
+                priority=self.priority,
+                board=self.board,
+                pool=self.pool,
+                build=self.test_source_build,
+                bot_id=bot_id,
+                dut_name=dut_name,
+                keyvals=keyvals,
+                expiration_secs=self.EXPIRATION_SECS,
+                grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+        )
 
-        return test_specs
+    def _get_test_specs(self, tests, available_bots, keyvals):
+        return [self._create_test_spec(test, keyvals) for test in tests]
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -432,3 +425,17 @@ class ProvisionSuite(Suite):
                 'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
                 'label-board': self.board})
         return [bot for bot in bots if swarming_lib.bot_available(bot)]
+
+    def _get_test_specs(self, tests, available_bots, keyvals):
+        test_specs = []
+        for idx, test in enumerate(tests):
+            if idx < len(available_bots):
+                bot = available_bots[idx]
+                test_specs.append(self._create_test_spec(
+                        test, keyvals, bot_id=bot['bot_id'],
+                        dut_name=swarming_lib.get_task_dut_name(
+                                bot['dimensions'])))
+            else:
+                test_specs.append(self._create_test_spec(test, keyvals))
+
+        return test_specs
