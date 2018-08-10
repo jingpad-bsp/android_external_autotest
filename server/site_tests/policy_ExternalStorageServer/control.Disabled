@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = 'timkovich'
-NAME = 'policy_ExternalStorageDisabledServer'
+NAME = 'policy_ExternalStorageServer.Disabled'
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'enterprise'
@@ -25,6 +25,8 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('policy_ExternalStorageDisabledServer', host=host)
+    job.run_test('policy_ExternalStorageServer',
+                 host=host,
+                 client_test='policy_ExternalStorageDisabled')
 
 parallel_simple(run, machines)
