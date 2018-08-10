@@ -44,7 +44,9 @@ class network_WiFi_UpdateRouter(test.test):
                                  '7424.0.2015_09_03_1532'),
         'whirlwind': StableVersion('trybot-whirlwind-test-ap-tryjob/'
                                    'R65-10323.83.0-c40829',
-                                   '10323.83.2018_04_30_1605')
+                                   '10323.83.2018_04_30_1605'),
+        'gale': StableVersion('gale-test-ap-tryjob/R69-10895.5.0-b2785653',
+                              '10895.5.2018_07_26_1353'),
     }
 
 
