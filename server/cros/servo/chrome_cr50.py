@@ -37,6 +37,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     # The amount of time you need to show physical presence.
     PP_SHORT = 15
     PP_LONG = 300
+    CCD_PASSWORD_RATE_LIMIT = 3
     IDLE_COUNT = 'count: (\d+)'
     # The version has four groups: the partition, the header version, debug
     # descriptor and then version string.
@@ -612,6 +613,13 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         # take more than 3 seconds.
         self._servo.set_nocheck('cr50_uart_timeout', self.CONSERVATIVE_CCD_WAIT)
         # Start the unlock process.
+
+        if level == 'open' or level == 'unlock':
+            logging.info('waiting %d seconds, the minimum time between'
+                         ' ccd password attempts',
+                         self.CCD_PASSWORD_RATE_LIMIT)
+            time.sleep(self.CCD_PASSWORD_RATE_LIMIT)
+
         try:
             cmd = 'ccd %s%s' % (level, (' ' + password) if password else '')
             rv = self.send_command_get_output(cmd, [cmd + '(.*)>'])[0][1]
