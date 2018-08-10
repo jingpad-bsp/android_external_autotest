@@ -49,6 +49,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.site_utils import test_push_common
 
 try:
     from chromite.lib import metrics
@@ -184,7 +185,8 @@ def powerwash_dut_to_test_repair(hostname, timeout):
                 'Powerwash test on %s timeout after %ds, abort it.' %
                 (hostname, timeout))
         time.sleep(10)
-    verify_test_results(job_id, EXPECTED_TEST_RESULTS_POWERWASH)
+    verify_test_results(job_id,
+                        test_push_common.EXPECTED_TEST_RESULTS_POWERWASH)
     # Kick off verify, verify will fail and a repair should be triggered.
     AFE.reverify_hosts(hostnames=[hostname])
 
@@ -544,16 +546,17 @@ def _run_test_suites(arguments):
 
     push_to_prod_suite = multiprocessing.Process(
             target=test_suite_wrapper,
-            args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
-                    arguments))
+            args=(queue, PUSH_TO_PROD_SUITE,
+                  test_push_common.EXPECTED_TEST_RESULTS, arguments))
     push_to_prod_suite.daemon = use_daemon
     push_to_prod_suite.start()
 
     # suite test with --create_and_return flag
     asynchronous_suite = multiprocessing.Process(
             target=test_suite_wrapper,
-            args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
-                    arguments, True, True))
+            args=(queue, DUMMY_SUITE,
+                  test_push_common.EXPECTED_TEST_RESULTS_DUMMY,
+                  arguments, True, True))
     asynchronous_suite.daemon = True
     asynchronous_suite.start()
 
