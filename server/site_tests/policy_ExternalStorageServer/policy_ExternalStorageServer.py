@@ -9,14 +9,13 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 
 
-class policy_ExternalStorageDisabledServer(test.test):
+class policy_ExternalStorageServer(test.test):
     """
-    This test connects the servo repair USB stick then runs the
-    ExternalStorageDisabled client-side tests.
+    This test connects the servo repair USB stick then runs a client-side test
+    that relies on a USB being connected.
 
     """
     version = 1
-    CLIENT_TEST_NAME = 'policy_ExternalStorageDisabled'
 
 
     def _run_client_test(self, name, case):
@@ -37,7 +36,12 @@ class policy_ExternalStorageDisabledServer(test.test):
         self.host.servo.switch_usbkey('host')
 
 
-    def run_once(self, host):
+    def run_once(self, host, client_test=''):
+        """
+        @param host: A host object representing the DUT.
+        @param client_test: Name of client test to run.
+
+        """
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
 
@@ -47,4 +51,4 @@ class policy_ExternalStorageDisabledServer(test.test):
         policy_values = ['True_Block', 'NotSet_Allow', 'False_Allow']
 
         for case in policy_values:
-            self._run_client_test(self.CLIENT_TEST_NAME, case)
+            self._run_client_test(client_test, case)
