@@ -86,8 +86,11 @@ class enterprise_SmbProviderDaemon(test.test):
         rand_dir_id = self._generate_random_id(10)
 
         test_dir = '/autotest_' + rand_dir_id + '/'
+        test_file = test_dir + '1.txt'
 
         self._check_create_directory(mount_id, test_dir, False)
+        self._check_create_file(mount_id, test_file)
+        self._check_delete_entry(mount_id, test_file, False)
         self._check_delete_entry(mount_id, test_dir, False)
 
         self._check_unmount(mount_id)
@@ -126,6 +129,19 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.unmount(mount_id)
 
         self._check_result('Unmount', error)
+
+    def _check_create_file(self, mount_id, file_path):
+        """
+        Checks that create file is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param file_path: Path of where the new file will be created.
+
+        """
+
+        error = self._smbprovider.create_file(mount_id, file_path)
+
+        self._check_result('Create File', error)
 
     def _check_create_directory(self, mount_id,
                                       directory_path,
