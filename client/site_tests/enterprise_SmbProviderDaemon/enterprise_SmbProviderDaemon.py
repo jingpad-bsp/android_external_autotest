@@ -80,28 +80,43 @@ class enterprise_SmbProviderDaemon(test.test):
 
         """
 
+        # Mount the SMB share.
         mount_id = self._check_mount(mount_path)
 
-        # Generate random directory
+        # Generate random directory.
         rand_dir_id = self._generate_random_id(10)
-
         test_dir = '/autotest_' + rand_dir_id + '/'
-        test_file = test_dir + '1.txt'
-
         self._check_create_directory(mount_id, test_dir, False)
+
+        # Create file inside directory.
+        test_file = test_dir + '1.txt'
         self._check_create_file(mount_id, test_file)
 
-        # Open file with Read-Only priviledges.
+        # Open file with Read-Only privileges.
         file_id = self._check_open_file(mount_id, test_file, False)
         self._check_close_file(mount_id, file_id)
 
-        # Open file with Writeable priviledges.
-        file_id = self._check_open_file(mount_id, test_file, True)
+        # Open + Close file with Read-Only privileges.
+        file_id = self._check_open_file(mount_id, test_file, False)
         self._check_close_file(mount_id, file_id)
 
+        # Open file for writing.
+        file_id = self._check_open_file(mount_id, test_file, True)
+
+        # Write data to file.
+        data = 'Hello World!'
+        self._check_write_file(mount_id, file_id, 0, data)
+
+        # Close file.
+        self._check_close_file(mount_id, file_id)
+
+        # Delete file.
         self._check_delete_entry(mount_id, test_file, False)
+
+        # Delete autotest directory.
         self._check_delete_entry(mount_id, test_dir, False)
 
+        # Unmount the SMB share.
         self._check_unmount(mount_id)
 
     def _check_mount(self, mount_path):
@@ -186,6 +201,21 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.close_file(mount_id, file_id)
 
         self._check_result('Close File', error)
+
+    def _check_write_file(self, mount_id, file_id, offset, data):
+        """
+        Checks that write file is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param file_id: Unique identifier of the file.
+        @param offset: Offset of the file to start writing to.
+        @param data: Data to be written.
+
+        """
+
+        error = self._smbprovider.write_file(mount_id, file_id, offset, data)
+
+        self._check_result('Write File', error)
 
     def _check_create_directory(self, mount_id,
                                       directory_path,
