@@ -119,6 +119,19 @@ class enterprise_SmbProviderDaemon(test.test):
         # Delete file.
         self._check_delete_entry(mount_id, test_file, False)
 
+        # Create recursive directories.
+        recursive_dir = test_dir + 'test1/test2/'
+        self._check_create_directory(mount_id, recursive_dir, True)
+
+        # Create file within the new directory.
+        test_file2 = recursive_dir + '2.txt'
+        self._check_create_file(mount_id, test_file2)
+
+        # TODO(jimmyxgong): Delete contents of autotest directory recursively.
+        self._check_delete_entry(mount_id, test_file2, False)
+        self._check_delete_entry(mount_id, test_dir + 'test1/test2/', False)
+        self._check_delete_entry(mount_id, test_dir + 'test1/', False)
+
         # Delete autotest directory.
         self._check_delete_entry(mount_id, test_dir, False)
 
