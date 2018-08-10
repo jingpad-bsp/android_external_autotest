@@ -80,6 +80,8 @@ class enterprise_SmbProviderDaemon(test.test):
 
         """
 
+        from directory_entry_pb2 import ERROR_EXISTS
+
         # Mount the SMB share.
         mount_id = self._check_mount(mount_path)
 
@@ -140,6 +142,15 @@ class enterprise_SmbProviderDaemon(test.test):
         # Create file within the new directory.
         test_file2 = recursive_dir + '2.txt'
         self._check_create_file(mount_id, test_file2)
+
+        # Check moving to existing entry is handled.
+        self._check_move_entry(mount_id, test_file2, test_dir, ERROR_EXISTS)
+
+        # Move file up to root test directory.
+        self._check_move_entry(mount_id, test_file2, test_dir + 'moved.txt')
+
+        # Move back down to original location.
+        self._check_move_entry(mount_id, test_dir + 'moved.txt', test_file2)
 
         # TODO(jimmyxgong): Delete contents of autotest directory recursively.
         self._check_delete_entry(mount_id, test_file2, False)
@@ -355,6 +366,24 @@ class enterprise_SmbProviderDaemon(test.test):
                                                recursive)
 
         self._check_result('Delete Entry', error)
+
+    def _check_move_entry(self, mount_id, source_path, target_path,
+                                                       expected=None):
+        """
+        Checks that move entry is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param source_path: Path of the entry to be moved.
+        @param target_path: Path of the destination for the entry.
+        @param expected: Expected ErrorType. Default: None (ERROR_OK)
+
+        """
+
+        error = self._smbprovider.move_entry(mount_id,
+                                             source_path,
+                                             target_path)
+
+        self._check_result('Move Entry', error, expected)
 
     def _check_result(self, method_name, result, expected=None):
         """
