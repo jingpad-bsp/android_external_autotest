@@ -107,8 +107,14 @@ class enterprise_SmbProviderDaemon(test.test):
         data = 'Hello World!'
         self._check_write_file(mount_id, file_id, 0, data)
 
+        # Read data from file.
+        read_data = self._check_read_file(mount_id, file_id, 0, len(data))
+
         # Close file.
         self._check_close_file(mount_id, file_id)
+
+        # Verify data is written to file correctly.
+        self._check_contents(data, read_data)
 
         # Delete file.
         self._check_delete_entry(mount_id, test_file, False)
@@ -216,6 +222,41 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.write_file(mount_id, file_id, offset, data)
 
         self._check_result('Write File', error)
+
+    def _check_read_file(self, mount_id, file_id, offset, length):
+        """
+        Checks that read file is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param file_id: Unique identifier of the file.
+        @param offset: Offset of the file to start reading from.
+        @param length: Length of data to read in bytes.
+
+        @return A buffer containing the data read.
+
+        """
+
+        error, fd = self._smbprovider.read_file(mount_id, file_id, offset,
+                                                                   length)
+
+        self._check_result('Read File', error)
+
+        return fd
+
+    def _check_contents(self, data, read_data):
+        """
+        Checks that read_data is equal to data.
+
+        @param data: Original data to be compared to.
+        @param read_data: Data to be compared to the original data.
+
+        """
+
+        if data != read_data:
+            logging.error('Failed: Written data does not match Read data')
+            raise error.TestFail(
+                    'Unexpected mismatch of written data and read data.\
+                    Expected: %s , but got: %s' % (data, read_data))
 
     def _check_create_directory(self, mount_id,
                                       directory_path,
