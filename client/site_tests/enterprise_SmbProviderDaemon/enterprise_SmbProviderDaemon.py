@@ -90,6 +90,15 @@ class enterprise_SmbProviderDaemon(test.test):
 
         self._check_create_directory(mount_id, test_dir, False)
         self._check_create_file(mount_id, test_file)
+
+        # Open file with Read-Only priviledges.
+        file_id = self._check_open_file(mount_id, test_file, False)
+        self._check_close_file(mount_id, file_id)
+
+        # Open file with Writeable priviledges.
+        file_id = self._check_open_file(mount_id, test_file, True)
+        self._check_close_file(mount_id, file_id)
+
         self._check_delete_entry(mount_id, test_file, False)
         self._check_delete_entry(mount_id, test_dir, False)
 
@@ -142,6 +151,41 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.create_file(mount_id, file_path)
 
         self._check_result('Create File', error)
+
+    def _check_open_file(self, mount_id, file_path, writeable):
+        """
+        Checks that open file is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param file_path: Path of where the file is located.
+        @param writeable: Boolean to indicated whether the file should
+                be opened with write access.
+
+        """
+
+        error, file_id = self._smbprovider.open_file(mount_id,
+                                                     file_path,
+                                                     writeable)
+
+        if not file_id:
+            error.TestFail('Unexpected file id failure.')
+
+        self._check_result('Open File', error)
+
+        return file_id
+
+    def _check_close_file(self, mount_id, file_id):
+        """
+        Checks that close file is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param file_id: Unique identifier of the file.
+
+        """
+
+        error = self._smbprovider.close_file(mount_id, file_id)
+
+        self._check_result('Close File', error)
 
     def _check_create_directory(self, mount_id,
                                       directory_path,
