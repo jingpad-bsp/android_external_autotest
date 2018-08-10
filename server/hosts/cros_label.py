@@ -250,7 +250,7 @@ class ChameleonPeripheralsLabel(base_label.StringPrefixLabel):
 
 
     def generate_labels(self, host):
-        bt_hid_device = host.chameleon.get_bluetooh_hid_mouse()
+        bt_hid_device = host.chameleon.get_bluetooth_hid_mouse()
         return ['bt_hid'] if bt_hid_device.CheckSerialConnection() else []
 
 

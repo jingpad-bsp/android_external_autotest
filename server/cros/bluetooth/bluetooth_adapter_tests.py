@@ -2080,6 +2080,7 @@ class BluetoothAdapterTests(test.test):
         (cr) $ test_that --args "chameleon_host=$CHAMELEON_IP" "$DUT_IP" <test>
 
         """
+        logging.debug('labels: %s', self.host.get_labels())
         if self.host.chameleon is None:
             raise error.TestError('Have to specify chameleon_host IP.')
 
