@@ -88,6 +88,12 @@ class enterprise_SmbProviderDaemon(test.test):
         test_dir = '/autotest_' + rand_dir_id + '/'
         self._check_create_directory(mount_id, test_dir, False)
 
+        # Get metadata of a directory.
+        metadata = self._check_get_metadata(mount_id, test_dir)
+
+        # Check that GetMetadata has correct values of a directory.
+        self._check_metadata(test_dir[1:-1], 0, True, metadata)
+
         # Create file inside directory.
         test_file = test_dir + '1.txt'
         self._check_create_file(mount_id, test_file)
@@ -115,6 +121,14 @@ class enterprise_SmbProviderDaemon(test.test):
 
         # Verify data is written to file correctly.
         self._check_contents(data, read_data)
+
+        # Get the metadata of the file.
+        metadata = self._check_get_metadata(mount_id, test_file)
+
+        # Check that GetMetadeta has correct values of a file.
+        # TODO(jimmyxgong): len() only works properly for UTF-8. Find way to
+        # get size universally.
+        self._check_metadata('1.txt', len(data), False, metadata)
 
         # Delete file.
         self._check_delete_entry(mount_id, test_file, False)
@@ -172,6 +186,42 @@ class enterprise_SmbProviderDaemon(test.test):
         error = self._smbprovider.unmount(mount_id)
 
         self._check_result('Unmount', error)
+
+    def _check_get_metadata(self, mount_id, entry_path):
+        """
+        Checks that get metadata is working.
+
+        @param mount_id: Unique identifier of the mount.
+        @param entry_path: Path of the entry.
+
+        @return: GetMetaDataEntryOptionsProto blob string returned by the D-Bus
+                 call.
+
+        """
+
+        error, metadata_blob = self._smbprovider.get_metadata(mount_id,
+                                                              entry_path)
+
+        self._check_result('Get Metadata', error)
+
+        return metadata_blob
+
+    def _check_metadata(self, entry_path, size, is_dir, metadata_blob):
+        """
+        Checks that metadata_blob has the correct values.
+
+        @param entry_path: File path of the entry we are checking.
+        @param size: Size of the entry in bytes.
+        @param is_dir: Boolean that indicates whether the entry is a directory.
+        @param metadata_blob: Blob that contains metadata of the entry.
+
+        """
+
+        if entry_path != metadata_blob.name or \
+                size != metadata_blob.size or \
+                is_dir != metadata_blob.is_directory:
+            logging.error('Failed: Metadata is incorrect')
+            raise error.TestFail('Unexpected error with metadata')
 
     def _check_create_file(self, mount_id, file_path):
         """
