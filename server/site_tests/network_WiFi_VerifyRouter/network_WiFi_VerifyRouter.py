@@ -52,6 +52,8 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         in practice. So in effect, this test will be double-testing phy0 and
         phy1 with the 2.4 GHz and 5 GHz portions of the test, respectively.
 
+        Gale is similar to whirlwind, except that it has no phy2 radio.
+
         @param bitmap: int bitmask controlling which antennas to enable.
         @param channel: int Wifi channel to conduct test on
 
@@ -108,11 +110,25 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self):
         """Verify that all radios on this router are functional."""
         all_failures = []
+
+        # ath10k doesn't support support non-contiguous antenna masks. The
+        # driver complains:
+        #   ath10k_ahb a000000.wifi: mac tx antenna chainmask may be invalid:
+        #   0x2.  Suggested values: 15, 7, 3, 1 or 0.
+        # And on gale, the firmware crashes eventually. Whirlwind seems OK for
+        # now.
+        # TODO: communicate this back from the driver better, so we don't have
+        # to build an exception list.
+        if self.context.router.board == "gale":
+            bitmaps = (3, 1)
+        else:
+            bitmaps = (3, 1, 2)
+
         # Run antenna test for 2GHz band and 5GHz band
         for channel in (6, 149):
             # First connect with both antennas enabled. Then connect with just
             # one antenna enabled at a time.
-            for bitmap in (3, 1, 2):
+            for bitmap in bitmaps:
                 failures = set()
                 for _ in range(self.MAX_ASSOCIATION_RETRIES):
                     new_failures = self._antenna_test(bitmap, channel)
