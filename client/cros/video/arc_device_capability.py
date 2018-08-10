@@ -49,7 +49,7 @@ class ArcDeviceCapability(object):
 
         # Parses media_codecs.xml
         root = ET.fromstring(media_codecs_data)
-        arc_caps = dict.fromkeys(self.MEDIA_CODEC_TO_CAPABILITY.keys(), 'no')
+        arc_caps = dict.fromkeys(self.MEDIA_CODEC_TO_CAPABILITY.values(), 'no')
         for mc in root.iter('MediaCodec'):
             codec_name = mc.get('name')
             if codec_name in self.MEDIA_CODEC_TO_CAPABILITY:
