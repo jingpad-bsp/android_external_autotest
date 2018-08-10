@@ -4,6 +4,7 @@ subsystem:wifi
 suite:AFDO_page_replay
 suite:AFDO_record
 suite:another_suite
+suite:app-compat
 suite:arc-bvt-perbuild
 suite:arc-cts
 suite:arc-cts-beta
