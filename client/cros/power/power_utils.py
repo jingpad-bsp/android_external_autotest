@@ -199,6 +199,16 @@ def get_low_battery_shutdown_percent():
     return ret
 
 
+def has_hammer():
+    """Check whether DUT has hammer device or not.
+
+    Returns:
+        boolean whether device has hammer or not
+    """
+    command = 'grep Hammer /sys/bus/usb/devices/*/product'
+    return utils.run(command, ignore_status=True).exit_status == 0
+
+
 def _charge_control_by_ectool(is_charge):
     """execute ectool command.
 
