@@ -88,6 +88,7 @@ class enterprise_SmbProviderDaemon(test.test):
         test_dir = '/autotest_' + rand_dir_id + '/'
 
         self._check_create_directory(mount_id, test_dir, False)
+        self._check_delete_entry(mount_id, test_dir, False)
 
         self._check_unmount(mount_id)
 
@@ -144,6 +145,22 @@ class enterprise_SmbProviderDaemon(test.test):
                                                    recursive)
 
         self._check_result('Create Directory', error)
+
+    def _check_delete_entry(self, mount_id, entry_path, recursive):
+        """
+        Checks that delete an entry works.
+
+        @param mount_id: Unique identifier of the mount.
+        @param entry_path: Path to the file/directory to delete.
+        @param recursive: Boolean to indicate recursive deletes.
+
+        """
+
+        error = self._smbprovider.delete_entry(mount_id,
+                                               entry_path,
+                                               recursive)
+
+        self._check_result('Delete Entry', error)
 
     def _check_result(self, method_name, result, expected=None):
         """
