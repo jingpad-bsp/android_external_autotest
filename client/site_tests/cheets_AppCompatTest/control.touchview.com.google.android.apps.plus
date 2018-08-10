@@ -6,12 +6,11 @@
 AUTHOR = "dhaddock@"
 NAME = "cheets_AppCompatTest.touchview.com.google.android.apps.plus"
 PURPOSE = "Runs AppCompat's UIAutomator tests."
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:app-compat"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
-DEPENDENCIES = "arc, board:eve"
 
 DOC = """
 This test starts Android container, then kicks of the UIAutomator tests from
