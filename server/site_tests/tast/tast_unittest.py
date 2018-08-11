@@ -286,9 +286,20 @@ class TastTest(unittest.TestCase):
     def testListCommandFails(self):
         """Tests that an error is raised if the list command fails."""
         self._init_tast_commands([])
+
+        # The list subcommand writes log messages to stderr on failure.
+        FAILURE_MSG = "failed to connect"
         self._tast_commands['list'].status = 1
-        with self.assertRaises(error.TestFail) as _:
+        self._tast_commands['list'].stdout = None
+        self._tast_commands['list'].stderr = 'blah blah\n%s\n' % FAILURE_MSG
+
+        # The first line of the exception should include the last line of output
+        # from tast.
+        with self.assertRaises(error.TestFail) as cm:
             self._run_test()
+        first_line = str(cm.exception).split('\n')[0]
+        self.assertTrue(FAILURE_MSG in first_line,
+                        '"%s" not in "%s"' % (FAILURE_MSG, first_line))
 
     def testListCommandPrintsGarbage(self):
         """Tests that an error is raised if the list command prints bad data."""
@@ -341,12 +352,13 @@ class TastTest(unittest.TestCase):
         self._tast_commands['run'].file_path = None
         self._tast_commands['run'].stdout = 'blah blah\n%s\n' % FAILURE_MSG
 
-        # The exception should include the last line of output from tast rather
-        # than a message about the missing results file.
+        # The first line of the exception should include the last line of output
+        # from tast rather than a message about the missing results file.
         with self.assertRaises(error.TestFail) as cm:
             self._run_test()
-        self.assertTrue(FAILURE_MSG in str(cm.exception),
-                        '"%s" not in "%s"' % (FAILURE_MSG, str(cm.exception)))
+        first_line = str(cm.exception).split('\n')[0]
+        self.assertTrue(FAILURE_MSG in first_line,
+                        '"%s" not in "%s"' % (FAILURE_MSG, first_line))
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
                          status_string(self._job.status_entries))
 
