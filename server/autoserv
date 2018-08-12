@@ -324,10 +324,10 @@ def _control_path_on_disk(control_name):
     return tests[0].path
 
 
-def _stage_control_file(parser, results_dir):
-    """Stage the control file to execute, returning the path to staged file.
+def _stage_control_file(control_name, results_dir):
+    """Stage the control file to execute from local autotest checkout.
 
-    @param parser: Parser for autoserv options.
+    @param control_name: Name of the control file to stage.
     @param results_dir: Results directory to stage the control file into.
     @return: Absolute path to the staged control file.
     """
@@ -335,7 +335,7 @@ def _stage_control_file(parser, results_dir):
     # the local filesystem. This means that both
     # parser.options.test_source_build and parser.options.image are ignored.
     # Support will be added once skylab gains support to run SSP tests.
-    control_path = _control_path_on_disk(parser.options.control_name)
+    control_path = _control_path_on_disk(control_name)
     new_control = os.path.join(results_dir, _CONTROL_FILE_FROM_CONTROL_NAME)
     shutil.copy2(control_path, new_control)
     return new_control
@@ -488,7 +488,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     is_special_task = (verify or repair or cleanup or collect_crashinfo or
                        provision or reset)
     if parser.options.control_name:
-        control = _stage_control_file(parser, results)
+        control = _stage_control_file(parser.options.control_name, results)
         _tweak_arguments_for_control_file(parser, control)
     elif parser.args:
         control = parser.args[0]
