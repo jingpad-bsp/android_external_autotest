@@ -112,9 +112,8 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
                                       'downloading before any more '
                                       'interruptions. Started interrupting '
                                       'at: %f' % progress)
-            if not self._update_continued_where_it_left_off(completed):
-                raise error.TestFail('The update did not continue where it '
-                                     'left off before rebooting.')
+            if self._is_update_engine_idle():
+                raise error.TestFail('The update was IDLE after reboot.')
 
             # Disconnect / Reconnect network.
             completed = self._get_update_progress()

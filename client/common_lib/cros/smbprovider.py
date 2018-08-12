@@ -133,6 +133,35 @@ class SmbProvider(object):
 
         return self._smbproviderd.Unmount(_proto_to_blob(proto))
 
+    def create_directory(self, mount_id, directory_path, recursive):
+        """
+        Creates a directory.
+
+        @param mount_id: Mount ID corresponsding to the share.
+        @param directory_path: Path of the directory to read.
+        @param recursive: Boolean to indicate whether directories should be
+                created recursively.
+
+        @return: ErrorType from the returned D-Bus call.
+
+        """
+
+        logging.info("Creating directory: %s", directory_path)
+
+        from directory_entry_pb2 import CreateDirectoryOptionsProto
+        from directory_entry_pb2 import ERROR_OK
+
+        proto = CreateDirectoryOptionsProto()
+        proto.mount_id = mount_id
+        proto.directory_path = directory_path
+        proto.recursive = recursive
+
+        return self._smbproviderd.CreateDirectory(
+                _proto_to_blob(proto),
+                timout=self._DEFAULT_TIMEOUT,
+                byte_arrays=True)
+
+
     def read_directory(self, mount_id, directory_path):
         """
         Reads a directory.
@@ -330,6 +359,32 @@ class SmbProvider(object):
         return self._smbproviderd.DeleteEntry(_proto_to_blob(proto),
                                               timeout=self._DEFAULT_TIMEOUT,
                                               byte_arrays=True)
+
+    def move_entry(self, mount_id, source_path, target_path):
+        """
+        Moves an entry from source to target destination.
+
+        @param mount_id: Mount ID from the mounted share.
+        @param source_path: Path of the entry to be moved.
+        @param target_path: Path of where the entry will be moved to. Target
+        path must be a non-existent path.
+
+        @return ErrorType returned from the D-Bus call.
+
+        """
+
+        logging.info("Moving file to: %s", target_path)
+
+        from directory_entry_pb2 import MoveEntryOptionsProto
+
+        proto = MoveEntryOptionsProto()
+        proto.mount_id = mount_id
+        proto.source_path = source_path
+        proto.target_path = target_path
+
+        return self._smbproviderd.MoveEntry(_proto_to_blob(proto),
+                                            timeout=self._DEFAULT_TIMEOUT,
+                                            byte_arrays=True)
 
     def truncate(self, mount_id, file_path, length):
         """

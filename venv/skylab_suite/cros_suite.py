@@ -40,6 +40,7 @@ SuiteSpec = collections.namedtuple(
                 'board',
                 'pool',
                 'job_keyvals',
+                'minimum_duts',
         ])
 
 SuiteHandlerSpec = collections.namedtuple(
@@ -51,6 +52,7 @@ SuiteHandlerSpec = collections.namedtuple(
                 'timeout_mins',
                 'test_retry',
                 'max_retries',
+                'use_fallback',
                 'provision_num_required',
         ])
 
@@ -93,6 +95,7 @@ class SuiteHandler(object):
         self._provision_num_required = specs.provision_num_required
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
+        self.use_fallback = specs.use_fallback
 
         # The swarming task id of the suite that this suite_handler is handling.
         self._suite_id = specs.suite_id
@@ -114,6 +117,14 @@ class SuiteHandler(object):
     def is_provision(self):
         """Return whether the suite handler is for provision suite."""
         return self._suite_name == 'provision'
+
+    def should_use_fallback(self):
+        """Return whether to use fallback to trigger child tests.
+
+        It's either specified by user with --use_fallback, or it's a
+        provision suite.
+        """
+        return self.use_fallback or self.is_provision()
 
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.
@@ -283,6 +294,7 @@ class Suite(object):
         self.board = spec.board
         self.pool = spec.pool
         self.job_keyvals = spec.job_keyvals
+        self.minimum_duts = spec.minimum_duts
 
     @property
     def ds(self):
@@ -334,34 +346,32 @@ class Suite(object):
         self._parse_suite_args()
         keyvals = self._create_suite_keyvals()
         available_bots = self._get_available_bots()
+        if len(available_bots) < self.minimum_duts:
+            raise errors.NoAvailableDUTsError(
+                    self.board, self.pool, len(available_bots),
+                    self.minimum_duts)
+
         tests = self._find_tests(available_bots_num=len(available_bots))
         self.test_specs = self._get_test_specs(tests, available_bots, keyvals)
 
-    def _get_test_specs(self, tests, available_bots, keyvals):
-        test_specs = []
-        for idx, test in enumerate(tests):
-            if idx < len(available_bots):
-                bot_id = available_bots[idx]['bot_id']
-                dut_name = swarming_lib.get_task_dut_name(
-                        available_bots[idx]['dimensions'])
-            else:
-                bot_id = ''
-                dut_name = ''
-            test_specs.append(TestSpec(
-                    test=test,
-                    priority=self.priority,
-                    board=self.board,
-                    pool=self.pool,
-                    build=self.test_source_build,
-                    bot_id=bot_id,
-                    dut_name=dut_name,
-                    keyvals=keyvals,
-                    expiration_secs=self.EXPIRATION_SECS,
-                    grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
-                    execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
-                    io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS))
+    def _create_test_spec(self, test, keyvals, bot_id='', dut_name=''):
+        return TestSpec(
+                test=test,
+                priority=self.priority,
+                board=self.board,
+                pool=self.pool,
+                build=self.test_source_build,
+                bot_id=bot_id,
+                dut_name=dut_name,
+                keyvals=keyvals,
+                expiration_secs=self.EXPIRATION_SECS,
+                grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+                io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
+        )
 
-        return test_specs
+    def _get_test_specs(self, tests, available_bots, keyvals):
+        return [self._create_test_spec(test, keyvals) for test in tests]
 
     def _stage_suite_artifacts(self):
         """Stage suite control files and suite-to-tests mapping file.
@@ -395,8 +405,12 @@ class Suite(object):
         return suite_common.filter_tests(tests)
 
     def _get_available_bots(self):
-        """Get available bots for normal suites."""
-        return []
+        """Get available bots for suites."""
+        bots = swarming_lib.query_bots_list({
+                'pool': swarming_lib.SKYLAB_DRONE_POOL,
+                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
+                'label-board': self.board})
+        return [bot for bot in bots if swarming_lib.bot_available(bot)]
 
 
 class ProvisionSuite(Suite):
@@ -420,15 +434,21 @@ class ProvisionSuite(Suite):
         if available_bots_num < self._num_required:
             logging.warning('Not enough available DUTs for provision.')
             raise errors.NoAvailableDUTsError(
-                    'Require %d DUTs for provision, but only %d DUTs '
-                    'available.' % (self._num_required, available_bots_num))
+                    self.board, self.pool, available_bots_num,
+                    self._num_required)
 
         return [dummy_test] * max(self._num_required, available_bots_num)
 
-    def _get_available_bots(self):
-        """Get available bots for provision suites."""
-        bots = swarming_lib.query_bots_list({
-                'pool': swarming_lib.SKYLAB_DRONE_POOL,
-                'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(self.pool),
-                'label-board': self.board})
-        return [bot for bot in bots if swarming_lib.bot_available(bot)]
+    def _get_test_specs(self, tests, available_bots, keyvals):
+        test_specs = []
+        for idx, test in enumerate(tests):
+            if idx < len(available_bots):
+                bot = available_bots[idx]
+                test_specs.append(self._create_test_spec(
+                        test, keyvals, bot_id=bot['bot_id'],
+                        dut_name=swarming_lib.get_task_dut_name(
+                                bot['dimensions'])))
+            else:
+                test_specs.append(self._create_test_spec(test, keyvals))
+
+        return test_specs
