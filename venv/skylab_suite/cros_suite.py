@@ -41,6 +41,7 @@ SuiteSpec = collections.namedtuple(
                 'pool',
                 'job_keyvals',
                 'minimum_duts',
+                'timeout_mins',
         ])
 
 SuiteHandlerSpec = collections.namedtuple(
@@ -295,6 +296,7 @@ class Suite(object):
         self.pool = spec.pool
         self.job_keyvals = spec.job_keyvals
         self.minimum_duts = spec.minimum_duts
+        self.timeout_mins = spec.timeout_mins
 
     @property
     def ds(self):
@@ -364,7 +366,7 @@ class Suite(object):
                 bot_id=bot_id,
                 dut_name=dut_name,
                 keyvals=keyvals,
-                expiration_secs=self.EXPIRATION_SECS,
+                expiration_secs=self.timeout_mins * 60,
                 grace_period_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                 execution_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
                 io_timeout_secs=swarming_lib.DEFAULT_TIMEOUT_SECS,
