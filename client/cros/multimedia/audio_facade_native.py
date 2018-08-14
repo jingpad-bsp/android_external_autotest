@@ -521,3 +521,64 @@ class Player(object):
 
         """
         self.stop()
+
+
+class ListenerError(Exception):
+    """Error in Listener."""
+    pass
+
+
+class Listener(object):
+    """The class to control listening subprocess.
+
+    Properties:
+        file_path: The path to recorded file. It should be accessed after
+                   stop() is called.
+
+    """
+    def __init__(self):
+        """Initializes a Listener."""
+        _, self.file_path = tempfile.mkstemp(prefix='listen_', suffix='.raw')
+        self._capture_subprocess = None
+
+
+    def start(self, data_format):
+        """Starts listening.
+
+        Starts listening subprocess. It can be stopped by calling stop().
+
+        @param data_format: A dict containing:
+                            file_type: 'raw'.
+                            sample_format: 'S16_LE' for 16-bit signed integer in
+                                           little-endian.
+                            channel: channel number.
+                            rate: sampling rate.
+
+        @raises: ListenerError: If listening subprocess is terminated
+                 unexpectedly.
+
+        """
+        self._capture_subprocess = cmd_utils.popen(
+                cras_utils.listen_cmd(
+                        capture_file=self.file_path, duration=None,
+                        channels=data_format['channel'],
+                        rate=data_format['rate']))
+
+
+    def stop(self):
+        """Stops listening subprocess."""
+        if self._capture_subprocess.poll() is None:
+            self._capture_subprocess.terminate()
+        else:
+            raise ListenerError(
+                    'Listening process was terminated unexpectedly.')
+
+
+    def cleanup(self):
+        """Cleanup the resources.
+
+        Terminates the listening process if needed.
+
+        """
+        if self._capture_subprocess and self._capture_subprocess.poll() is None:
+            self._capture_subprocess.terminate()
