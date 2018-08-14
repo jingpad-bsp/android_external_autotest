@@ -54,7 +54,7 @@ class UpdateEngineTest(test.test, update_engine_util.UpdateEngineUtil):
         # DUT to be reconnected.
         utils.poll_for_condition(lambda: utils.ping(ping_server,
                                                     tries=3, timeout=10) == 0,
-                                 timeout=60,
+                                 timeout=120,
                                  sleep_interval=1,
                                  exception=error.TestFail(
                                      'Ping failed after reconnecting network'))
