@@ -258,9 +258,15 @@ def _throttle_result_size(path):
         return
 
     max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
-    # Client side test saves the test control to file `control`, while server
-    # side test saves the test control to file `control.srv`
-    for control_file in ['control', 'control.srv']:
+    hardcoded_control_file_names = (
+            # client side test control, as saved in old Autotest paths.
+            'control',
+            # server side test control, as saved in old Autotest paths.
+            'control.srv',
+            # All control files, as saved in skylab.
+            'control.from_control_name',
+    )
+    for control_file in hardcoded_control_file_names:
         control = os.path.join(path, control_file)
         try:
             max_result_size_KB = control_data.parse_control(
