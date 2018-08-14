@@ -235,9 +235,13 @@ class tast(test.test):
         except error.CmdError as e:
             # The tast command's output generally ends with a line describing
             # the error that was encountered; include it in the first line of
-            # the TestFail exception.
-            lines = e.result_obj.stdout.strip().split('\n')
-            msg = (' (last line: %s)' % lines[-1].strip()) if lines else ''
+            # the TestFail exception. Fall back to stderr if stdout is empty (as
+            # is the case with the "list" subcommand, which uses stdout to print
+            # test data).
+            get_last_line = lambda s: s.strip().split('\n')[-1].strip()
+            last_line = (get_last_line(e.result_obj.stdout) or
+                         get_last_line(e.result_obj.stderr))
+            msg = (' (last line: %s)' % last_line) if last_line else ''
             raise error.TestFail('Failed to run tast%s: %s' % (msg, str(e)))
         except error.CmdTimeoutError as e:
             raise error.TestFail('Got timeout while running tast: %s' % str(e))
