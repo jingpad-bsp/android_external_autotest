@@ -14,6 +14,7 @@
 
 import logging
 import os
+import tempfile
 
 from autotest_lib.server import utils
 from autotest_lib.server.cros import tradefed_test
@@ -61,6 +62,9 @@ class cheets_GTS(tradefed_test.TradefedTest):
         @return: The result object from utils.run.
         """
         gts_tradefed = os.path.join(self._repository, 'tools', 'gts-tradefed')
+        env = None
+        if self._authkey:
+            env = dict(os.environ, APE_API_KEY=self._authkey)
         with tradefed_test.adb_keepalive(self._get_adb_targets(),
                                          self._install_paths):
             for command in commands:
@@ -70,6 +74,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 output = self._run(
                     gts_tradefed,
                     args=tuple(command),
+                    env=env,
                     timeout=timeout,
                     verbose=True,
                     ignore_status=False,
@@ -93,6 +98,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                  needs_push_media=False,
                  precondition_commands=[],
                  login_precondition_commands=[],
+                 authkey=None,
                  timeout=_GTS_TIMEOUT_SECONDS):
         """Runs the specified GTS once, but with several retries.
 
@@ -117,6 +123,12 @@ class cheets_GTS(tradefed_test.TradefedTest):
         @param login_precondition_commands: a list of scripts to be run on the
         dut before the log-in for the test is performed.
         """
+
+        # Download the GTS auth key to the local temp directory.
+        self._authkey = None
+        if authkey:
+            tmpdir = tempfile.mkdtemp()
+            self._authkey = self._download_to_dir(authkey, tmpdir)
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
