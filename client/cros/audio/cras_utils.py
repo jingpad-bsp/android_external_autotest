@@ -93,6 +93,33 @@ def capture_cmd(
     return args
 
 
+def listen_cmd(
+        capture_file, block_size=None, duration=10, channels=1, rate=48000):
+    """Gets a command to listen on hotword and record audio into the file with
+       given settings.
+
+    @param capture_file: the name of file the audio to be stored in.
+    @param block_size: the number of frames per callback(dictates latency).
+    @param duration: seconds to record. If it is None, duration is not set,
+                     and command will keep capturing audio until it is
+                     terminated.
+    @param channels: number of channels.
+    @param rate: the sampling rate.
+
+    @returns: The command args put in a list of strings.
+
+    """
+    args = [_CRAS_TEST_CLIENT]
+    args += ['--listen_for_hotword', capture_file]
+    if block_size is not None:
+        args += ['--block_size', str(block_size)]
+    if duration is not None:
+        args += ['--duration', str(duration)]
+    args += ['--num_channels', str(channels)]
+    args += ['--rate', str(rate)]
+    return args
+
+
 def loopback(*args, **kargs):
     """A helper function to execute loopback_cmd.
 
