@@ -97,11 +97,15 @@ class UpdateEngineUtil(object):
             if not status:
                 continue
             if self._UPDATE_STATUS_IDLE == status[self._CURRENT_OP]:
+                err_str = self._get_last_error_string()
                 raise error.TestFail('Update status was idle while trying to '
-                                     'get download status.')
+                                     'get download status. Last error: %s' %
+                                     err_str)
             if self._UPDATE_STATUS_REPORTING_ERROR_EVENT == status[
                 self._CURRENT_OP]:
-                raise error.TestFail('Update status reported error.')
+                err_str = self._get_last_error_string()
+                raise error.TestFail('Update status reported error: %s' %
+                                     err_str)
             if self._UPDATE_STATUS_UPDATED_NEED_REBOOT == status[
                 self._CURRENT_OP]:
                 raise error.TestFail('Update status was NEEDS_REBOOT while '
@@ -379,3 +383,21 @@ class UpdateEngineUtil(object):
             self._host.get_file(file_location, self.resultsdir)
         except error.AutoservRunError:
             logging.exception('Failed to take screenshot.')
+
+
+    def _get_last_error_string(self):
+        """
+        Gets the last error message in the update engine log.
+
+        @returns: The error message.
+
+        """
+        err_str = 'Updating payload state for error code'
+        log = self._run('cat %s' % self._UPDATE_ENGINE_LOG).stdout.split()
+        targets = [line for line in log if err_str in line]
+        logging.debug('Error lines found: %s', targets)
+        if not targets:
+          return None
+        else:
+          return targets[-1].rpartition(':')[2]
+
