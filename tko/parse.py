@@ -40,6 +40,16 @@ _ParseOptions = collections.namedtuple(
     'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
                      'datastore_creds', 'export_to_gcloud_path'])
 
+_HARDCODED_CONTROL_FILE_NAMES = (
+        # client side test control, as saved in old Autotest paths.
+        'control',
+        # server side test control, as saved in old Autotest paths.
+        'control.srv',
+        # All control files, as saved in skylab.
+        'control.from_control_name',
+)
+
+
 def parse_args():
     """Parse args."""
     # build up our options parser and parse sys.argv
@@ -274,15 +284,7 @@ def _max_result_size_from_control(path):
 
     If not overrides is found, returns None.
     """
-    hardcoded_control_file_names = (
-            # client side test control, as saved in old Autotest paths.
-            'control',
-            # server side test control, as saved in old Autotest paths.
-            'control.srv',
-            # All control files, as saved in skylab.
-            'control.from_control_name',
-    )
-    for control_file in hardcoded_control_file_names:
+    for control_file in _HARDCODED_CONTROL_FILE_NAMES:
         control = os.path.join(path, control_file)
         if not os.path.exists(control):
             continue
