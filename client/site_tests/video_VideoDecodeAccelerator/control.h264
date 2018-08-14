@@ -18,7 +18,6 @@ TEST_TYPE = "client"
 JOB_RETRIES = 2
 # Reboot in the lab after the test ends.
 DEPENDENCIES = "cleanup-reboot"
-RETRIES = 1
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
