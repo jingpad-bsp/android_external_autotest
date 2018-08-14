@@ -267,7 +267,7 @@ def _throttle_result_size(path):
                 path)
         return
 
-    max_result_size_KB = _max_result_size_from_control()
+    max_result_size_KB = _max_result_size_from_control(path)
     if max_result_size_KB is None:
         max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
 
