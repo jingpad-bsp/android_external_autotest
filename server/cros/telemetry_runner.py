@@ -23,34 +23,8 @@ SUCCESS_STATUS = 'SUCCESS'
 WARNING_STATUS = 'WARNING'
 FAILED_STATUS = 'FAILED'
 
-# A list of benchmarks with that the telemetry test harness can run on dut.
-ON_DUT_WHITE_LIST = ['cros_tab_switching.typical_24',
-                     'cros_ui_smoothness',
-                     'dromaeo',
-                     'image_decoding.image_decoding_measurement',
-                     'jetstream',
-                     'kraken',
-                     'memory.top_7_stress',
-                     'octane',
-                     'page_cycler.typical_25',
-                     'page_cycler_v2.typical_25',
-                     'smoothness.top_25_smooth',
-                     'smoothness.tough_animation_cases',
-                     'smoothness.tough_canvas_cases',
-                     'smoothness.tough_filters_cases',
-                     'smoothness.tough_pinch_zoom_cases',
-                     'smoothness.tough_scrolling_cases',
-                     'smoothness.tough_webgl_cases',
-                     'speedometer',
-                     'speedometer2',
-                     'tab_switching.top_10',
-                     'tab_switching.typical_25',
-                     'webrtc.peerconnection',
-                     'webrtc.stress']
-
-# BLACK LIST
-#  'session_restore.cold.typical_25', # profile generator not implemented on
-                                      # CrOS.
+# A list of telemetry tests that cannot run on dut.
+ON_DUT_BLACKLIST = ['system_health.memory_desktop']
 
 class TelemetryResult(object):
     """Class to represent the results of a telemetry run.
@@ -368,7 +342,7 @@ class TelemetryRunner(object):
         """
         logging.debug('Running telemetry benchmark: %s', benchmark)
 
-        if benchmark not in ON_DUT_WHITE_LIST:
+        if benchmark in ON_DUT_BLACKLIST:
             self._telemetry_on_dut = False
 
         if self._telemetry_on_dut:

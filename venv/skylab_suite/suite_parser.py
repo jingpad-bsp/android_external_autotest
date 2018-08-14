@@ -156,4 +156,5 @@ def parse_suite_spec(options):
             pool=options.pool,
             job_keyvals=options.job_keyvals,
             minimum_duts=options.minimum_duts,
+            timeout_mins=options.timeout_mins,
     )
