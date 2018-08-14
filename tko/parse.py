@@ -257,7 +257,23 @@ def _throttle_result_size(path):
                 path)
         return
 
-    max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
+    max_result_size_KB = _max_result_size_from_control()
+    if max_result_size_KB is None:
+        max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
+
+    try:
+        result_utils.execute(path, max_result_size_KB)
+    except:
+        tko_utils.dprint(
+                'Failed to throttle result size of %s.\nDetails %s' %
+                (path, traceback.format_exc()))
+
+
+def _max_result_size_from_control(path):
+    """Gets the max result size set in a control file, if any.
+
+    If not overrides is found, returns None.
+    """
     hardcoded_control_file_names = (
             # client side test control, as saved in old Autotest paths.
             'control',
@@ -271,10 +287,8 @@ def _throttle_result_size(path):
         try:
             max_result_size_KB = control_data.parse_control(
                     control, raise_warnings=False).max_result_size_KB
-            # Any value different from the default is considered to be the one
-            # set in the test control file.
             if max_result_size_KB != control_data.DEFAULT_MAX_RESULT_SIZE_KB:
-                break
+                return max_result_size_KB
         except IOError as e:
             tko_utils.dprint(
                     'Failed to access %s. Error: %s\nDetails %s' %
@@ -283,13 +297,7 @@ def _throttle_result_size(path):
             tko_utils.dprint(
                     'Failed to parse %s. Error: %s\nDetails %s' %
                     (control, e, traceback.format_exc()))
-
-    try:
-        result_utils.execute(path, max_result_size_KB)
-    except:
-        tko_utils.dprint(
-                'Failed to throttle result size of %s.\nDetails %s' %
-                (path, traceback.format_exc()))
+    return None
 
 
 def export_tko_job_to_file(job, jobname, filename):
