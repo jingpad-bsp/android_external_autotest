@@ -15,7 +15,7 @@ TEST_TYPE = 'Server'
 # is terminated early, you will see a line in status.log "Job aborted by
 # autotest_system". You can double-check the "Max runtime" for the job in the
 # Autotest web frontend.
-ATTRIBUTES = "suite:bvt-inline, suite:push_to_prod"
+ATTRIBUTES = "suite:bvt-inline, suite:push_to_prod, suite:skylab_staging_test"
 JOB_RETRIES = 2
 
 DOC = """
