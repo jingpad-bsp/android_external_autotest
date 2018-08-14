@@ -284,6 +284,9 @@ def _max_result_size_from_control(path):
     )
     for control_file in hardcoded_control_file_names:
         control = os.path.join(path, control_file)
+        if not os.path.exists(control):
+            continue
+
         try:
             max_result_size_KB = control_data.parse_control(
                     control, raise_warnings=False).max_result_size_KB
