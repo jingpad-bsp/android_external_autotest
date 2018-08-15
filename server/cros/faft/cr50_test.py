@@ -618,6 +618,12 @@ class Cr50Test(FirmwareTest):
         logging.info(self._get_ccd_open_output())
         self.servo.power_short_press()
         logging.info('long int power button press')
+        # Give cr50 some time to complete the open process. After the last
+        # power button press cr50 erases nvmem and resets the dut before setting
+        # the state to open. Wait a bit so we don't check the ccd state in the
+        # middle of this reset process. Power button requests happen once a
+        # minute, so waiting 10 seconds isn't a big deal.
+        time.sleep(10)
         return (self._ccd_open_job.sp.poll() is not None or 'Open' in
                 self.cr50.get_ccd_info()['State'])
 
