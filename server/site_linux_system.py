@@ -439,6 +439,12 @@ class LinuxSystem(object):
 
         if spatial_streams is None:
             spatial_streams = self.MIN_SPATIAL_STREAMS
+        # We don't want to use the 3rd radio on Whirlwind. Reject it if someone
+        # tries to add a test that uses it.
+        elif spatial_streams < self.MIN_SPATIAL_STREAMS and \
+             self.board == 'whirlwind':
+            raise error.TestError('Requested spatial streams: %d; minimum %d' \
+                                  % (spatial_streams, self.MIN_SPATIAL_STREAMS))
 
         if same_phy_as:
             for net_dev in self._interfaces:
