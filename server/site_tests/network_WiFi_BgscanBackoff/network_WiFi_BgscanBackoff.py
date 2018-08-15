@@ -33,7 +33,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         """
         self._config_first_ap = additional_params[0]
         self._config_second_ap = additional_params[1]
-        self._required_caps = additional_params[2]
 
     def _find_bss_matching_mac_addr(self, iw, mac_addr):
         """ Scan and look for a BSS in the scan results with given mac address.
@@ -47,8 +46,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
-
-        self.context.router.require_capabilities(self._required_caps)
 
         get_assoc_params = lambda conf: xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid(instance=0),
