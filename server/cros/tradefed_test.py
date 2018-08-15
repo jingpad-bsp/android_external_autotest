@@ -508,15 +508,11 @@ class TradefedTest(test.test):
         @param uri: The Google Storage or dl.google.com uri.
         @return Path to the downloaded object, name.
         """
-        # Split uri into 3 pieces for use by gsutil and also by wget.
-        parsed = urlparse.urlparse(uri)
-        filename = os.path.basename(parsed.path)
         # We are hashing the uri instead of the binary. This is acceptable, as
         # the uris are supposed to contain version information and an object is
         # not supposed to be changed once created.
         output_dir = os.path.join(self._tradefed_cache,
                                   hashlib.md5(uri).hexdigest())
-        output = os.path.join(output_dir, filename)
         # Check for existence of cache entry. We check for directory existence
         # instead of file existence, so that _install_bundle can delete original
         # zip files to save disk space.
@@ -528,8 +524,22 @@ class TradefedTest(test.test):
             if os.listdir(output_dir):
                 logging.info('Skipping download of %s, reusing content of %s.',
                              uri, output_dir)
-                return output
+                return os.path.join(output_dir,
+                    os.path.basename(urlparse.urlparse(uri).path))
             logging.error('Empty cache entry detected %s', output_dir)
+        return self._download_to_dir(uri, output_dir)
+
+    def _download_to_dir(self, uri, output_dir):
+        """Downloads the gs|http|https uri from the storage server.
+
+        @param uri: The Google Storage or dl.google.com uri.
+        @output_dir: The directory where the downloaded file should be placed.
+        @return Path to the downloaded object, name.
+        """
+        # Split uri into 3 pieces for use by gsutil and also by wget.
+        parsed = urlparse.urlparse(uri)
+        filename = os.path.basename(parsed.path)
+        output = os.path.join(output_dir, filename)
 
         self._safe_makedirs(output_dir)
         if parsed.scheme not in ['gs', 'http', 'https']:

@@ -40,6 +40,16 @@ _ParseOptions = collections.namedtuple(
     'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
                      'datastore_creds', 'export_to_gcloud_path'])
 
+_HARDCODED_CONTROL_FILE_NAMES = (
+        # client side test control, as saved in old Autotest paths.
+        'control',
+        # server side test control, as saved in old Autotest paths.
+        'control.srv',
+        # All control files, as saved in skylab.
+        'control.from_control_name',
+)
+
+
 def parse_args():
     """Parse args."""
     # build up our options parser and parse sys.argv
@@ -257,18 +267,33 @@ def _throttle_result_size(path):
                 path)
         return
 
-    max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
-    # Client side test saves the test control to file `control`, while server
-    # side test saves the test control to file `control.srv`
-    for control_file in ['control', 'control.srv']:
+    max_result_size_KB = _max_result_size_from_control(path)
+    if max_result_size_KB is None:
+        max_result_size_KB = control_data.DEFAULT_MAX_RESULT_SIZE_KB
+
+    try:
+        result_utils.execute(path, max_result_size_KB)
+    except:
+        tko_utils.dprint(
+                'Failed to throttle result size of %s.\nDetails %s' %
+                (path, traceback.format_exc()))
+
+
+def _max_result_size_from_control(path):
+    """Gets the max result size set in a control file, if any.
+
+    If not overrides is found, returns None.
+    """
+    for control_file in _HARDCODED_CONTROL_FILE_NAMES:
         control = os.path.join(path, control_file)
+        if not os.path.exists(control):
+            continue
+
         try:
             max_result_size_KB = control_data.parse_control(
                     control, raise_warnings=False).max_result_size_KB
-            # Any value different from the default is considered to be the one
-            # set in the test control file.
             if max_result_size_KB != control_data.DEFAULT_MAX_RESULT_SIZE_KB:
-                break
+                return max_result_size_KB
         except IOError as e:
             tko_utils.dprint(
                     'Failed to access %s. Error: %s\nDetails %s' %
@@ -277,13 +302,7 @@ def _throttle_result_size(path):
             tko_utils.dprint(
                     'Failed to parse %s. Error: %s\nDetails %s' %
                     (control, e, traceback.format_exc()))
-
-    try:
-        result_utils.execute(path, max_result_size_KB)
-    except:
-        tko_utils.dprint(
-                'Failed to throttle result size of %s.\nDetails %s' %
-                (path, traceback.format_exc()))
+    return None
 
 
 def export_tko_job_to_file(job, jobname, filename):

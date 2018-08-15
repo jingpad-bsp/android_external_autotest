@@ -61,7 +61,7 @@ class GraphicsTest(test.test):
     def __init__(self, *args, **kwargs):
         """Initialize flag setting."""
         super(GraphicsTest, self).__init__(*args, **kwargs)
-        self._failures = []
+        self._failures_by_description = {}
         self._player = None
 
     def initialize(self, raise_error_on_hang=False, *args, **kwargs):
@@ -101,12 +101,12 @@ class GraphicsTest(test.test):
 
     @contextlib.contextmanager
     def failure_report(self, name, subtest=None):
-        """Record the failure of an operation to the self._failures.
+        """Record the failure of an operation to self._failures_by_description.
 
         Records if the operation taken inside executed normally or not.
         If the operation taken inside raise unexpected failure, failure named
-        |name|, will be added to the self._failures list and reported to the
-        chrome perf dashboard in the cleanup stage.
+        |name|, will be added to the self._failures_by_description dictionary
+        and reported to the chrome perf dashboard in the cleanup stage.
 
         Usage:
             # Record failure of doSomething
@@ -185,7 +185,7 @@ class GraphicsTest(test.test):
                 'graph': self._get_failure_graph_name(),
                 'names': [name],
             }
-            self._failures.append(target)
+            self._failures_by_description[target['description']] = target
         return target
 
     def remove_failures(self, name, subtest=None):
@@ -217,7 +217,7 @@ class GraphicsTest(test.test):
 
         total_failures = 0
         # Report subtests failures
-        for failure in self._failures:
+        for failure in self._failures_by_description.values():
             if len(failure['names']) > 0:
                 logging.debug('GraphicsTest failure: %s' % failure['names'])
                 total_failures += len(failure['names'])
@@ -250,16 +250,13 @@ class GraphicsTest(test.test):
     def _get_failure(self, name, subtest):
         """Get specific failures."""
         description = self._get_failure_description(name, subtest=subtest)
-        for failure in self._failures:
-            if failure['description'] == description:
-                return failure
-        return None
+        return self._failures_by_description.get(description, None)
 
     def get_failures(self):
         """
         Get currently recorded failures list.
         """
-        return [name for failure in self._failures
+        return [name for failure in self._failures_by_description.values()
                 for name in failure['names']]
 
     def open_vt1(self):

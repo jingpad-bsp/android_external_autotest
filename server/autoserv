@@ -324,38 +324,17 @@ def _control_path_on_disk(control_name):
     return tests[0].path
 
 
-def _stage_control_file(parser, results_dir):
-    """Stage the control file to execute, returning the path to staged file.
+def _stage_control_file(control_name, results_dir):
+    """Stage the control file to execute from local autotest checkout.
 
-    @param parser: Parser for autoserv options.
+    @param control_name: Name of the control file to stage.
     @param results_dir: Results directory to stage the control file into.
     @return: Absolute path to the staged control file.
     """
-    # TODO(pprabhu) This function currently always stages the control file from
-    # the local filesystem. This means that both
-    # parser.options.test_source_build and parser.options.image are ignored.
-    # Support will be added once skylab gains support to run SSP tests.
-    control_path = _control_path_on_disk(parser.options.control_name)
+    control_path = _control_path_on_disk(control_name)
     new_control = os.path.join(results_dir, _CONTROL_FILE_FROM_CONTROL_NAME)
     shutil.copy2(control_path, new_control)
     return new_control
-
-
-def _tweak_arguments_for_control_file(parser, control):
-    """Tweak parser arguments to pass in control.
-
-    autoserv running within an SSP container may not support the --test-name
-    argument. We also do not want to duplicate the effort and logic to obtain
-    the right control file outside and inside the SSP container. Instead, we
-    tweak the parser commandline in order to pass in the given control file.
-    """
-    # control_name overrides the control argument, so unset it to force the
-    # autoserv re-execution to use the control file set here.
-    parser.control_name = None
-    if parser.args:
-        parser.args[0] = control
-    else:
-        parser.args.append(control)
 
 
 def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
@@ -488,16 +467,19 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     is_special_task = (verify or repair or cleanup or collect_crashinfo or
                        provision or reset)
     if parser.options.control_name:
-        control = _stage_control_file(parser, results)
-        _tweak_arguments_for_control_file(parser, control)
+        if use_ssp:
+            # When use_ssp is True, autoserv will be re-executed inside a
+            # container preserving the --control-name argument. Control file
+            # will be staged inside the rexecuted autoserv.
+            control = None
+        else:
+            control = _stage_control_file(parser.options.control_name, results)
     elif parser.args:
         control = parser.args[0]
     else:
-        # Special tasks do not have any control file at all.
+        if not is_special_task:
+            parser.parser.error("Missing argument: control file")
         control = None
-
-    if not any([is_special_task, control]):
-        parser.parser.error("Missing argument: control file")
 
     if ssh_verbosity > 0:
         # ssh_verbosity is an integer between 0 and 3, inclusive
