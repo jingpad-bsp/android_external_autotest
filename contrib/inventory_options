@@ -14,7 +14,7 @@ if [ $# -eq 0 ]; then
   # generated twice.  We don't want that, so unless this is the
   # primary server, quash this job.
   if ! cli/atest server list $(hostname) 2>&1 |
-      grep -q '^Status *: *primary'; then
+      grep -q 'STATUS_PRIMARY'; then
     exit 0
   fi
 
