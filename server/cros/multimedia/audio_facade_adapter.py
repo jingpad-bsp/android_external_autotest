@@ -113,6 +113,36 @@ class AudioFacadeRemoteAdapter(object):
         return path
 
 
+    def start_listening(self, data_format):
+        """Starts listening horword on DUT.
+
+        @param data_format: A dict containing:
+                            file_type: 'raw'.
+                            sample_format: 'S16_LE' for 16-bit signed integer in
+                                           little-endian.
+                            channel: channel number.
+                            rate: sampling rate.
+
+        @returns: True
+
+        """
+        self._audio_proxy.start_listening(data_format)
+        return True
+
+
+    def stop_listening(self):
+        """Stops listening on DUT.
+
+        @returns: the path to the recorded file on DUT.
+
+        @raises: AudioFacadeError if hotwording does not work on DUT.
+        """
+        path = self._audio_proxy.stop_listening()
+        if not path:
+            raise AudioFacadeError('Listening does not work on DUT.')
+        return path
+
+
     def get_recorded_file(self, remote_path, local_path):
         """Gets a recorded file from DUT.
 
