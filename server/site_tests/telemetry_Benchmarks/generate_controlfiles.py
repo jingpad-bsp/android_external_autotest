@@ -31,6 +31,7 @@ PERF_PER_BUILD_TESTS = (
     'loading.desktop',
     'octane',
     'page_cycler_v2.typical_25',
+    'rendering.desktop',
     'speedometer',
     'speedometer2',
 )
@@ -58,7 +59,8 @@ ALL_TESTS = (PERF_PER_BUILD_TESTS +
              PERF_NO_SUITE)
 
 EXTRA_ARGS_MAP = {
-    'loading.desktop': '--story-tag-filter=typical'
+    'loading.desktop': '--story-tag-filter=typical',
+    'rendering.desktop': '--story-tag-filter=top_real_world_desktop',
 }
 
 DEFAULT_YEAR = str(datetime.now().year)
