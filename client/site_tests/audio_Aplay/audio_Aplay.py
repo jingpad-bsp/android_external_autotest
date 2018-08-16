@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re
-
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import alsa_utils
@@ -92,4 +90,7 @@ class audio_Aplay(test.test):
 
         @param duration: the duration to run aplay in seconds.
         """
+        # Stop CRAS to make sure the audio device won't be occupied.
+        utils.stop_service('cras', ignore_status=True)
         _check_play(duration, APLAY_EXPECTED)
+        utils.start_service('cras', ignore_status=True)
