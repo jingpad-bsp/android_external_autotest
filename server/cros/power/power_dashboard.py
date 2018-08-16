@@ -43,6 +43,9 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
         if not platform.startswith(board):
             board += '_' + platform
 
+        if self._host.has_hammer():
+            board += '_hammer'
+
         dut_info_dict = {
             'board': board,
             'version': {

@@ -1732,6 +1732,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return ret
 
 
+    def has_hammer(self):
+        """Check whether DUT has hammer device or not.
+
+        @returns boolean whether device has hammer or not
+        """
+        command = 'grep Hammer /sys/bus/usb/devices/*/product'
+        return self.run(command, ignore_status=True).exit_status == 0
+
+
     def is_chrome_switch_present(self, switch):
         """Returns True if the specified switch was provided to Chrome.
 
