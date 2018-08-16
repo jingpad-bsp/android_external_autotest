@@ -96,6 +96,19 @@ class AudioInputWidget(AudioWidget):
         self._remote_rec_path, self._rec_format = self.handler.stop_recording()
 
 
+    def start_listening(self):
+        """Starts listening."""
+        self._remote_rec_path = None
+        self._rec_binary = None
+        self._rec_format = None
+        self.handler.start_listening()
+
+
+    def stop_listening(self):
+        """Stops listening."""
+        self._remote_rec_path, self._rec_format = self.handler.stop_listening()
+
+
     def read_recorded_binary(self):
         """Gets recorded file from handler and fills _rec_binary."""
         self._rec_binary = self.handler.get_recorded_binary(
