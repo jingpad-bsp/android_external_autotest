@@ -199,8 +199,10 @@ function launch_task(task) {
 }
 
 function page_timestamps_new_record(tab_id, url, start) {
+  // sanitize url, make http(s)://www.abc.com/d/e/f into www.abc.com
+  sanitized_url = url.replace(/https?:\/\//, '').split('/')[0];
   page_timestamps_recorder[tab_id] = {
-    'url': url,
+    'url': sanitized_url,
     'start_time': start,
     'end_load_time': null,
     'end_browse_time': null
