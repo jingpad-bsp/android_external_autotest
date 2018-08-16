@@ -59,9 +59,8 @@ def check_is_platform(dut, name):
     @returns: True, if CfM's platform is same as expected.
               False, if not.
     """
-    cmd = ("cat /var/log/platform_info.txt | grep name | "
-           "awk -v N=3 \'{print $N}\'")
-    output = dut.run(cmd, ignore_status=True).stdout.split()[0]
+    cmd = "mosys platform name"
+    output = dut.run(cmd, ignore_status=True).stdout.strip()
     logging.info('---cmd: %s', cmd)
     logging.info('---output: %s', output.lower())
     return output.lower() == name
