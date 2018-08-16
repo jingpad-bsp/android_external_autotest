@@ -18,6 +18,21 @@ not be the case (list of interfaces might be different for example).
 from autotest_lib.client.common_lib.cros.cfm.usb import usb_device_spec
 
 # Cameras
+AVER_CAM520_CAMERA = usb_device_spec.UsbDeviceSpec(
+    vid='2574',
+    pid='0910',
+    product='CAM520',
+    interfaces=['uvcvideo', 'uvcvideo', 'usbhid'],
+)
+
+AVER_VC520_CAMERA = usb_device_spec.UsbDeviceSpec(
+    vid='2574',
+    pid='0901',
+    product='VC520+',
+    interfaces=['uvcvideo', 'uvcvideo', 'snd-usb-audio',
+                'snd-usb-audio', 'snd-usb-audio', 'usbhid'],
+)
+
 HUDDLY_GO = usb_device_spec.UsbDeviceSpec(
     vid='2bd9',
     pid='0011',
