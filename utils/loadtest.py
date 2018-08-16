@@ -414,6 +414,7 @@ class Runner(object):
         return versions[(last_index + 1) % len(versions)]
 
     def stage(self, build):
+        """Stage artifacts for a given build."""
         logging.debug('Staging %s', build)
         self.ds.stage_artifacts(build, PAYLOADS)
 
