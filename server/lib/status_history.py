@@ -113,26 +113,6 @@ class _JobEvent(object):
     _LOG_URL_PATTERN = get_config_value('CROS', 'log_url_pattern')
 
     @classmethod
-    def get_log_url(cls, afe_hostname, logdir):
-        """Return a URL to job results.
-
-        The URL is constructed from a base URL determined by the
-        global config, plus the relative path of the job's log
-        directory.
-
-        @param afe_hostname Hostname for autotest frontend
-        @param logdir Relative path of the results log directory.
-
-        @return A URL to the requested results log.
-
-        """
-        return cls._LOG_URL_PATTERN % (
-            rpc_client_lib.add_protocol(afe_hostname),
-            logdir,
-        )
-
-
-    @classmethod
     def get_gs_url(cls, logdir):
         """Return a GS URL to job results.
 
@@ -192,13 +172,16 @@ class _JobEvent(object):
     @property
     def job_url(self):
         """Return the URL for this event's job logs."""
-        raise NotImplementedError()
+        return self._LOG_URL_PATTERN % (
+            rpc_client_lib.add_protocol(self._afe_hostname),
+            self.logdir,
+        )
 
 
     @property
     def gs_url(self):
         """Return the GS URL for this event's job logs."""
-        raise NotImplementedError()
+        return self.get_gs_url(self.logdir)
 
 
     @property
@@ -321,16 +304,6 @@ class _SpecialTaskEvent(_JobEvent):
 
 
     @property
-    def job_url(self):
-        return _SpecialTaskEvent.get_log_url(self._afe_hostname, self.logdir)
-
-
-    @property
-    def gs_url(self):
-        return _SpecialTaskEvent.get_gs_url(self.logdir)
-
-
-    @property
     def job_id(self):
         return None
 
@@ -412,16 +385,6 @@ class _TestJobEvent(_JobEvent):
     @property
     def logdir(self):
         return _get_job_logdir(self._hqe.job)
-
-
-    @property
-    def job_url(self):
-        return _TestJobEvent.get_log_url(self._afe_hostname, self.logdir)
-
-
-    @property
-    def gs_url(self):
-        return _TestJobEvent.get_gs_url(self.logdir)
 
 
     @property

@@ -177,8 +177,8 @@ class UserCrashTest(crash_test.CrashTest):
 
     def _run_crasher_process(self, username, cause_crash=True, consent=True,
                              crasher_path=None, run_crasher=None,
-                             expected_uid=None, expected_exit_code=None,
-                             expected_reason=None):
+                             expected_uid=None, expected_gid=None,
+                             expected_exit_code=None, expected_reason=None):
         """Runs the crasher process.
 
         Will wait up to 10 seconds for crash_reporter to report the crash.
@@ -200,7 +200,8 @@ class UserCrashTest(crash_test.CrashTest):
                 ...
                 return (exit_code, output, pid)
 
-        @param expected_uid:
+        @param expected_uid: The uid the crash happens under.
+        @param expected_gid: The gid the crash happens under.
         @param expected_exit_code:
         @param expected_reason:
             Expected information in crash_reporter log message.
@@ -264,14 +265,19 @@ class UserCrashTest(crash_test.CrashTest):
             pid = int(match.group(1))
 
         if expected_uid is None:
-            expected_uid = pwd.getpwnam(username)[2]
+            expected_uid = pwd.getpwnam(username).pw_uid
+
+        if expected_gid is None:
+            expected_gid = pwd.getpwnam(username).pw_gid
 
         if expected_reason is None:
             expected_reason = 'handling' if consent else 'ignoring - no consent'
 
         expected_message = (
-            '[%s] Received crash notification for %s[%d] sig 11, user %d (%s)' %
-            (self._expected_tag, basename, pid, expected_uid, expected_reason))
+            ('[%s] Received crash notification for %s[%d] sig 11, user %d '
+             'group %d (%s)') %
+            (self._expected_tag, basename, pid, expected_uid, expected_gid,
+             expected_reason))
 
         # Wait until no crash_reporter is running.
         utils.poll_for_condition(
@@ -302,8 +308,8 @@ class UserCrashTest(crash_test.CrashTest):
 
     def _check_crash_directory_permissions(self, crash_dir):
         stat_info = os.stat(crash_dir)
-        user = pwd.getpwuid(stat_info.st_uid)[0]
-        group = grp.getgrgid(stat_info.st_gid)[0]
+        user = pwd.getpwuid(stat_info.st_uid).pw_name
+        group = grp.getgrgid(stat_info.st_gid).gr_name
         mode = stat.S_IMODE(stat_info.st_mode)
 
         if crash_dir == '/var/spool/crash':
@@ -370,14 +376,15 @@ class UserCrashTest(crash_test.CrashTest):
     def _run_crasher_process_and_analyze(self, username,
                                          cause_crash=True, consent=True,
                                          crasher_path=None, run_crasher=None,
-                                         expected_uid=None,
+                                         expected_uid=None, expected_gid=None,
                                          expected_exit_code=None):
         self._log_reader.set_start_by_current()
 
         result = self._run_crasher_process(
             username, cause_crash=cause_crash, consent=consent,
             crasher_path=crasher_path, run_crasher=run_crasher,
-            expected_uid=expected_uid, expected_exit_code=expected_exit_code)
+            expected_uid=expected_uid, expected_gid=expected_gid,
+            expected_exit_code=expected_exit_code)
 
         if not result['crashed'] or not result['crash_reporter_caught']:
             return result
@@ -460,12 +467,14 @@ class UserCrashTest(crash_test.CrashTest):
 
     def _check_crashing_process(self, username, consent=True,
                                 crasher_path=None, run_crasher=None,
-                                expected_uid=None, expected_exit_code=None):
+                                expected_uid=None, expected_gid=None,
+                                expected_exit_code=None):
         result = self._run_crasher_process_and_analyze(
             username, consent=consent,
             crasher_path=crasher_path,
             run_crasher=run_crasher,
             expected_uid=expected_uid,
+            expected_gid=expected_gid,
             expected_exit_code=expected_exit_code)
 
         self._check_crashed_and_caught(result)
