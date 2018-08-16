@@ -301,6 +301,7 @@ class AudioWidgetFactory(object):
             is_audio_jack = audio_port.port_id in [ids.CrosIds.HEADPHONE,
                                                    ids.CrosIds.EXTERNAL_MIC]
             is_internal_mic = audio_port.port_id == ids.CrosIds.INTERNAL_MIC
+            is_hotwording = audio_port.port_id == ids.CrosIds.HOTWORDING
 
             # Determines the plug handler to be used.
             # By default, the plug handler is DummyPlugHandler.
@@ -326,6 +327,10 @@ class AudioWidgetFactory(object):
                             self._audio_facade, plug_handler)
                 elif is_internal_mic:
                     return audio_widget.CrosIntMicInputWidgetHandler(
+                            self._audio_facade, plug_handler,
+                            self._system_facade)
+                elif is_hotwording:
+                    return audio_widget.CrosHotwordingWidgetHandler(
                             self._audio_facade, plug_handler,
                             self._system_facade)
                 else:
