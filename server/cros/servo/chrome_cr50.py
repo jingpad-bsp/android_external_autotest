@@ -159,6 +159,11 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return info
 
 
+    def get_cap(self, cap):
+        """Returns the capabilitiy from the capability dictionary"""
+        return self.get_cap_dict()[cap]
+
+
     def get_cap_dict(self):
         """Get the current ccd capability settings.
 
@@ -505,7 +510,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     def _level_change_req_pp(self, level):
         """Returns True if setting the level will require physical presence"""
         testlab_pp = level != 'testlab open' and 'testlab' in level
-        open_pp = level == 'open'
+        # If the level is open and the ccd capabilities say physical presence
+        # is required, then physical presence will be required.
+        open_pp = level == 'open' and self.get_cap('OpenNoLongPP') != 'Always'
         return testlab_pp or open_pp
 
 
