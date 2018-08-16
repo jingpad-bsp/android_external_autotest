@@ -21,7 +21,9 @@ from autotest_lib.server.cros import tradefed_test
 
 # Maximum default time allowed for each individual GTS module.
 _GTS_TIMEOUT_SECONDS = 3600
-_PARTNER_GTS_LOCATION = 'gs://chromeos-partner-gts/gts-6.0_r1-4868992.zip'
+_PARTNER_GTS_BUCKET = 'gs://chromeos-partner-gts/'
+_PARTNER_GTS_LOCATION = _PARTNER_GTS_BUCKET + 'gts-6.0_r1-4868992.zip'
+_PARTNER_GTS_AUTHKEY = _PARTNER_GTS_BUCKET + 'gts-arc.json'
 
 
 class cheets_GTS(tradefed_test.TradefedTest):
@@ -51,6 +53,9 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
     def _get_default_bundle_url(self, bundle):
         return _PARTNER_GTS_LOCATION
+
+    def _get_default_authkey(self):
+        return _PARTNER_GTS_AUTHKEY
 
     def _get_tradefed_base_dir(self):
         return 'android-gts'
@@ -126,9 +131,10 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
         # Download the GTS auth key to the local temp directory.
         self._authkey = None
-        if authkey:
-            tmpdir = tempfile.mkdtemp()
-            self._authkey = self._download_to_dir(authkey, tmpdir)
+        if not authkey:
+            authkey = self._get_default_authkey()
+        tmpdir = tempfile.mkdtemp()
+        self._authkey = self._download_to_dir(authkey, tmpdir)
 
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
