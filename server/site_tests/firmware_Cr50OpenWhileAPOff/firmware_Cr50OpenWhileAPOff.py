@@ -76,11 +76,6 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             self.ccd_func = self.send_ccd_cmd
             logging.info("deep sleep doesn't work with EC in reset. Testing "
                     "basic ccd open")
-        elif self.ccd_lockout:
-            # If ccd is locked out just send the ccd command and make sure you
-            # get a response. You don't care if ccd open succeeds
-            self.ccd_func = self.send_ccd_cmd
-            logging.info('CCD is locked out. Testing basic ccd open')
         else:
             # With ccd accessible and deep sleep working while the EC is reset,
             # the test can fully verify ccd open.
@@ -219,9 +214,6 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
         time.sleep(self.CCD_PASSWORD_RATE_LIMIT)
         rv = self.cr50.send_command_get_output('ccd %s' % state , ['ccd.*>'])[0]
         logging.info(rv)
-        if self.ccd_lockout != ('Access Denied' in rv):
-            raise error.TestFail('CCD is not %s' % ('locked out' if
-                    self.ccd_lockout else 'available'))
 
 
     def try_ccd_open(self, cr50_reset):
