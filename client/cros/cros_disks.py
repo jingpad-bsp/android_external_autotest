@@ -220,15 +220,6 @@ class CrosDisksClient(DBusClient):
                            self.RENAME_COMPLETED_SIGNAL,
                            self.RENAME_COMPLETED_SIGNAL_ARGUMENTS)
 
-    def enumerate_auto_mountable_devices(self):
-        """Invokes the CrosDisks EnumerateAutoMountableDevices method.
-
-        Returns:
-            A list of sysfs paths of devices that are auto-mountable by
-            CrosDisks.
-        """
-        return self.interface.EnumerateAutoMountableDevices()
-
     def enumerate_devices(self):
         """Invokes the CrosDisks EnumerateMountableDevices method.
 

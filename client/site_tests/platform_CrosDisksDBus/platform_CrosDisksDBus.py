@@ -19,11 +19,8 @@ class CrosDisksAPITester(CrosDisksTester):
     def get_tests(self):
         return [
             self.test_enumerate_devices,
-            self.test_enumerate_auto_mountable_devices,
             self.test_get_device_properties,
             self.test_get_device_properties_of_nonexistent_device,
-            self.test_enumerate_auto_mountable_devices_are_not_on_boot_device,
-            self.test_enumerate_auto_mountable_devices_are_not_virtual,
             self.test_mount_nonexistent_device,
             self.test_mount_boot_device_rejected,
             self.test_unmount_nonexistent_device,
@@ -98,38 +95,6 @@ class CrosDisksAPITester(CrosDisksTester):
                 raise error.TestFail(
                         "device returned by EnumerateDevices "
                         "should be a non-empty string")
-
-    def test_enumerate_auto_mountable_devices(self):
-        # Check if EnumerateAutoMountableDevices method returns a list
-        # of devices.
-        devices = self.cros_disks.enumerate_auto_mountable_devices()
-        for device in devices:
-            if not device or not isinstance(device, dbus.String):
-                raise error.TestFail(
-                        "device returned by EnumerateAutoMountableDevices "
-                        "should be a non-empty string")
-
-    def test_enumerate_auto_mountable_devices_are_not_on_boot_device(self):
-        # Make sure EnumerateAutoMountableDevices method does not return
-        # any device that is on the boot device.
-        devices = self.cros_disks.enumerate_auto_mountable_devices()
-        for device in devices:
-            properties = self.cros_disks.get_device_properties(device)
-            if properties['DeviceIsOnBootDevice']:
-                raise error.TestFail(
-                        "device returned by EnumerateAutoMountableDevices "
-                        "should not be on boot device")
-
-    def test_enumerate_auto_mountable_devices_are_not_virtual(self):
-        # Make sure EnumerateAutoMountableDevices method does not return
-        # any device that is virtual.
-        devices = self.cros_disks.enumerate_auto_mountable_devices()
-        for device in devices:
-            properties = self.cros_disks.get_device_properties(device)
-            if properties['DeviceIsVirtual']:
-                raise error.TestFail(
-                        "device returned by EnumerateAutoMountableDevices "
-                        "should not be virtual")
 
     def test_get_device_properties(self):
         # Check if GetDeviceProperties method returns valid properties.
