@@ -232,6 +232,9 @@ class ClientTestDashboard(BaseDashboard):
         if not platform.startswith(board):
             board += '_' + platform
 
+        if power_utils.has_hammer():
+            board += '_hammer'
+
         dut_info_dict = {
             'board': board,
             'version': {
