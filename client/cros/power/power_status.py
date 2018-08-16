@@ -2,9 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, ctypes, fcntl, glob, logging, math, numpy, os, re, struct
-import threading, time
+import collections
 import contextlib
+import ctypes
+import fcntl
+import glob
+import json
+import logging
+import math
+import numpy
+import os
+import re
+import struct
+import threading
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, enum
@@ -1610,6 +1621,18 @@ class MeasurementLogger(threading.Thread):
                 fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
                 line = '\t'.join(fmt_row)
                 f.write(line + '\n')
+
+
+    def save_checkpoint_data(self, resultsdir, fname='checkpoint_log.json'):
+        """Save checkpoint data.
+
+        Args:
+            resultsdir: String, directory to write results to
+            fname: String, name of file to write results to
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'wt') as f:
+            json.dump(self._checkpoint_data, f, indent=4, separators=(',', ': '))
 
 
 class CPUStatsLogger(MeasurementLogger):
