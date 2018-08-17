@@ -37,7 +37,6 @@ _WAIT_FOR_DUTS_TIMEOUT_S = 20 * 60
 _logger = logging.getLogger(__name__)
 
 
-
 def main():
   """Entry point of test_push."""
   autotest.monkeypatch()
