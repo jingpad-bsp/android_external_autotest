@@ -45,9 +45,6 @@ class SiteDrone(object):
         self._autotest_install_dir = AUTOTEST_INSTALL_DIR
         self._host = None
         self.timestamp_remote_calls = timestamp_remote_calls
-        # If drone supports server-side packaging. The property support_ssp will
-        # init self._support_ssp later.
-        self._support_ssp = None
         self._processes_to_kill = []
 
 
@@ -154,40 +151,6 @@ class SiteDrone(object):
 
 
     @property
-    def support_ssp(self):
-        """Check if the drone supports server-side packaging with container.
-
-        @return: True if the drone supports server-side packaging with container
-        """
-        if not self._host:
-            raise ValueError('Can not determine if drone supports server-side '
-                             'packaging before host is set.')
-        if self._support_ssp is None:
-            try:
-                self._host.run('which lxc-start')
-                # Test if base container is setup.
-                base_container_name = CONFIG.get_config_value(
-                        'AUTOSERV', 'container_base_name')
-                base_container = os.path.join(DEFAULT_CONTAINER_PATH,
-                                              base_container_name)
-                # SSP uses privileged containers, sudo access is required. If
-                # the process can't run sudo command without password, SSP can't
-                # work properly. sudo command option -n will avoid user input.
-                # If password is required, the command will fail and raise
-                # AutoservRunError exception.
-                self._host.run('sudo -n ls "%s"' %  base_container)
-                self._support_ssp = True
-            except (error.AutoservRunError, error.AutotestHostRunError):
-                # Local drone raises AutotestHostRunError, while remote drone
-                # raises AutoservRunError.
-                logging.exception('Drone %s does not support server-side '
-                                  'packaging.', self.hostname)
-                self._support_ssp = False
-                if SSP_REQUIRED:
-                  raise
-        return self._support_ssp
-
-
     def queue_kill_process(self, process):
         """Queue a process to kill/abort.
 

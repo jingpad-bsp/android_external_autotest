@@ -228,20 +228,16 @@ class _DroneManager(object):
         """
         return _wrap_drone(self._manager.get_drone_for_pidfile_id(pidfile_id))
 
-    def pick_drone_to_use(self, num_processes=1, prefer_ssp=False):
+    def pick_drone_to_use(self, num_processes=1):
         """Return a drone to use.
 
         Various options can be passed to optimize drone selection.
 
         @param num_processes: number of processes the drone is intended
             to run
-        @param prefer_ssp: indicates whether drones supporting
-            server-side packaging should be preferred.  The returned
-            drone is not guaranteed to support it.
         """
         old_drone = self._manager.pick_drone_to_use(
                 num_processes=num_processes,
-                prefer_ssp=prefer_ssp,
         )
         return _wrap_drone(old_drone)
 
