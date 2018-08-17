@@ -1453,6 +1453,8 @@ class MeasurementLogger(threading.Thread):
            tstart: Float of time when subtest started
            tend: Float of time when subtest ended
     """
+    CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
+
     def __init__(self, measurements, seconds_period=1.0):
         """Initialize a logger.
 
@@ -1633,7 +1635,7 @@ class MeasurementLogger(threading.Thread):
                 f.write(line + '\n')
 
 
-    def save_checkpoint_data(self, resultsdir, fname='checkpoint_log.json'):
+    def save_checkpoint_data(self, resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
         """Save checkpoint data.
 
         Args:
@@ -1643,6 +1645,20 @@ class MeasurementLogger(threading.Thread):
         fname = os.path.join(resultsdir, fname)
         with file(fname, 'wt') as f:
             json.dump(self._checkpoint_data, f, indent=4, separators=(',', ': '))
+
+
+    @staticmethod
+    def load_checkpoint_data(resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Load checkpoint data.
+
+        Args:
+            resultsdir: String, directory to load results from
+            fname: String, name of file to load results from
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'r') as f:
+            checkpoint_data = json.load(f)
+        return checkpoint_data
 
 
 class CPUStatsLogger(MeasurementLogger):
