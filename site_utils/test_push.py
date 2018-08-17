@@ -108,12 +108,14 @@ EXPECTED_TEST_RESULTS_POWERWASH = {'platform_Powerwash': 'GOOD',
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
-# Some test could be extra / missing or have mismatched results for various
-# reasons. Add such test in this list and explain the reason.
-_IGNORED_TESTS = {
+# Some test could be missing from the test results for various reasons. Add
+# such test in this list and explain the reason.
+_IGNORED_TESTS = [
     # For latest build, npo_test_delta does not exist.
+    # TODO(pprabhu) Try removing this.
     'autoupdate_EndToEndTest.npo_test_delta.*',
     # For trybot build, nmo_test_delta does not exist.
+    # TODO(pprabhu) Try removing this.
     'autoupdate_EndToEndTest.nmo_test_delta.*',
 
     # test_push uses a stable image build to test, which is quite behind ToT.
@@ -121,11 +123,15 @@ _IGNORED_TESTS = {
     # until stable image is recent enough.
 
     # TODO(dshi): Remove following lines after R41 is stable.
+    # TODO(pprabhu) Try removing this.
     'login_LoginSuccess',
+    # Old builds may not contain this test.
+    # TODO(pprabhu) Try removing this.
+    'platform_InstallTestImage_SERVER_JOB$',
     # TODO(pprabhu): Remove once R70 is stable.
     'dummy_Fail.RetrySuccess',
     'dummy_Fail.RetryFail',
-}
+]
 
 # Multiprocessing proxy objects that are used to share data between background
 # suite-running processes and main process. The multiprocessing-compatible
@@ -400,48 +406,8 @@ def verify_test_results(job_id, expected_results):
     """
     print 'Comparing test results...'
     test_views = site_utils.get_test_views_from_tko(job_id, TKO)
-
-    mismatch_errors = []
-    unknown_tests = []
-
-    found_keys = set()
-    for test_name, test_status in test_views.items():
-        print "%s%s" % (test_name.ljust(30), test_status)
-        # platform_InstallTestImage test may exist in old builds.
-        if re.search('platform_InstallTestImage_SERVER_JOB$', test_name):
-            continue
-        test_found = False
-        for key, val in expected_results.iteritems():
-            if re.search(key, test_name):
-                test_found = True
-                found_keys.add(key)
-                if val != test_status and test_name not in _IGNORED_TESTS:
-                    error = ('%s Expected: [%s], Actual: [%s]' %
-                             (test_name, val, test_status))
-                    mismatch_errors.append(error)
-        if not test_found and test_name not in _IGNORED_TESTS:
-            unknown_tests.append(test_name)
-
-    summary = []
-    if mismatch_errors:
-        summary.append(('Results of %d test(s) do not match expected '
-                        'values:') % len(mismatch_errors))
-        summary.extend(mismatch_errors)
-        summary.append('\n')
-
-    if unknown_tests:
-        summary.append('%d test(s) are not expected to be run:' %
-                       len(unknown_tests))
-        summary.extend(unknown_tests)
-        summary.append('\n')
-
-    missing_tests = set(expected_results.keys()) - found_keys
-    missing_tests = [t for t in missing_tests if t not in _IGNORED_TESTS]
-    if missing_tests:
-        summary.append('%d test(s) are missing from the results:' %
-                       len(missing_test))
-        summary.extend(missing_test)
-        summary.append('\n')
+    summary = test_push_common.summarize_push(test_views, expected_results,
+                                              _IGNORED_TESTS)
 
     # Test link to log can be loaded.
     job_name = '%s-%s' % (job_id, getpass.getuser())
