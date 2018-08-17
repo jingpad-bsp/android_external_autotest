@@ -15,6 +15,7 @@ import stat
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
+
 class platform_FilePerms(test.test):
     """
     Test file permissions.
@@ -176,12 +177,19 @@ class platform_FilePerms(test.test):
     expected_mount_options['/var/run'] = expected_mount_options['/run']
     expected_mount_options['/var/lock'] = expected_mount_options['/run/lock']
 
+    # Base for of {/run,/etc}/daemon-store/<daemon-name> directories.
+    run_daemon_store_base = "/run/daemon-store/"
+    etc_daemon_store_base = "/etc/daemon-store/"
+    expected_daemon_store_mount_options = {
+        'type': ['tmpfs'],
+        'options': standard_rw_options + ['mode=755']
+    }
+
     # This lists mount points that host mounts created in developer mode, after
     # regular mount operations taking place during boot have completed. These
     # are ignored when checking mounts present in the live system.
     testmode_modded_fses = set(
         ['/home', '/tmp', '/usr/local', '/var/db/pkg', '/var/lib/portage'])
-
 
     def checkid(self, fs, userid):
         """
@@ -210,7 +218,6 @@ class platform_FilePerms(test.test):
 
         return errors
 
-
     def get_perm(self, fs):
         """
         Check the file permissions of a filesystem.
@@ -230,7 +237,6 @@ class platform_FilePerms(test.test):
 
         fperm = oct(mode & MASK)
         return fperm
-
 
     def read_mtab(self, mtab_path='/etc/mtab'):
         """
@@ -273,7 +279,6 @@ class platform_FilePerms(test.test):
                                  'options': fields[3].split(',')}
         return mounts
 
-
     def try_write(self, fs):
         """
         Try to write a file in the given filesystem.
@@ -292,7 +297,7 @@ class platform_FilePerms(test.test):
             fh = open(tempfile, 'w')
             fh.write(TEXT)
             fh.close()
-        except OSError: # This error will occur with read only filesystem.
+        except OSError:  # This error will occur with read only filesystem.
             return 1
         except IOError, e:
             return 1
@@ -302,14 +307,13 @@ class platform_FilePerms(test.test):
 
         return 0
 
-
     def check_mounted_read_only(self, filesystem):
         """
         Check the permissions of a filesystem according to /etc/mtab.
 
         @param filesystem: string, file system device to check.
         Returns:
-            1 if rw, 0 if ro
+            1 if rw or not in mtab, 0 if ro
         """
 
         errors = 0
@@ -317,13 +321,35 @@ class platform_FilePerms(test.test):
         if not (filesystem in mtab.keys()):
             logging.error('Could not find filesystem "%s" in mtab', filesystem)
             errors += 1
-            return errors # no point in continuing this test.
+            return errors  # no point in continuing this test.
         if not ('ro' in mtab[filesystem]['options']):
             logging.error('Filesystem "%s" is not mounted read-only',
                           filesystem)
             errors += 1
         return errors
 
+    def check_daemon_store_directory(self, daemon_name):
+        """
+        Check whether /run/daemon-store/<daemon-name> is root-owned and there is
+        a corresponding /etc/daemon-store/<daemon-name> folder.
+
+        @param daemon_name: The last part of /run/daemon-store/<daemon-name>.
+        Returns:
+            int, the number errors detected.
+        """
+        errors = 0
+
+        run_daemon_store = self.run_daemon_store_base + daemon_name
+        errors += self.checkid(run_daemon_store, 0)
+
+        etc_daemon_store = self.etc_daemon_store_base + daemon_name
+        if not os.path.exists(etc_daemon_store):
+            logging.error(
+                'Daemon store "%s" does not have a corresponding "%s" '
+                'directory', run_daemon_store, etc_daemon_store)
+            errors += 1
+
+        return errors
 
     def check_mount_options(self):
         """
@@ -355,7 +381,7 @@ class platform_FilePerms(test.test):
         # nsfs is ignored because it's a kernel filesystem used with
         # network namespaces, and is not a traditional filesystem where
         # arbitrary files may be created and executed.
-        ignored_types = set(['ecryptfs','nsfs'])
+        ignored_types = set(['ecryptfs', 'nsfs'])
         for mtab_path in mtabs:
             mtab = self.read_mtab(mtab_path=mtab_path)
             for fs in mtab.keys():
@@ -365,10 +391,16 @@ class platform_FilePerms(test.test):
                 fs_type = mtab[fs]['type']
                 if fs_type in ignored_types:
                     logging.warning('Ignoring filesystem "%s" with type "%s"',
-                                 fs, fs_type)
+                                    fs, fs_type)
                     continue
+
                 if fs in self.expected_mount_options:
                     mount_options = self.expected_mount_options[fs]
+                elif fs.startswith(self.run_daemon_store_base):
+                    # Handle mounts inside /run/daemon-store as a special case.
+                    daemon_name = fs[len(self.run_daemon_store_base):]
+                    errors += self.check_daemon_store_directory(daemon_name)
+                    mount_options = self.expected_daemon_store_mount_options
                 else:
                     logging.error(
                             'No expectations entry for "%s" with info "%s"',
@@ -405,7 +437,6 @@ class platform_FilePerms(test.test):
             ignored_fses.update(self.testmode_modded_fses)
 
         return errors
-
 
     def run_once(self):
         """
@@ -456,8 +487,7 @@ class platform_FilePerms(test.test):
 
         # Ensure the uid and gid are correct for root owned directories.
         for dir in root_dirs:
-            if self.checkid(dir, 0) > 0:
-                errors += 1
+            errors += self.checkid(dir, 0)
 
         # Ensure root can write into root dirs with rw access.
         for dir in root_rw_dirs:
