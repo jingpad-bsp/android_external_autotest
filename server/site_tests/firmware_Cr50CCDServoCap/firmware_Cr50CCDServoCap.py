@@ -4,7 +4,6 @@
 
 import logging
 import pprint
-import re
 import time
 
 from autotest_lib.client.common_lib import error
@@ -23,20 +22,6 @@ class firmware_Cr50CCDServoCap(Cr50Test):
     # state once a second. Wait 2 seconds to be conservative.
     SLEEP = 2
 
-    # The responses we care about for ccdstate
-    #
-    # We look for the exact states, so send_command_get_output can tell if we
-    # are missing any of the output and retry.
-    #
-    # TODO(b/80540170): change ccdstate regex to 'ccdstate.*>' when we know the
-    # cr50 console wont drop characters
-    CCDSTATE_RESPONSE_LIST = [
-        'ccdstate',
-        'Rdd:\s+(disconnected|connected|undetectable)',
-        'Servo:\s+(disconnected|connected|undetectable)',
-        'State flags:\s+(UARTAP(\+TX)? )?UARTEC(\+TX)?( I2C)?( SPI)?[\r\n]',
-        '>'
-    ]
     # A list of the actions we should verify
     TEST_CASES = [
         'fake_servo on, cr50_run reboot',
@@ -181,18 +166,16 @@ class firmware_Cr50CCDServoCap(Cr50Test):
 
     def get_ccdstate(self):
         """Get the current Cr50 CCD states"""
-        regex = '.*'.join(self.CCDSTATE_RESPONSE_LIST)
-        rv = self.cr50.send_command_retry_get_output('ccdstate', [regex])[0][0]
-        logging.info(rv)
+        rv = self.cr50.send_command_get_output('ccdstate',
+                                               ['ccdstate(.*)>'])[0][0]
         # I2C isn't a reliable flag, because the hardware often doesn't support
         # it. Remove any I2C flags from the ccdstate output.
         rv = rv.replace(' I2C', '')
         # Extract only the ccdstate output from rv
-        ccdstates = re.findall('[ A-Za-z]+:[ A-Za-z\+_]+\r', rv)
         ccdstate = {}
-        for line in ccdstates:
+        for line in rv.splitlines():
             line = line.strip()
-            if line:
+            if ':' in line:
                 k, v = line.split(':', 1)
                 ccdstate[k.strip()] = v.strip()
         logging.info('Current CCD state:\n%s', pprint.pformat(ccdstate))
