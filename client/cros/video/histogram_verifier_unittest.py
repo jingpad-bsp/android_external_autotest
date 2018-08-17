@@ -8,6 +8,7 @@ import unittest
 
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.video import histogram_verifier
 import mock
 
@@ -50,7 +51,7 @@ class HistogramVerifierTest(unittest.TestCase):
             histogram_verifier.parse_histogram(self.HISTOGRAM_TEXT_1))
         self.assertDictEqual({}, histogram_verifier.parse_histogram(''))
 
-    def test_subtract_histogra(self):
+    def test_subtract_histogram(self):
         """
         Tests subtract_histogram().
         """
@@ -67,6 +68,25 @@ class HistogramVerifierTest(unittest.TestCase):
         self.assertDictEqual(
             {0: 1},
             histogram_verifier.subtract_histogram({0: 1, 15:4}, {0:0, 15:4}))
+
+    def test_expect_sole_bucket(self):
+        histogram_name = 'histogram1'
+        bucket_name = 'bucket1'
+        histogram_verifier.expect_sole_bucket({1: 10}, histogram_name, 1,
+                                              bucket_name)
+        histogram_verifier.expect_sole_bucket({0: 10}, histogram_name, 0,
+                                              bucket_name)
+        with self.assertRaisesRegexp(
+                error.TestError,
+                'Expect %s has %s' % (histogram_name, bucket_name)):
+            histogram_verifier.expect_sole_bucket({1: 10}, histogram_name, 0,
+                                                  bucket_name)
+
+        with self.assertRaisesRegexp(
+                error.TestError,
+                '%s has bucket other than %s' % (histogram_name, bucket_name)):
+            histogram_verifier.expect_sole_bucket({0: 1, 1: 1}, histogram_name,
+                                                  0, bucket_name)
 
 
 class HistogramDifferTest(unittest.TestCase):
