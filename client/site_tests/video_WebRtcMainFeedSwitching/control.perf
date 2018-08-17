@@ -16,7 +16,7 @@ BUG_TEMPLATE = {
     "labels": ["OS-Chrome"],
     "components": ["OS>Kernel>Video"],
 }
-RETRIES = 2
+JOB_RETRIES = 2
 
 DOC = """
 This test starts 5 high resolution (1280x720) loopback peer connections. Four
