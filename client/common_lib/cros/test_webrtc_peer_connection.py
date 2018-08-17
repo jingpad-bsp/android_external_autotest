@@ -147,17 +147,6 @@ class WebRtcPeerConnectionTest(object):
         """
         Starts the test and waits until it is completed.
         """
-        try:
-            self._try_run_test()
-        except error.TestFail:
-            raise
-        except Exception as e:
-            logging.warning(
-                    'Unexpected error, will raise TestFailRetry to retry',
-                    exc_info=True)
-            raise error.TestFailRetry(str(e))
-
-    def _try_run_test(self):
         with chrome.Chrome(extra_browser_args = EXTRA_BROWSER_ARGS + \
                            [helper_logger.chrome_vmodule_flag()],
                            init_network_controller = True) as cr:
