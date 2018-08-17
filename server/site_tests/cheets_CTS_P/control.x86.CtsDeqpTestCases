@@ -12,11 +12,14 @@ JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LONG'
 MAX_RESULT_SIZE_KB = 512000
+SYNC_COUNT = 2
 PRIORITY = 50
 DOC = 'Run module CtsDeqpTestCases of the Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.'
 
-def run_CTS(machine):
-    host_list = [hosts.create_host(machine)]
+from autotest_lib.server import utils as server_utils
+def run_CTS(ntuples):
+    host_list = [hosts.create_host(machine) for machine in ntuples]
+
     job.run_test(
         'cheets_CTS_P',
         hosts=host_list,
@@ -34,4 +37,8 @@ def run_CTS(machine):
         retry_manual_tests=True,
         timeout=86400)
 
-parallel_simple(run_CTS, machines)
+ntuples, failures = server_utils.form_ntuples_from_machines(machines,
+                                                            SYNC_COUNT)
+# Use log=False in parallel_simple to avoid an exception in setting up
+# the incremental parser when SYNC_COUNT > 1.
+parallel_simple(run_CTS, ntuples, log=False)
