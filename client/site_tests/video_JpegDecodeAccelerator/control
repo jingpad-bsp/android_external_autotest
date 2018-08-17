@@ -16,7 +16,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
-RETRIES = 1
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
