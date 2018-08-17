@@ -15,7 +15,7 @@ BUG_TEMPLATE = {
     "labels": ["OS-Chrome"],
     "components": ["OS>Kernel>Audio"],
 }
-RETRIES = 2
+JOB_RETRIES = 2
 
 DOC = """
 This test starts 10 peer connections with audio streams.
