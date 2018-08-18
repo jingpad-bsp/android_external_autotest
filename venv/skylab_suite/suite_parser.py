@@ -108,6 +108,9 @@ def make_parser():
         '--timeout_mins', default=90, type=int, action='store',
         help='Maximum minutes to wait for a suite to finish.')
     parser.add_argument(
+        '--passed_mins', default=0, type=int, action='store',
+        help='The minutes that this suite already runs for.')
+    parser.add_argument(
         '--run_prod_code', action='store_true', default=False,
         help='Run the test code that lives in prod aka the test '
         'code currently on the lab servers.')

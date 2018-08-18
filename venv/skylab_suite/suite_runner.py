@@ -370,7 +370,8 @@ def _wait_for_results(suite_handler, dry_run=False):
     """
     timeout_util = autotest.chromite_load('timeout_util')
     try:
-        with timeout_util.Timeout(suite_handler.timeout_mins * 60):
+        with timeout_util.Timeout(suite_handler.timeout_mins * 60 -
+                                  suite_handler.passed_mins * 60):
             _loop_and_wait_forever(suite_handler, dry_run)
     except timeout_util.TimeoutError:
         logging.error('Timeout in waiting for child tasks.')
