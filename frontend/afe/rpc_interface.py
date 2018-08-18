@@ -1022,8 +1022,7 @@ def create_job(
     @param drone_set The name of the drone set to run this test on.
     @param image OS image to install before running job.
     @param parent_job_id id of a job considered to be parent of created job.
-    @param test_retry Number of times to retry test if the test did not
-        complete successfully. (optional, default: 0)
+    @param test_retry DEPRECATED
     @param run_reset Should the host be reset before running the test?
     @param require_ssp Set to True to require server-side packaging to run the
                        test. If it's set to None, drone will still try to run
@@ -1063,7 +1062,6 @@ def create_job(
             keyvals=keyvals,
             drone_set=drone_set,
             parent_job_id=parent_job_id,
-            test_retry=test_retry,
             run_reset=run_reset,
             require_ssp=require_ssp)
 
@@ -2369,7 +2367,7 @@ def get_tests_by_build(build, ignore_invalid_tests=True):
         # are required by the AFE
         keys = ['author', 'doc', 'name', 'time', 'test_type', 'experimental',
                 'test_category', 'test_class', 'dependencies', 'run_verify',
-                'sync_count', 'job_retries', 'retries', 'path']
+                'sync_count', 'job_retries', 'path']
 
         test_object = {}
         for key in keys:
@@ -2386,7 +2384,9 @@ def get_tests_by_build(build, ignore_invalid_tests=True):
         test_object['run_reset'] = True
         test_object['description'] = test_object.get('doc', '')
         test_object['test_time'] = test_object.get('time', 0)
-        test_object['test_retry'] = test_object.get('retries', 0)
+
+        # TODO(crbug.com/873716) DEPRECATED. Remove entirely.
+        test_object['test_retry'] = 0
 
         # Fix the test name to be consistent with the current presentation
         # of test names in the AFE.
