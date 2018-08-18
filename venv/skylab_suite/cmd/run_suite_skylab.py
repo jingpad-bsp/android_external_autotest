@@ -33,6 +33,7 @@ def _parse_suite_handler_spec(options):
             wait=not options.create_and_return,
             suite_id=options.suite_id,
             timeout_mins=options.timeout_mins,
+            passed_mins=options.passed_mins,
             test_retry=options.test_retry,
             max_retries=options.max_retries,
             use_fallback=options.use_fallback,
