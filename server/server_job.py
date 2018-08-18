@@ -237,7 +237,7 @@ class server_job(base_job.base_job):
                  ssh_pass=host_factory.DEFAULT_SSH_PASS,
                  ssh_verbosity_flag=host_factory.DEFAULT_SSH_VERBOSITY,
                  ssh_options=host_factory.DEFAULT_SSH_OPTIONS,
-                 test_retry=0, group_name='',
+                 group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME,
                  parent_job_id=None, in_lab=False):
@@ -260,8 +260,6 @@ class server_job(base_job.base_job):
                 '-vvv', or an empty string if not needed.
         @param ssh_options: A string giving additional options that will be
                             included in ssh commands.
-        @param test_retry: The number of times to retry a test if the test did
-                not complete successfully.
         @param group_name: If supplied, this will be written out as
                 host_group_name in the keyvals file for the parser.
         @param tag: The job execution tag from the scheduler.  [optional]
@@ -274,9 +272,7 @@ class server_job(base_job.base_job):
         @param in_lab: Boolean that indicates if this is running in the lab
                        environment.
         """
-        super(server_job, self).__init__(resultdir=resultdir,
-                                         test_retry=test_retry)
-        self.test_retry = test_retry
+        super(server_job, self).__init__(resultdir=resultdir)
         self.control = control
         self._uncollected_log_file = os.path.join(self.resultdir,
                                                   'uncollected_logs')
