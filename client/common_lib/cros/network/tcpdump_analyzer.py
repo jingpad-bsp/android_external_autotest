@@ -5,7 +5,6 @@
 import logging
 
 from locale import *
-from autotest_lib.client.common_lib import error
 
 PYSHARK_LOAD_TIMEOUT = 2
 FRAME_FIELD_RADIOTAP_DATARATE = 'radiotap.datarate'
@@ -118,24 +117,20 @@ def _open_capture(pcap_path, display_filter):
     return capture
 
 
-def get_frames(local_pcap_path, display_filter, bad_fcs):
+def get_frames(local_pcap_path, display_filter, reject_bad_fcs=True):
     """
     Get a parsed representation of the contents of a pcap file.
 
     @param local_pcap_path: string path to a local pcap file on the host.
     @param diplay_filter: string filter to apply to captured frames.
-    @param bad_fcs: string 'include' or 'discard'
+    @param reject_bad_fcs: bool, for frames with bad Frame Check Sequence.
 
     @return list of Frame structs.
 
     """
-    if bad_fcs == 'include':
-        display_filter = display_filter
-    elif bad_fcs == 'discard':
+    if reject_bad_fcs is True:
         display_filter = '(%s) and (%s)' % (RADIOTAP_KNOWN_BAD_FCS_REJECTOR,
                                             display_filter)
-    else:
-        raise error.TestError('Invalid value for bad_fcs arg: %s.' % bad_fcs)
 
     logging.debug('Capture: %s, Filter: %s', local_pcap_path, display_filter)
     capture_frames = _open_capture(local_pcap_path, display_filter)
@@ -198,7 +193,7 @@ def get_probe_ssids(local_pcap_path, probe_sender=None):
     else:
         diplay_filter = WLAN_PROBE_REQ_ACCEPTOR
 
-    frames = get_frames(local_pcap_path, diplay_filter, bad_fcs='discard')
+    frames = get_frames(local_pcap_path, diplay_filter, reject_bad_fcs=True)
 
     return frozenset(
             [frame.ssid for frame in frames if frame.ssid is not None])
