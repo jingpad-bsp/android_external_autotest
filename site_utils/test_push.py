@@ -87,7 +87,6 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          'provision_AutoUpdate.double':  'GOOD',
                          'dummy_Pass.*':                 'GOOD',
                          'dummy_Fail.Fail$':             'FAIL',
-                         'dummy_Fail.RetryFail$':        'FAIL',
                          'dummy_Fail.Error$':            'ERROR',
                          'dummy_Fail.Warn$':             'WARN',
                          'dummy_Fail.NAError$':          'TEST_NA',
@@ -109,16 +108,24 @@ EXPECTED_TEST_RESULTS_POWERWASH = {'platform_Powerwash': 'GOOD',
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
-# Some test could be missing from the test results for various reasons. Add
-# such test in this list and explain the reason.
-IGNORE_MISSING_TESTS = [
+# Some test could be extra / missing or have mismatched results for various
+# reasons. Add such test in this list and explain the reason.
+_IGNORED_TESTS = {
     # For latest build, npo_test_delta does not exist.
     'autoupdate_EndToEndTest.npo_test_delta.*',
     # For trybot build, nmo_test_delta does not exist.
     'autoupdate_EndToEndTest.nmo_test_delta.*',
-    # Older build does not have login_LoginSuccess test in push_to_prod suite.
+
+    # test_push uses a stable image build to test, which is quite behind ToT.
+    # The following expectations are correct at ToT, but need to be ignored
+    # until stable image is recent enough.
+
     # TODO(dshi): Remove following lines after R41 is stable.
-    'login_LoginSuccess']
+    'login_LoginSuccess',
+    # TODO(pprabhu): Remove once R70 is stable.
+    'dummy_Fail.RetrySuccess',
+    'dummy_Fail.RetryFail',
+}
 
 # Multiprocessing proxy objects that are used to share data between background
 # suite-running processes and main process. The multiprocessing-compatible
@@ -395,7 +402,7 @@ def verify_test_results(job_id, expected_results):
     test_views = site_utils.get_test_views_from_tko(job_id, TKO)
 
     mismatch_errors = []
-    extra_test_errors = []
+    unknown_tests = []
 
     found_keys = set()
     for test_name, test_status in test_views.items():
@@ -404,23 +411,16 @@ def verify_test_results(job_id, expected_results):
         if re.search('platform_InstallTestImage_SERVER_JOB$', test_name):
             continue
         test_found = False
-        for key,val in expected_results.items():
+        for key, val in expected_results.iteritems():
             if re.search(key, test_name):
                 test_found = True
                 found_keys.add(key)
-                if val != test_status:
+                if val != test_status and test_name not in _IGNORED_TESTS:
                     error = ('%s Expected: [%s], Actual: [%s]' %
                              (test_name, val, test_status))
                     mismatch_errors.append(error)
-        if not test_found:
-            extra_test_errors.append(test_name)
-
-    missing_test_errors = set(expected_results.keys()) - found_keys
-    for exception in IGNORE_MISSING_TESTS:
-        try:
-            missing_test_errors.remove(exception)
-        except KeyError:
-            pass
+        if not test_found and test_name not in _IGNORED_TESTS:
+            unknown_tests.append(test_name)
 
     summary = []
     if mismatch_errors:
@@ -429,16 +429,18 @@ def verify_test_results(job_id, expected_results):
         summary.extend(mismatch_errors)
         summary.append('\n')
 
-    if extra_test_errors:
+    if unknown_tests:
         summary.append('%d test(s) are not expected to be run:' %
-                       len(extra_test_errors))
-        summary.extend(extra_test_errors)
+                       len(unknown_tests))
+        summary.extend(unknown_tests)
         summary.append('\n')
 
-    if missing_test_errors:
+    missing_tests = set(expected_results.keys()) - found_keys
+    missing_tests = [t for t in missing_tests if t not in _IGNORED_TESTS]
+    if missing_tests:
         summary.append('%d test(s) are missing from the results:' %
-                       len(missing_test_errors))
-        summary.extend(missing_test_errors)
+                       len(missing_test))
+        summary.extend(missing_test)
         summary.append('\n')
 
     # Test link to log can be loaded.
@@ -451,7 +453,6 @@ def verify_test_results(job_id, expected_results):
 
     if summary:
         raise TestPushException('\n'.join(summary))
-
 
 def test_suite_wrapper(queue, suite_name, expected_results, arguments,
                        use_shard=False, create_and_return=False):
