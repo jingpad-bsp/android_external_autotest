@@ -848,6 +848,21 @@ class db_sql(object):
             return None
 
 
+    def get_child_tests_by_parent_task_id(self, parent_task_id):
+        """Get the child tests by a parent task id.
+
+        @param parent_task_id: A string parent task id in tko_task_references.
+        @return: A list of view dicts, which has key 'test_name' and 'status'.
+        """
+        rows = self.select('tko_job_idx', 'tko_task_references',
+                           {'parent_task_id': parent_task_id})
+        tko_job_ids = [str(r[0]) for r in rows]
+        fields = ['test_name', 'status']
+        where = 'job_idx in (%s)' % ', '.join(tko_job_ids)
+        rows = self.select(', '.join(fields), 'tko_test_view_2', where)
+        return [{'test_name': r[0], 'status': r[1]} for r in rows]
+
+
 def db(*args, **dargs):
     """Creates an instance of the database class with the arguments
     provided in args and dargs, using the database type specified by
