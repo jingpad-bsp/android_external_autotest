@@ -192,6 +192,20 @@ def has_headphone(host):
     return True
 
 
+def has_hotwording(host):
+    """Checks if the Cros device has hotwording.
+
+    @param host: The CrosHost object.
+
+    @returns: True if the board has hotwording. False otherwise.
+
+    """
+    board_name = get_board_name(host)
+    model_name = host.get_platform()
+
+    return audio_spec.has_hotwording(board_name, model_name)
+
+
 def suspend_resume(host, suspend_time_secs, resume_network_timeout_secs=50):
     """Performs the suspend/resume on Cros device.
 

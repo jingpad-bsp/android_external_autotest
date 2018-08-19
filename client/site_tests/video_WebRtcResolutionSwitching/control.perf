@@ -15,7 +15,7 @@ BUG_TEMPLATE = {
     "labels": ["OS-Chrome"],
     "components": ["OS>Kernel>Video"],
 }
-RETRIES = 2
+JOB_RETRIES = 2
 
 DOC = """
 This test starts 5 loopback peer connections, each with 4 streams with

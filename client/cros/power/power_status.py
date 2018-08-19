@@ -2,9 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, ctypes, fcntl, glob, logging, math, numpy, os, re, struct
-import threading, time
+import collections
 import contextlib
+import ctypes
+import fcntl
+import glob
+import json
+import logging
+import math
+import numpy
+import os
+import re
+import struct
+import threading
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, enum
@@ -1430,10 +1441,11 @@ class MeasurementLogger(threading.Thread):
 
     Private attributes:
        _measurements: list of Measurement objects to be sampled.
-       _checkpoint_data: list of tuples.  Tuple contains:
-           tname: String of testname associated with this time interval
-           tstart: Float of time when subtest started
-           tend: Float of time when subtest ended
+       _checkpoint_data: dictionary of (tname, tlist).
+           tname: String of testname associated with these time intervals
+           tlist: list of tuples.  Tuple contains:
+               tstart: Float of time when subtest started
+               tend: Float of time when subtest ended
        _results: list of results tuples.  Tuple contains:
            prefix: String of subtest
            mean: Float of mean  in watts
@@ -1441,6 +1453,8 @@ class MeasurementLogger(threading.Thread):
            tstart: Float of time when subtest started
            tend: Float of time when subtest ended
     """
+    CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
+
     def __init__(self, measurements, seconds_period=1.0):
         """Initialize a logger.
 
@@ -1454,7 +1468,7 @@ class MeasurementLogger(threading.Thread):
 
         self.readings = []
         self.times = []
-        self._checkpoint_data = []
+        self._checkpoint_data = collections.defaultdict(list)
 
         self.domains = []
         self._measurements = measurements
@@ -1514,7 +1528,7 @@ class MeasurementLogger(threading.Thread):
             tstart = self.times[0]
         if not tend:
             tend = time.time()
-        self._checkpoint_data.append((tname, tstart, tend))
+        self._checkpoint_data[tname].append((tstart, tend))
         logging.info('Finished test "%s" between timestamps [%s, %s]',
                      tname, tstart, tend)
 
@@ -1555,23 +1569,29 @@ class MeasurementLogger(threading.Thread):
             meas = numpy.array(domain_readings)
             domain = self.domains[i]
 
-            for tname, tstart, tend in self._checkpoint_data:
+            for tname, tlist in self._checkpoint_data.iteritems():
                 if tname:
                     prefix = '%s_%s' % (tname, domain)
                 else:
                     prefix = domain
-                keyvals[prefix+'_duration'] = tend - tstart
-                # Select all readings taken between tstart and tend timestamps.
-                # Try block just in case
-                # code.google.com/p/chromium/issues/detail?id=318892
-                # is not fixed.
-                try:
-                    meas_array = meas[numpy.bitwise_and(tstart < t, t < tend)]
-                except ValueError, e:
-                    logging.debug('Error logging measurements: %s', str(e))
-                    logging.debug('timestamps %d %s', t.len, t)
-                    logging.debug('timestamp start, end %f %f', tstart, tend)
-                    logging.debug('measurements %d %s', meas.len, meas)
+                keyvals[prefix+'_duration'] = 0
+                # Select all readings taken between tstart and tend
+                # timestamps in tlist.
+                masks = []
+                for tstart, tend in tlist:
+                    keyvals[prefix+'_duration'] += tend - tstart
+                    # Try block just in case
+                    # code.google.com/p/chromium/issues/detail?id=318892
+                    # is not fixed.
+                    try:
+                        masks.append(numpy.logical_and(tstart < t, t < tend))
+                    except ValueError, e:
+                        logging.debug('Error logging measurements: %s', str(e))
+                        logging.debug('timestamps %d %s', t.len, t)
+                        logging.debug('timestamp start, end %f %f', tstart, tend)
+                        logging.debug('measurements %d %s', meas.len, meas)
+                mask = numpy.logical_or.reduce(masks)
+                meas_array = meas[mask]
 
                 # If sub-test terminated early, avoid calculating avg, std and
                 # min
@@ -1581,8 +1601,11 @@ class MeasurementLogger(threading.Thread):
                 meas_std = meas_array.std()
 
                 # Results list can be used for pretty printing and saving as csv
-                results.append((prefix, meas_mean, meas_std,
-                                tend - tstart, tstart, tend))
+                # TODO(seankao): new results format?
+                result = (prefix, meas_mean, meas_std)
+                for tstart, tend in tlist:
+                    result = result + (tend - tstart, tstart, tend)
+                results.append(result)
                 keyvals[prefix + '_' + mtype] = list(meas_array)
                 keyvals[prefix + '_' + mtype + '_avg'] = meas_mean
                 keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
@@ -1610,6 +1633,32 @@ class MeasurementLogger(threading.Thread):
                 fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
                 line = '\t'.join(fmt_row)
                 f.write(line + '\n')
+
+
+    def save_checkpoint_data(self, resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Save checkpoint data.
+
+        Args:
+            resultsdir: String, directory to write results to
+            fname: String, name of file to write results to
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'wt') as f:
+            json.dump(self._checkpoint_data, f, indent=4, separators=(',', ': '))
+
+
+    @staticmethod
+    def load_checkpoint_data(resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Load checkpoint data.
+
+        Args:
+            resultsdir: String, directory to load results from
+            fname: String, name of file to load results from
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'r') as f:
+            checkpoint_data = json.load(f)
+        return checkpoint_data
 
 
 class CPUStatsLogger(MeasurementLogger):

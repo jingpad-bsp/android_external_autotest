@@ -12,7 +12,7 @@ JOB_RETRIES = 2
 TEST_TYPE = 'server'
 TIME = 'LONG'
 MAX_RESULT_SIZE_KB = 512000
-SYNC_COUNT = 3
+SYNC_COUNT = 2
 PRIORITY = 50
 DOC = 'Run module CtsDeqpTestCases of the Android Compatibility Test Suite (CTS) using arm ABI in the ARC++ container.'
 

@@ -126,6 +126,7 @@ class graphics_dEQP(graphics_utils.GraphicsTest):
                         xml_bad = True
                     else:
                         xml_start = True
+                        test_case = line.split(' ')[1]
 
                 if xml_complete or xml_bad:
                     if xml_complete:

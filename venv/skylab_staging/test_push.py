@@ -37,7 +37,6 @@ _WAIT_FOR_DUTS_TIMEOUT_S = 20 * 60
 _logger = logging.getLogger(__name__)
 
 
-
 def main():
   """Entry point of test_push."""
   autotest.monkeypatch()
@@ -158,19 +157,19 @@ def _run_test_push(args):
         args.dut_board,
         args.dut_pool,
         args.build,
-        'push_to_prod',
+        'skylab_staging_test',
         deadline - time.time(),
     )
-    _logger.info('Triggered push_to_prod suite. Task id: %s', task_id)
+    _logger.info('Triggered skylab_staging_test suite. Task id: %s', task_id)
     swclient.wait_for_suite(
         task_id,
         args.dut_board,
         args.dut_pool,
         args.build,
-        'push_to_prod',
+        'skylab_staging_test',
         deadline - time.time(),
     )
-    _logger.info('Finished push_to_prod suite.')
+    _logger.info('Finished skylab_staging_test suite.')
   # TODO(crbug.com/863525) Verify test results are inserted correctly in TKO.
 
 

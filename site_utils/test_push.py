@@ -49,6 +49,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.site_utils import test_push_common
 
 try:
     from chromite.lib import metrics
@@ -86,8 +87,6 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          'provision_AutoUpdate.double':  'GOOD',
                          'dummy_Pass.*':                 'GOOD',
                          'dummy_Fail.Fail$':             'FAIL',
-                         'dummy_Fail.RetryFail$':        'FAIL',
-                         'dummy_Fail.RetrySuccess':      'GOOD',
                          'dummy_Fail.Error$':            'ERROR',
                          'dummy_Fail.Warn$':             'WARN',
                          'dummy_Fail.NAError$':          'TEST_NA',
@@ -111,14 +110,28 @@ URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
 # Some test could be missing from the test results for various reasons. Add
 # such test in this list and explain the reason.
-IGNORE_MISSING_TESTS = [
+_IGNORED_TESTS = [
     # For latest build, npo_test_delta does not exist.
+    # TODO(pprabhu) Try removing this.
     'autoupdate_EndToEndTest.npo_test_delta.*',
     # For trybot build, nmo_test_delta does not exist.
+    # TODO(pprabhu) Try removing this.
     'autoupdate_EndToEndTest.nmo_test_delta.*',
-    # Older build does not have login_LoginSuccess test in push_to_prod suite.
+
+    # test_push uses a stable image build to test, which is quite behind ToT.
+    # The following expectations are correct at ToT, but need to be ignored
+    # until stable image is recent enough.
+
     # TODO(dshi): Remove following lines after R41 is stable.
-    'login_LoginSuccess']
+    # TODO(pprabhu) Try removing this.
+    'login_LoginSuccess',
+    # Old builds may not contain this test.
+    # TODO(pprabhu) Try removing this.
+    'platform_InstallTestImage_SERVER_JOB$',
+    # TODO(pprabhu): Remove once R70 is stable.
+    'dummy_Fail.RetrySuccess',
+    'dummy_Fail.RetryFail',
+]
 
 # Multiprocessing proxy objects that are used to share data between background
 # suite-running processes and main process. The multiprocessing-compatible
@@ -185,7 +198,8 @@ def powerwash_dut_to_test_repair(hostname, timeout):
                 'Powerwash test on %s timeout after %ds, abort it.' %
                 (hostname, timeout))
         time.sleep(10)
-    verify_test_results(job_id, EXPECTED_TEST_RESULTS_POWERWASH)
+    verify_test_results(job_id,
+                        test_push_common.EXPECTED_TEST_RESULTS_POWERWASH)
     # Kick off verify, verify will fail and a repair should be triggered.
     AFE.reverify_hosts(hostnames=[hostname])
 
@@ -392,53 +406,8 @@ def verify_test_results(job_id, expected_results):
     """
     print 'Comparing test results...'
     test_views = site_utils.get_test_views_from_tko(job_id, TKO)
-
-    mismatch_errors = []
-    extra_test_errors = []
-
-    found_keys = set()
-    for test_name, test_status in test_views.items():
-        print "%s%s" % (test_name.ljust(30), test_status)
-        # platform_InstallTestImage test may exist in old builds.
-        if re.search('platform_InstallTestImage_SERVER_JOB$', test_name):
-            continue
-        test_found = False
-        for key,val in expected_results.items():
-            if re.search(key, test_name):
-                test_found = True
-                found_keys.add(key)
-                if val != test_status:
-                    error = ('%s Expected: [%s], Actual: [%s]' %
-                             (test_name, val, test_status))
-                    mismatch_errors.append(error)
-        if not test_found:
-            extra_test_errors.append(test_name)
-
-    missing_test_errors = set(expected_results.keys()) - found_keys
-    for exception in IGNORE_MISSING_TESTS:
-        try:
-            missing_test_errors.remove(exception)
-        except KeyError:
-            pass
-
-    summary = []
-    if mismatch_errors:
-        summary.append(('Results of %d test(s) do not match expected '
-                        'values:') % len(mismatch_errors))
-        summary.extend(mismatch_errors)
-        summary.append('\n')
-
-    if extra_test_errors:
-        summary.append('%d test(s) are not expected to be run:' %
-                       len(extra_test_errors))
-        summary.extend(extra_test_errors)
-        summary.append('\n')
-
-    if missing_test_errors:
-        summary.append('%d test(s) are missing from the results:' %
-                       len(missing_test_errors))
-        summary.extend(missing_test_errors)
-        summary.append('\n')
+    summary = test_push_common.summarize_push(test_views, expected_results,
+                                              _IGNORED_TESTS)
 
     # Test link to log can be loaded.
     job_name = '%s-%s' % (job_id, getpass.getuser())
@@ -450,7 +419,6 @@ def verify_test_results(job_id, expected_results):
 
     if summary:
         raise TestPushException('\n'.join(summary))
-
 
 def test_suite_wrapper(queue, suite_name, expected_results, arguments,
                        use_shard=False, create_and_return=False):
@@ -545,16 +513,17 @@ def _run_test_suites(arguments):
 
     push_to_prod_suite = multiprocessing.Process(
             target=test_suite_wrapper,
-            args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
-                    arguments))
+            args=(queue, PUSH_TO_PROD_SUITE,
+                  test_push_common.EXPECTED_TEST_RESULTS, arguments))
     push_to_prod_suite.daemon = use_daemon
     push_to_prod_suite.start()
 
     # suite test with --create_and_return flag
     asynchronous_suite = multiprocessing.Process(
             target=test_suite_wrapper,
-            args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
-                    arguments, True, True))
+            args=(queue, DUMMY_SUITE,
+                  test_push_common.EXPECTED_TEST_RESULTS_DUMMY,
+                  arguments, True, True))
     asynchronous_suite.daemon = True
     asynchronous_suite.start()
 

@@ -59,6 +59,14 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
                 self.PLT_RST else 'warm_reset')
         logging.info('Using %r for reset', self.reset_signal)
 
+        self.fast_open(enable_testlab=True)
+        # make sure password is cleared.
+        self.cr50.send_command('ccd reset')
+        self.cr50.get_ccd_info()
+        # You can only open cr50 from the console if a password is set. Set
+        # a password, so we can use it to open cr50 while the AP is off.
+        self.set_ccd_password(self.PASSWORD)
+
         self.changed_dut_state = True
         self.assert_reset = True
         if not self.reset_device_get_deep_sleep_count(True):
@@ -69,31 +77,14 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
             if not self.reset_device_get_deep_sleep_count(True):
                 raise error.TestNAError('Skipping test on device without deep '
                         'sleep support')
-            # We can't hold the ec in reset and enter deep sleep. Switch to
-            # using the function that will just verify the console doesn't hang
-            # instead of doing full open. The power button required for full
-            # open would wake up the AP.
-            self.ccd_func = self.send_ccd_cmd
-            logging.info("deep sleep doesn't work with EC in reset. Testing "
-                    "basic ccd open")
-        elif self.ccd_lockout:
-            # If ccd is locked out just send the ccd command and make sure you
-            # get a response. You don't care if ccd open succeeds
-            self.ccd_func = self.send_ccd_cmd
-            logging.info('CCD is locked out. Testing basic ccd open')
+            # We can't hold the ec in reset and enter deep sleep. Set the
+            # capability so physical presence isn't required for open.
+            logging.info("deep sleep doesn't work with EC in reset. skipping "
+                         "physical presence checks.")
+            # set OpenNoLongPP so open won't require pressing the power button.
+            self.cr50.set_cap('OpenNoLongPP', 'Always')
         else:
-            # With ccd accessible and deep sleep working while the EC is reset,
-            # the test can fully verify ccd open.
-            self.ccd_func = self.cr50.set_ccd_level
-            logging.info('Deep sleep works with the device in reset. Testing '
-                    'full ccd open')
-            self.fast_open(enable_testlab=True)
-            # make sure password is cleared.
-            self.cr50.send_command('ccd reset')
-            self.cr50.get_ccd_info()
-            # You can only open cr50 from the console if a password is set. Set
-            # a password, so we can use it to open cr50 while the AP is off.
-            self.set_ccd_password(self.PASSWORD)
+            logging.info('Physical presence can be used during open')
 
 
     def cleanup(self):
@@ -201,39 +192,16 @@ class firmware_Cr50OpenWhileAPOff(Cr50Test):
         return self.cr50.get_deep_sleep_count() - start_count
 
 
-    def send_ccd_cmd(self, state, password):
-        """Send the cr50 command ccd command. Make sure access is denied
-
-        Args:
-            state: desired ccd state: open, unlock, or lock
-            password: ignored. Just used to make this consistent with
-                    set_ccd_level
-
-        Raises:
-            TestFail if ccd isn't locked out
-        """
-        logging.info('running lockout check %s', state)
-        logging.info('waiting %d seconds, the minimum time between'
-                     ' ccd password attempts',
-                     self.CCD_PASSWORD_RATE_LIMIT)
-        time.sleep(self.CCD_PASSWORD_RATE_LIMIT)
-        rv = self.cr50.send_command_get_output('ccd %s' % state , ['ccd.*>'])[0]
-        logging.info(rv)
-        if self.ccd_lockout != ('Access Denied' in rv):
-            raise error.TestFail('CCD is not %s' % ('locked out' if
-                    self.ccd_lockout else 'available'))
-
-
     def try_ccd_open(self, cr50_reset):
         """Try 'ccd open' and make sure the console doesn't hang"""
-        self.ccd_func('lock', self.PASSWORD)
+        self.cr50.set_ccd_level('lock', self.PASSWORD)
         try:
             self.turn_device('off')
             if cr50_reset:
                 if not self.deep_sleep_reset_get_count():
                     raise error.TestFail('Did not detect a cr50 reset')
             # Verify ccd open
-            self.ccd_func('open', self.PASSWORD)
+            self.cr50.set_ccd_level('open', self.PASSWORD)
         finally:
             self.restore_dut()
 
