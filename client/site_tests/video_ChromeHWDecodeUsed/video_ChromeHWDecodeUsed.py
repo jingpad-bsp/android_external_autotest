@@ -101,9 +101,16 @@ class video_ChromeHWDecodeUsed(test.test):
                  player.wait_ended_or_error()
 
             # Waits for histogram updated for the test video.
-            histogram_verifier.expect_sole_bucket(
-                init_status_differ.end(), init_status_differ.histogram_name,
-                constants.MEDIA_GVD_BUCKET, 'OK (0)')
+
+            diff_init_status = init_status_differ.end()
+            if constants.MEDIA_GVD_BUCKET not in diff_init_status:
+                raise error.TestError('Expect GpuVideoDecoderInitializeStatus '
+                                      'has OK status. Histogram diff: %r' %
+                                      diff_init_status)
+            if len(diff_init_status) != 1:
+                raise error.TestError('GpuVideoDecoderInitializeStatus '
+                                      'has status other than OK: %r' %
+                                      diff_init_status)
 
             diff_error = error_differ.end()
             if diff_error:
