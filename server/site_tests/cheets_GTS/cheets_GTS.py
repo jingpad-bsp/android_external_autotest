@@ -14,6 +14,7 @@
 
 import logging
 import os
+import shutil
 import tempfile
 
 from autotest_lib.server import utils
@@ -129,24 +130,25 @@ class cheets_GTS(tradefed_test.TradefedTest):
         dut before the log-in for the test is performed.
         """
 
-        # Download the GTS auth key to the local temp directory.
-        self._authkey = None
-        if not authkey:
-            authkey = self._get_default_authkey()
-        tmpdir = tempfile.mkdtemp()
-        self._authkey = self._download_to_dir(authkey, tmpdir)
-
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
         if self._get_release_channel() == 'stable':
             self._timeout += 3600
 
-        self._run_tradefed_with_retries(
-            test_name=test_name,
-            run_template=run_template,
-            retry_template=retry_template,
-            target_module=target_module,
-            target_plan=target_plan,
-            needs_push_media=needs_push_media,
-            login_precondition_commands=login_precondition_commands,
-            precondition_commands=precondition_commands)
+        # Download the GTS auth key to the local temp directory.
+        tmpdir = tempfile.mkdtemp()
+        try:
+            self._authkey = self._download_to_dir(
+                authkey or self._get_default_authkey(), tmpdir)
+
+            self._run_tradefed_with_retries(
+                test_name=test_name,
+                run_template=run_template,
+                retry_template=retry_template,
+                target_module=target_module,
+                target_plan=target_plan,
+                needs_push_media=needs_push_media,
+                login_precondition_commands=login_precondition_commands,
+                precondition_commands=precondition_commands)
+        finally:
+            shutil.rmtree(tmpdir)
