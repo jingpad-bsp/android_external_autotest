@@ -64,10 +64,6 @@ class video_MediaRecorderHWEncodeUsed(test.test):
                 extra_browser_args=EXTRA_BROWSER_ARGS +\
                 [helper_logger.chrome_vmodule_flag()],
                 init_network_controller=True) as cr:
-            hw_enc_used_differ = histogram_verifier.HistogramDiffer(
-                cr, MEDIA_RECORDER_HW_ENC_USED)
-            diff_enc_error = histogram_verifier.HistogramDiffer(
-                cr, MEDIA_RECORDER_ERROR)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.tab = cr.browser.tabs.New()
             self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
@@ -77,9 +73,17 @@ class video_MediaRecorderHWEncodeUsed(test.test):
             if not self.is_test_completed():
                 logging.error('%s did not complete', test_name)
                 raise error.TestFail('Failed %s' % test_name)
-            histogram_verifier.expect_sole_bucket(
-                hw_enc_used_differ.end(), hw_enc_used_differ.histogram_name,
-                MEDIA_RECORDER_HW_ENC_USED_BUCKET, 'HW encoder used (1)')
 
-            if diff_enc_error.end():
+            # Waits for histogram updated for the test video.
+            histogram_verifier.verify(
+                 cr,
+                 MEDIA_RECORDER_HW_ENC_USED,
+                 MEDIA_RECORDER_HW_ENC_USED_BUCKET)
+
+            # Verify no GPU error happens.
+            if histogram_verifier.is_histogram_present(
+                    cr,
+                    MEDIA_RECORDER_ERROR):
+                logging.info(histogram_verifier.get_histogram(
+                             cr, MEDIA_RECORDER_ERROR))
                 raise error.TestError('GPU Video Encoder Error.')
