@@ -108,26 +108,13 @@ EXPECTED_TEST_RESULTS_POWERWASH = {'platform_Powerwash': 'GOOD',
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
-# Some test could be missing from the test results for various reasons. Add
-# such test in this list and explain the reason.
+# Some test could be extra / missing or have mismatched results for various
+# reasons. Add such test in this list and explain the reason.
 _IGNORED_TESTS = [
-    # For latest build, npo_test_delta does not exist.
-    # TODO(pprabhu) Try removing this.
-    'autoupdate_EndToEndTest.npo_test_delta.*',
-    # For trybot build, nmo_test_delta does not exist.
-    # TODO(pprabhu) Try removing this.
-    'autoupdate_EndToEndTest.nmo_test_delta.*',
-
     # test_push uses a stable image build to test, which is quite behind ToT.
     # The following expectations are correct at ToT, but need to be ignored
     # until stable image is recent enough.
 
-    # TODO(dshi): Remove following lines after R41 is stable.
-    # TODO(pprabhu) Try removing this.
-    'login_LoginSuccess',
-    # Old builds may not contain this test.
-    # TODO(pprabhu) Try removing this.
-    'platform_InstallTestImage_SERVER_JOB$',
     # TODO(pprabhu): Remove once R70 is stable.
     'dummy_Fail.RetrySuccess',
     'dummy_Fail.RetryFail',
