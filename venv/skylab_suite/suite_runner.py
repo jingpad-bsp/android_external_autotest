@@ -26,6 +26,10 @@ SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
 
 SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
 
+# See #5 in crbug.com/873886 for more details.
+_NOT_SUPPORTED_DEPENDENCIES = ['skip_provision', 'cleanup-reboot', 'rpm',
+                               'modem_repair']
+
 
 def run(test_specs, suite_handler, dry_run=False):
     """Run a CrOS dynamic test suite.
@@ -304,9 +308,13 @@ def _schedule_test(test_spec,suite_id=None, use_fallback=False,
                           test_spec.pool),
                   'label-board': test_spec.board,
                   'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}
-    for dependency in test_spec.test.dependencies:
+    for dep in test_spec.test.dependencies:
+        if dep in _NOT_SUPPORTED_DEPENDENCIES:
+            logging.warning('Dependency %s is not supported in skylab', dep)
+            continue
+
         # label-tag hasn't been an official label for skylab bots.
-        dimensions['label-tag'] = dependency
+        dimensions['label-tag'] = dep
 
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
