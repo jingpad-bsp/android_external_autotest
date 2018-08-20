@@ -266,9 +266,6 @@ def _run_swarming_cmd(cmd, dimensions, test_spec, temp_json_path, suite_id):
 
     @return the swarming task id of this task.
     """
-    # TODO (xixuan): Add this to provision cmd when cron job for special task
-    # is working.
-    dimensions['dut_state'] = swarming_lib.SWARMING_DUT_READY_STATUS
     dimensions['provisionable-cros-version'] = test_spec.build
     trigger_cmd = _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
                                              temp_json_path, suite_id)
@@ -305,7 +302,8 @@ def _schedule_test(test_spec,suite_id=None, use_fallback=False,
     dimensions = {'pool': swarming_lib.SKYLAB_DRONE_POOL,
                   'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(
                           test_spec.pool),
-                  'label-board': test_spec.board}
+                  'label-board': test_spec.board,
+                  'dut_state': swarming_lib.SWARMING_DUT_READY_STATUS}
     for dependency in test_spec.test.dependencies:
         # label-tag hasn't been an official label for skylab bots.
         dimensions['label-tag'] = dependency
