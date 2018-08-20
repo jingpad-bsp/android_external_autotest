@@ -306,6 +306,9 @@ def _schedule_test(test_spec,suite_id=None, use_fallback=False,
                   'label-pool': swarming_lib.SWARMING_DUT_POOL_MAP.get(
                           test_spec.pool),
                   'label-board': test_spec.board}
+    for dependency in test_spec.test.dependencies:
+        # label-tag hasn't been an official label for skylab bots.
+        dimensions['label-tag'] = dependency
 
     osutils = autotest.chromite_load('osutils')
     with osutils.TempDir() as tempdir:
