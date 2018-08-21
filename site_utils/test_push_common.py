@@ -92,7 +92,7 @@ def _match_test_results(test_views, expected_results, ignored_tests):
 
 
 def _is_significant(test, ignored_tests_patterns):
-    return all([m.search(test) is None for m in ignored_tests_patterns])
+    return all([test not in m for m in ignored_tests_patterns])
 
 
 def _generate_push_summary(test_push_errors):
