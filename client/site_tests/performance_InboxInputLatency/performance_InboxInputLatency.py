@@ -144,7 +144,7 @@ class performance_InboxInputLatency(test.test):
         # Iterate recorded events and output target latency events
         timeline_model = model_module.TimelineModel(results)
         event_iter = timeline_model.IterAllEvents(
-                event_type_predicate=model_module.IsSliceOrAsyncSlice)
+                event_type_predicate=timeline_model.IsSliceOrAsyncSlice)
 
         # Extract and report the latency information
         latency_data = []
