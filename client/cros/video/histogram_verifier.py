@@ -170,6 +170,56 @@ def subtract_histogram(minuend, subtrahend):
      return {k: v for k, v in result.iteritems() if v}
 
 
+def expect_sole_bucket(histogram_differ, bucket, bucket_name, timeout=10,
+                       sleep_interval=1):
+     """
+     Returns true if the given bucket solely exists in histogram differ.
+
+     @param histogram_differ: a HistogramDiffer instance used to get histogram
+            name and histogram diff multiple times.
+     @param bucket: bucket value.
+     @param bucket_name: bucket name to be shown on error message.
+     @param timeout: timeout in seconds.
+     @param sleep_interval: interval in seconds between getting diff.
+     @returns True if the given bucket solely exists in histogram.
+     @raises TestError if bucket doesn't exist or other buckets exist.
+     """
+     timer = utils.Timer(timeout)
+     histogram = {}
+     histogram_name = histogram_differ.histogram_name
+     while timer.sleep(sleep_interval):
+          histogram = histogram_differ.end()
+          if histogram:
+               break
+
+     if bucket not in histogram:
+          raise error.TestError('Expect %s has %s. Histogram: %r' %
+                                (histogram_name, bucket_name, histogram))
+     if len(histogram) > 1:
+          raise error.TestError('%s has bucket other than %s. Histogram: %r' %
+                                (histogram_name, bucket_name, histogram))
+     return True
+
+
+def poll_histogram_grow(histogram_differ, timeout=2, sleep_interval=0.1):
+     """
+     Polls histogram to see if it grows within |timeout| seconds.
+
+     @param histogram_differ: a HistogramDiffer instance used to get histogram
+            name and histogram diff multiple times.
+     @param timeout: observation timeout in seconds.
+     @param sleep_interval: interval in seconds between getting diff.
+     @returns (True, histogram_diff) if the histogram grows.
+              (False, {}) if it does not grow in |timeout| seconds.
+     """
+     timer = utils.Timer(timeout)
+     while timer.sleep(sleep_interval):
+          histogram_diff = histogram_differ.end()
+          if histogram_diff:
+               return (True, histogram_diff)
+     return (False, {})
+
+
 class HistogramDiffer(object):
      """
      Calculates a histogram's progress between begin() and end().
