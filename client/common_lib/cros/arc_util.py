@@ -265,9 +265,9 @@ def opt_in_and_wait_for_completion(extension_main_page):
         """
         err_msg = extension_main_page.EvaluateJavaScript(js_read_error_message)
         err_msg = err_msg.strip()
-        logging.error('Error: %r', err_msg.encode('utf8'))
+        logging.error('Error: %r', err_msg)
         if err_msg:
-            raise error.TestFail('Opt-in app error: %s' % err_msg)
+            raise error.TestFail('Opt-in app error: %r' % err_msg)
         else:
             raise error.TestFail('Opt-in app did not finish running after %s '
                                  'seconds!' % SIGN_IN_TIMEOUT)
