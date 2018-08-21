@@ -8,6 +8,7 @@ import unittest
 
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.video import histogram_verifier
 import mock
 
@@ -50,7 +51,7 @@ class HistogramVerifierTest(unittest.TestCase):
             histogram_verifier.parse_histogram(self.HISTOGRAM_TEXT_1))
         self.assertDictEqual({}, histogram_verifier.parse_histogram(''))
 
-    def test_subtract_histogra(self):
+    def test_subtract_histogram(self):
         """
         Tests subtract_histogram().
         """
@@ -67,6 +68,113 @@ class HistogramVerifierTest(unittest.TestCase):
         self.assertDictEqual(
             {0: 1},
             histogram_verifier.subtract_histogram({0: 1, 15:4}, {0:0, 15:4}))
+
+
+class PollHistogramDifferBase(unittest.TestCase):
+    """
+    Base class to test methods that polls HistogramDiffer.
+
+    It mocks HistogramDiffer.end() to facilitate its callers' unittest.
+    It mocks utils.Timer so that it times out on the third
+    sleep() call.
+    """
+    def setUp(self):
+        self.histogram_name = 'mock_histogram'
+        self.bucket_name = 'mock_bucket'
+        self.differ = histogram_verifier.HistogramDiffer(
+            None, self.histogram_name, begin=False)
+        self.differ.end = mock.Mock()
+
+        self.time_patcher = mock.patch.object(histogram_verifier.utils.Timer,
+                                              'sleep')
+        # Timeout at the third call of sleep().
+        self.sleep_mock = self.time_patcher.start()
+        self.sleep_mock.side_effect = [True, True, False]
+
+    def tearDown(self):
+        self.time_patcher.stop()
+
+
+class ExpectSoleBucketTest(PollHistogramDifferBase):
+    """
+    Tests histogram_verifier.expect_sole_bucket().
+    """
+    def test_diff_sole_bucket(self):
+        """
+        Tests expect_sole_bucket() with sole bucket.
+        """
+        self.differ.end.side_effect = [{self.bucket_name:1}]
+        self.assertTrue(histogram_verifier.expect_sole_bucket(
+            self.differ, self.bucket_name, self.bucket_name))
+
+    def test_diff_second_time(self):
+        """
+        Tests expect_sole_bucket() with sole bucket on the second poll.
+        """
+        # First time return empty.
+        self.differ.end.side_effect = [{}, {self.bucket_name:1}]
+        self.assertTrue(histogram_verifier.expect_sole_bucket(
+            self.differ, self.bucket_name, self.bucket_name))
+
+    def test_diff_more_than_one_bucket(self):
+        """
+        Tests expect_sole_bucket() with more than one bucket.
+        """
+        self.differ.end.side_effect = [{self.bucket_name:1, 'unexpected':1}]
+        with self.assertRaisesRegexp(
+                error.TestError,
+                '%s has bucket other than %s' % (self.histogram_name,
+                                                 self.bucket_name)):
+            histogram_verifier.expect_sole_bucket(self.differ, self.bucket_name,
+                                                  self.bucket_name)
+
+    def test_diff_nothing(self):
+        """
+        Tests expect_sole_bucket() with no bucket.
+        """
+        self.differ.end.side_effect = [{}, {}]
+        with self.assertRaisesRegexp(
+                error.TestError,
+                'Expect %s has %s' % (self.histogram_name, self.bucket_name)):
+            histogram_verifier.expect_sole_bucket(self.differ, self.bucket_name,
+                                                  self.bucket_name)
+
+    def test_diff_too_late(self):
+        """
+        Tests expect_sole_bucket() with bucket arrives too late.
+        """
+        # differ polls histogram diff twice. But the bucket comes at the third
+        # polling call.
+        self.differ.end.side_effect = [{}, {}, {self.bucket_name: 1}]
+        with self.assertRaisesRegexp(
+                error.TestError,
+                'Expect %s has %s' % (self.histogram_name, self.bucket_name)):
+            histogram_verifier.expect_sole_bucket(self.differ, self.bucket_name,
+                                                  self.bucket_name)
+
+class PollHistogramGrowTest(PollHistogramDifferBase):
+    """
+    Tests histogram_verifier.poll_histogram_grow().
+    """
+    def test_diff_sole_bucket(self):
+        """
+        Tests poll_histogram_grow() with sole bucket.
+        """
+        self.differ.end.side_effect = [{self.bucket_name:1}]
+        is_grow, histogram = histogram_verifier.poll_histogram_grow(
+            self.differ, self.bucket_name, self.bucket_name)
+        self.assertTrue(is_grow)
+        self.assertDictEqual({self.bucket_name:1}, histogram)
+
+    def test_diff_nochange(self):
+        """
+        Tests expect_sole_bucket() with sole bucket on the second poll.
+        """
+        self.differ.end.side_effect = [{}, {}, {}]
+        is_grow, histogram = histogram_verifier.poll_histogram_grow(
+            self.differ, self.bucket_name, self.bucket_name)
+        self.assertFalse(is_grow)
+        self.assertDictEqual({}, histogram)
 
 
 class HistogramDifferTest(unittest.TestCase):
