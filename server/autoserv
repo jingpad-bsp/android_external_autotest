@@ -70,6 +70,8 @@ STOP_SERVOD_CMD = 'sudo stop servod'
 _AUTOTEST_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
 _CONTROL_FILE_FROM_CONTROL_NAME = 'control.from_control_name'
 
+_LXC_JOB_FOLDER = 'lxc_job_folder'
+
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
     sys.exit(1)
@@ -150,7 +152,7 @@ def _stage_ssp(parser, resultsdir):
 
 
 def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
-                  job_folder, machines):
+                  machines):
     """Run the server job with server-side packaging.
 
     @param job: The server job object.
@@ -163,7 +165,6 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
                     results can be None for autoserv run requires no logging.
     @param parser: Command line parser that contains the options.
     @param ssp_url: url of the staged server-side package.
-    @param job_folder: Name of the job result folder.
     @param machines: A list of machines to run the test.
     """
     if not ssp_url:
@@ -178,7 +179,7 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
         dut_name = machines[0] if len(machines) >= 1 else None
         test_container = bucket.setup_test(container_id, job_id, ssp_url,
                                            results, control=control,
-                                           job_folder=job_folder,
+                                           job_folder=_LXC_JOB_FOLDER,
                                            dut_name=dut_name,
                                            isolate_hash=parser.options.isolate)
     except Exception as e:
@@ -207,7 +208,7 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
                 lxc.CONTROL_TEMP_PATH, os.path.basename(control))
         paths_to_replace[control] = container_control_filename
     # Update result directory with the one in container.
-    container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
+    container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % _LXC_JOB_FOLDER)
     if parser.options.results:
         paths_to_replace[parser.options.results] = container_result_dir
     args = [paths_to_replace.get(arg, arg) for arg in args]
@@ -369,7 +370,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     job_or_task_id = job_directories.get_job_id_or_task_id(
             parser.options.results)
     container_id = lxc.ContainerId(job_or_task_id, time.time(), os.getpid())
-    job_folder = job_directories.get_job_folder_name(parser.options.results)
 
     # Implement SIGTERM handler
     def handle_sigterm(signum, frame):
@@ -557,8 +557,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                 if use_ssp:
                     try:
                         _run_with_ssp(job, container_id, job_or_task_id,
-                                        results, parser, ssp_url, job_folder,
-                                        machines)
+                                        results, parser, ssp_url, machines)
                     finally:
                         # Update the ownership of files in result folder.
                         correct_results_folder_permission(results)
