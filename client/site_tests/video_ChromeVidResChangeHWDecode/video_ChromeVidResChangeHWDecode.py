@@ -31,6 +31,8 @@ class video_ChromeVidResChangeHWDecode(test.test):
         with chrome.Chrome(
                 extra_browser_args=helper_logger.chrome_vmodule_flag(),
                 init_network_controller=True) as cr:
+            init_status_differ = histogram_verifier.HistogramDiffer(
+                cr, constants.MEDIA_GVD_INIT_STATUS)
             shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab1 = cr.browser.tabs[0]
@@ -59,7 +61,5 @@ class video_ChromeVidResChangeHWDecode(test.test):
                     sleep_interval=1)
 
             # Make sure decode is hardware accelerated.
-            histogram_verifier.verify(
-                    cr,
-                    constants.MEDIA_GVD_INIT_STATUS,
-                    constants.MEDIA_GVD_BUCKET)
+            histogram_verifier.expect_sole_bucket(
+                init_status_differ, constants.MEDIA_GVD_BUCKET, 'OK (0)')

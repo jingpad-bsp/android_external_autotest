@@ -80,9 +80,12 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         EXTRA_BROWSER_ARGS.append(helper_logger.chrome_vmodule_flag())
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
                            init_network_controller=True) as cr:
+            histogram_differ = histogram_verifier.HistogramDiffer(
+                cr, histogram_name)
             # Open WebRTC loopback page.
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.start_loopback(cr)
 
             # Make sure decode is hardware accelerated.
-            histogram_verifier.verify(cr, histogram_name, histogram_bucket_val)
+            histogram_verifier.expect_sole_bucket(
+                histogram_differ, histogram_bucket_val, histogram_bucket_val)
