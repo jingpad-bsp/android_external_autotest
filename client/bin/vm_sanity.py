@@ -69,6 +69,14 @@ def main(argv):
                                      timeout=15,
                                      desc='Android container still running '
                                           'after Chrome shutdown.')
+
+        # Test incognito mode.
+        with chrome.Chrome(logged_in=False):
+            if not cryptohome.is_guest_vault_mounted():
+                raise TestFail('Expected to find a guest vault mounted.')
+        if cryptohome.is_guest_vault_mounted(allow_fail=True):
+            raise TestFail('Expected to NOT find a guest vault mounted.')
+
     elapsed = datetime.datetime.now() - start
     logging.info('Test succeeded in %s seconds.', elapsed.seconds)
 
