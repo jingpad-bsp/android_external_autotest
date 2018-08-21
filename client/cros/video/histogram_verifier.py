@@ -170,26 +170,6 @@ def subtract_histogram(minuend, subtrahend):
      return {k: v for k, v in result.iteritems() if v}
 
 
-def expect_sole_bucket(histogram, histogram_name, bucket, bucket_name):
-     """
-     Returns true if the given bucket solely exists in histogram.
-
-     @param histogram: histogram bucket dict to exam.
-     @param histogram_name: histogram name to be shown on error message.
-     @param bucket: bucket value.
-     @param bucet_name: bucket name to be shown on error message.
-     @returns True if the given bucket solely exists in histogram.
-     @raises TestError if bucket doesn't exist or other buckets exist.
-     """
-     if bucket not in histogram:
-          raise error.TestError('Expect %s has %s. Histogram: %r' %
-                                (histogram_name, bucket_name, histogram))
-     if len(histogram) != 1:
-          raise error.TestError('%s has bucket other than %s. Histogram: %r' %
-                                (histogram_name, bucket_name, histogram))
-     return True
-
-
 class HistogramDiffer(object):
      """
      Calculates a histogram's progress between begin() and end().
