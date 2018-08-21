@@ -33,6 +33,23 @@ _METRICS_PREFIX = 'chromeos/autotest/test_push/skylab'
 _POLLING_INTERVAL_S = 10
 _WAIT_FOR_DUTS_TIMEOUT_S = 20 * 60
 
+# Dictionary of test results expected in suite:skylab_staging_test.
+_EXPECTED_TEST_RESULTS = {'login_LoginSuccess.*':         'GOOD',
+                          'provision_AutoUpdate.double':  'GOOD',
+                          'dummy_Pass.*':                 'GOOD',
+                          'dummy_Fail.Fail$':             'FAIL',
+                          'dummy_Fail.Error$':            'ERROR',
+                          'dummy_Fail.Warn$':             'WARN',
+                          'dummy_Fail.NAError$':          'TEST_NA',
+                          'dummy_Fail.Crash$':            'GOOD'}
+
+# Some test could be missing from the test results for various reasons. Add
+# such test in this list and explain the reason.
+_IGNORED_TESTS = [
+    # TODO(pprabhu): Remove once R70 is stable.
+    'dummy_Fail.RetrySuccess',
+    'dummy_Fail.RetryFail',
+]
 
 _logger = logging.getLogger(__name__)
 
@@ -161,6 +178,8 @@ def _run_test_push(args):
         deadline - time.time(),
     )
     _logger.info('Triggered skylab_staging_test suite. Task id: %s', task_id)
+    _logger.info('Check push_to_prod suite on: \n    %s',
+                 swclient.task_url(task_id))
     swclient.wait_for_suite(
         task_id,
         args.dut_board,
@@ -170,7 +189,46 @@ def _run_test_push(args):
         deadline - time.time(),
     )
     _logger.info('Finished skylab_staging_test suite.')
-  # TODO(crbug.com/863525) Verify test results are inserted correctly in TKO.
+
+  _verify_test_results(task_id, _EXPECTED_TEST_RESULTS)
+
+
+def _verify_test_results(task_id, expected_results):
+  """Verify if test results are expected."""
+  _logger.info('Comparing test results...')
+  test_views = _get_test_views(task_id)
+  available_views = [v for v in test_views if _view_is_preserved(v)]
+  logging.debug('Test results:')
+  for v in available_views:
+    logging.debug('%s%s', v['test_name'].ljust(30), v['status'])
+
+  summary = _verify_and_summarize(available_views, expected_results)
+  if summary:
+    logging.error('\n'.join(summary))
+    raise errors.TestPushError('Test results are not consistent with '
+                               'expected results')
+
+
+def _get_test_views(task_id):
+  """Retrieve test views from TKO for skylab task id."""
+  tko_db = autotest.load('tko.db')
+  db = tko_db.db()
+  return db.get_child_tests_by_parent_task_id(task_id)
+
+
+def _view_is_preserved(view):
+  """Detect whether to keep the test view for further comparison."""
+  job_status = autotest.load('server.cros.dynamic_suite.job_status')
+  return (job_status.view_is_relevant(view) and
+          (not job_status.view_is_for_suite_job(view)))
+
+
+def _verify_and_summarize(available_views, expected_results):
+  """Verify and generate summaries for test_push results."""
+  test_push_common = autotest.load('site_utils.test_push_common')
+  views = {v['test_name']:v['status'] for v in available_views}
+  return test_push_common.summarize_push(views, expected_results,
+                                         _IGNORED_TESTS)
 
 
 def _ensure_duts_ready(swclient, board, pool, min_duts, timeout_s):

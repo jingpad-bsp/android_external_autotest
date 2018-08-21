@@ -162,6 +162,11 @@ class Client(object):
     return cmd
 
 
+  def task_url(self, task_id):
+    """Generate the task url based on task id."""
+    return '%s/user/task/%s' % (self._host, task_id)
+
+
 def _extract_run_id(path):
   if not os.path.isfile(path):
     raise errors.TestPushError('No task summary at %s' % path)
