@@ -122,8 +122,8 @@ def get_basic_swarming_cmd(command):
             '--swarming', os.environ.get('SWARMING_SERVER')]
 
 
-def make_fallback_request_dict(cmds, slices_dimensions, task_name, priority,
-                               tags, user,
+def make_fallback_request_dict(cmds, slices_dimensions, slices_expiration_secs,
+                               task_name, priority, tags, user,
                                parent_task_id='',
                                expiration_secs=DEFAULT_EXPIRATION_SECS,
                                grace_period_secs=DEFAULT_TIMEOUT_SECS,
@@ -134,10 +134,10 @@ def make_fallback_request_dict(cmds, slices_dimensions, task_name, priority,
     @param cmds: A list of cmd to run on swarming bots.
     @param slices_dimensions: A list of dict to indicates different tries'
         dimensions.
+    @param slices_expiration_secs: A list of Integer to indicates each slice's
+        expiration_secs.
     @param task_name: The request's name.
     @param priority: The request's priority. An integer.
-    @param expiration_secs: The expiration seconds for the each cmd to wait
-        to be expired.
     @param grace_period_secs: The seconds to send a task after a SIGTERM before
         sending it a SIGKILL.
     @param execution_timeout_secs: The seconds to run before a task gets
@@ -148,8 +148,10 @@ def make_fallback_request_dict(cmds, slices_dimensions, task_name, priority,
     @return a json-compatible dict, as a request for swarming call.
     """
     assert len(cmds) == len(slices_dimensions)
+    assert len(cmds) == len(slices_expiration_secs)
     task_slices = []
-    for cmd, dimensions in zip(cmds, slices_dimensions):
+    for cmd, dimensions, expiration_secs in zip(cmds, slices_dimensions,
+                                                slices_expiration_secs):
         properties = TaskProperties(
                 command=cmd,
                 dimensions=dimensions,
