@@ -52,6 +52,7 @@ DEFAULT_TIMEOUT_SECS = 60 * 60
 # Use the same priorities mapping as chromite/lib/constants.py
 SKYLAB_HWTEST_PRIORITIES_MAP = {
     'Weekly': 230,
+    'CTS': 215,
     'Daily': 200,
     'PostBuild': 170,
     'Default': 140,
