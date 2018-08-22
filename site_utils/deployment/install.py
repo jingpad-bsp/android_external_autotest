@@ -68,6 +68,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
@@ -333,6 +334,54 @@ def _update_host_attributes(afe, hostname, host_attrs):
                                hostname=hostname)
 
 
+def _wait_for_idle(afe, host_id):
+    """Helper function for `_ensure_host_idle`.
+
+    Poll the host with the given `host_id` via `afe`, waiting for it
+    to become idle.  Run forever; the caller takes care of timing out.
+
+    @param afe        AFE object for RPC calls.
+    @param host_id    Id of the host that's expected to become idle.
+    """
+    while True:
+        afe_host = afe.get_hosts(id=host_id)[0]
+        if afe_host.status in host_states.IDLE_STATES:
+            return
+        # Let's not spam our server.
+        time.sleep(0.2)
+
+
+def _ensure_host_idle(afe, afe_host):
+    """Abort any special task running on `afe_host`.
+
+    The given `afe_host` is currently locked.  If there's a special task
+    running on the given `afe_host`, abort it, then wait for the host to
+    show up as idle, return whether the operation succeeded.
+
+    @param afe        AFE object for RPC calls.
+    @param afe_host   Host to be aborted.
+
+    @return A true value if the host is idle at return, or a false value
+        if the host wasn't idle after some reasonable time.
+    """
+    # We need to talk to the shard, not the master, for at least two
+    # reasons:
+    #   * The `abort_special_tasks` RPC doesn't forward from the master
+    #     to the shard, and only the shard has access to the special
+    #     tasks.
+    #   * Host status on the master can lag actual status on the shard
+    #     by several minutes.  Only the shard can provide status
+    #     guaranteed to post-date the call to lock the DUT.
+    if afe_host.shard:
+        afe = frontend.AFE(server=afe_host.shard)
+    afe_host = afe.get_hosts(id=afe_host.id)[0]
+    if afe_host.status in host_states.IDLE_STATES:
+        return True
+    afe.run('abort_special_tasks', host_id=afe_host.id, is_active=1)
+    return not retry.timeout(_wait_for_idle, (afe, afe_host.id),
+                             timeout_sec=5.0)[0]
+
+
 def _get_afe_host(afe, hostname, host_attrs, arguments):
     """Get an AFE Host object for the given host.
 
@@ -361,10 +410,10 @@ def _get_afe_host(afe, hostname, host_attrs, arguments):
                 unlock_on_failure = True
             else:
                 raise Exception('Failed to lock host')
-        if afe_host.status not in host_states.IDLE_STATES:
+        if not _ensure_host_idle(afe, afe_host):
             if unlock_on_failure and not _try_unlock_host(afe_host):
-                raise Exception('Host is in use, and failed to unlock it')
-            raise Exception('Host is in use by Autotest')
+                raise Exception('Failed to abort host, and failed to unlock it')
+            raise Exception('Failed to abort task on host')
         # This host was pre-existing; if the user didn't supply
         # attributes, don't update them, because the defaults may
         # not be correct.
