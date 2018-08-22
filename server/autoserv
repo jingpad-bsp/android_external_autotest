@@ -70,6 +70,8 @@ STOP_SERVOD_CMD = 'sudo stop servod'
 _AUTOTEST_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
 _CONTROL_FILE_FROM_CONTROL_NAME = 'control.from_control_name'
 
+_LXC_JOB_FOLDER = 'lxc_job_folder'
+
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
     sys.exit(1)
@@ -124,11 +126,7 @@ def _stage_ssp(parser, resultsdir):
             for results to be stored in a temp folder. resultsdir can be None
             for autoserv run requires no logging.
 
-    @return: (ssp_url, error_msg), where
-              ssp_url is a url to the autotest server-side package. None if
-              server-side package is not supported.
-              error_msg is a string indicating the failures. None if server-
-              side package is staged successfully.
+    @return: url to the autotest server-side package. None in case of errors.
     """
     machines_list = _get_machines(parser)
     machines_list = server_job.get_machine_dicts(
@@ -144,11 +142,17 @@ def _stage_ssp(parser, resultsdir):
                  'image': parser.options.test_source_build}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
-    return script_locals['ssp_url'], script_locals['error_msg']
+    ssp_url = script_locals['ssp_url']
+    if not ssp_url:
+        logging.error('Failed to stage SSP package: %s',
+                      script_locals['error_msg'])
+        logging.error('This job will fail later, when attempting to run with'
+                      ' SSP')
+    return ssp_url
 
 
 def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
-                  job_folder, machines):
+                  machines):
     """Run the server job with server-side packaging.
 
     @param job: The server job object.
@@ -161,9 +165,13 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
                     results can be None for autoserv run requires no logging.
     @param parser: Command line parser that contains the options.
     @param ssp_url: url of the staged server-side package.
-    @param job_folder: Name of the job result folder.
     @param machines: A list of machines to run the test.
     """
+    if not ssp_url:
+        job.record('FAIL', None, None,
+                   'Failed to stage server-side package')
+        raise error.AutoservError('Failed to stage server-side package')
+
     bucket = lxc.ContainerBucket()
     control = (parser.args[0] if len(parser.args) > 0 and parser.args[0] != ''
                else None)
@@ -171,7 +179,7 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
         dut_name = machines[0] if len(machines) >= 1 else None
         test_container = bucket.setup_test(container_id, job_id, ssp_url,
                                            results, control=control,
-                                           job_folder=job_folder,
+                                           job_folder=_LXC_JOB_FOLDER,
                                            dut_name=dut_name,
                                            isolate_hash=parser.options.isolate)
     except Exception as e:
@@ -200,7 +208,7 @@ def _run_with_ssp(job, container_id, job_id, results, parser, ssp_url,
                 lxc.CONTROL_TEMP_PATH, os.path.basename(control))
         paths_to_replace[control] = container_control_filename
     # Update result directory with the one in container.
-    container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
+    container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % _LXC_JOB_FOLDER)
     if parser.options.results:
         paths_to_replace[parser.options.results] = container_result_dir
     args = [paths_to_replace.get(arg, arg) for arg in args]
@@ -346,13 +354,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     @param ssp_url: Url to server-side package.
     @param use_ssp: Set to True to run with server-side packaging.
     """
-    if parser.options.warn_no_ssp:
-        # Post a warning in the log.
-        logging.warn('Autoserv is required to run with server-side packaging. '
-                     'However, no drone is found to support server-side '
-                     'packaging. The test will be executed in a drone without '
-                     'server-side packaging supported.')
-
     # send stdin to /dev/null
     dev_null = os.open(os.devnull, os.O_RDONLY)
     os.dup2(dev_null, sys.stdin.fileno())
@@ -369,7 +370,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     job_or_task_id = job_directories.get_job_id_or_task_id(
             parser.options.results)
     container_id = lxc.ContainerId(job_or_task_id, time.time(), os.getpid())
-    job_folder = job_directories.get_job_folder_name(parser.options.results)
 
     # Implement SIGTERM handler
     def handle_sigterm(signum, frame):
@@ -557,8 +557,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                 if use_ssp:
                     try:
                         _run_with_ssp(job, container_id, job_or_task_id,
-                                        results, parser, ssp_url, job_folder,
-                                        machines)
+                                        results, parser, ssp_url, machines)
                     finally:
                         # Update the ownership of files in result folder.
                         correct_results_folder_permission(results)
@@ -634,9 +633,35 @@ def get_job_status(options):
     return task_mapping[match[0]] if match else s.RUNNING
 
 
+def _require_ssp_from_control(control_name):
+    """Read the value of REQUIRE_SSP from test control file.
+
+    This reads the control file from the prod checkout of autotest and uses that
+    to determine whether to even stage the SSP package on a devserver.
+
+    This means:
+    [1] Any change in REQUIRE_SSP directive in a test requires a prod-push to go
+    live.
+    [2] This function may find that the control file does not exist but the SSP
+    package may contain the test file. This function conservatively returns True
+    in that case.
+
+    This function is called very early in autoserv, before logging is setup.
+    """
+    if not control_name:
+        return True
+    path = _control_path_on_disk(control_name)
+    if not os.path.isfile(path):
+        return True
+    control = control_data.parse_control(path)
+    # There must be explicit directive in the control file to disable SSP.
+    if not control or control.require_ssp is None:
+        return True
+    return control.require_ssp
+
+
 def main():
     start_time = datetime.datetime.now()
-    # grab the parser
     parser = autoserv_parser.autoserv_parser
     parser.parse_args()
 
@@ -666,27 +691,14 @@ def main():
         if not os.path.isdir(results):
             os.makedirs(results)
 
-    # If the job requires to run with server-side package, try to stage server-
-    # side package first. If that fails with error that autotest server package
-    # does not exist, fall back to run the job without using server-side
-    # packaging. If option warn_no_ssp is specified, that means autoserv is
-    # running in a drone does not support SSP, thus no need to stage server-side
-    # package.
-    ssp_url = None
-    ssp_url_warning = False
-    if (not parser.options.warn_no_ssp and parser.options.require_ssp):
-        ssp_url, ssp_error_msg = _stage_ssp(parser, results)
-        # The build does not have autotest server package. Fall back to not
-        # to use server-side package. Logging is postponed until logging being
-        # set up.
-        ssp_url_warning = not ssp_url
+    if parser.options.require_ssp:
+        # This is currently only used for skylab (i.e., when --control-name is
+        # used).
+        use_ssp = _require_ssp_from_control(parser.options.control_name)
+    else:
+        use_ssp = False
 
-    # Server-side packaging will only be used if it's required and the package
-    # is available. If warn_no_ssp is specified, it means that autoserv is
-    # running in a drone does not have SSP supported and a warning will be logs.
-    # Therefore, it should not run with SSP.
-    use_ssp = (not parser.options.warn_no_ssp and parser.options.require_ssp
-               and ssp_url)
+
     if use_ssp:
         log_dir = os.path.join(results, 'ssp_logs') if results else None
         if log_dir and not os.path.exists(log_dir):
@@ -701,17 +713,14 @@ def main():
             verbose=parser.options.verbose,
             no_console_prefix=parser.options.no_console_prefix)
 
-    if ssp_url_warning:
-        logging.warn(
-                'Autoserv is required to run with server-side packaging. '
-                'However, no server-side package can be staged based on '
-                '`--test_source_build`, host attribute job_repo_url or host '
-                'OS version label. It could be that the build to test is '
-                'older than the minimum version that supports server-side '
-                'packaging, or no devserver can be found to stage server-side '
-                'package. The test will be executed without using server-side '
-                'packaging. Following is the detailed error:\n%s',
-                ssp_error_msg)
+    logging.debug('autoserv is running in drone %s.', socket.gethostname())
+    logging.debug('autoserv command was: %s', ' '.join(sys.argv))
+    logging.debug('autoserv parsed options: %s', parser.options)
+
+    if use_ssp:
+        ssp_url = _stage_ssp(parser, results)
+    else:
+        ssp_url = None
 
     if results:
         logging.info("Results placed in %s" % results)
@@ -721,10 +730,6 @@ def main():
             not utils.is_in_container()):
             logging.error("No existing results directory found: %s", results)
             sys.exit(1)
-
-    logging.debug('autoserv is running in drone %s.', socket.gethostname())
-    logging.debug('autoserv command was: %s', ' '.join(sys.argv))
-    logging.debug('autoserv parsed options: %s', parser.options)
 
     if parser.options.write_pidfile and results:
         pid_file_manager = pidfile.PidFileManager(parser.options.pidfile_label,

@@ -163,13 +163,6 @@ class autoserv_parser(object):
                                  dest='require_ssp', default=False,
                                  help=('Force the autoserv process to run with '
                                        'server-side packaging'))
-        self.parser.add_argument('--warn-no-ssp', action='store_true',
-                                 dest='warn_no_ssp', default=False,
-                                 help=('Post a warning in autoserv log that '
-                                       'the process runs in a drone without '
-                                       'server-side packaging support, even '
-                                       'though the job requires server-side '
-                                       'packaging'))
         self.parser.add_argument('--no_use_packaging', action='store_true',
                                  dest='no_use_packaging', default=False,
                                  help=('Disable install modes that use the '

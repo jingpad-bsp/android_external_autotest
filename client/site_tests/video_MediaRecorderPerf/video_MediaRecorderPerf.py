@@ -121,6 +121,8 @@ class video_MediaRecorderPerf(test.test):
            logging.warning('Could not get cold machine post login.')
 
     def get_record_performance(self, cr, codec, is_hw_encode):
+        histogram_differ = histogram_verifier.HistogramDiffer(
+            cr, constants.MEDIA_RECORDER_VEA_USED_HISTOGRAM)
         self.wait_for_idle_cpu()
         cr.browser.platform.SetHTTPServerDirectories(self.bindir)
         self.tab = cr.browser.tabs.New()
@@ -132,11 +134,12 @@ class video_MediaRecorderPerf(test.test):
         if not self.video_record_completed():
             raise error.TestFail('Video record did not complete')
 
-        histogram_verifier.verify(
-                cr,
-                constants.MEDIA_RECORDER_VEA_USED_HISTOGRAM,
-                constants.MEDIA_RECORDER_VEA_USED_BUCKET if is_hw_encode
-                        else constants.MEDIA_RECORDER_VEA_NOT_USED_BUCKET)
+        histogram_verifier.expect_sole_bucket(
+            histogram_differ,
+            constants.MEDIA_RECORDER_VEA_USED_BUCKET if is_hw_encode else
+            constants.MEDIA_RECORDER_VEA_NOT_USED_BUCKET,
+            'VEA used (1)' if is_hw_encode else 'VEA not used (0)')
+
         video_buffer = self.tab.EvaluateJavaScript(JS_VIDEO_BUFFER)
         elapsed_time = self.tab.EvaluateJavaScript(ELAPSED_TIME)
         video_buffer_size = self.tab.EvaluateJavaScript(JS_VIDEO_BUFFER_SIZE)
