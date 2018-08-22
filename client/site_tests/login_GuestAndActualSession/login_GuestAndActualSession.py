@@ -48,5 +48,7 @@ class login_GuestAndActualSession(test.test):
 
 
     def cleanup(self):
-        self._session_manager.StopSession('')
+        # Testing is done, so just stop the UI instead of calling StopSession.
+        # The latter can fail if Chrome is hanging: https://crbug.com/876197
+        cros_ui.stop(allow_fail=True)
         cros_ui.start(allow_fail=True, wait_for_login_prompt=False)
