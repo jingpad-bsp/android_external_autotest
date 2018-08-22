@@ -24,9 +24,10 @@ def test_form_requests():
     cmds = [['python', '-c', 'print("first")'],
             ['python', '-c', 'print("second")']]
     dimensions = [normal_dimensions, fallback_dimensions]
-
     expiration_secs = swarming_lib.DEFAULT_EXPIRATION_SECS
     timeout_secs = swarming_lib.DEFAULT_TIMEOUT_SECS
+    slice_expiration_secs = [expiration_secs, expiration_secs]
+
     source_request = {
             'name': task_name,
             'parent_task_id': parent_task_id,
@@ -62,6 +63,6 @@ def test_form_requests():
     }
 
     json_request = swarming_lib.make_fallback_request_dict(
-            cmds, dimensions, task_name, priority, tags, user,
-            parent_task_id=parent_task_id)
+            cmds, dimensions, slice_expiration_secs, task_name, priority,
+            tags, user, parent_task_id=parent_task_id)
     assert json_request == source_request
