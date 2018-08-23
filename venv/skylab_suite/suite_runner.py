@@ -233,6 +233,13 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
 
+    # TODO (xixuan): Find a better way to not hard-code expiration secs for
+    # provision slice. Now hard-code it as 5mins.
+    provision_expiration_secs = 5 * 60
+    all_expiration_secs = [
+            provision_expiration_secs,
+            test_spec.expiration_secs - provision_expiration_secs]
+
     # Use first slice to kick off normal cmd without '-provision-labels',
     # since the assigned DUT is already provisioned by given build.
     # Use second slice to kick off cmd_with_fallback to enable provision before
@@ -240,12 +247,12 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     json_request = swarming_lib.make_fallback_request_dict(
             cmds=cmds,
             slices_dimensions=all_dimensions,
+            slices_expiration_secs=all_expiration_secs,
             task_name=test_spec.test.name,
             priority=test_spec.priority,
             tags=tags,
             user=SKYLAB_SUITE_USER,
             parent_task_id=suite_id,
-            expiration_secs=test_spec.expiration_secs,
             grace_period_secs=test_spec.grace_period_secs,
             execution_timeout_secs=test_spec.execution_timeout_secs,
             io_timeout_secs=test_spec.io_timeout_secs)
