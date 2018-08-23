@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 
 from autotest_lib.client.common_lib import utils
 
-AUTHOR = 'sbasi, achuith, rohitbm'
-NAME = 'telemetry_Benchmarks.image_decoding.image_decoding_measurement'
+AUTHOR = 'Chrome OS Team'
+NAME = 'telemetry_Benchmarks.blink_perf.image_decoder'
 ATTRIBUTES = 'suite:crosbolt_perf_nightly'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
@@ -16,7 +16,7 @@ TEST_TYPE = 'server'
 
 DOC = '''
 This server side test suite executes the Telemetry Benchmark:
-image_decoding.image_decoding_measurement
+blink_perf.image_decoder
 This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
@@ -27,8 +27,8 @@ def run_benchmark(machine):
     dargs = utils.args_to_dict(args)
     dargs['extra_args'] = ''.split()
     job.run_test('telemetry_Benchmarks', host=host,
-                 benchmark='image_decoding.image_decoding_measurement',
-                 tag='image_decoding.image_decoding_measurement',
+                 benchmark='blink_perf.image_decoder',
+                 tag='blink_perf.image_decoder',
                  args=dargs)
 
 parallel_simple(run_benchmark, machines)
