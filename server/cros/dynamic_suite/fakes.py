@@ -25,7 +25,6 @@ class FakeControlData(control_data.ControlData):
             dependencies=[]
         self.dependencies = dependencies
         self.time = time
-        self.retries = 0
         self.sync_count = 1
         self.job_retries = job_retries
         self.bug_template = {}
