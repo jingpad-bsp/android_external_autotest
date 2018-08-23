@@ -80,20 +80,19 @@ CameraTest.prototype = {
   start: function() {
     this.localVideo.addEventListener('play',
         this.startCheckingVideoFrames.bind(this), false);
-    navigator.getUserMedia = navigator.getUserMedia ||
-        navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
-    navigator.getUserMedia(this.constraints, this.gotLocalStream.bind(this),
-        this.gotUserMediaError.bind(this));
+    navigator.mediaDevices.getUserMedia(this.constraints)
+        .then(this.gotLocalStream.bind(this))
+        .catch(this.gotUserMediaError.bind(this));
   },
 
   gotLocalStream: function(stream) {
     this.localStream = stream;
-    this.localVideo.src = window.URL.createObjectURL(stream);
+    this.localVideo.srcObject = stream;
   },
 
   gotUserMediaError: function(error) {
-    console.log('navigator.getUserMedia error: ', error);
+    console.log('navigator.mediaDevices.getUserMedia error: ', error);
     this.results.cameraErrors.push('GetUserMedia error: ' + error.toString());
   },
 
