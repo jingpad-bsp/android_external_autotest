@@ -18,6 +18,7 @@ from skylab_suite import cros_suite
 from skylab_suite import suite_parser
 from skylab_suite import suite_runner
 from skylab_suite import suite_tracking
+from skylab_suite import swarming_lib
 
 
 PROVISION_SUITE_NAME = 'provision'
@@ -40,10 +41,27 @@ def _parse_suite_handler_spec(options):
             provision_num_required=provision_num_required)
 
 
+def _should_run(suite_spec):
+    tags = {'build': suite_spec.test_source_build,
+            'suite': suite_spec.suite_name}
+    tasks = swarming_lib.query_task_by_tags(tags)
+    if not tasks:
+      return None
+
+    return tasks[0]['task_id']
+
+
 def _run_suite(options):
     run_suite_common = autotest.load('site_utils.run_suite_common')
     logging.info('Kicked off suite %s', options.suite_name)
     suite_spec = suite_parser.parse_suite_spec(options)
+    if options.pre_check:
+        old_task_id = _should_run(suite_spec)
+        if old_task_id is not None:
+          logging.info('A same suite is already run in the past: %s',
+                       swarming_lib.get_task_link(old_task_id))
+          return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
+
     if options.suite_name == PROVISION_SUITE_NAME:
         suite_job = cros_suite.ProvisionSuite(suite_spec)
     else:

@@ -118,6 +118,10 @@ def make_parser():
         '--dry_run', action='store_true',
         help=('Used for kicking off a run of suite with fake commands.'))
     parser.add_argument(
+        '--pre_check', action='store_true',
+        help=('Used for checking whether a same suite is already kicked off'
+              'to Skylab.'))
+    parser.add_argument(
         '--do_nothing', action='store_true',
         help=('Used for monitoring purposes, to measure no-op swarming proxy '
               'latency or create a dummy run_suite_skylab run.'))
