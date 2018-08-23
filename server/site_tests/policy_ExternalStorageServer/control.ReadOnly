@@ -25,7 +25,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('policy_ExternalStorageDisabledServer',
+    job.run_test('policy_ExternalStorageServer',
                  host=host,
                  client_test='policy_ExternalStorageReadOnly')
 
