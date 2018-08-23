@@ -16,6 +16,10 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
     MAX_ASSOCIATION_RETRIES = 8  # Super lucky number.  Not science.
 
+    # We don't want to accept really low signal strength, so we pick an
+    # arbitrary threshold.
+    SIGNAL_THRESHOLD = -60
+
 
     def _connect(self, wifi_params):
         assoc_result = xmlrpc_datatypes.deserialize(
@@ -34,7 +38,8 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
 
         Sets up two radios on |channel|, configures both radios with the
         given antenna |bitmap|, and then verifies that a client can connect
-        to the AP on each radio.
+        to the AP on each radio and that the DUT doesn't report unreasonably
+        low signal strength.
 
         Why do we run the two radios concurrently, instead of iterating over
         them? That's simply because our lower-layer code doesn't provide an
@@ -88,6 +93,9 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
                         {'signal_for_ap_%d_bm_%d_ch_%d' %
                                  (instance, bitmap, channel):
                          signal_level})
+                # Don't accept very low signal strength.
+                if signal_level < self.SIGNAL_THRESHOLD:
+                    failures.append(context_message)
             else:
                 failures.append(context_message)
             # Don't automatically reconnect to this AP.
