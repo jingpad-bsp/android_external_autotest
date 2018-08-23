@@ -43,7 +43,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.frontend.afe import models as afe_models
-from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.server import constants
 
 
@@ -110,7 +109,9 @@ class _JobEvent(object):
     """
 
     get_config_value = global_config.global_config.get_config_value
-    _LOG_URL_PATTERN = get_config_value('CROS', 'log_url_pattern')
+    _LOG_URL_PATTERN = ('%s/browse/chromeos-autotest-results/%%s/'
+                        % get_config_value('AUTOTEST_WEB', 'stainless_url',
+                                           default=None))
 
     @classmethod
     def get_gs_url(cls, logdir):
@@ -172,10 +173,7 @@ class _JobEvent(object):
     @property
     def job_url(self):
         """Return the URL for this event's job logs."""
-        return self._LOG_URL_PATTERN % (
-            rpc_client_lib.add_protocol(self._afe_hostname),
-            self.logdir,
-        )
+        return self._LOG_URL_PATTERN % self.logdir
 
 
     @property
@@ -245,7 +243,7 @@ class _SpecialTaskEvent(_JobEvent):
                 time_started__gte=query_start,
                 time_finished__lte=query_end,
                 is_complete=1)
-        return [cls(afe.server, t) for t in tasks]
+        return [cls(t) for t in tasks]
 
 
     @classmethod
@@ -266,11 +264,10 @@ class _SpecialTaskEvent(_JobEvent):
         """
         query_end = time_utils.epoch_time_to_date_string(end_time)
         task = afe.get_host_status_task(host_id, query_end)
-        return cls(afe.server, task) if task else None
+        return cls(task) if task else None
 
 
-    def __init__(self, afe_hostname, afetask):
-        self._afe_hostname = afe_hostname
+    def __init__(self, afetask):
         self._afetask = afetask
         super(_SpecialTaskEvent, self).__init__(
                 afetask.time_started, afetask.time_finished)
@@ -357,11 +354,10 @@ class _TestJobEvent(_JobEvent):
                 started_on__gte=query_start,
                 started_on__lte=query_end,
                 complete=1)
-        return [cls(afe.server, hqe) for hqe in hqelist]
+        return [cls(hqe) for hqe in hqelist]
 
 
-    def __init__(self, afe_hostname, hqe):
-        self._afe_hostname = afe_hostname
+    def __init__(self, hqe):
         self._hqe = hqe
         super(_TestJobEvent, self).__init__(
                 hqe.started_on, hqe.finished_on)
