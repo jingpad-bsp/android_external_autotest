@@ -9,13 +9,11 @@
 import argparse
 import itertools
 import json
-import pprint
 import re
 import sys
 
 import common
 from chromite.lib import commandline
-from chromite.lib import cros_logging as logging
 
 
 # Default keys to skip displaying.
