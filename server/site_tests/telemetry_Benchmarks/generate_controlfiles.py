@@ -37,9 +37,9 @@ PERF_PER_BUILD_TESTS = (
 )
 
 PERF_DAILY_RUN_TESTS = (
+    'blink_perf.image_decoder',
     'cros_tab_switching.typical_24',
     'dromaeo',
-    'image_decoding.image_decoding_measurement',
     'memory.desktop',
     'smoothness.tough_pinch_zoom_cases',
     'webrtc',
