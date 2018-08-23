@@ -150,7 +150,6 @@ class SiteDrone(object):
         pass
 
 
-    @property
     def queue_kill_process(self, process):
         """Queue a process to kill/abort.
 
