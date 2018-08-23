@@ -234,8 +234,8 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
         tags += ['parent_task_id:%s' % suite_id]
 
     # TODO (xixuan): Find a better way to not hard-code expiration secs for
-    # provision slice. Now hard-code it as 85 mins.
-    provision_expiration_secs = 85 * 60
+    # provision slice. Now hard-code it as 95% of the timeout.
+    provision_expiration_secs = int(0.95 * test_spec.expiration_secs)
     all_expiration_secs = [
             provision_expiration_secs,
             test_spec.expiration_secs - provision_expiration_secs]
