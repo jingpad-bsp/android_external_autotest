@@ -122,7 +122,7 @@ def get_frames(local_pcap_path, display_filter, reject_bad_fcs=True):
     Get a parsed representation of the contents of a pcap file.
 
     @param local_pcap_path: string path to a local pcap file on the host.
-    @param diplay_filter: string filter to apply to captured frames.
+    @param display_filter: string filter to apply to captured frames.
     @param reject_bad_fcs: bool, for frames with bad Frame Check Sequence.
 
     @return list of Frame structs.
@@ -188,12 +188,12 @@ def get_probe_ssids(local_pcap_path, probe_sender=None):
 
     """
     if probe_sender:
-        diplay_filter = '%s and wlan.addr==%s' % (
+        display_filter = '%s and wlan.addr==%s' % (
                 WLAN_PROBE_REQ_ACCEPTOR, probe_sender)
     else:
-        diplay_filter = WLAN_PROBE_REQ_ACCEPTOR
+        display_filter = WLAN_PROBE_REQ_ACCEPTOR
 
-    frames = get_frames(local_pcap_path, diplay_filter, reject_bad_fcs=True)
+    frames = get_frames(local_pcap_path, display_filter, reject_bad_fcs=True)
 
     return frozenset(
             [frame.ssid for frame in frames if frame.ssid is not None])
