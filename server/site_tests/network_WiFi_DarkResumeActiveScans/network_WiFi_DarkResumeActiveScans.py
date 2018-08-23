@@ -40,10 +40,8 @@ class network_WiFi_DarkResumeActiveScans(
         probe_req_pcap_filter = '%s and wlan.sa==%s' % (
                 tcpdump_analyzer.WLAN_PROBE_REQ_ACCEPTOR, mac)
         # Get all the frames in chronological order.
-        frames = tcpdump_analyzer.get_frames(
-                results[0].local_pcap_path,
-                probe_req_pcap_filter,
-                bad_fcs='include')
+        frames = tcpdump_analyzer.get_frames(results[0].local_pcap_path,
+                probe_req_pcap_filter, reject_bad_fcs=False)
         if len(frames) > 0:
             raise error.TestFail('Packet capture contained probe requests!')
 
