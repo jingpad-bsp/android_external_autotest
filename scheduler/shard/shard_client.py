@@ -99,7 +99,7 @@ On the client side, this will happen:
 HEARTBEAT_AFE_ENDPOINT = 'shard_heartbeat'
 _METRICS_PREFIX  = 'chromeos/autotest/shard_client/heartbeat/'
 
-RPC_TIMEOUT_MIN = 5
+RPC_TIMEOUT_MIN = 30
 RPC_DELAY_SEC = 5
 
 _heartbeat_client = None
