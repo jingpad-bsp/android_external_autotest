@@ -11,6 +11,7 @@ from autotest_lib.client.cros.cros_disks import CrosDisksTester
 class CrosDisksAPITester(CrosDisksTester):
 
     # See MountErrorType defined in system_api/dbus/cros-disks/dbus-constants.h
+    MOUNT_ERROR_PATH_NOT_MOUNTED = 6
     MOUNT_ERROR_INVALID_DEVICE_PATH = 100
 
     def __init__(self, test):
@@ -135,11 +136,9 @@ class CrosDisksAPITester(CrosDisksTester):
             })
 
     def test_unmount_nonexistent_device(self):
-        try:
-            self.cros_disks.unmount('/dev/nonexistent', [])
-        except dbus.DBusException:
-            return
-        raise error.TestFail("Unmounting a nonexistent device should fail")
+        status = self.cros_disks.unmount('/dev/nonexistent', [])
+        if status != self.MOUNT_ERROR_PATH_NOT_MOUNTED:
+            raise error.TestFail("Unexpected unmount error code %d" % status)
 
 
 class platform_CrosDisksDBus(test.test):
