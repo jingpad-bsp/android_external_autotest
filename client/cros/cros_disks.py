@@ -346,10 +346,13 @@ class CrosDisksClient(DBusClient):
         Args:
             path: The device or mount path to unmount.
             options: A list of options used for unmounting the path.
+
+        Returns:
+            The mount error code.
         """
         if options is None:
             options = []
-        self.interface.Unmount(path, dbus.Array(options, signature='s'))
+        return self.interface.Unmount(path, dbus.Array(options, signature='s'))
 
     def wait_for_mount_completion(self):
         """Waits for the CrosDisks MountCompleted signal.
