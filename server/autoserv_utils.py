@@ -94,7 +94,6 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
         owner = getattr(job, 'owner', None)
         name = getattr(job, 'name', None)
-        test_retry = getattr(job, 'test_retry', None)
         control_type = getattr(job, 'control_type', None)
 
 
@@ -102,8 +101,6 @@ def autoserv_run_job_command(autoserv_directory, machines,
             command += ['-u', owner]
         if name:
             command += ['-l', name]
-        if test_retry:
-            command += ['--test-retry='+str(test_retry)]
         if control_type is not None: # still want to enter if control_type==0
             control_type_value = control_data.CONTROL_TYPE.get_value(
                     control_type)
