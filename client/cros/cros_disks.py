@@ -545,6 +545,7 @@ class DefaultFilesystemTestContent(FilesystemTestDirectory):
                 FilesystemTestFile('file2', 'abcdefg'),
                 FilesystemTestDirectory('dir2', [
                     FilesystemTestFile('file3', 'abcdefg'),
+                    FilesystemTestFile('file4', 'a' * 65536),
                 ]),
             ]),
         ], stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
