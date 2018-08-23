@@ -5,7 +5,6 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
@@ -120,24 +119,22 @@ class firmware_FWMPDisableCCD(Cr50Test):
         self.cr50.send_command('ccd lock')
 
 
-    def check_fwmp(self, flags, clear_tpm_owner, check_lock=True):
+    def check_fwmp(self, flags, clear_fwmp, check_lock=True):
         """Set the flags and verify ccd lock/unlock
 
         Args:
             flags: A string to used set the FWMP flags. If None, skip running
                    firmware_SetFWMP.
-            clear_tpm_owner: True if the TPM owner needs to be cleared before
-                             setting the flags and verifying ccd lock/unlock
+            clear_fwmp: True if the flags should be reset.
             check_lock: Check ccd open
         """
-        if clear_tpm_owner:
-            logging.info('Clearing TPM owner')
-            tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+        if clear_fwmp:
+            self.clear_fwmp()
 
         logging.info('setting flags to %s', flags)
         if flags:
             autotest.Autotest(self.host).run_test('firmware_SetFWMP',
-                    flags=flags, fwmp_cleared=clear_tpm_owner,
+                    flags=flags, fwmp_cleared=clear_fwmp,
                     check_client_result=True)
 
         # Verify ccd lock/unlock with the current flags works as intended.
