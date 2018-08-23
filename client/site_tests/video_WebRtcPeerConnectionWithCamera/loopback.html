@@ -88,14 +88,9 @@ WebRtcLoopbackCallTest.prototype = {
 
   triggerGetUserMedia: function() {
     var constraints = {audio: false, video: true};
-    try {
-      navigator.getUserMedia = navigator.getUserMedia ||
-          navigator.webkitGetUserMedia;
-      navigator.getUserMedia(constraints, this.gotLocalStream.bind(this),
-          this.onGetUserMediaError.bind(this));
-    } catch (exception) {
-      this.reportError('getUserMedia exception: ' + exception.toString());
-    }
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(this.gotLocalStream.bind(this))
+        .catch(this.onGetUserMediaError.bind(this));
   },
 
   reportError: function(message) {
@@ -118,7 +113,7 @@ WebRtcLoopbackCallTest.prototype = {
     this.localPeerConnection.addStream(this.localStream);
     this.localPeerConnection.createOffer(this.gotOffer.bind(this),
         function(error) {});
-    this.localVideo.src = URL.createObjectURL(stream);
+    this.localVideo.srcObject = stream;
 
     this.results.cameraType = stream.getVideoTracks()[0].label;
   },
@@ -222,7 +217,7 @@ WebRtcLoopbackCallTest.prototype = {
   },
 
   gotRemoteStream: function(event) {
-    this.remoteVideo.src = URL.createObjectURL(event.stream);
+    this.remoteVideo.srcObject = event.stream;
   },
 
   gotOffer: function(description) {
