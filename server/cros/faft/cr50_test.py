@@ -70,7 +70,7 @@ class Cr50Test(FirmwareTest):
         self._saved_state |= self.INITIAL_STATE
         try:
             self._save_node_locked_dev_image(cr50_dev_path)
-            self._save_original_images()
+            self._save_original_images(full_args.get('release_path', ''))
             # We successfully saved the device images
             self._saved_state |= self.IMAGES
         except:
@@ -97,10 +97,13 @@ class Cr50Test(FirmwareTest):
                 devid)[0]
 
 
-    def _save_original_images(self):
+    def _save_original_images(self, release_path):
         """Use the saved state to find all of the device images.
 
         This will download running cr50 image and the device image.
+
+        Args:
+            release_path: The release path given by test args
         """
         # Copy the prod and prepvt images from the DUT
         _, prod_rw, prod_bid = self._original_state['device_prod_ver']
@@ -123,6 +126,10 @@ class Cr50Test(FirmwareTest):
             prepvt_rw = None
             prepvt_bid = None
 
+        if os.path.isfile(release_path):
+            self._original_cr50_image = release_path
+            logging.info('using supplied image')
+            return
         # If the running cr50 image version matches the image on the DUT use
         # the DUT image as the original image. If the versions don't match
         # download the image from google storage
