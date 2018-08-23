@@ -403,7 +403,6 @@ class _SuiteChildJobCreator(object):
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
-            test_retry=test.retries,
             reboot_before=reboot_before,
             run_reset=not test.fast,
             priority=test_priority,
