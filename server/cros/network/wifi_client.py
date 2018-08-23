@@ -358,6 +358,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         # to workaround the lazy loading of the capabilities cache and supported
         # frequency list. This is needed for tests that may need access to these
         # when the DUT is unreachable (for ex: suspended).
+        #pylint: disable=pointless-statement
         self.capabilities
 
 
