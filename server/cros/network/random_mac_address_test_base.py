@@ -81,7 +81,6 @@ class RandomMACAddressTestBase(wifi_cell_test_base.WiFiCellTestBase):
         # Get all the frames in chronological order.
         frames = tcpdump_analyzer.get_frames(
                 results[0].local_pcap_path,
-                tcpdump_analyzer.WLAN_PROBE_REQ_ACCEPTOR,
-                bad_fcs='discard')
+                tcpdump_analyzer.WLAN_PROBE_REQ_ACCEPTOR, reject_bad_fcs=True)
 
         return [frame for frame in frames if self._frame_matches_ssid(frame)]
