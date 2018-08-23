@@ -841,18 +841,6 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(jobs[0]['keyvals'], keyval_dict)
 
 
-    def test_test_retry(self):
-        job_id = rpc_interface.create_job(name='flake',
-                                          priority=priorities.Priority.DEFAULT,
-                                          control_file='foo',
-                                          control_type=CLIENT,
-                                          hosts=['host1'],
-                                          test_retry=10)
-        jobs = rpc_interface.get_jobs(id=job_id)
-        self.assertEquals(len(jobs), 1)
-        self.assertEquals(jobs[0]['test_retry'], 10)
-
-
     def test_get_jobs_summary(self):
         job = self._create_job(hosts=xrange(1, 4))
         entries = list(job.hostqueueentry_set.all())
@@ -1675,7 +1663,7 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
                  'run_reset': True,
                  'run_verify': False,
                  'synch_count': 0,
-                 'test_retry': 10,
+                 'test_retry': 0,
                  'timeout': 24,
                  'timeout_mins': 1440,
                  'id': 1
@@ -1700,7 +1688,7 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
                 priority=self._PRIORITY,
                 control_file='foo',
                 control_type=SERVER,
-                test_retry=10, hostless=True)
+                hostless=True)
         job = models.Job.objects.get(pk=job_id)
         shard = models.Shard.objects.create(hostname='host1')
         job.shard = shard
