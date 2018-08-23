@@ -133,10 +133,6 @@ class autoserv_parser(object):
                                  type=str, default=None,
                                  help=('filename to use for the server control '
                                        'file in the results directory'))
-        self.parser.add_argument('--test-retry', action='store',
-                                 type=int, default=0,
-                                 help=('Num of times to retry a test that '
-                                       'failed [default: %(default)d]'))
         self.parser.add_argument('--verify_job_repo_url', action='store_true',
                                  dest='verify_job_repo_url', default=False,
                                  help=('Verify that the job_repo_url of the '
