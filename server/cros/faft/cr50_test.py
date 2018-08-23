@@ -30,6 +30,9 @@ class Cr50Test(FirmwareTest):
     # images are needed to be able to restore the original image and board id.
     IMAGES = 1 << 1
     PP_SHORT_INTERVAL = 3
+    CLEARED_FWMP_EXIT_STATUS = 1
+    CLEARED_FWMP_ERROR_MSG = ('CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS'
+                              '_INVALID')
 
     def initialize(self, host, cmdline_args, full_args,
             restore_cr50_state=False, cr50_dev_path='', provision_update=False):
@@ -51,9 +54,10 @@ class Cr50Test(FirmwareTest):
         self.original_ccd_level = self.cr50.get_ccd_level()
         self.original_ccd_settings = self.cr50.get_cap_dict()
 
-        # Clear the TPM owner so the FWMP can't disable CCD.
         self.host = host
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+        # Clear the FWMP, so it can't disable CCD.
+        self.clear_fwmp()
 
         if self.can_set_ccd_level:
             # Lock cr50 so the console will be restricted
@@ -353,6 +357,7 @@ class Cr50Test(FirmwareTest):
         self.enter_mode_after_checking_tpm_state('normal')
 
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
+        self.clear_fwmp()
 
         state_mismatch = self._check_original_state()
         if state_mismatch and not self._provision_update:
@@ -759,3 +764,26 @@ class Cr50Test(FirmwareTest):
 
         if (mode == 'dev') != self.cr50.in_dev_mode():
             raise error.TestError('Unable to enter %r mode' % mode)
+
+
+    def _fwmp_is_cleared(self):
+        """Return True if the FWMP has been created"""
+        res = self.host.run('cryptohome '
+                            '--action=get_firmware_management_parameters',
+                            ignore_status=True)
+        if res.exit_status and res.exit_status != self.CLEARED_FWMP_EXIT_STATUS:
+            raise error.TestError('Could not run cryptohome command %r' % res)
+        return self.CLEARED_FWMP_ERROR_MSG in res.stdout
+
+
+    def clear_fwmp(self):
+        """Clear the FWMP"""
+        if self._fwmp_is_cleared():
+            return
+        status = self.host.run('cryptohome --action=tpm_status').stdout
+        logging.debug(status)
+        if 'TPM Owned: true' not in status:
+            self.host.run('cryptohome --action=tpm_take_ownership')
+            self.host.run('cryptohome --action=tpm_wait_ownership')
+        self.host.run('cryptohome '
+                      '--action=remove_firmware_management_parameters')
