@@ -18,6 +18,6 @@ This is a helper test that will succeed and force to use server-side packaging.
 
 def run(machine):
     job.run_test('dummy_PassServer', host=hosts.create_host(machine),
-                 force_ssp=True)
+                 expect_ssp=True)
 
 parallel_simple(run, machines)
