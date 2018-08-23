@@ -44,9 +44,8 @@ class ShardClientTest(mox.MoxTestBase,
     def setup_mocks(self):
         self.mox.StubOutClassWithMocks(frontend_wrappers, 'RetryingAFE')
         self.afe = frontend_wrappers.RetryingAFE(server=mox.IgnoreArg(),
-                                                 delay_sec=5,
-                                                 timeout_min=5)
-
+                                                 delay_sec=mox.IgnoreArg(),
+                                                 timeout_min=mox.IgnoreArg())
 
     def setup_global_config(self):
         global_config.global_config.override_config_value(
