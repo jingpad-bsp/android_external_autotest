@@ -24,7 +24,7 @@ packaging.
 """
 
 def run(machine):
-    job.run_test('dummy_PassServer',
-                 host=hosts.create_host(machine))
+    job.run_test('dummy_PassServer', host=hosts.create_host(machine),
+                 expect_ssp=False)
 
 parallel_simple(run, machines)
