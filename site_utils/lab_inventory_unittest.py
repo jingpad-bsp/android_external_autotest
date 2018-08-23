@@ -30,6 +30,7 @@ class _FakeHostHistory(object):
         self.host_pool = pool
         self.status = status
         self.host = _FakeHost(hostname)
+        self.hostname = hostname
 
     def last_diagnosis(self):
         """Return the recorded diagnosis."""
