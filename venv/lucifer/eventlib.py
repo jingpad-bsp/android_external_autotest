@@ -88,7 +88,7 @@ def run_event_command(event_handler, args):
     @param returns: exit status of command.
     """
     logger.debug('Starting event command with %r', args)
-    with subprocess32.Popen(args, stdout=PIPE) as proc:
+    with subprocess32.Popen(args, stdout=PIPE, close_fds=True) as proc:
         logger.debug('Event command child pid is %d', proc.pid)
         _handle_subprocess_events(event_handler, proc)
     logger.debug('Event command child with pid %d exited with %d',
