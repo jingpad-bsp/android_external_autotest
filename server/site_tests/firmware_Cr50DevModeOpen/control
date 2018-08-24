@@ -31,8 +31,11 @@ def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     iterations = int(args_dict.get("iterations", 1))
+    ccd_open_restricted = args_dict.get("ccd_open_restricted", "true").lower()
+    ccd_open_restricted = ccd_open_restricted != "false"
 
     job.run_test("firmware_Cr50DevModeOpen", host=host, cmdline_args=args,
-                 full_args=args_dict, iterations=iterations)
+                 ccd_open_restricted=ccd_open_restricted, full_args=args_dict,
+                 iterations=iterations)
 
 parallel_simple(run, machines)
