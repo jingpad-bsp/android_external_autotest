@@ -1079,7 +1079,8 @@ def system_output_parallel(commands, timeout=None, ignore_status=False,
         out = [bg_job.stdout for bg_job in run_parallel(commands,
                                   timeout=timeout, ignore_status=ignore_status)]
     for _ in out:
-        if out[-1:] == '\n': out = out[:-1]
+        if out[-1:] == '\n':
+            out = out[:-1]
     return out
 
 
