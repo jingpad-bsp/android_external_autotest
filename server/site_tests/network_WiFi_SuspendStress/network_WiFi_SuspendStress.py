@@ -70,9 +70,3 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
                     units='seconds',
                     higher_is_better=False,
                     graph=router_conf.perf_loggable_description)
-
-
-    def cleanup(self):
-        """Cold reboot the device so the WiFi card is back in a good state."""
-        if self._host.servo and self._host.servo.get('cold_reset') == 'off':
-            self._host.servo.get_power_state_controller().reset()
