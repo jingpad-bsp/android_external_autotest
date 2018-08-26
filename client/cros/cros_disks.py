@@ -346,10 +346,13 @@ class CrosDisksClient(DBusClient):
         Args:
             path: The device or mount path to unmount.
             options: A list of options used for unmounting the path.
+
+        Returns:
+            The mount error code.
         """
         if options is None:
             options = []
-        self.interface.Unmount(path, dbus.Array(options, signature='s'))
+        return self.interface.Unmount(path, dbus.Array(options, signature='s'))
 
     def wait_for_mount_completion(self):
         """Waits for the CrosDisks MountCompleted signal.
@@ -542,6 +545,7 @@ class DefaultFilesystemTestContent(FilesystemTestDirectory):
                 FilesystemTestFile('file2', 'abcdefg'),
                 FilesystemTestDirectory('dir2', [
                     FilesystemTestFile('file3', 'abcdefg'),
+                    FilesystemTestFile('file4', 'a' * 65536),
                 ]),
             ]),
         ], stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)

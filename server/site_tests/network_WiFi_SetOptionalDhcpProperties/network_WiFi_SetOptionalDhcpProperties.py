@@ -37,7 +37,7 @@ class network_WiFi_SetOptionalDhcpProperties(
                        % (self.VENDORCLASS_VALUE, self.HOSTNAME_VALUE));
         dhcp_frames = tcpdump_analyzer.get_frames(pcap_result.local_pcap_path,
                                                   dhcp_filter,
-                                                  bad_fcs='include')
+                                                  reject_bad_fcs=False)
         if not dhcp_frames:
             raise error.TestFail('Packet capture did not contain a DHCP '
                                  'negotiation!')

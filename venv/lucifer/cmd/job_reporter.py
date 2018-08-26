@@ -179,7 +179,6 @@ def _add_starting_args(command_args, args, job):
         command_args.append('-x-parse-only')
     if job.run_reset:
         command_args.append('-x-run-reset')
-    command_args.extend(['-x-test-retries', str(job.test_retry)])
     if jobx.is_client_job(job):
         command_args.append('-x-client-test')
     if jobx.needs_ssp(job):

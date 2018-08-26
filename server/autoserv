@@ -449,7 +449,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     ssh_pass = parser.options.ssh_pass
     collect_crashinfo = parser.options.collect_crashinfo
     control_filename = parser.options.control_filename
-    test_retry = parser.options.test_retry
     verify_job_repo_url = parser.options.verify_job_repo_url
     skip_crash_collection = parser.options.skip_crash_collection
     ssh_verbosity = int(parser.options.ssh_verbosity)
@@ -513,7 +512,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             'ssh_pass': ssh_pass,
             'ssh_verbosity_flag': ssh_verbosity_flag,
             'ssh_options': ssh_options,
-            'test_retry': test_retry,
             'group_name': group_name,
             'tag': execution_tag,
             'disable_sysinfo': parser.options.disable_sysinfo,

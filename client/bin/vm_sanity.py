@@ -25,15 +25,7 @@ from autotest_lib.client.common_lib.error import TestFail
 from autotest_lib.client.cros import cryptohome
 
 
-def main(argv):
-    '''The main function.'''
-
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--count', default=1,
-                        help='Number of iterations of the test to run.')
-    opts = parser.parse_args(argv)
-    count = int(opts.count)
-
+def Sanity(count=1):
     start = datetime.datetime.now()
     logging.info('Starting chrome and logging in.')
     is_arc_available = utils.is_arc_available()
@@ -69,8 +61,27 @@ def main(argv):
                                      timeout=15,
                                      desc='Android container still running '
                                           'after Chrome shutdown.')
+
+        # Test incognito mode.
+        with chrome.Chrome(logged_in=False):
+            if not cryptohome.is_guest_vault_mounted():
+                raise TestFail('Expected to find a guest vault mounted.')
+        if cryptohome.is_guest_vault_mounted(allow_fail=True):
+            raise TestFail('Expected to NOT find a guest vault mounted.')
+
     elapsed = datetime.datetime.now() - start
     logging.info('Test succeeded in %s seconds.', elapsed.seconds)
+
+
+def main(argv):
+    '''The main function.'''
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--count', default=1,
+                        help='Number of iterations of the test to run.')
+    opts = parser.parse_args(argv)
+    count = int(opts.count)
+    Sanity(count)
 
 
 if __name__ == '__main__':

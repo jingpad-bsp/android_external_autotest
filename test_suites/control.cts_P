@@ -42,8 +42,8 @@ def predicate(test):
 args_dict['name'] = NAME
 args_dict['job'] = job
 args_dict['file_bugs'] = False
-args_dict['max_runtime_mins'] = 5040  # 5040 min = 3.5 days
-args_dict['timeout_mins'] = 5040  # Bump default 1 day to half a week as well.
+args_dict['max_runtime_mins'] = 10080
+args_dict['timeout_mins'] = 10080  
 args_dict['add_experimental'] = True
 args_dict['predicate'] = predicate
 dynamic_suite.reimage_and_run(**args_dict)

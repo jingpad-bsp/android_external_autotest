@@ -99,8 +99,11 @@ On the client side, this will happen:
 HEARTBEAT_AFE_ENDPOINT = 'shard_heartbeat'
 _METRICS_PREFIX  = 'chromeos/autotest/shard_client/heartbeat/'
 
-RPC_TIMEOUT_MIN = 5
+RPC_TIMEOUT_MIN = 30
 RPC_DELAY_SEC = 5
+
+# The maximum number of jobs to attempt to upload in a single heartbeat.
+MAX_UPLOAD_JOBS = 1000
 
 _heartbeat_client = None
 
@@ -309,7 +312,12 @@ class ShardClient(object):
         job_objs = self._get_jobs_to_upload()
         hqes = [hqe.serialize(include_dependencies=False)
                 for hqe in self._get_hqes_for_jobs(job_objs)]
+
         jobs = [job.serialize(include_dependencies=False) for job in job_objs]
+        if len(jobs) > MAX_UPLOAD_JOBS:
+            logging.info('Throttling number of jobs to upload from %s to %s.',
+                         len(jobs), MAX_UPLOAD_JOBS)
+            jobs = jobs[:MAX_UPLOAD_JOBS]
         logging.info('Uploading jobs %s', [j['id'] for j in jobs])
 
         return {'shard_hostname': self.hostname,

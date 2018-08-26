@@ -358,6 +358,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         # to workaround the lazy loading of the capabilities cache and supported
         # frequency list. This is needed for tests that may need access to these
         # when the DUT is unreachable (for ex: suspended).
+        #pylint: disable=pointless-statement
         self.capabilities
 
 
@@ -633,11 +634,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
         """
         logging.info('Waiting for %s to reach one of %r...', ssid, states)
-        success, state, time  = self._shill_proxy.wait_for_service_states(
+        success, state, duration  = self._shill_proxy.wait_for_service_states(
                 ssid, states, timeout_seconds)
         logging.info('...ended up in state \'%s\' (%s) after %f seconds.',
-                     state, 'success' if success else 'failure', time)
-        return success, state, time
+                     state, 'success' if success else 'failure', duration)
+        return success, state, duration
 
 
     def do_suspend(self, seconds):
@@ -930,7 +931,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return True
 
 
-    def request_roam_dbus(self, bssid, interface):
+    def request_roam_dbus(self, bssid, iface):
         """Request that we roam to the specified BSSID through dbus.
 
         Note that this operation assumes that:
@@ -939,11 +940,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
         2) There is a BSS with an appropriate ID in our scan results.
 
         @param bssid: string MAC address of bss to roam to.
-        @param interface: interface to use
+        @param iface: interface to use
 
         """
         self._assert_method_supported('request_roam_dbus')
-        self._shill_proxy.request_roam_dbus(bssid, interface)
+        self._shill_proxy.request_roam_dbus(bssid, iface)
 
 
     def wait_for_roam(self, bssid, timeout_seconds=10.0):
@@ -1053,7 +1054,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
         @returns a named tuple of (state, time)
         """
-        POLLING_INTERVAL_SECONDS = 1.0
         start_time = time.time()
         duration = lambda: time.time() - start_time
         state = [None] # need mutability for the nested method to save state
@@ -1355,18 +1355,18 @@ class TemporaryDeviceDBusProperty:
 
     """
 
-    def __init__(self, shill_proxy, interface, prop_name, value):
+    def __init__(self, shill_proxy, iface, prop_name, value):
         """Construct a TemporaryDeviceDBusProperty context manager.
 
 
         @param shill_proxy: the shill proxy to use to communicate via dbus
-        @param interface: device whose property to change (e.g. 'wlan0')
+        @param iface: device whose property to change (e.g. 'wlan0')
         @param prop_name: the name of the property we want to set
         @param value: the desired value of the property
 
         """
         self._shill = shill_proxy
-        self._interface = interface
+        self._interface = iface
         self._prop_name = prop_name
         self._value = value
         self._saved_value = None
@@ -1434,7 +1434,9 @@ class TemporaryManagerDBusProperty:
                                                              self._value):
                 raise error.TestFail('Could not set optional manager property.')
         else:
-            if not self._shill.set_manager_property(self._prop_name, self._value):
+            setprop_result = self._shill.set_manager_property(self._prop_name,
+                                                              self._value)
+            if not setprop_result:
                 raise error.TestFail('Could not set manager property')
 
         logging.info('- Changed value from [%s] to [%s]',

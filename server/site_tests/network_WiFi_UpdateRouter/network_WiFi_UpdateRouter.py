@@ -45,8 +45,8 @@ class network_WiFi_UpdateRouter(test.test):
         'whirlwind': StableVersion('trybot-whirlwind-test-ap-tryjob/'
                                    'R65-10323.83.0-c40829',
                                    '10323.83.2018_04_30_1605'),
-        'gale': StableVersion('gale-test-ap-tryjob/R69-10895.5.0-b2785653',
-                              '10895.5.2018_07_26_1353'),
+        'gale': StableVersion('gale-test-ap-tryjob/R69-10895.21.0-b2832790',
+                              '10895.21.2018_08_10_1013'),
     }
 
 
@@ -94,7 +94,10 @@ class network_WiFi_UpdateRouter(test.test):
 
         ping_helper = ping_runner.PingRunner()
         if not ping_helper.simple_ping(device_hostname):
-            raise error.TestError('%s not found / is down.' % device_hostname)
+            # Pcap devices aren't always present. Just claim Not Applicable if
+            # we couldn't find it.
+            e = error.TestNAError if is_pcap else error.TestError
+            raise e('%s not found / is down.' % device_hostname)
 
         # Use CrosHost for all router/pcap hosts and avoid host detection.
         # Host detection would use JetstreamHost for Whirlwind routers.

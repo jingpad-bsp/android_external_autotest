@@ -17,8 +17,6 @@ import string
 import time
 import threading
 
-import powerlog
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.power import power_telemetry_utils
 from autotest_lib.server.cros.power import power_dashboard
@@ -114,7 +112,10 @@ class SweetberryThread(threading.Thread):
             next_loop_start_timestamp = start_timestamp + loop * self._interval
             current_timestamp = time.time()
             this_loop_duration = next_loop_start_timestamp - current_timestamp
-            powerlog.main(self._argv + ['--seconds', str(this_loop_duration)])
+            args = ['powerlog']
+            args.extend(self._argv)
+            args.extend(['--seconds', str(this_loop_duration)])
+            os.system(' '.join(args))
         logging.debug('Sweetberry stops.')
 
 
