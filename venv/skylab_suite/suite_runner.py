@@ -361,8 +361,7 @@ def _loop_and_wait_forever(suite_handler, dry_run):
         # Log progress every 300 seconds.
         no_logging = bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS % 300)
         with disable_logging(logging.INFO if no_logging else logging.NOTSET):
-            all_tasks = swarming_lib.get_child_tasks(suite_handler.suite_id)
-            suite_handler.handle_results(all_tasks)
+            suite_handler.handle_results(suite_handler.suite_id)
             for t in suite_handler.retried_tasks:
                 _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
 
