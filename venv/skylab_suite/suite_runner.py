@@ -362,11 +362,11 @@ def _loop_and_wait_forever(suite_handler, dry_run):
         no_logging = bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS % 300)
         with disable_logging(logging.INFO if no_logging else logging.NOTSET):
             suite_handler.handle_results(suite_handler.suite_id)
-            for t in suite_handler.retried_tasks:
-                _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
-
             if suite_handler.is_finished_waiting():
                 break
+
+        for t in suite_handler.retried_tasks:
+            _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
 
         time.sleep(SUITE_WAIT_SLEEP_INTERVAL_SECONDS)
 
