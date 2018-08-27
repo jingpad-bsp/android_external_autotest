@@ -349,3 +349,21 @@ def bot_available(bot):
     @return True if a bot is available to run task, otherwise False.
     """
     return not (bot['is_dead'] or bot['quarantined'])
+
+
+def get_child_tasks(parent_task_id):
+    """Get the child tasks based on a parent swarming task id.
+
+    @param parent_task_id: The parent swarming task id.
+
+    @return a list of dicts, each dict refers to the whole stats of a task,
+        keys include 'name', 'bot_dimensions', 'tags', 'bot_id', 'state', etc.
+    """
+    swarming_cmd = get_basic_swarming_cmd('query')
+    swarming_cmd += ['tasks/list?tags=parent_task_id:%s' % parent_task_id]
+    timeout_util = autotest.chromite_load('timeout_util')
+    cros_build_lib = autotest.chromite_load('cros_build_lib')
+    with timeout_util.Timeout(60):
+        child_tasks = cros_build_lib.RunCommand(
+                swarming_cmd, capture_output=True)
+        return json.loads(child_tasks.output)['items']
