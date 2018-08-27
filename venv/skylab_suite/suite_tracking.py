@@ -192,7 +192,8 @@ def _parse_test_results(suite_handler):
     @return a list of test results.
     """
     test_results = []
-    for child_task in suite_handler.active_child_tasks:
+    for child_task in suite_handler.get_active_child_tasks(
+            suite_handler.suite_id):
         task_id = child_task['task_id']
         logging.info('Parsing task results of %s', task_id)
         test_handler_spec = suite_handler.get_test_by_task_id(task_id)
