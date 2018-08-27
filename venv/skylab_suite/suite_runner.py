@@ -213,6 +213,19 @@ def _get_suite_cmd(test_spec, suite_id):
                         'cros-version:%s' % test_spec.build]]
 
 
+def _get_provision_expiration_secs(test_spec):
+    """Set the provision expiration secs in fallback request.
+
+    TODO (xixuan): Find a better way to not hard-code expiration secs for
+    provision slice. Now hard-code it as 95% of the timeout for CQ, and 5% of
+    timeout for others, as CQ has a provision stage before.
+    """
+    if test_spec.pool in ['cq']:
+      return int(0.95 * test_spec.expiration_secs)
+
+    return int(0.05 * test_spec.expiration_secs)
+
+
 def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     """Kick off a fallback swarming cmd.
 
@@ -233,9 +246,7 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
 
-    # TODO (xixuan): Find a better way to not hard-code expiration secs for
-    # provision slice. Now hard-code it as 95% of the timeout.
-    provision_expiration_secs = int(0.95 * test_spec.expiration_secs)
+    provision_expiration_secs = _get_provision_expiration_secs(test_spec)
     all_expiration_secs = [
             provision_expiration_secs,
             test_spec.expiration_secs - provision_expiration_secs]
