@@ -97,7 +97,7 @@ class ApiTest(unittest.TestCase):
 class ClientTest(unittest.TestCase):
     """Test class for GsCacheClient."""
     def setUp(self):
-        self.api = mock.MagicMock()
+        self.api = mock.MagicMock(server_netloc='api_netloc')
         self.dev_server = mock.MagicMock()
         self.client = gs_cache_client.GsCacheClient(self.dev_server, self.api)
 
