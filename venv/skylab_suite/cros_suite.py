@@ -190,8 +190,7 @@ class SuiteHandler(object):
         """Get the max num of retries of a suite."""
         return self._max_retries
 
-    @property
-    def active_child_tasks(self):
+    def get_active_child_tasks(self, suite_id):
         """Get the child tasks which is actively monitored by a suite.
 
         The active child tasks list includes tasks which are currently running
@@ -202,13 +201,14 @@ class SuiteHandler(object):
         The final active child task list will include task x1_2 and x2_1, won't
         include x1_1 since it's a task which is finished but get retried later.
         """
-        return self._active_child_tasks
+        all_tasks = swarming_lib.get_child_tasks(suite_id)
+        return [t for t in all_tasks if t['task_id'] in self._task_to_test_maps]
 
-    def handle_results(self, all_tasks):
+    def handle_results(self, suite_id):
         """Handle child tasks' results."""
-        self._active_child_tasks = [t for t in all_tasks if t['task_id'] in
-                                    self._task_to_test_maps]
-        self.retried_tasks = [t for t in all_tasks if self._should_retry(t)]
+        self._active_child_tasks = self.get_active_child_tasks(suite_id)
+        self.retried_tasks = [t for t in self._active_child_tasks
+                              if self._should_retry(t)]
         logging.info('Found %d tests to be retried.', len(self.retried_tasks))
 
     def _check_all_tasks_finished(self):
