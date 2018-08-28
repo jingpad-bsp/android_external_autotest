@@ -49,7 +49,7 @@ def run(test_specs, suite_handler, dry_run=False):
 def _resume_suite(test_specs, suite_handler, dry_run=False):
     """Resume a suite and its child tasks by given suite id."""
     suite_id = suite_handler.suite_id
-    all_tasks = _fetch_child_tasks(suite_id)
+    all_tasks = swarming_lib.get_child_tasks(suite_id)
     not_yet_scheduled = _get_unscheduled_test_specs(
             test_specs, suite_handler, all_tasks)
 
@@ -345,24 +345,6 @@ def _schedule_test(test_spec,suite_id=None, use_fallback=False,
                                      temp_json_path, suite_id)
 
 
-def _fetch_child_tasks(parent_task_id):
-    """Get the child tasks based on a parent swarming task id.
-
-    @param parent_task_id: The parent swarming task id.
-
-    @return a list of dicts, each dict refers to the whole stats of a task,
-        keys include 'name', 'bot_dimensions', 'tags', 'bot_id', 'state', etc.
-    """
-    swarming_cmd = swarming_lib.get_basic_swarming_cmd('query')
-    swarming_cmd += ['tasks/list?tags=parent_task_id:%s' % parent_task_id]
-    timeout_util = autotest.chromite_load('timeout_util')
-    cros_build_lib = autotest.chromite_load('cros_build_lib')
-    with timeout_util.Timeout(60):
-        child_tasks = cros_build_lib.RunCommand(
-                swarming_cmd, capture_output=True)
-        return json.loads(child_tasks.output)['items']
-
-
 @contextlib.contextmanager
 def disable_logging(logging_level):
     """Context manager for disabling logging of a given logging level."""
@@ -379,7 +361,7 @@ def _loop_and_wait_forever(suite_handler, dry_run):
         # Log progress every 300 seconds.
         no_logging = bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS % 300)
         with disable_logging(logging.INFO if no_logging else logging.NOTSET):
-            all_tasks = _fetch_child_tasks(suite_handler.suite_id)
+            all_tasks = swarming_lib.get_child_tasks(suite_handler.suite_id)
             suite_handler.handle_results(all_tasks)
             for t in suite_handler.retried_tasks:
                 _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
