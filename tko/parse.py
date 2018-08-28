@@ -707,7 +707,6 @@ def main():
 
 def _main_with_options(options, args):
     """Entry point with options parsed and metrics already set up."""
-    start_time = datetime.datetime.now()
     # Record the processed jobs so that
     # we can send the duration of parsing to metadata db.
     processed_jobs = set()
@@ -769,7 +768,6 @@ def _main_with_options(options, args):
         raise
     else:
         pid_file_manager.close_file(0)
-    duration_secs = (datetime.datetime.now() - start_time).total_seconds()
 
 
 if __name__ == "__main__":
