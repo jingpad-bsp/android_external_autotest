@@ -45,10 +45,15 @@ def _should_run(suite_spec):
     tags = {'build': suite_spec.test_source_build,
             'suite': suite_spec.suite_name}
     tasks = swarming_lib.query_task_by_tags(tags)
-    if not tasks:
-      return None
+    current_task_id = suite_tracking.get_task_id_for_task_summaries(
+            os.environ.get('SWARMING_TASK_ID'))
+    logging.info('The current task id is: %s', current_task_id)
+    extra_task_ids = set([])
+    for t in tasks:
+        if t['task_id'] != current_task_id:
+            extra_task_ids.add(t['task_id'])
 
-    return tasks[0]['task_id']
+    return extra_task_ids
 
 
 def _run_suite(options):
@@ -56,11 +61,14 @@ def _run_suite(options):
     logging.info('Kicked off suite %s', options.suite_name)
     suite_spec = suite_parser.parse_suite_spec(options)
     if options.pre_check:
-        old_task_id = _should_run(suite_spec)
-        if old_task_id is not None:
-          logging.info('A same suite is already run in the past: %s',
-                       swarming_lib.get_task_link(old_task_id))
-          return run_suite_common.SuiteResult(run_suite_common.RETURN_CODES.OK)
+        extra_task_ids = _should_run(suite_spec)
+        if extra_task_ids:
+            logging.info(
+                    'The same suites are already run in the past: \n%s',
+                    '\n'.join([swarming_lib.get_task_link(tid)
+                               for tid in extra_task_ids]))
+            return run_suite_common.SuiteResult(
+                    run_suite_common.RETURN_CODES.OK)
 
     if options.suite_name == PROVISION_SUITE_NAME:
         suite_job = cros_suite.ProvisionSuite(suite_spec)
