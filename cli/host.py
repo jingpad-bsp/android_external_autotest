@@ -1126,6 +1126,10 @@ class host_migrate(action_common.atest_list, host):
                                help='Model of the hosts to migrate.',
                                dest='model',
                                default=None)
+        self.parser.add_option('--board',
+                               help='Board of the hosts to migrate.',
+                               dest='board',
+                               default=None)
         self.parser.add_option('--pool',
                                help=('Pool of the hosts to migrate. Must '
                                      'specify --model for the pool.'),
@@ -1143,17 +1147,19 @@ class host_migrate(action_common.atest_list, host):
         self.rollback = options.rollback
         self.model = options.model
         self.pool = options.pool
+        self.board = options.board
         self.host_ids = {}
 
         if not (self.migration ^ self.rollback):
             self.invalid_syntax('--migration and --rollback are exclusive, '
                                 'and one of them must be enabled.')
 
-        if self.pool is not None and self.model is None:
-            self.invalid_syntax('Must provide --model with --pool.')
+        if self.pool is not None and (self.model is None and
+                                      self.board is None):
+            self.invalid_syntax('Must provide --model or --board with --pool.')
 
-        if not self.hosts and not self.model:
-            self.invalid_syntax('Must provide hosts or --model.')
+        if not self.hosts and not (self.model or self.board):
+            self.invalid_syntax('Must provide hosts or --model or --board.')
 
         return (options, leftover)
 
@@ -1207,6 +1213,8 @@ class host_migrate(action_common.atest_list, host):
             labels.append('model:%s' % self.model)
         if self.pool:
             labels.append('pool:%s' % self.pool)
+        if self.board:
+            labels.append('board:%s' % self.board)
 
         if labels:
             if len(labels) == 1:
