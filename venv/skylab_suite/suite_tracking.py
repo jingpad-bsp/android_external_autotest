@@ -95,7 +95,7 @@ def _print_task_link_annotation(task_id, text):
             text, swarming_lib.get_task_link(task_id)))
 
 
-def _get_task_id_for_task_summaries(task_id):
+def get_task_id_for_task_summaries(task_id):
     """Adjust the swarming task id to end in 0 for showing task summaries.
 
     Milo results are only generated for task summaries, that is, tasks whose
@@ -111,12 +111,12 @@ def _log_buildbot_links(suite_handler, suite_name, test_results):
     reporting_utils = autotest.load('server.cros.dynamic_suite.reporting_utils')
     print(annotations.StepLink(
             'Link to the suite create task: %s' % suite_name,
-            swarming_lib.get_task_link(_get_task_id_for_task_summaries(
+            swarming_lib.get_task_link(get_task_id_for_task_summaries(
                     suite_handler.suite_id))))
     if suite_handler.task_id is not None:
         print(annotations.StepLink(
                 'Link to the suite wait task: %s' % suite_name,
-                swarming_lib.get_task_link(_get_task_id_for_task_summaries(
+                swarming_lib.get_task_link(get_task_id_for_task_summaries(
                         suite_handler.task_id))))
 
     if (suite_handler.is_provision() and
