@@ -16,6 +16,8 @@
 		"QuoVadis Root CA 2 G3",
 	"0D:44:DD:8C:3C:8C:1A:1A:58:75:64:81:E9:0F:2E:2A:FF:B3:D2:6E":
 		"Amazon Root CA 3",
+	"0F:36:38:5B:81:1A:25:C3:9B:31:4E:83:CA:E9:34:66:70:CC:74:B4":
+		"GDCA TrustAUTH R5 ROOT",
 	"0F:F9:40:76:18:D3:D7:6A:4B:98:F0:A8:35:9E:0C:FD:27:AC:CC:ED":
 		"OISTE WISeKey Global Root GB CA",
 	"13:2D:0D:45:53:4B:69:97:CD:B2:D5:C3:39:E2:55:76:60:9B:5C:C6":
@@ -74,6 +76,8 @@
 		"Buypass Class 2 Root CA",
 	"4A:BD:EE:EC:95:0D:35:9C:89:AE:C7:52:A1:2C:5B:29:F6:D6:AA:0C":
 		"Global Chambersign Root - 2008",
+	"4C:DD:51:A3:D1:F5:20:32:14:B0:C6:C5:32:23:03:91:C7:46:42:6D":
+		"SSL.com EV Root Certification Authority ECC",
 	"4E:B6:D5:78:49:9B:1C:CF:5F:58:1E:AD:56:BE:3D:9B:67:44:A5:E5":
 		"VeriSign Class 3 Public Primary Certification Authority - G5",
 	"4F:65:8E:1F:E9:06:D8:28:02:E9:54:47:41:C9:54:25:5D:69:CC:1A":
@@ -84,6 +88,8 @@
 		"E-Tugra Certification Authority",
 	"55:A6:72:3E:CB:F2:EC:CD:C3:23:74:70:19:9D:2A:BE:11:E3:81:D1":
 		"T-TeleSec GlobalRoot Class 3",
+	"58:D1:DF:95:95:67:6B:63:C0:F0:5B:1C:17:4D:8B:84:0B:C8:78:BD":
+		"TrustCor ECA-1",
 	"58:E8:AB:B0:36:15:33:FB:80:F7:9B:1B:6D:29:D3:FF:8D:5F:00:F0":
 		"D-TRUST Root Class 3 CA 2 2009",
 	"59:0D:2D:7D:88:4F:40:2E:61:7E:A5:62:32:17:65:CF:17:D8:94:E9":
@@ -112,6 +118,8 @@
 		"Visa eCommerce Root",
 	"74:20:74:41:72:9C:DD:92:EC:79:31:D8:23:10:8D:C2:81:92:E2:BB":
 		"Certplus Class 2 Primary CA",
+	"74:3A:F0:52:9B:D0:32:A0:F4:4A:83:CD:D4:BA:A9:7B:7C:2E:C4:9A":
+		"SSL.com EV Root Certification Authority RSA R2",
 	"74:F8:A3:C3:EF:E7:B3:90:06:4B:83:90:3C:21:64:60:20:E5:DF:CE":
 		"Network Solutions Certificate Authority",
 	"75:E0:AB:B6:13:85:12:27:1C:04:F8:5F:DD:DE:38:E4:B7:24:2E:FE":
@@ -178,14 +186,18 @@
 		"Starfield Root Certificate Authority - G2",
 	"B5:61:EB:EA:A4:DE:E4:25:4B:69:1A:98:A5:57:47:C2:34:C7:D9:71":
 		"CA Disig Root R2",
+	"B7:AB:33:08:D1:EA:44:77:BA:14:80:12:5A:6F:BD:A9:36:49:0C:BB":
+		"SSL.com Root Certification Authority RSA",
 	"B8:01:86:D1:EB:9C:86:A5:41:04:CF:30:54:F3:4C:52:B7:E5:58:C6":
 		"XRamp Global CA Root",
 	"B8:23:6B:00:2F:1D:16:86:53:01:55:6C:11:A4:37:CA:EB:FF:C3:BB":
 		"AffirmTrust Premium ECC",
+	"B8:BE:6D:CB:56:F1:55:B9:63:D4:12:CA:4E:06:34:C7:94:B2:1C:C0":
+		"TrustCor RootCert CA-2",
 	"BA:29:41:60:77:98:3F:F4:F3:EF:F2:31:05:3B:2E:EA:6D:4D:45:FD":
 		"IdenTrust Public Sector Root CA 1",
-	"C4:18:F6:4D:46:D1:DF:00:3D:27:30:13:72:43:A9:12:11:C6:75:FB":
-		"TÜRKTRUST Elektronik Sertifika Hizmet Sağlayıcısı H5",
+	"C3:19:7C:39:24:E6:54:AF:1B:C4:AB:20:95:7A:E2:C3:0E:13:02:6A":
+		"SSL.com Root Certification Authority ECC",
 	"C9:A8:B9:E7:55:80:5E:58:E3:53:77:A7:25:EB:AF:C3:7B:27:CC:D7":
 		"EE Certification Centre Root CA",
 	"CA:3A:FB:CF:12:40:36:4B:44:B2:16:20:88:80:48:39:19:93:7C:F7":
@@ -249,86 +261,10 @@
 	"FA:B7:EE:36:97:26:62:FB:2D:B0:2A:F6:BF:03:FD:E8:7C:4B:2F:9B":
 		"certSIGN ROOT CA",
 	"FE:45:65:9B:79:03:5B:98:A1:61:B5:51:2E:AC:DA:58:09:48:22:4D":
-		"Hellenic Academic and Research Institutions RootCA 2011"
-	},
-	"nss": {
-	"04:83:ED:33:99:AC:36:08:05:87:22:ED:BC:5E:46:00:E3:BE:F9:D7":
-		"UTN USERFirst Hardware Root CA",
-	"16:32:47:8D:89:F9:21:3A:92:00:85:63:F5:A4:A7:D3:12:40:8A:D6":
-		"WoSign China",
-	"1B:4B:39:61:26:27:6B:64:91:A2:68:6D:D7:02:43:21:2D:1F:1D:96":
-		"TÜBİTAK UEKAE Kök Sertifika Hizmet Sağlayıcısı - Sürüm 3",
-	"2A:B6:28:48:5E:78:FB:F3:AD:9E:79:10:DD:6B:DF:99:72:2C:96:E5":
-		"AddTrust Public Services Root",
-	"2E:14:DA:EC:28:F0:FA:1E:8E:38:9A:4E:AB:EB:26:C0:0A:D3:83:C3":
-		"Certinomis - Autorité Racine",
-	"31:F1:FD:68:22:63:20:EE:C6:3B:3F:9D:EA:4A:3E:53:7C:7C:39:17":
-		"StartCom Certification Authority G2",
-	"33:9B:6B:14:50:24:9B:55:7A:01:87:72:84:D9:E0:2F:C3:D2:D8:E9":
-		"Camerfirma Global Chambersign Root",
-	"3E:2B:F7:F2:03:1B:96:F3:8C:E6:C4:D8:A8:5D:3E:2D:58:47:6A:0F":
-		"StartCom Ltd.",
-	"40:54:DA:6F:1C:3F:40:74:AC:ED:0F:EC:CD:DB:79:D1:53:FB:90:1D":
-		"DST ACES CA X6",
-	"4A:65:D5:F4:1D:EF:39:B8:B8:90:4A:4A:D3:64:81:33:CF:C7:A1:D1":
-		"Comodo Secure Services root",
-	"4D:23:78:EC:91:95:39:B5:00:7F:75:8F:03:3B:21:1E:C5:4D:8B:CF":
-		"AddTrust Qualified Certificates Root",
-	"4F:99:AA:93:FB:2B:D1:37:26:A1:99:4A:CE:7F:F0:05:F2:93:5D:1E":
-		"China Internet Network Information Center EV Certificates Root",
-	"5F:3A:FC:0A:8B:64:F6:86:67:34:74:DF:7E:A9:A2:FE:F9:FA:7A:51":
-		"Swisscom Root CA 1",
-	"62:52:DC:40:F7:11:43:A2:2F:DE:9E:F7:34:8E:06:42:51:B1:81:18":
-		"Certum Root CA",
-	"6E:3A:55:A4:19:0C:19:5C:93:84:3C:C0:DB:72:2E:31:30:61:F0:B1":
-		"Camerfirma Chambers of Commerce Root",
-	"70:C1:8D:74:B4:28:81:0A:E4:FD:A5:75:D7:01:9F:99:B0:3D:50:74":
-		"PSCProcert",
-	"77:47:4F:C6:30:E4:0F:4C:47:64:3F:84:BA:B8:C6:95:4A:8A:41:EC":
-		"Swisscom Root CA 2",
-	"8B:AF:4C:9B:1D:F0:2A:92:F7:DA:12:8E:B9:1B:AC:F4:98:60:4B:6F":
-		"CNNIC ROOT",
-	"8E:1C:74:F8:A6:20:B9:E5:8A:F4:61:FA:EC:2B:47:56:51:1A:52:C6":
-		"CA Disig Root R1",
-	"A3:F1:33:3F:E2:42:BF:CF:C5:D1:4E:8F:39:42:98:40:68:10:D1:A0":
-		"StartCom Certification Authority",
-	"A9:E9:78:08:14:37:58:88:F2:05:19:B0:6D:2B:0D:2B:60:16:90:7D":
-		"GeoTrust Global CA 2",
-	"B9:42:94:BF:91:EA:8F:B6:4B:E6:10:97:C7:FB:00:13:59:B6:76:CB":
-		"WoSign",
-	"CC:AB:0E:A0:4C:23:01:D6:69:7B:DD:37:9F:CD:12:EB:24:E3:94:9D":
-		"AddTrust Low-Value Services Root",
-	"D2:7A:D2:BE:ED:94:C0:A1:3C:C7:25:21:EA:5D:71:BE:81:19:F3:2B":
-		"CA WoSign ECC Root",
-	"E0:B4:32:2E:B2:F6:A5:68:B6:54:53:84:48:18:4A:50:36:87:43:84":
-		"ACEDICOM Root",
-	"E1:9F:E3:0E:8B:84:60:9E:80:9B:17:0D:72:A8:C5:BA:6E:14:09:BD":
-		"Comodo Trusted Services root",
-	"E7:A1:90:29:D3:D5:52:DC:0D:0F:C6:92:D3:EA:88:0D:15:2E:1A:6B":
-		"Swisscom Root EV CA 2",
-	"F1:7F:6F:B6:31:DC:99:E3:A3:C8:7F:FE:1C:F1:81:10:88:D9:60:33":
-		"TURKTRUST Certificate Services Provider Root 2007",
-	"FB:ED:DC:90:65:B7:27:20:37:BC:55:0C:9C:56:DE:BB:F2:78:94:E1":
-		"Certification Authority of WoSign G2",
-	"FE:B8:C4:32:DC:F9:76:9A:CE:AE:3D:D8:90:8F:FD:28:86:65:64:7D":
-		"Security Communication EV RootCA1"
-	},
-	"openssl": {
-	"0F:36:38:5B:81:1A:25:C3:9B:31:4E:83:CA:E9:34:66:70:CC:74:B4":
-		"GDCA TrustAUTH R5 ROOT",
-	"4C:DD:51:A3:D1:F5:20:32:14:B0:C6:C5:32:23:03:91:C7:46:42:6D":
-		"SSL.com EV Root Certification Authority ECC",
-	"58:D1:DF:95:95:67:6B:63:C0:F0:5B:1C:17:4D:8B:84:0B:C8:78:BD":
-		"TrustCor ECA-1",
-	"74:3A:F0:52:9B:D0:32:A0:F4:4A:83:CD:D4:BA:A9:7B:7C:2E:C4:9A":
-		"SSL.com EV Root Certification Authority RSA R2",
-	"B7:AB:33:08:D1:EA:44:77:BA:14:80:12:5A:6F:BD:A9:36:49:0C:BB":
-		"SSL.com Root Certification Authority RSA",
-	"B8:BE:6D:CB:56:F1:55:B9:63:D4:12:CA:4E:06:34:C7:94:B2:1C:C0":
-		"TrustCor RootCert CA-2",
-	"C3:19:7C:39:24:E6:54:AF:1B:C4:AB:20:95:7A:E2:C3:0E:13:02:6A":
-		"SSL.com Root Certification Authority ECC",
+		"Hellenic Academic and Research Institutions RootCA 2011",
 	"FF:BD:CD:E7:82:C8:43:5E:3C:6F:26:86:5C:CA:A8:3A:45:5B:C3:0A":
 		"TrustCor RootCert CA-1"
-	}
+	},
+	"nss": {},
+	"openssl": {}
 }
