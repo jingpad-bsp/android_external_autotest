@@ -843,27 +843,40 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
     if dut is not None and (try_lab_servo or servo_dependency):
         servo_args_override, is_in_lab = _get_standard_servo_args(dut)
         if servo_args_override is not None:
+            logging.debug(
+                    'Overriding provided servo_args (%s) with arguments'
+                    ' determined from the host (%s)',
+                    servo_args,
+                    servo_args_override,
+            )
             servo_args = servo_args_override
     if servo_args is None:
+        logging.debug('No servo_args provided, and failed to find overrides.')
         return None
+
     if (not servo_dependency and not try_servo_repair and
             not servo_host_is_up(servo_args[SERVO_HOST_ATTR])):
+        logging.debug('ServoHost is not up.')
         return None
+
     newhost = ServoHost(is_in_lab=is_in_lab, **servo_args)
     base_classes.send_creation_metric(newhost)
+
     # Note that the logic of repair() includes everything done
     # by verify().  It's sufficient to call one or the other;
     # we don't need both.
     if servo_dependency:
         newhost.repair(silent=True)
+        return newhost
+
+    if try_servo_repair:
+        try:
+            newhost.repair()
+        except Exception:
+            logging.exception('servo repair failed for %s', newhost.hostname)
     else:
         try:
-            if try_servo_repair:
-                newhost.repair()
-            else:
-                newhost.verify()
+            newhost.verify()
         except Exception:
-            operation = 'repair' if try_servo_repair else 'verification'
-            logging.exception('Servo %s failed for %s',
-                              operation, newhost.hostname)
+            logging.exception('servo verify failed for %s', newhost.hostname)
     return newhost
