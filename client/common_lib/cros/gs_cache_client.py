@@ -43,6 +43,8 @@ _USE_SSH_CONNECTION = _CONFIG.get_config_value(
         default=False)
 _SSH_CALL_TIMEOUT_SECONDS = 60
 
+_MESSAGE_LENGTH_MAX_CHARS = 200
+
 # Exit code of `curl` when cannot connect to host. Man curl for details.
 _CURL_RC_CANNOT_CONNECT_TO_HOST = 7
 
@@ -84,6 +86,7 @@ class _GsCacheAPI(object):
         @throws CommunicationError when the SSH command failed.
         """
         cmd = 'ssh %s \'curl "%s"\'' % (self._hostname, utils.sh_escape(url))
+        logging.debug('Gs Cache call: %s', cmd)
         try:
             result = utils.run(cmd, timeout=_SSH_CALL_TIMEOUT_SECONDS)
         except error.CmdError as err:
@@ -127,6 +130,7 @@ class _GsCacheAPI(object):
         if _USE_SSH_CONNECTION and self._is_in_restricted_subnet:
             return self._ssh_call(url)
         else:
+            logging.debug('Gs Cache call: %s', url)
             # TODO(guocb): Re-use the TCP connection.
             try:
                 rsp = requests.get(url)
@@ -219,8 +223,14 @@ class GsCacheClient(object):
         try:
             map_file_content = content_dict[map_file_name]
         except KeyError:
+            # content_dict may have too many keys which makes the exception
+            # message less readable. So truncate it to reasonable length.
+            content_dict_str = str(content_dict)
+            if len(content_dict_str) > _MESSAGE_LENGTH_MAX_CHARS:
+                content_dict_str = (
+                        '%s...' % content_dict_str[:_MESSAGE_LENGTH_MAX_CHARS])
             raise ResponseContentError("File '%s' isn't in response: %s" %
-                                       (map_file_name, content_dict))
+                                       (map_file_name, content_dict_str))
         try:
             suite_to_control_files = json.loads(map_file_content)
         except ValueError as err:
