@@ -134,7 +134,7 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
                 channel=channel, mode=mode_11n, n_capabilities=caps)
         netperf_config = netperf_runner.NetperfConfig(
                 netperf_runner.NetperfConfig.TEST_TYPE_UDP_STREAM)
-        for i, ap_config in enumerate([get_config(1), get_config(157)]):
+        for _, ap_config in enumerate([get_config(1), get_config(157)]):
             # Set up the router and associate the client with it.
             self.context.configure(ap_config)
             self.context.capture_host.start_capture(
