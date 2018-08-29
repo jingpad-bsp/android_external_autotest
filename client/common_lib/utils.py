@@ -968,7 +968,7 @@ def signal_pid(pid, sig):
         # The process may have died before we could kill it.
         pass
 
-    for i in range(5):
+    for _ in range(5):
         if not pid_is_alive(pid):
             return True
         time.sleep(1)
@@ -1075,7 +1075,7 @@ def system_output_parallel(commands, timeout=None, ignore_status=False,
     else:
         out = [bg_job.stdout for bg_job in run_parallel(commands,
                                   timeout=timeout, ignore_status=ignore_status)]
-    for x in out:
+    for _ in out:
         if out[-1:] == '\n': out = out[:-1]
     return out
 
