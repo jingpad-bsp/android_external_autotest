@@ -139,6 +139,7 @@ def _schedule_test_specs(test_specs, suite_handler, suite_id, dry_run=False):
                 test_spec,
                 suite_id=suite_id,
                 use_fallback=suite_handler.should_use_fallback(),
+                is_provision=suite_handler.is_provision(),
                 dry_run=dry_run)
         suite_handler.add_test_by_task_id(
                 test_task_id,
@@ -213,20 +214,21 @@ def _get_suite_cmd(test_spec, suite_id):
                         'cros-version:%s' % test_spec.build]]
 
 
-def _get_provision_expiration_secs(test_spec):
+def _get_provision_expiration_secs(test_spec, is_provision):
     """Set the provision expiration secs in fallback request.
 
     TODO (xixuan): Find a better way to not hard-code expiration secs for
     provision slice. Now hard-code it as 95% of the timeout for CQ, and 5% of
     timeout for others, as CQ has a provision stage before.
     """
-    if test_spec.pool in ['cq']:
+    if test_spec.pool in ['cq'] and not is_provision:
       return int(0.95 * test_spec.expiration_secs)
 
     return int(0.05 * test_spec.expiration_secs)
 
 
-def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
+def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
+                                    is_provision):
     """Kick off a fallback swarming cmd.
 
     @param cmds: A list of commands: [cmd, cmd_with_fallback]. Each of the cmd
@@ -234,6 +236,7 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     @param dimensions: A dict of dimensions used to form the swarming cmd.
     @param test_spec: a cros_suite.TestSpec object.
     @param suite_id: The suite id of the test to kick off.
+    @param is_provision: Indicate whether this suite is a provision suite.
     """
     fallback_dimensions = dimensions.copy()
     if test_spec.bot_id:
@@ -246,7 +249,8 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id):
     if suite_id is not None:
         tags += ['parent_task_id:%s' % suite_id]
 
-    provision_expiration_secs = _get_provision_expiration_secs(test_spec)
+    provision_expiration_secs = _get_provision_expiration_secs(
+            test_spec, is_provision)
     all_expiration_secs = [
             provision_expiration_secs,
             test_spec.expiration_secs - provision_expiration_secs]
@@ -303,8 +307,8 @@ def _run_swarming_cmd(cmd, dimensions, test_spec, temp_json_path, suite_id):
         return result['tasks'][test_spec.test.name]['task_id']
 
 
-def _schedule_test(test_spec,suite_id=None, use_fallback=False,
-                   dry_run=False):
+def _schedule_test(test_spec, suite_id=None, use_fallback=False,
+                   is_provision=False, dry_run=False):
     """Schedule a CrOS test.
 
     @param test_spec: A cros_suite.TestSpec object.
@@ -339,7 +343,8 @@ def _schedule_test(test_spec,suite_id=None, use_fallback=False,
         temp_json_path = os.path.join(tempdir, 'temp_summary.json')
         if use_fallback:
             return _run_swarming_cmd_with_fallback(
-                    [cmd, cmd_with_fallback], dimensions, test_spec, suite_id)
+                    [cmd, cmd_with_fallback], dimensions, test_spec,
+                    suite_id, is_provision)
         else:
             return _run_swarming_cmd(cmd, dimensions, test_spec,
                                      temp_json_path, suite_id)
@@ -362,11 +367,11 @@ def _loop_and_wait_forever(suite_handler, dry_run):
         no_logging = bool(iterations * SUITE_WAIT_SLEEP_INTERVAL_SECONDS % 300)
         with disable_logging(logging.INFO if no_logging else logging.NOTSET):
             suite_handler.handle_results(suite_handler.suite_id)
-            for t in suite_handler.retried_tasks:
-                _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
-
             if suite_handler.is_finished_waiting():
                 break
+
+        for t in suite_handler.retried_tasks:
+            _retry_test(suite_handler, t['task_id'], dry_run=dry_run)
 
         time.sleep(SUITE_WAIT_SLEEP_INTERVAL_SECONDS)
 
@@ -411,6 +416,7 @@ def _retry_test(suite_handler, task_id, dry_run=False):
             last_retry_spec.test_spec,
             suite_id=suite_handler.suite_id,
             use_fallback=suite_handler.should_use_fallback(),
+            is_provision=suite_handler.is_provision(),
             dry_run=dry_run)
     previous_retried_ids = last_retry_spec.previous_retried_ids + [task_id]
     suite_handler.add_test_by_task_id(

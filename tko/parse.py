@@ -312,14 +312,10 @@ def export_tko_job_to_file(job, jobname, filename):
     @param jobname: the job name as string.
     @param filename: The path to the results to be parsed.
     """
-    try:
-        from autotest_lib.tko import job_serializer
+    from autotest_lib.tko import job_serializer
 
-        serializer = job_serializer.JobSerializer()
-        serializer.serialize_to_binary(job, jobname, filename)
-    except ImportError:
-        tko_utils.dprint("WARNING: tko_pb2.py doesn't exist. Create by "
-                         "compiling tko/tko.proto.")
+    serializer = job_serializer.JobSerializer()
+    serializer.serialize_to_binary(job, jobname, filename)
 
 
 def parse_one(db, pid_file_manager, jobname, path, parse_options):
@@ -408,58 +404,54 @@ def parse_one(db, pid_file_manager, jobname, path, parse_options):
             message_lines.append(format_failure_message(
                 jobname, test.kernel.base, test.subdir,
                 test.status, test.reason))
-    try:
-        message = "\n".join(message_lines)
 
-        if not dry_run:
-            # send out a email report of failure
-            if len(message) > 2 and mail_on_failure:
-                tko_utils.dprint("Sending email report of failure on %s to %s"
-                                 % (jobname, job.user))
-                mailfailure(jobname, job, message)
+    message = "\n".join(message_lines)
 
-            # Upload perf values to the perf dashboard, if applicable.
-            for test in job.tests:
-                perf_uploader.upload_test(job, test, jobname)
+    if not dry_run:
+        # send out a email report of failure
+        if len(message) > 2 and mail_on_failure:
+            tko_utils.dprint("Sending email report of failure on %s to %s"
+                                % (jobname, job.user))
+            mailfailure(jobname, job, message)
 
-            # Upload job details to Sponge.
-            sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
-            if sponge_url:
-                job.keyval_dict['sponge_url'] = sponge_url
+        # Upload perf values to the perf dashboard, if applicable.
+        for test in job.tests:
+            perf_uploader.upload_test(job, test, jobname)
 
-            _write_job_to_db(db, jobname, job)
+        # Upload job details to Sponge.
+        sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
+        if sponge_url:
+            job.keyval_dict['sponge_url'] = sponge_url
 
-            # Verify the job data is written to the database.
-            if job.tests:
-                tests_in_db = db.find_tests(job.job_idx)
-                tests_in_db_count = len(tests_in_db) if tests_in_db else 0
-                if tests_in_db_count != len(job.tests):
-                    tko_utils.dprint(
-                            'Failed to find enough tests for job_idx: %d. The '
-                            'job should have %d tests, only found %d tests.' %
-                            (job.job_idx, len(job.tests), tests_in_db_count))
-                    metrics.Counter(
-                            'chromeos/autotest/result/db_save_failure',
-                            description='The number of times parse failed to '
-                            'save job to TKO database.').increment()
+        _write_job_to_db(db, jobname, job)
 
-            # Although the cursor has autocommit, we still need to force it to
-            # commit existing changes before we can use django models, otherwise
-            # it will go into deadlock when django models try to start a new
-            # trasaction while the current one has not finished yet.
-            db.commit()
+        # Verify the job data is written to the database.
+        if job.tests:
+            tests_in_db = db.find_tests(job.job_idx)
+            tests_in_db_count = len(tests_in_db) if tests_in_db else 0
+            if tests_in_db_count != len(job.tests):
+                tko_utils.dprint(
+                        'Failed to find enough tests for job_idx: %d. The '
+                        'job should have %d tests, only found %d tests.' %
+                        (job.job_idx, len(job.tests), tests_in_db_count))
+                metrics.Counter(
+                        'chromeos/autotest/result/db_save_failure',
+                        description='The number of times parse failed to '
+                        'save job to TKO database.').increment()
 
-            # Handle retry job.
-            orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID,
-                                             None)
-            if orig_afe_job_id:
-                orig_job_idx = tko_models.Job.objects.get(
-                        afe_job_id=orig_afe_job_id).job_idx
-                _invalidate_original_tests(orig_job_idx, job.job_idx)
-    except Exception as e:
-        tko_utils.dprint("Hit exception while uploading to tko db:\n%s" %
-                         traceback.format_exc())
-        raise e
+        # Although the cursor has autocommit, we still need to force it to
+        # commit existing changes before we can use django models, otherwise
+        # it will go into deadlock when django models try to start a new
+        # trasaction while the current one has not finished yet.
+        db.commit()
+
+        # Handle retry job.
+        orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID,
+                                            None)
+        if orig_afe_job_id:
+            orig_job_idx = tko_models.Job.objects.get(
+                    afe_job_id=orig_afe_job_id).job_idx
+            _invalidate_original_tests(orig_job_idx, job.job_idx)
 
     # Serializing job into a binary file
     export_tko_to_file = global_config.global_config.get_config_value(
@@ -476,40 +468,36 @@ def parse_one(db, pid_file_manager, jobname, path, parse_options):
     # Check whether this is a suite job, a suite job will be a hostless job, its
     # jobname will be <JOB_ID>-<USERNAME>/hostless, the suite field will not be
     # NULL. Only generate timeline report when datastore_parent_key is given.
-    try:
-        datastore_parent_key = job_keyval.get('datastore_parent_key', None)
-        provision_job_id = job_keyval.get('provision_job_id', None)
-        if (suite_report and jobname.endswith('/hostless')
-            and job.suite and datastore_parent_key):
-            tko_utils.dprint('Start dumping suite timing report...')
-            timing_log = os.path.join(path, 'suite_timing.log')
-            dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
-                        "--output='%s' --debug" %
-                        (common.autotest_dir, job.afe_job_id,
-                         timing_log))
+    datastore_parent_key = job_keyval.get('datastore_parent_key', None)
+    provision_job_id = job_keyval.get('provision_job_id', None)
+    if (suite_report and jobname.endswith('/hostless')
+        and job.suite and datastore_parent_key):
+        tko_utils.dprint('Start dumping suite timing report...')
+        timing_log = os.path.join(path, 'suite_timing.log')
+        dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
+                    "--output='%s' --debug" %
+                    (common.autotest_dir, job.afe_job_id,
+                        timing_log))
 
-            if provision_job_id is not None:
-                dump_cmd += " --provision_job_id=%d" % int(provision_job_id)
+        if provision_job_id is not None:
+            dump_cmd += " --provision_job_id=%d" % int(provision_job_id)
 
-            subprocess.check_output(dump_cmd, shell=True)
-            tko_utils.dprint('Successfully finish dumping suite timing report')
+        subprocess.check_output(dump_cmd, shell=True)
+        tko_utils.dprint('Successfully finish dumping suite timing report')
 
-            if (datastore_creds and export_to_gcloud_path
-                and os.path.exists(export_to_gcloud_path)):
-                upload_cmd = [export_to_gcloud_path, datastore_creds,
-                              timing_log, '--parent_key',
-                              datastore_parent_key]
-                tko_utils.dprint('Start exporting timeline report to gcloud')
-                subprocess.check_output(upload_cmd)
-                tko_utils.dprint('Successfully export timeline report to '
-                                 'gcloud')
-            else:
-                tko_utils.dprint('DEBUG: skip exporting suite timeline to '
-                                 'gcloud, because either gcloud creds or '
-                                 'export_to_gcloud script is not found.')
-    except Exception as e:
-        tko_utils.dprint("WARNING: fail to dump/export suite report. "
-                         "Error:\n%s" % e)
+        if (datastore_creds and export_to_gcloud_path
+            and os.path.exists(export_to_gcloud_path)):
+            upload_cmd = [export_to_gcloud_path, datastore_creds,
+                            timing_log, '--parent_key',
+                            datastore_parent_key]
+            tko_utils.dprint('Start exporting timeline report to gcloud')
+            subprocess.check_output(upload_cmd)
+            tko_utils.dprint('Successfully export timeline report to '
+                                'gcloud')
+        else:
+            tko_utils.dprint('DEBUG: skip exporting suite timeline to '
+                                'gcloud, because either gcloud creds or '
+                                'export_to_gcloud script is not found.')
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop
@@ -648,12 +636,8 @@ def parse_leaf_path(db, pid_file_manager, path, level, parse_options):
     """
     job_elements = path.split("/")[-level:]
     jobname = "/".join(job_elements)
-    try:
-        db.run_with_retry(parse_one, db, pid_file_manager, jobname, path,
-                          parse_options)
-    except Exception as e:
-        tko_utils.dprint("Error parsing leaf path: %s\nException:\n%s\n%s" %
-                         (path, e, traceback.format_exc()))
+    db.run_with_retry(parse_one, db, pid_file_manager, jobname, path,
+                      parse_options)
     return jobname
 
 
@@ -723,7 +707,6 @@ def main():
 
 def _main_with_options(options, args):
     """Entry point with options parsed and metrics already set up."""
-    start_time = datetime.datetime.now()
     # Record the processed jobs so that
     # we can send the duration of parsing to metadata db.
     processed_jobs = set()
@@ -785,7 +768,6 @@ def _main_with_options(options, args):
         raise
     else:
         pid_file_manager.close_file(0)
-    duration_secs = (datetime.datetime.now() - start_time).total_seconds()
 
 
 if __name__ == "__main__":
