@@ -1918,7 +1918,6 @@ def get_moblab_serial_number():
       except error.CmdError as e:
           logging.error(str(e))
           logging.info(vpd_key)
-          pass
     return 'NoSerialNumber'
 
 
