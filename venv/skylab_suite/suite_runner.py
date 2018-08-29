@@ -22,7 +22,7 @@ from skylab_suite import swarming_lib
 
 SKYLAB_SUITE_USER = 'skylab_suite_runner'
 SKYLAB_LUCI_TAG = 'luci_project:chromiumos'
-SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/usr/bin/skylab_swarming_worker'
+SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/skylab_swarming_worker'
 
 SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
 
