@@ -27,6 +27,7 @@ class security_StatefulPermissions(test.test):
                                       "/unencrypted/art-data/dalvik-cache/x86_64"],
                      "attestation": ["/unencrypted/preserve",
                                      "/unencrypted/preserve/attestation.epb"],
+                     "authpolicyd": [],
                      "avfs": [],
                      "bin": [],
                      "bluetooth": ["/encrypted/var/lib/bluetooth"],
