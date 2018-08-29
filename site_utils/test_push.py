@@ -20,7 +20,6 @@ The script uses latest gandof stable build as test build by default.
 
 import argparse
 import ast
-from contextlib import contextmanager
 import datetime
 import getpass
 import multiprocessing
@@ -126,11 +125,6 @@ _IGNORED_TESTS = [
 _run_suite_output = []
 _all_suite_ids = []
 
-# A dict maps the name of the updated repos and the path of them.
-UPDATED_REPOS = {'autotest': AUTOTEST_DIR,
-                 'chromite': '%s/site-packages/chromite/' % AUTOTEST_DIR}
-PUSH_USER = 'chromeos-test-lab'
-
 DEFAULT_SERVICE_RESPAWN_LIMIT = 2
 
 
@@ -172,7 +166,7 @@ def powerwash_dut_to_test_repair(hostname, timeout):
     @raise TestPushException: if DUT fail to run the test.
     """
     t = models.Test.objects.get(name='platform_Powerwash')
-    c = utils.read_file(os.path.join(common.autotest_dir, t.path))
+    c = utils.read_file(os.path.join(AUTOTEST_DIR, t.path))
     job_id = rpc_utils.create_job_common(
              'powerwash', priority=priorities.Priority.SUPER,
              control_type='Server', control_file=c, hosts=[hostname])
@@ -443,55 +437,6 @@ def check_queue(queue):
     raise exc_info[0](exc_info[1])
 
 
-def get_head_of_repos(repos):
-    """Get HEAD of updated repos, currently are autotest and chromite repos
-
-    @param repos: a map of repo name to the path of the repo. E.g.
-                  {'autotest': '/usr/local/autotest'}
-    @return: a map of repo names to the current HEAD of that repo.
-    """
-    @contextmanager
-    def cd(new_wd):
-        """Helper function to change working directory.
-
-        @param new_wd: new working directory that switch to.
-        """
-        prev_wd = os.getcwd()
-        os.chdir(os.path.expanduser(new_wd))
-        try:
-            yield
-        finally:
-            os.chdir(prev_wd)
-
-    updated_repo_heads = {}
-    for repo_name, path_to_repo in repos.iteritems():
-        with cd(path_to_repo):
-            head = subprocess.check_output('git rev-parse HEAD',
-                                           shell=True).strip()
-        updated_repo_heads[repo_name] = head
-    return updated_repo_heads
-
-
-def push_prod_next_branch(updated_repo_heads):
-    """push prod-next branch to the tested HEAD after all tests pass.
-
-    The push command must be ran as PUSH_USER, since only PUSH_USER has the
-    right to push branches.
-
-    @param updated_repo_heads: a map of repo names to tested HEAD of that repo.
-    """
-    # prod-next branch for every repo is downloaded under PUSH_USER home dir.
-    cmd = ('cd ~/{repo}; git pull; git rebase {hash} prod-next;'
-           'git push origin prod-next')
-    run_push_as_push_user = "sudo su - %s -c '%s'" % (PUSH_USER, cmd)
-
-    for repo_name, test_hash in updated_repo_heads.iteritems():
-         push_cmd = run_push_as_push_user.format(hash=test_hash, repo=repo_name)
-         print 'Pushing %s prod-next branch to %s' % (repo_name, test_hash)
-         print subprocess.check_output(push_cmd, stderr=subprocess.STDOUT,
-                                       shell=True)
-
-
 def _run_test_suites(arguments):
     """Run the actual tests that comprise the test_push."""
     # Use daemon flag will kill child processes when parent process fails.
@@ -561,18 +506,8 @@ def check_service_crash(respawn_limit, start_time):
     raise TestPushException(error_msg)
 
 
-def _promote_prod_next_refs():
-    """Updates prod-next branch on relevant repos."""
-    updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
-    push_prod_next_branch(updated_repo_heads)
-    return updated_repo_heads
-
-
 _SUCCESS_MSG = """
-All tests completed successfully, the prod branch of the following repos is
-ready to be pushed to the hash list below.
-
-%(updated_repos_msg)s
+All tests completed successfully.
 
 Instructions for pushing to prod are available at
 https://goto.google.com/autotest-to-prod
@@ -602,12 +537,9 @@ def _main(arguments):
         check_dut_inventory(arguments.num_duts, arguments.pool)
         _run_test_suites(arguments)
         check_service_crash(arguments.service_respawn_limit, start_time)
-        updated_repo_heads = _promote_prod_next_refs()
-        updated_repos_msg = '\n'.join(
-                ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
-        print _SUCCESS_MSG % {'updated_repos_msg': updated_repos_msg}
+        print _SUCCESS_MSG
     except Exception:
-        # Abort running jobs when choose not to continue when there is failure.
+        # Abort running jobs unless flagged to continue when there is a failure.
         if not arguments.continue_on_failure:
             for suite_id in _all_suite_ids:
                 if AFE.get_jobs(id=suite_id, finished=False):
