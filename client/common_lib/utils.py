@@ -54,6 +54,7 @@ from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.client.common_lib import metrics_mock_class
 from autotest_lib.client.cros import constants
 
+# pylint: disable=wildcard-import
 from autotest_lib.client.common_lib.lsbrelease_utils import *
 
 
