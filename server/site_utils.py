@@ -19,6 +19,7 @@ import common
 from autotest_lib.client.bin.result_tools import utils as result_utils
 from autotest_lib.client.bin.result_tools import utils_lib as result_utils_lib
 from autotest_lib.client.bin.result_tools import view as result_view
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
@@ -337,6 +338,12 @@ def check_lab_status(build):
         logging.warning('Could not get a status from %s', status_url)
         return
     _decode_lab_status(json_status, build)
+
+
+def host_in_lab(hostname):
+    return (not utils.in_moblab_ssp()
+            and not lsbrelease_utils.is_moblab()
+            and utils.host_is_in_lab_zone(hostname))
 
 
 def lock_host_with_labels(afe, lock_manager, labels):
