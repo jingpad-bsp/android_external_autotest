@@ -4,6 +4,7 @@
 
 import logging, os, time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import audio_test_data
@@ -51,6 +52,9 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
         if not any(t in output_type for t in ['HEADPHONE', 'USB']):
             raise error.TestFail("Wrong output type=%s", output_type)
 
+        # Stop CRAS to make sure the audio device won't be occupied.
+        utils.stop_service('cras', ignore_status=True)
+
         p = cmd_utils.popen(alsa_utils.playback_cmd(wav_file.path, device=alsa_output))
         try:
             # Wait one second to make sure the playback has been started.
@@ -64,6 +68,9 @@ class audio_AlsaLoopback(audio_helper.alsa_rms_test):
         finally:
             cmd_utils.kill_or_log_returncode(p)
             wav_file.delete()
+
+            # Restart CRAS.
+            utils.start_service('cras', ignore_status=True)
 
         rms_value = audio_helper.get_rms(recorded_file)[0]
 
