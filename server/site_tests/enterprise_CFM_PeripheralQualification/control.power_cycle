@@ -51,11 +51,10 @@ cfm_test = CfmTest(
     ),
 )
 
-servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run_test(machine):
     job.run_test("enterprise_CFM_PeripheralQualification",
                  cfm_test = cfm_test,
                  tag = 'power_cycle',
-                 host = hosts.create_host(machine, servo_args=servo_args))
+                 host = hosts.create_host(machine))
 
 parallel_simple(run_test, machines)
