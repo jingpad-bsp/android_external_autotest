@@ -187,8 +187,11 @@ class db_sql(object):
         # Connect using proxy socket if possible.
         if proxy_socket:
             try:
-                return driver.connect(unix_socket=proxy_socket,
-                                      **connection_args)
+                with metrics.SuccessCounter(
+                        'chromeos/autotest/tko/connection_using_socket',
+                        fields={'socket': proxy_socket}):
+                    return driver.connect(unix_socket=proxy_socket,
+                                          **connection_args)
             # pylint: disable=catching-non-exception
             except driver.OperationalError:
                 # Fallback to connect using user/host/password.
