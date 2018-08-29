@@ -25,7 +25,6 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import suite_common
-from django.db.utils import DatabaseError
 
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
@@ -37,17 +36,6 @@ _hqe_status = models.HostQueueEntry.Status
 class ShardHeartbeatTest(mox.MoxTestBase, unittest.TestCase):
 
     _PRIORITY = priorities.Priority.DEFAULT
-
-
-    def setUp(self):
-        super(ShardHeartbeatTest, self).setUp()
-        self.old_heartbeat_override = models.Job.CHECK_MASTER_IF_EMPTY
-        models.Job.CHECK_MASTER_IF_EMPTY = True
-
-
-    def tearDown(self):
-        models.Job.CHECK_MASTER_IF_EMPTY = self.old_heartbeat_override
-        super(ShardHeartbeatTest, self).tearDown()
 
 
     def _do_heartbeat_and_assert_response(self, shard_hostname='shard1',
@@ -126,38 +114,6 @@ class ShardHeartbeatTest(mox.MoxTestBase, unittest.TestCase):
         # is a known host, then it is returned as invalid.
         self._do_heartbeat_and_assert_response(known_hosts=[host1, host2],
                                                incorrect_host_ids=[host2.id])
-
-
-    def _testShardHeartbeatBadReadonlyQueryHelper(self, shard1, host1, label1):
-        """Ensure recovery if query fails while reading from readonly."""
-        host2 = models.Host.objects.create(hostname='test_host2', leased=False)
-        host2.labels.add(label1)
-        self.assertEqual(host2.shard, None)
-
-        proper_master_db = models.Job.objects._db
-        # In the middle of the assign_to_shard call, remove label1 from shard1.
-        self.mox.StubOutWithMock(models.Host, '_assign_to_shard_nothing_helper')
-        def find_shard_job_query():
-            return models.Job.SQL_SHARD_JOBS
-
-        def break_shard_job_query():
-            set_shard_job_query("SELECT quux from foo%s malformed query;")
-
-        def set_shard_job_query(query):
-            models.Job.SQL_SHARD_JOBS = query
-
-        models.Host._assign_to_shard_nothing_helper().WithSideEffects(
-            break_shard_job_query)
-        self.mox.ReplayAll()
-
-        old_query = find_shard_job_query()
-        try:
-            self.assertRaises(DatabaseError,
-                              self._do_heartbeat_and_assert_response,
-                known_hosts=[host1], hosts=[], incorrect_host_ids=[host1.id])
-            self.assertEqual(models.Job.objects._db, proper_master_db)
-        finally:
-            set_shard_job_query(old_query)
 
 
     def _testShardHeartbeatLabelRemovalRaceHelper(self, shard1, host1, label1):
@@ -1446,16 +1402,10 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
             self._NAME)
         self.dev_server = self.mox.CreateMock(dev_server.ImageServer)
         self._frontend_common_setup(fill_data=False)
-        self.old_heartbeat_override = models.Job.CHECK_MASTER_IF_EMPTY
-        models.Job.CHECK_MASTER_IF_EMPTY = True
-        self.stored_readonly_setting = models.Job.FETCH_READONLY_JOBS
-        models.Job.FETCH_READONLY_JOBS = True
 
 
     def tearDown(self):
         self._frontend_common_teardown()
-        models.Job.FETCH_READONLY_JOBS = self.stored_readonly_setting
-        models.Job.CHECK_MASTER_IF_EMPTY = self.old_heartbeat_override
 
 
     def _setupDevserver(self):
@@ -1914,13 +1864,6 @@ class ExtraRpcInterfaceTest(frontend_test_utils.FrontendTestMixin,
     def testResendHostsAfterFailedHeartbeat(self):
         shard1, host1, label1 = self._createShardAndHostWithLabel()
         self._testResendHostsAfterFailedHeartbeatHelper(host1)
-
-
-    def testShardHeartbeatBadReadonlyQuery(self):
-        old_readonly = models.Job.FETCH_READONLY_JOBS
-        shard1, host1, label1 = self._createShardAndHostWithLabel(
-                host_hostname='test_host1')
-        self._testShardHeartbeatBadReadonlyQueryHelper(shard1, host1, label1)
 
 
 if __name__ == '__main__':

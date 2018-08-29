@@ -1676,7 +1676,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             'shard_id': shard.id
         }
 
-        query_master_for_jobs = not cls.FETCH_READONLY_JOBS
 
         if cls.FETCH_READONLY_JOBS:
             #TODO(jkop): Get rid of this kludge when we update Django to >=1.7
@@ -1685,15 +1684,12 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             try:
                 Job.objects._db = 'readonly'
                 job_ids = set([j.id for j in Job.objects.raw(raw_sql)])
-                if not job_ids:
-                    query_master_for_jobs = cls.CHECK_MASTER_IF_EMPTY
             except django_utils.DatabaseError:
                 logging.exception(
                     'Error attempting to query slave db, will retry on master')
-                query_master_for_jobs = True
             finally:
                 Job.objects._db = old_db
-        if query_master_for_jobs:
+        else:
             job_ids = set([j.id for j in Job.objects.raw(raw_sql)])
 
         static_labels, non_static_labels = Host.classify_label_objects(
