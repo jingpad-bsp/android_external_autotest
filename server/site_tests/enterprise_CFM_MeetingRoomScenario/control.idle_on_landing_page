@@ -25,12 +25,10 @@ cfm_test = CfmTest(
     ),
 )
 
-args_dict = utils.args_to_dict(args)
-servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run_test(machine):
     job.run_test("enterprise_CFM_MeetingRoomScenario",
                  cfm_test = cfm_test,
                  tag = 'idle_on_landing_page',
-                 host = hosts.create_host(machine, servo_args=servo_args))
+                 host = hosts.create_host(machine))
 
 parallel_simple(run_test, machines)

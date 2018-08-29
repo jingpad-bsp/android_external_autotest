@@ -20,11 +20,8 @@ and captures device usage data including cpu, memory, temperature and JMI
 logs and uploads it to Google Cloud Storage as part of the test logs.
 """
 
-args_dict = utils.args_to_dict(args)
-servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
-
 def run_test(machine):
-    host = hosts.create_host(machine, servo_args=servo_args)
+    host = hosts.create_host(machine)
     job.run_test('enterprise_CFM_Perf', host=host, is_meeting=True,
                  tag='meet_app')
 
