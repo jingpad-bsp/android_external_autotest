@@ -360,6 +360,12 @@ class Cr50Test(FirmwareTest):
 
     def cleanup(self):
         """Make sure the device state is the same as the start of the test"""
+        # Reset the password as the first thing in cleanup. It is important that
+        # if some other part of cleanup fails, the password has at least been
+        # reset.
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset')
+
         # reboot to normal mode if the device is in dev mode.
         self.enter_mode_after_checking_tpm_state('normal')
 
