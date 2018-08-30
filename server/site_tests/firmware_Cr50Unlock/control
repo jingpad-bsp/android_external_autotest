@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
-NAME = "firmware_Cr50DevModeUnlock"
+NAME = "firmware_Cr50Unlock"
 PURPOSE = "Verify cr50 unlock"
 ATTRIBUTES = "suite:faft_cr50_prepvt, suite:faft_cr50_pvt"
 TIME = "SHORT"
@@ -25,7 +25,7 @@ def run(machine):
 
     iterations = int(args_dict.get("iterations", 1))
 
-    job.run_test("firmware_Cr50DevModeUnlock", host=host, cmdline_args=args,
+    job.run_test("firmware_Cr50Unlock", host=host, cmdline_args=args,
                  full_args=args_dict, iterations=iterations)
 
 parallel_simple(run, machines)
