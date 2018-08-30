@@ -52,7 +52,8 @@ class Cr50Test(FirmwareTest):
         self.can_set_ccd_level = (not self.cr50.using_ccd() or
             self.cr50.testlab_is_on()) and not self.ccd_lockout
         self.original_ccd_level = self.cr50.get_ccd_level()
-        self.original_ccd_settings = self.cr50.get_cap_dict()
+        self.original_ccd_settings = self.cr50.get_cap_dict(
+                info=self.cr50.CAP_SETTING)
 
         self.host = host
         tpm_utils.ClearTPMOwnerRequest(self.host, wait_for_ready=True)
@@ -342,7 +343,7 @@ class Cr50Test(FirmwareTest):
             if self.cr50.get_ccd_info()['Password'] != 'none':
                 raise error.TestFail('Could not clear password')
 
-        current_settings = self.cr50.get_cap_dict()
+        current_settings = self.cr50.get_cap_dict(info=self.cr50.CAP_SETTING)
         if self.original_ccd_settings != current_settings:
             if not self.can_set_ccd_level:
                 raise error.TestError("CCD state has changed, but we can't "

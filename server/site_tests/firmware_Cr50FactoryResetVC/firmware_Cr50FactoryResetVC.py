@@ -116,9 +116,7 @@ class firmware_Cr50FactoryResetVC(Cr50Test):
         """Returns True if factory mode is enabled."""
         caps = self.cr50.get_cap_dict()
         caps.pop('GscFullConsole')
-        values = caps.values()
-        # If all capability values are set to Default, factory mode is disabled
-        return not (values.count('Default') == len(values))
+        return self.cr50.get_cap_overview(caps)[0]
 
 
     def get_relevant_state(self):
