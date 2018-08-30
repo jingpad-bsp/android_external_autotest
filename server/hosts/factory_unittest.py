@@ -74,7 +74,6 @@ class CreateHostUnittests(unittest.TestCase):
         """Prevent use of real Host and connectivity objects due to potential
         side effects.
         """
-        self._orig_ssh_engine = factory.SSH_ENGINE
         self._orig_types = factory.host_types
         self._orig_dict = factory.OS_HOST_DICT
         self._orig_cros_host = factory.cros_host.CrosHost
@@ -90,7 +89,6 @@ class CreateHostUnittests(unittest.TestCase):
 
     def tearDown(self):
         """Clean up mocks."""
-        factory.SSH_ENGINE = self._orig_ssh_engine
         factory.host_types = self._orig_types
         factory.OS_HOST_DICT = self._orig_dict
         factory.cros_host.CrosHost = self._orig_cros_host
@@ -163,19 +161,9 @@ class CreateHostUnittests(unittest.TestCase):
         """Confirm ssh connectivity class used when configured and hostname
         is not localhost.
         """
-        factory.SSH_ENGINE = 'raw_ssh'
         machine = _gen_machine_dict(hostname='somehost')
         host_obj = factory.create_host(machine)
         self.assertEqual(host_obj._conn_cls_name, 'ssh')
-
-
-    def test_choose_connectivity_unsupported(self):
-        """Confirm exception when configured for unsupported ssh engine.
-        """
-        factory.SSH_ENGINE = 'unsupported'
-        machine = _gen_machine_dict(hostname='somehost')
-        with self.assertRaises(error.AutoservError):
-            factory.create_host(machine)
 
 
     def test_argument_passthrough(self):
