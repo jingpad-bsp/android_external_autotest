@@ -22,11 +22,8 @@ hangouts volume using hotrod kiosk app JS hooks. These changes are then
 validated against the cras_test_client output to make sure the volume matches.
 """
 
-args_dict = utils.args_to_dict(args)
-servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
-
 def run_test(machine):
-    host = hosts.create_host(machine, servo_args=servo_args)
+    host = hosts.create_host(machine)
     repeat = int(args_dict.get('repeat', 10))
     cmd = "cras_test_client --dump_server_info | awk '/Output Nodes:/," \
           "/Input Devices:/' | grep -E 'INTERNAL_*' | awk -v N=3 '{print $N}'"

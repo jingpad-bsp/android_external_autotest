@@ -548,7 +548,7 @@ class NetperfRunner(object):
         logging.debug('Running netperf client.')
         logging.info('Running netperf for %d seconds.', self._config.test_time)
         timeout = self._config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN
-        for attempt in range(retry_count):
+        for _ in range(retry_count):
             start_time = time.time()
             result = self._client_host.run(netperf, ignore_status=True,
                                            ignore_timeout=ignore_failures,

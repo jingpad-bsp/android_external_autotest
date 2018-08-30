@@ -9,8 +9,25 @@
 <script src="ssim.js"></script>
 <script>
 
+var isVideoInputFound = false;
 var results = {};
 var testStatus = 'running';
+
+// Check if a video input device exists
+function checkVideoInput() {
+  navigator.mediaDevices.enumerateDevices()
+      .then(findVideoInput)
+      .catch(gotEnumerateDevicesError);
+}
+
+function findVideoInput(devices) {
+  isVideoInputFound = devices.some(dev => dev.kind == 'videoinput');
+}
+
+function gotEnumerateDevicesError(error) {
+  console.log('navigator.mediaDevices.enumerateDevices error: ', error);
+  results.cameraErrors.push('EnumerateDevices error: ' + error.toString());
+}
 
 // Starts the test.
 function testWebRtcLoopbackCall(videoCodec) {

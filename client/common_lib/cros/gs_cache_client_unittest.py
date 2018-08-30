@@ -147,6 +147,12 @@ class ClientTest(unittest.TestCase):
         self.client.list_suite_controls('build', 'suite')
         self.dev_server.list_suite_controls.assert_called()
 
+    def test_fall_back_to_dev_server_on_content_error(self):
+        """Test falling back to calls of dev_server on wrong content."""
+        self.api.extract.return_value = {k: 'xx' for k in range(999)}
+        self.client.list_suite_controls('build', 'suite')
+        self.dev_server.list_suite_controls.assert_called()
+
 
 if __name__ == '__main__':
     unittest.main()

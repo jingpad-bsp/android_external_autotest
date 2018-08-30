@@ -69,6 +69,11 @@ def Sanity(count=1):
         if cryptohome.is_guest_vault_mounted(allow_fail=True):
             raise TestFail('Expected to NOT find a guest vault mounted.')
 
+        # Run Tast tests.
+        utils.system('local_test_runner \'(!informational && !disabled && ' +
+                     '("dep:chrome" || "dep:chrome_login") && ' +
+                     '!"dep:android")\'')
+
     elapsed = datetime.datetime.now() - start
     logging.info('Test succeeded in %s seconds.', elapsed.seconds)
 
