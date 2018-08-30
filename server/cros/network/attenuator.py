@@ -49,6 +49,11 @@ class Attenuator(object):
         """Returns true if telnet connection to attenuator is open."""
         return bool(self._tnhelper.is_open())
 
+    def reopen(self, host, port=22):
+        """Close and reopen telnet connection to the attenuator."""
+        self._tnhelper.close()
+        self._tnhelper.open(host, port)
+
     def close(self):
         """Closes the telnet connection."""
         self._tnhelper.close()

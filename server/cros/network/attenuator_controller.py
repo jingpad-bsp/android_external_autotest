@@ -98,6 +98,7 @@ class AttenuatorController(object):
         @param hostname: Hostname representing minicircuits attenuator.
 
         """
+        self.hostname = hostname
         super(AttenuatorController, self).__init__()
         if hostname not in HOST_TO_FIXED_ATTENUATIONS.keys():
             raise error.TestError('Unexpected RvR host name %r.' % hostname)
@@ -172,15 +173,21 @@ class AttenuatorController(object):
                 set all variable attenuators.
 
         """
-
         affected_attenuators = self.supported_attenuators
         if attenuator_num is not None:
             affected_attenuators = [attenuator_num]
         for atten in affected_attenuators:
-            self._attenuator.set_atten(atten, atten_db)
-            if int(self._attenuator.get_atten(atten)) != atten_db:
-                raise error.TestError('Attenuation did not set as expected on '
-                                      'attenuator %d' % atten)
+            try:
+                self._attenuator.set_atten(atten, atten_db)
+                if int(self._attenuator.get_atten(atten)) != atten_db:
+                    raise error.TestError('Attenuation did not set as expected '
+                                          'on attenuator %d' % atten)
+            except error.TestError:
+                self._attenuator.reopen(self.hostname)
+                self._attenuator.set_atten(atten, atten_db)
+                if int(self._attenuator.get_atten(atten)) != atten_db:
+                    raise error.TestError('Attenuation did not set as expected '
+                                          'on attenuator %d' % atten)
             logging.info('%ddb attenuation set successfully on attenautor %d',
                          atten_db, atten)
 
