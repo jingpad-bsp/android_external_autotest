@@ -5,12 +5,10 @@
 import logging
 import time
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.bluetooth import bluetooth_device_xmlrpc_server
 from autotest_lib.client.cros.power import power_test
-
 
 class power_Idle(power_test.power_Test):
     """class for power_Idle test.
@@ -27,14 +25,18 @@ class power_Idle(power_test.power_Test):
         """Collect power stats when bluetooth adapter is on or off.
 
         """
+        bt_device = bluetooth_device_xmlrpc_server \
+            .BluetoothDeviceXmlRpcDelegate()
+
         with chrome.Chrome():
+            if not bt_device.set_powered(False):
+                raise error.TestFail('Cannot turn off bluetooth adapter.')
+
             self.start_measurements()
             time.sleep(idle_time)
             self.checkpoint_measurements('bluetooth_adapter_off')
 
             # Turn on bluetooth adapter.
-            bt_device = bluetooth_device_xmlrpc_server \
-                    .BluetoothDeviceXmlRpcDelegate()
             # If we cannot start bluetoothd, fail gracefully and still write
             # data with bluetooth adapter off to file, as we are interested in
             # just that data too. start_bluetoothd() already logs the error so
@@ -42,11 +44,11 @@ class power_Idle(power_test.power_Test):
             if not bt_device.start_bluetoothd():
                 return
             if not bt_device.set_powered(True):
-                logging.warning("Cannot turn on bluetooth adapter.")
+                logging.warning('Cannot turn on bluetooth adapter.')
                 return
             time.sleep(bt_warmup_time)
             if not bt_device._is_powered_on():
-                logging.warning("Bluetooth adapter is off.")
+                logging.warning('Bluetooth adapter is off.')
                 return
             t1 = time.time()
             time.sleep(idle_time)
