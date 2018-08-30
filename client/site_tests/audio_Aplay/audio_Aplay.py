@@ -92,5 +92,8 @@ class audio_Aplay(test.test):
         """
         # Stop CRAS to make sure the audio device won't be occupied.
         utils.stop_service('cras', ignore_status=True)
-        _check_play(duration, APLAY_EXPECTED)
-        utils.start_service('cras', ignore_status=True)
+        try:
+            _check_play(duration, APLAY_EXPECTED)
+        finally:
+            #Restart CRAS
+            utils.start_service('cras', ignore_status=True)
