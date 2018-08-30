@@ -50,13 +50,6 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import test_push_common
 
-try:
-    from chromite.lib import metrics
-    from chromite.lib import ts_mon_config
-except ImportError:
-    metrics = site_utils.metrics_mock
-    ts_mon_config = site_utils.metrics_mock
-
 AUTOTEST_DIR=common.autotest_dir
 CONFIG = global_config.global_config
 
@@ -553,15 +546,7 @@ def _main(arguments):
 def main():
     """Entry point."""
     arguments = parse_arguments(sys.argv)
-    with ts_mon_config.SetupTsMonGlobalState(service_name='test_push',
-                                             indirect=True):
-        test_push_success = False
-        try:
-            _main(arguments)
-            test_push_success = True
-        finally:
-            metrics.Counter('chromeos/autotest/test_push/completed').increment(
-                    fields={'success': test_push_success})
+    _main(arguments)
 
 
 if __name__ == '__main__':
