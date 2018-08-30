@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50DevModeUnlock(Cr50Test):
+class firmware_Cr50Unlock(Cr50Test):
     """Verify cr50 unlock."""
     version = 1
     PASSWORD = 'Password'
@@ -18,7 +18,7 @@ class firmware_Cr50DevModeUnlock(Cr50Test):
         """Make sure the device is in normal mode"""
         self.cr50.send_command('ccd testlab open')
         self.cr50.send_command('ccd reset')
-        super(firmware_Cr50DevModeUnlock, self).cleanup()
+        super(firmware_Cr50Unlock, self).cleanup()
 
 
     def run_once(self):
