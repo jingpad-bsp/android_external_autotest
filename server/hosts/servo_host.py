@@ -96,7 +96,7 @@ class ServoHost(ssh_host.SSHHost):
         """
         super(ServoHost, self)._initialize(hostname=servo_host,
                                            *args, **dargs)
-        self.servo_port = servo_port
+        self.servo_port = int(servo_port)
         self.servo_board = servo_board
         self.servo_serial = servo_serial
         self._servo = None
