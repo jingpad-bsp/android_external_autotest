@@ -156,6 +156,9 @@ class power_Test(test.test):
         cdash = power_dashboard.CPUStatsLoggerDashboard(
             self._clog, self.tagged_testname, self.resultsdir)
         cdash.upload()
+        tdash = power_dashboard.TempLoggerDashboard(
+            self._tlog, self.tagged_testname, self.resultsdir)
+        tdash.upload()
 
     def postprocess_iteration(self):
         """Write keyval and send data to dashboard."""
