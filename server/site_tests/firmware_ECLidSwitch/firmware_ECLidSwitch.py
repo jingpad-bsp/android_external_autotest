@@ -125,6 +125,10 @@ class firmware_ECLidSwitch(FirmwareTest):
         Returns:
           True if no power button keycode is captured. Otherwise, False.
         """
+        # Don't check the keycode if we don't have a keyboard.
+        if not self.check_ec_capability(['keyboard'], suppress_warning=True):
+            return True
+
         self._open_lid()
         self.delayed_close_lid()
         if self.faft_client.system.check_keys([]) < 0:
