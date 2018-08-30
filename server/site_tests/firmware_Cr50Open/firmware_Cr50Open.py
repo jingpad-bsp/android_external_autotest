@@ -8,13 +8,13 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.cr50_test import Cr50Test
 
 
-class firmware_Cr50DevModeOpen(Cr50Test):
+class firmware_Cr50Open(Cr50Test):
     """Verify cr50 open."""
     version = 1
 
     def initialize(self, host, cmdline_args, ccd_open_restricted, full_args):
         """Initialize the test"""
-        super(firmware_Cr50DevModeOpen, self).initialize(host, cmdline_args,
+        super(firmware_Cr50Open, self).initialize(host, cmdline_args,
                 full_args)
 
         self.ccd_open_restricted = ccd_open_restricted
