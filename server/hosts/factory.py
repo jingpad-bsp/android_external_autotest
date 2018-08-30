@@ -24,8 +24,6 @@ from autotest_lib.server.hosts import ssh_host
 
 CONFIG = global_config.global_config
 
-SSH_ENGINE = CONFIG.get_config_value('AUTOSERV', 'ssh_engine', type=str)
-
 # Default ssh options used in creating a host.
 DEFAULT_SSH_USER = 'root'
 DEFAULT_SSH_PASS = ''
@@ -115,8 +113,6 @@ def _detect_host(connectivity_class, hostname, **args):
     @returns: Class type of the first host class that returns True to the
               check_host method.
     """
-    # TODO crbug.com/302026 (sbasi) - adjust this pathway for ADBHost in
-    # the future should a host require verify/repair.
     with closing(connectivity_class(hostname, **args)) as host:
         for host_module in host_types:
             if host_module.check_host(host, timeout=10):
@@ -137,14 +133,8 @@ def _choose_connectivity_class(hostname, ssh_port):
     """
     if (hostname == 'localhost' and ssh_port == DEFAULT_SSH_PORT):
         return local_host.LocalHost
-    # by default assume we're using SSH support
-    elif SSH_ENGINE == 'raw_ssh':
-        return ssh_host.SSHHost
     else:
-        raise error.AutoservError("Unknown SSH engine %s. Please verify the "
-                                  "value of the configuration key 'ssh_engine' "
-                                  "on autotest's global_config.ini file." %
-                                  SSH_ENGINE)
+        return ssh_host.SSHHost
 
 
 # TODO(kevcheng): Update the creation method so it's not a research project
