@@ -8,7 +8,7 @@ import telnetlib
 from autotest_lib.client.common_lib import error
 
 SHORT_TIMEOUT = 2
-LONG_TIMEOUT = 10
+LONG_TIMEOUT = 30
 
 class TelnetHelper(object):
     """Helper class to run basic string commands on a telnet host."""
@@ -31,7 +31,11 @@ class TelnetHelper(object):
             self._tn.close()
 
         self._tn = telnetlib.Telnet()
-        self._tn.open(hostname, port, LONG_TIMEOUT)
+
+        try:
+            self._tn.open(hostname, port, LONG_TIMEOUT)
+        except socket.timeout as e:
+            raise error.TestError("Timed out while opening telnet connection")
 
     def is_open(self):
         """Returns true if telnet connection is open."""
