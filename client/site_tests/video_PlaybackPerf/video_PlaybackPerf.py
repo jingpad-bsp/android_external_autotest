@@ -271,19 +271,21 @@ class video_PlaybackPerf(test.test):
                 logging.warning('Could not get idle CPU post login.')
             if not utils.wait_for_cool_machine():
                 logging.warning('Could not get cold machine post login.')
-
+            hd = histogram_verifier.HistogramDiffer(
+                    cr, constants.MEDIA_GVD_INIT_STATUS)
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)
-
             # Check if decode is hardware accelerated.
-            if histogram_verifier.is_bucket_present(
-                    cr,
-                    constants.MEDIA_GVD_INIT_STATUS,
-                    constants.MEDIA_GVD_BUCKET):
+            _, histogram = histogram_verifier.poll_histogram_grow(
+                    hd, timeout=10, sleep_interval=1)
+            if len(histogram) > 1:
+                raise error.TestError(err_desc)
+
+            if constants.MEDIA_GVD_BUCKET in histogram:
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
             else:
-                logging.info("Can not use hardware decoding.")
+                logging.info("Cannot use hardware decoding.")
                 keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result
                 return keyvals
 
@@ -291,17 +293,19 @@ class video_PlaybackPerf(test.test):
         with chrome.Chrome(extra_browser_args=
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS,
                 init_network_controller=True) as cr:
+            hd = histogram_verifier.HistogramDiffer(
+                    cr, constants.MEDIA_GVD_INIT_STATUS)
             # Open the video playback page and start playing.
             self.start_playback(cr, local_path)
             result = gather_result(cr)
 
             # Make sure decode is not hardware accelerated.
-            if histogram_verifier.is_bucket_present(
-                    cr,
-                    constants.MEDIA_GVD_INIT_STATUS,
-                    constants.MEDIA_GVD_BUCKET):
+            _, histogram = histogram_verifier.poll_histogram_grow(
+                    hd, timeout=10, sleep_interval=1)
+            if constants.MEDIA_GVD_BUCKET in histogram:
                 raise error.TestError(
                         'Video decode acceleration should not be working.')
+
             keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result
 
         return keyvals
