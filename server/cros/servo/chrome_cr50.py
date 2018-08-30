@@ -5,6 +5,7 @@
 import functools
 import logging
 import pprint
+import re
 import time
 
 from autotest_lib.client.bin import utils
@@ -77,6 +78,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
     ON_STRINGS = ['enable', 'enabled', 'on']
     CONSERVATIVE_CCD_WAIT = 10
     CCD_SHORT_PRESSES = 5
+    CAP_IS_ACCESSIBLE = 0
+    CAP_SETTING = 1
+    CAP_REQ = 2
 
 
     def __init__(self, servo):
@@ -101,9 +105,9 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         super(ChromeCr50, self).send_command(commands)
 
 
-    def set_cap(self, cap, config):
-        """Set the capability to the config value"""
-        self.set_caps({ cap : config })
+    def set_cap(self, cap, setting):
+        """Set the capability to setting"""
+        self.set_caps({ cap : setting })
 
 
     def set_caps(self, cap_dict):
@@ -117,10 +121,28 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         """
         for cap, config in cap_dict.iteritems():
             self.send_command('ccd set %s %s' % (cap, config))
-        current_cap_settings = self.get_cap_dict()
+        current_cap_settings = self.get_cap_dict(info=self.CAP_SETTING)
         for cap, config in cap_dict.iteritems():
-            if current_cap_settings[cap].lower() != config.lower():
+            if (current_cap_settings[cap].lower() !=
+                config.lower()):
                 raise error.TestFail('Failed to set %s to %s' % (cap, config))
+
+
+    def get_cap_overview(self, cap_dict):
+        """Returns a tuple (in factory mode, is reset)
+
+        If all capabilities are set to Default, ccd has been reset to default.
+        If all capabilities are set to Always, ccd is in factory mode.
+        """
+        in_factory_mode = True
+        is_reset = True
+        for cap, cap_info in cap_dict.iteritems():
+            cap_setting = cap_info[self.CAP_SETTING]
+            if cap_setting != 'Always':
+                in_factory_mode = False
+            if cap_setting != 'Default':
+                is_reset = False
+        return in_factory_mode, is_reset
 
 
     def in_dev_mode(self):
@@ -164,28 +186,41 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return self.get_cap_dict()[cap]
 
 
-    def get_cap_dict(self):
+    def get_cap_dict(self, info=None):
         """Get the current ccd capability settings.
 
+        The capability may be using the 'Default' setting. That doesn't say much
+        about the ccd state required to use the capability. Return all ccd
+        information in the cap_dict
+        [is accessible, setting, requirement]
+
+        Args:
+            info: Only fill the cap_dict with the requested information:
+                  CAP_IS_ACCESSIBLE, CAP_SETTING, or CAP_REQ
+
         Returns:
-            A dictionary with the capability as the key and the setting as the
-            value
+            A dictionary with the capability as the key a list of the current
+            settings as the value [is_accessible, setting, requirement]
         """
         caps = {}
         rv = self.send_command_get_output('ccd',
                 ["Capabilities:\s+[\da-f]+\s(.*)Use 'ccd help'"])[0][1]
-        for line in rv.splitlines():
-            # Line information is separated with an =
-            #   RebootECAP      Y 0=Default (IfOpened)
-            # Extract the capability name and the value. The first word after
-            # the equals sign is the only one that matters. 'Default' is the
-            # value not IfOpened
-            line = line.strip()
-            if '=' not in line:
-                continue
-            logging.info(line)
-            start, end = line.split('=')
-            caps[start.split()[0]] = end.split()[0]
+        # There are two capability formats. Extract the setting and the
+        # requirement from both formats
+        #  UartGscRxECTx   Y 3=IfOpened
+        #  or
+        #  UartGscRxECTx   Y 0=Default (Always)
+        cap_settings = re.findall('(\S+) +(Y|-).*=(\w+)( \((\S+)\))?', rv)
+        for cap, accessible, setting, _, required in cap_settings:
+            cap_info = [accessible == 'Y', setting, required]
+            # If there's only 1 value after =, then the setting is the
+            # requirement.
+            if not required:
+                cap_info[self.CAP_REQ] = setting
+            if info is not None:
+                caps[cap] = cap_info[info]
+            else:
+                caps[cap] = cap_info
         logging.debug(caps)
         return caps
 
@@ -512,7 +547,8 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         testlab_pp = level != 'testlab open' and 'testlab' in level
         # If the level is open and the ccd capabilities say physical presence
         # is required, then physical presence will be required.
-        open_pp = level == 'open' and self.get_cap('OpenNoLongPP') != 'Always'
+        open_pp = (level == 'open' and
+                   not self.get_cap('OpenNoLongPP')[self.CAP_IS_ACCESSIBLE])
         return testlab_pp or open_pp
 
 
