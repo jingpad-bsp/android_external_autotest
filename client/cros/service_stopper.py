@@ -43,7 +43,7 @@ class ServiceStopper(object):
       _services_stopped: list of services that were successfully stopped
     """
 
-    POWER_DRAW_SERVICES = ['powerd', 'update-engine', 'bluetoothd', 'vnc']
+    POWER_DRAW_SERVICES = ['powerd', 'update-engine', 'vnc']
 
     # List of thermal throttling services that should be disabled.
     # - temp_metrics for link.
