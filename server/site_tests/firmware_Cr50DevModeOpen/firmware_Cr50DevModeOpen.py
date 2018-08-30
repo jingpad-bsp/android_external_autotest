@@ -12,11 +12,12 @@ class firmware_Cr50DevModeOpen(Cr50Test):
     """Verify cr50 open."""
     version = 1
 
-    def initialize(self, host, cmdline_args, full_args):
+    def initialize(self, host, cmdline_args, ccd_open_restricted, full_args):
         """Initialize the test"""
         super(firmware_Cr50DevModeOpen, self).initialize(host, cmdline_args,
                 full_args)
 
+        self.ccd_open_restricted = ccd_open_restricted
         self.fast_open(enable_testlab=True)
         self.cr50.send_command('ccd reset')
         self.cr50.set_ccd_level('lock')
@@ -42,21 +43,28 @@ class firmware_Cr50DevModeOpen(Cr50Test):
         try:
             self.cr50.set_ccd_level('open')
         except error.TestFail, e:
+            # If ccd open is limited, open should fail with access denied
+            #
             # TODO: move logic to set_ccd_level.
-            if 'Access Denied' in str(e):
+            if 'Access Denied' in str(e) and self.ccd_open_restricted:
                 logging.info('console ccd open successfully rejected')
             else:
                 raise
         else:
-            raise error.TestFail('Open should not be accessible from the '
-                                 'console')
+            if self.ccd_open_restricted:
+                raise error.TestFail('Open should not be accessible from the '
+                                     'console')
+
+        self.cr50.set_ccd_level('lock')
 
         #Make sure open only works from the AP when the device is in dev mode.
         try:
             self.ccd_open_from_ap()
         except error.TestFail, e:
             logging.info(e)
-            if dev_mode:
+            # ccd open should work if the device is in dev mode or ccd open
+            # isn't restricted. If open failed for some reason raise the error.
+            if dev_mode or not self.ccd_open_restricted:
                 raise
 
 
