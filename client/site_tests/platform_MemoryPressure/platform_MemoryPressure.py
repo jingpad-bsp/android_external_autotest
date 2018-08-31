@@ -8,6 +8,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
+SYSFS_LOW_MEM_DIR = '/sys/kernel/mm/chromeos-low_mem/'
+
 PF_MAX_RATE_PERIOD = 5.0  # seconds
 PF_RATE_INTERVAL = 10     # seconds
 
@@ -286,8 +288,7 @@ def run_realistic_memory_pressure_test(time_limit, tab_open_delay):
 
         return perf_results
 
-
-def run_simple_tab_discard_test(time_limit, tab_delay, bindir):
+def run_simple_tab_discard_test(time_limit, tab_open_delay_seconds, bindir):
     """
     Tests that tab discarding works correctly by using a small JS program
     which uses a lot of memory.
@@ -297,6 +298,7 @@ def run_simple_tab_discard_test(time_limit, tab_delay, bindir):
     discard = False
     perf_results = {}
     start_time = time.time()
+    margin = int(open(SYSFS_LOW_MEM_DIR + 'margin').readline())
 
     # Open tabs until a tab discard notification arrives, or a time limit
     # is reached.
@@ -310,7 +312,12 @@ def run_simple_tab_discard_test(time_limit, tab_delay, bindir):
             tab.Navigate(cr.browser.platform.http_server.UrlOf(
                     os.path.join(bindir, 'js-bloat.html')))
             tab.WaitForDocumentReadyStateToBeComplete()
-            time.sleep(tab_delay)
+            available = int(open(SYSFS_LOW_MEM_DIR + 'available').readline())
+            # Slow down when getting close to the discard margin, to avoid OOM
+            # kills.
+            time.sleep(tab_open_delay_seconds
+                       if available > 3 * margin else
+                       tab_open_delay_seconds * 3)
             if n_tabs > len(cr.browser.tabs):
                 logging.info('tab discard after %d tabs', n_tabs)
                 break
@@ -318,7 +325,6 @@ def run_simple_tab_discard_test(time_limit, tab_delay, bindir):
                 raise error.TestError('FAIL: no tab discard after opening %d '
                                       'tabs in %ds' %
                                       (n_tabs, time_limit - start_time))
-
     perf_results["TabCountAtFirstDiscard"] = n_tabs
     return perf_results
 
