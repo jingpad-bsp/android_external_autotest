@@ -97,15 +97,13 @@ class CreateHostUnittests(unittest.TestCase):
 
 
     def test_use_specified(self):
-        """Confirm that the specified host and connectivity classes are used."""
+        """Confirm that the specified host class is used."""
         machine = _gen_machine_dict()
         host_obj = factory.create_host(
                 machine,
                 _gen_mock_host('specified'),
-                _gen_mock_conn('specified')
         )
         self.assertEqual(host_obj._host_cls_name, 'specified')
-        self.assertEqual(host_obj._conn_cls_name, 'specified')
 
 
     def test_detect_host_by_os_label(self):
