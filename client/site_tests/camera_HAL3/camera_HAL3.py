@@ -4,6 +4,8 @@
 
 """A test which verifies the camera function with HAL3 interface."""
 
+import contextlib
+import json
 import logging
 import os
 import xml.etree.ElementTree
@@ -26,7 +28,7 @@ class camera_HAL3(test.test):
     cros_camera_service = 'cros-camera'
     media_profiles_path = os.path.join('vendor', 'etc', 'media_profiles.xml')
     tablet_board_list = ['scarlet', 'nocturne']
-    enable_test_mode_path = '/run/camera/enable_test'
+    test_config_path = '/run/camera/test_config.json'
 
     def setup(self):
         """
@@ -36,19 +38,12 @@ class camera_HAL3(test.test):
         self.job.setup_dep([self.dep])
         logging.debug('mydep is at %s', self.dep_dir)
 
-    def initialize(self):
-        """Autotest initialize function.
-
-        It is run by common_lib/test.py.
-        """
-        open(self.enable_test_mode_path, 'a').close()
-
-    def cleanup(self):
-        """Autotest cleanup function.
-
-        It is run by common_lib/test.py.
-        """
-        os.remove(self.enable_test_mode_path)
+    @contextlib.contextmanager
+    def set_test_config(self, test_config):
+        with open(self.test_config_path, 'w') as fp:
+            json.dump(test_config, fp)
+        yield
+        os.remove(self.test_config_path)
 
     def get_recording_params(self):
         """
@@ -72,7 +67,8 @@ class camera_HAL3(test.test):
                  cmd_timeout=600,
                  camera_hals=None,
                  options=None,
-                 capability=None):
+                 capability=None,
+                 test_config=None):
         """
         Entry point of this test.
 
@@ -83,6 +79,9 @@ class camera_HAL3(test.test):
         """
         if options is None:
             options = []
+
+        if test_config is None:
+            test_config = {}
 
         if capability:
             device_capability.DeviceCapability().ensure_capability(capability)
@@ -103,7 +102,8 @@ class camera_HAL3(test.test):
 
         binary_path = os.path.join(self.dep_dir, 'bin', self.test_binary)
 
-        with service_stopper.ServiceStopper([self.cros_camera_service]):
+        with service_stopper.ServiceStopper([self.cros_camera_service]), \
+                self.set_test_config(test_config):
             cmd = [binary_path]
             for option in options:
                 if 'gtest_filter' in option:
