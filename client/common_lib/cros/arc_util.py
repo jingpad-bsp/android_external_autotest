@@ -93,8 +93,8 @@ def _save_android_dumpstate(timeout=_DUMPSTATE_DEFAULT_TIMEOUT):
     Exception thrown while doing dumpstate will be ignored.
 
     @param timeout: The timeout in seconds.
-    """
 
+    """
     try:
         logging.info('Saving Android dumpstate.')
         with open(_DUMPSTATE_PATH, 'w') as out:
@@ -151,16 +151,13 @@ def enable_play_store(autotest_ext, enabled, enable_managed_policy=True):
     True.
 
     @param autotest_ext: autotest extension object.
-
     @param enabled: if True then perform opt-in, otherwise opt-out.
-
     @param enable_managed_policy: If False then policy check is ignored for
             managed user case and ARC++ is forced enabled or disabled.
 
     @returns: True if the opt-in should continue; else False.
 
     """
-
     if autotest_ext is None:
          raise error.TestFail(
                  'Could not change the Play Store enabled state because '
@@ -179,13 +176,10 @@ def enable_play_store(autotest_ext, enabled, enable_managed_policy=True):
             # Handle managed case.
             logging.info('Determined that ARC is managed by user policy.')
             if enable_managed_policy:
-                if enabled == autotest_ext.EvaluateJavaScript(
-                        'window.__play_store_state.enabled'):
-                    return True
-                logging.info('Returning early since ARC is policy-enforced.')
+                logging.info('No work remains to opt in.')
                 return False
-            logging.info('Forcing ARC %s, ignore managed state.',
-                    ('enabled' if enabled else 'disabled'))
+            logging.info('Forcing ARC %s and ignoring managed state.',
+                         ('enabled' if enabled else 'disabled'))
 
         autotest_ext.ExecuteJavaScript('''
                 chrome.autotestPrivate.setPlayStoreEnabled(
@@ -245,7 +239,6 @@ def opt_in_and_wait_for_completion(extension_main_page):
     Step through the user input of the opt-in extension and wait for completion.
 
     @param extension_main_page: opt-in extension object.
-
     @raises error.TestFail if opt-in doesn't complete after timeout.
 
     """
@@ -280,7 +273,15 @@ def opt_in(browser, autotest_ext, enable_managed_policy=True):
     """
     Step through opt in and wait for it to complete.
 
-    Return early if the arc_setting cannot be set True.
+    Return early if the arc_setting cannot be set True or if device is
+    managed and policy prevents manual opt-in.
+
+    User types supported:
+    - regular users where enabled=True: enable ARC++, opt in, and wait
+    - regular users where enabled=False: disable ARC++ then do nothing
+    - managed users: no need to enable or opt in (this is controlled by policy)
+    - managed users where we wish to ignore policy: using enable_managed_policy
+          flag, should behave like a regular user
 
     @param browser: chrome.Chrome browser object.
     @param autotest_ext: autotest extension object.
@@ -290,7 +291,6 @@ def opt_in(browser, autotest_ext, enable_managed_policy=True):
     @raises: error.TestFail if opt in fails.
 
     """
-
     logging.info(_OPT_IN_BEGIN)
     if not enable_play_store(autotest_ext, True, enable_managed_policy):
         return
