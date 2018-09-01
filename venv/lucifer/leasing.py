@@ -154,7 +154,10 @@ def _fcntl_locked(path):
 
     @param path: path to file
     """
-    fd = os.open(path, os.O_WRONLY)
+    try:
+        fd = os.open(path, os.O_WRONLY)
+    except (IOError, OSError):
+        return False
     try:
         fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except IOError:
