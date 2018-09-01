@@ -30,6 +30,9 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
+from chromite.lib import metrics
+
+
 _CONFIG = global_config.global_config
 _CONFIG_SECTION = 'GS_CACHE'
 
@@ -47,6 +50,8 @@ _MESSAGE_LENGTH_MAX_CHARS = 200
 
 # Exit code of `curl` when cannot connect to host. Man curl for details.
 _CURL_RC_CANNOT_CONNECT_TO_HOST = 7
+
+METRICS_PATH = 'chromeos/autotest/gs_cache_client'
 
 
 class CommunicationError(Exception):
@@ -76,6 +81,11 @@ class _GsCacheAPI(object):
         self._is_in_restricted_subnet = utils.get_restricted_subnet(
                 gs_cache_server_name, utils.RESTRICTED_SUBNETS
         )
+
+    @property
+    def server_netloc(self):
+        """The network location of the Gs Cache server."""
+        return self._netloc
 
     def _ssh_call(self, url):
         """Helper function to make a 'SSH call'.
@@ -199,7 +209,13 @@ class GsCacheClient(object):
                 listing.
         """
         try:
-            return self._list_suite_controls(build, suite_name)
+            with metrics.SecondsTimer(
+                    METRICS_PATH + '/call_timer', record_on_exception=True,
+                    add_exception_field=True,
+                    fields={'rpc_name': 'list_suite_controls',
+                            'is_gs_cache_call': True}
+            ):
+                return self._list_suite_controls(build, suite_name)
         # We have to catch error.TimeoutException here because that's the
         # default exception we can get when the code doesn't run in main
         # thread.
@@ -207,10 +223,19 @@ class GsCacheClient(object):
             logging.warn('GS Cache Error: %s', err)
             logging.warn(
                     'Falling back to devserver call of "list_suite_controls".')
+            c = metrics.Counter(METRICS_PATH + '/fallback_to_devserver')
+            c.increment(fields={'rpc_server': self._api.server_netloc,
+                                'rpc_name': 'list_suite_controls'})
 
         try:
-            return self._fallback_server.list_suite_controls(
-                    build, suite_name=suite_name if suite_name else '')
+            with metrics.SecondsTimer(
+                    METRICS_PATH + '/call_timer', record_on_exception=True,
+                    add_exception_field=True,
+                    fields={'rpc_name': 'list_suite_controls',
+                            'is_gs_cache_call': False}
+            ):
+                return self._fallback_server.list_suite_controls(
+                        build, suite_name=suite_name if suite_name else '')
         except dev_server.DevServerException as err:
             raise error.SuiteControlFileException(err)
 
