@@ -74,6 +74,16 @@ def Sanity(count=1):
                      '("dep:chrome" || "dep:chrome_login") && ' +
                      '!"dep:android")\'')
 
+        # GPU info collection via devtools SystemInfo.getInfo does not work
+        # under mash due to differences in how the GPU process is configured
+        # with mus hosting viz. http://crbug.com/669965
+        mash_browser_args = ['--enable-features=Mash',
+                             '--gpu-no-complete-info-collection']
+
+        logging.info('Testing Chrome with Mash login.')
+        with chrome.Chrome(extra_browser_args=mash_browser_args):
+            logging.info('Chrome login with Mash succeeded.')
+
     elapsed = datetime.datetime.now() - start
     logging.info('Test succeeded in %s seconds.', elapsed.seconds)
 

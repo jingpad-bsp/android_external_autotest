@@ -1079,7 +1079,8 @@ def system_output_parallel(commands, timeout=None, ignore_status=False,
         out = [bg_job.stdout for bg_job in run_parallel(commands,
                                   timeout=timeout, ignore_status=ignore_status)]
     for _ in out:
-        if out[-1:] == '\n': out = out[:-1]
+        if out[-1:] == '\n':
+            out = out[:-1]
     return out
 
 
@@ -2764,7 +2765,7 @@ def poll_for_condition(condition,
             if exception:
                 logging.error('Will raise error %r due to unexpected return: '
                               '%r', exception, value)
-                raise exception
+                raise exception # pylint: disable=raising-bad-type
 
             if desc:
                 desc = 'Timed out waiting for condition: ' + desc

@@ -333,6 +333,19 @@ class PowerLoggerDashboard(MeasurementLoggerDashboard):
         self._type = 'power'
 
 
+class TempLoggerDashboard(MeasurementLoggerDashboard):
+    """Dashboard class for power_status.PowerLogger.
+    """
+
+    def __init__(self, logger, testname, resultsdir=None, uploadurl=None):
+        if uploadurl is None:
+            uploadurl = 'http://chrome-power.appspot.com/rapl'
+        super(TempLoggerDashboard, self).__init__(logger, testname, resultsdir,
+                                                  uploadurl)
+        self._unit = 'celsius'
+        self._type = 'temperature'
+
+
 class SimplePowerLoggerDashboard(ClientTestDashboard):
     """Dashboard class for simple system power measurement taken and publishing
     it to the dashboard.

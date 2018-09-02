@@ -5,21 +5,14 @@
 from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
-NAME = "firmware_Cr50DevModeOpen"
-PURPOSE = "Verify cr50 open"
+NAME = "firmware_Cr50CheckCap"
+PURPOSE = "Verify cr50 dev mode."
 ATTRIBUTES = "suite:faft_cr50_prepvt, suite:faft_cr50_pvt"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
 
-DOC = """
-Verify the console can be opened by pressing the power button after the device
-has been put into dev mode. Make sure cr50 can't be opened when the device isn't
-in dev mode.
-
-This test must be run with servo instead of CCD, because we need to be able to
-fake power button presses.
-"""
+DOC = """Verify cr50 can tell the state of the dev mode switch."""
 
 if 'args_dict' not in locals():
     args_dict = {}
@@ -31,8 +24,11 @@ def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     iterations = int(args_dict.get("iterations", 1))
+    ccd_open_restricted = args_dict.get("ccd_open_restricted", "").lower()
+    ccd_open_restricted = ccd_open_restricted != "false"
 
-    job.run_test("firmware_Cr50DevModeOpen", host=host, cmdline_args=args,
+    job.run_test("firmware_Cr50CheckCap", host=host, cmdline_args=args,
+                 ccd_open_restricted=ccd_open_restricted,
                  full_args=args_dict, iterations=iterations)
 
 parallel_simple(run, machines)

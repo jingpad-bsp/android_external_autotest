@@ -210,13 +210,12 @@ class firmware_Cr50RMAOpen(Cr50Test):
             when it should be opened.
         """
         time.sleep(self.SHORT_WAIT)
-        caps = self.cr50.get_cap_dict().values()
-        closed = len(caps) == caps.count('Default')
-        opened = len(caps) == caps.count('Always')
+        caps = self.cr50.get_cap_dict()
+        in_factory_mode, reset = self.cr50.get_cap_overview(caps)
 
-        if rma_opened and not opened:
+        if rma_opened and not in_factory_mode:
             raise error.TestFail('Not all capablities were set to Always')
-        if not rma_opened and not closed:
+        if not rma_opened and not reset:
             raise error.TestFail('Not all capablities were set to Default')
 
 

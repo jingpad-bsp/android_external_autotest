@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,16 +6,13 @@ from autotest_lib.server import utils
 
 AUTHOR = "mruthven"
 NAME = "firmware_Cr50Unlock"
-PURPOSE = "Verify console unlock"
-ATTRIBUTES = "suite:cr50_stress_experimental"
+PURPOSE = "Verify cr50 unlock"
+ATTRIBUTES = "suite:faft_cr50_prepvt, suite:faft_cr50_pvt"
 TIME = "SHORT"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo"
 
-DOC = """
-Verify the console can be unlocked with gsctool but not with the console command
-if the password isn't set.
-"""
+DOC = """Verify cr50 can be unlocked with a password"""
 
 if 'args_dict' not in locals():
     args_dict = {}
