@@ -735,15 +735,10 @@ def _get_standard_servo_args(dut_host):
     @return `servo_args` dict with host and an optional port.
     """
     servo_args = None
-    is_ssp_moblab = utils.in_moblab_ssp()
-    is_moblab = is_ssp_moblab or lsbrelease_utils.is_moblab()
+    is_moblab = utils.in_moblab_ssp() or lsbrelease_utils.is_moblab()
     attrs = dut_host._afe_host.attributes
     if attrs and SERVO_HOST_ATTR in attrs:
-        servo_host = attrs[SERVO_HOST_ATTR]
-        if (is_ssp_moblab and servo_host in ['localhost', '127.0.0.1']):
-            servo_host = _CONFIG.get_config_value(
-                    'SSP', 'host_container_ip', type=str, default=None)
-        servo_args = {SERVO_HOST_ATTR: servo_host}
+        servo_args = {SERVO_HOST_ATTR: attrs[SERVO_HOST_ATTR]}
         if SERVO_PORT_ATTR in attrs:
             try:
                 servo_port = attrs[SERVO_PORT_ATTR]
@@ -771,6 +766,12 @@ def _get_standard_servo_args(dut_host):
                     info.board)
 
     return servo_args
+
+
+def _tweak_args_for_ssp_moblab(servo_args):
+    if servo_args[SERVO_HOST_ATTR] in ['localhost', '127.0.0.1']:
+        servo_args[SERVO_HOST_ATTR] = _CONFIG.get_config_value(
+                'SSP', 'host_container_ip', type=str, default=None)
 
 
 def create_servo_host(dut, servo_args, try_lab_servo=False,
@@ -832,6 +833,8 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
     if dut is not None and (try_lab_servo or servo_dependency):
         servo_args_override = _get_standard_servo_args(dut)
         if servo_args_override is not None:
+            if utils.in_moblab_ssp():
+                _tweak_args_for_ssp_moblab(servo_args_override)
             logging.debug(
                     'Overriding provided servo_args (%s) with arguments'
                     ' determined from the host (%s)',
