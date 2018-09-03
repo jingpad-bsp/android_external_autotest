@@ -732,9 +732,7 @@ def _get_standard_servo_args(dut_host):
 
     @param dut_host   Instance of `Host` on which to find the servo
                       attributes.
-    @return A tuple of `servo_args` dict with host and an option port,
-            plus an `is_in_lab` flag indicating whether this in the CrOS
-            test lab, or some different environment.
+    @return `servo_args` dict with host and an optional port.
     """
     servo_args = None
     is_ssp_moblab = utils.in_moblab_ssp()
@@ -772,11 +770,7 @@ def _get_standard_servo_args(dut_host):
             servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(
                     info.board)
 
-    return (
-            servo_args,
-            servo_args
-            and server_utils.host_in_lab( servo_args[SERVO_HOST_ATTR]),
-    )
+    return servo_args
 
 
 def create_servo_host(dut, servo_args, try_lab_servo=False,
@@ -835,9 +829,8 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
 
     """
     servo_dependency = servo_args is not None
-    is_in_lab = False
     if dut is not None and (try_lab_servo or servo_dependency):
-        servo_args_override, is_in_lab = _get_standard_servo_args(dut)
+        servo_args_override = _get_standard_servo_args(dut)
         if servo_args_override is not None:
             logging.debug(
                     'Overriding provided servo_args (%s) with arguments'
@@ -855,7 +848,12 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
         logging.debug('ServoHost is not up.')
         return None
 
-    newhost = ServoHost(is_in_lab=is_in_lab, **servo_args)
+    newhost = ServoHost(
+            is_in_lab=(servo_args
+                       and server_utils.host_in_lab(
+                               servo_args[SERVO_HOST_ATTR])),
+            **servo_args
+    )
     base_classes.send_creation_metric(newhost)
 
     # Note that the logic of repair() includes everything done
