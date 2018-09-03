@@ -25,6 +25,8 @@ class power_Test(test.test):
         @var keyvals: dictionary of result keyvals.
         @var status: power_status.SysStat object.
 
+        @var _checkpoint_logger: power_status.CheckpointLogger to track
+                                 checkpoint data.
         @var _plog: power_status.PowerLogger object to monitor power.
         @var _psr: power_utils.DisplayPanelSelfRefresh object to monitor PSR.
         @var _services: service_stopper.ServiceStopper object.
@@ -33,6 +35,7 @@ class power_Test(test.test):
         @var _tlog: power_status.TempLogger object to monitor temperatures.
         @var _clog: power_status.CPUStatsLogger object to monitor CPU(s)
                     frequencies and c-states.
+        @var _meas_logs: list of power_status.MeasurementLoggers
         """
         super(power_Test, self).initialize()
         self.backlight = power_utils.Backlight()
@@ -65,6 +68,8 @@ class power_Test(test.test):
         self._clog = power_status.CPUStatsLogger(seconds_period=seconds_period,
                 checkpoint_logger=self._checkpoint_logger)
 
+        self._meas_logs = [self._plog, self._tlog, self._clog]
+
     def warmup(self, warmup_time=30):
         """Warm up.
 
@@ -76,9 +81,8 @@ class power_Test(test.test):
 
     def start_measurements(self):
         """Start measurements."""
-        self._plog.start()
-        self._tlog.start()
-        self._clog.start()
+        for log in self._meas_logs:
+            log.start()
         self._start_time = time.time()
         power_telemetry_utils.start_measurement()
 
@@ -128,9 +132,8 @@ class power_Test(test.test):
                                 self.status.battery[0].voltage_min_design
             keyvals['v_voltage_now'] = self.status.battery[0].voltage_now
 
-        keyvals.update(self._plog.calc())
-        keyvals.update(self._tlog.calc())
-        keyvals.update(self._clog.calc())
+        for log in self._meas_logs:
+            keyvals.update(log.calc())
         keyvals.update(self._psr.get_keyvals())
 
         self.keyvals.update(keyvals)
@@ -164,11 +167,18 @@ class power_Test(test.test):
             self._tlog, self.tagged_testname, self.resultsdir)
         tdash.upload()
 
+    def _save_results(self):
+        """Save results of each logger in resultsdir."""
+        for log in self._meas_logs:
+            log.save_results(self.resultsdir)
+        self._checkpoint_logger.save_checkpoint_data(self.resultsdir)
+
     def postprocess_iteration(self):
         """Write keyval and send data to dashboard."""
         power_telemetry_utils.end_measurement()
         super(power_Test, self).postprocess_iteration()
         self._publish_dashboard()
+        self._save_results()
 
     def cleanup(self):
         """Reverse setting change in initialization."""
