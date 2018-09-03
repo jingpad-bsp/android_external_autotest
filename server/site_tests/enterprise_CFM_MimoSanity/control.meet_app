@@ -24,6 +24,8 @@ the CFM. It verifies:
  "Available" means that the MIMO is visible on the system/USB level.
 """
 
+args_dict = utils.args_to_dict(args)
+
 def run_test(machine):
     repetitions = int(args_dict.get('repetitions', 3))
     host = hosts.create_host(machine)
