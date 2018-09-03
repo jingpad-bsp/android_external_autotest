@@ -90,12 +90,19 @@ class BaseDashboard(object):
             A dictionary of powerlog
         """
         powerlog_dict = {
-            'format_version': 4,
+            'format_version': 5,
             'timestamp': time.time(),
             'test': self._testname,
             'dut': self._create_dut_info_dict(raw_measurement['data'].keys()),
             'power': raw_measurement,
         }
+
+        if self._logger:
+            start_time = self._logger.times[0]
+            relative_checkpoint_data = \
+                self._logger._checkpoint_logger.convert_relative(start_time)
+            powerlog_dict.update({'checkpoint': relative_checkpoint_data})
+
         return powerlog_dict
 
     def _create_dut_info_dict(self, power_rails):
