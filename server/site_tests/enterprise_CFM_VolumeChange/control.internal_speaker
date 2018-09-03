@@ -22,6 +22,8 @@ hangouts volume using hotrod kiosk app JS hooks. These changes are then
 validated against the cras_test_client output to make sure the volume matches.
 """
 
+args_dict = utils.args_to_dict(args)
+
 def run_test(machine):
     host = hosts.create_host(machine)
     repeat = int(args_dict.get('repeat', 10))
