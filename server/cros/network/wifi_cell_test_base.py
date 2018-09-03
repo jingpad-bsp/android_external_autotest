@@ -30,15 +30,14 @@ class WiFiCellTestBase(test.test):
     """
 
     def initialize(self, host):
-        if utils.host_could_be_in_afe(host.hostname):
-            # There are some DUTs that have different types of wifi modules.
-            # In order to generate separate performance graphs, a variant
-            # name is needed.  Writing this key will generate results with
-            # the name of <board>-<variant>.
-            info = host.host_info_store.get()
-            variant_name = info.get_label_value('variant')
-            if variant_name:
-                self.write_test_keyval({constants.VARIANT_KEY: variant_name})
+        # There are some DUTs that have different types of wifi modules.
+        # In order to generate separate performance graphs, a variant
+        # name is needed.  Writing this key will generate results with
+        # the name of <board>-<variant>.
+        info = host.host_info_store.get()
+        variant_name = info.get_label_value('variant')
+        if variant_name:
+            self.write_test_keyval({constants.VARIANT_KEY: variant_name})
 
     @property
     def context(self):
