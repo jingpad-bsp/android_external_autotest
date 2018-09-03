@@ -1405,25 +1405,127 @@ class SystemPower(PowerMeasurement):
         return float(keyvals['Battery']['energy rate'])
 
 
+class CheckpointLogger(object):
+    """Class to log checkpoint data.
+
+    Public attributes:
+        checkpoint_data: dictionary of (tname, tlist).
+            tname: String of testname associated with these time intervals
+            tlist: list of tuples.  Tuple contains:
+                tstart: Float of time when subtest started
+                tend: Float of time when subtest ended
+
+    Public methods:
+        start: records a start timestamp
+        checkpoint
+        checkblock
+        save_checkpoint_data
+
+    Static methods:
+        load_checkpoint_data
+
+    Private attributes:
+       _start_time: start timestamp for checkpoint logger
+    """
+    CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
+
+    def __init__(self):
+        self.checkpoint_data = collections.defaultdict(list)
+
+    # If multiple MeasurementLoggers call start() on the same CheckpointLogger,
+    # the latest one will register start time.
+    def start(self):
+        self._start_time = time.time()
+
+    @contextlib.contextmanager
+    def checkblock(self, tname=''):
+        """Check point for the following block with test tname.
+
+        Args:
+            tname: String of testname associated with this time interval
+        """
+        start_time = time.time()
+        yield
+        self.checkpoint(tname, start_time)
+
+    def checkpoint(self, tname='', tstart=None, tend=None):
+        """Check point the times in seconds associated with test tname.
+
+        Args:
+            tname: String of testname associated with this time interval
+            tstart: Float in seconds of when tname test started. Should be based
+                off time.time(). If None, use start timestamp for the checkpoint
+                logger.
+            tend: Float in seconds of when tname test ended. Should be based
+                off time.time(). If None, then value computed in the method.
+        """
+        if not tstart and self._start_time:
+            tstart = self._start_time
+        if not tend:
+            tend = time.time()
+        self.checkpoint_data[tname].append((tstart, tend))
+        logging.info('Finished test "%s" between timestamps [%s, %s]',
+                     tname, tstart, tend)
+
+    def save_checkpoint_data(self, resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Save checkpoint data.
+
+        Args:
+            resultsdir: String, directory to write results to
+            fname: String, name of file to write results to
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'wt') as f:
+            json.dump(self.checkpoint_data, f, indent=4, separators=(',', ': '))
+
+    @staticmethod
+    def load_checkpoint_data(resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Load checkpoint data.
+
+        Args:
+            resultsdir: String, directory to load results from
+            fname: String, name of file to load results from
+        """
+        fname = os.path.join(resultsdir, fname)
+        with file(fname, 'r') as f:
+            checkpoint_data = json.load(f)
+        return checkpoint_data
+
+
 class MeasurementLogger(threading.Thread):
     """A thread that logs measurement readings.
 
     Example code snippet:
-         mylogger = MeasurementLogger([Measurent1, Measurent2])
-         mylogger.run()
-         for testname in tests:
-             with my_logger.checkblock(testname):
-                #run the test method for testname
-         keyvals = mylogger.calc()
+        my_logger = MeasurementLogger([Measurent1, Measurent2])
+        my_logger.start()
+        for testname in tests:
+            # Option 1: use checkblock
+            with my_logger.checkblock(testname):
+               # run the test method for testname
 
-    or
-         mylogger = MeasurementLogger([Measurent1, Measurent2])
-         mylogger.run()
-         for testname in tests:
-             start_time = time.time()
-             #run the test method for testname
-             mlogger.checkpoint(testname, start_time)
-         keyvals = mylogger.calc()
+            # Option 2: use checkpoint
+            start_time = time.time()
+            # run the test method for testname
+            my_logger.checkpoint(testname, start_time)
+
+        keyvals = my_logger.calc()
+
+    or using CheckpointLogger:
+        checkpoint_logger = CheckpointLogger()
+        my_logger = MeasurementLogger([Measurent1, Measurent2],
+                                      checkpoint_logger)
+        my_logger.start()
+        for testname in tests:
+            # Option 1: use checkblock
+            with checkpoint_logger.checkblock(testname):
+               # run the test method for testname
+
+            # Option 2: use checkpoint
+            start_time = time.time()
+            # run the test method for testname
+            checkpoint_logger.checkpoint(testname, start_time)
+
+        keyvals = my_logger.calc()
 
     Public attributes:
         seconds_period: float, probing interval in seconds.
@@ -1440,22 +1542,20 @@ class MeasurementLogger(threading.Thread):
         save_results:
 
     Private attributes:
-       _measurements: list of Measurement objects to be sampled.
-       _checkpoint_data: dictionary of (tname, tlist).
-           tname: String of testname associated with these time intervals
-           tlist: list of tuples.  Tuple contains:
-               tstart: Float of time when subtest started
-               tend: Float of time when subtest ended
-       _results: list of results tuples.  Tuple contains:
-           prefix: String of subtest
-           mean: Float of mean  in watts
-           std: Float of standard deviation of measurements
-           tstart: Float of time when subtest started
-           tend: Float of time when subtest ended
+        _measurements: list of Measurement objects to be sampled.
+        _checkpoint_data: dictionary of (tname, tlist).
+            tname: String of testname associated with these time intervals
+            tlist: list of tuples.  Tuple contains:
+                tstart: Float of time when subtest started
+                tend: Float of time when subtest ended
+        _results: list of results tuples.  Tuple contains:
+            prefix: String of subtest
+            mean: Float of mean  in watts
+            std: Float of standard deviation of measurements
+            tstart: Float of time when subtest started
+            tend: Float of time when subtest ended
     """
-    CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
-
-    def __init__(self, measurements, seconds_period=1.0):
+    def __init__(self, measurements, seconds_period=1.0, checkpoint_logger=None):
         """Initialize a logger.
 
         Args:
@@ -1468,14 +1568,20 @@ class MeasurementLogger(threading.Thread):
 
         self.readings = []
         self.times = []
-        self._checkpoint_data = collections.defaultdict(list)
 
         self.domains = []
         self._measurements = measurements
         for meas in self._measurements:
             self.domains.append(meas.domain)
 
+        self._checkpoint_logger = \
+            checkpoint_logger if checkpoint_logger else CheckpointLogger()
+
         self.done = False
+
+    def start(self):
+        self._checkpoint_logger.start()
+        super(MeasurementLogger, self).start()
 
     def refresh(self):
         """Perform data samplings for every measurements.
@@ -1515,7 +1621,7 @@ class MeasurementLogger(threading.Thread):
         self.checkpoint(tname, start_time)
 
     def checkpoint(self, tname='', tstart=None, tend=None):
-        """Check point the times in seconds associated with test tname.
+        """Just a thin method calling the CheckpointLogger checkpoint method.
 
         Args:
            tname: String of testname associated with this time interval
@@ -1524,15 +1630,10 @@ class MeasurementLogger(threading.Thread):
            tend: Float in seconds of when tname test ended.  Should be based
                 off time.time().  If None, then value computed in the method.
         """
-        if not tstart and self.times:
-            tstart = self.times[0]
-        if not tend:
-            tend = time.time()
-        self._checkpoint_data[tname].append((tstart, tend))
-        logging.info('Finished test "%s" between timestamps [%s, %s]',
-                     tname, tstart, tend)
+        self._checkpoint_logger.checkpoint(tname, tstart, tend)
 
-
+    # TODO(seankao): It might be useful to pull this method to CheckpointLogger,
+    # to allow checkpoint usage without an explicit MeasurementLogger.
     def calc(self, mtype=None):
         """Calculate average measurement during each of the sub-tests.
 
@@ -1562,14 +1663,14 @@ class MeasurementLogger(threading.Thread):
         # times 2 the sleep time in order to allow for readings as well.
         self.join(timeout=self.seconds_period * 2)
 
-        if not self._checkpoint_data:
-            self.checkpoint()
+        if not self._checkpoint_logger.checkpoint_data:
+            self._checkpoint_logger.checkpoint()
 
         for i, domain_readings in enumerate(zip(*self.readings)):
             meas = numpy.array(domain_readings)
             domain = self.domains[i]
 
-            for tname, tlist in self._checkpoint_data.iteritems():
+            for tname, tlist in self._checkpoint_logger.checkpoint_data.iteritems():
                 if tname:
                     prefix = '%s_%s' % (tname, domain)
                 else:
@@ -1635,32 +1736,6 @@ class MeasurementLogger(threading.Thread):
                 f.write(line + '\n')
 
 
-    def save_checkpoint_data(self, resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
-        """Save checkpoint data.
-
-        Args:
-            resultsdir: String, directory to write results to
-            fname: String, name of file to write results to
-        """
-        fname = os.path.join(resultsdir, fname)
-        with file(fname, 'wt') as f:
-            json.dump(self._checkpoint_data, f, indent=4, separators=(',', ': '))
-
-
-    @staticmethod
-    def load_checkpoint_data(resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
-        """Load checkpoint data.
-
-        Args:
-            resultsdir: String, directory to load results from
-            fname: String, name of file to load results from
-        """
-        fname = os.path.join(resultsdir, fname)
-        with file(fname, 'r') as f:
-            checkpoint_data = json.load(f)
-        return checkpoint_data
-
-
 class CPUStatsLogger(MeasurementLogger):
     """Class to measure CPU Frequency and CPU Idle Stats.
 
@@ -1677,14 +1752,14 @@ class CPUStatsLogger(MeasurementLogger):
        _refresh_count: number of times refresh() has been called.
        _last_wavg: dict of wavg when refresh() was last called.
     """
-    def __init__(self, seconds_period=1.0):
+    def __init__(self, seconds_period=1.0, checkpoint_logger=None):
         """Initialize a CPUStatsLogger.
 
         Args:
             seconds_period: float, probing interval in seconds.  Default 1.0
         """
         # We don't use measurements since CPU stats can't measure separately.
-        super(CPUStatsLogger, self).__init__([], seconds_period)
+        super(CPUStatsLogger, self).__init__([], seconds_period, checkpoint_logger)
 
         self._stats = get_avaliable_cpu_stats()
         self._stats.append(GPUFreqStats())
@@ -1802,7 +1877,7 @@ def has_battery_temp():
 
 class TempLogger(MeasurementLogger):
     """A thread that logs temperature readings in millidegrees Celsius."""
-    def __init__(self, measurements, seconds_period=30.0):
+    def __init__(self, measurements, seconds_period=30.0, checkpoint_logger=None):
         if not measurements:
             measurements = []
             tstats = ThermalStatHwmon()
@@ -1817,7 +1892,7 @@ class TempLogger(MeasurementLogger):
 
             if has_battery_temp():
                 measurements.append(BatteryTempMeasurement())
-        super(TempLogger, self).__init__(measurements, seconds_period)
+        super(TempLogger, self).__init__(measurements, seconds_period, checkpoint_logger)
 
 
     def save_results(self, resultsdir, fname=None):
