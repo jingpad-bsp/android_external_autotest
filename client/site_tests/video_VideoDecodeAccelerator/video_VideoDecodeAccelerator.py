@@ -55,23 +55,14 @@ class video_VideoDecodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             if gtest_filter:
                 cmd_line_list.append('--gtest_filter="%s"' % gtest_filter)
 
+            cmd_line = ' '.join(cmd_line_list)
             try:
-                cmd_line = ' '.join(cmd_line_list)
-                self.run_chrome_test_binary(self.binary, cmd_line)
-
-                # Test import mode
-                cmd_line_list.append('--test_import')
-                cmd_line = ' '.join(cmd_line_list)
                 self.run_chrome_test_binary(self.binary, cmd_line)
             except error.TestFail as test_failure:
                 # Continue to run the remaining test videos and raise
                 # the last failure after finishing all videos.
-                mode = '[ALLOCATE]'
-                if '--test_import' in cmd_line_list:
-                    mode = '[IMPORT]'
-                logging.error('%s %s: %s', mode, video, test_failure.message)
-                last_test_failure = error.TestFail(mode + ' ' +
-                                                   test_failure.message)
+                logging.error('%s: %s', video, test_failure.message)
+                last_test_failure = test_failure
 
         if last_test_failure:
             raise last_test_failure
