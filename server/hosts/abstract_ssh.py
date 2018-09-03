@@ -36,6 +36,8 @@ class AbstractSSHHost(remote.RemoteHost):
     Host.run method.
     """
     VERSION_PREFIX = ''
+    # Timeout for master ssh connection setup, in seconds.
+    DEFAULT_START_MASTER_SSH_TIMEOUT_S = 5
 
     def _initialize(self, hostname, user="root", port=_DEFAULT_SSH_PORT,
                     password="", is_client_install_supported=True,
@@ -822,7 +824,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
 
 
-    def start_master_ssh(self, timeout=5):
+    def start_master_ssh(self, timeout=DEFAULT_START_MASTER_SSH_TIMEOUT_S):
         """
         Called whenever a slave SSH connection needs to be initiated (e.g., by
         run, rsync, scp). If master SSH support is enabled and a master SSH
