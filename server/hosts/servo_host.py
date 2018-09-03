@@ -27,7 +27,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
-from autotest_lib.server import site_utils as server_site_utils
+from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -459,7 +459,7 @@ class ServoHost(ssh_host.SSHHost):
             # Check if we need to schedule an organized reboot.
             afe = frontend_wrappers.RetryingAFE(
                     timeout_min=5, delay_sec=10,
-                    server=server_site_utils.get_global_afe_hostname())
+                    server=server_utils.get_global_afe_hostname())
             dut_list = self.get_attached_duts(afe)
             logging.info('servo host has the following duts: %s', dut_list)
             if len(dut_list) > 1:
@@ -541,7 +541,7 @@ class ServoHost(ssh_host.SSHHost):
             return
 
         target_build = afe_utils.get_stable_cros_image_name(self.get_board())
-        target_build_number = server_site_utils.ParseBuildName(
+        target_build_number = server_utils.ParseBuildName(
                 target_build)[3]
         # For servo image staging, we want it as more widely distributed as
         # possible, so that devservers' load can be evenly distributed. So use
@@ -737,14 +737,8 @@ def _get_standard_servo_args(dut_host):
             test lab, or some different environment.
     """
     servo_args = None
-    is_in_lab = False
-    is_ssp_moblab = False
-    if utils.is_in_container():
-        is_moblab = _CONFIG.get_config_value(
-                'SSP', 'is_moblab', type=bool, default=False)
-        is_ssp_moblab = is_moblab
-    else:
-        is_moblab = utils.is_moblab()
+    is_ssp_moblab = utils.in_moblab_ssp()
+    is_moblab = is_ssp_moblab or lsbrelease_utils.is_moblab()
     attrs = dut_host._afe_host.attributes
     if attrs and SERVO_HOST_ATTR in attrs:
         servo_host = attrs[SERVO_HOST_ATTR]
@@ -763,8 +757,6 @@ def _get_standard_servo_args(dut_host):
                 servo_args = None
         if SERVO_SERIAL_ATTR in attrs:
             servo_args[SERVO_SERIAL_ATTR] = attrs[SERVO_SERIAL_ATTR]
-        is_in_lab = (not is_moblab
-                     and utils.host_is_in_lab_zone(servo_host))
 
     # TODO(jrbarnette):  This test to use the default lab servo hostname
     # is a legacy that we need only until every host in the DB has
@@ -772,15 +764,19 @@ def _get_standard_servo_args(dut_host):
     elif (not is_moblab and
             not dnsname_mangler.is_ip_address(dut_host.hostname)):
         servo_host = make_servo_hostname(dut_host.hostname)
-        is_in_lab = utils.host_is_in_lab_zone(servo_host)
-        if is_in_lab:
+        if server_utils.host_is_in_lab_zone(servo_host):
             servo_args = {SERVO_HOST_ATTR: servo_host}
     if servo_args is not None:
         info = dut_host.host_info_store.get()
         if info.board:
             servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(
                     info.board)
-    return servo_args, is_in_lab
+
+    return (
+            servo_args,
+            servo_args
+            and server_utils.host_in_lab( servo_args[SERVO_HOST_ATTR]),
+    )
 
 
 def create_servo_host(dut, servo_args, try_lab_servo=False,
