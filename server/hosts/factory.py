@@ -47,6 +47,9 @@ OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'jetstream': jetstream_host.JetstreamHost,
                 'moblab': moblab_host.MoblabHost}
 
+# Timeout for early connectivity check to the host, in seconds.
+_CONNECTIVITY_CHECK_TIMEOUT_S = 10
+
 
 def _get_host_arguments(machine):
     """Get parameters to construct a host object.
@@ -116,6 +119,8 @@ def _detect_host(connectivity_class, hostname, **args):
     """
     with closing(connectivity_class(hostname, **args)) as host:
         for host_module in host_types:
+            logging.info('Attempting to autodetect if host is of type %s',
+                         host_module.__name__)
             if host_module.check_host(host, timeout=10):
                 return host_module
 
@@ -136,6 +141,22 @@ def _choose_connectivity_class(hostname, ssh_port):
         return local_host.LocalHost
     else:
         return ssh_host.SSHHost
+
+
+def _verify_connectivity(connectivity_class, hostname, **args):
+    """Verify connectivity to the host.
+
+    Any interaction with an unreachable host is guaranteed to fail later. By
+    checking connectivity first, duplicate errors / timeouts can be avoided.
+    """
+    if connectivity_class == local_host.LocalHost:
+        return True
+
+    assert connectivity_class == ssh_host.SSHHost
+    with closing(ssh_host.SSHHost(hostname, **args)) as host:
+        host.run('test :', timeout=_CONNECTIVITY_CHECK_TIMEOUT_S,
+                 ssh_failure_retry_ok=False,
+                 ignore_timeout=False)
 
 
 # TODO(kevcheng): Update the creation method so it's not a research project
@@ -183,8 +204,25 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     # TODO(kevcheng): get rid of the host detection using host attributes.
     host_class = (host_class
                   or OS_HOST_DICT.get(afe_host.attributes.get('os_type'))
-                  or OS_HOST_DICT.get(host_os)
-                  or _detect_host(connectivity_class, hostname, **args))
+                  or OS_HOST_DICT.get(host_os))
+
+    if host_class is None:
+        # TODO(pprabhu) If we fail to verify connectivity, we skip the costly
+        # host autodetection logic. We should ideally just error out in this
+        # case, but there are a couple problems:
+        # - VMs can take a while to boot up post provision, so SSH connections
+        #   to moblab vms may not be available for ~2 minutes. This requires
+        #   extended timeout in _verify_connectivity() so we don't get speed
+        #   benefits from bailing early.
+        # - We need to make sure stopping here does not block repair flows.
+        try:
+            _verify_connectivity(connectivity_class, hostname, **args)
+            host_class = _detect_host(connectivity_class, hostname, **args)
+        except error.AutoservRunError:
+            logging.warning('Failed to verify connectivity to host.'
+                            ' Skipping host auto detection logic.')
+            host_class = cros_host.CrosHost
+            logging.debug('Defaulting to CrosHost.')
 
     # create a custom host class for this machine and return an instance of it
     classes = (host_class, connectivity_class)
