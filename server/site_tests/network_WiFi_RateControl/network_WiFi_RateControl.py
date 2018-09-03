@@ -113,19 +113,13 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Test body."""
-        if utils.host_could_be_in_afe(self.context.client.host.hostname):
-            # Just abort the test if we're in the lab and not on a
-            # machine known to be conducted. The performance
-            # requirements of this test are hard to meet, without
-            # strong multi-path effects. (Our conducted setups are
-            # designed to provide strong multi-path.)
-            if not self.context.client.conductive:
-                raise error.TestNAError(
-                    'This test requires a great RF environment.')
-        else:
-            logging.error('Unable to determine if DUT has conducted '
-                          'connection to AP. Treat any TestFail with '
-                          'skepticism.')
+        # Just abort the test if we are not on a machine known to be conducted.
+        # The performance requirements of this test are hard to meet, without
+        # strong multi-path effects. (Our conducted setups are designed to
+        # provide strong multi-path.)
+        if not self.context.client.conductive:
+            raise error.TestNAError(
+                'This test requires a great RF environment.')
 
         caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
                 hostap_config.HostapConfig.N_CAPABILITY_HT40]
