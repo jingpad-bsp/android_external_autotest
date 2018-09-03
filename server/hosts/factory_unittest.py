@@ -28,9 +28,10 @@ class MockConnectivity(object):
     def __init__(self, hostname, **args):
         pass
 
+    def run(self, *args, **kwargs):
+        pass
 
     def close(self):
-        """Only method called by factory."""
         pass
 
 
