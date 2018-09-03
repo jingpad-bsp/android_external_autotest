@@ -50,6 +50,12 @@ SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 SERVO_BOARD_ATTR = 'servo_board'
 SERVO_SERIAL_ATTR = 'servo_serial'
+SERVO_ATTR_KEYS = (
+        SERVO_BOARD_ATTR,
+        SERVO_HOST_ATTR,
+        SERVO_PORT_ATTR,
+        SERVO_SERIAL_ATTR,
+)
 
 _CONFIG = global_config.global_config
 ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
@@ -723,48 +729,37 @@ def _map_afe_board_to_servo_board(afe_board):
     return mapped_board
 
 
-def _get_standard_servo_args(dut_host):
+def _get_servo_args_for_host(dut_host):
     """Return servo data associated with a given DUT.
-
-    This checks for the presence of servo host and port attached to the
-    given `dut_host`.  This data should be stored in the
-    `_afe_host.attributes` field in the provided `dut_host` parameter.
 
     @param dut_host   Instance of `Host` on which to find the servo
                       attributes.
     @return `servo_args` dict with host and an optional port.
     """
-    servo_args = None
-    is_moblab = utils.in_moblab_ssp() or lsbrelease_utils.is_moblab()
-    attrs = dut_host._afe_host.attributes
-    if attrs and SERVO_HOST_ATTR in attrs:
-        servo_args = {SERVO_HOST_ATTR: attrs[SERVO_HOST_ATTR]}
-        if SERVO_PORT_ATTR in attrs:
-            try:
-                servo_port = attrs[SERVO_PORT_ATTR]
-                servo_args[SERVO_PORT_ATTR] = int(servo_port)
-            except ValueError:
-                logging.error('servo port is not an int: %s', servo_port)
-                # Let's set the servo args to None since we're not creating
-                # the ServoHost object with the proper port now.
-                servo_args = None
-        if SERVO_SERIAL_ATTR in attrs:
-            servo_args[SERVO_SERIAL_ATTR] = attrs[SERVO_SERIAL_ATTR]
+    info = dut_host.host_info_store.get()
+    servo_args = {k: v for k, v in info.attributes.iteritems()
+                  if k in SERVO_ATTR_KEYS}
 
     # TODO(jrbarnette):  This test to use the default lab servo hostname
     # is a legacy that we need only until every host in the DB has
     # proper attributes.
-    elif (not is_moblab and
-            not dnsname_mangler.is_ip_address(dut_host.hostname)):
+    if (SERVO_HOST_ATTR not in servo_args
+        and not (utils.in_moblab_ssp() or lsbrelease_utils.is_moblab())):
         servo_host = make_servo_hostname(dut_host.hostname)
         if server_utils.host_is_in_lab_zone(servo_host):
-            servo_args = {SERVO_HOST_ATTR: servo_host}
-    if servo_args is not None:
-        info = dut_host.host_info_store.get()
-        if info.board:
-            servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(
-                    info.board)
+            servo_args[SERVO_HOST_ATTR] = servo_host
 
+    if SERVO_PORT_ATTR in servo_args:
+        try:
+            servo_args[SERVO_PORT_ATTR] = int(servo_args[SERVO_PORT_ATTR])
+        except ValueError:
+            logging.error('servo port is not an int: %s',
+                          servo_args[SERVO_PORT_ATTR])
+            # Reset servo_args because we don't want to use an invalid port.
+            servo_args.pop(SERVO_HOST_ATTR, None)
+
+    if info.board:
+        servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(info.board)
     return servo_args
 
 
@@ -831,7 +826,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
     """
     servo_dependency = servo_args is not None
     if dut is not None and (try_lab_servo or servo_dependency):
-        servo_args_override = _get_standard_servo_args(dut)
+        servo_args_override = _get_servo_args_for_host(dut)
         if servo_args_override is not None:
             if utils.in_moblab_ssp():
                 _tweak_args_for_ssp_moblab(servo_args_override)
@@ -842,10 +837,14 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
                     servo_args_override,
             )
             servo_args = servo_args_override
+
     if servo_args is None:
         logging.debug('No servo_args provided, and failed to find overrides.')
         return None
-
+    if SERVO_HOST_ATTR not in servo_args:
+        logging.debug('%s attribute missing from servo_args: %s',
+                      SERVO_HOST_ATTR, servo_args)
+        return None
     if (not servo_dependency and not try_servo_repair and
             not servo_host_is_up(servo_args[SERVO_HOST_ATTR])):
         logging.debug('ServoHost is not up.')
