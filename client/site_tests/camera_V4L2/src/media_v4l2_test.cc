@@ -10,7 +10,6 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "base/at_exit.h"
@@ -34,8 +33,9 @@ struct TestProfile {
   std::string dev_name;
   bool check_1280x960 = false;
   bool check_1600x1200 = false;
-  bool support_constant_framerate = false;
+  bool check_constant_framerate = false;
   bool check_maximum_resolution = false;
+  bool support_constant_framerate = false;
   TestCropping cropping_profile;
   uint32_t skip_frames = 0;
   uint32_t lens_facing;
@@ -45,11 +45,11 @@ struct TestProfile {
  * default: for devices without ARC++, and devices with ARC++ which use
  *          camera HAL v1.
  * halv3: for devices with ARC++ which use camera HAL v3.
- * external-camera: for third-party labs to verify new camera modules.
+ * certification: for third-party labs to verify new camera modules.
  */
 static const char kDefaultTestList[] = "default";
 static const char kHalv3TestList[] = "halv3";
-static const char kExternalCameraTestList[] = "external-camera";
+static const char kCertificationTestList[] = "certification";
 
 /* Camera Facing */
 static const char kFrontCamera[] = "user";
@@ -66,7 +66,7 @@ static void PrintUsage(int argc, char** argv) {
          "--test-list=TEST     Select different test list\n"
          "                     [%s | %s | %s]\n",
          argv[0], kDefaultTestList, kHalv3TestList,
-         kExternalCameraTestList);
+         kCertificationTestList);
 }
 
 int RunTest(V4L2Device* device, V4L2Device::IOMethod io,
@@ -572,57 +572,75 @@ bool TestMaximumSupportedResolution(const std::string& dev_name,
 const TestProfile GetTestProfile(const std::string& dev_name,
                                  const std::string& usb_info,
                                  const std::string& test_list) {
-  std::unordered_map<std::string, std::string> mapping = {{usb_info, dev_name}};
+  const int VID_PID_LENGTH = 9;  // 0123:abcd format
+  const DeviceInfo* device_info = nullptr;
   CameraCharacteristics characteristics;
-  DeviceInfos device_infos =
-      characteristics.GetCharacteristicsFromFile(mapping);
-  if (device_infos.size() > 1) {
-    printf("[Error] One device should not have multiple configs.\n");
-    exit(EXIT_FAILURE);
+  if (!usb_info.empty()) {
+    if (usb_info.length() != VID_PID_LENGTH) {
+      printf("[Error] Invalid usb info: %s\n", usb_info.c_str());
+      exit(EXIT_FAILURE);
+    }
+    device_info = characteristics.Find(usb_info.substr(0, 4),
+                                       usb_info.substr(5, 9));
+  }
+
+  if (test_list != kDefaultTestList) {
+    if (!characteristics.ConfigFileExists()) {
+      printf("[Error] %s test list needs camera config file\n",
+          test_list.c_str());
+      exit(EXIT_FAILURE);
+    }
+    if (device_info == nullptr) {
+      printf("[Error] %s is not described in camera config file\n",
+          usb_info.c_str());
+      exit(EXIT_FAILURE);
+    }
   }
 
   TestProfile profile;
   profile.test_list = test_list;
   profile.dev_name = dev_name;
   // Get parameter from config file.
-  if (device_infos.size() == 1) {
-    profile.check_1280x960 = !device_infos[0].resolution_1280x960_unsupported;
-    profile.check_1600x1200 = !device_infos[0].resolution_1600x1200_unsupported;
+  if (device_info) {
     profile.support_constant_framerate =
-        !device_infos[0].constant_framerate_unsupported;
-    profile.skip_frames = device_infos[0].frames_to_skip_after_streamon;
-    profile.check_maximum_resolution = true;
-    profile.lens_facing = device_infos[0].lens_facing;
+        !device_info->constant_framerate_unsupported;
+    profile.skip_frames = device_info->frames_to_skip_after_streamon;
+    profile.lens_facing = device_info->lens_facing;
 
     // If there is a camera config and test list is not HAL v1, then we can
     // check cropping requirement according to the sensor physical size.
     if (test_list != kDefaultTestList) {
       profile.cropping_profile.check_cropping = true;
       profile.cropping_profile.sensor_pixel_array_size_width =
-          device_infos[0].sensor_info_pixel_array_size_width;
+          device_info->sensor_info_pixel_array_size_width;
       profile.cropping_profile.sensor_pixel_array_size_height =
-          device_infos[0].sensor_info_pixel_array_size_height;
+          device_info->sensor_info_pixel_array_size_height;
     }
   }
 
-  bool check_constant_framerate = false;
-  if (test_list == kHalv3TestList) {
-    profile.skip_frames = 0;
-    check_constant_framerate = true;
-  }
-
-  if (test_list == kExternalCameraTestList) {
+  if (test_list == kDefaultTestList) {
+    profile.check_1280x960 = false;
+    profile.check_1600x1200 = false;
+    profile.check_maximum_resolution = true;
+    profile.check_constant_framerate = false;
+  } else if (test_list == kHalv3TestList) {
     profile.check_1280x960 = true;
     profile.check_1600x1200 = true;
-    profile.support_constant_framerate = true;
+    profile.skip_frames = 0;
+    profile.check_maximum_resolution = true;
+    profile.check_constant_framerate = true;
+  } else if (test_list == kCertificationTestList) {
+    profile.check_1280x960 = true;
+    profile.check_1600x1200 = true;
     profile.skip_frames = 0;
     profile.check_maximum_resolution = false;
-    check_constant_framerate = true;
+    profile.check_constant_framerate = true;
   }
 
   printf("[Info] check 1280x960: %d\n", profile.check_1280x960);
   printf("[Info] check 1600x1200: %d\n", profile.check_1600x1200);
-  printf("[Info] check constant framerate: %d\n", check_constant_framerate);
+  printf("[Info] check constant framerate: %d\n",
+      profile.check_constant_framerate);
   printf("[Info] check cropping: %d\n",
       profile.cropping_profile.check_cropping);
   printf("[Info] num of skip frames after stream on: %d\n",
@@ -636,28 +654,20 @@ TEST(TestList, TestIO) {
 }
 
 TEST(TestList, TestResolutions) {
-  if (g_profile.test_list == kDefaultTestList) {
-    ASSERT_TRUE(TestResolutions(g_profile.dev_name, g_profile.check_1280x960,
-                                g_profile.check_1600x1200,
-                                g_profile.cropping_profile, false));
-  } else if (g_profile.test_list == kHalv3TestList) {
-    if (g_profile.support_constant_framerate) {
-      ASSERT_TRUE(TestResolutions(g_profile.dev_name, g_profile.check_1280x960,
-                                  g_profile.check_1600x1200,
-                                  g_profile.cropping_profile, true));
-    } else {
-      printf("[Error] Hal v3 should support constant framerate.\n");
-      ASSERT_TRUE(false);
-    }
-  } else if (g_profile.test_list == kExternalCameraTestList) {
-    ASSERT_TRUE(TestResolutions(g_profile.dev_name, g_profile.check_1280x960,
-                                g_profile.check_1600x1200,
-                                g_profile.cropping_profile, true));
+  if (g_profile.test_list == kHalv3TestList &&
+      !g_profile.support_constant_framerate) {
+    printf("[Error] Hal v3 should support constant framerate.\n");
+    ASSERT_TRUE(false);
   }
+
+  ASSERT_TRUE(TestResolutions(g_profile.dev_name, g_profile.check_1280x960,
+                              g_profile.check_1600x1200,
+                              g_profile.cropping_profile,
+                              g_profile.check_constant_framerate));
 }
 
 TEST(TestList, TestMaximumSupportedResolution) {
-  if (g_profile.test_list == kExternalCameraTestList)
+  if (g_profile.test_list == kCertificationTestList)
     return;
   if (g_profile.check_maximum_resolution) {
     ASSERT_TRUE(TestMaximumSupportedResolution(g_profile.dev_name,
@@ -705,7 +715,7 @@ int main(int argc, char** argv) {
     }
 
     PrintUsage(argc, argv);
-    LOG(ERROR) << "Unexpected switch: " << it->first << ":" << it->second;
+    LOGF(ERROR) << "Unexpected switch: " << it->first << ":" << it->second;
     return EXIT_FAILURE;
   }
 
