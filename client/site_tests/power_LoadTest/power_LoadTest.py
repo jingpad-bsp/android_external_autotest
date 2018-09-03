@@ -266,9 +266,16 @@ class power_LoadTest(arc.ArcTest):
             measurements += power_rapl.create_powercap()
         elif power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
-        self._plog = power_status.PowerLogger(measurements, seconds_period=20)
-        self._tlog = power_status.TempLogger([], seconds_period=20)
-        self._clog = power_status.CPUStatsLogger(seconds_period=20)
+        self._checkpoint_logger = power_status.CheckpointLogger()
+        self._plog = power_status.PowerLogger(measurements,
+                seconds_period=20,
+                checkpoint_logger=self._checkpoint_logger)
+        self._tlog = power_status.TempLogger([],
+                seconds_period=20,
+                checkpoint_logger=self._checkpoint_logger)
+        self._clog = power_status.CPUStatsLogger(
+                seconds_period=20,
+                checkpoint_logger=self._checkpoint_logger)
         self._meas_logs = [self._plog, self._tlog, self._clog]
         for log in self._meas_logs:
             log.start()
@@ -368,8 +375,7 @@ class power_LoadTest(arc.ArcTest):
 
             script_logging.set();
             pagetime_tracking.set();
-            for log in self._meas_logs:
-                log.checkpoint('loop%d' % (i), start_time)
+            self._checkpoint_logger.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
                 logging.debug('loop %d completed', i)
 
@@ -415,8 +421,7 @@ class power_LoadTest(arc.ArcTest):
 
 
         for task, tstart, tend in self._task_tracker:
-            for log in self._meas_logs:
-                log.checkpoint(task, tstart, tend)
+            self._checkpoint_logger.checkpoint(task, tstart, tend)
 
         keyvals = {}
         for log in self._meas_logs:
@@ -508,9 +513,7 @@ class power_LoadTest(arc.ArcTest):
         self.write_perf_keyval(keyvals)
         for log in self._meas_logs:
             log.save_results(self.resultsdir)
-        # checkpoint data for all measurement loggers should be the same
-        # just save checkpoint data for one of them
-        self._plog.save_checkpoint_data(self.resultsdir)
+        self._checkpoint_logger.save_checkpoint_data(self.resultsdir)
         pdash = power_dashboard.PowerLoggerDashboard( \
                 self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()

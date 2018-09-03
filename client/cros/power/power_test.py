@@ -40,6 +40,8 @@ class power_Test(test.test):
         self.keyvals = dict()
         self.status = power_status.get_status()
 
+        self._checkpoint_logger = power_status.CheckpointLogger()
+
         measurements = []
         if not self.status.on_ac():
             measurements.append(
@@ -49,15 +51,19 @@ class power_Test(test.test):
         elif power_utils.has_rapl_support():
             measurements += power_rapl.create_rapl()
         self._plog = power_status.PowerLogger(measurements,
-                                              seconds_period=seconds_period)
+                seconds_period=seconds_period,
+                checkpoint_logger=self._checkpoint_logger)
         self._psr = power_utils.DisplayPanelSelfRefresh()
         self._services = service_stopper.ServiceStopper(
                 service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._services.stop_services()
         self._stats = power_status.StatoMatic()
 
-        self._tlog = power_status.TempLogger([], seconds_period=seconds_period)
-        self._clog = power_status.CPUStatsLogger(seconds_period=seconds_period)
+        self._tlog = power_status.TempLogger([],
+                seconds_period=seconds_period,
+                checkpoint_logger=self._checkpoint_logger)
+        self._clog = power_status.CPUStatsLogger(seconds_period=seconds_period,
+                checkpoint_logger=self._checkpoint_logger)
 
     def warmup(self, warmup_time=30):
         """Warm up.
@@ -95,9 +101,7 @@ class power_Test(test.test):
         if not start_time:
             start_time = self._start_time
         self.status.refresh()
-        self._plog.checkpoint(name, start_time)
-        self._tlog.checkpoint(name, start_time)
-        self._clog.checkpoint(name, start_time)
+        self._checkpoint_logger.checkpoint(name, start_time)
         self._psr.refresh()
 
     def publish_keyvals(self):
