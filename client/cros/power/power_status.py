@@ -1467,6 +1467,26 @@ class CheckpointLogger(object):
         logging.info('Finished test "%s" between timestamps [%s, %s]',
                      tname, tstart, tend)
 
+    def convert_relative(self, start_time=None):
+        """Convert data from power_status.CheckpointLogger object to relative
+        checkpoint data dictionary. Timestamps are converted to time in seconds
+        since the test started.
+
+        Args:
+            start_time: Float in seconds of the desired start time reference.
+                Should be based off time.time(). If None, use start timestamp
+                for the checkpoint logger.
+        """
+        if start_time is None:
+            start_time = self._start_time
+
+        checkpoint_dict = {}
+        for tname, tlist in self.checkpoint_data.iteritems():
+            checkpoint_dict[tname] = [(tstart - start_time, tend - start_time)
+                    for tstart, tend in tlist]
+
+        return checkpoint_dict
+
     def save_checkpoint_data(self, resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
         """Save checkpoint data.
 
