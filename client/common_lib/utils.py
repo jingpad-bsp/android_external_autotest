@@ -1981,6 +1981,13 @@ def host_is_in_lab_zone(hostname):
         return False
 
 
+def in_moblab_ssp():
+    """Detects if this execution is inside an SSP container on moblab."""
+    config_is_moblab = CONFIG.get_config_value('SSP', 'is_moblab', type=bool,
+                                               default=False)
+    return is_in_container() and config_is_moblab
+
+
 def get_chrome_version(job_views):
     """
     Retrieves the version of the chrome binary associated with a job.
