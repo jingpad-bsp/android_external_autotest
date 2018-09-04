@@ -298,7 +298,8 @@ HOTWORD_TEST_FILE = AudioTestData(
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
-                         rate=48000))
+                         rate=48000),
+        duration_secs=1.0)
 
 """
 Media test verification for 256Hz frequency (headphone audio).

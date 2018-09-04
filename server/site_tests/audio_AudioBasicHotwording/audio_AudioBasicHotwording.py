@@ -98,18 +98,19 @@ class audio_AudioBasicHotwording(audio_test.AudioTest):
             # Starts playing hotword and golden file.
             # Sleep for 5s for DUT to detect and record the sounds
             logging.info('Setting hotword playback data on Chameleon')
-            source.set_playback_data(hotword_file)
+            remote_hotword_file_path = source.set_playback_data(hotword_file)
+
+            logging.info('Setting golden playback data on Chameleon')
+            remote_golden_file_path = source.set_playback_data(golden_file)
 
             logging.info('Start playing %s from Chameleon',
                          hotword_file.path)
-            source.start_playback()
-
-            logging.info('Setting golden playback data on Chameleon')
-            source.set_playback_data(golden_file)
+            source.start_playback_with_path(remote_hotword_file_path)
+            time.sleep(hotword_file.duration_secs)
 
             logging.info('Start playing %s from Chameleon',
                          golden_file.path)
-            source.start_playback()
+            source.start_playback_with_path(remote_golden_file_path)
 
             time.sleep(self.RECORD_SECONDS)
 
