@@ -1516,7 +1516,7 @@ class MeasurementLogger(threading.Thread):
     """A thread that logs measurement readings.
 
     Example code snippet:
-        my_logger = MeasurementLogger([Measurent1, Measurent2])
+        my_logger = MeasurementLogger([Measurement1, Measurement2])
         my_logger.start()
         for testname in tests:
             # Option 1: use checkblock
@@ -1532,7 +1532,7 @@ class MeasurementLogger(threading.Thread):
 
     or using CheckpointLogger:
         checkpoint_logger = CheckpointLogger()
-        my_logger = MeasurementLogger([Measurent1, Measurent2],
+        my_logger = MeasurementLogger([Measurement1, Measurement2],
                                       checkpoint_logger)
         my_logger.start()
         for testname in tests:
