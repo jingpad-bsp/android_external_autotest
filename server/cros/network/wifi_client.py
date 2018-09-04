@@ -90,11 +90,9 @@ def _is_conductive(host):
 
     @param host: A Host object.
     """
-    if utils.host_could_be_in_afe(host.hostname):
-        info = host.host_info_store.get()
-        conductive = info.get_label_value('conductive')
-        return conductive.lower() == 'true'
-    return False
+    info = host.host_info_store.get()
+    conductive = info.get_label_value('conductive')
+    return conductive.lower() == 'true'
 
 
 class WiFiClient(site_linux_system.LinuxSystem):

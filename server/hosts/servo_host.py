@@ -27,7 +27,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
-from autotest_lib.server import site_utils as server_site_utils
+from autotest_lib.server import site_utils as server_utils
 from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -50,6 +50,12 @@ SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 SERVO_BOARD_ATTR = 'servo_board'
 SERVO_SERIAL_ATTR = 'servo_serial'
+SERVO_ATTR_KEYS = (
+        SERVO_BOARD_ATTR,
+        SERVO_HOST_ATTR,
+        SERVO_PORT_ATTR,
+        SERVO_SERIAL_ATTR,
+)
 
 _CONFIG = global_config.global_config
 ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
@@ -459,7 +465,7 @@ class ServoHost(ssh_host.SSHHost):
             # Check if we need to schedule an organized reboot.
             afe = frontend_wrappers.RetryingAFE(
                     timeout_min=5, delay_sec=10,
-                    server=server_site_utils.get_global_afe_hostname())
+                    server=server_utils.get_global_afe_hostname())
             dut_list = self.get_attached_duts(afe)
             logging.info('servo host has the following duts: %s', dut_list)
             if len(dut_list) > 1:
@@ -541,7 +547,7 @@ class ServoHost(ssh_host.SSHHost):
             return
 
         target_build = afe_utils.get_stable_cros_image_name(self.get_board())
-        target_build_number = server_site_utils.ParseBuildName(
+        target_build_number = server_utils.ParseBuildName(
                 target_build)[3]
         # For servo image staging, we want it as more widely distributed as
         # possible, so that devservers' load can be evenly distributed. So use
@@ -723,64 +729,44 @@ def _map_afe_board_to_servo_board(afe_board):
     return mapped_board
 
 
-def _get_standard_servo_args(dut_host):
+def _get_servo_args_for_host(dut_host):
     """Return servo data associated with a given DUT.
-
-    This checks for the presence of servo host and port attached to the
-    given `dut_host`.  This data should be stored in the
-    `_afe_host.attributes` field in the provided `dut_host` parameter.
 
     @param dut_host   Instance of `Host` on which to find the servo
                       attributes.
-    @return A tuple of `servo_args` dict with host and an option port,
-            plus an `is_in_lab` flag indicating whether this in the CrOS
-            test lab, or some different environment.
+    @return `servo_args` dict with host and an optional port.
     """
-    servo_args = None
-    is_in_lab = False
-    is_ssp_moblab = False
-    if utils.is_in_container():
-        is_moblab = _CONFIG.get_config_value(
-                'SSP', 'is_moblab', type=bool, default=False)
-        is_ssp_moblab = is_moblab
-    else:
-        is_moblab = utils.is_moblab()
-    attrs = dut_host._afe_host.attributes
-    if attrs and SERVO_HOST_ATTR in attrs:
-        servo_host = attrs[SERVO_HOST_ATTR]
-        if (is_ssp_moblab and servo_host in ['localhost', '127.0.0.1']):
-            servo_host = _CONFIG.get_config_value(
-                    'SSP', 'host_container_ip', type=str, default=None)
-        servo_args = {SERVO_HOST_ATTR: servo_host}
-        if SERVO_PORT_ATTR in attrs:
-            try:
-                servo_port = attrs[SERVO_PORT_ATTR]
-                servo_args[SERVO_PORT_ATTR] = int(servo_port)
-            except ValueError:
-                logging.error('servo port is not an int: %s', servo_port)
-                # Let's set the servo args to None since we're not creating
-                # the ServoHost object with the proper port now.
-                servo_args = None
-        if SERVO_SERIAL_ATTR in attrs:
-            servo_args[SERVO_SERIAL_ATTR] = attrs[SERVO_SERIAL_ATTR]
-        is_in_lab = (not is_moblab
-                     and utils.host_is_in_lab_zone(servo_host))
+    info = dut_host.host_info_store.get()
+    servo_args = {k: v for k, v in info.attributes.iteritems()
+                  if k in SERVO_ATTR_KEYS}
 
     # TODO(jrbarnette):  This test to use the default lab servo hostname
     # is a legacy that we need only until every host in the DB has
     # proper attributes.
-    elif (not is_moblab and
-            not dnsname_mangler.is_ip_address(dut_host.hostname)):
+    if (SERVO_HOST_ATTR not in servo_args
+        and not (utils.in_moblab_ssp() or lsbrelease_utils.is_moblab())):
         servo_host = make_servo_hostname(dut_host.hostname)
-        is_in_lab = utils.host_is_in_lab_zone(servo_host)
-        if is_in_lab:
-            servo_args = {SERVO_HOST_ATTR: servo_host}
-    if servo_args is not None:
-        info = dut_host.host_info_store.get()
-        if info.board:
-            servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(
-                    info.board)
-    return servo_args, is_in_lab
+        if server_utils.host_is_in_lab_zone(servo_host):
+            servo_args[SERVO_HOST_ATTR] = servo_host
+
+    if SERVO_PORT_ATTR in servo_args:
+        try:
+            servo_args[SERVO_PORT_ATTR] = int(servo_args[SERVO_PORT_ATTR])
+        except ValueError:
+            logging.error('servo port is not an int: %s',
+                          servo_args[SERVO_PORT_ATTR])
+            # Reset servo_args because we don't want to use an invalid port.
+            servo_args.pop(SERVO_HOST_ATTR, None)
+
+    if info.board:
+        servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(info.board)
+    return servo_args
+
+
+def _tweak_args_for_ssp_moblab(servo_args):
+    if servo_args[SERVO_HOST_ATTR] in ['localhost', '127.0.0.1']:
+        servo_args[SERVO_HOST_ATTR] = _CONFIG.get_config_value(
+                'SSP', 'host_container_ip', type=str, default=None)
 
 
 def create_servo_host(dut, servo_args, try_lab_servo=False,
@@ -839,31 +825,54 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
 
     """
     servo_dependency = servo_args is not None
-    is_in_lab = False
     if dut is not None and (try_lab_servo or servo_dependency):
-        servo_args_override, is_in_lab = _get_standard_servo_args(dut)
+        servo_args_override = _get_servo_args_for_host(dut)
         if servo_args_override is not None:
+            if utils.in_moblab_ssp():
+                _tweak_args_for_ssp_moblab(servo_args_override)
+            logging.debug(
+                    'Overriding provided servo_args (%s) with arguments'
+                    ' determined from the host (%s)',
+                    servo_args,
+                    servo_args_override,
+            )
             servo_args = servo_args_override
+
     if servo_args is None:
+        logging.debug('No servo_args provided, and failed to find overrides.')
+        return None
+    if SERVO_HOST_ATTR not in servo_args:
+        logging.debug('%s attribute missing from servo_args: %s',
+                      SERVO_HOST_ATTR, servo_args)
         return None
     if (not servo_dependency and not try_servo_repair and
             not servo_host_is_up(servo_args[SERVO_HOST_ATTR])):
+        logging.debug('ServoHost is not up.')
         return None
-    newhost = ServoHost(is_in_lab=is_in_lab, **servo_args)
+
+    newhost = ServoHost(
+            is_in_lab=(servo_args
+                       and server_utils.host_in_lab(
+                               servo_args[SERVO_HOST_ATTR])),
+            **servo_args
+    )
     base_classes.send_creation_metric(newhost)
+
     # Note that the logic of repair() includes everything done
     # by verify().  It's sufficient to call one or the other;
     # we don't need both.
     if servo_dependency:
         newhost.repair(silent=True)
+        return newhost
+
+    if try_servo_repair:
+        try:
+            newhost.repair()
+        except Exception:
+            logging.exception('servo repair failed for %s', newhost.hostname)
     else:
         try:
-            if try_servo_repair:
-                newhost.repair()
-            else:
-                newhost.verify()
+            newhost.verify()
         except Exception:
-            operation = 'repair' if try_servo_repair else 'verification'
-            logging.exception('Servo %s failed for %s',
-                              operation, newhost.hostname)
+            logging.exception('servo verify failed for %s', newhost.hostname)
     return newhost
