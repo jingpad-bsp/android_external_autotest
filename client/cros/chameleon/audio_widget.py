@@ -270,9 +270,12 @@ class AudioOutputWidget(AudioWidget):
 
         @param test_data: An AudioTestData object.
 
+        @returns: path to the remote playback data
+
         """
         self._remote_playback_path = self.handler.set_playback_data(test_data)
 
+        return self._remote_playback_path
 
     def start_playback(self, blocking=False):
         """Starts playing audio specified in previous set_playback_data call.
@@ -281,6 +284,16 @@ class AudioOutputWidget(AudioWidget):
 
         """
         self.handler.start_playback(self._remote_playback_path, blocking)
+
+    def start_playback_with_path(self, remote_playback_path, blocking=False):
+        """Starts playing audio specified in previous set_playback_data call
+           and the remote_playback_path returned by set_playback_data function.
+
+        @param remote_playback_path: Path returned by set_playback_data.
+        @param blocking: Blocks this call until playback finishes.
+
+        """
+        self.handler.start_playback(remote_playback_path, blocking)
 
 
     def stop_playback(self):
