@@ -602,6 +602,9 @@ class Cr50Test(FirmwareTest):
             raise error.TestFail('could not start ccd open')
 
         try:
+            # Wait for the first gsctool power button prompt before starting the
+            # open process.
+            logging.info(self._get_ccd_open_output())
             # Cr50 starts out by requesting 5 quick presses then 4 longer
             # power button presses. Run the quick presses without looking at the
             # command output, because getting the output can take some time. For
