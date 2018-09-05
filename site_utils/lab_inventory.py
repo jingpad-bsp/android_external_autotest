@@ -80,11 +80,9 @@ MANAGED_POOLS = constants.Pools.MANAGED_POOLS
 #   + 'adb' - We're not ready to monitor Android or Brillo hosts.
 #   + 'board:guado_moblab' - These are maintained by a separate
 #     process that doesn't use this script.
-#   + 'board:scarlet' due to crbug.com/846012 and other issues discussed at
-#   https://bugs.chromium.org/p/chromium/issues/detail?id=861806#c2
 #   + 'board:veyron_rialto' due to crbug.com/854404
 
-_EXCLUDED_LABELS = {'adb', 'board:guado_moblab', 'board:scarlet',
+_EXCLUDED_LABELS = {'adb', 'board:guado_moblab',
                     'board:veyron_rialto'}
 
 # _DEFAULT_DURATION:
