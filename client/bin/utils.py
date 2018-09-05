@@ -2355,22 +2355,6 @@ def graphics_api():
     return 'gl'
 
 
-def is_vm():
-    """Check if the process is running in a virtual machine.
-
-    @return: True if the process is running in a virtual machine, otherwise
-             return False.
-    """
-    try:
-        virt = utils.run('sudo -n virt-what').stdout.strip()
-        logging.debug('virt-what output: %s', virt)
-        return bool(virt)
-    except error.CmdError:
-        logging.warn('Package virt-what is not installed, default to assume '
-                     'it is not a virtual machine.')
-        return False
-
-
 def is_package_installed(package):
     """Check if a package is installed already.
 
