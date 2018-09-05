@@ -119,10 +119,6 @@ class SuiteHandler(object):
         """Return whether the suite handler is for provision suite."""
         return self._suite_name == 'provision'
 
-    def should_use_fallback(self):
-        """Return whether to use fallback to trigger child tests (always)."""
-        return True
-
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.
 
