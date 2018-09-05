@@ -27,6 +27,7 @@ Examples
 control.storage_qual_hardware_StorageQualBase_retention_before
 control.storeage_qual_hardware_StorageStress_retention_soak_12
 """
+import copy
 
 STORAGE_QUAL_VERSION = 1
 DAY_IN_HOURS = 24
@@ -60,7 +61,7 @@ SOAK = {
     'length': 'long'
 }
 
-SOAK_QUICK = dict(SOAK)
+SOAK_QUICK = copy.deepcopy(SOAK)
 SOAK_QUICK['iterations'] = 2
 SOAK_QUICK['args']['duration'] = HOUR_IN_SECS
 

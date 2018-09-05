@@ -31,6 +31,6 @@ utils.write_keyval(job.resultdir, keyval)
 
 def run(machine):
     job.run_test("hardware_StorageStress", host=hosts.create_host(machine),
-            client_ip=machine, storage_test_command='full_write', duration=3600, tag='soak', power_command='wait', suspend_duration=300)
+            client_ip=machine, storage_test_command='full_write', duration=14400, tag='soak', power_command='wait', suspend_duration=300)
 
 parallel_simple(run, machines)
