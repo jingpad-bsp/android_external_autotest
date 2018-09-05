@@ -216,6 +216,14 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
             provision_expiration_secs,
             test_spec.expiration_secs - provision_expiration_secs]
 
+    # Add tags and command flags for LogDog.
+    logdog_url = swarming_lib.get_logdog_annotation_url()
+    if logdog_url:
+        tags += ['luci_project:chromeos',
+                 'log_location:' + logdog_url]
+        for cmd in cmds:
+            cmd.extend(['-logdog-annotation-url', logdog_url])
+
     # Use first slice to kick off normal cmd without '-provision-labels',
     # since the assigned DUT is already provisioned by given build.
     # Use second slice to kick off cmd_with_fallback to enable provision before
