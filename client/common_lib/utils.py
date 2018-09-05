@@ -355,7 +355,11 @@ def set_ip_local_port_range(lower, upper):
 
 
 def read_one_line(filename):
-    return open(filename, 'r').readline().rstrip('\n')
+    f = open(filename, 'r')
+    try:
+        return f.readline().rstrip('\n')
+    finally:
+        f.close()
 
 
 def read_file(filename):
