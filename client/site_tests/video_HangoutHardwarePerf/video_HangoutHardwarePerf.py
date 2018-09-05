@@ -241,10 +241,13 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
         env['TMPDIR'] = self.tmpdir
         return map(lambda c: cmd_utils.popen(c, env=env), commands)
 
-    def simulate_hangout(self, decode_videos, encode_videos, measurer):
-        popens = self.run_in_parallel(
-            self.get_vda_unittest_cmd_line(decode_videos),
-            self.get_vea_unittest_cmd_line(encode_videos))
+    def simulate_hangout(self, decode_videos, encode_videos, measurer,
+                         decode_threads, encode_threads):
+        decode_cmds = [self.get_vda_unittest_cmd_line(decode_videos)
+                       for i in range(decode_threads)]
+        encode_cmds = [self.get_vea_unittest_cmd_line(encode_videos)
+                       for i in range(encode_threads)]
+        popens = self.run_in_parallel(*(decode_cmds + encode_cmds))
         try:
             time.sleep(STABILIZATION_DURATION)
             measurer.start()
@@ -262,7 +265,7 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
     @helper_logger.video_log_wrapper
     @chrome_binary_test.nuke_chrome
     def run_once(self, resources, decode_videos, encode_videos, measurement,
-                 capabilities):
+                 capabilities, decode_threads=1, encode_threads=1):
         dc = device_capability.DeviceCapability()
         for cap in capabilities:
             dc.ensure_capability(cap)
@@ -273,14 +276,16 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             if measurement == 'cpu':
                 with CpuUsageMeasurer() as measurer:
                     value = self.simulate_hangout(
-                            decode_videos, encode_videos, measurer)
+                            decode_videos, encode_videos, measurer,
+                            decode_threads, encode_threads)
                     self.output_perf_value(
                             description='cpu_usage', value=value * 100,
                             units=UNIT_PERCENT, higher_is_better=False)
             elif measurement == 'power':
                 with PowerMeasurer() as measurer:
                     value = self.simulate_hangout(
-                            decode_videos, encode_videos, measurer)
+                            decode_videos, encode_videos, measurer,
+                            decode_threads, encode_threads)
                     self.output_perf_value(
                             description='power_usage', value=value,
                             units=UNIT_WATT, higher_is_better=False)
