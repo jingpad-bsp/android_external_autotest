@@ -2,13 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, threading, time
+import logging, os, re, threading, time, utils
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
 SYSFS_LOW_MEM_DIR = '/sys/kernel/mm/chromeos-low_mem/'
+SYSFS_MARGIN_FILENAME = SYSFS_LOW_MEM_DIR + 'margin'
+SYSFS_AVAILABLE_FILENAME = SYSFS_LOW_MEM_DIR + 'available'
 
 PF_MAX_RATE_PERIOD = 5.0  # seconds
 PF_RATE_INTERVAL = 10     # seconds
@@ -298,7 +300,7 @@ def run_simple_tab_discard_test(time_limit, tab_open_delay_seconds, bindir):
     discard = False
     perf_results = {}
     start_time = time.time()
-    margin = int(open(SYSFS_LOW_MEM_DIR + 'margin').readline())
+    margin = int(utils.read_file(SYSFS_MARGIN_FILENAME))
 
     # Open tabs until a tab discard notification arrives, or a time limit
     # is reached.
@@ -312,7 +314,7 @@ def run_simple_tab_discard_test(time_limit, tab_open_delay_seconds, bindir):
             tab.Navigate(cr.browser.platform.http_server.UrlOf(
                     os.path.join(bindir, 'js-bloat.html')))
             tab.WaitForDocumentReadyStateToBeComplete()
-            available = int(open(SYSFS_LOW_MEM_DIR + 'available').readline())
+            available = int(utils.read_file(SYSFS_LOW_MEM_DIR + 'available'))
             # Slow down when getting close to the discard margin, to avoid OOM
             # kills.
             time.sleep(tab_open_delay_seconds
@@ -326,6 +328,61 @@ def run_simple_tab_discard_test(time_limit, tab_open_delay_seconds, bindir):
                                       'tabs in %ds' %
                                       (n_tabs, time_limit - start_time))
     perf_results["TabCountAtFirstDiscard"] = n_tabs
+    return perf_results
+
+
+def run_quick_tab_discard_test(time_limit, bindir):
+    """
+    Tests that tab discarding works correctly allocating a few tabs,
+    then increasing the discard margin until a discard occurs.
+    """
+    # 1 for initial tab opened
+    n_tabs = 1
+    discard = False
+    perf_results = {}
+    start_time = time.time()
+    original_margin = int(utils.read_file(SYSFS_MARGIN_FILENAME))
+
+    # Open 5 tabs, so the discarder has something to work with.
+    # No need to be slow here since we'll be far from OOM.
+    with chrome.Chrome(init_network_controller=True) as cr:
+        cr.browser.platform.SetHTTPServerDirectories(bindir)
+        for _ in range(5):
+            tab = cr.browser.tabs.New()
+            n_tabs += 1
+            # The program in js-bloat.html allocates a few large arrays and
+            # forces them in memory by touching some of their elements.
+            tab.Navigate(cr.browser.platform.http_server.UrlOf(
+                    os.path.join(bindir, 'js-bloat.html')))
+            tab.WaitForDocumentReadyStateToBeComplete()
+
+        if n_tabs > len(cr.browser.tabs):
+            raise error.TestError('unexpected early discard')
+
+        try:
+            # Increase margin to 50MB above available. Discard should happen
+            # immediately, but available may change, so keep trying.
+            attempt_count = 0
+            while True:
+                attempt_count += 1
+                available = int(utils.read_file(SYSFS_AVAILABLE_FILENAME))
+                logging.warning('TEMPORARILY CHANGING DISCARD MARGIN'
+                                ' --- do not interrupt the test')
+                utils.open_write_close(SYSFS_MARGIN_FILENAME,
+                                       "%d" % (available + 50))
+                # Give chrome ample time to discard tabs.
+                time.sleep(2)
+                if n_tabs > len(cr.browser.tabs):
+                    logging.info('tab discard after %d attempts', attempt_count)
+                    break
+                if time.time() > time_limit:
+                    raise error.TestError('FAIL: no tab discard in %d seconds' %
+                                          time_limit - start_time)
+        finally:
+            utils.open_write_close(SYSFS_MARGIN_FILENAME, str(original_margin))
+            logging.warning('discard margin was restored')
+
+    perf_results["DiscardAttemptCount"] = attempt_count
     return perf_results
 
 
@@ -348,6 +405,8 @@ class platform_MemoryPressure(test.test):
         elif flavor == 'realistic':
             pkv = run_realistic_memory_pressure_test(time_limit,
                                                      tab_open_delay_seconds)
+        elif flavor == 'quick':
+            pkv = run_quick_tab_discard_test(time_limit, self.bindir)
         else:
             raise error.TestError('unexpected "flavor" parameter: %s' % flavor)
 
