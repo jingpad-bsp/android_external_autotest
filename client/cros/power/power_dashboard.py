@@ -101,7 +101,8 @@ class BaseDashboard(object):
             start_time = self._logger.times[0]
             relative_checkpoint_data = \
                 self._logger._checkpoint_logger.convert_relative(start_time)
-            powerlog_dict.update({'checkpoint': relative_checkpoint_data})
+            # 'checkpoint2' is the field name for checkpoint data in BigQuery.
+            powerlog_dict.update({'checkpoint2': relative_checkpoint_data})
 
         return powerlog_dict
 

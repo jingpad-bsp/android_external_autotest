@@ -746,7 +746,7 @@ def _get_servo_args_for_host(dut_host):
     if (SERVO_HOST_ATTR not in servo_args
         and not (utils.in_moblab_ssp() or lsbrelease_utils.is_moblab())):
         servo_host = make_servo_hostname(dut_host.hostname)
-        if server_utils.host_is_in_lab_zone(servo_host):
+        if utils.host_is_in_lab_zone(servo_host):
             servo_args[SERVO_HOST_ATTR] = servo_host
 
     if SERVO_PORT_ATTR in servo_args:

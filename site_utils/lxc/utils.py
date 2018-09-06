@@ -65,6 +65,21 @@ def get_host_ip():
     netif = interface.Interface(lxc_network)
     return netif.ipv4_address
 
+def is_vm():
+    """Check if the process is running in a virtual machine.
+
+    @return: True if the process is running in a virtual machine, otherwise
+             return False.
+    """
+    try:
+        virt = utils.run('sudo -n virt-what').stdout.strip()
+        logging.debug('virt-what output: %s', virt)
+        return bool(virt)
+    except error.CmdError:
+        logging.warn('Package virt-what is not installed, default to assume '
+                     'it is not a virtual machine.')
+        return False
+
 
 def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     """Clones a container.
@@ -78,7 +93,7 @@ def clone(lxc_path, src_name, new_path, dst_name, snapshot):
     snapshot_arg = '-s' if snapshot and constants.SUPPORT_SNAPSHOT_CLONE else ''
     # overlayfs is the default clone backend storage. However it is not
     # supported in Ganeti yet. Use aufs as the alternative.
-    aufs_arg = '-B aufs' if utils.is_vm() and snapshot else ''
+    aufs_arg = '-B aufs' if is_vm() and snapshot else ''
     cmd = (('sudo lxc-copy --lxcpath {lxcpath} --newpath {newpath} '
                     '--name {name} --newname {newname} {snapshot} {backing}')
            .format(
