@@ -1,19 +1,20 @@
-NAME = "platform_SimpleMemoryPressure"
-PURPOSE = "Verify tab discarding occurs and is sane."
+NAME = "platform_QuickMemoryPressure"
+PURPOSE = "Verify tab discarding occurs."
 CRITERIA = """
-This test fails if it times out or if the kernel crashes.
-TODO: should also check that no OOM-kills occur.
+Test succeeds when one or more tabs are discarded.
 """
 
 AUTHOR="Luigi Semenzato"
-TIME = "MEDIUM"
+TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 DOC = """
-  This test opens tabs until a tab discard occurs.
-  Each tab contains JS code which allocates and
-  touches large arrays.
+  This test opens a few tabs with large JS object, then increases the
+  discard margin until a tab discard occurs.
+
+  WARNING! The discard margin may be left in an incorrect state if the
+  test exits before it completes.
 """
 
-job.run_test('platform_MemoryPressure', flavor='simple')
+job.run_test('platform_MemoryPressure', flavor='quick', timeout_seconds=60)
