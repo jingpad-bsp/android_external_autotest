@@ -59,6 +59,14 @@ _ETC_LSB_RELEASE = '/etc/lsb-release'
 # ChromeOS update engine client binary location
 _UPDATE_ENGINE_CLIENT = '/usr/bin/update_engine_client'
 
+# Set the suite timeout per suite in minutes
+# default is 24 hours
+_DEFAULT_SUITE_TIMEOUT_MINS = 1440
+_SUITE_TIMEOUT_MAP = {
+    'hardware_storagequal': 40320,
+    'hardware_storagequal_quick': 40320
+}
+
 # Full path to the correct gsutil command to run.
 class GsUtil:
     """Helper class to find correct gsutil command."""
@@ -1027,12 +1035,17 @@ def run_suite(board, build, suite, model=None, ro_firmware=None,
     ap_pass =_CONFIG.get_config_value('MOBLAB', _WIFI_AP_PASS, default='')
     processed_test_args['wifipass'] = ap_pass
 
+    suite_timeout_mins = _SUITE_TIMEOUT_MAP.get(
+            suite, _DEFAULT_SUITE_TIMEOUT_MINS)
+
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
             pool=pool, run_prod_code=False, test_source_build=build,
             wait_for_results=True, suite_args=processed_suite_args,
             test_args=processed_test_args, job_retry=True,
-            max_retries=sys.maxint, model=model)
+            max_retries=sys.maxint, model=model,
+            timeout_mins=suite_timeout_mins,
+            max_runtime_mins=suite_timeout_mins)
 
 
 def _enable_notification_using_credentials_in_bucket():
