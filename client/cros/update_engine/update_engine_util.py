@@ -335,9 +335,9 @@ class UpdateEngineUtil(object):
         with open(self._UPDATE_ENGINE_LOG) as fh:
             update_log = fh.read()
 
-        # Matches <request> ... </request>.  The match can be on multiple
+        # Matches <request ... /request>.  The match can be on multiple
         # lines and the search is not greedy so it only matches one block.
-        return re.findall(r'<request>.?</request>', update_log, re.DOTALL)
+        return re.findall(r'<request.*?/request>', update_log, re.DOTALL)
 
 
     def _get_time_of_last_update_request(self):
