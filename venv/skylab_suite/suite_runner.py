@@ -272,7 +272,7 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
             io_timeout_secs=test_spec.io_timeout_secs)
 
     cros_build_lib = autotest.chromite_load('cros_build_lib')
-    result = cros_build_lib.RunCommand( _make_new_swarming_cmd(),
+    result = cros_build_lib.RunCommand(_make_new_swarming_cmd(),
                                        input=json.dumps(json_request),
                                        env=os.environ.copy(),
                                        capture_output=True)
