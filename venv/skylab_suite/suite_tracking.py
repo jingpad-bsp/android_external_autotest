@@ -273,8 +273,7 @@ def _get_suite_state(child_test_results, suite_handler):
 
     _final_suite_states = _get_final_suite_states()
     for result in child_test_results:
-        if ((suite_handler.should_use_fallback() and
-             result['state'] not in _IGNORED_TEST_STATE) and
+        if ((result['state'] not in _IGNORED_TEST_STATE) and
             result['state'] in _final_suite_states):
             return _final_suite_states[result['state']]
 
