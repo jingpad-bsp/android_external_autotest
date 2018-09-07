@@ -18,7 +18,7 @@ from autotest_lib.server import crashcollect
 from autotest_lib.server.cros import autoupdater
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.hosts import cros_firmware
-from autotest_lib.server.hosts import repair
+from autotest_lib.server.hosts import repair_utils
 
 # _DEV_MODE_ALLOW_POOLS - The set of pools that are allowed to be
 # in dev mode (usually, those should be unmanaged devices)
@@ -486,7 +486,7 @@ class ServoResetRepair(_ResetRepairAction):
         return 'Reset the DUT via servo'
 
 
-class CrosRebootRepair(repair.RebootRepair):
+class CrosRebootRepair(repair_utils.RebootRepair):
     """Repair a CrOS target by clearing dev mode and rebooting it."""
 
     def repair(self, host):
@@ -607,18 +607,18 @@ def _cros_verify_dag():
     FirmwareStatusVerifier = cros_firmware.FirmwareStatusVerifier
     FirmwareVersionVerifier = cros_firmware.FirmwareVersionVerifier
     verify_dag = (
-        (repair.SshVerifier,         'ssh',      ()),
-        (DevModeVerifier,            'devmode',  ('ssh',)),
-        (HWIDVerifier,               'hwid',     ('ssh',)),
-        (ACPowerVerifier,            'power',    ('ssh',)),
-        (EXT4fsErrorVerifier,        'ext4',     ('ssh',)),
-        (WritableVerifier,           'writable', ('ssh',)),
-        (TPMStatusVerifier,          'tpm',      ('ssh',)),
-        (UpdateSuccessVerifier,      'good_au',  ('ssh',)),
-        (FirmwareStatusVerifier,     'fwstatus', ('ssh',)),
-        (FirmwareVersionVerifier,    'rwfw',     ('ssh',)),
-        (PythonVerifier,             'python',   ('ssh',)),
-        (repair.LegacyHostVerifier,  'cros',     ('ssh',)),
+        (repair_utils.SshVerifier,        'ssh',      ()),
+        (DevModeVerifier,                 'devmode',  ('ssh',)),
+        (HWIDVerifier,                    'hwid',     ('ssh',)),
+        (ACPowerVerifier,                 'power',    ('ssh',)),
+        (EXT4fsErrorVerifier,             'ext4',     ('ssh',)),
+        (WritableVerifier,                'writable', ('ssh',)),
+        (TPMStatusVerifier,               'tpm',      ('ssh',)),
+        (UpdateSuccessVerifier,           'good_au',  ('ssh',)),
+        (FirmwareStatusVerifier,          'fwstatus', ('ssh',)),
+        (FirmwareVersionVerifier,         'rwfw',     ('ssh',)),
+        (PythonVerifier,                  'python',   ('ssh',)),
+        (repair_utils.LegacyHostVerifier, 'cros',     ('ssh',)),
     )
     return verify_dag
 
@@ -629,7 +629,7 @@ def _cros_basic_repair_actions():
     repair_actions = (
         # RPM cycling must precede Servo reset:  if the DUT has a dead
         # battery, we need to reattach AC power before we reset via servo.
-        (repair.RPMCycleRepair, 'rpm', (), ('ssh', 'power',)),
+        (repair_utils.RPMCycleRepair, 'rpm', (), ('ssh', 'power',)),
         (ServoSysRqRepair, 'sysrq', (), ('ssh',)),
         (ServoResetRepair, 'servoreset', (), ('ssh',)),
 
@@ -685,11 +685,11 @@ def _moblab_verify_dag():
     """Return the verification DAG for a `MoblabHost`."""
     FirmwareVersionVerifier = cros_firmware.FirmwareVersionVerifier
     verify_dag = (
-        (repair.SshVerifier,         'ssh',     ()),
-        (ACPowerVerifier,            'power',   ('ssh',)),
-        (FirmwareVersionVerifier,    'rwfw',    ('ssh',)),
-        (PythonVerifier,             'python',  ('ssh',)),
-        (repair.LegacyHostVerifier,  'cros',    ('ssh',)),
+        (repair_utils.SshVerifier,        'ssh',     ()),
+        (ACPowerVerifier,                 'power',   ('ssh',)),
+        (FirmwareVersionVerifier,         'rwfw',    ('ssh',)),
+        (PythonVerifier,                  'python',  ('ssh',)),
+        (repair_utils.LegacyHostVerifier, 'cros',    ('ssh',)),
     )
     return verify_dag
 
@@ -697,7 +697,7 @@ def _moblab_verify_dag():
 def _moblab_repair_actions():
     """Return the repair actions for a `MoblabHost`."""
     repair_actions = (
-        (repair.RPMCycleRepair, 'rpm', (), ('ssh', 'power',)),
+        (repair_utils.RPMCycleRepair, 'rpm', (), ('ssh', 'power',)),
         (AutoUpdateRepair, 'au', ('ssh',), _CROS_AU_TRIGGERS),
     )
     return repair_actions
