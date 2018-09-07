@@ -41,6 +41,7 @@ import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
+from autotest_lib.server.hosts import repair_utils
 
 
 # _FIRMWARE_REPAIR_POOLS - The set of pools that should be
@@ -190,9 +191,7 @@ class FirmwareRepair(hosts.RepairAction):
             raise hosts.AutoservRepairError(
                     'Firmware repair is not applicable to host %s.' %
                     host.hostname)
-        if not host.servo:
-            raise hosts.AutoservRepairError(
-                    '%s has no servo support.' % host.hostname)
+        repair_utils.require_servo(host)
         host.firmware_install()
 
     @property
