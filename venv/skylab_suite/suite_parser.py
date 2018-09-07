@@ -76,12 +76,9 @@ def make_parser():
     parser.add_argument(
         "--minimum_duts", type=int, default=1, action="store",
         help="A minimum required numbers of DUTs to run this suite.")
+    # TODO(ayatane): Make sure no callers pass --use_fallback before removing.
     parser.add_argument(
-        "--use_fallback", action="store_true",
-        help=('Whether to kick off the child tests with fallback request. '
-              'If it is enabled, the suite will be kicked off no matter '
-              'whether there are well-provisioned DUTs. If not, '
-              'provision will be executed before each test first.'))
+            "--use_fallback", action="store_true", help='Deprecated')
 
     # Swarming-related parameters.
     parser.add_argument(
