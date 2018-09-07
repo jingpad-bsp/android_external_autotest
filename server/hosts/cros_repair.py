@@ -447,9 +447,7 @@ class ServoSysRqRepair(_ResetRepairAction):
 
     def repair(self, host):
         # pylint: disable=missing-docstring
-        if not host.servo:
-            raise hosts.AutoservRepairError(
-                    '%s has no servo support.' % host.hostname)
+        repair_utils.require_servo(host)
         # Press 3 times Alt+VolUp+X
         # no checking DUT health between each press as
         # killing Chrome is not really likely to fix the DUT SSH.
@@ -474,9 +472,7 @@ class ServoResetRepair(_ResetRepairAction):
 
     def repair(self, host):
         # pylint: disable=missing-docstring
-        if not host.servo:
-            raise hosts.AutoservRepairError(
-                    '%s has no servo support.' % host.hostname)
+        repair_utils.require_servo(host)
         host.servo.get_power_state_controller().reset()
         self._check_reset_success(host)
 
@@ -560,9 +556,7 @@ class ServoInstallRepair(hosts.RepairAction):
 
     def repair(self, host):
         # pylint: disable=missing-docstring
-        if not host.servo:
-            raise hosts.AutoservRepairError(
-                    '%s has no servo support.' % host.hostname)
+        repair_utils.require_servo(host)
         host.servo_install(host.stage_image_for_servo())
 
     @property
