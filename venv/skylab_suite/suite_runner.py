@@ -173,7 +173,7 @@ def _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
             '--dump-json', temp_json_path,
             '--hard-timeout', str(test_spec.execution_timeout_secs),
             '--io-timeout', str(test_spec.io_timeout_secs),
-            '--raw-cmd']
+    ]
 
     swarming_cmd += ['--tags=%s' % SKYLAB_LUCI_TAG]
     for k, v in dimensions.iteritems():
