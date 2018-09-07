@@ -125,6 +125,11 @@ def get_basic_swarming_cmd(command):
             '--swarming', os.environ.get('SWARMING_SERVER')]
 
 
+def get_new_task_swarming_cmd():
+    """Return a list of command args for creating a new task."""
+    return get_basic_swarming_cmd('post') + ['tasks/new']
+
+
 def make_fallback_request_dict(cmds, slices_dimensions, slices_expiration_secs,
                                task_name, priority, tags, user,
                                parent_task_id='',
