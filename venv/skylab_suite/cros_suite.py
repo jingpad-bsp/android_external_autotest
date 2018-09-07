@@ -54,7 +54,6 @@ SuiteHandlerSpec = collections.namedtuple(
                 'passed_mins',
                 'test_retry',
                 'max_retries',
-                'use_fallback',
                 'provision_num_required',
         ])
 
