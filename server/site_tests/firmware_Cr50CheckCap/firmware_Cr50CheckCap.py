@@ -17,7 +17,7 @@ class firmware_Cr50CheckCap(Cr50Test):
     # prepvt images. Make sure they match the expected values.
     SPECIAL_CAPS = ['OpenNoDevMode', 'OpenFromUSB']
     EXPECTED_REQ_PREPVT = 'Always'
-    EXPECTED_REQ_PROD = 'Always'
+    EXPECTED_REQ_PROD = 'IfOpened'
     PASSWORD = 'Password'
 
     def check_cap_command(self, command, enable_factory, reset_caps):
