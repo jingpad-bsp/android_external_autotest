@@ -153,39 +153,6 @@ def _make_new_swarming_cmd():
     return basic_swarming_cmd + ['tasks/new']
 
 
-def _make_trigger_swarming_cmd(cmd, dimensions, test_spec,
-                               temp_json_path, suite_id):
-    """Form the swarming cmd.
-
-    @param cmd: The raw command to run in lab.
-    @param dimensions: A dict of dimensions used to form the swarming cmd.
-    @param test_spec: a cros_suite.TestSpec object.
-    @param temp_json_path: The json file to dump the swarming output.
-    @param suite_id: The suite id of the test to kick off.
-
-    @return a string swarming command to kick off.
-    """
-    basic_swarming_cmd = swarming_lib.get_basic_swarming_cmd('trigger')
-    swarming_cmd = basic_swarming_cmd + [
-            '--task-name', test_spec.test.name,
-            '--priority', str(test_spec.priority),
-            '--dump-json', temp_json_path,
-            '--hard-timeout', str(test_spec.execution_timeout_secs),
-            '--io-timeout', str(test_spec.io_timeout_secs),
-    ]
-
-    swarming_cmd += ['--tags=%s' % SKYLAB_LUCI_TAG]
-    for k, v in dimensions.iteritems():
-        swarming_cmd += ['--dimension', k, v]
-
-    if suite_id is not None:
-        swarming_cmd += ['--tags=%s:%s' % ('parent_task_id', suite_id)]
-
-    swarming_cmd += ['--raw-cmd', '--']
-    swarming_cmd += cmd
-    return swarming_cmd
-
-
 def _get_suite_cmd(test_spec, suite_id):
     """Return the commands for running a suite with or without provision.
 
