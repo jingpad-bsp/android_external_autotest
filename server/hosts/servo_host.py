@@ -760,7 +760,7 @@ def get_servo_args_for_host(dut_host):
 
     if info.board:
         servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(info.board)
-    return servo_args
+    return servo_args if SERVO_HOST_ATTR in servo_args else None
 
 
 def _tweak_args_for_ssp_moblab(servo_args):
