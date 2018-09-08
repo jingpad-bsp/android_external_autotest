@@ -76,6 +76,8 @@ suite:chameleon_hdmi_perbuild
 suite:chameleon_hdmi_stress
 suite:chameleon_peripherals
 suite:chameleon_vga
+suite:check_setup_cts_N
+suite:check_setup_storage_qual
 suite:chrome-informational
 suite:cr50_stress_experimental
 suite:cr50_stress_flaky
@@ -149,7 +151,6 @@ suite:ml_service
 suite:mmc_qual
 suite:moblab
 suite:moblab_quick
-suite:moblab_setup
 suite:network_nightly
 suite:network_ui
 suite:partners
