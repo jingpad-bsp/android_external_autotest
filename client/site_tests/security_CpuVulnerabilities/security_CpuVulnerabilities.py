@@ -20,16 +20,16 @@ class security_CpuVulnerabilities(test.test):
 
     TESTS = {
         'amd': {
-            'meltdown': ('0', 'Not affected'),
-            'spectre_v1': ('0', 'Mitigation: __user pointer sanitization'),
-            'spectre_v2': ('0', 'Mitigation: Full AMD retpoline'),
+            'meltdown': ('0', set()),
+            'spectre_v1': ('0', set(['__user pointer sanitization'])),
+            'spectre_v2': ('0', set(['Full AMD retpoline'])),
         },
         'arm': {},
         'i386': {},
         'x86_64': {
-            'meltdown': ('0', 'Mitigation: PTI'),
-            'spectre_v1': ('4.4', 'Mitigation: __user pointer sanitization'),
-            'spectre_v2': ('0', 'Mitigation: Full generic retpoline'),
+            'meltdown': ('0', set(['PTI'])),
+            'spectre_v1': ('4.4', set(['__user pointer sanitization'])),
+            'spectre_v2': ('0', set(['Full generic retpoline'])),
         },
     }
 
@@ -71,8 +71,17 @@ class security_CpuVulnerabilities(test.test):
                 continue
 
             # E.g.:
-            # $ cat /sys/devices/system/cpu/vulnerabilities/meltdown
-            # Mitigation: PTI
+            # Not affected
+            #   $ cat /sys/devices/system/cpu/vulnerabilities/meltdown
+            #   Not affected
+            #
+            # One mitigation
+            #   $ cat /sys/devices/system/cpu/vulnerabilities/meltdown
+            #   Mitigation: PTI
+            #
+            # Several mitigations
+            #   $ cat /sys/devices/system/cpu/vulnerabilities/spectre_v2
+            #   Mitigation: Full generic retpoline, IBPB, IBRS_FW
             with open(file) as f:
                 lines = f.readlines()
                 if len(lines) > 1:
@@ -81,8 +90,21 @@ class security_CpuVulnerabilities(test.test):
                 actual = lines[0].strip()
                 logging.debug('"%s" -> "%s"', file, actual)
 
-                if actual != expected[1]:
-                    failures.append((file, actual, expected[1]))
+                expected_mitigations = expected[1]
+                if not expected_mitigations:
+                    if actual != 'Not affected':
+                        failures.append((file, actual, expected_mitigations))
+                else:
+                    # CPU is affected.
+                    if 'Mitigation' not in actual:
+                        failures.append((file, actual, expected_mitigations))
+                    else:
+                        mit_list = actual.split(':', 1)[1].split(',')
+                        actual_mitigations = set(t.strip() for t in mit_list)
+                        # Test set inclusion.
+                        if actual_mitigations < expected_mitigations:
+                            failures.append((file, actual_mitigations,
+                                             expected_mitigations))
 
         if failures:
             for failure in failures:
