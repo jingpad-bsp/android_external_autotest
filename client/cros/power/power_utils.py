@@ -294,12 +294,14 @@ class Backlight(object):
 
         attributes:
         """
-        cmd = "mosys psu type"
-        result = utils.system_output(cmd, ignore_status=True).strip()
-        self._can_control_bl = not result == "AC_only"
-
-        self._init_level = self.get_level()
+        self._init_level = None
         self.default_brightness_percent = default_brightness_percent
+
+        self._can_control_bl = True
+        try:
+            self._init_level = self.get_level()
+        except error.TestFail:
+            self._can_control_bl = False
 
         logging.debug("device can_control_bl: %s", self._can_control_bl)
         if not self._can_control_bl:
