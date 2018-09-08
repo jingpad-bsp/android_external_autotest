@@ -9,7 +9,6 @@ import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import pinweaver_client
 
 
 class platform_CryptohomeLECredentialManager(test.test):
@@ -19,10 +18,19 @@ class platform_CryptohomeLECredentialManager(test.test):
     version = 1
 
     USER = 'testing@gmail.com'
+    USER2 = 'testing2@gmail.com'
     KEY_LABEL = 'lecred0'
+    KEY_LABEL2 = 'lecred2'
     GOOD_PIN = '123456'
     BAD_PIN = '000000'
     TEST_PASSWORD = '~'
+
+    def get_known_le_credentials(self):
+        """ Returns the set of LE credentials present on the device.
+        """
+        list_result = utils.run('ls /home/.shadow/low_entropy_creds')
+        labels_str = list_result.stdout
+        return set(labels_str.split())
 
     def run_once(self, pre_reboot=None):
         """Runs the platform_CryptohomeLECredentialManager test.
@@ -39,6 +47,7 @@ class platform_CryptohomeLECredentialManager(test.test):
             utils.run('rm -rf /home/.shadow/low_entropy_creds')
             try:
                 cryptohome.remove_vault(self.USER)
+                cryptohome.remove_vault(self.USER2)
             except cryptohome.ChromiumOSError:
                 pass
             utils.run('start cryptohomed')
@@ -91,6 +100,33 @@ class platform_CryptohomeLECredentialManager(test.test):
         cryptohome.mount_vault(user=self.USER, password=self.GOOD_PIN,
                                key_label=self.KEY_LABEL)
         cryptohome.unmount_vault()
+
+        logging.info('Testing LE cred removal on user removal!')
+
+        # Create a new user to test removal.
+        cryptohome.mount_vault(user=self.USER2, password=self.TEST_PASSWORD,
+                               create=True, key_label='default')
+        lecreds_before_add = self.get_known_le_credentials()
+
+        cryptohome.add_le_key(
+            user=self.USER2, password=self.TEST_PASSWORD,
+            new_key_label=self.KEY_LABEL, new_password=self.GOOD_PIN)
+        cryptohome.add_le_key(
+            user=self.USER2, password=self.TEST_PASSWORD,
+            new_key_label=self.KEY_LABEL2, new_password=self.GOOD_PIN)
+        cryptohome.unmount_vault()
+        lecreds_after_add = self.get_known_le_credentials()
+
+        cryptohome.remove_vault(self.USER2)
+        lecreds_after_remove = self.get_known_le_credentials()
+
+        if lecreds_after_add == lecreds_before_add:
+            raise cryptohome.ChromiumOSError(
+                'LE creds not added successfully')
+
+        if lecreds_after_remove != lecreds_before_add:
+            raise cryptohome.ChromiumOSError(
+                'LE creds not deleted succesfully on user deletion!')
 
         if pre_reboot is None or pre_reboot == False:
             logging.info('Testing remove credential!')
