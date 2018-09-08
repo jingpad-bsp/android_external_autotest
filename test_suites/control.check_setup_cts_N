@@ -3,10 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "moblab_setup"
+NAME = "check_setup_cts_N"
 PURPOSE = """
-Test moblab has correct DUT configuration in preparation of a longer
-running test
+Test moblab has correct DUT configuration for cts N suite
 """
 
 TIME = "SHORT"
