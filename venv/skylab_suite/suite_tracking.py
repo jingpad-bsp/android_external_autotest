@@ -15,8 +15,8 @@ import logging.config
 from lucifer import autotest
 from skylab_suite import swarming_lib
 
-# Test status in _IGNORED_TEST_STATE won't be reported as test failure
-# if --use_fallback is specified. Or test may be reported as failure as
+# Test status in _IGNORED_TEST_STATE won't be reported as test failure.
+# Or test may be reported as failure as
 # it's probably caused by the DUT is not well-provisioned.
 # TODO: Stop ignoring TASK_NO_RESOURCE if we drop TEST_NA feature.
 # Blocking issues:
@@ -273,8 +273,7 @@ def _get_suite_state(child_test_results, suite_handler):
 
     _final_suite_states = _get_final_suite_states()
     for result in child_test_results:
-        if ((suite_handler.use_fallback and
-             result['state'] not in _IGNORED_TEST_STATE) and
+        if ((result['state'] not in _IGNORED_TEST_STATE) and
             result['state'] in _final_suite_states):
             return _final_suite_states[result['state']]
 

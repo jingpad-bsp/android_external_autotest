@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Team"
 NAME = "cts_N"
 PURPOSE = "Test that the moblab has the correct setup for cts_N suite"
-ATTRIBUTES = "suite:moblab_setup"
+ATTRIBUTES = "suite:check_setup_cts_N"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "dummy"

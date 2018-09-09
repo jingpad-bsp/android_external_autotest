@@ -729,7 +729,7 @@ def _map_afe_board_to_servo_board(afe_board):
     return mapped_board
 
 
-def _get_servo_args_for_host(dut_host):
+def get_servo_args_for_host(dut_host):
     """Return servo data associated with a given DUT.
 
     @param dut_host   Instance of `Host` on which to find the servo
@@ -760,7 +760,7 @@ def _get_servo_args_for_host(dut_host):
 
     if info.board:
         servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(info.board)
-    return servo_args
+    return servo_args if SERVO_HOST_ATTR in servo_args else None
 
 
 def _tweak_args_for_ssp_moblab(servo_args):
@@ -826,7 +826,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
     """
     servo_dependency = servo_args is not None
     if dut is not None and (try_lab_servo or servo_dependency):
-        servo_args_override = _get_servo_args_for_host(dut)
+        servo_args_override = get_servo_args_for_host(dut)
         if servo_args_override is not None:
             if utils.in_moblab_ssp():
                 _tweak_args_for_ssp_moblab(servo_args_override)

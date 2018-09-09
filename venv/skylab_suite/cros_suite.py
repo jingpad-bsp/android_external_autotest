@@ -54,7 +54,6 @@ SuiteHandlerSpec = collections.namedtuple(
                 'passed_mins',
                 'test_retry',
                 'max_retries',
-                'use_fallback',
                 'provision_num_required',
         ])
 
@@ -97,7 +96,6 @@ class SuiteHandler(object):
         self._provision_num_required = specs.provision_num_required
         self._test_retry = specs.test_retry
         self._max_retries = specs.max_retries
-        self.use_fallback = specs.use_fallback
         self.passed_mins = specs.passed_mins
 
         # The swarming task id of the suite that this suite_handler is handling.
@@ -120,14 +118,6 @@ class SuiteHandler(object):
     def is_provision(self):
         """Return whether the suite handler is for provision suite."""
         return self._suite_name == 'provision'
-
-    def should_use_fallback(self):
-        """Return whether to use fallback to trigger child tests.
-
-        It's either specified by user with --use_fallback, or it's a
-        provision suite.
-        """
-        return self.use_fallback or self.is_provision()
 
     def set_suite_id(self, suite_id):
         """Set swarming task id for a suite.

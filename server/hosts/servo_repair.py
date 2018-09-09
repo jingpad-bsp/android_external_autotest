@@ -8,7 +8,7 @@ import time
 import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.hosts import repair
+from autotest_lib.server.hosts import repair_utils
 
 
 class _UpdateVerifier(hosts.Verifier):
@@ -295,7 +295,7 @@ class _RestartServod(hosts.RepairAction):
         return 'Start servod with the proper config settings.'
 
 
-class _ServoRebootRepair(repair.RebootRepair):
+class _ServoRebootRepair(repair_utils.RebootRepair):
     """
     Reboot repair action that also waits for an update.
 
@@ -352,7 +352,7 @@ def create_servo_repair_strategy():
     """
     config = ['brd_config', 'ser_config']
     verify_dag = [
-        (repair.SshVerifier,         'servo_ssh',   []),
+        (repair_utils.SshVerifier,   'servo_ssh',   []),
         (_UpdateVerifier,            'update',      ['servo_ssh']),
         (_BoardConfigVerifier,       'brd_config',  ['servo_ssh']),
         (_SerialConfigVerifier,      'ser_config',  ['servo_ssh']),
@@ -372,7 +372,7 @@ def create_servo_repair_strategy():
 
     servod_deps = ['job', 'servod', 'pwr_button']
     repair_actions = [
-        (repair.RPMCycleRepair, 'rpm', [], ['servo_ssh']),
+        (repair_utils.RPMCycleRepair, 'rpm', [], ['servo_ssh']),
         (_RestartServod, 'restart', ['servo_ssh'], config + servod_deps),
         (_ServoRebootRepair, 'servo_reboot', ['servo_ssh'], servod_deps),
         (_DutRebootRepair, 'dut_reboot', ['servod'], ['lid_open']),

@@ -10,6 +10,13 @@ from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import utils
 
 
+def require_servo(host):
+    """Require a DUT to have a working servo for a repair action."""
+    if not host.servo:
+        raise hosts.AutoservRepairError(
+                '%s has no working servo.' % host.hostname)
+
+
 class SshVerifier(hosts.Verifier):
     """
     Verifier to test a host's accessibility via `ssh`.
