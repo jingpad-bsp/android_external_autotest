@@ -84,7 +84,7 @@ class firmware_FAFTSetup(FirmwareTest):
         logging.info("Check cold boot")
         self.switcher.mode_aware_reboot(reboot_type='cold')
 
-        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+        if self.faft_config.fw_bypasser_type == 'ctrl_d_bypasser':
             logging.info("Check keyboard simulation")
             self.check_state(self.keyboard_checker)
         else:
