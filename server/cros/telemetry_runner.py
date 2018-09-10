@@ -24,7 +24,11 @@ WARNING_STATUS = 'WARNING'
 FAILED_STATUS = 'FAILED'
 
 # A list of telemetry tests that cannot run on dut.
-ON_DUT_BLACKLIST = ['system_health.memory_desktop']
+ON_DUT_BLACKLIST = [
+    'loading.desktop',              # crbug/882299
+    'rendering.desktop',            # crbug/882291
+    'system_health.memory_desktop', # crbug/874386
+]
 
 class TelemetryResult(object):
     """Class to represent the results of a telemetry run.
