@@ -14,7 +14,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros.video import device_capability
-from autotest_lib.client.cros.video import encoder_utils
 from autotest_lib.client.cros.video import helper_logger
 
 
@@ -262,8 +261,6 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
             '--output_log="%s"' % test_log_file,
             '--ozone-platform=gbm',
             helper_logger.chrome_vmodule_flag()]
-        if encoder_utils.has_broken_flush():
-            vea_args.append('--disable_flush')
         return vea_args
 
 
