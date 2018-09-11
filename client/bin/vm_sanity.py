@@ -4,10 +4,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''A simple sanity test for Chrome.
+'''Sanity tests for Chrome on Chrome OS.
 
-This script logs in, ensures that the cryptohome is mounted,
-and checks that the browser is functional.
+This script runs a number of sanity tests to ensure that Chrome browser on
+Chrome OS is functional.
 '''
 
 from __future__ import print_function
@@ -25,78 +25,144 @@ from autotest_lib.client.common_lib.error import TestFail
 from autotest_lib.client.cros import cryptohome
 
 
-def Sanity(count=1):
+class VMSanity(object):
+  """Class for managing VM Sanity tests."""
+
+
+  def __init__(self, count=1, run_cryptohome=True, run_incognito=True,
+               run_tast=True, run_mash=True):
+    self.count = count
+    self.run_cryptohome = run_cryptohome
+    self.run_tast = run_tast
+    self.run_incognito = run_incognito
+    self.run_mash = run_mash
+
+
+  def Run(self):
     start = datetime.datetime.now()
-    logging.info('Starting chrome and logging in.')
-    is_arc_available = utils.is_arc_available()
-    arc_mode = arc_common.ARC_MODE_ENABLED if is_arc_available else None
-    for i in range(count):
-        if count > 1:
-            logging.info('Starting iteration %d.', i)
-        with chrome.Chrome(arc_mode=arc_mode, num_tries=1) as cr:
-            # Check that the cryptohome is mounted.
-            # is_vault_mounted throws an exception if it fails.
-            logging.info('Checking mounted cryptohome.')
-            cryptohome.is_vault_mounted(user=cr.username, allow_fail=False)
-            # Navigate to about:blank.
-            tab = cr.browser.tabs[0]
-            tab.Navigate('about:blank')
 
-            # Evaluate some javascript.
-            logging.info('Evaluating JavaScript.')
-            if tab.EvaluateJavaScript('2+2') != 4:
-                raise TestFail('EvaluateJavaScript failed')
-
-            # ARC test.
-            if is_arc_available:
-                arc.wait_for_android_process('org.chromium.arc.intent_helper')
-                arc.wait_for_adb_ready()
-                logging.info('Android booted successfully.')
-                if not arc.is_package_installed('android'):
-                    raise TestFail('"android" system package was not listed by '
-                                   'Package Manager.')
-
-        if is_arc_available:
-            utils.poll_for_condition(lambda: not arc.is_adb_connected(),
-                                     timeout=15,
-                                     desc='Android container still running '
-                                          'after Chrome shutdown.')
-
-        # Test incognito mode.
-        with chrome.Chrome(logged_in=False):
-            if not cryptohome.is_guest_vault_mounted():
-                raise TestFail('Expected to find a guest vault mounted.')
-        if cryptohome.is_guest_vault_mounted(allow_fail=True):
-            raise TestFail('Expected to NOT find a guest vault mounted.')
-
-        # Run Tast tests.
-        utils.system('local_test_runner \'(!informational && !disabled && ' +
-                     '("dep:chrome" || "dep:chrome_login") && ' +
-                     '!"dep:android")\'')
-
-        # GPU info collection via devtools SystemInfo.getInfo does not work
-        # under mash due to differences in how the GPU process is configured
-        # with mus hosting viz. http://crbug.com/669965
-        mash_browser_args = ['--enable-features=Mash',
-                             '--gpu-no-complete-info-collection']
-
-        logging.info('Testing Chrome with Mash login.')
-        with chrome.Chrome(extra_browser_args=mash_browser_args):
-            logging.info('Chrome login with Mash succeeded.')
+    for i in range(self.count):
+      if self.count > 1:
+        logging.info('Starting iteration %d.', i)
+      if self.run_cryptohome:
+        self.RunCryptohomeTest()
+      if self.run_incognito:
+        self.RunIncognitoTest()
+      if self.run_tast:
+        self.RunTastTest()
+      if self.run_mash:
+        self.RunMashTest()
 
     elapsed = datetime.datetime.now() - start
-    logging.info('Test succeeded in %s seconds.', elapsed.seconds)
+    logging.info('Tests succeeded in %s seconds.', elapsed.seconds)
+
+
+  def RunCryptohomeTest(self):
+    """Test Cryptohome."""
+    logging.info('RunCryptohomeTest: Starting chrome and logging in.')
+    is_arc_available = utils.is_arc_available()
+    arc_mode = arc_common.ARC_MODE_ENABLED if is_arc_available else None
+    with chrome.Chrome(arc_mode=arc_mode, num_tries=1) as cr:
+      # Check that the cryptohome is mounted.
+      # is_vault_mounted throws an exception if it fails.
+      logging.info('Checking mounted cryptohome.')
+      cryptohome.is_vault_mounted(user=cr.username, allow_fail=False)
+      # Navigate to about:blank.
+      tab = cr.browser.tabs[0]
+      tab.Navigate('about:blank')
+
+      # Evaluate some javascript.
+      logging.info('Evaluating JavaScript.')
+      if tab.EvaluateJavaScript('2+2') != 4:
+        raise TestFail('EvaluateJavaScript failed')
+
+      # ARC test.
+      if is_arc_available:
+        arc.wait_for_android_process('org.chromium.arc.intent_helper')
+        arc.wait_for_adb_ready()
+        logging.info('Android booted successfully.')
+        if not arc.is_package_installed('android'):
+          raise TestFail('"android" system package was not listed by '
+                         'Package Manager.')
+
+    if is_arc_available:
+      utils.poll_for_condition(lambda: not arc.is_adb_connected(),
+                               timeout=15,
+                               desc='Android container still running '
+                               'after Chrome shutdown.')
+
+
+  def RunIncognitoTest(self):
+    """Test Incognito mode."""
+    logging.info('RunIncognitoTest')
+    with chrome.Chrome(logged_in=False):
+      if not cryptohome.is_guest_vault_mounted():
+        raise TestFail('Expected to find a guest vault mounted.')
+    if cryptohome.is_guest_vault_mounted(allow_fail=True):
+      raise TestFail('Expected to NOT find a guest vault mounted.')
+
+
+  def RunTastTest(self):
+    """Run Tast tests."""
+    logging.info('RunTastTest')
+    android = '' if utils.is_arc_available() else ' && !"dep:android"'
+    tast_cmd = ('local_test_runner \'(!informational && !disabled && ' +
+                '("dep:chrome" || "dep:chrome_login")%s)\'' % android)
+    utils.system(tast_cmd)
+
+
+  def RunMashTest(self):
+    """Run Mash tests.
+
+    GPU info collection via devtools SystemInfo.getInfo does not work
+    under mash due to differences in how the GPU process is configured
+    with mus hosting viz. http://crbug.com/669965
+    """
+    logging.info('RunMashTest')
+    browser_args = ['--enable-features=Mash',
+                    '--gpu-no-complete-info-collection']
+    with chrome.Chrome(extra_browser_args=browser_args):
+      logging.info('Chrome login with Mash succeeded.')
+
+
+  @staticmethod
+  def ParseArgs(argv):
+    """Parse command line.
+
+    Args:
+      argv: List of command line arguments.
+
+    Returns:
+      List of parsed opts.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--count', type=int, default=1,
+                        help='Number of iterations of the test to run.')
+    parser.add_argument('--all', default=False, action='store_true',
+                        help='Run all tests.')
+    parser.add_argument('--run-cryptohome', default=False, action='store_true',
+                        help='Run cryptohome test.')
+    parser.add_argument('--run-incognito', default=False, action='store_true',
+                        help='Run incognito test.')
+    parser.add_argument('--run-tast', default=False, action='store_true',
+                        help='Run tast test.')
+    parser.add_argument('--run-mash', default=False, action='store_true',
+                        help='Run mash test.')
+    return parser.parse_args(argv)
 
 
 def main(argv):
     '''The main function.'''
+    opts = VMSanity.ParseArgs(argv)
 
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--count', default=1,
-                        help='Number of iterations of the test to run.')
-    opts = parser.parse_args(argv)
-    count = int(opts.count)
-    Sanity(count)
+    # Run all tests if none are specified.
+    if opts.all or not (opts.run_cryptohome or opts.run_incognito or
+                        opts.run_tast or opts.run_mash):
+      opts.run_cryptohome = opts.run_incognito = True
+      opts.run_tast = opts.run_mash = True
+
+    VMSanity(opts.count, opts.run_cryptohome, opts.run_incognito,
+             opts.run_tast, opts.run_mash).Run()
 
 
 if __name__ == '__main__':

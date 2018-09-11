@@ -10,4 +10,4 @@ class login_VMSanity(test.test):
     version = 1
 
     def run_once(self):
-        vm_sanity.Sanity()
+        vm_sanity.VMSanity().Run()

@@ -38,7 +38,7 @@ struct TestProfile {
   bool support_constant_framerate = false;
   TestCropping cropping_profile;
   uint32_t skip_frames = 0;
-  uint32_t lens_facing;
+  uint32_t lens_facing = FACING_FRONT;
 };
 
 /* Test lists:
@@ -594,6 +594,13 @@ const TestProfile GetTestProfile(const std::string& dev_name,
       printf("[Error] %s is not described in camera config file\n",
           usb_info.c_str());
       exit(EXIT_FAILURE);
+    }
+  } else {
+    if (!characteristics.ConfigFileExists()) {
+      printf("[Info] Camera config file doesn't exist\n");
+    } else if (device_info == nullptr) {
+      printf("[Info] %s is not described in camera config file\n",
+          usb_info.c_str());
     }
   }
 

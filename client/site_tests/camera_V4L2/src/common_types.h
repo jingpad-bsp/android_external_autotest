@@ -15,6 +15,13 @@
 #define LOGF(level) LOG(level) << __FUNCTION__ << "(): "
 #define VLOGF(level) VLOG(level) << __FUNCTION__ << "(): "
 
+// The definition should match camera_metadata_enum_android_lens_facing_t
+// in camera_metadata_tags.h.
+enum lens_facing {
+  FACING_FRONT,
+  FACING_BACK,
+};
+
 // The types in this file should match Android camera HAL.
 
 struct DeviceInfo {
@@ -40,7 +47,7 @@ struct DeviceInfo {
 
   // Member definitions can be found in https://developer.android.com/
   // reference/android/hardware/camera2/CameraCharacteristics.html
-  uint32_t lens_facing;
+  uint32_t lens_facing = FACING_FRONT;
   int32_t sensor_orientation = 0;
 
   // These fields are not available for external cameras.
@@ -79,12 +86,5 @@ struct SupportedFormat {
 };
 
 typedef std::vector<SupportedFormat> SupportedFormats;
-
-// The definition should be match camera_metadata_enum_android_lens_facing_t
-// in camera_metadata_tags.h.
-enum lens_facing {
-  FACING_FRONT,
-  FACING_BACK,
-};
 
 #endif
