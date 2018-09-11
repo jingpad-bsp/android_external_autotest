@@ -29,13 +29,12 @@ class VMSanity(object):
   """Class for managing VM Sanity tests."""
 
 
-  def __init__(self, count=1, run_cryptohome=True, run_incognito=True,
-               run_tast=True, run_mash=True):
+  def __init__(self, count=1, run_cryptohome=True,
+               run_incognito=True, run_tast=True):
     self.count = count
     self.run_cryptohome = run_cryptohome
     self.run_tast = run_tast
     self.run_incognito = run_incognito
-    self.run_mash = run_mash
 
 
   def Run(self):
@@ -50,8 +49,6 @@ class VMSanity(object):
         self.RunIncognitoTest()
       if self.run_tast:
         self.RunTastTest()
-      if self.run_mash:
-        self.RunMashTest()
 
     elapsed = datetime.datetime.now() - start
     logging.info('Tests succeeded in %s seconds.', elapsed.seconds)
@@ -111,20 +108,6 @@ class VMSanity(object):
     utils.system(tast_cmd)
 
 
-  def RunMashTest(self):
-    """Run Mash tests.
-
-    GPU info collection via devtools SystemInfo.getInfo does not work
-    under mash due to differences in how the GPU process is configured
-    with mus hosting viz. http://crbug.com/669965
-    """
-    logging.info('RunMashTest')
-    browser_args = ['--enable-features=Mash',
-                    '--gpu-no-complete-info-collection']
-    with chrome.Chrome(extra_browser_args=browser_args):
-      logging.info('Chrome login with Mash succeeded.')
-
-
   @staticmethod
   def ParseArgs(argv):
     """Parse command line.
@@ -146,8 +129,6 @@ class VMSanity(object):
                         help='Run incognito test.')
     parser.add_argument('--run-tast', default=False, action='store_true',
                         help='Run tast test.')
-    parser.add_argument('--run-mash', default=False, action='store_true',
-                        help='Run mash test.')
     return parser.parse_args(argv)
 
 
@@ -157,12 +138,11 @@ def main(argv):
 
     # Run all tests if none are specified.
     if opts.all or not (opts.run_cryptohome or opts.run_incognito or
-                        opts.run_tast or opts.run_mash):
-      opts.run_cryptohome = opts.run_incognito = True
-      opts.run_tast = opts.run_mash = True
+                        opts.run_tast):
+      opts.run_cryptohome = opts.run_incognito = opts.run_tast = True
 
-    VMSanity(opts.count, opts.run_cryptohome, opts.run_incognito,
-             opts.run_tast, opts.run_mash).Run()
+    VMSanity(opts.count, opts.run_cryptohome,
+             opts.run_incognito, opts.run_tast).Run()
 
 
 if __name__ == '__main__':
