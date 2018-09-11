@@ -211,7 +211,7 @@ class GsCacheClient(object):
         try:
             with metrics.SecondsTimer(
                     METRICS_PATH + '/call_timer', record_on_exception=True,
-                    add_exception_field=True,
+                    add_exception_field=True, scale=0.001,
                     fields={'rpc_name': 'list_suite_controls',
                             'is_gs_cache_call': True}
             ):
@@ -223,14 +223,17 @@ class GsCacheClient(object):
             logging.warn('GS Cache Error: %s', err)
             logging.warn(
                     'Falling back to devserver call of "list_suite_controls".')
-            c = metrics.Counter(METRICS_PATH + '/fallback_to_devserver')
+            c = metrics.Counter(METRICS_PATH + '/fallback_to_devserver_2')
+            error_type = ('other' if isinstance(err, NoGsCacheServerError) else
+                          'gs_cache_error')
             c.increment(fields={'rpc_server': self._api.server_netloc,
-                                'rpc_name': 'list_suite_controls'})
+                                'rpc_name': 'list_suite_controls',
+                                'error_type': error_type})
 
         try:
             with metrics.SecondsTimer(
                     METRICS_PATH + '/call_timer', record_on_exception=True,
-                    add_exception_field=True,
+                    add_exception_field=True, scale=0.001,
                     fields={'rpc_name': 'list_suite_controls',
                             'is_gs_cache_call': False}
             ):
