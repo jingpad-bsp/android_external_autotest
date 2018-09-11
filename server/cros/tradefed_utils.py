@@ -158,10 +158,9 @@ def parse_tradefed_result(result, waivers=None):
         if match:
             accurate = False
 
-    logging.debug('Total ABIs: %s', abis)
-    # TODO(crbug.com/842659): Output to somewhere more convenient.
+    logging.info('Total ABIs: %s', abis)
     if failed_tests:
-        logging.debug('Failed (but not waived) tests:\n%s',
+        logging.error('Failed (but not waived) tests:\n%s',
             '\n'.join(sorted(failed_tests)))
 
     # TODO(dhaddock): Find a more robust way to apply waivers.
