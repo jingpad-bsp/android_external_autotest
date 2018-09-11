@@ -269,7 +269,8 @@ def _schedule_test(test_spec, suite_id=None,
             continue
 
         # label-tag hasn't been an official label for skylab bots.
-        dimensions['label-tag'] = dep
+        # TODO(crbug.com/883066, crbug.com/873886): Support test dependencies.
+        # dimensions['label-tag'] = dep
 
     return _run_swarming_cmd_with_fallback(
             [cmd, cmd_with_fallback], dimensions, test_spec,
