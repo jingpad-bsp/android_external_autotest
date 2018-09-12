@@ -303,7 +303,7 @@ class WpaCliProxy(object):
         # Then wait for ip configuration to finish.
         start_time = time.time()
         success = utils.poll_for_condition(
-                condition=lambda: self.is_connected(assoc_params.ssid),
+                condition=lambda: self._is_connected(assoc_params.ssid),
                 timeout=assoc_params.configuration_timeout,
                 sleep_interval=self.POLLING_INTERVAL_SECONDS,
                 desc='Wait for ip configuration to finish')
