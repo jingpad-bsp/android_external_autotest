@@ -8,6 +8,7 @@ import re
 import time
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
@@ -55,6 +56,16 @@ class platform_LowMemoryTest(test.test):
 
     def run_once(self):
         """Runs the test once."""
+        ALLOC_MB_PER_PAGE_DEFAULT = 800
+        ALLOC_MB_PER_PAGE_SUB_2GB = 400
+        GB_TO_BYTE = 1024 * 1024 * 1024
+        KB_TO_BYTE = 1024
+
+        alloc_mb_per_page = ALLOC_MB_PER_PAGE_DEFAULT
+        # Allocate less memory per page for devices with 2GB or less memory.
+        if utils.memtotal() * KB_TO_BYTE < 2 * GB_TO_BYTE:
+          alloc_mb_per_page = ALLOC_MB_PER_PAGE_SUB_2GB
+
         # 1 for initial tab opened
         n_tabs = 1
 
@@ -64,7 +75,7 @@ class platform_LowMemoryTest(test.test):
         with chrome.Chrome(init_network_controller=True) as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             while last_event == '':
-                self.create_alloc_page(cr, 800)
+                self.create_alloc_page(cr, alloc_mb_per_page)
                 time.sleep(3)
                 n_tabs += 1
                 last_event = kills_monitor.check_event()
