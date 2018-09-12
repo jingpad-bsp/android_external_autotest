@@ -406,7 +406,8 @@ class Backlight(object):
 
     def restore(self):
         """Restore backlight to initial level when instance created."""
-        self.set_level(self._init_level)
+        if self._init_level is not None:
+            self.set_level(self._init_level)
 
 
 class KbdBacklightException(Exception):
