@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import time
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server import test
@@ -47,7 +48,17 @@ class hardware_StorageQualBase(test.test):
     ]
 
 
-    def run_once(self, client_ip, client_tag='', crypto_runtime=CRYPTO_RUNTIME):
+    def run_once(self, client_ip, client_tag='', crypto_runtime=CRYPTO_RUNTIME,
+            cq=False):
+
+        # in a cq run, do not execute the test, just output
+        # the order that the test would have run in
+        if cq:
+            self.write_test_keyval(
+                {'storage_qual_cq': ('%f hardware_StorageQualBase_%s'
+                    % (time.time(), client_tag))})
+            return
+
         client = hosts.create_host(client_ip)
         client_at = autotest.Autotest(client)
         for test_name, argv in self.CLIENT_FUNCTIONAL_TESTS:

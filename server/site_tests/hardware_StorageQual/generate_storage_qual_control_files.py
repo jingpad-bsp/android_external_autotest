@@ -61,16 +61,24 @@ SOAK = {
     'length': 'long'
 }
 
-SOAK_QUICK = copy.deepcopy(SOAK)
-SOAK_QUICK['iterations'] = 2
-SOAK_QUICK['args']['duration'] = HOUR_IN_SECS
-
 BASE_AFTER = {
     'test': 'hardware_StorageQualBase',
     'args': {'tag': 'after', 'client_tag': 'after'},
     'priority': 70,
     'length': 'long'
 }
+
+SOAK_QUICK = copy.deepcopy(SOAK)
+SOAK_QUICK['iterations'] = 2
+SOAK_QUICK['args']['duration'] = HOUR_IN_SECS
+
+BASE_BEFORE_CQ = copy.deepcopy(BASE_BEFORE)
+BASE_BEFORE_CQ['args']['cq'] = True
+SOAK_CQ = copy.deepcopy(SOAK)
+SOAK_CQ['args']['cq'] = True
+SOAK_CQ['iterations'] = 2
+BASE_AFTER_CQ = copy.deepcopy(BASE_AFTER)
+BASE_AFTER_CQ['args']['cq'] = True
 
 SUITES = {
     'storage_qual': [
@@ -179,12 +187,50 @@ SUITES = {
                 BASE_AFTER
             ]
         }
+    ],
+    'storage_qual_cq': [
+        {
+            'label': 'storage_qual_cq_1',
+            'tests': [
+                BASE_BEFORE_CQ,
+                SOAK_CQ,
+                {
+                    'test': 'hardware_StorageStress',
+                    'args': {'tag': 'suspend', 'power_command': 'suspend',
+                        'storage_test_command': 'full_write',
+                        'suspend_duration': 120,
+                        'duration': HOUR_IN_SECS / 2,
+                        'cq': True
+                    },
+                    'priority': 80,
+                    'length': 'long'
+                },
+                BASE_AFTER_CQ
+            ]
+        },
+
+        {
+            'label': 'storage_qual_cq_2',
+            'tests': [
+                BASE_BEFORE_CQ,
+                SOAK_CQ,
+                {
+                    'test': 'hardware_StorageQualTrimStress',
+                    'args': {'duration': HOUR_IN_SECS / 2, 'cq': True},
+                    'iterations': 2,
+                    'priority': 80,
+                    'length': 'long'
+                },
+                BASE_AFTER_CQ
+            ]
+        }
     ]
 }
 
 SUITE_ATTRIBUTES = {
     'storage_qual': 'suite:storage_qual',
-    'storage_qual_quick': 'suite:storage_qual_quick'
+    'storage_qual_quick': 'suite:storage_qual_quick',
+    'storage_qual_cq': 'suite:storage_qual_cq'
 }
 
 TEMPLATE = """
