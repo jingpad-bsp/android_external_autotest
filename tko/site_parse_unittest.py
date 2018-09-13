@@ -186,7 +186,6 @@ class database_selection_test(mox.MoxTestBase,
         global_db = 'GLOBAL_DB'
         global_pw = 'GLOBAL_PW'
         global_port = ''
-        global_socket = 'GLOBAL_SOCKET'
         local_host = 'LOCAL_HOST'
 
         global_config.global_config.override_config_value(
@@ -200,8 +199,6 @@ class database_selection_test(mox.MoxTestBase,
                 'AUTOTEST_WEB', 'global_db_user', global_user)
         global_config.global_config.override_config_value(
                 'AUTOTEST_WEB', 'global_db_password', global_pw)
-        global_config.global_config.override_config_value(
-                'AUTOTEST_WEB', 'global_db_socket', global_socket)
         global_config.global_config.override_config_value(
                 'AUTOTEST_WEB', 'host', local_host)
 
@@ -218,7 +215,7 @@ class database_selection_test(mox.MoxTestBase,
         self.mox.StubOutWithMock(tko_db.db_sql, 'connect')
         tko_db.db_sql.connect(
                 global_host, global_db, global_user, global_pw,
-                global_port, global_socket).WithSideEffects(fake_connect)
+                global_port).WithSideEffects(fake_connect)
 
         self.mox.ReplayAll()
 
