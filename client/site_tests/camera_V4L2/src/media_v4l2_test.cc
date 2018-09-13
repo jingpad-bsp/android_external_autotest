@@ -613,6 +613,7 @@ const TestProfile GetTestProfile(const std::string& dev_name,
         !device_info->constant_framerate_unsupported;
     profile.skip_frames = device_info->frames_to_skip_after_streamon;
     profile.lens_facing = device_info->lens_facing;
+    profile.check_maximum_resolution = true;
 
     // If there is a camera config and test list is not HAL v1, then we can
     // check cropping requirement according to the sensor physical size.
@@ -628,13 +629,11 @@ const TestProfile GetTestProfile(const std::string& dev_name,
   if (test_list == kDefaultTestList) {
     profile.check_1280x960 = false;
     profile.check_1600x1200 = false;
-    profile.check_maximum_resolution = true;
     profile.check_constant_framerate = false;
   } else if (test_list == kHalv3TestList) {
     profile.check_1280x960 = true;
     profile.check_1600x1200 = true;
     profile.skip_frames = 0;
-    profile.check_maximum_resolution = true;
     profile.check_constant_framerate = true;
   } else if (test_list == kCertificationTestList) {
     profile.check_1280x960 = true;
