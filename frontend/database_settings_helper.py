@@ -139,12 +139,11 @@ def _get_database_config(getter):
     config = {
         'ENGINE': 'autotest_lib.frontend.db.backends.afe',
         'PORT': getter('port', default=''),
-        # Django use setting of HOST for both real host and unix socket. See
-        # crbug.com/868052 for details.
-        'HOST': getter('socket', default=None) or getter('host'),
+        'HOST': getter('host'),
         'NAME': getter('database'),
         'USER': getter('user'),
         'PASSWORD': getter('password', default=''),
+        'PROXY_SOCKET': getter('socket', default=None),
         'READONLY_HOST': getter('readonly_host', default=getter('host')),
         'READONLY_USER': getter('readonly_user', default=getter('user')),
     }
