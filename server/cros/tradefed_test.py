@@ -1144,6 +1144,11 @@ class TradefedTest(test.test):
 
                 # Check if all the tests passed.
                 if failed <= waived and all_done:
+                    if not all(accurate):
+                        raise error.TestFail(
+                            'Failed: Not all tests were executed. After %d '
+                            'retries passing %d tests, waived=%d. %s' % (
+                                steps, passed, waived, self.summary))
                     # TODO(ihf): Make this error.TestPass('...') once
                     # available.
                     if steps > 0 and self._warn_on_test_retry:
@@ -1151,11 +1156,6 @@ class TradefedTest(test.test):
                             'Passed: after %d retries passing %d tests, '
                             'waived=%d. %s' % (steps, passed, waived,
                                                self.summary))
-                    if not all(accurate):
-                        raise error.TestWarn(
-                            'Passed: after %d retries passing %d tests, '
-                            'waived=%d. Tests may not be accurate. %s' % (
-                                steps, passed, waived, self.summary))
                     return
 
         if session_id == None:
