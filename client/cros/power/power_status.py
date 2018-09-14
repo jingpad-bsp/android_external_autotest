@@ -355,16 +355,16 @@ class BatteryStat(DevStat):
         voltage_nominal = voltage_nominal / \
                           BATTERY_DATA_SCALE
 
-        if self.charge_full > (self.charge_full_design * 1.5):
-            raise error.TestError('Unreasonable charge_full value')
-        if self.charge_now > (self.charge_full_design * 1.5):
-            raise error.TestError('Unreasonable charge_now value')
-
         self.energy_rate =  self.voltage_now * self.current_now
 
         self.remaining_time = 0
         if self.current_now and self.energy_rate:
             self.remaining_time =  self.energy / self.energy_rate
+
+        if self.charge_full > (self.charge_full_design * 1.5):
+            raise error.TestError('Unreasonable charge_full value')
+        if self.charge_now > (self.charge_full_design * 1.5):
+            raise error.TestError('Unreasonable charge_now value')
 
 
 class LineStatDummy(DevStat):
