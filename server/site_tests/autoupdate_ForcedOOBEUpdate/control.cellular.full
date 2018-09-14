@@ -9,10 +9,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-# TODO(crbug.com/877107) This test is sometimes causing DUTs to download
-# and install production images from Omaha, which breaks the DUT.
-# Disable the test until we find a better way to stop that event.
-# ATTRIBUTES = "suite:cellular_au"
+ATTRIBUTES = "suite:cellular_au"
 DOC = """
 This tests the forced autoupdate flow at OOBE using cellular.
 
