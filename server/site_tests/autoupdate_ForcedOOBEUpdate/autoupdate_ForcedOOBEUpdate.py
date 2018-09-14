@@ -21,6 +21,11 @@ class autoupdate_ForcedOOBEUpdate(update_engine_test.UpdateEngineTest):
         # Get the last two update_engine logs: before and after reboot.
         self._save_extra_update_engine_logs()
         self._change_cellular_setting_in_update_engine(False)
+
+        # Cancel any update still in progress.
+        if not self._is_update_engine_idle():
+            logging.debug('Canceling the in-progress update.')
+            self._host.run('restart update-engine')
         super(autoupdate_ForcedOOBEUpdate, self).cleanup()
 
 
