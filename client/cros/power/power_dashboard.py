@@ -5,6 +5,7 @@
 import collections
 import json
 import numpy
+import operator
 import os
 import re
 import time
@@ -303,6 +304,44 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         start_time = self._logger.times[0]
         return self._logger._checkpoint_logger.convert_relative(start_time)
 
+    def _tag_with_checkpoint(self, power_dict):
+        """Tag power_dict with checkpoint data.
+        """
+        checkpoint_dict = self._create_checkpoint_dict()
+
+        # Create list of check point event tuple.
+        # Tuple format: (checkpoint_name:str, event_time:float, is_start:bool)
+        checkpoint_event_list = []
+        for name, intervals in checkpoint_dict.iteritems():
+            for start, finish in intervals:
+                checkpoint_event_list.append((name, start, True))
+                checkpoint_event_list.append((name, finish, False))
+
+        checkpoint_event_list = sorted(checkpoint_event_list,
+                                       key=operator.itemgetter(1))
+
+        # Add dummy check point at 1e9 seconds.
+        checkpoint_event_list.append(('dummy', 1e9, True))
+
+        interval_set = set()
+        event_index = 0
+        checkpoint_list = []
+        for i in range(power_dict['sample_count']):
+            curr_time = i * power_dict['sample_duration']
+
+            # Process every checkpoint event until current point of time
+            while checkpoint_event_list[event_index][1] <= curr_time:
+                name, _, is_start = checkpoint_event_list[event_index]
+                if is_start:
+                    interval_set.add(name)
+                else:
+                    interval_set.discard(name)
+                event_index += 1
+
+            checkpoint_list.append(list(interval_set))
+        power_dict['checkpoint'] = checkpoint_list
+
+
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
         power measurement dictionary.
@@ -335,6 +374,8 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
                 power_dict['unit'][domain] = self._unit
             if self._type:
                 power_dict['type'][domain] = self._type
+
+        self._tag_with_checkpoint(power_dict)
         return power_dict
 
 
