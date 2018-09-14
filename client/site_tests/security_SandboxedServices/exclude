@@ -19,6 +19,7 @@ nacl_helper_non
 ping
 ply-image
 ps
+recover_duts
 sleep
 sshd
 sudo
