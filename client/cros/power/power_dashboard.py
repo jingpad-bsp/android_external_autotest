@@ -96,15 +96,19 @@ class BaseDashboard(object):
             'dut': self._create_dut_info_dict(raw_measurement['data'].keys()),
             'power': raw_measurement,
         }
-
-        if self._logger:
-            start_time = self._logger.times[0]
-            relative_checkpoint_data = \
-                self._logger._checkpoint_logger.convert_relative(start_time)
-            # 'checkpoint2' is the field name for checkpoint data in BigQuery.
-            powerlog_dict.update({'checkpoint2': relative_checkpoint_data})
+        checkpoint_dict = self._create_checkpoint_dict()
+        if checkpoint_dict:
+            powerlog_dict['checkpoint2'] = checkpoint_dict
 
         return powerlog_dict
+
+    def _create_checkpoint_dict(self):
+        """Create dictionary for checkpoint.
+
+        Returns:
+            checkpoint dictionary
+        """
+        return None
 
     def _create_dut_info_dict(self, power_rails):
         """Create a dictionary that contain information of the DUT.
@@ -293,6 +297,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         sorted in alphabetical order"""
         pass
 
+    def _create_checkpoint_dict(self):
+        """Create dictionary for checkpoint.
+        """
+        start_time = self._logger.times[0]
+        return self._logger._checkpoint_logger.convert_relative(start_time)
+
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
         power measurement dictionary.
@@ -358,6 +368,7 @@ class SimplePowerLoggerDashboard(ClientTestDashboard):
     """Dashboard class for simple system power measurement taken and publishing
     it to the dashboard.
     """
+
     def __init__(self, duration_secs, power_watts, testname, resultsdir=None,
                  uploadurl=None):
 
