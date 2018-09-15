@@ -25,7 +25,7 @@ class camera_HAL3(test.test):
     dep = 'camera_hal3'
     cros_camera_service = 'cros-camera'
     media_profiles_path = os.path.join('vendor', 'etc', 'media_profiles.xml')
-    tablet_board_list = ['scarlet']
+    tablet_board_list = ['scarlet', 'nocturne']
     enable_test_mode_path = '/run/camera/enable_test'
 
     def setup(self):
