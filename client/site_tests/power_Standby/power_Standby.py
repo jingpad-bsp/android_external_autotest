@@ -106,8 +106,10 @@ class power_Standby(test.test):
         end_ts = time.time()
         offset = (end_ts - start_ts - elapsed_hours * 3600) / 2.
         offset += suspender.get_suspend_delay()
-        power_telemetry_utils.start_measurement(start_ts + offset)
-        power_telemetry_utils.end_measurement(end_ts - offset)
+        start_ts += offset
+        end_ts -= offset
+        power_telemetry_utils.start_measurement(start_ts)
+        power_telemetry_utils.end_measurement(end_ts)
         charge_end = power_stats.battery[0].charge_now
         total_charge_used = charge_start - charge_end
         if total_charge_used <= 0:
@@ -133,7 +135,7 @@ class power_Standby(test.test):
         self.write_perf_keyval(results)
         pdash = power_dashboard.SimplePowerLoggerDashboard(
                 test_hours * 3600., results['w_energy_rate'],
-                self.tagged_testname, self.resultsdir)
+                self.tagged_testname, start_ts, self.resultsdir)
         pdash.upload()
 
         self.output_perf_value(description='hours_standby_time',
