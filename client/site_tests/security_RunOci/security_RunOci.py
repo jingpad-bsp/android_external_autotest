@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import contextlib
 import glob
 import json
 import logging
@@ -30,38 +29,29 @@ CONFIG_JSON_TEMPLATE = '''
     },
     "root": {
         "path": "rootfs",
-        "readonly": false
+        "readonly": true
     },
     "hostname": "runc",
     "mounts": [
-    {
-        "destination": "/",
-        "type": "bind",
-        "source": "/",
-        "options": [
-            "bind",
-            "recursive"
-        ]
-    },
-    {
-        "destination": "/proc",
-        "type": "proc",
-        "source": "proc",
-        "options": [
-            "nodev",
-            "noexec",
-            "nosuid"
-        ]
-    },
-    {
-        "destination": "/dev",
-        "type": "bind",
-        "source": "/dev",
-        "options": [
-            "bind",
-            "recursive"
-        ]
-    }
+        {
+            "destination": "/",
+            "type": "bind",
+            "source": "/",
+            "options": [
+                "rbind",
+                "ro"
+            ]
+        },
+        {
+            "destination": "/proc",
+            "type": "proc",
+            "source": "proc",
+            "options": [
+                "nodev",
+                "noexec",
+                "nosuid"
+            ]
+        }
     ],
     "hooks": {},
     "linux": {
@@ -121,17 +111,6 @@ CONFIG_JSON_TEMPLATE = '''
 }
 '''
 
-@contextlib.contextmanager
-def bind_mounted_root(rootfs_path):
-    """
-    Sets up and cleans up the runtime environment for each test.
-
-    @param rootfs_path: The path of the container's rootfs
-    """
-    utils.run(['mount', '--bind', '/', rootfs_path])
-    yield
-    utils.run(['umount', '-f', rootfs_path])
-
 
 class security_RunOci(test.test):
     """Tests run_oci."""
@@ -148,11 +127,11 @@ class security_RunOci(test.test):
         @param oci_path: The path of the directory that contains config.json.
         """
         result = utils.run(
-                ['/usr/bin/run_oci'] + test_config['run_oci_args'] +
-                ['run', '-c', oci_path, 'test_container'] +
-                test_config.get('program_extra_argv', '').split(),
-                ignore_status=True, stderr_is_expected=True, verbose=True,
-                stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
+            ['/usr/bin/run_oci'] + test_config['run_oci_args'] +
+            ['run', '-c', oci_path, 'test_container'] +
+            test_config.get('program_extra_argv', '').split(),
+            ignore_status=True, stderr_is_expected=True, verbose=True,
+            stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
         expected = test_config['expected_result'].strip()
         if result.stdout.strip() != expected:
             logging.error('stdout mismatch %s != %s',
@@ -181,28 +160,26 @@ class security_RunOci(test.test):
             config = json.loads(CONFIG_JSON_TEMPLATE)
             config['process']['args'] = test_config['program_argv']
             if 'overrides' in test_config:
-              for path, value in test_config['overrides'].iteritems():
-                node = config
-                path = path.split('.')
-                for component in path[:-1]:
-                  if component not in node:
-                    node[component] = {}
-                  node = node[component]
-                if (path[-1] in node and
-                    isinstance(node[path[-1]], list) and
-                    isinstance(value, list)):
-                  node[path[-1]].extend(value)
-                else:
-                  node[path[-1]] = value
+                for path, value in test_config['overrides'].iteritems():
+                    node = config
+                    path = path.split('.')
+                    for component in path[:-1]:
+                        if component not in node:
+                            node[component] = {}
+                        node = node[component]
+                    if (path[-1] in node and
+                            isinstance(node[path[-1]], list) and
+                            isinstance(value, list)):
+                        node[path[-1]].extend(value)
+                    else:
+                        node[path[-1]] = value
             logging.debug('Running %s with config.json %s',
                           name, json.dumps(config))
             json.dump(config, config_file, indent=2)
         rootfs_path = os.path.join(td.name, 'rootfs')
         os.mkdir(rootfs_path)
         os.chown(rootfs_path, chronos_uid, chronos_uid)
-        with bind_mounted_root(rootfs_path):
-            return self.run_test_in_dir(test_config, td.name)
-        return False
+        return self.run_test_in_dir(test_config, td.name)
 
 
     def run_once(self):
