@@ -102,9 +102,8 @@ class VMSanity(object):
   def RunTastTest(self):
     """Run Tast tests."""
     logging.info('RunTastTest')
-    android = '' if utils.is_arc_available() else ' && !"dep:android"'
     tast_cmd = ('local_test_runner \'(!informational && !disabled && ' +
-                '("dep:chrome" || "dep:chrome_login")%s)\'' % android)
+                '("dep:chrome" || "dep:chrome_login"))\'')
     utils.system(tast_cmd)
 
 
