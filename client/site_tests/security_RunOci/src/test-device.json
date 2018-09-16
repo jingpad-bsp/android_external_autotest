@@ -11,7 +11,8 @@
 				"options": [
 					"noexec",
 					"nosuid"
-				]
+				],
+				"performInIntermediateNamespace": true
 			}
 		],
 		"linux.devices": [
