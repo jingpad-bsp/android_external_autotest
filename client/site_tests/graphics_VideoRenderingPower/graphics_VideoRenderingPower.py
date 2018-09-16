@@ -16,8 +16,11 @@ TEST_NAME_AND_FLAGS = [
     ['hw_overlays_hw_decode', ['']],
     ['no_overlays_hw_decode', ['--enable-hardware-overlays=']],
     ['hw_overlays_sw_decode', ['--disable-accelerated-video-decode']],
-    ['no_overlays_sw_decode',
-        ['--disable-accelerated-video-decode', '--enable-hardware-overlays=']]]
+    [
+        'no_overlays_sw_decode',
+        ['--disable-accelerated-video-decode', '--enable-hardware-overlays=']
+    ]
+]
 # Amount of time to wait for the URL to load and the video to start playing.
 PREAMBLE_DURATION_SECONDS = 8
 # Amount of time to let the video play while measuring power consumption.
@@ -33,6 +36,7 @@ GRAPH_NAME = 'power_consumption'
 
 class graphics_VideoRenderingPower(graphics_utils.GraphicsTest):
     """This test renders on screen for a short while a video from a given
+
     (controlled) URL while measuring the power consumption of the different SoC
     domains.
     """
@@ -76,7 +80,12 @@ class graphics_VideoRenderingPower(graphics_utils.GraphicsTest):
                             'skipping test.')
             return
 
-        rapl = [power_status.SystemPower(self._power_status.battery_path)]
+        rapl = []
+        if power_utils.has_battery():
+            rapl.append(
+                power_status.SystemPower(self._power_status.battery_path))
+        else:
+            logging.warning('This board has no battery.')
         rapl += power_rapl.create_rapl()
 
         for test_name_and_flags in TEST_NAME_AND_FLAGS:
