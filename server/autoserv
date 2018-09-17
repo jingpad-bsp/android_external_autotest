@@ -648,7 +648,13 @@ def _require_ssp_from_control(control_name):
     """
     if not control_name:
         return True
-    path = _control_path_on_disk(control_name)
+    try:
+        path = _control_path_on_disk(control_name)
+    except error.AutoservError:
+        sys.stderr.write("autoserv: Could not determine control file path,"
+                         " assuming we need SSP: %s" % e)
+        sys.stderr.flush()
+        return True
     if not os.path.isfile(path):
         return True
     control = control_data.parse_control(path)
