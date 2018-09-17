@@ -447,6 +447,10 @@ def verify_and_clean_options(options):
     # Default to use the test code in CrOS build.
     if not options.test_source_build and options.build:
         options.test_source_build = options.build
+    options.child_dependencies = _make_child_dependencies(options)
+    base_dependencies = ('board:%s' % options.board,
+                         'pool:%s' % options.pool)
+    options.dependencies = base_dependencies + options.child_dependencies
     return True
 
 
@@ -1631,7 +1635,7 @@ class ResultCollector(object):
                     self.timings.suite_start_time).total_seconds()
 
 
-def _make_child_deps_from_options(options):
+def _make_child_dependencies(options):
     """Creates a list of extra dependencies for child jobs.
 
     @param options: Parsed arguments to run_suite.
@@ -1641,7 +1645,7 @@ def _make_child_deps_from_options(options):
     """
     if not options.model:
         return ()
-    return ['model:%s' % options.model]
+    return ('model:%s' % options.model,)
 
 
 @retry.retry(error.StageControlFileFailure, timeout_min=10)
@@ -1690,7 +1694,7 @@ def create_suite(afe, options):
         delay_minutes=options.delay_minutes,
         job_keyvals=options.job_keyvals,
         test_args=options.test_args,
-        child_dependencies=_make_child_deps_from_options(options),
+        child_dependencies=options.child_dependencies,
     )
 
 
@@ -1733,7 +1737,7 @@ def _run_suite(options):
             raise utils.TestLabException('Failed to retrieve job: %d' % job_id)
     else:
         try:
-            rpc_helper.check_dut_availability(options.board, options.pool,
+            rpc_helper.check_dut_availability(options.dependencies,
                                               options.minimum_duts,
                                               options.skip_duts_check)
             job_id = create_suite(afe, options)
@@ -1904,8 +1908,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
             # Add some jitter to make up for any latency in
             # aborting the suite or checking for results.
             cutoff = job_timer.timeout_hours + timedelta(hours=0.3)
-            rpc_helper.diagnose_pool(
-                    options.board, options.pool, cutoff)
+            rpc_helper.diagnose_pool(options.dependencies, cutoff)
         except proxy.JSONRPCException:
             logging.warning('Unable to display pool info.')
 
@@ -2000,7 +2003,7 @@ def _run_task(options):
     """
     try:
         return _run_suite(options)
-    except diagnosis_utils.BoardNotAvailableError as e:
+    except diagnosis_utils.DUTsNotAvailableError as e:
         result = run_suite_common.SuiteResult(
             run_suite_common.RETURN_CODES.BOARD_NOT_AVAILABLE,
             {'return_message': 'Skipping testing: %s' % e.message})
