@@ -1272,8 +1272,6 @@ class ResultCollector(object):
     @var _tko: The tko rpc client.
     @var _build: The build for which the suite is run,
                  e.g. 'lumpy-release/R35-5712.0.0'
-    @var _board: The target board for which the suite is run,
-                 e.g., 'lumpy', 'link'.
     @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
     @var _suite_job_id: The job id of the suite for which we are going to
                         collect results.
@@ -1299,16 +1297,14 @@ class ResultCollector(object):
     """
 
 
-    def __init__(self, instance_server, afe, tko, build, board,
-                 suite_name, suite_job_id,
-                 return_code_function,
+    def __init__(self, instance_server, afe, tko, build,
+                 suite_name, suite_job_id, return_code_function,
                  original_suite_name=None,
                  user=None, solo_test_run=False):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
         self._build = build
-        self._board = board
         self._suite_name = suite_name
         self._suite_job_id = suite_job_id
         self._original_suite_name = original_suite_name or suite_name
@@ -1871,7 +1867,6 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
         return_code_function = _ReturnCodeComputer()
     collector = ResultCollector(instance_server=instance_server,
                                 afe=afe, tko=TKO, build=options.build,
-                                board=options.board,
                                 suite_name=options.name,
                                 suite_job_id=job_id,
                                 return_code_function=return_code_function,
