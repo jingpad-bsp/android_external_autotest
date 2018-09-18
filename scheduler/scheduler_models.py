@@ -892,21 +892,20 @@ class HostQueueEntry(DBObject):
             # the next tick, so it's safe to leave the agent there. Without
             # filtering out finished agent, HQE abort won't be able to proceed.
             assert all([agent.is_done() for agent in agents])
-            # If hqe is still in STARTING status, it may not have assigned a
-            # host yet.
-            if self.host:
+
+        if self.host:
+            if self.status in {Status.STARTING, Status.PENDING, Status.RUNNING}:
                 self.host.set_status(models.Host.Status.READY)
-        elif (self.status == Status.VERIFYING or
-              self.status == Status.RESETTING):
-            models.SpecialTask.objects.create(
-                    task=models.SpecialTask.Task.CLEANUP,
-                    host=models.Host.objects.get(id=self.host.id),
-                    requested_by=self.job.owner_model())
-        elif self.status == Status.PROVISIONING:
-            models.SpecialTask.objects.create(
-                    task=models.SpecialTask.Task.REPAIR,
-                    host=models.Host.objects.get(id=self.host.id),
-                    requested_by=self.job.owner_model())
+            elif self.status in {Status.VERIFYING, Status.RESETTING}:
+                models.SpecialTask.objects.create(
+                        task=models.SpecialTask.Task.CLEANUP,
+                        host=models.Host.objects.get(id=self.host.id),
+                        requested_by=self.job.owner_model())
+            elif self.status == Status.PROVISIONING:
+                models.SpecialTask.objects.create(
+                        task=models.SpecialTask.Task.REPAIR,
+                        host=models.Host.objects.get(id=self.host.id),
+                        requested_by=self.job.owner_model())
 
         self.set_status(Status.ABORTED)
 
