@@ -25,5 +25,9 @@ class telemetry_Benchmarks(test.test):
         telemetry = telemetry_runner.TelemetryRunner(host, local, **optional)
         perf_value_writer = self
         extra_args = args.get("extra_args", [])
+        repeat = args.get("pageset_repeat")
+        if repeat is not None:
+            extra_args.append('--pageset-repeat=%s' % repeat)
+
         telemetry.run_telemetry_benchmark(benchmark, perf_value_writer,
                                           *extra_args)
