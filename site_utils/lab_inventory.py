@@ -1268,6 +1268,9 @@ def _parse_command(argv):
     parser.add_argument('--debug', action='store_true',
                         help='Print e-mail, metrics messages on stdout '
                              'without sending them.')
+    parser.add_argument('--no-metrics', action='store_false',
+                        dest='use_metrics',
+                        help='Suppress generation of Monarch metrics.')
     parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
     parser.add_argument('modelnames', nargs='*',
@@ -1335,30 +1338,33 @@ def main(argv):
         sys.exit(1)
     _configure_logging(arguments)
 
-    if arguments.debug:
-        logging.info('--debug mode: Will not  report metrics to monarch')
-        metrics_file = '/dev/null'
-    else:
-        metrics_file = None
-
-    with site_utils.SetupTsMonGlobalState(
-            'lab_inventory', debug_file=metrics_file,
-            auto_flush=False):
-        success = False
-        try:
-            with metrics.SecondsTimer('%s/duration' % _METRICS_PREFIX):
-                _perform_inventory_reports(arguments)
-            success = True
-        except KeyboardInterrupt:
-            pass
-        except (EnvironmentError, Exception):
-            # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
-            logging.exception('Error escaped main')
-            raise
-        finally:
-            metrics.Counter('%s/tick' % _METRICS_PREFIX).increment(
-                    fields={'success': success})
-            metrics.Flush()
+    try:
+        if arguments.use_metrics:
+            if arguments.debug:
+                logging.info('Debug mode: Will not report metrics to monarch.')
+                metrics_file = '/dev/null'
+            else:
+                metrics_file = None
+            with site_utils.SetupTsMonGlobalState(
+                    'lab_inventory', debug_file=metrics_file,
+                    auto_flush=False):
+                success = False
+                try:
+                    with metrics.SecondsTimer('%s/duration' % _METRICS_PREFIX):
+                        _perform_inventory_reports(arguments)
+                    success = True
+                finally:
+                    metrics.Counter('%s/tick' % _METRICS_PREFIX).increment(
+                            fields={'success': success})
+                    metrics.Flush()
+        else:
+            _perform_inventory_reports(arguments)
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
+        logging.exception('Error escaped main')
+        raise
 
 
 def get_inventory(afe):
