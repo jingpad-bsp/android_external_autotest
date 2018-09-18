@@ -79,7 +79,9 @@ class TestRunnerUnittests(mox.MoxTestBase):
                                              job_retry=True)
         suite._retry_handler = suite_module.RetryHandler({job.id: test})
         #No calls, should not be retried
-        directory = tempfile.mkdtemp()
+        directory = os.path.join(tempfile.mkdtemp(),
+                                 'results-01-dummy_Good')
+        os.mkdir(directory)
         try:
             os.mkdir('%s/debug' % directory)
             with open("%s/status.log" % directory, mode='w+') as status:
@@ -88,6 +90,7 @@ class TestRunnerUnittests(mox.MoxTestBase):
                 new_id = suite.handle_local_result(
                     job.id, directory,
                     lambda log_entry, log_in_subdir=False: None)
+                self.assertIsNone(new_id)
         finally:
             shutil.rmtree(directory)
 
@@ -106,7 +109,9 @@ class TestRunnerUnittests(mox.MoxTestBase):
         suite = test_runner_utils.LocalSuite([], "tag", [], None, getter,
                                              job_retry=True)
         suite._retry_handler = suite_module.RetryHandler({job.id: test})
-        directory = tempfile.mkdtemp()
+        directory = os.path.join(tempfile.mkdtemp(),
+                                 'results-01-dummy_Bad')
+        os.mkdir(directory)
         try:
             os.mkdir('%s/debug' % directory)
             with open("%s/status.log" % directory, mode='w+') as status:
