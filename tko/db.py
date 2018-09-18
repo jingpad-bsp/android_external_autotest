@@ -67,10 +67,10 @@ class db_sql(object):
     """Data access."""
 
     def __init__(self, debug=False, autocommit=True, host=None,
-                 database=None, user=None, password=None, proxy_socket=None):
+                 database=None, user=None, password=None):
         self.debug = debug
         self.autocommit = autocommit
-        self._load_config(host, database, user, password, proxy_socket)
+        self._load_config(host, database, user, password)
 
         self.con = None
         self._init_db()
@@ -92,7 +92,7 @@ class db_sql(object):
         self.machine_group = {}
 
 
-    def _load_config(self, host, database, user, password, proxy_socket):
+    def _load_config(self, host, database, user, password):
         """Loads configuration settings required to connect to the database.
 
         This will try to connect to use the settings prefixed with global_db_.
@@ -101,7 +101,8 @@ class db_sql(object):
         If parameters are supplied, these will be taken instead of the values
         in global_config.
 
-        When proxy_socket is set, 'host' will be bypassed.
+        The setting of 'host' can be a real host, or a unix socket if it starts
+        with '/'.
 
         @param host: If set, this host will be used, if not, the host will be
                      retrieved from global_config.
@@ -111,8 +112,6 @@ class db_sql(object):
                          user will be retrieved from global_config.
         @param password: If set, this password will be used, if not, the
                          password will be retrieved from global_config.
-        @param proxy_socket: If set, this proxy_socket will be used, if not, the
-                         proxy_socket will be retrieved from global_config.
         """
         database_settings = database_settings_helper.get_global_db_config()
 
@@ -120,10 +119,9 @@ class db_sql(object):
         self.host = host or database_settings['HOST']
         self.database = database or database_settings['NAME']
 
-        # grab authentication information
+        # grab the user and password
         self.user = user or database_settings['USER']
         self.password = password or database_settings['PASSWORD']
-        self.proxy_socket = proxy_socket or database_settings['PROXY_SOCKET']
 
         # grab the timeout configuration
         self.query_timeout =(
@@ -162,8 +160,7 @@ class db_sql(object):
 
         # create the db connection and cursor
         self.con = self.connect(self.host, self.database,
-                                self.user, self.password, self.port,
-                                self.proxy_socket)
+                                self.user, self.password, self.port)
         self.cur = self.con.cursor()
 
 
@@ -174,7 +171,7 @@ class db_sql(object):
 
     @retry.retry(driver.OperationalError, timeout_min=10,
                  delay_sec=5, callback=_connection_retry_callback)
-    def connect(self, host, database, user, password, port, proxy_socket):
+    def connect(self, host, database, user, password, port):
         """Open and return a connection to mysql database."""
         connection_args = {
             'db': database,
@@ -184,18 +181,9 @@ class db_sql(object):
         }
         if port:
             connection_args['port'] = int(port)
-        # Connect using proxy socket if possible.
-        if proxy_socket:
-            try:
-                with metrics.SuccessCounter(
-                        'chromeos/autotest/tko/connection_using_socket',
-                        fields={'socket': proxy_socket}):
-                    return driver.connect(unix_socket=proxy_socket,
-                                          **connection_args)
-            # pylint: disable=catching-non-exception
-            except driver.OperationalError:
-                # Fallback to connect using user/host/password.
-                pass
+
+        if host.startswith('/'):
+            return driver.connect(unix_socket=host, **connection_args)
 
         return driver.connect(host=host, **connection_args)
 

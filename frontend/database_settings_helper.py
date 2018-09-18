@@ -143,7 +143,6 @@ def _get_database_config(getter):
         'NAME': getter('database'),
         'USER': getter('user'),
         'PASSWORD': getter('password', default=''),
-        'PROXY_SOCKET': getter('socket', default=None),
         'READONLY_HOST': getter('readonly_host', default=getter('host')),
         'READONLY_USER': getter('readonly_user', default=getter('user')),
     }
