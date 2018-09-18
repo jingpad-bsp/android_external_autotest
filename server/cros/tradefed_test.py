@@ -1098,7 +1098,6 @@ class TradefedTest(test.test):
                 #              minutes).
                 waived_tests, acc = self._run_and_parse_tradefed(
                     commands)
-                accurate.append(acc)
                 result = self._run_tradefed_list_results()
                 if not result:
                     logging.error('Did not find any test results. Retry.')
@@ -1108,6 +1107,10 @@ class TradefedTest(test.test):
 
                 waived = len(waived_tests)
                 last_session_id, passed, failed, all_done = result
+                # If the result is |acc|urate according to the log, or the
+                # inaccuracy is recognized by tradefed (not all_done), then
+                # it is fine.
+                accurate.append(acc or not all_done)
                 if failed < waived:
                     logging.error(
                         'Error: Internal waiver bookkeeping has become '
