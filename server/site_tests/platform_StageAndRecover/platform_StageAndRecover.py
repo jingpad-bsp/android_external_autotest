@@ -13,7 +13,7 @@ class platform_StageAndRecover(test.test):
     version = 1
 
     _INSTALL_DELAY_TIMEOUT = 540
-    _TEST_IMAGE_BOOT_DELAY = 60
+    _TEST_IMAGE_BOOT_DELAY = 120
 
     def cleanup(self):
         """ Clean up by switching servo usb towards servo host. """
@@ -73,12 +73,14 @@ class platform_StageAndRecover(test.test):
         logging.info('Started %s. Will wait up to %d seconds to complete' %
                      (process, timeout))
         start_time = time.time()
-        if self.host.ping_wait_up(timeout=timeout):
+        result = self.host.ping_wait_up(timeout=timeout)
+        if result:
             logging.info('Device came back up successfully in %d seconds.',
                          time.time() - start_time)
         else:
             self.error_messages.append('Host failed to come back after %s '
                                        'in %d seconds.' % (process, timeout))
+        return result
 
 
     def run_once(self, host):
@@ -92,13 +94,13 @@ class platform_StageAndRecover(test.test):
         self.wait_for_dut_ping_after('RECOVERY', self._INSTALL_DELAY_TIMEOUT)
 
         self.stage_copy_recover_with('test_image')
-        self.wait_for_dut_ping_after('TEST_IMAGE RECOVERY BOOT FROM USB',
-                                  self._TEST_IMAGE_BOOT_DELAY)
 
-        # Install the test image back on DUT
-        self.host.run('chromeos-install --yes',
-                      timeout=self._INSTALL_DELAY_TIMEOUT)
-        self.host.reboot()
+        # Install the test image back on DUT and reboot
+        if self.wait_for_dut_ping_after('TEST_IMAGE RECOVERY BOOT FROM USB',
+                                        self._TEST_IMAGE_BOOT_DELAY):
+            self.host.run('chromeos-install --yes',
+                        timeout=self._INSTALL_DELAY_TIMEOUT)
+            self.host.reboot()
 
         if self.error_messages:
             raise error.TestFail('Failures: %s' % ' '.join(self.error_messages))
