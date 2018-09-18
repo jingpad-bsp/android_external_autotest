@@ -235,7 +235,7 @@ class cpufreq(object):
         cause any issues.
         """
         logging.debug('Disable boost')
-        self.__write_file('../boost', '0')
+        self.__write_file('../../cpufreq/boost', '0')
 
     def enable_boost(self):
         """Enable boost.
@@ -247,4 +247,4 @@ class cpufreq(object):
         cause any issues.
         """
         logging.debug('Enable boost')
-        self.__write_file('../boost', '1')
+        self.__write_file('../../cpufreq/boost', '1')
