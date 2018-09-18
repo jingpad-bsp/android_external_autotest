@@ -740,15 +740,6 @@ def get_servo_args_for_host(dut_host):
     servo_args = {k: v for k, v in info.attributes.iteritems()
                   if k in SERVO_ATTR_KEYS}
 
-    # TODO(jrbarnette):  This test to use the default lab servo hostname
-    # is a legacy that we need only until every host in the DB has
-    # proper attributes.
-    if (SERVO_HOST_ATTR not in servo_args
-        and not (utils.in_moblab_ssp() or lsbrelease_utils.is_moblab())):
-        servo_host = make_servo_hostname(dut_host.hostname)
-        if utils.host_is_in_lab_zone(servo_host):
-            servo_args[SERVO_HOST_ATTR] = servo_host
-
     if SERVO_PORT_ATTR in servo_args:
         try:
             servo_args[SERVO_PORT_ATTR] = int(servo_args[SERVO_PORT_ATTR])
