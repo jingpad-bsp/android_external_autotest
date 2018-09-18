@@ -27,4 +27,5 @@ with hardware acceleration support.
 VIDEO_NAME = 'Shaka-Dash/2160_vp8_600frames-3d61b1aed4e3f32249c7d324a809ef54.vp8.webm'
 VIDEO_DESCRIPTION = 'vp8_4k'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
-             video_description=VIDEO_DESCRIPTION)
+             video_description=VIDEO_DESCRIPTION,
+             capability='hw_dec_vp8_2160_30')
