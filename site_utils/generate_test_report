@@ -588,6 +588,26 @@ class ReportGenerator(object):
             tests = sorted(self._results, key=operator.itemgetter('testdir'))
         return tests
 
+    # TODO(zamorzaev): reuse this method in _GetResultsForHTMLReport to avoid
+    # code copying.
+    def _GetDedupedResults(self):
+        """Aggregate results from multiple retries of the same test."""
+        deduped_results = {}
+        for test in self._GetSortedTests():
+            test_details_matched = re.search(r'(.*)results-(\d[0-9]*)-(.*)',
+                                             test['testdir'])
+            if not test_details_matched:
+                continue
+
+            log_dir, test_number, test_name = test_details_matched.groups()
+            if (test_name in deduped_results and
+                deduped_results[test_name].get('status')):
+                # Already have a successfull (re)try.
+                continue
+
+            deduped_results[test_name] = test
+        return deduped_results.values()
+
     def _GetResultsForHTMLReport(self):
         """Return cleaned results for HTML report.!"""
         import copy
@@ -847,7 +867,7 @@ class ReportGenerator(object):
                     self.GenerateReportHTML()
                 except Exception as e:
                     print "Failed to generate HTML report %s" % str(e)
-        for d in self._results:
+        for d in self._GetDedupedResults():
             if d['experimental'] and self._options.ignore_experimental_tests:
                 continue
             if not d['status'] or (
