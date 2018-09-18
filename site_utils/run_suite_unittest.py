@@ -178,7 +178,7 @@ class ResultCollectorUnittest(unittest.TestCase):
                  test_missing])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build=build, board='fake', suite_name=suite_name,
+                build=build, suite_name=suite_name,
                 suite_job_id=suite_job_id,
                 return_code_function=run_suite._ReturnCodeComputer())
         collector._missing_results = {
@@ -235,7 +235,7 @@ class ResultCollectorUnittest(unittest.TestCase):
                                 [good_job_id, bad_job_id, missing_job_id])
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build, board, suite_name, suite_job_id,
+                build, suite_name, suite_job_id,
                 return_code_function=run_suite._ReturnCodeComputer())
         child_views, retry_counts, missing_results = (
                 collector._fetch_test_views_of_child_jobs())
@@ -285,7 +285,7 @@ class ResultCollectorUnittest(unittest.TestCase):
 
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build, board, suite_name, suite_job_id, user='chromeos-test',
+                build, suite_name, suite_job_id, user='chromeos-test',
                 return_code_function=run_suite._ReturnCodeComputer())
         collector._suite_views = [suite_job_view]
         collector._test_views = [suite_job_view, good_test, bad_test]
@@ -494,7 +494,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         self._mock_afe_get_jobs(suite_job_id, child_jobs)
         collector = run_suite.ResultCollector(
                'fake_server', self.afe, self.tko,
-               'lumpy-release/R36-5788.0.0', 'lumpy', 'dummy', suite_job_id,
+               'lumpy-release/R36-5788.0.0', 'dummy', suite_job_id,
                return_code_function=run_suite._ReturnCodeComputer())
         collector.run()
         collector.output_results()

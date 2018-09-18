@@ -447,6 +447,10 @@ def verify_and_clean_options(options):
     # Default to use the test code in CrOS build.
     if not options.test_source_build and options.build:
         options.test_source_build = options.build
+    options.child_dependencies = _make_child_dependencies(options)
+    base_dependencies = ('board:%s' % options.board,
+                         'pool:%s' % options.pool)
+    options.dependencies = base_dependencies + options.child_dependencies
     return True
 
 
@@ -1268,8 +1272,6 @@ class ResultCollector(object):
     @var _tko: The tko rpc client.
     @var _build: The build for which the suite is run,
                  e.g. 'lumpy-release/R35-5712.0.0'
-    @var _board: The target board for which the suite is run,
-                 e.g., 'lumpy', 'link'.
     @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
     @var _suite_job_id: The job id of the suite for which we are going to
                         collect results.
@@ -1295,16 +1297,14 @@ class ResultCollector(object):
     """
 
 
-    def __init__(self, instance_server, afe, tko, build, board,
-                 suite_name, suite_job_id,
-                 return_code_function,
+    def __init__(self, instance_server, afe, tko, build,
+                 suite_name, suite_job_id, return_code_function,
                  original_suite_name=None,
                  user=None, solo_test_run=False):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
         self._build = build
-        self._board = board
         self._suite_name = suite_name
         self._suite_job_id = suite_job_id
         self._original_suite_name = original_suite_name or suite_name
@@ -1631,7 +1631,7 @@ class ResultCollector(object):
                     self.timings.suite_start_time).total_seconds()
 
 
-def _make_child_deps_from_options(options):
+def _make_child_dependencies(options):
     """Creates a list of extra dependencies for child jobs.
 
     @param options: Parsed arguments to run_suite.
@@ -1641,7 +1641,7 @@ def _make_child_deps_from_options(options):
     """
     if not options.model:
         return ()
-    return ['model:%s' % options.model]
+    return ('model:%s' % options.model,)
 
 
 @retry.retry(error.StageControlFileFailure, timeout_min=10)
@@ -1690,7 +1690,7 @@ def create_suite(afe, options):
         delay_minutes=options.delay_minutes,
         job_keyvals=options.job_keyvals,
         test_args=options.test_args,
-        child_dependencies=_make_child_deps_from_options(options),
+        child_dependencies=options.child_dependencies,
     )
 
 
@@ -1733,7 +1733,7 @@ def _run_suite(options):
             raise utils.TestLabException('Failed to retrieve job: %d' % job_id)
     else:
         try:
-            rpc_helper.check_dut_availability(options.board, options.pool,
+            rpc_helper.check_dut_availability(options.dependencies,
                                               options.minimum_duts,
                                               options.skip_duts_check)
             job_id = create_suite(afe, options)
@@ -1867,7 +1867,6 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
         return_code_function = _ReturnCodeComputer()
     collector = ResultCollector(instance_server=instance_server,
                                 afe=afe, tko=TKO, build=options.build,
-                                board=options.board,
                                 suite_name=options.name,
                                 suite_job_id=job_id,
                                 return_code_function=return_code_function,
@@ -1904,8 +1903,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
             # Add some jitter to make up for any latency in
             # aborting the suite or checking for results.
             cutoff = job_timer.timeout_hours + timedelta(hours=0.3)
-            rpc_helper.diagnose_pool(
-                    options.board, options.pool, cutoff)
+            rpc_helper.diagnose_pool(options.dependencies, cutoff)
         except proxy.JSONRPCException:
             logging.warning('Unable to display pool info.')
 
@@ -2000,7 +1998,7 @@ def _run_task(options):
     """
     try:
         return _run_suite(options)
-    except diagnosis_utils.BoardNotAvailableError as e:
+    except diagnosis_utils.DUTsNotAvailableError as e:
         result = run_suite_common.SuiteResult(
             run_suite_common.RETURN_CODES.BOARD_NOT_AVAILABLE,
             {'return_message': 'Skipping testing: %s' % e.message})
