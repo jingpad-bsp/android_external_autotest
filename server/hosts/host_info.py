@@ -73,7 +73,8 @@ class HostInfo(object):
     def board(self):
         """Retrieve the board label value for the host.
 
-        @returns: The (stripped) board label, or None if no label is found.
+        @returns: The (stripped) board label, or the empty string if no
+        label is found.
         """
         return self.get_label_value(self._BOARD_PREFIX)
 
@@ -82,7 +83,8 @@ class HostInfo(object):
     def model(self):
         """Retrieve the model label value for the host.
 
-        @returns: The (stripped) model label, or None if no label is found.
+        @returns: The (stripped) model label, or the empty string if no
+        label is found.
         """
         return self.get_label_value(self._MODEL_PREFIX)
 
@@ -91,8 +93,9 @@ class HostInfo(object):
     def os(self):
         """Retrieve the os for the host.
 
-        @returns The os (str) or None if no os label exists. Returns the first
-                matching os if mutiple labels are found.
+        @returns The os (str) or the empty string if no os label
+                exists. Returns the first matching os if mutiple labels
+                are found.
         """
         return self.get_label_value(self._OS_PREFIX)
 
