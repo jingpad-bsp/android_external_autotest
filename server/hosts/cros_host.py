@@ -313,7 +313,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def get_cros_repair_image_name(self):
         info = self.host_info_store.get()
-        if info.board is None:
+        if not info.board:
             raise error.AutoservError('Cannot obtain repair image name. '
                                       'No board label value found')
         return afe_utils.get_stable_cros_image_name(info.board)
