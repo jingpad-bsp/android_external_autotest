@@ -51,6 +51,7 @@ Options:
 
 import argparse
 import collections
+import datetime
 import logging
 import logging.handlers
 import os
@@ -132,6 +133,8 @@ _UNTESTABLE_PRESENCE_METRIC = metrics.BooleanMetric(
 _MISSING_DUT_METRIC = metrics.Counter(
     _METRICS_PREFIX + '/missing', 'DUTs which cannot be found by lookup queries'
     ' because they are invalid or deleted')
+
+_TIMESTAMP_FORMAT = '%Y-%m-%d.%H'
 
 def _get_diagnosis_safely(history, prop='diagnosis'):
     return_prop = {'diagnosis': 0, 'task': 1}[prop]
@@ -1118,7 +1121,7 @@ def _log_startup(arguments, startup_time):
     @returns  A timestamp string that will be used to identify this run
               in logs and email output.
     """
-    timestamp = time.strftime('%Y-%m-%d.%H',
+    timestamp = time.strftime(_TIMESTAMP_FORMAT,
                               time.localtime(startup_time))
     logging.debug('Starting lab inventory for %s', timestamp)
     if arguments.model_notify:
@@ -1306,18 +1309,19 @@ def _configure_logging(arguments):
     root_logger = logging.getLogger()
     if arguments.debug:
         root_logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter())
+        logfile = sys.stdout
     else:
+        root_logger.setLevel(logging.DEBUG)
+        logfile = open(os.path.join(
+            arguments.logdir,
+            _LOGFILE + datetime.datetime.today().strftime(_TIMESTAMP_FORMAT)
+        ))
         if not os.path.exists(arguments.logdir):
             os.mkdir(arguments.logdir)
-        root_logger.setLevel(logging.DEBUG)
-        logfile = os.path.join(arguments.logdir, _LOGFILE)
-        handler = logging.handlers.TimedRotatingFileHandler(
-                logfile, when='W4', backupCount=13)
-        formatter = logging.Formatter(_LOG_FORMAT,
-                                      time_utils.TIME_FMT)
-        handler.setFormatter(formatter)
+    handler = logging.StreamHandler(logfile)
+    formatter = logging.Formatter(
+        _LOG_FORMAT, time_utils.TIME_FMT)
+    handler.setFormatter(formatter)
     # TODO(jrbarnette) This is gross.  Importing client.bin.utils
     # implicitly imported logging_config, which calls
     # logging.basicConfig() *at module level*.  That gives us an
