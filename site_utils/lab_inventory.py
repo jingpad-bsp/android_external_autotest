@@ -715,14 +715,17 @@ def _generate_repair_recommendation(inventory, num_recommend):
     line_fmt = '%-30s %-16s %-6s\n    %s '
     message = ['Repair recommendations:\n',
                line_fmt % ( 'Hostname', 'Model', 'Servo?', 'Logs URL')]
-    for h in recommendation:
-        servo_name = servo_host.make_servo_hostname(h.host.hostname)
-        servo_present = utils.host_is_in_lab_zone(servo_name)
-        event = _get_diagnosis_safely(h, 'task')
-        line = line_fmt % (
-                h.host.hostname, h.host_model,
-                'Yes' if servo_present else 'No', event.job_url)
-        message.append(line)
+    if recommendation:
+        for h in recommendation:
+            servo_name = servo_host.make_servo_hostname(h.host.hostname)
+            servo_present = utils.host_is_in_lab_zone(servo_name)
+            event = _get_diagnosis_safely(h, 'task')
+            line = line_fmt % (
+                    h.host.hostname, h.host_model,
+                    'Yes' if servo_present else 'No', event.job_url)
+            message.append(line)
+    else:
+        message.append('(No DUTs to repair)')
     return '\n'.join(message)
 
 
