@@ -1,7 +1,7 @@
 NAME = "platform_LowMemoryTest"
 PURPOSE = "Tab discarding functional tests."
 CRITERIA = """Failed if oom-kill is invoked."""
-ATTRIBUTES = "suite:crosbolt_perf_nightly"
+ATTRIBUTES = "suite:crosbolt_perf_perbuild"
 AUTHOR="Vovo Yang"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
