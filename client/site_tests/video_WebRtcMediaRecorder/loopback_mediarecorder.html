@@ -72,7 +72,7 @@ function assertThrows(func, description) {
 
 function createAndStartMediaRecorder(stream, mimeType, slice) {
   return new Promise(function(resolve, reject) {
-    document.getElementById('video').src = URL.createObjectURL(stream);
+    document.getElementById('video').srcObject = stream;
     var recorder = new MediaRecorder(stream, {'mimeType' : mimeType});
     console.log('Recorder object created.');
     if (slice != undefined) {
