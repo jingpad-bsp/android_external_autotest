@@ -58,6 +58,10 @@ class graphics_HwOverlays(graphics_utils.GraphicsTest,
             logging.info('Skipping test: platform does not support DRM atomic')
             return
 
+        if graphics_utils.get_max_num_available_drm_planes() <= 2:
+            logging.info('Skipping test: platform supports 2 or less planes')
+            return
+
         logging.info('Starting test, navigating to %s', html_file)
 
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
