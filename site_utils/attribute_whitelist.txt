@@ -151,6 +151,7 @@ suite:ml_service
 suite:mmc_qual
 suite:moblab
 suite:moblab_quick
+suite:moblab_storage_qual
 suite:network_nightly
 suite:network_ui
 suite:partners
@@ -181,6 +182,7 @@ suite:smoke
 suite:something_else
 suite:ssdqual
 suite:storage_qual
+suite:storage_qual_cq
 suite:storage_qual_quick
 suite:storage_qual_temp
 suite:storagequal

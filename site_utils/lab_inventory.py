@@ -51,6 +51,7 @@ Options:
 
 import argparse
 import collections
+import datetime
 import logging
 import logging.handlers
 import os
@@ -132,6 +133,8 @@ _UNTESTABLE_PRESENCE_METRIC = metrics.BooleanMetric(
 _MISSING_DUT_METRIC = metrics.Counter(
     _METRICS_PREFIX + '/missing', 'DUTs which cannot be found by lookup queries'
     ' because they are invalid or deleted')
+
+_TIMESTAMP_FORMAT = '%Y-%m-%d.%H'
 
 def _get_diagnosis_safely(history, prop='diagnosis'):
     return_prop = {'diagnosis': 0, 'task': 1}[prop]
@@ -1118,7 +1121,7 @@ def _log_startup(arguments, startup_time):
     @returns  A timestamp string that will be used to identify this run
               in logs and email output.
     """
-    timestamp = time.strftime('%Y-%m-%d.%H',
+    timestamp = time.strftime(_TIMESTAMP_FORMAT,
                               time.localtime(startup_time))
     logging.debug('Starting lab inventory for %s', timestamp)
     if arguments.model_notify:
@@ -1268,6 +1271,9 @@ def _parse_command(argv):
     parser.add_argument('--debug', action='store_true',
                         help='Print e-mail, metrics messages on stdout '
                              'without sending them.')
+    parser.add_argument('--no-metrics', action='store_false',
+                        dest='use_metrics',
+                        help='Suppress generation of Monarch metrics.')
     parser.add_argument('--logdir', default=_get_default_logdir(argv[0]),
                         help='Directory where logs will be written.')
     parser.add_argument('modelnames', nargs='*',
@@ -1303,18 +1309,19 @@ def _configure_logging(arguments):
     root_logger = logging.getLogger()
     if arguments.debug:
         root_logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter())
+        logfile = sys.stdout
     else:
+        root_logger.setLevel(logging.DEBUG)
+        logfile = open(os.path.join(
+            arguments.logdir,
+            _LOGFILE + datetime.datetime.today().strftime(_TIMESTAMP_FORMAT)
+        ))
         if not os.path.exists(arguments.logdir):
             os.mkdir(arguments.logdir)
-        root_logger.setLevel(logging.DEBUG)
-        logfile = os.path.join(arguments.logdir, _LOGFILE)
-        handler = logging.handlers.TimedRotatingFileHandler(
-                logfile, when='W4', backupCount=13)
-        formatter = logging.Formatter(_LOG_FORMAT,
-                                      time_utils.TIME_FMT)
-        handler.setFormatter(formatter)
+    handler = logging.StreamHandler(logfile)
+    formatter = logging.Formatter(
+        _LOG_FORMAT, time_utils.TIME_FMT)
+    handler.setFormatter(formatter)
     # TODO(jrbarnette) This is gross.  Importing client.bin.utils
     # implicitly imported logging_config, which calls
     # logging.basicConfig() *at module level*.  That gives us an
@@ -1335,30 +1342,33 @@ def main(argv):
         sys.exit(1)
     _configure_logging(arguments)
 
-    if arguments.debug:
-        logging.info('--debug mode: Will not  report metrics to monarch')
-        metrics_file = '/dev/null'
-    else:
-        metrics_file = None
-
-    with site_utils.SetupTsMonGlobalState(
-            'lab_inventory', debug_file=metrics_file,
-            auto_flush=False):
-        success = False
-        try:
-            with metrics.SecondsTimer('%s/duration' % _METRICS_PREFIX):
-                _perform_inventory_reports(arguments)
-            success = True
-        except KeyboardInterrupt:
-            pass
-        except (EnvironmentError, Exception):
-            # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
-            logging.exception('Error escaped main')
-            raise
-        finally:
-            metrics.Counter('%s/tick' % _METRICS_PREFIX).increment(
-                    fields={'success': success})
-            metrics.Flush()
+    try:
+        if arguments.use_metrics:
+            if arguments.debug:
+                logging.info('Debug mode: Will not report metrics to monarch.')
+                metrics_file = '/dev/null'
+            else:
+                metrics_file = None
+            with site_utils.SetupTsMonGlobalState(
+                    'lab_inventory', debug_file=metrics_file,
+                    auto_flush=False):
+                success = False
+                try:
+                    with metrics.SecondsTimer('%s/duration' % _METRICS_PREFIX):
+                        _perform_inventory_reports(arguments)
+                    success = True
+                finally:
+                    metrics.Counter('%s/tick' % _METRICS_PREFIX).increment(
+                            fields={'success': success})
+                    metrics.Flush()
+        else:
+            _perform_inventory_reports(arguments)
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        # Our cron setup doesn't preserve stderr, so drop extra breadcrumbs.
+        logging.exception('Error escaped main')
+        raise
 
 
 def get_inventory(afe):

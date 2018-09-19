@@ -102,9 +102,8 @@ class VMSanity(object):
   def RunTastTest(self):
     """Run Tast tests."""
     logging.info('RunTastTest')
-    android = '' if utils.is_arc_available() else ' && !"dep:android"'
     tast_cmd = ('local_test_runner \'(!informational && !disabled && ' +
-                '("dep:chrome" || "dep:chrome_login")%s)\'' % android)
+                '("dep:chrome" || "dep:chrome_login"))\'')
     utils.system(tast_cmd)
 
 
@@ -121,7 +120,7 @@ class VMSanity(object):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--count', type=int, default=1,
                         help='Number of iterations of the test to run.')
-    parser.add_argument('--all', default=False, action='store_true',
+    parser.add_argument('--run-all', default=False, action='store_true',
                         help='Run all tests.')
     parser.add_argument('--run-cryptohome', default=False, action='store_true',
                         help='Run cryptohome test.')
@@ -137,8 +136,8 @@ def main(argv):
     opts = VMSanity.ParseArgs(argv)
 
     # Run all tests if none are specified.
-    if opts.all or not (opts.run_cryptohome or opts.run_incognito or
-                        opts.run_tast):
+    if opts.run_all or not (opts.run_cryptohome or opts.run_incognito or
+                            opts.run_tast):
       opts.run_cryptohome = opts.run_incognito = opts.run_tast = True
 
     VMSanity(opts.count, opts.run_cryptohome,

@@ -77,6 +77,7 @@ from autotest_lib.server.hosts import afe_store
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.deployment import cmdvalidate
 from autotest_lib.site_utils.stable_images import build_data
+from autotest_lib.utils import labellib
 
 
 _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
@@ -97,7 +98,11 @@ _LOCK_REASON_NEW_HOST = 'Repairing or deploying a new host'
 _ReportResult = namedtuple('_ReportResult', ['hostname', 'message'])
 
 
-class _NoAFEServoPortError(Exception):
+class InstallFailedError(Exception):
+    """Generic error raised explicitly in this module."""
+
+
+class _NoAFEServoPortError(InstallFailedError):
     """Exception when there is no servo port stored in the AFE."""
 
 
@@ -423,10 +428,33 @@ def _get_afe_host(afe, hostname, host_attrs, arguments):
         afe_host = afe.create_host(hostname,
                                    locked=True,
                                    lock_reason=_LOCK_REASON_NEW_HOST)
-        afe_host.add_labels([constants.Labels.BOARD_PREFIX + arguments.board])
         _update_host_attributes(afe, hostname, host_attrs)
+
+    # Correct board label is critical to installation. Always ensure user
+    # supplied board matches the AFE information.
+    if arguments.board:
+        _ensure_board_in_afe(afe_host, arguments.board)
+
     afe_host = afe.get_hosts([hostname])[0]
     return afe_host, unlock_on_failure
+
+
+def _ensure_board_in_afe(afe_host, board):
+    """Add the given board label, only if one doesn't already exist.
+
+    @raises InstallFailedError if supplied board  is different from existing
+            board in AFE.
+    """
+    labels = labellib.LabelsMapping(afe_host.labels)
+    if 'board' not in labels:
+        afe_host.add_labels(['board:%s' % board])
+        return
+
+    existing_board = labels['board']
+    if board != existing_board:
+        raise InstallFailedError(
+                'provided board %s does not match the board %s for host %s' %
+                (board, existing_board, afe_host.hostname))
 
 
 def _install_firmware(host):
