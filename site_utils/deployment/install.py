@@ -18,14 +18,14 @@ Newly deployed DUTs may be in a somewhat anomalous state:
     _are_ in the database should be locked.  Either way, the DUTs
     cannot be scheduled to run tests.
   * The servos for the DUTs need not be configured with the proper
-    board.
+    overlay.
 
 More broadly, it's not expected that the DUT will be working at the
 start of this operation.  If the DUT isn't working at the end of the
 operation, an error will be reported.
 
 The script performs the following functions:
-  * Configure the servo for the target board, and test that the
+  * Configure the servo for the target overlay, and test that the
     servo is generally in good order.
   * For the full deployment case, install dev-signed RO firmware
     from the designated stable test image for the DUTs.
@@ -39,7 +39,7 @@ The script imposes these preconditions:
   * Every servo host is up and running, and accessible via SSH.
   * There is a known, working test image that can be staged and
     installed on the target DUTs via servo.
-  * Every DUT has the same board.
+  * Every DUT has the same board and model.
   * For the full deployment case, every DUT must be in dev mode,
     and configured to allow boot from USB with ctrl+U.
 
@@ -444,31 +444,38 @@ def _get_afe_host(afe, hostname, host_attrs, arguments):
                                    lock_reason=_LOCK_REASON_NEW_HOST)
         _update_host_attributes(afe, hostname, host_attrs)
 
-    # Correct board label is critical to installation. Always ensure user
-    # supplied board matches the AFE information.
-    if arguments.board:
-        _ensure_board_in_afe(afe_host, arguments.board)
+    # Correct board/model label is critical to installation. Always ensure user
+    # supplied board/model matches the AFE information.
+    _ensure_label_in_afe(afe_host, 'board', arguments.board)
+    _ensure_label_in_afe(afe_host, 'model', arguments.model)
 
     afe_host = afe.get_hosts([hostname])[0]
     return afe_host, unlock_on_failure
 
 
-def _ensure_board_in_afe(afe_host, board):
+def _ensure_label_in_afe(afe_host, label_name, label_value):
     """Add the given board label, only if one doesn't already exist.
+
+    @params label_name  name of the label, e.g. 'board', 'model', etc.
+    @params label_value value of the label.
 
     @raises InstallFailedError if supplied board  is different from existing
             board in AFE.
     """
-    labels = labellib.LabelsMapping(afe_host.labels)
-    if 'board' not in labels:
-        afe_host.add_labels(['board:%s' % board])
+    if not label_value:
         return
 
-    existing_board = labels['board']
-    if board != existing_board:
+    labels = labellib.LabelsMapping(afe_host.labels)
+    if label_name not in labels:
+        afe_host.add_labels(['%s:%s' % (label_name, label_value)])
+        return
+
+    existing_value = labels[label_name]
+    if label_value != existing_value:
         raise InstallFailedError(
-                'provided board %s does not match the board %s for host %s' %
-                (board, existing_board, afe_host.hostname))
+                'provided %s %s does not match the %s %s for host %s' %
+                (label_name, label_value, label_name, existing_value,
+                 afe_host.hostname))
 
 
 def _install_firmware(host):

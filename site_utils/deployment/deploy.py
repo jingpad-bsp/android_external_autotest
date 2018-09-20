@@ -71,6 +71,9 @@ dev-signed firmware installed, and must be in verified boot mode.
 -b / --board BOARD
     Specifies the board to assume for all target DUTs.
 
+-m / --model MODEL
+    Specifies the model to assume for all target DUTs.
+
 --[no]stageusb
     This option isn't available for the `servo` subcommand.  For other
     subcommands, when true this option enables the servo validation and
