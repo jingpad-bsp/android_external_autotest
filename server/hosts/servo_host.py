@@ -33,7 +33,6 @@ from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.servo import servo
-from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import servo_repair
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
@@ -847,8 +846,6 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
                                servo_args[SERVO_HOST_ATTR])),
             **servo_args
     )
-    base_classes.send_creation_metric(newhost)
-
     # Note that the logic of repair() includes everything done
     # by verify().  It's sufficient to call one or the other;
     # we don't need both.

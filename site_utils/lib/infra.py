@@ -8,7 +8,7 @@ import subprocess
 import os
 
 import common
-from autotest_lib.server import hosts
+from autotest_lib.server.hosts import ssh_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
@@ -76,8 +76,7 @@ def host_object_runner(host, **kwargs):
     except KeyError:
         username = global_config.global_config.get_config_value(
                 'CROS', 'infrastructure_user')
-        host_object = hosts.SSHHost(host, user=username)
-        hosts.send_creation_metric(host_object, context='site_utils/lib/infra')
+        host_object = ssh_host.SSHHost(host, user=username)
         _host_objects[host] = host_object
 
     def runner(cmd):
