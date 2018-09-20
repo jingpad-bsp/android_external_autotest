@@ -21,6 +21,7 @@ import sys
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import arc, arc_common, chrome
+from autotest_lib.client.common_lib.cros import session_manager
 from autotest_lib.client.common_lib.error import TestFail
 from autotest_lib.client.cros import cryptohome
 
@@ -29,12 +30,13 @@ class VMSanity(object):
   """Class for managing VM Sanity tests."""
 
 
-  def __init__(self, count=1, run_cryptohome=True,
-               run_incognito=True, run_tast=True):
+  def __init__(self, count=1, run_cryptohome=True, run_incognito=True,
+               run_tast=True, run_screenlocker=True):
     self.count = count
     self.run_cryptohome = run_cryptohome
-    self.run_tast = run_tast
     self.run_incognito = run_incognito
+    self.run_tast = run_tast
+    self.run_screenlocker = run_screenlocker
 
 
   def Run(self):
@@ -49,6 +51,8 @@ class VMSanity(object):
         self.RunIncognitoTest()
       if self.run_tast:
         self.RunTastTest()
+      if self.run_screenlocker:
+        self.RunScreenlockTest()
 
     elapsed = datetime.datetime.now() - start
     logging.info('Tests succeeded in %s seconds.', elapsed.seconds)
@@ -107,6 +111,17 @@ class VMSanity(object):
     utils.system(tast_cmd)
 
 
+  def RunScreenlockTest(self):
+    """Run a test that locks the screen."""
+    logging.info('RunScreenlockTest')
+    with chrome.Chrome(autotest_ext=True) as cr:
+      cr.autotest_ext.ExecuteJavaScript('chrome.autotestPrivate.lockScreen();')
+      utils.poll_for_condition(
+          lambda: cr.login_status['isScreenLocked'],
+          timeout=15,
+          exception=TestFail('Screen not locked'))
+
+
   @staticmethod
   def ParseArgs(argv):
     """Parse command line.
@@ -123,11 +138,13 @@ class VMSanity(object):
     parser.add_argument('--run-all', default=False, action='store_true',
                         help='Run all tests.')
     parser.add_argument('--run-cryptohome', default=False, action='store_true',
-                        help='Run cryptohome test.')
+                        help='Run Cryptohome test.')
     parser.add_argument('--run-incognito', default=False, action='store_true',
-                        help='Run incognito test.')
+                        help='Run Incognito test.')
     parser.add_argument('--run-tast', default=False, action='store_true',
-                        help='Run tast test.')
+                        help='Run Tast test.')
+    parser.add_argument('--run-screenlock', default=False, action='store_true',
+                        help='Run Screenlock test.')
     return parser.parse_args(argv)
 
 
@@ -137,11 +154,12 @@ def main(argv):
 
     # Run all tests if none are specified.
     if opts.run_all or not (opts.run_cryptohome or opts.run_incognito or
-                            opts.run_tast):
-      opts.run_cryptohome = opts.run_incognito = opts.run_tast = True
+                            opts.run_tast or opts.run_screenlock):
+      opts.run_cryptohome = opts.run_incognito = True
+      opts.run_tast = opts.run_screen_lock = True
 
-    VMSanity(opts.count, opts.run_cryptohome,
-             opts.run_incognito, opts.run_tast).Run()
+    VMSanity(opts.count, opts.run_cryptohome, opts.run_incognito,
+             opts.run_tast, opts.run_screenlock).Run()
 
 
 if __name__ == '__main__':
