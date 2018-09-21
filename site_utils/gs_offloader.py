@@ -690,10 +690,12 @@ class GSOffloader(BaseGSOffloader):
             process = None
             with timeout_util.Timeout(OFFLOAD_TIMEOUT_SECS):
                 gs_path = '%s%s' % (self._gs_uri, dest_path)
+                cmd = _get_cmd_list(self._multiprocessing, dir_entry, gs_path)
+                logging.debug('Attempting an offload command %s', cmd)
                 process = subprocess.Popen(
-                        _get_cmd_list(self._multiprocessing, dir_entry, gs_path),
-                        stdout=stdout_file, stderr=stderr_file)
+                    cmd, stdout=stdout_file, stderr=stderr_file)
                 process.wait()
+                logging.debug('Offload command %s completed.', cmd)
 
             _emit_gs_returncode_metric(process.returncode)
             if process.returncode != 0:
@@ -852,6 +854,8 @@ def wait_for_gs_write_access(gs_uri):
     dummy_file = tempfile.NamedTemporaryFile()
     test_cmd = _get_cmd_list(False, dummy_file.name, gs_uri)
     while True:
+        logging.debug('Checking for write access with dummy file %s',
+                      dummy_file.name)
         try:
             subprocess.check_call(test_cmd)
             subprocess.check_call(
@@ -860,8 +864,11 @@ def wait_for_gs_write_access(gs_uri):
                                   os.path.basename(dummy_file.name))])
             break
         except subprocess.CalledProcessError:
-            logging.debug('Unable to offload to %s, sleeping.', gs_uri)
-            time.sleep(120)
+            t = 120
+            logging.debug('Unable to offload dummy file to %s, sleeping for %s '
+                          'seconds.', gs_uri, t)
+            time.sleep(t)
+    logging.debug('Dummy file write check to gs succeeded.')
 
 
 class Offloader(object):
@@ -943,7 +950,7 @@ class Offloader(object):
                     or _is_uploaded(job.dirname)):
                 del self._open_jobs[jobkey]
                 removed_job_count += 1
-        logging.debug('End of offload cycle - cleared %d new jobs, '
+        logging.debug('End of offload cycle - cleared %d jobs, '
                       'carrying %d open jobs',
                       removed_job_count, len(self._open_jobs))
 
