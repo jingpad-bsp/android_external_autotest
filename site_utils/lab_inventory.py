@@ -136,20 +136,11 @@ _MISSING_DUT_METRIC = metrics.Counter(
 
 _TIMESTAMP_FORMAT = '%Y-%m-%d.%H'
 
-# _Diagnosis - namedtuple corresponding to the return value from
-# `HostHistory.last_diagnosis()`
-_Diagnosis = collections.namedtuple('_Diagnosis', ['status', 'task'])
-
-
-def _get_diagnosis(history):
+def _get_diagnosis_safely(history, prop='diagnosis'):
+    return_prop = {'diagnosis': 0, 'task': 1}[prop]
     dut_present = True
     try:
-        diagnosis = _Diagnosis(*history.last_diagnosis())
-        if (diagnosis.status == status_history.BROKEN
-                and diagnosis.task.end_time < history.start_time):
-            return _Diagnosis(status_history.UNUSED, diagnosis.task)
-        else:
-            return diagnosis
+        return history.last_diagnosis()[return_prop]
     except proxy.JSONRPCException as e:
         logging.warn(e)
         dut_present = False
@@ -158,16 +149,16 @@ def _get_diagnosis(history):
             fields={'host': history.hostname, 'presence': dut_present})
 
 def _host_is_working(history):
-    return _get_diagnosis(history).status == status_history.WORKING
+    return _get_diagnosis_safely(history) == status_history.WORKING
 
 
 def _host_is_broken(history):
-    return _get_diagnosis(history).status == status_history.BROKEN
+     return _get_diagnosis_safely(history) == status_history.BROKEN
 
 
 def _host_is_idle(history):
     idle_statuses = {status_history.UNUSED, status_history.UNKNOWN}
-    return _get_diagnosis(history).status in idle_statuses
+    return _get_diagnosis_safely(history) in idle_statuses
 
 
 class _HostSetInventory(object):
@@ -728,7 +719,7 @@ def _generate_repair_recommendation(inventory, num_recommend):
         for h in recommendation:
             servo_name = servo_host.make_servo_hostname(h.host.hostname)
             servo_present = utils.host_is_in_lab_zone(servo_name)
-            event = _get_diagnosis(h).task
+            event = _get_diagnosis_safely(h, 'task')
             line = line_fmt % (
                     h.host.hostname, h.host_model,
                     'Yes' if servo_present else 'No', event.job_url)
@@ -1050,7 +1041,7 @@ def _dut_in_repair_loop(history):
     # time of this writing, this check against the diagnosis task
     # reduces the cost of finding loops in the full inventory from hours
     # to minutes.
-    if _get_diagnosis(history).task.name != 'Repair':
+    if _get_diagnosis_safely(history, 'task').name != 'Repair':
         return False
     repair_ok_count = 0
     for task in history:
