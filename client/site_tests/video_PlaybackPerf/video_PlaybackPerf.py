@@ -15,6 +15,7 @@ from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.power import power_rapl
 from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_utils
+from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import helper_logger
@@ -78,13 +79,16 @@ class video_PlaybackPerf(test.test):
 
 
     @helper_logger.video_log_wrapper
-    def run_once(self, video_name, video_description, power_test=False):
+    def run_once(self, video_name, video_description, capability,
+                 power_test=False):
         """
         Runs the video_PlaybackPerf test.
 
         @param video_name: the name of video to play in the DOWNLOAD_BASE
         @param video_description: a string describes the video to play which
                 will be part of entry name in dashboard.
+        @param capability: If a device has a specified capability, HW playback
+                must be available.
         @param power_test: True if this is a power test and it would only run
                 the power test. If False, it would run the cpu usage test and
                 the dropped frame count test.
@@ -94,6 +98,8 @@ class video_PlaybackPerf(test.test):
         local_path = os.path.join(self.bindir, os.path.basename(video_name))
         logging.info("Downloading %s to %s", url, local_path);
         file_utils.download_file(url, local_path)
+        self.must_hw_playback = (
+            device_capability.DeviceCapability().have_capability(capability))
 
         if not power_test:
             # Run the video playback dropped frame tests.
@@ -285,7 +291,10 @@ class video_PlaybackPerf(test.test):
             if constants.MEDIA_GVD_BUCKET in histogram:
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
             else:
-                logging.info("Cannot use hardware decoding.")
+                logging.info('Hardware playback not detected.')
+                if self.must_hw_playback:
+                    raise error.TestError(
+                        'Expected hardware playback is not detected.')
                 keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result
                 return keyvals
 
