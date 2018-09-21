@@ -128,6 +128,9 @@ GS_OFFLOADER_FAILURE_TYPE = 'gs_offloader_failure'
 # Autotest test to collect list of CTS tests
 TEST_LIST_COLLECTOR = 'tradefed-run-collect-tests-only'
 
+# Maximum number of concurrent offloads to attempt.
+MAX_CONCURRENT_OFFLOADS = 500
+
 def _get_metrics_fields(dir_entry):
     """Get metrics fields for the given test result directory, including board
     and milestone.
@@ -979,7 +982,7 @@ class Offloader(object):
         self._report_current_jobs_count()
         with parallel.BackgroundTaskRunner(
                 self._gs_offloader.offload, processes=self._processes) as queue:
-            for job in self._open_jobs.values():
+            for job in self._open_jobs.values()[:MAX_CONCURRENT_OFFLOADS]:
                 _enqueue_offload(job, queue, self._upload_age_limit)
         self._give_up_on_jobs_over_limit()
         self._remove_offloaded_jobs()
