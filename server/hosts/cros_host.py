@@ -281,14 +281,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._ssh_verbosity_flag = ssh_verbosity_flag
         self._ssh_options = ssh_options
-        self._servo_host = servo_host.create_servo_host(
+        self.set_servo_host(
+            servo_host.create_servo_host(
                 dut=self, servo_args=servo_args,
                 try_lab_servo=try_lab_servo,
-                try_servo_repair=try_servo_repair)
-        if self._servo_host is not None:
-            self.servo = self._servo_host.get_servo()
-        else:
-            self.servo = None
+                try_servo_repair=try_servo_repair))
 
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = chameleon_host.create_chameleon_host(
@@ -701,6 +698,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('DUT failed to reboot installed '
                                       'test image after %d seconds' %
                                       self.BOOT_TIMEOUT)
+
+
+    def set_servo_host(self, host):
+        """Set our servo host member, and associated servo.
+
+        @param host  Our new `ServoHost`.
+        """
+        self._servo_host = host
+        if self._servo_host is not None:
+            self.servo = self._servo_host.get_servo()
+        else:
+            self.servo = None
 
 
     def repair_servo(self):
