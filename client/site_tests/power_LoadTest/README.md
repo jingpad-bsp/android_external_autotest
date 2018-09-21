@@ -56,6 +56,8 @@ tabs. These sites were chosen to represent typical actions of a user on a daily 
 
 ## Running
 
+### Via cros_sdk & autotest
+
 If you are interested in running power_LoadTest on a Chrome OS system, you will
 need a Chromium OS test image that can be built by following [Build your own
 Chromium image][3] instruction with "./build_image --board=${BOARD} test"
@@ -98,14 +100,47 @@ a corporate network), follow the instructions below.
 * Reconnect the AC power source, boot up, and enter VT2 as root
   * cd /usr/local/autotest/results/default/power_LoadTest/results/
 
+### Via extension only
+
+As mentioned earlier, power_LoadTest uses [chrome extension][8] to drive the
+various workloads. As such it can be run directly on a 'normal mode' machine
+once the extension is installed.
+
+To run with this method,
+* Download the power_LoadTest [extension][9] to your device and unpack tarball
+* Navigate to chrome://extensions and click *load unpacked extension*
+* Choose the *extension* directory from tarball
+
+You should now have the extension installed and clicking on it will start the
+test but before you do that read the following caveats & hints to make this run
+go smoother.
+
+* Before starting, note the battery state-of-charge (SOC).  The extension will only
+  run workload for 1 hour so you'll need to extrapolate total runtime from that.
+* If device has keyboard backlight be sure its off.  See [keyboard backlight][10]
+  documentation for details on manually controlling keyboard backlight.
+* In order to remove impact of ambient light changes, use brightness keys to set
+  the panel brightness to your preferred brightness first.  Note, autotest
+  typically sets brightness to ~80nits.
+* When test completes be sure to note battery SOC again for calculating battery
+  life.
+  
+Estimate your total battery life by this calculation,
+
+    100 / (battery_soc_start - battery_soc_end)
+
+For example if you started test at 50% SOC and it ended with 40% SOC your
+battery life would be,
+
+    100 / (50 - 40) = 10 hours
+
 ##  Interpreting Results
 
-When the test completes there will be a keyvals file at
+If you ran via cros_sdk & autotest there will be a keyvals file at
 power_LoadTest/results/keyval. The test will publish minutes_battery_life which
 we use to track platforms battery life. However that only tells part of the
-story. As with any other real world test, the results have other measurements that
-should be examined to ensure the battery life estimate is genuine.
-
+story. As with any other real world test, the results have other measurements
+that should be examined to ensure the battery life estimate is genuine.
   
 Keyvals of particular interest beyond minutes_battery_life to judge quality of
 test results are:
@@ -150,3 +185,6 @@ with reasonable certainty - how long that device will last in your daily use.
 [5]: http://www.chromium.org/chromium-os/testing/autotest-user-doc#TOC-Running-tests
 [6]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#enter-the-chroot
 [7]: https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-features
+[8]: https://developer.chrome.com/extensions/getstarted
+[9]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+archive/master/client/site_tests/power_LoadTest.tar.gz
+[10]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/docs/keyboard_backlight.md
