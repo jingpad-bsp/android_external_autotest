@@ -64,6 +64,8 @@ class graphics_VideoRenderingPower(graphics_utils.GraphicsTest):
             self._service_stopper.restore_services()
         super(graphics_VideoRenderingPower, self).cleanup()
 
+    @graphics_utils.GraphicsTest.failure_report_decorator(
+        'graphics_VideoRenderingPower')
     def run_once(self, video_url, video_short_name):
         """Runs the graphics_VideoRenderingPower test.
 
