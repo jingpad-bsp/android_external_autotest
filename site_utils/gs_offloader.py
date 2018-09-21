@@ -244,7 +244,7 @@ def _replace_fifo_with_file(path):
     """
     logging.debug('Removing fifo %s', path)
     os.remove(path)
-    logging.debug('Creating marker %s', path)
+    logging.debug('Creating fifo marker %s', path)
     with open(path, 'w') as f:
         f.write('<FIFO>')
 
@@ -270,7 +270,7 @@ def _replace_symlink_with_file(path):
     target = os.readlink(path)
     logging.debug('Removing symlink %s', path)
     os.remove(path)
-    logging.debug('Creating marker %s', path)
+    logging.debug('Creating symlink marker %s', path)
     with open(path, 'w') as f:
         f.write('<symlink to %s>' % target)
 
@@ -735,6 +735,7 @@ class GSOffloader(BaseGSOffloader):
                                                    job_complete_time)):
             return
         try:
+            logging.debug('Pruning uploaded directory %s', dir_entry)
             shutil.rmtree(dir_entry)
         except OSError as e:
             # The wrong file permission can lead call `shutil.rmtree(dir_entry)`
@@ -813,6 +814,7 @@ def _mark_uploaded(dirpath):
 
     @param dirpath: Directory path string.
     """
+    logging.debug('Creating uploaded marker for directory %s', dirpath)
     with open(_get_uploaded_marker_file(dirpath), 'a'):
         pass
 
