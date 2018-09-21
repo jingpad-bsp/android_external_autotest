@@ -30,4 +30,5 @@ devices with hardware acceleration support.
 VIDEO_NAME = 'Shaka-Dash/1080_60_10s_600frames_vp8-c190d557caaf415f762af911b41bc32b.webm'
 VIDEO_DESCRIPTION = 'vp8_1080p_60fps'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
-             video_description=VIDEO_DESCRIPTION)
+             video_description=VIDEO_DESCRIPTION,
+             capability='hw_dec_vp8_1080_60')
