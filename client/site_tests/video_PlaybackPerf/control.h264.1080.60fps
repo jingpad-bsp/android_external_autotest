@@ -30,4 +30,5 @@ devices with hardware acceleration support.
 VIDEO_NAME = 'Shaka-Dash/1080_60_10s_600frames-c80aeceeabfc9fc18ed2f98f219c85af.mp4'
 VIDEO_DESCRIPTION = 'h264_1080p_60fps'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
-             video_description=VIDEO_DESCRIPTION)
+             video_description=VIDEO_DESCRIPTION,
+             capability='hw_dec_h264_1080_60')
