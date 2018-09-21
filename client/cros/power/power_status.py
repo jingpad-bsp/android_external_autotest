@@ -1899,6 +1899,7 @@ class TempLogger(MeasurementLogger):
     """A thread that logs temperature readings in millidegrees Celsius."""
     def __init__(self, measurements, seconds_period=30.0, checkpoint_logger=None):
         if not measurements:
+            domains = set()
             measurements = []
             tstats = ThermalStatHwmon()
             for kname in tstats.fields:
@@ -1909,9 +1910,27 @@ class TempLogger(MeasurementLogger):
                 fpath = tstats.fields[kname][0]
                 new_meas = TempMeasurement(domain, fpath)
                 measurements.append(new_meas)
+                domains.add(domain)
 
             if has_battery_temp():
                 measurements.append(BatteryTempMeasurement())
+
+            sysfs_paths = '/sys/class/thermal/thermal_zone*'
+            paths = glob.glob(sysfs_paths)
+            for path in paths:
+                domain_path = os.path.join(path, 'type')
+                temp_path = os.path.join(path, 'temp')
+
+                domain = utils.read_one_line(domain_path)
+
+                # Skip when thermal_zone and hwmon have same domain.
+                if domain in domains:
+                    continue
+
+                domain = domain.replace(' ', '_')
+                new_meas = TempMeasurement(domain, temp_path)
+                measurements.append(new_meas)
+
         super(TempLogger, self).__init__(measurements, seconds_period, checkpoint_logger)
 
 
