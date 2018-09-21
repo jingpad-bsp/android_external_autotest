@@ -1034,19 +1034,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
 
-        # For purposes of logging reboot times:
-        # Get the board name i.e. 'daisy_spring'
-        board_fullname = self.get_board()
-
-        # Strip the prefix and add it to dargs.
-        dargs['board'] = board_fullname[board_fullname.find(':')+1:]
+        dargs['board'] = self.host_info_store.get().board
         # Record who called us
         orig = sys._getframe(1).f_code
         metric_fields = {'board' : dargs['board'],
                          'dut_host_name' : self.hostname,
                          'success' : True}
         metric_debug_fields = {'board' : dargs['board'],
-                               'caller' : "%s:%s" % (orig.co_filename, orig.co_name),
+                               'caller' : "%s:%s" % (orig.co_filename,
+                                                     orig.co_name),
                                'success' : True,
                                'error' : ''}
 
