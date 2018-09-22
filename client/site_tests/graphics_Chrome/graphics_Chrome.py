@@ -14,6 +14,7 @@ class graphics_Chrome(graphics_utils.GraphicsTest,
     """Runs a given Chrome unittests binary."""
     version = 1
 
+    @graphics_utils.GraphicsTest.failure_report_decorator('graphics_Chrome')
     @chrome_binary_test.nuke_chrome
     def run_once(self, unittests_binary_name, unittests_timeout):
         logging.debug('Starting %s', unittests_binary_name)
@@ -25,4 +26,4 @@ class graphics_Chrome(graphics_utils.GraphicsTest,
                 'Failed: timeout running %s' % unittests_binary_name)
         except:
             # TODO(ihf): Consider parsing the output from the test.
-            raise error.TestFail('Failed %s' % unittests_binary_name)
+            raise error.TestFail('Failed: %s' % unittests_binary_name)
