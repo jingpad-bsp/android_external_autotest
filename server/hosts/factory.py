@@ -3,8 +3,6 @@
 import logging
 from contextlib import closing
 
-import common
-
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import deprecation
@@ -13,7 +11,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import adb_host
-from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import jetstream_host
@@ -234,7 +231,6 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
         host_instance.job_start()
         _started_hostnames.add(hostname)
 
-    base_classes.send_creation_metric(host_instance, context='factory')
     return host_instance
 
 

@@ -34,9 +34,7 @@ def create_teststationhost(hostname, **kwargs):
     else:
         classes.append(ssh_host.SSHHost)
     host_class = type('new_teststationhost', tuple(classes), {})
-    host = host_class(hostname, **kwargs)
-    base_classes.send_creation_metric(host)
-    return host
+    return host_class(hostname, **kwargs)
 
 
 class TestStationHost(base_classes.Host):

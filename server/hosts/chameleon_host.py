@@ -12,7 +12,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import ssh_host
 
 
@@ -180,9 +179,7 @@ def create_chameleon_host(dut, chameleon_args):
                            'Chameleon %s is not accessible. Please file a bug'
                            ' to test lab', chameleon_hostname)
                    return None
-                host = ChameleonHost(chameleon_host=chameleon_hostname)
-                base_classes.send_creation_metric(host)
-                return host
+                return ChameleonHost(chameleon_host=chameleon_hostname)
         if chameleon_args:
             return ChameleonHost(**chameleon_args)
         else:
@@ -191,12 +188,10 @@ def create_chameleon_host(dut, chameleon_args):
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         hosts = afe.get_hosts(hostname=dut)
         if hosts and CHAMELEON_HOST_ATTR in hosts[0].attributes:
-            host = ChameleonHost(
+            return ChameleonHost(
                 chameleon_host=hosts[0].attributes[CHAMELEON_HOST_ATTR],
                 chameleon_port=hosts[0].attributes.get(
                     CHAMELEON_PORT_ATTR, 9992)
             )
-            base_classes.send_creation_metric(host)
-            return host
         else:
             return None

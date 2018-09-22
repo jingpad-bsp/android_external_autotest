@@ -22,7 +22,3 @@ from servo_host import ServoHost
 # factory function
 from factory import create_host
 from factory import create_target_machine
-
-# Many host creation sites only import the package, so also provide useful
-# methods associated with host creation.
-from base_classes import send_creation_metric
