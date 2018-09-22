@@ -70,8 +70,6 @@ class OmahaDevserver(object):
 
         self._devserver_ssh = hosts.SSHHost(self._omaha_host,
                                             user='chromeos-test')
-        hosts.send_creation_metric(self._devserver_ssh,
-                                   context='omaha_devserver')
 
         # Temporary files for various devserver outputs.
         self._devserver_logfile = None
