@@ -17,13 +17,8 @@ poirier@google.com (Benjamin Poirier),
 stutsman@google.com (Ryan Stutsman)
 """
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import hosts
-from autotest_lib.server import utils as server_utils
-try:
-    from chromite.lib import metrics
-except ImportError:
-    metrics = utils.metrics_mock
+from autotest_lib.server import utils
 
 
 class Host(hosts.Host):
@@ -67,7 +62,7 @@ class Host(hosts.Host):
     def _initialize(self, *args, **dargs):
         super(Host, self)._initialize(*args, **dargs)
 
-        self.serverdir = server_utils.get_server_dir()
+        self.serverdir = utils.get_server_dir()
         self.env = {}
 
 
@@ -77,41 +72,3 @@ class Host(hosts.Host):
 
         if self.job:
             self.job.hosts.discard(self)
-
-
-_CREATION_METRIC_WHITELIST = {
-        'AbstractSSHHost',
-        'ADBHost',
-        'CastOSHost',
-        'ChameleonHost',
-        'CrosHost',
-        'EmulatedAdbHost',
-        'GceHost',
-        'JetstreamHost',
-        'MoblabHost',
-        'PlanktonHost',
-        'ServoHost',
-        'SonicHost',
-        'SSHHost',
-        'TestBed',
-        'TestStationHost',
-}
-_CREATION_METRIC = '/chrome/infra/chromeos/autotest/host/class_instantiated'
-
-
-def send_creation_metric(host, context=''):
-    """Send a metric about which host class we ended up creating.
-
-    Creating host classes is black magic. Once a host class has been created
-    through the various channels, use this function to report what got created.
-
-    @param host: An instace of one of the host classes to send a report about.
-    @param context: Optional context for who created the host instance.
-    """
-    bases = {b.__name__ for b in host.__class__.__bases__}
-    bases = bases & _CREATION_METRIC_WHITELIST
-    for base in bases:
-        metrics.Counter(_CREATION_METRIC).increment(fields={
-                'class': base,
-                'context': context,
-        })
