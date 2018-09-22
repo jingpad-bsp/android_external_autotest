@@ -33,9 +33,7 @@ def allocate_packet_capturer(lock_manager, hostname, prefix):
     @return: An SSHHost object representing a locked packet_capture machine.
     """
     if hostname is not None:
-        host = hosts.SSHHost(hostname)
-        hosts.send_creation_metric(host, context='chaos_clique_utils')
-        return host
+        return hosts.SSHHost(hostname)
 
     afe = frontend.AFE(debug=True,
                        server=site_utils.get_global_afe_hostname())
