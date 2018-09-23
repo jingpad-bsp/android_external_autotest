@@ -61,6 +61,7 @@ class TradefedTest(test.test):
     _board_arch = None
     _board_name = None
     _release_channel = None
+    _android_version = None
 
     def _log_java_version(self):
         """Quick sanity and spew of java version installed on the server."""
@@ -812,13 +813,14 @@ class TradefedTest(test.test):
         expected_fail_files = []
         test_board = self._get_board_name()
         test_arch = self._get_board_arch()
+        sdk_ver = self._get_android_version()
         expected_fail_dir = os.path.join(self.bindir, directory)
         if os.path.exists(expected_fail_dir):
             expected_fail_files += glob.glob(expected_fail_dir + '/*.yaml')
 
         waivers = cts_expected_failure_parser.ParseKnownCTSFailures(
             expected_fail_files)
-        return waivers.find_waivers(test_arch, test_board, bundle_abi)
+        return waivers.find_waivers(test_arch, test_board, bundle_abi, sdk_ver)
 
     def _get_abilist(self):
         """Return the abilist supported by calling adb command.
@@ -850,6 +852,15 @@ class TradefedTest(test.test):
         if not self._board_name:
             self._board_name = self._hosts[0].get_board().split(':')[1]
         return self._board_name
+
+    def _get_android_version(self):
+        """Return target DUT Android SDK version"""
+        # TODO(kinaba): factor this out to server/hosts/cros_host.py
+        if not self._android_version:
+            self._android_version = self._hosts[0].run(
+                'grep ANDROID_SDK /etc/lsb-release',
+                ignore_status=True).stdout.rstrip().split('=')[1]
+        return self._android_version
 
     def _get_max_retry(self, max_retry):
         """Return the maximum number of retries.
