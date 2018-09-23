@@ -70,7 +70,6 @@ class ChaosRunner(object):
 
         lock_manager = host_lock_manager.HostLockManager()
         webdriver_master = hosts.SSHHost(MASTERNAME, user='chaosvmmaster')
-        hosts.send_creation_metric(webdriver_instance, context='chaos_runner')
         host_prefix = self._host.hostname.split('-')[0]
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = utils.allocate_packet_capturer(

@@ -281,14 +281,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.env['LIBC_FATAL_STDERR_'] = '1'
         self._ssh_verbosity_flag = ssh_verbosity_flag
         self._ssh_options = ssh_options
-        self._servo_host = servo_host.create_servo_host(
+        self.set_servo_host(
+            servo_host.create_servo_host(
                 dut=self, servo_args=servo_args,
                 try_lab_servo=try_lab_servo,
-                try_servo_repair=try_servo_repair)
-        if self._servo_host is not None:
-            self.servo = self._servo_host.get_servo()
-        else:
-            self.servo = None
+                try_servo_repair=try_servo_repair))
 
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = chameleon_host.create_chameleon_host(
@@ -703,6 +700,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       self.BOOT_TIMEOUT)
 
 
+    def set_servo_host(self, host):
+        """Set our servo host member, and associated servo.
+
+        @param host  Our new `ServoHost`.
+        """
+        self._servo_host = host
+        if self._servo_host is not None:
+            self.servo = self._servo_host.get_servo()
+        else:
+            self.servo = None
+
+
     def repair_servo(self):
         """
         Confirm that servo is initialized and verified.
@@ -1025,19 +1034,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
 
-        # For purposes of logging reboot times:
-        # Get the board name i.e. 'daisy_spring'
-        board_fullname = self.get_board()
-
-        # Strip the prefix and add it to dargs.
-        dargs['board'] = board_fullname[board_fullname.find(':')+1:]
+        dargs['board'] = self.host_info_store.get().board
         # Record who called us
         orig = sys._getframe(1).f_code
         metric_fields = {'board' : dargs['board'],
                          'dut_host_name' : self.hostname,
                          'success' : True}
         metric_debug_fields = {'board' : dargs['board'],
-                               'caller' : "%s:%s" % (orig.co_filename, orig.co_name),
+                               'caller' : "%s:%s" % (orig.co_filename,
+                                                     orig.co_name),
                                'success' : True,
                                'error' : ''}
 

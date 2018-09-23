@@ -4,7 +4,7 @@
 
 import os
 
-from autotest_lib.server import hosts
+from autotest_lib.server.hosts import ssh_host
 
 RA_SCRIPT = 'sendra.py'
 SCAPY = 'scapy-2.2.0.tar.gz'
@@ -33,8 +33,7 @@ class IPutils(object):
 
         """
         scapy = os.path.join(self.install_path, SCAPY)
-        ap_sshhost = hosts.SSHHost(hostname=self.host.hostname)
-        hosts.send_creation_metric(ap_sshhost, context='IP_utils')
+        ap_sshhost = ssh_host.SSHHost(hostname=self.host.hostname)
         current_dir = os.path.dirname(os.path.realpath(__file__))
         send_ra_script = os.path.join(current_dir, RA_SCRIPT)
         send_scapy = os.path.join(current_dir, SCAPY)
