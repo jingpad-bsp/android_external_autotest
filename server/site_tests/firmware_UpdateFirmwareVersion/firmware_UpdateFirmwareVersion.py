@@ -66,7 +66,6 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
 
     def cleanup(self):
         try:
-            self.faft_client.updater.cleanup()
             self.restore_firmware()
             self.invalidate_firmware_setup()
         except Exception as e:
