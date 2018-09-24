@@ -147,7 +147,6 @@ suite:longevity_two
 suite:manual
 suite:memory_qual
 suite:memory_qual_quick
-suite:ml_service
 suite:mmc_qual
 suite:moblab
 suite:moblab_quick
