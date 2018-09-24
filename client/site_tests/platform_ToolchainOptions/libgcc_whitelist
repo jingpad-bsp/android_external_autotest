@@ -1,4 +1,6 @@
 /opt/google/chrome/nacl_helper
+# crbug.com/887869, remove this after Intel fixes their parser
+/opt/intel/fw_parser
 # Rust compiler is using libgcc_s, remove this after rust is fixed.
 /usr/sbin/mosys
 # These files are delivered as binaries in Chrome OS.
