@@ -135,11 +135,3 @@ class platform_FlashErasers(FirmwareTest):
 
             # Now restore the image.
             self.run_cmd('flashrom -w %s --diff %s' % (bios_image, junk_image))
-
-    def cleanup(self):
-        """Remove temporary objects used by the test."""
-        try:
-            self.faft_client.updater.cleanup()
-        except Exception as e:
-            logging.error("Updater cleanup exception: %s", str(e))
-        super(platform_FlashErasers, self).cleanup()

@@ -190,6 +190,7 @@ class FirmwareTest(FAFTBase):
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
         self.faft_client.updater.start_daemon()
+        self.faft_client.updater.cleanup()
         self._remove_faft_lockfile()
         self._record_servo_log()
         self._record_faft_client_log()
