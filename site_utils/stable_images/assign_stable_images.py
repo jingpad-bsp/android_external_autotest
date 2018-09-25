@@ -101,16 +101,6 @@ class _VersionUpdater(object):
         """Announce the start of processing to the user."""
         pass
 
-    def report(self, message):
-        """
-        Report a pre-formatted message for the user.
-
-        The message is printed to stdout, followed by a newline.
-
-        @param message The message to be provided to the user.
-        """
-        logging.info(message)
-
     def report_default_changed(self, old_default, new_default):
         """
         Report that the default version mapping is changing.
@@ -121,7 +111,7 @@ class _VersionUpdater(object):
         @param old_default  The original default version.
         @param new_default  The new default version to be applied.
         """
-        self.report('Default %s -> %s' % (old_default, new_default))
+        logging.debug('Default %s -> %s' % (old_default, new_default))
 
     def _report_board_changed(self, board, old_version, new_version):
         """
@@ -134,8 +124,7 @@ class _VersionUpdater(object):
         @param old_version  The original version mapped to the board.
         @param new_version  The new version to be applied to the board.
         """
-        template = '    %-22s %s -> %s'
-        self.report(template % (board, old_version, new_version))
+        logging.debug('    %-22s %s -> %s', board, old_version, new_version)
 
     def report_board_unchanged(self, board, old_version):
         """
@@ -288,7 +277,7 @@ def _apply_cros_upgrades(updater, old_versions, new_versions,
     old_default = old_versions[_DEFAULT_BOARD]
     if old_default != new_default:
         updater.report_default_changed(old_default, new_default)
-    updater.report('Applying stable version changes:')
+    logging.info('Applying stable version changes:')
     default_count = 0
     for board, new_build in new_versions.items():
         if new_build == new_default:
@@ -305,8 +294,7 @@ def _apply_cros_upgrades(updater, old_versions, new_versions,
     for board, new_build in new_versions.items():
         if new_build == new_default and board in old_versions:
             updater.delete_mapping(board, old_versions[board])
-    updater.report('%d boards now use the default mapping' %
-                   default_count)
+    logging.info('%d boards now use the default mapping', default_count)
 
 
 def _apply_firmware_upgrades(updater, old_versions, new_versions):
@@ -346,8 +334,8 @@ def _apply_firmware_upgrades(updater, old_versions, new_versions):
                 updater.set_mapping(board, old_firmware, new_firmware)
             else:
                 unchanged += 1
-    updater.report('%d boards have no firmware mapping' % no_version)
-    updater.report('%d boards are unchanged' % unchanged)
+    logging.info('%d boards have no firmware mapping', no_version)
+    logging.info('%d boards are unchanged', unchanged)
 
 
 def _parse_command_line():
@@ -392,7 +380,7 @@ def main():
     _apply_cros_upgrades(updater, cros_versions,
                          upgrade_versions, new_default)
 
-    updater.report('\nApplying firmware updates:')
+    logging.info('Applying firmware updates.')
     fw_versions = updater.select_version_map(afe.FIRMWARE_IMAGE_TYPE)
     firmware_upgrades = _get_firmware_upgrades(upgrade_versions)
     _apply_firmware_upgrades(updater, fw_versions, firmware_upgrades)

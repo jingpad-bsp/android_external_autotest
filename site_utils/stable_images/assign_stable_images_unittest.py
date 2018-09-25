@@ -318,10 +318,6 @@ class _TestUpdater(assign_stable_images._VersionUpdater):
         self._testcase.assertEqual(self._mappings,
                                    self._expected_mappings)
 
-    def report(self, message):
-        """Report message."""
-        pass
-
     def report_default_changed(self, old_default, new_default):
         """
         Override of our parent class' method for test purposes.
