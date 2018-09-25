@@ -174,6 +174,21 @@ class Interface:
 
 
     @property
+    def wiphy_name(self):
+        """
+        @return name of the wiphy (e.g., 'phy0'), if available.
+        Otherwise None.
+        """
+        readlink_result = self._run('readlink "%s"' %
+                os.path.join(DEVICE_INFO_ROOT, self._name, 'phy80211'),
+                ignore_status=True)
+        if readlink_result.exit_status != 0:
+            return None
+
+        return os.path.basename(readlink_result.stdout.strip())
+
+
+    @property
     def module_name(self):
         """@return Name of kernel module in use by this interface."""
         module_readlink_result = self._run('readlink "%s"' %
