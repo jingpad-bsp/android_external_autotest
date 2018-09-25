@@ -4,7 +4,6 @@
 
 AUTHOR = "louiscollard,apronin"
 NAME = "firmware_Cr50VirtualNVRam"
-ATTRIBUTES = "suite:faft_cr50_prepvt"
 PURPOSE = "Test vNVRAM functionality in cr50"
 TIME = "SHORT"
 TEST_TYPE = "Client"
