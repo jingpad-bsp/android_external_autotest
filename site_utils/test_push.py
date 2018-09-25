@@ -65,7 +65,7 @@ DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_NUM_DUTS = (
         ('gandof', 4),
-        ('quawks', 1),
+        ('quawks', 2),
 )
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
