@@ -10,4 +10,6 @@ class login_VMSanity(test.test):
     version = 1
 
     def run_once(self):
-        vm_sanity.VMSanity().Run()
+        # Don't run Tast tests in this test, as there's already plenty of other
+        # infrastructure for running them in the lab: http://go/tast-infra
+        vm_sanity.VMSanity(run_tast=False).Run()
