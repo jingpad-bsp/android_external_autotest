@@ -371,6 +371,12 @@ def _parse_command_line(argv):
     parser.add_argument('-n', '--dry-run', dest='updater_mode',
                         action='store_const', const=_DryRunUpdater,
                         help='print changes without executing them')
+    # TODO(crbug/888046) Make these arguments required once puppet is updated to
+    # pass them in.
+    parser.add_argument('--web',
+                        default=None,
+                        help='URL to the AFE to update.')
+
     arguments = parser.parse_args(argv[1:])
     if not arguments.updater_mode:
         arguments.updater_mode = _NormalModeUpdater
@@ -384,7 +390,7 @@ def main(argv):
     @param argv  Command line arguments, including `sys.argv[0]`.
     """
     arguments = _parse_command_line(argv)
-    afe = frontend_wrappers.RetryingAFE(server=None)
+    afe = frontend_wrappers.RetryingAFE(server=arguments.web)
     updater = arguments.updater_mode(afe)
     updater.announce()
 
