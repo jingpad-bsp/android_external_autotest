@@ -175,6 +175,7 @@ class PowerTelemetryLogger(object):
     def start_measurement(self):
         """Start power telemetry devices."""
         logging.info('%s starts.', self.__class__.__name__)
+        self._start_ts = time.time()
         self._sweetberry_thread.start()
 
     def end_measurement(self, debug_file_path):
@@ -252,7 +253,7 @@ class PowerTelemetryLogger(object):
                     custom_test_events[event]['ts'] = float(match.group(1))
 
         events_ts = {
-            'start': 0,
+            'start': self._start_ts,
             'end': time.time(),
         }
         for event in events_ts:
@@ -261,6 +262,8 @@ class PowerTelemetryLogger(object):
             events_ts[event] = custom_test_events[event].get(
                     'ts', events_ts[event])
             events_ts[event] += self._interval / 2.0
+
+        self._start_ts = events_ts['start']
 
         for sweetberry_file in os.listdir(self._logdir):
             if sweetberry_file.startswith('sweetberry'):
@@ -328,6 +331,6 @@ class PowerTelemetryLogger(object):
 
         pdash = power_dashboard.PowerTelemetryLoggerDashboard(
                 logger=logger, testname=self._tagged_testname, host=self._host,
-                resultsdir=self._logdir, uploadurl=DASHBOARD_UPLOAD_URL,
-                note=self._note)
+                start_ts=self._start_ts, resultsdir=self._logdir,
+                uploadurl=DASHBOARD_UPLOAD_URL, note=self._note)
         pdash.upload()
