@@ -9,11 +9,10 @@ import dbus
 import dbus.mainloop.glib
 import dbus.service
 import gobject
-import json
 import logging
 import logging.handlers
-import os
-import shutil
+# Use yaml instead of json to serialize non-ASCII data
+import yaml
 
 import common
 from autotest_lib.client.bin import utils
@@ -558,7 +557,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     def get_adapter_properties(self):
-        return json.dumps(self._get_adapter_properties())
+        return yaml.dump(self._get_adapter_properties())
 
 
     def _is_powered_on(self):
@@ -572,7 +571,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           ( version, revision )
 
         """
-        return json.dumps(self._control.read_version())
+        return yaml.dump(self._control.read_version())
 
 
     def read_supported_commands(self):
@@ -582,7 +581,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           ( commands, events )
 
         """
-        return json.dumps(self._control.read_supported_commands())
+        return yaml.dump(self._control.read_supported_commands())
 
 
     def read_index_list(self):
@@ -591,7 +590,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return the information as a JSON-encoded array of controller indexes.
 
         """
-        return json.dumps(self._control.read_index_list())
+        return yaml.dump(self._control.read_index_list())
 
 
     def read_info(self):
@@ -603,7 +602,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             name, short_name )
 
         """
-        return json.dumps(self._control.read_info(0))
+        return yaml.dump(self._control.read_info(0))
 
 
     def add_device(self, address, address_type, action):
@@ -617,8 +616,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           ( address, address_type ), None on failure.
 
         """
-        return json.dumps(self._control.add_device(
-                0, address, address_type, action))
+        return yaml.dump(
+                self._control.add_device(0, address, address_type, action))
 
 
     def remove_device(self, address, address_type):
@@ -631,8 +630,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           ( address, address_type ), None on failure.
 
         """
-        return json.dumps(self._control.remove_device(
-                0, address, address_type))
+        return yaml.dump(self._control.remove_device(0, address, address_type))
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -649,7 +647,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         for path, ifaces in objects.iteritems():
             if self.BLUEZ_DEVICE_IFACE in ifaces:
                 devices.append(objects[path][self.BLUEZ_DEVICE_IFACE])
-        return json.dumps(devices)
+        return yaml.dump(devices)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -669,13 +667,13 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             if self.BLUEZ_DEVICE_IFACE in ifaces:
                 device = objects[path][self.BLUEZ_DEVICE_IFACE]
                 if device.get('Address') == address:
-                    return json.dumps(device)
+                    return yaml.dump(device)
 
-        devices = json.loads(self.get_devices())
+        devices = yaml.load(self.get_devices())
         for device in devices:
             if device.get['Address'] == address:
-                return json.dumps(device)
-        return json.dumps(dict())
+                return yaml.dump(device)
+        return yaml.dump(dict())
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -719,7 +717,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 None on failure.
 
         """
-        return json.dumps(self._raw.get_dev_info(0))
+        return yaml.dump(self._raw.get_dev_info(0))
 
 
     @xmlrpc_server.dbus_safe(False)
