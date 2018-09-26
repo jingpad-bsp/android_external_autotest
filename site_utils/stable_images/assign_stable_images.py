@@ -371,8 +371,6 @@ def _parse_command_line(argv):
     parser.add_argument('-n', '--dry-run', dest='updater_mode',
                         action='store_const', const=_DryRunUpdater,
                         help='print changes without executing them')
-    parser.add_argument('extra_boards', nargs='*', metavar='BOARD',
-                        help='Names of additional boards to be updated.')
     arguments = parser.parse_args(argv[1:])
     if not arguments.updater_mode:
         arguments.updater_mode = _NormalModeUpdater
@@ -389,13 +387,12 @@ def main(argv):
     afe = frontend_wrappers.RetryingAFE(server=None)
     updater = arguments.updater_mode(afe)
     updater.announce()
-    boards = (set(arguments.extra_boards) |
-              lab_inventory.get_managed_boards(afe))
 
     cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
     omaha_versions = build_data.get_omaha_version_map()
     upgrade_versions, new_default = (
-        _get_upgrade_versions(cros_versions, omaha_versions, boards))
+            _get_upgrade_versions(cros_versions, omaha_versions,
+                                  lab_inventory.get_managed_boards(afe)))
     _apply_cros_upgrades(updater, cros_versions,
                          upgrade_versions, new_default)
 
