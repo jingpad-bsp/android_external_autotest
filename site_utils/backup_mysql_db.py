@@ -69,9 +69,6 @@ _MONTHLY = 'monthly'
 # Dump of server db only
 _SERVER_DB = 'server_db'
 
-# Dump type which can be used for replica creation
-_REPLICATION = 'replication'
-
 # Contrary to a conventional mysql dump which takes O(hours) on large databases,
 # a host dump is the cheapest form of backup possible. We dump the output of a
 # of a mysql command showing all hosts and their pool labels to a text file that
@@ -141,7 +138,7 @@ class MySqlArchiver(object):
         extra_dump_args = ''
         for entry in IGNORE_TABLES:
             extra_dump_args += '--ignore-table=%s ' % entry
-        if self._type == _REPLICATION:
+        if self._type in [_WEEKLY, _MONTHLY]:
             extra_dump_args += '--dump-slave '
 
         if not self._db:
