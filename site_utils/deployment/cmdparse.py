@@ -146,6 +146,8 @@ def _add_subcommand(subcommands, name, upload_default, description):
     _add_upload_option(subparser, upload_default)
     subparser.add_argument('-b', '--board', metavar='BOARD',
                            help='board for DUTs to be installed')
+    subparser.add_argument('-m', '--model', metavar='MODEL',
+                           help='model for DUTs to be installed.')
     subparser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
                            help='host names of DUTs to be installed')
     return subparser

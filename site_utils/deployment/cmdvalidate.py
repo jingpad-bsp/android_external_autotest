@@ -352,6 +352,40 @@ def _read_build(input, board):
     return build
 
 
+def _read_model(input, default_model):
+    """Read a valid model name from user input.
+
+    Prompt the user to supply a model name, and read one line.  If
+    the line names a valid model, return the model name.  If the
+    line is blank and `default_model` is a non-empty string, returns
+    `default_model`.  Retry until a valid input is obtained.
+
+    `default_model` isn't checked; the caller is responsible for
+    ensuring its validity.
+
+    @param input          File-like object from which to read the
+                          model.
+    @param default_model  Value to return if the user enters a
+                          blank line.
+    @return Returns `default_model` or a model name.
+    """
+    model_prompt = 'model name'
+    if default_model:
+        model_prompt += ' [%s]' % default_model
+    new_model = None
+    # TODO(guocb): create a real model validator
+    _validate_model = lambda x: x
+
+    while not _validate_model(new_model):
+        new_model = _read_with_prompt(input, model_prompt).lower()
+        if new_model:
+            sys.stderr.write("It's your responsiblity to ensure validity of "
+                             "model name.\n")
+        elif default_model:
+            return default_model
+    return new_model
+
+
 def _read_hostnames(input):
     """Read a list of host names from user input.
 
@@ -388,7 +422,7 @@ def _read_hostnames(input):
 def _read_arguments(input, arguments):
     """Dialog to read all needed arguments from the user.
 
-    The user is prompted in turn for a board, a build, and
+    The user is prompted in turn for a board, a build, a model, and
     hostnames.  Responses are stored in `arguments`.  The user is
     given opportunity to accept or reject the responses before
     continuing.
@@ -403,6 +437,7 @@ def _read_arguments(input, arguments):
     while not 'yes'.startswith(y_n):
         arguments.board = _read_board(input, arguments.board)
         arguments.build = _read_build(input, arguments.board)
+        arguments.model = _read_model(input, arguments.model)
         prompt = '%s build %s? [Y/n]' % (
                 arguments.board, arguments.build)
         y_n = _read_with_prompt(input, prompt).lower() or 'yes'
@@ -486,7 +521,7 @@ def validate_arguments(arguments):
     @param arguments  Standard `Namespace` object as returned by
                       `cmdparse.parse_command()`.
     """
-    if arguments.board is None:
+    if not arguments.board or not arguments.model:
         _read_arguments(sys.stdin, arguments)
     elif not _validate_arguments(arguments):
         return None
