@@ -65,7 +65,7 @@ DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_NUM_DUTS = (
         ('gandof', 4),
-        ('quawks', 1),
+        ('quawks', 2),
 )
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
@@ -500,7 +500,7 @@ def check_service_crash(respawn_limit, start_time):
 
 
 _SUCCESS_MSG = """
-All tests completed successfully.
+All staging tests completed successfully.
 
 Instructions for pushing to prod are available at
 https://goto.google.com/autotest-to-prod
@@ -538,9 +538,6 @@ def _main(arguments):
                 if AFE.get_jobs(id=suite_id, finished=False):
                     AFE.run('abort_host_queue_entries', job=suite_id)
         raise
-    finally:
-        # Reverify all the hosts
-        reverify_all_push_duts()
 
 
 def main():
