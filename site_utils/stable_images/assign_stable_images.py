@@ -68,7 +68,14 @@ class _VersionUpdater(object):
     change the AFE in normal mode have names starting with "_do"
     """
 
-    def __init__(self, afe):
+    def __init__(self, afe, dry_run):
+        """Initialize us.
+
+        @param afe:     A frontend.AFE object.
+        @param dry_run: A boolean indicating whether to execute in dry run mode.
+                        No updates are persisted to the afe in dry run.
+        """
+        self._dry_run = dry_run
         image_types = [afe.CROS_IMAGE_TYPE, afe.FIRMWARE_IMAGE_TYPE]
         self._version_maps = {
             image_type: afe.get_stable_version_map(image_type)
@@ -149,7 +156,11 @@ class _VersionUpdater(object):
         @param board        The board with the changing version.
         @param new_version  The new version to be applied to the board.
         """
-        pass
+        if self._dry_run:
+            logging.info('DRYRUN: Would have set %s version to %s',
+                         board, new_version)
+        else:
+            self._selected_map.set_version(board, new_version)
 
     def _do_delete_mapping(self, board):
         """
@@ -157,7 +168,10 @@ class _VersionUpdater(object):
 
         @param board        The board with the version to be deleted.
         """
-        pass
+        if self._dry_run:
+            logging.info('DRYRUN: Would have deleted version for %s', board)
+        else:
+            self._selected_map.delete_version(board)
 
     def set_mapping(self, board, old_version, new_version):
         """
@@ -190,23 +204,6 @@ class _VersionUpdater(object):
                                    old_version,
                                    _DEFAULT_VERSION_TAG)
         self._do_delete_mapping(board)
-
-
-class _DryRunUpdater(_VersionUpdater):
-    """Code for handling --dry-run execution."""
-
-    def announce(self):
-        self.report('Dry run:  no changes will be made.')
-
-
-class _NormalModeUpdater(_VersionUpdater):
-    """Code for handling normal execution."""
-
-    def _do_set_mapping(self, board, new_version):
-        self._selected_map.set_version(board, new_version)
-
-    def _do_delete_mapping(self, board):
-        self._selected_map.delete_version(board)
 
 
 def _get_upgrade_versions(cros_versions, omaha_versions, boards):
@@ -362,8 +359,8 @@ def _parse_command_line():
     parser = argparse.ArgumentParser(
             description='Update the stable repair version for all '
                         'boards')
-    parser.add_argument('-n', '--dry-run', dest='updater_mode',
-                        action='store_const', const=_DryRunUpdater,
+    parser.add_argument('-n', '--dry-run',
+                        action='store_true',
                         help='print changes without executing them')
     loglib.add_logging_options(parser)
     # TODO(crbug/888046) Make these arguments required once puppet is updated to
@@ -373,8 +370,6 @@ def _parse_command_line():
                         help='URL to the AFE to update.')
 
     arguments = parser.parse_args()
-    if not arguments.updater_mode:
-        arguments.updater_mode = _NormalModeUpdater
     return parser, arguments
 
 
@@ -383,8 +378,10 @@ def main():
     parser, arguments = _parse_command_line()
     loglib.configure_logging_with_args(parser, arguments)
 
+    if arguments.dry_run:
+        logging.info('DRYRUN: No changes will be made.')
     afe = frontend_wrappers.RetryingAFE(server=arguments.web)
-    updater = arguments.updater_mode(afe)
+    updater = _VersionUpdater(afe, dry_run=arguments.dry_run)
     updater.announce()
 
     cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
