@@ -26,11 +26,13 @@ database.
 """
 
 import argparse
+import logging
 import sys
 
 import common
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import lab_inventory
+from autotest_lib.site_utils import loglib
 from autotest_lib.site_utils.stable_images import build_data
 
 
@@ -100,7 +102,7 @@ class _VersionUpdater(object):
 
         @param message The message to be provided to the user.
         """
-        print message
+        logging.info(message)
 
     def report_default_changed(self, old_default, new_default):
         """
@@ -351,45 +353,36 @@ def _apply_firmware_upgrades(updater, old_versions, new_versions):
     updater.report('%d boards are unchanged' % unchanged)
 
 
-def _parse_command_line(argv):
+def _parse_command_line():
     """
     Parse the command line arguments.
 
-    Create an argument parser for this command's syntax, parse the
-    command line, and return the result of the ArgumentParser
-    parse_args() method.
-
-    @param argv Standard command line argument vector; argv[0] is
-                assumed to be the command name.
     @return Result returned by ArgumentParser.parse_args().
-
     """
     parser = argparse.ArgumentParser(
-            prog=argv[0],
             description='Update the stable repair version for all '
                         'boards')
     parser.add_argument('-n', '--dry-run', dest='updater_mode',
                         action='store_const', const=_DryRunUpdater,
                         help='print changes without executing them')
+    loglib.add_logging_options(parser)
     # TODO(crbug/888046) Make these arguments required once puppet is updated to
     # pass them in.
     parser.add_argument('--web',
                         default=None,
                         help='URL to the AFE to update.')
 
-    arguments = parser.parse_args(argv[1:])
+    arguments = parser.parse_args()
     if not arguments.updater_mode:
         arguments.updater_mode = _NormalModeUpdater
-    return arguments
+    return parser, arguments
 
 
-def main(argv):
-    """
-    Standard main routine.
+def main():
+    """Standard main routine."""
+    parser, arguments = _parse_command_line()
+    loglib.configure_logging_with_args(parser, arguments)
 
-    @param argv  Command line arguments, including `sys.argv[0]`.
-    """
-    arguments = _parse_command_line(argv)
     afe = frontend_wrappers.RetryingAFE(server=arguments.web)
     updater = arguments.updater_mode(afe)
     updater.announce()
@@ -409,4 +402,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
