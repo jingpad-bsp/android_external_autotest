@@ -172,6 +172,14 @@ class _CommandParserTestCase(unittest.TestCase):
                 arguments = _test_parse_command([subcmd, option, opt_arg])
                 self.assertEquals(arguments.board, opt_arg)
 
+    def test_model_option(self):
+        """Test the `--model` option for subcommands."""
+        opt_arg = 'model'
+        for option in ['-m', '--model']:
+            for subcmd in self._ALL_SUBCOMMANDS:
+                arguments = _test_parse_command([subcmd, option, opt_arg])
+                self.assertEquals(arguments.model, opt_arg)
+
     def test_hostname_arguments(self):
         """Test hostname arguments for subcommands."""
         argument = 'hostname'
