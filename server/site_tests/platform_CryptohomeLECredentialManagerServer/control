@@ -5,7 +5,7 @@
 AUTHOR = "allenwebb"
 NAME = "platform_CryptohomeLECredentialManagerServer"
 PURPOSE = "Validate PinWeaver functionality on Cr50"
-ATTRIBUTES = "suite:experimental"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
