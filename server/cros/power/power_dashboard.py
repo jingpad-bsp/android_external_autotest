@@ -8,8 +8,8 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
     """Dashboard class for autotests that run on server side.
     """
 
-    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None,
-                 note=''):
+    def __init__(self, logger, testname, host, start_ts=None, resultsdir=None,
+                 uploadurl=None, note=''):
         """Create ServerTestDashboard objects.
 
         Args:
@@ -24,8 +24,8 @@ class ServerTestDashboard(power_dashboard.BaseDashboard):
 
         self._host = host
         self._note = note
-        super(ServerTestDashboard, self).__init__(logger, testname, resultsdir,
-                                                  uploadurl)
+        super(ServerTestDashboard, self).__init__(logger, testname, start_ts,
+                                                  resultsdir, uploadurl)
 
     def _create_dut_info_dict(self, power_rails):
         """Create a dictionary that contain information of the DUT.
@@ -83,12 +83,12 @@ class PowerTelemetryLoggerDashboard(ServerTestDashboard):
     """Dashboard class for power_telemetry_logger.PowerTelemetryLogger class.
     """
 
-    def __init__(self, logger, testname, host, resultsdir=None, uploadurl=None,
-                 note=''):
+    def __init__(self, logger, testname, host, start_ts, resultsdir=None,
+                 uploadurl=None, note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com'
         super(PowerTelemetryLoggerDashboard, self).__init__(
-                logger, testname, host, resultsdir, uploadurl, note)
+                logger, testname, host, start_ts, resultsdir, uploadurl, note)
 
     def _convert(self):
         """
