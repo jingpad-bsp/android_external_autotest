@@ -19,6 +19,12 @@ from autotest_lib.client.cros.video import helper_logger
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 BINARY = 'video_encode_accelerator_unittest'
 
+# These default values are from video_encode_accelerator_unittest.
+# The value of |requested_frame_rate| and |requested_subsequent_frame_rate|.
+DEFAULT_FRAME_RATE = 30
+# The ratio of |requested_subsequent_bit_rate| to |requested_bit_rate|.
+DEFAULT_SUBSEQUENT_BIT_RATE_RATIO = 2
+
 def _remove_if_exists(filepath):
     try:
         os.remove(filepath)
@@ -144,7 +150,14 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
         device_capability.DeviceCapability().ensure_capability(capability)
 
         last_test_failure = None
-        for path, width, height, bit_rate in streams:
+        for (path, width, height, bit_rate, frame_rate, subsequent_bit_rate,
+             subsequent_frame_rate) in streams:
+            # Set the default value for None.
+            frame_rate = frame_rate or DEFAULT_FRAME_RATE
+            subsequent_bit_rate = (subsequent_bit_rate or
+                                   bit_rate * DEFAULT_SUBSEQUENT_BIT_RATE_RATIO)
+            subsequent_frame_rate = subsequent_frame_rate or DEFAULT_FRAME_RATE
+
             if in_cloud:
                 input_path = os.path.join(self.tmpdir, path.split('/')[-1])
                 _download_video(path, input_path)
@@ -154,11 +167,14 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             output_path = os.path.join(self.tmpdir,
                     '%s.out' % input_path.split('/')[-1])
 
-            cmd_line_list = []
-            cmd_line_list.append('--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
-                    input_path, width, height, profile, output_path, bit_rate))
-            cmd_line_list.append(helper_logger.chrome_vmodule_flag())
-            cmd_line_list.append('--ozone-platform=gbm')
+            test_stream_list = map(
+                    str, [input_path, width, height, profile, output_path,
+                          bit_rate, frame_rate, subsequent_bit_rate,
+                          subsequent_frame_rate])
+            cmd_line_list = [
+                    '--test_stream_data="%s"' % ':'.join(test_stream_list),
+                    '--ozone-platform=gbm',
+                    helper_logger.chrome_vmodule_flag()]
 
             # Command line |gtest_filter| can override get_filter_option().
             predefined_filter = self.get_filter_option(profile, (width, height))
