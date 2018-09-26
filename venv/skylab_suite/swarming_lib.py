@@ -126,21 +126,6 @@ def get_basic_swarming_cmd(command):
             '--swarming', get_swarming_server()]
 
 
-def get_logdog_server():
-    """Return the LogDog server for the current environment.
-
-    If the appropriate server cannot be determined, return an empty
-    string.
-    """
-    swarming_server = get_swarming_server()
-    if swarming_server == 'chromium-swarm-dev.appspot.com':
-        return 'luci-logdog-dev.appspot.com'
-    elif swarming_server == 'chrome-swarming.appspot.com':
-        return 'luci-logdog.appspot.com'
-    else:
-        return ''
-
-
 def make_logdog_annotation_url():
     """Return a unique LogDog annotation URL.
 
@@ -157,6 +142,15 @@ def make_logdog_annotation_url():
 def get_swarming_server():
     """Return the swarming server for the current environment."""
     return os.environ.get('SWARMING_SERVER')
+
+
+def get_logdog_server():
+    """Return the LogDog server for the current environment.
+
+    If the appropriate server cannot be determined, return an empty
+    string.
+    """
+    return os.environ.get('LOGDOG_SERVER') or ''
 
 
 def get_new_task_swarming_cmd():
