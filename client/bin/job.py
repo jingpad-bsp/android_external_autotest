@@ -574,6 +574,26 @@ class base_client_job(base_job.base_job):
         # UnhandledTestError that is caught above.
 
 
+    def stage_control_file(self, url):
+        """
+        Install the test package and return the control file path.
+
+        @param url The name of the test, e.g. dummy_Pass.  This is the
+            string passed to run_test in the client test control file:
+            job.run_test('dummy_Pass')
+            This name can also be something like 'camera_HAL3.jea',
+            which corresponds to a test package containing multiple
+            control files, each with calls to:
+            job.run_test('camera_HAL3', **opts)
+
+        @returns Absolute path to the control file for the test.
+        """
+        testname, _, _tag = url.partition('.')
+        bindir = os.path.join(self.testdir, testname)
+        self.install_pkg(testname, 'test', bindir)
+        return _locate_test_control_file(bindir, url)
+
+
     @_run_test_complete_on_exit
     def run_test_detail(self, url, *args, **dargs):
         """
@@ -1261,3 +1281,39 @@ class job(base_client_job):
 
     def require_gcc(self):
         return False
+
+
+# TODO(ayatane): This logic should be deduplicated with
+# server/cros/dynamic_suite/control_file_getter.py, but the server
+# libraries are not available on clients.
+def _locate_test_control_file(dirpath, testname):
+    """
+    Locate the control file for the given test.
+
+    @param dirpath Root directory to search.
+    @param testname Name of test.
+
+    @returns Absolute path to the control file.
+    @raise JobError: Raised if control file not found.
+    """
+    for dirpath, _dirnames, filenames in os.walk(dirpath):
+        for filename in filenames:
+            if 'control' not in filename:
+                continue
+            path = os.path.join(dirpath, filename)
+            if _is_control_file_for_test(path, testname):
+                return os.path.abspath(path)
+    raise error.JobError(
+            'could not find client test control file',
+            dirpath, testname)
+
+
+_NAME_PATTERN = "NAME *= *['\"]([^'\"]+)['\"]"
+
+
+def _is_control_file_for_test(path, testname):
+    with open(path) as f:
+        for line in f:
+            match = re.match(_NAME_PATTERN, line)
+            if match is not None:
+                return match.group(1) == testname
