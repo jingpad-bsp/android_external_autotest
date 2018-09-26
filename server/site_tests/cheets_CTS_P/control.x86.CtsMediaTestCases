@@ -22,7 +22,7 @@ def run_CTS(machine):
         hosts=host_list,
         iterations=1,
         max_retry=3,
-        needs_push_media=False,
+        needs_push_media=True,
         tag='x86.CtsMediaTestCases',
         test_name='cheets_CTS_P.x86.CtsMediaTestCases',
         run_template=['run', 'commandAndExit', 'cts', '--include-filter', 'CtsMediaTestCases', '--logcat-on-failure'],
