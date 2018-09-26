@@ -236,7 +236,9 @@ class Chrome(object):
               window.__login_status = s;
             });
         ''')
-        return ext.EvaluateJavaScript('window.__login_status')
+        return utils.poll_for_condition(
+                lambda: ext.EvaluateJavaScript('window.__login_status'),
+                timeout=10)
 
 
     def get_visible_notifications(self):
