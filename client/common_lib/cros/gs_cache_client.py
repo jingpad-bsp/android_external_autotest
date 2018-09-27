@@ -210,9 +210,10 @@ class GsCacheClient(object):
         """
         try:
             with metrics.SecondsTimer(
-                    METRICS_PATH + '/call_timer', record_on_exception=True,
+                    METRICS_PATH + '/call_timer_2', record_on_exception=True,
                     add_exception_field=True, scale=0.001,
                     fields={'rpc_name': 'list_suite_controls',
+                            'rpc_server': self._api.server_netloc,
                             'is_gs_cache_call': True}
             ):
                 return self._list_suite_controls(build, suite_name)
@@ -232,9 +233,10 @@ class GsCacheClient(object):
 
         try:
             with metrics.SecondsTimer(
-                    METRICS_PATH + '/call_timer', record_on_exception=True,
+                    METRICS_PATH + '/call_timer_2', record_on_exception=True,
                     add_exception_field=True, scale=0.001,
                     fields={'rpc_name': 'list_suite_controls',
+                            'rpc_server': self._api.server_netloc,
                             'is_gs_cache_call': False}
             ):
                 return self._fallback_server.list_suite_controls(

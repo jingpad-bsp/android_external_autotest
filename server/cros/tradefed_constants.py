@@ -40,6 +40,9 @@ TRADEFED_CACHE_CONTAINER_LOCK = '/usr/local/autotest/results/shared/lock'
 # impact of running say 100 CTS tests in parallel is acceptable (quarter
 # servers have 500GB of disk, while full servers have 2TB).
 TRADEFED_CACHE_MAX_SIZE = (20 * 1024 * 1024 * 1024)
+# The path that cts-tradefed uses to place media assets. By downloading and
+# expanding the archive here beforehand, tradefed can reuse the content.
+TRADEFED_MEDIA_PATH = '/tmp/android-cts-media'
 
 # It looks like the GCE builder can be very slow and login on VMs take much
 # longer than on hardware or bare metal.

@@ -259,7 +259,7 @@ class _TestUpdater(assign_stable_images._VersionUpdater):
     """
 
     def __init__(self, testcase):
-        super(_TestUpdater, self).__init__(_StubAFE())
+        super(_TestUpdater, self).__init__(_StubAFE(), dry_run=True)
         self._testcase = testcase
         self._default_changed = None
         self._reported_mappings = None
@@ -317,10 +317,6 @@ class _TestUpdater(assign_stable_images._VersionUpdater):
                                    self._actual_deletions)
         self._testcase.assertEqual(self._mappings,
                                    self._expected_mappings)
-
-    def report(self, message):
-        """Report message."""
-        pass
 
     def report_default_changed(self, old_default, new_default):
         """

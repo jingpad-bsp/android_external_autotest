@@ -26,12 +26,16 @@ database.
 """
 
 import argparse
+import logging
 import sys
 
 import common
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import lab_inventory
+from autotest_lib.site_utils import loglib
 from autotest_lib.site_utils.stable_images import build_data
+from chromite.lib import ts_mon_config
+from chromite.lib import metrics
 
 
 # _DEFAULT_BOARD - The distinguished board name used to identify a
@@ -44,6 +48,8 @@ from autotest_lib.site_utils.stable_images import build_data
 #
 _DEFAULT_BOARD = 'DEFAULT'
 _DEFAULT_VERSION_TAG = '(default)'
+
+_METRICS_PREFIX = 'chromeos/autotest/assign_stable_images'
 
 
 class _VersionUpdater(object):
@@ -66,7 +72,14 @@ class _VersionUpdater(object):
     change the AFE in normal mode have names starting with "_do"
     """
 
-    def __init__(self, afe):
+    def __init__(self, afe, dry_run):
+        """Initialize us.
+
+        @param afe:     A frontend.AFE object.
+        @param dry_run: A boolean indicating whether to execute in dry run mode.
+                        No updates are persisted to the afe in dry run.
+        """
+        self._dry_run = dry_run
         image_types = [afe.CROS_IMAGE_TYPE, afe.FIRMWARE_IMAGE_TYPE]
         self._version_maps = {
             image_type: afe.get_stable_version_map(image_type)
@@ -92,16 +105,6 @@ class _VersionUpdater(object):
         """Announce the start of processing to the user."""
         pass
 
-    def report(self, message):
-        """
-        Report a pre-formatted message for the user.
-
-        The message is printed to stdout, followed by a newline.
-
-        @param message The message to be provided to the user.
-        """
-        print message
-
     def report_default_changed(self, old_default, new_default):
         """
         Report that the default version mapping is changing.
@@ -112,7 +115,7 @@ class _VersionUpdater(object):
         @param old_default  The original default version.
         @param new_default  The new default version to be applied.
         """
-        self.report('Default %s -> %s' % (old_default, new_default))
+        logging.debug('Default %s -> %s' % (old_default, new_default))
 
     def _report_board_changed(self, board, old_version, new_version):
         """
@@ -125,8 +128,7 @@ class _VersionUpdater(object):
         @param old_version  The original version mapped to the board.
         @param new_version  The new version to be applied to the board.
         """
-        template = '    %-22s %s -> %s'
-        self.report(template % (board, old_version, new_version))
+        logging.debug('    %-22s %s -> %s', board, old_version, new_version)
 
     def report_board_unchanged(self, board, old_version):
         """
@@ -147,7 +149,11 @@ class _VersionUpdater(object):
         @param board        The board with the changing version.
         @param new_version  The new version to be applied to the board.
         """
-        pass
+        if self._dry_run:
+            logging.info('DRYRUN: Would have set %s version to %s',
+                         board, new_version)
+        else:
+            self._selected_map.set_version(board, new_version)
 
     def _do_delete_mapping(self, board):
         """
@@ -155,7 +161,10 @@ class _VersionUpdater(object):
 
         @param board        The board with the version to be deleted.
         """
-        pass
+        if self._dry_run:
+            logging.info('DRYRUN: Would have deleted version for %s', board)
+        else:
+            self._selected_map.delete_version(board)
 
     def set_mapping(self, board, old_version, new_version):
         """
@@ -188,23 +197,6 @@ class _VersionUpdater(object):
                                    old_version,
                                    _DEFAULT_VERSION_TAG)
         self._do_delete_mapping(board)
-
-
-class _DryRunUpdater(_VersionUpdater):
-    """Code for handling --dry-run execution."""
-
-    def announce(self):
-        self.report('Dry run:  no changes will be made.')
-
-
-class _NormalModeUpdater(_VersionUpdater):
-    """Code for handling normal execution."""
-
-    def _do_set_mapping(self, board, new_version):
-        self._selected_map.set_version(board, new_version)
-
-    def _do_delete_mapping(self, board):
-        self._selected_map.delete_version(board)
 
 
 def _get_upgrade_versions(cros_versions, omaha_versions, boards):
@@ -289,7 +281,7 @@ def _apply_cros_upgrades(updater, old_versions, new_versions,
     old_default = old_versions[_DEFAULT_BOARD]
     if old_default != new_default:
         updater.report_default_changed(old_default, new_default)
-    updater.report('Applying stable version changes:')
+    logging.info('Applying stable version changes:')
     default_count = 0
     for board, new_build in new_versions.items():
         if new_build == new_default:
@@ -306,8 +298,7 @@ def _apply_cros_upgrades(updater, old_versions, new_versions,
     for board, new_build in new_versions.items():
         if new_build == new_default and board in old_versions:
             updater.delete_mapping(board, old_versions[board])
-    updater.report('%d boards now use the default mapping' %
-                   default_count)
+    logging.info('%d boards now use the default mapping', default_count)
 
 
 def _apply_firmware_upgrades(updater, old_versions, new_versions):
@@ -347,63 +338,64 @@ def _apply_firmware_upgrades(updater, old_versions, new_versions):
                 updater.set_mapping(board, old_firmware, new_firmware)
             else:
                 unchanged += 1
-    updater.report('%d boards have no firmware mapping' % no_version)
-    updater.report('%d boards are unchanged' % unchanged)
+    logging.info('%d boards have no firmware mapping', no_version)
+    logging.info('%d boards are unchanged', unchanged)
 
 
-def _parse_command_line(argv):
-    """
-    Parse the command line arguments.
-
-    Create an argument parser for this command's syntax, parse the
-    command line, and return the result of the ArgumentParser
-    parse_args() method.
-
-    @param argv Standard command line argument vector; argv[0] is
-                assumed to be the command name.
-    @return Result returned by ArgumentParser.parse_args().
-
-    """
-    parser = argparse.ArgumentParser(
-            prog=argv[0],
-            description='Update the stable repair version for all '
-                        'boards')
-    parser.add_argument('-n', '--dry-run', dest='updater_mode',
-                        action='store_const', const=_DryRunUpdater,
-                        help='print changes without executing them')
-    parser.add_argument('extra_boards', nargs='*', metavar='BOARD',
-                        help='Names of additional boards to be updated.')
-    arguments = parser.parse_args(argv[1:])
-    if not arguments.updater_mode:
-        arguments.updater_mode = _NormalModeUpdater
-    return arguments
-
-
-def main(argv):
-    """
-    Standard main routine.
-
-    @param argv  Command line arguments, including `sys.argv[0]`.
-    """
-    arguments = _parse_command_line(argv)
-    afe = frontend_wrappers.RetryingAFE(server=None)
-    updater = arguments.updater_mode(afe)
+def _assign_stable_images(arguments):
+    afe = frontend_wrappers.RetryingAFE(server=arguments.web)
+    updater = _VersionUpdater(afe, dry_run=arguments.dry_run)
     updater.announce()
-    boards = (set(arguments.extra_boards) |
-              lab_inventory.get_managed_boards(afe))
 
     cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
     omaha_versions = build_data.get_omaha_version_map()
     upgrade_versions, new_default = (
-        _get_upgrade_versions(cros_versions, omaha_versions, boards))
+            _get_upgrade_versions(cros_versions, omaha_versions,
+                                  lab_inventory.get_managed_boards(afe)))
     _apply_cros_upgrades(updater, cros_versions,
                          upgrade_versions, new_default)
 
-    updater.report('\nApplying firmware updates:')
+    logging.info('Applying firmware updates.')
     fw_versions = updater.select_version_map(afe.FIRMWARE_IMAGE_TYPE)
     firmware_upgrades = _get_firmware_upgrades(upgrade_versions)
     _apply_firmware_upgrades(updater, fw_versions, firmware_upgrades)
 
 
+def main():
+    """Standard main routine."""
+    parser = argparse.ArgumentParser(
+            description='Update the stable repair version for all '
+                        'boards')
+    parser.add_argument('-n', '--dry-run',
+                        action='store_true',
+                        help='print changes without executing them')
+    loglib.add_logging_options(parser)
+    # TODO(crbug/888046) Make these arguments required once puppet is updated to
+    # pass them in.
+    parser.add_argument('--web',
+                        default=None,
+                        help='URL to the AFE to update.')
+
+    arguments = parser.parse_args()
+    loglib.configure_logging_with_args(parser, arguments)
+
+    tsmon_args = {
+            'service_name': parser.prog,
+            'indirect': False,
+            'auto_flush': False,
+    }
+    if arguments.dry_run:
+        logging.info('DRYRUN: No changes will be made.')
+        # metrics will be logged to logging stream anyway.
+        tsmon_args['debug_file'] = '/dev/null'
+
+    try:
+        with ts_mon_config.SetupTsMonGlobalState(**tsmon_args):
+            with metrics.SuccessCounter(_METRICS_PREFIX + '/tick',
+                                        fields={'afe': arguments.web}):
+                _assign_stable_images(arguments)
+    finally:
+        metrics.Flush()
+
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
