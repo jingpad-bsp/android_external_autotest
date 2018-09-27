@@ -273,6 +273,8 @@ class Autotest(installable_object.InstallableObject):
         if not repos:
             raise error.PackageInstallError("No repos to install an "
                                             "autotest client from")
+        # Make sure devserver has the autotest package staged
+        host.verify_job_repo_url()
         pkgmgr = packages.PackageManager(autodir, hostname=host.hostname,
                                          repo_urls=repos,
                                          do_locking=False,
