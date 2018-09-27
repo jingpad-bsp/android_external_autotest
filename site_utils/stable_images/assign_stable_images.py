@@ -34,6 +34,8 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils import loglib
 from autotest_lib.site_utils.stable_images import build_data
+from chromite.lib import ts_mon_config
+from chromite.lib import metrics
 
 
 # _DEFAULT_BOARD - The distinguished board name used to identify a
@@ -46,6 +48,8 @@ from autotest_lib.site_utils.stable_images import build_data
 #
 _DEFAULT_BOARD = 'DEFAULT'
 _DEFAULT_VERSION_TAG = '(default)'
+
+_METRICS_PREFIX = 'chromeos/autotest/assign_stable_images'
 
 
 class _VersionUpdater(object):
@@ -338,36 +342,7 @@ def _apply_firmware_upgrades(updater, old_versions, new_versions):
     logging.info('%d boards are unchanged', unchanged)
 
 
-def _parse_command_line():
-    """
-    Parse the command line arguments.
-
-    @return Result returned by ArgumentParser.parse_args().
-    """
-    parser = argparse.ArgumentParser(
-            description='Update the stable repair version for all '
-                        'boards')
-    parser.add_argument('-n', '--dry-run',
-                        action='store_true',
-                        help='print changes without executing them')
-    loglib.add_logging_options(parser)
-    # TODO(crbug/888046) Make these arguments required once puppet is updated to
-    # pass them in.
-    parser.add_argument('--web',
-                        default=None,
-                        help='URL to the AFE to update.')
-
-    arguments = parser.parse_args()
-    return parser, arguments
-
-
-def main():
-    """Standard main routine."""
-    parser, arguments = _parse_command_line()
-    loglib.configure_logging_with_args(parser, arguments)
-
-    if arguments.dry_run:
-        logging.info('DRYRUN: No changes will be made.')
+def _assign_stable_images(arguments):
     afe = frontend_wrappers.RetryingAFE(server=arguments.web)
     updater = _VersionUpdater(afe, dry_run=arguments.dry_run)
     updater.announce()
@@ -385,6 +360,42 @@ def main():
     firmware_upgrades = _get_firmware_upgrades(upgrade_versions)
     _apply_firmware_upgrades(updater, fw_versions, firmware_upgrades)
 
+
+def main():
+    """Standard main routine."""
+    parser = argparse.ArgumentParser(
+            description='Update the stable repair version for all '
+                        'boards')
+    parser.add_argument('-n', '--dry-run',
+                        action='store_true',
+                        help='print changes without executing them')
+    loglib.add_logging_options(parser)
+    # TODO(crbug/888046) Make these arguments required once puppet is updated to
+    # pass them in.
+    parser.add_argument('--web',
+                        default=None,
+                        help='URL to the AFE to update.')
+
+    arguments = parser.parse_args()
+    loglib.configure_logging_with_args(parser, arguments)
+
+    tsmon_args = {
+            'service_name': parser.prog,
+            'indirect': False,
+            'auto_flush': False,
+    }
+    if arguments.dry_run:
+        logging.info('DRYRUN: No changes will be made.')
+        # metrics will be logged to logging stream anyway.
+        tsmon_args['debug_file'] = '/dev/null'
+
+    try:
+        with ts_mon_config.SetupTsMonGlobalState(**tsmon_args):
+            with metrics.SuccessCounter(_METRICS_PREFIX + '/tick',
+                                        fields={'afe': arguments.web}):
+                _assign_stable_images(arguments)
+    finally:
+        metrics.Flush()
 
 if __name__ == '__main__':
     main()
