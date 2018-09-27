@@ -370,7 +370,7 @@ def query_bots_list(dimensions):
                                          urllib.urlencode(conditions)]
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output)['items']
+    return json.loads(result.output).get('items', [])
 
 
 def bot_available(bot):
