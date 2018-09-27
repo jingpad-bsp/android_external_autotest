@@ -77,7 +77,7 @@ def _run_suite(options):
     try:
         suite_job.prepare()
     except Exception as e:
-        logging.error('Infra failure in setting up suite job: %s', str(e))
+        logging.exception('Infra failure in setting up suite job')
         return run_suite_common.SuiteResult(
                 run_suite_common.RETURN_CODES.INFRA_FAILURE)
 
