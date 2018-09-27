@@ -82,9 +82,6 @@ def make_parser():
 
     # Swarming-related parameters.
     parser.add_argument(
-        '--swarming', default=None,
-        help='The swarming server to call.')
-    parser.add_argument(
         '--execution_timeout_seconds', type=int, default=30,
         help='Seconds to allow a task to complete, once execution beings.')
 
