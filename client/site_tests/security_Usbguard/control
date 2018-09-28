@@ -5,7 +5,7 @@
 AUTHOR = "allenwebb"
 NAME = "security_Usbguard"
 PURPOSE = "Sanity checks for usbguard"
-ATTRIBUTES = "suite:experimental"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CLASS = "security"
 TEST_TYPE = "client"
