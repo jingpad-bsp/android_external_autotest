@@ -6,3 +6,4 @@ com.google.android.gts.backup.RestoreAppConfiguredHostTest#testRestoreApp_hasPer
 com.google.android.gts.backup.RestoreAppConfiguredHostTest#testRestoreApp_hasPermissionSubstituteNotificationAppName: [P]
 com.google.android.gts.backup.RestoreAppConfiguredHostTest#testRestoreApp_hasPermissionWriteSecureSettings: [P]
 com.google.android.gts.backup.RestoreAppConfiguredHostTest#testRestoreApp_isInNonBlockableNotificationPackages: [P]
+com.google.android.launcher.gts.LauncherHostTest#testDumpsysResult: [grunt, nocturne]
