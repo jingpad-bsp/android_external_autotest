@@ -14,13 +14,12 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.cros.input_playback import input_playback
 
+GB_TO_BYTE = 1024 * 1024 * 1024
+MB_TO_BYTE = 1024 * 1024
+KB_TO_BYTE = 1024
+
 class MemoryKillsMonitor:
     """A util class for reading kill events."""
-
-    # The event status enum.
-    NO_EVENT = 0
-    OOM_KILLED = 1
-    TAB_DISCARDED = 2
 
     _LOG_FILE = '/var/log/chrome/chrome'
     _PATTERN_DISCARD = re.compile(
@@ -29,73 +28,84 @@ class MemoryKillsMonitor:
 
     def __init__(self):
         self._log_reader = cros_logging.ContinuousLogReader(self._LOG_FILE)
+        self._oom = False
+        self._discarded = False
 
-    def check_event(self):
-        """Returns the event status since last invocation.
+    @property
+    def oom(self):
+        """Returns true if oom event is recorded."""
+        return self._oom
 
-        Returns:
-            OOM_KILLED if oom killer is invoked. TAB_DISCARDED if some tab
-            is discarded and the oom killer is not invoked. NO_EVENT
-            otherwise.
-        """
-        discard = False
+    @property
+    def discarded(self):
+        """Returns true if tab discard event is recorded."""
+        return self._discarded
+
+    def check_events(self):
+        """Checks the events and updates oom and discarded property."""
         for line in self._log_reader.read_all_logs():
             matched = self._PATTERN_DISCARD.search(line)
             if matched:
                 logging.info('Matched line %s', line)
-                discard = True
+                self._discarded = True
             matched = self._PATTERN_OOM.search(line)
             if matched:
                 logging.info('Matched line %s', line)
-                return MemoryKillsMonitor.OOM_KILLED
-        if discard:
-            return MemoryKillsMonitor.TAB_DISCARDED
-        return MemoryKillsMonitor.NO_EVENT
+                self._oom = True
 
 
-def create_pages_and_check_oom(create_page_func, bindir):
+def create_pages_and_check_oom(create_page_func, size_mb, bindir):
     """Common code to create pages and to check OOM.
 
     Args:
-        create_page_func: function to create page, it takes 2 arguments,
-            cr: chrome wrapper, bindir: path to the test directory.
+        create_page_func: function to create page, it takes 3 arguments,
+            cr: chrome wrapper, size_mb: alloc size per page in MB,
+            bindir: path to the test directory.
         bindir: path to the test directory.
     Returns:
         Dictionary of test results.
     """
-    # 1 for initial tab opened.
-    n_tabs = 1
-
     kills_monitor = MemoryKillsMonitor()
-    last_event = MemoryKillsMonitor.NO_EVENT
-    # Open tabs until a tab discard notification or OOM arrives.
-    # Checking the event status:
-    # NO_EVENT: creates one more page.
-    # OOM_KILLED: failed.
-    # TAB_DISCARDED: passed.
+
+    # The amount of tabs that can trigger OOM consistently if the tabs are not
+    # discarded properly.
+    tab_count = 1 + (utils.memtotal() * KB_TO_BYTE * 2) / (size_mb * MB_TO_BYTE)
+
+    # The tab count at the first tab discard.
+    first_discard = -1
+    # The number of tabs actually created.
+    tabs_created = tab_count
+
+    # Opens a specific amount of tabs, breaks if the OOM killer is invoked.
     with chrome.Chrome(init_network_controller=True) as cr:
         cr.browser.platform.SetHTTPServerDirectories(bindir)
-        while last_event == MemoryKillsMonitor.NO_EVENT:
-            create_page_func(cr, bindir)
+        for i in range(tab_count):
+            create_page_func(cr, size_mb, bindir)
             time.sleep(3)
-            n_tabs += 1
-            last_event = kills_monitor.check_event()
+            kills_monitor.check_events()
+            if first_discard == -1 and kills_monitor.discarded:
+                first_discard = i + 1
+            if kills_monitor.oom:
+                tabs_created = i + 1
+                break
 
     # Test is successful if at least one Chrome tab is killed by tab
     # discarder and the kernel OOM killer isn't invoked.
-    if last_event == MemoryKillsMonitor.OOM_KILLED:
+    if kills_monitor.oom:
         raise error.TestFail('OOM Killer invoked')
 
+    if not kills_monitor.discarded:
+        raise error.TestFail('No tab discarded')
+
     # TODO: reports the page loading time.
-    return {'NumberOfTabsAtFirstDiscard': n_tabs}
+    return {'NumberOfTabsAtFirstDiscard': first_discard,
+            'NumberOfTabsCreated': tabs_created}
 
 
 def get_alloc_size_per_page():
-    """Returns the default alloc size per page."""
+    """Returns the default alloc size per page in MB."""
     ALLOC_MB_PER_PAGE_DEFAULT = 800
     ALLOC_MB_PER_PAGE_SUB_2GB = 400
-    GB_TO_BYTE = 1024 * 1024 * 1024
-    KB_TO_BYTE = 1024
 
     alloc_mb_per_page = ALLOC_MB_PER_PAGE_DEFAULT
     # Allocate less memory per page for devices with 2GB or less memory.
@@ -131,11 +141,12 @@ def random_pages(bindir):
     Args:
         bindir: path to the test directory.
     """
-    def create_random_page(cr, bindir):
+    def create_random_page(cr, size_mb, bindir):
         """Creates a page with random javascript data."""
-        create_alloc_page(cr, 'alloc.html', get_alloc_size_per_page(), bindir)
+        create_alloc_page(cr, 'alloc.html', size_mb, bindir)
 
-    return create_pages_and_check_oom(create_random_page, bindir)
+    return create_pages_and_check_oom(
+        create_random_page, get_alloc_size_per_page(), bindir)
 
 
 def form_pages(bindir):
@@ -148,9 +159,9 @@ def form_pages(bindir):
     player.emulate(input_type='keyboard')
     player.find_connected_inputs()
 
-    def create_form_page(cr, bindir):
+    def create_form_page(cr, size_mb, bindir):
         """Creates a page with pending form data."""
-        tab = create_alloc_page(cr, 'form.html', get_alloc_size_per_page(),
+        tab = create_alloc_page(cr, 'form.html', size_mb,
                                 bindir)
         # Presses tab to focus on the first interactive element.
         player.blocking_playback_of_default_file(input_type='keyboard',
@@ -159,7 +170,8 @@ def form_pages(bindir):
         player.blocking_playback_of_default_file(input_type='keyboard',
                                                  filename='keyboard_a')
 
-    ret = create_pages_and_check_oom(create_form_page, bindir)
+    ret = create_pages_and_check_oom(
+        create_form_page, get_alloc_size_per_page(), bindir)
     player.close()
     return ret
 
