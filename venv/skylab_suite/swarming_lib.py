@@ -17,6 +17,7 @@ import urllib
 import uuid
 
 from lucifer import autotest
+from skylab_suite import errors
 
 
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
@@ -141,7 +142,12 @@ def make_logdog_annotation_url():
 
 def get_swarming_server():
     """Return the swarming server for the current environment."""
-    return os.environ.get('SWARMING_SERVER')
+    try:
+        return os.environ['SWARMING_SERVER']
+    except KeyError:
+        raise errors.DroneEnvironmentError(
+                'SWARMING_SERVER environment variable not set'
+        )
 
 
 def get_logdog_server():
@@ -150,7 +156,12 @@ def get_logdog_server():
     If the appropriate server cannot be determined, return an empty
     string.
     """
-    return os.environ.get('LOGDOG_SERVER') or ''
+    try:
+        return os.environ['LOGDOG_SERVER']
+    except KeyError:
+        raise errors.DroneEnvironmentError(
+                'LOGDOG_SERVER environment variable not set'
+        )
 
 
 def get_new_task_swarming_cmd():
