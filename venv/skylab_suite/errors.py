@@ -5,6 +5,10 @@
 """Definition of CrOS suite exceptions in skylab."""
 
 
+class DroneEnvironmentError(Exception):
+    """Raised on incorrect setup of the drone executing skylab_suite."""
+
+
 class InValidPropertyError(Exception):
     """Raised if a suite's property is not valid."""
 
