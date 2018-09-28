@@ -152,6 +152,8 @@ def _get_diagnosis(history):
     finally:
         _MISSING_DUT_METRIC.increment(
             fields={'host': history.hostname, 'presence': dut_present})
+    return _Diagnosis(None, None)
+
 
 def _host_is_working(history):
     return _get_diagnosis(history).status == status_history.WORKING
