@@ -465,6 +465,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
 
     is_special_task = (verify or repair or cleanup or collect_crashinfo or
                        provision or reset)
+    use_client_trampoline = False
     if parser.options.control_name:
         if use_ssp:
             # When use_ssp is True, autoserv will be re-executed inside a
@@ -472,7 +473,14 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             # will be staged inside the rexecuted autoserv.
             control = None
         else:
-            control = _stage_control_file(parser.options.control_name, results)
+            try:
+                control = _stage_control_file(parser.options.control_name,
+                                              results)
+            except error.AutoservError as e:
+                logging.info("Using client trampoline because of: %s", e)
+                control = parser.options.control_name
+                use_client_trampoline = True
+
     elif parser.args:
         control = parser.args[0]
     else:
@@ -516,6 +524,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             'tag': execution_tag,
             'disable_sysinfo': parser.options.disable_sysinfo,
             'in_lab': in_lab,
+            'use_client_trampoline': use_client_trampoline,
     }
     if parser.options.parent_job_id:
         job_kwargs['parent_job_id'] = int(parser.options.parent_job_id)
