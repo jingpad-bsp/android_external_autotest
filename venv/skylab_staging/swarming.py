@@ -122,7 +122,7 @@ class Client(object):
         'board': board,
         'build': build,
         # Required for proper rendering of MILO UI.
-        'luci_project': 'chromiumos',
+        'luci_project': 'chromeos',
         'skylab': 'run_suite',
         'skylab': 'staging',
         'suite': suite_name,
