@@ -536,6 +536,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @returns: A list of return codes each job that has run. Or [1] if
               provision failed prior to running any jobs.
     """
+    args = _set_default_servo_args(args)
     # Create host in afe, add board and build labels.
     cros_version_label = labellib.format_keyval_label(
         labellib.KeyvalLabel(labellib.Key.CROS_VERSION, build))
@@ -626,6 +627,33 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
                     len(new_jobs), len(all_jobs))
       job_queue = list(new_jobs)
     return codes
+
+
+def _set_default_servo_args(args):
+    """Add default servo arguments for backward compatibitlity.
+
+    See crbug.com/881006 for context.  Some servo related defaults were baked
+    into the autotest ServoHost code. These have now been deleted. A side effect
+    was that users of test_that relied on these defaults for some tests to work
+    magically in the chroot environment.
+
+    Current plan is to add back these defaults to test_that invocations for
+    backwards compatibility of these use cases. There is no planned removal date
+    for this hack.
+
+    @return modified args str.
+    """
+    # args is a str with whitespace separated key=value arguments.
+    # Avoid parsing args here (to avoid adding another implicit constraint on
+    # the exact args format) by adding defaults only in the obvious cases where
+    # relevant keys are entirely missing.
+    if args is None:
+        args = ''
+    if 'servo_host' not in args:
+        args += ' servo_host=localhost'
+    if 'servo_port' not in args:
+        args += ' servo_port=9999'
+    return args
 
 
 def sigint_handler(signum, stack_frame):
