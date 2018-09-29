@@ -69,6 +69,7 @@ SERVER_CONTROL_FILENAME = 'control.srv'
 MACHINES_FILENAME = '.machines'
 
 CLIENT_WRAPPER_CONTROL_FILE = _control_segment_path('client_wrapper')
+CLIENT_TRAMPOLINE_CONTROL_FILE = _control_segment_path('client_trampoline')
 CRASHDUMPS_CONTROL_FILE = _control_segment_path('crashdumps')
 CRASHINFO_CONTROL_FILE = _control_segment_path('crashinfo')
 CLEANUP_CONTROL_FILE = _control_segment_path('cleanup')
@@ -240,7 +241,8 @@ class server_job(base_job.base_job):
                  group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME,
-                 parent_job_id=None, in_lab=False):
+                 parent_job_id=None, in_lab=False,
+                 use_client_trampoline=False):
         """
         Create a server side job object.
 
@@ -271,6 +273,13 @@ class server_job(base_job.base_job):
                 job does not have a parent job.
         @param in_lab: Boolean that indicates if this is running in the lab
                        environment.
+        @param use_client_trampoline: Boolean that indicates whether to
+               use the client trampoline flow.  If this is True, control
+               is interpreted as the name of the client test to run.
+               The client control file will be client_trampoline.  The
+               test name will be passed to client_trampoline, which will
+               install the test package and re-exec the actual test
+               control file.
         """
         super(server_job, self).__init__(resultdir=resultdir)
         self.control = control
@@ -302,6 +311,7 @@ class server_job(base_job.base_job):
         self.drop_caches_between_iterations = False
         self._control_filename = control_filename
         self._disable_sysinfo = disable_sysinfo
+        self._use_client_trampoline = use_client_trampoline
 
         self.logging = logging_manager.get_logging_manager(
                 manage_stdout_and_stderr=True, redirect_fds=True)
@@ -366,7 +376,9 @@ class server_job(base_job.base_job):
         # to client jobs is suspect.  Probably, we should remove it.
         self.harness = None
 
-        if control:
+        # TODO(ayatane): fast and max_result_size_KB are not set for
+        # client_trampoline jobs.
+        if control and not use_client_trampoline:
             parsed_control = control_data.parse_control(
                     control, raise_warnings=False)
             self.fast = parsed_control.fast
@@ -728,6 +740,12 @@ class server_job(base_job.base_job):
         if control is None:
             if self.control is None:
                 control = ''
+            elif self._use_client_trampoline:
+                control = self._load_control_file(
+                        CLIENT_TRAMPOLINE_CONTROL_FILE)
+                # repr of a string is safe for eval.
+                control = (('trampoline_testname = %r\n' % str(self.control))
+                           + control)
             else:
                 control = self._load_control_file(self.control)
         if control_file_dir is None:
