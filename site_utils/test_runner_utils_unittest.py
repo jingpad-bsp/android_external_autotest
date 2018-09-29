@@ -337,9 +337,18 @@ class TestRunnerUnittests(mox.MoxTestBase):
         for control_file in suite_control_files:
             test_runner_utils.run_job(
                     mox.ContainsAttributeValue('control_file', control_file),
-                    remote, autotest_path, results_dir, fast_mode,id_digits,
-                    ssh_verbosity, ssh_options,args, False,
-                    False, {}).AndReturn((0, '/fake/dir'))
+                    remote,
+                    autotest_path,
+                    results_dir,
+                    fast_mode,
+                    id_digits,
+                    ssh_verbosity,
+                    ssh_options,
+                    mox.StrContains(args),
+                    False,
+                    False,
+                    {},
+            ).AndReturn((0, '/fake/dir'))
         self.mox.ReplayAll()
         test_runner_utils.perform_local_run(
                 afe, autotest_path, ['suite:'+suite_name], remote, fast_mode,
