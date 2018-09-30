@@ -191,9 +191,15 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         last_log_line = self.host.run('tail -1 /var/log/messages').stdout
         # We're trying to get the timestamp from:
         # 2014-07-23T17:29:34.961056+00:00 localhost kernel: blah blah blah
-        self._log_start_timestamp = last_log_line.strip().split(None, 2)[0]
-        logging.debug('Will only retrieve logs after %s.',
-                      self._log_start_timestamp)
+        self._log_start_timestamp = last_log_line.strip().partition(' ')[0]
+        if self._log_start_timestamp:
+            logging.debug('Will only retrieve logs after %s.',
+                          self._log_start_timestamp)
+        else:
+            # If syslog is empty, we just use a wildcard pattern, to grab
+            # everything.
+            logging.debug('Empty or corrupt log; will retrieve whole log')
+            self._log_start_timestamp = '.'
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.

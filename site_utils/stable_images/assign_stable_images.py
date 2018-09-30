@@ -101,10 +101,6 @@ class _VersionUpdater(object):
         self._selected_map = self._version_maps[image_type]
         return self._selected_map.get_all_versions()
 
-    def announce(self):
-        """Announce the start of processing to the user."""
-        pass
-
     def report_default_changed(self, old_default, new_default):
         """
         Report that the default version mapping is changing.
@@ -345,7 +341,6 @@ def _apply_firmware_upgrades(updater, old_versions, new_versions):
 def _assign_stable_images(arguments):
     afe = frontend_wrappers.RetryingAFE(server=arguments.web)
     updater = _VersionUpdater(afe, dry_run=arguments.dry_run)
-    updater.announce()
 
     cros_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
     omaha_versions = build_data.get_omaha_version_map()

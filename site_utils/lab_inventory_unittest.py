@@ -10,6 +10,7 @@ import os
 import unittest
 
 import common
+from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
 
@@ -46,10 +47,14 @@ class _FakeHostHistory(object):
         self.start_time = _FAKE_TIME
         self.end_time = _FAKE_TIME + 20
         self.fake_task = _FakeHostEvent(_FAKE_TIME + 5)
+        self.exception = None
 
     def last_diagnosis(self):
         """Return the recorded diagnosis."""
-        return self.status, self.fake_task
+        if self.exception:
+            raise self.exception
+        else:
+            return self.status, self.fake_task
 
 
 class _FakeHostLocation(object):
@@ -106,6 +111,12 @@ class GetStatusTestCase(unittest.TestCase):
         history = _FakeHostHistory('', '', _BROKEN)
         history.fake_task = _FakeHostEvent(history.start_time - 2)
         self.assertEqual(self._get_diagnosis_status(history), _UNUSED)
+
+    def test_exception(self):
+        """Test exceptions raised by `last_diagnosis()`."""
+        history = _FakeHostHistory('', '', _BROKEN)
+        history.exception = proxy.JSONRPCException('exception for testing')
+        self.assertIsNone(self._get_diagnosis_status(history))
 
 
 class HostSetInventoryTestCase(unittest.TestCase):

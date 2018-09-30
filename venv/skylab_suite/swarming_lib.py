@@ -17,6 +17,7 @@ import urllib
 import uuid
 
 from lucifer import autotest
+from skylab_suite import errors
 
 
 SERVICE_ACCOUNT = '/creds/skylab_swarming_bot/skylab_bot_service_account.json'
@@ -126,21 +127,6 @@ def get_basic_swarming_cmd(command):
             '--swarming', get_swarming_server()]
 
 
-def get_logdog_server():
-    """Return the LogDog server for the current environment.
-
-    If the appropriate server cannot be determined, return an empty
-    string.
-    """
-    swarming_server = get_swarming_server()
-    if swarming_server == 'chromium-swarm-dev.appspot.com':
-        return 'luci-logdog-dev.appspot.com'
-    elif swarming_server == 'chrome-swarming.appspot.com':
-        return 'luci-logdog.appspot.com'
-    else:
-        return ''
-
-
 def make_logdog_annotation_url():
     """Return a unique LogDog annotation URL.
 
@@ -156,7 +142,26 @@ def make_logdog_annotation_url():
 
 def get_swarming_server():
     """Return the swarming server for the current environment."""
-    return os.environ.get('SWARMING_SERVER')
+    try:
+        return os.environ['SWARMING_SERVER']
+    except KeyError:
+        raise errors.DroneEnvironmentError(
+                'SWARMING_SERVER environment variable not set'
+        )
+
+
+def get_logdog_server():
+    """Return the LogDog server for the current environment.
+
+    If the appropriate server cannot be determined, return an empty
+    string.
+    """
+    try:
+        return os.environ['LOGDOG_SERVER']
+    except KeyError:
+        raise errors.DroneEnvironmentError(
+                'LOGDOG_SERVER environment variable not set'
+        )
 
 
 def get_new_task_swarming_cmd():
@@ -376,7 +381,7 @@ def query_bots_list(dimensions):
                                          urllib.urlencode(conditions)]
     cros_build_lib = autotest.chromite_load('cros_build_lib')
     result = cros_build_lib.RunCommand(swarming_cmd, capture_output=True)
-    return json.loads(result.output)['items']
+    return json.loads(result.output).get('items', [])
 
 
 def bot_available(bot):

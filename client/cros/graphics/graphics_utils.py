@@ -555,6 +555,12 @@ _MODETEST_CRTCS_START_PATTERN = re.compile(r'^id\s+fb\s+pos\s+size')
 _MODETEST_CRTC_PATTERN = re.compile(
     r'^(\d+)\s+(\d+)\s+\((\d+),(\d+)\)\s+\((\d+)x(\d+)\)')
 
+_MODETEST_PLANES_START_PATTERN = re.compile(
+    r'^id\s+crtc\s+fb\s+CRTC\s+x,y\s+x,y\s+gamma\s+size\s+possible\s+crtcs')
+
+_MODETEST_PLANE_PATTERN = re.compile(
+    r'^(\d+)\s+(\d+)\s+(\d+)\s+(\d+),(\d+)\s+(\d+),(\d+)\s+(\d+)\s+(0x)(\d+)')
+
 Connector = collections.namedtuple(
     'Connector', [
         'cid',  # connector id (integer)
@@ -574,6 +580,11 @@ CRTC = collections.namedtuple(
         'size',  # size, e.g. (1366,768)
     ])
 
+Plane = collections.namedtuple(
+    'Plane', [
+        'id',  # plane id
+        'possible_crtcs',  # possible associated CRTC indexes.
+    ])
 
 def get_display_resolution():
     """
@@ -677,6 +688,32 @@ def get_modetest_crtcs():
         if re.match(_MODETEST_CRTCS_START_PATTERN, line) is not None:
             found = True
     return crtcs
+
+
+def get_modetest_planes():
+    """
+    Returns a list of planes information.
+
+    Sample:
+        [Plane(id=26, possible_crtcs=1),
+         Plane(id=29, possible_crtcs=1)]
+    """
+    planes = []
+    modetest_output = utils.system_output('modetest -p')
+    found = False
+    for line in modetest_output.splitlines():
+        if found:
+            plane_match = re.match(_MODETEST_PLANE_PATTERN, line)
+            if plane_match is not None:
+                plane_id = int(plane_match.group(1))
+                possible_crtcs = int(plane_match.group(10))
+                if not (plane_id == 0 or possible_crtcs == 0):
+                    planes.append(Plane(plane_id, possible_crtcs))
+            elif line and not line[0].isspace():
+                return planes
+        if re.match(_MODETEST_PLANES_START_PATTERN, line) is not None:
+            found = True
+    return planes
 
 
 def get_modetest_output_state():
@@ -1282,3 +1319,23 @@ def is_drm_atomic_supported():
 
     logging.debug('No dev files seems to support atomic');
     return False
+
+def get_max_num_available_drm_planes():
+    """
+    @returns The maximum number of DRM planes available in the system
+    (associated to the same CRTC), or 0 if something went wrong (e.g. modetest
+    failed, etc).
+    """
+
+    planes = get_modetest_planes()
+    if len(planes) == 0:
+        return 0;
+    packed_possible_crtcs = [plane.possible_crtcs for plane in planes]
+    # |packed_possible_crtcs| is actually a bit field of possible CRTCs, e.g.
+    # 0x6 (b1001) means the plane can be associated with CRTCs index 0 and 3 but
+    # not with index 1 nor 2. Unpack those into |possible_crtcs|, an array of
+    # binary arrays.
+    possible_crtcs = [[int(bit) for bit in bin(crtc)[2:].zfill(16)]
+                         for crtc in packed_possible_crtcs]
+    # Accumulate the CRTCs indexes and return the maximum number of 'votes'.
+    return max(map(sum, zip(*possible_crtcs)))
