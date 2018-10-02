@@ -12,7 +12,7 @@ PURPOSE = "Regression and integration tests of run_oci."
 CRITERIA = """
 Fail if the OCI configuration isn't configured correctly.
 """
-ATTRIBUTES = "suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
