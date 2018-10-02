@@ -558,7 +558,7 @@ class LucidSleepLabel(base_label.BaseLabel):
     # TODO(kevcheng): See if we can determine if this label is applicable a
     # better way (crbug.com/592146).
     _NAME = 'lucidsleep'
-    LUCID_SLEEP_BOARDS = ['samus', 'lulu']
+    LUCID_SLEEP_BOARDS = ['poppy']
 
     def exists(self, host):
         board = host.get_board().replace(ds_constants.BOARD_PREFIX, '')
