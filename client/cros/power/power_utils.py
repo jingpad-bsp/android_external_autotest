@@ -8,6 +8,7 @@ import re
 import shutil
 import time
 from autotest_lib.client.bin import utils
+from autotest_lib.client.bin.input.input_device import InputDevice
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import upstart
 
@@ -93,6 +94,18 @@ def has_powercap_support():
         Boolean, True if powercap supported, False otherwise.
     """
     return os.path.isdir('/sys/devices/virtual/powercap/intel-rapl/')
+
+
+def has_lid():
+    """
+    Checks whether the device has lid.
+
+    @return: Returns True if the device has a lid, False otherwise.
+    """
+    INPUT_DEVICE_LIST = "/dev/input/event*"
+
+    return any(InputDevice(node).is_lid() for node in
+               glob.glob(INPUT_DEVICE_LIST))
 
 
 def _call_dbus_method(destination, path, interface, method_name, args):
