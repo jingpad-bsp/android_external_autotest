@@ -14,6 +14,7 @@ Syscalls which are allowed by the alt_syscall table should succeed, syscalls
 blocked by the alt_syscall table should fail, and attempts to change the
 alt_syscall table once it has been set should fail.
 """
+ATTRIBUTES = "suite:bvt-perbuild"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
