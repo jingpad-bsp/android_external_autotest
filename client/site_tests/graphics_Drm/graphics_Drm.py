@@ -45,7 +45,6 @@ class DrmTest(object):
         supported_apis = graphics_utils.GraphicsApiHelper().get_supported_apis()
         num_displays = graphics_utils.get_num_outputs_on()
         gpu_type = utils.get_gpu_family()
-        soc = utils.get_cpu_soc_family()
         kernel_version = os.uname()[2]
         if num_displays == 0 and self._opts['display_required']:
             # If a test needs a display and we don't have a display,
