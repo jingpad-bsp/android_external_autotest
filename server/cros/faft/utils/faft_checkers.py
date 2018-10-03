@@ -59,24 +59,34 @@ class FAFTCheckers(object):
             parsed_list[name] = value
         return parsed_list
 
-    def crossystem_checker(self, expected_dict, suppress_logging=False):
+    def crossystem_checker(self, expected_dict, optional=None,
+                           suppress_logging=False):
         """Check the crossystem values matched.
 
         Given an expect_dict which describes the expected crossystem values,
         this function check the current crossystem values are matched or not.
 
         @param expected_dict: A dict which contains the expected values.
+        @param optional: A list of expected_dict keys which are optional.  If
+                         crossystem does not report these keys (i.e. they don't
+                         exist on the system), they will not trigger a failure.
         @param suppress_logging: True to suppress any logging messages.
         @return: True if the crossystem value matched; otherwise, False.
         """
+        if optional == None:
+            optional = []
         succeed = True
         lines = self.faft_client.system.run_shell_command_get_output(
                 'crossystem')
         got_dict = self._parse_crossystem_output(lines)
         for key in expected_dict:
             if key not in got_dict:
-                logging.warn('Expected key %r not in crossystem result', key)
-                succeed = False
+                if key in optional:
+                    logging.warn('Skipping optional key %r '
+                                 'not in crossystem result', key)
+                else:
+                    logging.warn('Expected key %r not in crossystem result', key)
+                    succeed = False
                 continue
             if isinstance(expected_dict[key], str):
                 if got_dict[key] != expected_dict[key]:
