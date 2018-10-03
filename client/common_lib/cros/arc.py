@@ -619,7 +619,21 @@ def set_device_mode(device_mode, use_fake_sensor_with_lifetime_secs=0):
     if use_fake_sensor_with_lifetime_secs > 0:
         args.extend(['--create_dev', '--dev_lifetime=%d' %
                      use_fake_sensor_with_lifetime_secs])
-    utils.run('inject_powerd_input_event', args=args)
+
+    try:
+        utils.run('inject_powerd_input_event', args=args)
+    except error.CmdError as err:
+        # TODO: Fragile code ahead. Correct way to do it is to check
+        # if device is already in desired mode, and do nothing if so.
+        # ATM we don't have a way to check current device mode.
+
+        # Assuming that CmdError means that device does not support
+        # --code=tablet parameter, meaning that device only supports clamshell
+        # mode.
+        if device_mode == 'clamshell' and \
+                use_fake_sensor_with_lifetime_secs == 0:
+                    return
+        raise err
 
 
 def wait_for_userspace_ready():
