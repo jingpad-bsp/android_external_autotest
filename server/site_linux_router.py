@@ -188,7 +188,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # Log the most recent message on the router so that we can rebuild the
         # suffix relevant to us when debugging failures.
-        last_log_line = self.host.run('tail -1 /var/log/messages').stdout
+        last_log_line = self.host.run('tail -1 /var/log/messages',
+                                      ignore_status=True).stdout
         # We're trying to get the timestamp from:
         # 2014-07-23T17:29:34.961056+00:00 localhost kernel: blah blah blah
         self._log_start_timestamp = last_log_line.strip().partition(' ')[0]
