@@ -19,8 +19,8 @@ OPTIONS=()
 # for testing, and invoke a dry run instead.
 #
 SERVER_STATUS=$(cli/atest server list $(hostname) 2>&1 |
-                  awk '/^Status *:/ { print $NF }')
-if [ "${SERVER_STATUS}" = "primary" ]; then
+                  awk '/^status *:/ { print $NF }')
+if [ "${SERVER_STATUS}" = "STATUS_PRIMARY" ]; then
   mkdir -p ${LOGDIR}
   NOTIFY=(
     chromeos-test-monitors@google.com

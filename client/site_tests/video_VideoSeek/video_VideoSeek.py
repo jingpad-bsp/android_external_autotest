@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import device_capability
 from autotest_lib.client.cros.video import helper_logger
 
-WAIT_TIMEOUT_S = 180
+WAIT_TIMEOUT_S = 60
 
 class video_VideoSeek(test.test):
     """This test verifies video seek works in Chrome."""
@@ -76,8 +76,15 @@ class video_VideoSeek(test.test):
                 logging.info('Seeking: %s', seek_test_status)
                 return seek_test_status
 
-            utils.poll_for_condition(
-                    lambda: get_seek_test_status() == 'pass',
-                    exception=error.TestError('Seek test is stuck and timeout'),
-                    timeout=WAIT_TIMEOUT_S,
-                    sleep_interval=1)
+            # Wait until we get the 'pass' status, meaning the test has been
+            # successful. Also timeout and fail the test if we stay on the same
+            # seek for more than WAIT_TIMEOUT_S.
+            cur_status = get_seek_test_status()
+            while True:
+              utils.poll_for_condition(
+                      lambda: get_seek_test_status() != cur_status,
+                      exception=error.TestError('Seek test is stuck and timeout'),
+                      timeout=WAIT_TIMEOUT_S,
+                      sleep_interval=1)
+              cur_status = get_seek_test_status()
+              if cur_status == 'pass': break
