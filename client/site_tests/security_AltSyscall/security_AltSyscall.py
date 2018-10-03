@@ -60,7 +60,7 @@ class security_AltSyscall(test.test):
     def run_once(self):
         """Main entrypoint of the test."""
         if not self.alt_syscall_supported():
-            raise error.TestFail("ALT_SYSCALL not supported")
+            raise error.TestNAError("ALT_SYSCALL not supported")
 
         case_allow = ("read", "read_write_test", 0,
                       "Allowed system calls failed")
