@@ -6,6 +6,7 @@ check_ethernet.
 chrome
 chrome-sandbox
 cras_test_clien
+crash_reporter
 endpoint
 evemu-device
 flock
