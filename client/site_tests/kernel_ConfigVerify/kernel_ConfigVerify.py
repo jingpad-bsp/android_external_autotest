@@ -203,6 +203,13 @@ class kernel_ConfigVerify(test.test):
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MISSING.remove('INET_DIAG')
 
+        if utils.compare_versions(kernel_ver, "4.19") >= 0:
+            self.IS_MISSING.remove('BPF_SYSCALL')
+            self.IS_BUILTIN.append('HAVE_EBPF_JIT')
+            self.IS_BUILTIN.append('BPF_JIT_ALWAYS_ON')
+            self.IS_BUILTIN.remove('CC_STACKPROTECTOR')
+            self.IS_BUILTIN.append('STACKPROTECTOR')
+
         # Run the static checks.
         map(config.has_builtin, self.IS_BUILTIN)
         map(config.has_module, self.IS_MODULE)
