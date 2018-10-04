@@ -17,10 +17,18 @@ class PinWeaverNotAvailableError(CalledProcessError):
         super(PinWeaverNotAvailableError, self).__init__(*args, **kwargs)
 
 
+def __check_pinweaver_client_present(client, message):
+    cmd = 'which pinweaver_client'
+    run = client.run('which pinweaver_client')
+    if run.exit_status != 0:  # pinweaver_client isn't present.
+        raise PinWeaverNotAvailableError(run.exit_status, cmd, message);
+
 def __execute_for_dict(client, *args, **kwargs):
     """Executes a command with the specified args and parses stdout as JSON
     based on the expected output of pinweaver_client.
     """
+    __check_pinweaver_client_present(client, args[0])
+
     result = {}
     stack = [result]
     if 'ignore_status' not in kwargs:
@@ -117,8 +125,11 @@ def SelfTest(client):
 
     @param client: client object to run commands on.
     """
-    run = client.run('pinweaver_client selftest')
+    cmd = 'pinweaver_client selftest'
+    __check_pinweaver_client_present(client, cmd)
+
+    run = client.run(cmd)
     if run.exit_status == -2:
-        raise PinWeaverNotAvailableError();
+        raise PinWeaverNotAvailableError(run.exit_status, cmd);
     output = run.stdout
     return "Success!" in output
