@@ -774,7 +774,7 @@ def perform_run_from_autotest_root(autotest_path, argv, tests, remote,
                   should be formed like "suite:smoke".
     @param remote: Remote hostname.
     @param build: String specifying build for local run.
-    @param board: String specifyinb board for local run.
+    @param board: String specifying board for local run.
     @param args: String that should be passed as args parameter to autoserv,
                  and then ultimitely to test itself.
     @param pretend: If True, will print out autoserv commands rather than
