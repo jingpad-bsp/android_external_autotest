@@ -352,9 +352,11 @@ class UserCrashTest(crash_test.CrashTest):
         if result['report_kind'] != report_kind:
             raise error.TestFail('Expected a %s report' % report_kind)
         if result['report_payload'] != payload_path:
-            raise error.TestFail('Sent the wrong minidump payload')
+            raise error.TestFail('Sent the wrong minidump payload %s vs %s' % (
+                result['report_payload'], payload_path))
         if result['meta_path'] != meta_path:
-            raise error.TestFail('Used the wrong meta file')
+            raise error.TestFail('Used the wrong meta file %s vs %s' % (
+               result['meta_path'], meta_path))
         if expected_sig is None:
             if result['sig'] is not None:
                 raise error.TestFail('Report should not have signature')
