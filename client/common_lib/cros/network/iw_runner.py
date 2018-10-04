@@ -825,7 +825,7 @@ class IwRunner(object):
 
         """
         output = self._run('%s reg get' % self._command_iw).stdout
-        m = re.match('^country (..):', output)
+        m = re.search('^country (..):', output, re.MULTILINE)
         if not m:
             return None
         return m.group(1)
