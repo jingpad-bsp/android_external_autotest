@@ -154,7 +154,7 @@ class FirmwareStatusVerifier(hosts.Verifier):
             cmd = ('mkdir /tmp/verify_firmware; '
                    'cd /tmp/verify_firmware; '
                    'for section in VBLOCK_A VBLOCK_B FW_MAIN_A FW_MAIN_B; '
-                   'do flashrom -r -i $section:$section; '
+                   'do flashrom -p host -r -i $section:$section; '
                    'done')
             host.run(cmd)
 
