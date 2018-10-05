@@ -29,7 +29,8 @@ class power_MeasurementWrapper(test.test):
         if not config_list:
             msg = 'power_MeasurementWrapper cannot run without args input.'
             raise error.TestNAError(msg)
-        config = dict(item.split(':', 1) for item in config_list)
+        config = dict(item.replace(':', '=').split('=', 1)
+                      for item in config_list)
         if 'test' not in config:
             msg = 'User did not specify client test to run in wrapper.'
             raise error.TestNAError(msg)
