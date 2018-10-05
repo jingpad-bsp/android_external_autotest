@@ -24,6 +24,9 @@ suite:arc-cts-dev-thu
 suite:arc-cts-dev-tue
 suite:arc-cts-dev-wed
 suite:arc-cts-follower
+suite:arc-cts-instant
+suite:arc-cts-instant-perbuild
+suite:arc-cts-instant-qual
 suite:arc-cts-perbuild
 suite:arc-cts-qual
 suite:arc-cts-stable
