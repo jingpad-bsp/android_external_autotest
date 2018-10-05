@@ -164,12 +164,22 @@ class ExternalPackage(object):
         except ImportError, e:
             logging.info("%s isn't present. Will install.", self.module_name)
             return True
-        if (not module.__file__.startswith(install_dir) and
-            not self.module_name in self.SYSTEM_MODULES):
-            logging.info('Module %s is installed in %s, rather than %s. The '
-                         'module will be forced to be installed in %s.',
-                         self.module_name, module.__file__, install_dir,
-                         install_dir)
+        # Check if we're getting a module installed somewhere else,
+        # e.g. on the system.
+        if self.module_name not in self.SYSTEM_MODULES:
+            if (hasattr(module, '__file__')
+                and not module.__file__.startswith(install_dir)):
+                path = module.__file__
+            elif (hasattr(module, '__path__')
+                and not module.__path__[0].startswith(install_dir)):
+                path = module.__path__[0]
+            else:
+                logging.warning('module %s has no __file__ or __path__',
+                                self.module_name)
+                return True
+            logging.info(
+                    'Found %s installed in %s, installing our version in %s',
+                    self.module_name, path, install_dir)
             return True
         self.installed_version = self._get_installed_version_from_module(module)
         if not self.installed_version:
