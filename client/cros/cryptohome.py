@@ -753,10 +753,19 @@ class CryptohomeProxy(DBusClient):
 
 
     def remove(self, user, async=True):
-        if async:
-            return self.__async_call(self.iface.AsyncRemove,
-                                     user)['return_status']
-        return self.__call(self.iface.Remove, user)
+        """Removes a users crypothome.
+
+        Returns True if the operation succeeds or False otherwise.
+        """
+        import rpc_pb2
+
+        acc = rpc_pb2.AccountIdentifier()
+        acc.account_id = user
+
+        out = self.__call(self.iface.RemoveEx, acc.SerializeToString())
+        parsed_out = rpc_pb2.BaseReply()
+        parsed_out.ParseFromString(''.join(map(chr, out)))
+        return parsed_out.error == rpc_pb2.CRYPTOHOME_ERROR_NOT_SET
 
 
     def ensure_clean_cryptohome_for(self, user, password=None):

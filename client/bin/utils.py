@@ -242,29 +242,23 @@ def get_cpuinfo():
 
 def get_cpu_arch():
     """Work out which CPU architecture we're running on"""
-    f = open('/proc/cpuinfo', 'r')
-    cpuinfo = f.readlines()
-    f.close()
-    if list_grep(cpuinfo, '^cpu.*(RS64|POWER3|Broadband Engine)'):
-        return 'power'
-    elif list_grep(cpuinfo, '^cpu.*POWER4'):
-        return 'power4'
-    elif list_grep(cpuinfo, '^cpu.*POWER5'):
-        return 'power5'
-    elif list_grep(cpuinfo, '^cpu.*POWER6'):
-        return 'power6'
-    elif list_grep(cpuinfo, '^cpu.*POWER7'):
-        return 'power7'
-    elif list_grep(cpuinfo, '^cpu.*PPC970'):
-        return 'power970'
-    elif list_grep(cpuinfo, 'ARM'):
+
+    # Using 'uname -m' should be a very portable way to do this since the
+    # format is pretty standard.
+    machine_name = utils.system_output('uname -m').strip()
+
+    # Apparently ARM64 and ARM have both historically returned the string 'arm'
+    # here so continue the tradition.  Use startswith() because:
+    # - On most of our arm devices we'll actually see the string armv7l.
+    # - In theory the machine name could include a suffix for endianness.
+    if machine_name.startswith('aarch64') or machine_name.startswith('arm'):
         return 'arm'
-    elif list_grep(cpuinfo, '^flags.*:.* lm .*'):
-        return 'x86_64'
-    elif list_grep(cpuinfo, 'CPU.*implementer.*0x41'):
-        return 'arm'
-    else:
-        return 'i386'
+
+    # Historically we _have_ treated x86_64 and i386 separately.
+    if machine_name in ('x86_64', 'i386'):
+        return machine_name
+
+    raise error.TestError('unsupported machine type %s' % machine_name)
 
 
 def get_arm_soc_family_from_devicetree():
@@ -276,12 +270,14 @@ def get_arm_soc_family_from_devicetree():
     if not os.path.isfile(devicetree_compatible):
         return None
     f = open(devicetree_compatible, 'r')
-    compatible = f.readlines()
+    compatible = f.read().split(chr(0))
     f.close()
-    if list_grep(compatible, 'rk3399'):
+    if list_grep(compatible, '^rockchip,'):
         return 'rockchip'
-    elif list_grep(compatible, 'mt8173'):
+    elif list_grep(compatible, '^mediatek,'):
         return 'mediatek'
+    elif list_grep(compatible, '^qcom,'):
+        return 'qualcomm'
     return None
 
 
@@ -2207,6 +2203,8 @@ def get_gpu_family():
         return 'mali-unrecognized'
     if socfamily == 'tegra':
         return 'tegra'
+    if socfamily == 'qualcomm':
+        return 'qualcomm'
     if os.path.exists('/sys/kernel/debug/pvr'):
         return 'rogue'
 
