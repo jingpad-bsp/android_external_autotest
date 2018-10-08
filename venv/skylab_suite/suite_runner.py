@@ -21,7 +21,7 @@ from skylab_suite import swarming_lib
 
 
 SKYLAB_SUITE_USER = 'skylab_suite_runner'
-SKYLAB_LUCI_TAG = 'luci_project:chromiumos'
+SKYLAB_LUCI_TAG = 'luci_project:chromeos'
 SKYLAB_DRONE_SWARMING_WORKER = '/opt/infra-tools/skylab_swarming_worker'
 
 SUITE_WAIT_SLEEP_INTERVAL_SECONDS = 30
@@ -219,8 +219,7 @@ def _run_swarming_cmd_with_fallback(cmds, dimensions, test_spec, suite_id,
     # Add tags and command flags for LogDog.
     logdog_url = swarming_lib.make_logdog_annotation_url()
     if logdog_url:
-        tags += ['luci_project:chromeos',
-                 'log_location:' + logdog_url]
+        tags += ['log_location:' + logdog_url]
         for cmd in cmds:
             cmd.extend(['-logdog-annotation-url', logdog_url])
 
