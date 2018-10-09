@@ -171,7 +171,8 @@ class ExternalPackage(object):
                 and not module.__file__.startswith(install_dir)):
                 path = module.__file__
             elif (hasattr(module, '__path__')
-                and not module.__path__[0].startswith(install_dir)):
+                  and module.__path__
+                  and not module.__path__[0].startswith(install_dir)):
                 path = module.__path__[0]
             else:
                 logging.warning('module %s has no __file__ or __path__',
