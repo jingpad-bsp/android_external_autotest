@@ -127,6 +127,10 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             if self._control.set_le(self.index, False) is None:
                 logging.warning('Failed to disable LE')
                 return False
+        if turn_off & bluetooth_socket.MGMT_SETTING_SECURE_CONNECTIONS:
+            if self._control.set_secure_connections(self.index, False) is None:
+                logging.warning('Failed to disable secure connections')
+                return False
 
         # Adjust settings that are BR/EDR specific that we need to set before
         # powering on the adapter, and would be rejected otherwise.
