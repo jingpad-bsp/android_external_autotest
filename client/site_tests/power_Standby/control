@@ -46,10 +46,5 @@ if 'test_hours' in opts:
 if 'sample_hours' in opts:
     sample_hours = float(opts['sample_hours'])
 
-
-constraints = []
-constraints.append("milliwatts_standby_power <= %.2f" % max_milliwatts_standby)
-
 job.run_test('power_Standby', sample_hours=sample_hours, test_hours=test_hours,
-             constraints=constraints,
              max_milliwatts_standby=max_milliwatts_standby)
