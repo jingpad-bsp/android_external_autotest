@@ -401,7 +401,9 @@ class CrashTest(test.test):
         """Parse the log output from the crash_sender script.
 
         This script can run on the logs from either a mocked or true
-        crash send.
+        crash send. It looks for one and only one crash from output.
+        Non-crash anomalies should be ignored since there're just noise
+        during running the test.
 
         @param output: output from the script
 
@@ -419,6 +421,38 @@ class CrashTest(test.test):
             sleep_time: if it attempted, how long did it sleep before
               sending (if mocked, how long would it have slept)
         """
+        anomaly_types = (
+            'kernel_suspend_warning',
+            'kernel_warning',
+            'kernel_wifi_warning',
+            'selinux_violation',
+            'service_failure',
+        )
+        before_first_crash = None
+        while True:
+            crash_header = re.search(
+                'Considering metadata (\S+)',
+                output
+            )
+            if not crash_header:
+                break
+            if before_first_crash is None:
+                before_first_crash = output[:crash_header.start()]
+            meta_considered = crash_header.group(1)
+            is_anomaly = any(x in meta_considered for x in anomaly_types)
+            if is_anomaly:
+                # If it's an anomaly, skip this header, and look for next
+                # one.
+                output = output[crash_header.end():]
+            else:
+                # If it's not an anomaly, skip everything before this
+                # header.
+                output = output[crash_header.start():]
+                break
+        if before_first_crash:
+            output = before_first_crash + output
+        logging.debug('Filtered sender output to parse:\n%s', output)
+
         sleep_match = re.search('Scheduled to send in (\d+)s', output)
         send_attempt = sleep_match is not None
         if send_attempt:
