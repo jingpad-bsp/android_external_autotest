@@ -431,10 +431,23 @@ class EnterprisePolicyTest(test.test):
             elif not isinstance(value_shown, list): # List with one element.
                 value_shown = [value_shown]
 
-        if not expected_value == value_shown:
+        # Special case for user and device network configurations.
+        # Passphrases are hidden on the policy page, so the passphrase
+        # field needs to be converted to asterisks to be compared.
+        sanitized_expected_value = copy.deepcopy(expected_value)
+        SANITIZED_PASSWORD = '*' * 8
+        if policy_name.endswith('OpenNetworkConfiguration'):
+            for network in sanitized_expected_value['NetworkConfigurations']:
+                wifi = network['WiFi']
+                if 'Passphrase' in wifi:
+                    wifi['Passphrase'] = SANITIZED_PASSWORD
+                if 'EAP' in wifi and 'Password' in wifi['EAP']:
+                    wifi['EAP']['Password'] = SANITIZED_PASSWORD
+
+        if sanitized_expected_value != value_shown:
             raise error.TestError('chrome://policy shows the incorrect value '
                                   'for %s!  Expected %s, got %s.' % (
-                                          policy_name, expected_value,
+                                          policy_name, sanitized_expected_value,
                                           value_shown))
 
 

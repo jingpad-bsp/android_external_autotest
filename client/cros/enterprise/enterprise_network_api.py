@@ -16,32 +16,74 @@ from autotest_lib.client.cros.networking.chrome_testing \
 NETWORK_TEST_EXTENSION_PATH = cntc.NETWORK_TEST_EXTENSION_PATH
 
 
-def create_network_policy(ssid, autoconnect=None):
+def create_network_policy(ssid, security=None, eap=None, password=None,
+                          identity=None, autoconnect=None, ca_cert=None):
     """
     Generate a network configuration policy dictionary for WiFi networks.
 
     @param ssid: Service set identifier for wireless local area network.
-    @param autoconnect: Whether network policy should autoconnect.
+    @param security: Security of network. Options are:
+        'None', 'WEP-PSK', 'WEP-8021X', 'WPA-PSK', and 'WPA-EAP'.
+    @param eap: EAP type, required if security is 'WEP-8021X' or 'WPA-EAP'.
+    @param identity: Username, if the network type requires it.
+    @param password: Password, if the network type requires it.
+    @param ca_cert: CA certificate in PEM format. Required
+        for EAP networks.
+    @param autoconnect: True iff network policy should autoconnect.
 
-    @returns conf: A dictionary in the format suitable to setting as a user
+    @returns conf: A dictionary in the format suitable to setting as a network
         policy.
 
     """
+    if security is None:
+        security = 'None'
+
     conf = {
         'NetworkConfigurations': [
-            {'GUID': 'policy_WiFi*',
+            {'GUID': 'policy_WiFi* Test',
              'Name': ssid,
              'Type': 'WiFi',
              'WiFi': {
                  'SSID': ssid,
-                 'Security': 'None'}
+                 'Security': security}
              }
-        ]
+        ],
     }
 
+    if ca_cert is not None:
+        conf['Certificates'] = [
+            {'GUID': 'CA_CERT',
+             'Type': 'Authority',
+             'X509': ca_cert}
+        ]
+
+    wifi_conf = conf['NetworkConfigurations'][0]['WiFi']
+
     if autoconnect is not None:
-        conf['NetworkConfigurations'][0]\
-                ['WiFi']['AutoConnect'] = autoconnect
+        wifi_conf['AutoConnect'] = autoconnect
+
+    if security == 'WPA-PSK':
+        if password is None:
+            raise error.TestError('Password is required for WPA-PSK networks.')
+        wifi_conf['Passphrase'] = password
+
+    if eap is not None:
+        eap_conf = {
+            'Outer': eap,
+            'Identity': identity,
+            'ServerCARefs': ['CA_CERT']
+        }
+
+        if password is not None:
+            eap_conf['Password'] = password
+
+        if eap == 'EAP-TLS':
+            eap_conf['ClientCertType'] = 'Pattern'
+            eap_conf['ClientCertPattern'] = {
+                'IssuerCARef': ['CA_CERT']
+            }
+
+        wifi_conf['EAP'] = eap_conf
 
     return conf
 
