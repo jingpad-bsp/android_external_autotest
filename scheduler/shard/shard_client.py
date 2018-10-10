@@ -134,7 +134,12 @@ class ShardClient(object):
         @param djmodel: Django model type.
         @param message: A string to be used in a logging message.
         """
+        logging.info('Deserializing %s %ss', len(serialized_list), message)
+        i = 0
         for serialized in serialized_list:
+            i += 1
+            if i % 100 == 1:
+              logging.info('Progress: at entry %s', i)
             with transaction.commit_on_success():
                 try:
                     djmodel.deserialize(serialized)
@@ -144,6 +149,7 @@ class ShardClient(object):
                     metrics.Counter(
                         'chromeos/autotest/shard_client/deserialization_failed'
                         ).increment()
+        logging.info('Done deserializing %ss', message)
 
 
     @metrics.SecondsTimerDecorator(
@@ -379,6 +385,7 @@ class ShardClient(object):
 
         try:
             response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
+            logging.info('Finished heartbeat upload.')
         except urllib2.HTTPError as e:
             self._heartbeat_failure('HTTPError %d: %s' % (e.code, e.reason),
                                     'HTTPError')
@@ -402,7 +409,9 @@ class ShardClient(object):
 
         metrics.Gauge(_METRICS_PREFIX + 'response_size').set(
             len(str(response)))
+        logging.info('Marking jobs as uploaded.')
         self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
+        logging.info('Processing heartbeat response.')
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
         return True
