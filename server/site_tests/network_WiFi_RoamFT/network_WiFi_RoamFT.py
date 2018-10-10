@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import hostap_config
 
@@ -74,8 +75,10 @@ class network_WiFi_RoamFT(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self,host):
         """Test body."""
 
-        self.context.client.require_capabilities(
-            [site_linux_system.LinuxSystem.CAPABILITY_SME])
+        if self._security_config.ft_mode == \
+                xmlrpc_security_types.WPAConfig.FT_MODE_PURE:
+            self.context.client.require_capabilities(
+                [site_linux_system.LinuxSystem.CAPABILITY_SME])
 
         mac0 = '02:00:00:00:03:00'
         mac1 = '02:00:00:00:04:00'

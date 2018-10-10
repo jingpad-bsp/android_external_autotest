@@ -4,16 +4,17 @@
 
 AUTHOR = 'matthewmwang'
 TIME = 'SHORT'
-NAME = 'network_WiFi_RoamFT.EAP'
+NAME = 'network_WiFi_RoamFT.mixedEAP'
 TEST_TYPE = 'Server'
 ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_noservo')
 DEPENDENCIES = 'wificell'
 
 DOC = """
-This test attempts to verify that we can roam between two APs using the FT-EAP
-key management suite (i.e. WPA-EAP with Fast BSS Transition) in full view of the
-DUT. Fast BSS Transition is part of the 802.11r protocol, which describes a
-procedure for fast roaming from one AP to another within an SSID.
+This test attempts to verify that we can connect to and roam to and from APs
+that support FT mixed mode for EAP in full view of the DUT. This ensures that
+devices that don't support FT are still compatible with APs that do. Fast BSS
+Transition is part of the 802.11r protocol, which describes a procedure for fast
+roaming from one AP to another within an SSID.
 """
 
 from autotest_lib.client.common_lib.cros import site_eap_certs
@@ -28,7 +29,7 @@ def run(machine):
         client_cert=site_eap_certs.client_cert_1,
         client_key=site_eap_certs.client_private_key_1,
         wpa_mode=xmlrpc_security_types.WPAConfig.MODE_PURE_WPA2,
-        ft_mode=xmlrpc_security_types.WPAConfig.FT_MODE_PURE)
+        ft_mode=xmlrpc_security_types.WPAConfig.FT_MODE_MIXED)
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_RoamFT',
                  tag=NAME.split('.')[1],
