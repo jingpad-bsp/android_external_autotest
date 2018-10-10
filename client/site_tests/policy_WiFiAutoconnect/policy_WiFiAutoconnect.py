@@ -16,7 +16,8 @@ class policy_WiFiAutoconnect(
 
     def cleanup(self):
         """Re-enable ethernet after the test is completed."""
-        self.net_api.chrome_net_context.enable_network_device('Ethernet')
+        if hasattr(self, 'net_api'):
+            self.net_api.chrome_net_context.enable_network_device('Ethernet')
         super(policy_WiFiAutoconnect, self).cleanup()
 
 
