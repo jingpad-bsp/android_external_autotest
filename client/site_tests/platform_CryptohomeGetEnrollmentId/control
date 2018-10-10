@@ -10,6 +10,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functionality"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:bvt-perbuild"
 
 DOC = """
 Verifies that a valid enrollment ID (64 bytes) is returned by cryptohome when
