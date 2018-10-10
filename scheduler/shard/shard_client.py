@@ -313,7 +313,10 @@ class ShardClient(object):
         """
         known_job_ids, known_host_ids, known_host_statuses = (
                 self._get_known_jobs_and_hosts())
-        logging.info('Known jobs: %s', known_job_ids)
+        max_print = 100
+        logging.info('Known jobs (first %s): %s', max_print,
+                     known_job_ids[:max_print])
+        logging.info('Total known jobs: %s', len(known_job_ids))
 
         job_objs = self._get_jobs_to_upload()
         hqes = [hqe.serialize(include_dependencies=False)
