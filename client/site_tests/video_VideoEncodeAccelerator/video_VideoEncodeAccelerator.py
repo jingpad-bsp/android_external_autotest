@@ -58,6 +58,22 @@ def _run_on_intel_cpu():
     return False
 
 
+def _can_switch_bitrate():
+    """Determine whether the board can switch the bitrate.
+
+    The bitrate switch test case is mainly for ARC++. We don't have much control
+    over some devices that do not run ARC++. Therefore we whitelist the boards
+    that should pass the bitrate switch test. (crbug.com/890125)
+    """
+    # All Intel chipset should be able to switch bitrate, so here we only list
+    # the non-intel device.
+    whitelist = [
+            # MTK8173
+            'elm', 'hana',
+    ]
+    return _run_on_intel_cpu() or utils.get_current_board() in whitelist
+
+
 class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     """
     This test is a wrapper of the chrome unittest binary:
@@ -152,6 +168,12 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
         last_test_failure = None
         for (path, width, height, bit_rate, frame_rate, subsequent_bit_rate,
              subsequent_frame_rate) in streams:
+            # Skip the bitrate test if the board cannot switch bitrate.
+            if subsequent_bit_rate is not None and not _can_switch_bitrate():
+              logging.info('Skip the bitrate switch test: %s => %s',
+                           bit_rate, subsequent_bit_rate)
+              continue
+
             # Set the default value for None.
             frame_rate = frame_rate or DEFAULT_FRAME_RATE
             subsequent_bit_rate = (subsequent_bit_rate or

@@ -5,7 +5,6 @@ suite:AFDO_page_replay
 suite:AFDO_record
 suite:another_suite
 suite:app-compat
-suite:arc-bvt-perbuild
 suite:arc-cts
 suite:arc-cts-beta
 suite:arc-cts-beta-fri
@@ -15,6 +14,7 @@ suite:arc-cts-beta-sun
 suite:arc-cts-beta-thu
 suite:arc-cts-beta-tue
 suite:arc-cts-beta-wed
+suite:arc-cts-deqp
 suite:arc-cts-dev
 suite:arc-cts-dev-fri
 suite:arc-cts-dev-mon
