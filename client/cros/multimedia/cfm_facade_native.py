@@ -321,8 +321,11 @@ class CFMFacadeNative(object):
 
 
     def start_meeting_session(self):
-        """Start a meeting."""
-        self._cfmApi.start_meeting_session()
+        """Start a meeting.
+
+        @return code for the started meeting
+        """
+        return self._cfmApi.start_meeting_session()
 
 
     def end_meeting_session(self):
