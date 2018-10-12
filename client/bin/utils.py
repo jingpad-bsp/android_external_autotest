@@ -1794,12 +1794,17 @@ def get_temperature_critical():
     paths = _get_hwmon_paths('temp*_crit')
     for path in paths:
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
-        # Today typical for Intel is 98'C to 105'C while ARM is 85'C. Clamp to
-        # the lowest known value.
+        # Today typical for Intel is 98'C to 105'C while ARM is 85'C. Clamp to 98
+        # if Intel device or the lowest known value otherwise.
+        result = utils.system_output('crossystem arch', retain_output=True,
+                                     ignore_status=True)
         if (min_temperature < 60.0) or min_temperature > 150.0:
-            logging.warning('Critical temperature of %.1fC was reset to 85.0C.',
+            if 'x86' in result:
+                min_temperature = 98.0
+            else:
+                min_temperature = 85.0
+            logging.warning('Critical temperature was reset to %.1fC.',
                             min_temperature)
-            min_temperature = 85.0
 
         min_temperature = min(temperature, min_temperature)
     return min_temperature
