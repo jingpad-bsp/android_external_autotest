@@ -20,37 +20,37 @@ class power_VideoPlayback(power_test.power_Test):
 
     # list of video name and url.
     _VIDEOS = [
-        ('h264_1080',
+        ('h264_1080_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/traffic-1920x1080-8005020218f6b86bfa978e550d04956e.mp4'
         ),
         ('h264_1080_60fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/1080_60_10s_600frames-c80aeceeabfc9fc18ed2f98f219c85af.mp4'
         ),
-        ('h264_4k',
+        ('h264_4k_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/traffic_3840x2160-32ec10f87ef369d0e5ec9c736d63cc58.mp4'
         ),
         ('h264_4k_60fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/h264_4k_60_10s_600frames-ab1bfb374d2e408aac4a1beaa1aa0817.mp4'
         ),
-        ('vp8_1080',
+        ('vp8_1080_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/traffic-1920x1080-ad53f821ff3cf8ffa7e991c9d2e0b854.vp8.webm'
         ),
         ('vp8_1080_60fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/1080_60_10s_600frames_vp8-c190d557caaf415f762af911b41bc32b.webm'
         ),
-        ('vp8_4k',
+        ('vp8_4k_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/2160_vp8_600frames-3d61b1aed4e3f32249c7d324a809ef54.vp8.webm'
         ),
         ('vp8_4k_60fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/vp8_4k_60_10s_600frames-b8d65f0eea64647be5413a75622abe79.webm'
         ),
-        ('vp9_1080',
+        ('vp9_1080_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/traffic-1920x1080-83a1e5f8b7944577425f039034e64c76.vp9.webm'
         ),
         ('vp9_1080_60fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_tests/perf/fallout4_1080_hfr.vp9.webm'
         ),
-        ('vp9_4k',
+        ('vp9_4k_30fps',
          'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/traffic-3840x2160-cbcdda7d7143b3e9f8efbeed0c4157b5.vp9.webm'
         ),
         ('vp9_4k_60fps',
