@@ -18,6 +18,8 @@ GB_TO_BYTE = 1024 * 1024 * 1024
 MB_TO_BYTE = 1024 * 1024
 KB_TO_BYTE = 1024
 
+DEFAULT_RANDOM_RATIO = 0.666
+
 class MemoryKillsMonitor:
     """A util class for reading kill events."""
 
@@ -69,7 +71,7 @@ def create_pages_and_check_oom(create_page_func, size_mb, bindir):
 
     # The amount of tabs that can trigger OOM consistently if the tabs are not
     # discarded properly.
-    tab_count = 1 + (utils.memtotal() * KB_TO_BYTE * 2) / (size_mb * MB_TO_BYTE)
+    tab_count = 1 + (utils.memtotal() * KB_TO_BYTE * 4) / (size_mb * MB_TO_BYTE)
 
     # The tab count at the first tab discard.
     first_discard = -1
@@ -114,12 +116,13 @@ def get_alloc_size_per_page():
     return alloc_mb_per_page
 
 
-def create_alloc_page(cr, page_name, size_mb, bindir):
+def create_alloc_page(cr, page_name, size_mb, random_ratio, bindir):
     """The program in alloc.html allocates a large array with random data.
 
     Args:
         cr: chrome wrapper.
         size_mb: size of the allocated javascript array in the page.
+        random_ratio: the ratio of random data size : all data size
         bindir: path to the test directory.
     Returns:
         The created tab.
@@ -127,6 +130,7 @@ def create_alloc_page(cr, page_name, size_mb, bindir):
     url = cr.browser.platform.http_server.UrlOf(
         os.path.join(bindir, page_name))
     url += '?alloc=' + str(size_mb)
+    url += '&ratio=' + str(random_ratio)
     tab = cr.browser.tabs.New()
     tab.Navigate(url)
     tab.WaitForDocumentReadyStateToBeComplete()
@@ -135,25 +139,28 @@ def create_alloc_page(cr, page_name, size_mb, bindir):
     return tab
 
 
-def random_pages(bindir):
+def random_pages(bindir, random_ratio):
     """Creates pages with random javascript data and checks OOM.
 
     Args:
         bindir: path to the test directory.
+        random_ratio: the ratio of random data size : all data size
     """
     def create_random_page(cr, size_mb, bindir):
         """Creates a page with random javascript data."""
-        create_alloc_page(cr, 'alloc.html', size_mb, bindir)
+        create_alloc_page(cr, 'alloc.html', size_mb, random_ratio,
+                          bindir)
 
     return create_pages_and_check_oom(
         create_random_page, get_alloc_size_per_page(), bindir)
 
 
-def form_pages(bindir):
+def form_pages(bindir, random_ratio):
     """Creates pages with pending form data and checks OOM.
 
     Args:
         bindir: path to the test directory.
+        random_ratio: the ratio of random data size : all data size
     """
     player = input_playback.InputPlayback()
     player.emulate(input_type='keyboard')
@@ -161,7 +168,7 @@ def form_pages(bindir):
 
     def create_form_page(cr, size_mb, bindir):
         """Creates a page with pending form data."""
-        tab = create_alloc_page(cr, 'form.html', size_mb,
+        tab = create_alloc_page(cr, 'form.html', size_mb, random_ratio,
                                 bindir)
         # Presses tab to focus on the first interactive element.
         player.blocking_playback_of_default_file(input_type='keyboard',
@@ -180,12 +187,12 @@ class platform_LowMemoryTest(test.test):
     """Memory pressure test."""
     version = 1
 
-    def run_once(self, flavor='random'):
+    def run_once(self, flavor='random', random_ratio=DEFAULT_RANDOM_RATIO):
         """Runs the test once."""
         if flavor == 'random':
-            perf_results = random_pages(self.bindir)
+            perf_results = random_pages(self.bindir, random_ratio)
         elif flavor == 'form':
-            perf_results = form_pages(self.bindir)
+            perf_results = form_pages(self.bindir, random_ratio)
 
         self.write_perf_keyval(perf_results)
         for result_key in perf_results:
