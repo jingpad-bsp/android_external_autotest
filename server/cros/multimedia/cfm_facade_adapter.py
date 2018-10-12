@@ -184,8 +184,11 @@ class CFMFacadeRemoteAdapter(object):
 
 
     def start_meeting_session(self):
-        """Start a meeting."""
-        self._cfm_proxy.start_meeting_session()
+        """Start a meeting.
+
+        @return code for the started meeting.
+        """
+        return self._cfm_proxy.start_meeting_session()
 
 
     def end_meeting_session(self):
