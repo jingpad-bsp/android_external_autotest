@@ -31,8 +31,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
     """Sets up tradefed to run GTS tests."""
     version = 1
 
-    # TODO(teravest): Remove octopus once the bulk of failing tests are fixed.
-    _BOARD_RETRY = {'betty': 0, 'octopus': 0}
+    _BOARD_RETRY = {'betty': 0}
     _CHANNEL_RETRY = {'dev': 5, 'beta': 5, 'stable': 5}
     _SHARD_CMD = '--shard-count'
 
