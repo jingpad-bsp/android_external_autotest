@@ -2,35 +2,34 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Base class for power measurement tests with telemetry devices."""
+
 import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server.cros.dynamic_suite import suite
-from autotest_lib.server.cros.power import power_telemetry_logger
 
 
-class power_MeasurementWrapper(test.test):
-    """Wrapper test around a client test.
+class PowerBaseWrapper(test.test):
+    """Base class for a wrapper test around a client test.
 
     This wrapper test runs 1 client test given by user, and measures DUT power
-    with telemetry devices (Sweetberry).
+    with external power measurement tools.
     """
     version = 1
 
-    def run_once(self, host=None, config_list=None):
+    def run_once(self, host, config=None):
         """Measure power while running the client side test.
 
-        @param host: the DUT.
-        @param config_list: the args argument from test_that in a list,
-                            delimited by space.
+        @param host: CrosHost object representing the DUT.
+        @param config: the args argument from test_that in a dict.
+                       required data: {'test': 'test_TestName.tag'}
         """
-        if not config_list:
-            msg = 'power_MeasurementWrapper cannot run without args input.'
+        if not config:
+            msg = '%s must run with args input.' % self.__class__.__name__
             raise error.TestNAError(msg)
-        config = dict(item.replace(':', '=').split('=', 1)
-                      for item in config_list)
         if 'test' not in config:
             msg = 'User did not specify client test to run in wrapper.'
             raise error.TestNAError(msg)
@@ -46,20 +45,33 @@ class power_MeasurementWrapper(test.test):
             raise error.TestNAError(msg)
 
         autotest_client = autotest.Autotest(host)
-        ptl = power_telemetry_logger.PowerTelemetryLogger(
-                config, self.outputdir, host)
+        ptl = self._get_power_telemetry_logger(host, config, self.resultsdir)
         try:
             ptl.start_measurement()
             # If multiple tests with the same name are found, run the first one.
             autotest_client.run(client_test[0].text)
         finally:
             client_test_dir = os.path.join(self.outputdir, client_test_name)
-            # If client test name is not tagged.
+            # If client test name is not tagged in its own control file.
             if not os.path.isdir(client_test_dir):
                 client_test_name = client_test_name.split('.', 1)[0]
-            client_test_debug_file = os.path.join(self.outputdir,
-                                                  client_test_name, 'debug',
-                                                  '%s.DEBUG' % client_test_name)
-            ptl.end_measurement(client_test_debug_file)
+                client_test_dir = os.path.join(self.outputdir, client_test_name)
+            ptl.end_measurement(client_test_dir)
 
         return
+
+    def _get_power_telemetry_logger(self, host, config, resultsdir):
+        """Return the corresponding power telemetry logger.
+
+        @param host: CrosHost object representing the DUT.
+        @param config: the args argument from test_that in a dict. Settings for
+                       power telemetry devices.
+                       required data: {'test': 'test_TestName.tag'}
+        @param resultsdir: path to directory where current autotest results are
+                           stored, e.g. /tmp/test_that_results/
+                           results-1-test_TestName.tag/test_TestName.tag/
+                           results/
+        """
+        raise NotImplementedError('Subclasses must implement '
+                '_get_power_telemetry_logger and return the corresponding '
+                'power telemetry logger.')
