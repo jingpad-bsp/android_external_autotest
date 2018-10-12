@@ -15,10 +15,13 @@ from autotest_lib.client.common_lib.cros.cfm.metrics import (
         media_metrics_collector)
 from autotest_lib.server.cros import cfm_jmidata_log_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
+from autotest_lib.server.cros.cfm.utils import bond_http_api
+
 
 _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
-_TOTAL_TEST_DURATION_SECONDS = 900
+_TOTAL_TEST_DURATION_SECONDS = 900 # 15 minutes
+_BOT_PARTICIPANTS_COUNT = 20
 
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')
@@ -28,6 +31,7 @@ _BASE_DIR = '/home/chronos/user/Storage/ext/'
 _EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
 _JMI_DIR = '/0*/File\ System/000/t/00/*'
 _JMI_SOURCE_DIR = _BASE_DIR + _EXT_ID + _JMI_DIR
+
 
 class ParticipantCountMetric(system_metrics_collector.Metric):
     """
@@ -67,13 +71,13 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         self.cfm_facade.start_new_hangout_session(hangout_name)
 
 
-    def join_meeting(self):
-        """Waits for the landing page and joins a meeting session."""
-        self.cfm_facade.wait_for_meetings_landing_page()
-        # Daily meeting for perf testing with 9 remote participants.
-        meeting_code = 'nis-rhmz-dyh'
-        self.cfm_facade.join_meeting_session(meeting_code)
+    def start_meeting(self):
+        """Waits for the landing page and starts a meeting.
 
+        @return: The code for the started meeting.
+        """
+        self.cfm_facade.wait_for_meetings_landing_page()
+        return self.cfm_facade.start_meeting_session()
 
     def collect_perf_data(self):
         """
@@ -359,12 +363,15 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                 '--use-file-for-fake-video-capture=%s' % remote_video_path
         ]
         self.cfm_facade.restart_chrome_for_cfm(extra_chrome_args)
+        self.bond = bond_http_api.BondHttpApi()
 
     def run_once(self, is_meeting=False):
         """Stays in a meeting/hangout and collects perf data."""
         self.is_meeting = is_meeting
         if is_meeting:
-            self.join_meeting()
+            meeting_code = self.start_meeting()
+            logging.info('Started meeting "%s"', meeting_code)
+            self._add_bots(_BOT_PARTICIPANTS_COUNT, meeting_code)
         else:
             self.start_hangout()
         self.cfm_facade.unmute_mic()
@@ -378,3 +385,31 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
         self.upload_jmidata()
 
+    def _add_bots(self, bot_count, meeting_code):
+        """Adds bots to a meeting and configures audio and pinning settings.
+
+        If we were not able to start enough bots end the test run.
+        """
+        botIds = self.bond.AddBotsRequest(
+            meeting_code,
+            bot_count,
+            _TOTAL_TEST_DURATION_SECONDS + 30);
+
+        if len(botIds) < bot_count:
+            # If we did not manage to start enough bots, free up the
+            # resources and end the test run.
+            self.bond.ExecuteScript('@all leave', meeting_code)
+            raise error.TestNAError("Not enough bot resources.\n"
+                "Wanted: %d. Started: %d" % (bot_count, len(botIds)))
+
+        # Configure philosopher audio for one bot.
+        self._start_philosopher_audio(botIds[0], meeting_code)
+
+        # Pin the CfM from one bot so the device always sends HD.
+        self.bond.ExecuteScript(
+            '@b%d pin_participant_by_name "Unknown (this room)"' % botIds[0],
+            meeting_code)
+
+    def _start_philosopher_audio(self, bot_id, meeting_code):
+        self.bond.ExecuteScript(
+            '@b%d start_philosopher_audio' % bot_id, meeting_code)
