@@ -278,6 +278,9 @@ class video_PlaybackPerf(test.test):
                 logging.warning('Could not get cold machine post login.')
             hd = histogram_verifier.HistogramDiffer(
                     cr, constants.MEDIA_GVD_INIT_STATUS)
+            error_differ = histogram_verifier.HistogramDiffer(
+                cr, constants.MEDIA_GVD_ERROR)
+
             # Open the video playback page and start playing.
             video_tab = cr.browser.tabs[0]
             self.start_playback(cr, video_tab, local_path)
@@ -293,6 +296,13 @@ class video_PlaybackPerf(test.test):
             # Status must be incremented, in either failure or success.
             if len(histogram) != 1:
                 raise error.TestError(err_desc)
+
+            # Check if there's GPU Video Error for a period of time.
+            has_error, diff_error = histogram_verifier.poll_histogram_grow(
+                error_differ)
+            if has_error:
+                raise error.TestError(
+                    'GPU Video Decoder Error. Histogram diff: %r' % diff_error)
 
             if constants.MEDIA_GVD_BUCKET in histogram:
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
