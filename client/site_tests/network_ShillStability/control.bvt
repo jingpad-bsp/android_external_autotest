@@ -4,7 +4,7 @@
 
 AUTHOR = 'kirtika'
 NAME = 'network_ShillStability.bvt'
-# ATTRIBUTES = 'suite:bvt-cq'
+ATTRIBUTES = 'suite:bvt-cq'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 JOB_RETRIES = 2
