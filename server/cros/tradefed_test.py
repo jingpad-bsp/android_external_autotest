@@ -83,6 +83,7 @@ class TradefedTest(test.test):
                    retry_manual_tests=False,
                    warn_on_test_retry=True):
         """Sets up the tools and binary bundles for the test."""
+        self._install_paths = []
         # TODO(pwang): Remove host if we enable multiple hosts everywhere.
         self._hosts = [host] if host else hosts
         for host in self._hosts:
@@ -90,7 +91,6 @@ class TradefedTest(test.test):
         self._verify_hosts()
 
         self._max_retry = self._get_max_retry(max_retry)
-        self._install_paths = []
         self._warn_on_test_retry = warn_on_test_retry
         # Tests in the lab run within individual lxc container instances.
         if utils.is_in_container():
@@ -151,15 +151,18 @@ class TradefedTest(test.test):
         """Cleans up any dirtied state."""
         # Kill any lingering adb servers.
         for host in self._hosts:
-            self._run_adb_cmd(host, verbose=True, args=('kill-server',))
+            try:
+                self._run_adb_cmd(host, verbose=True, args=('kill-server',))
+            except (CmdError, AttributeError):
+                pass
         logging.info('Cleaning up %s.', self._tradefed_install)
-        shutil.rmtree(self._tradefed_install)
+        try:
+            shutil.rmtree(self._tradefed_install)
+        except IOError:
+            pass
 
     def _verify_hosts(self):
         """Verify all hosts' ChromeOS consistency."""
-        if len(self._hosts) == 0:
-            error_msg = 'No Host is associated with tradefed.'
-
         # Check release builder path. E.g. cave-release/R66-10435.0.0
         release_builder_path = set(host.get_release_builder_path()
                                    for host in self._hosts)
@@ -931,7 +934,7 @@ class TradefedTest(test.test):
                 'Error: failed to copy test subplan %s to CTS bundle. %s' %
                 test_subplan_file, e)
 
-    def _should_skip_test(self, bundle):
+    def _should_skip_test(self, _bundle):
         """Some tests are expected to fail and are skipped.
 
         Subclasses should override with specific details.

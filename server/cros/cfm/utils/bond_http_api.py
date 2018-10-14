@@ -5,6 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+import logging
 import requests
 
 from datetime import datetime
@@ -16,8 +17,9 @@ _HANGOUTS_API_URL = 'https://www.googleapis.com/hangouts/v1_meetings/'
 _MEETINGS_API_URL = 'https://meetings.googleapis.com'
 
 _TOKEN_TTL_SECONDS = 3500
-_SERVICE_CREDS_FILE = '/creds/service_accounts/bond_service_account.json'
 
+# See https://crbug.com/874835 for details on the credentials files.
+_SERVICE_CREDS_FILE = '/creds/service_accounts/bond_service_account.json'
 _BOT_CREDS_FILE = '/creds/service_accounts/bond_bot_credentials.json'
 
 
@@ -30,12 +32,7 @@ class BondHttpApi(object):
     self._last_token = None
 
   def GetAvailableWorkers(self):
-    """Gets the number of available workers from a conference.
-
-    Returns:
-      GetNumOfAvailableWorkersResponse denoting failure or success of
-      the request.
-    """
+    """Gets the number of available workers for a conference."""
     token = self._GetAccessToken()
     resp = requests.get(
         '%s/v1/workers:count' % _BOND_API_URL,
@@ -43,7 +40,7 @@ class BondHttpApi(object):
             'Content-Type': 'application/json',
             'Authorization': 'Bearer %s' % token
         })
-    return resp.text
+    return json.loads(resp.text)["numOfAvailableWorkers"]
 
   def ExecuteScript(self, script, meeting_code):
     """Executes the specified script.
@@ -57,11 +54,12 @@ class BondHttpApi(object):
     """
     token = self._GetAccessToken()
 
-    request_data = """{
-      "script": "%s",
-      "conference": {
-        "conference_code": "%s"
-      }}""" % (script, meeting_code)
+    request_data = {
+      'script': script,
+      'conference': {
+        'conference_code': meeting_code
+      }
+     }
 
     resp = requests.post(
         '%s/v1/conference/%s/script' % (_BOND_API_URL, meeting_code),
@@ -69,8 +67,12 @@ class BondHttpApi(object):
             'Content-Type': 'application/json',
             'Authorization': 'Bearer %s' % token,
         },
-        data=request_data)
-    return resp.text
+        data=json.dumps(request_data))
+
+    json_response = json.loads(resp.text)
+    logging.info("ExecuteScript response: %s", json_response)
+    return json_response['success']
+
 
   def AddBotsRequest(self, meeting_code, number_of_bots, ttl_secs):
     """Adds a number of bots to a meeting for a specified period of time.
@@ -82,7 +84,7 @@ class BondHttpApi(object):
         joining.
 
     Returns:
-      AddBotsResponse denoting failure or success of the request.
+      List of IDs of the started bots.
     """
     token = self._GetAccessToken()
 
@@ -119,7 +121,9 @@ class BondHttpApi(object):
         },
         data=json.dumps(request_data))
 
-    return resp.text
+    json_response = json.loads(resp.text)
+    logging.info("AddBotsRequest response: %s", json_response)
+    return json_response["botIds"]
 
   def _GetAccessToken(self):
     if self._last_token is None or self._CheckTokenExpired():
