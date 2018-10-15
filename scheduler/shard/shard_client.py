@@ -130,7 +130,8 @@ class ShardClient(object):
 
         Deserialize a list of JSON-formatted data to database using Django.
 
-        @param serialized_list: A list of JSON-formatted data.
+        @param serialized_list: A list of JSON-formatted data or python dict
+                                literals.
         @param djmodel: Django model type.
         @param message: A string to be used in a logging message.
         """
