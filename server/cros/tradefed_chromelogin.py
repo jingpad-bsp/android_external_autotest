@@ -73,16 +73,21 @@ class ChromeLogin(object):
             return True
         except autotest.AutodirNotFoundError:
             # Autotest is not installed (can happen on moblab after image
-            # install). Fall back to logging in via client test, which as a side
-            # effect installs autotest in the right place, so we should not hit
-            # this slow path repeatedly.
-            logging.warning('Autotest not installed, fallback to slow path...')
+            # install). Run dummy_Pass to foce autotest install, before trying
+            # to login again.
+            logging.warning(
+                'Autotest not installed, forcing install using dummy_Pass...')
             try:
                 autotest.Autotest(self._host).run_timed_test(
-                    'cheets_StartAndroid',
+                    'dummy_Pass',
                     timeout=2 * timeout,
                     check_client_result=True,
                     **self._cts_helper_kwargs)
+                self._host.run(
+                    self._cmd_builder(),
+                    ignore_status=False,
+                    verbose=verbose,
+                    timeout=timeout)
                 return True
             except:
                 # We were unable to start the browser/Android. Maybe we can
