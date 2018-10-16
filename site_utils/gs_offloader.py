@@ -11,6 +11,10 @@ Upon successful copy, the local results directory is deleted.
 """
 
 import abc
+try:
+  import cachetools
+except ImportError:
+  cachetools = None
 import datetime
 import errno
 import glob
@@ -739,6 +743,7 @@ class GSOffloader(BaseGSOffloader):
         try:
             logging.debug('Pruning uploaded directory %s', dir_entry)
             shutil.rmtree(dir_entry)
+            job_timestamp_cache.delete(dir_entry)
         except OSError as e:
             # The wrong file permission can lead call `shutil.rmtree(dir_entry)`
             # to raise OSError with message 'Permission denied'. Details can be
@@ -773,13 +778,80 @@ class FakeGSOffloader(BaseGSOffloader):
         shutil.rmtree(dir_entry)
 
 
+class OptionalMemoryCache(object):
+   """Implements memory cache if cachetools module can be loaded.
+
+   If the platform has cachetools available then the cache will
+   be created, otherwise the get calls will always act as if there
+   was a cache miss and the set/delete will be no-ops.
+   """
+   cache = None
+
+   def setup(self, age_to_delete):
+       """Set up a TTL cache size based on how long the job will be handled.
+
+       Autotest jobs are handled by gs_offloader until they are deleted from
+       local storage, base the cache size on how long that is.
+
+       @param age_to_delete: Number of days after which items in the cache
+                             should expire.
+       """
+       if cachetools:
+           # Min cache is 1000 items for 10 mins. If the age to delete is 0
+           # days you still want a short / small cache.
+           # 2000 items is a good approximation for the max number of jobs a
+           # moblab # can produce in a day, lab offloads immediatly so
+           # the number of carried jobs should be very small in the normal
+           # case.
+           ttl = max(age_to_delete * 24 * 60 * 60, 600)
+           maxsize = max(age_to_delete * 2000, 1000)
+           job_timestamp_cache.cache = cachetools.TTLCache(maxsize=maxsize,
+                                                           ttl=ttl)
+
+   def get(self, key):
+       """If we have a cache try to retrieve from it."""
+       if self.cache is not None:
+           result = self.cache.get(key)
+           return result
+       return None
+
+   def add(self, key, value):
+       """If we have a cache try to store key/value."""
+       if self.cache is not None:
+           self.cache[key] = value
+
+   def delete(self, key):
+       """If we have a cache try to remove a key."""
+       if self.cache is not None:
+           return self.cache.delete(key)
+
+
+job_timestamp_cache = OptionalMemoryCache()
+
+
+def _cached_get_timestamp_if_finished(job):
+    """Retrieve a job finished timestamp from cache or AFE.
+    @param job       _JobDirectory instance to retrieve
+                     finished timestamp of..
+
+    @returns: None if the job is not finished, or the
+              last job finished time recorded by Autotest.
+    """
+    job_timestamp = job_timestamp_cache.get(job.dirname)
+    if not job_timestamp:
+        job_timestamp = job.get_timestamp_if_finished()
+        if job_timestamp:
+            job_timestamp_cache.add(job.dirname, job_timestamp)
+    return job_timestamp
+
+
 def _is_expired(job, age_limit):
     """Return whether job directory is expired for uploading
 
     @param job: _JobDirectory instance.
     @param age_limit:  Minimum age in days at which a job may be offloaded.
     """
-    job_timestamp = job.get_timestamp_if_finished()
+    job_timestamp = _cached_get_timestamp_if_finished(job)
     if not job_timestamp:
         return False
     return job_directories.is_job_expired(age_limit, job_timestamp)
@@ -1065,7 +1137,7 @@ def _enqueue_offload(job, queue, age_limit):
         job.first_offload_start = time.time()
     job.offload_count += 1
     if job.process_gs_instructions():
-        timestamp = job.get_timestamp_if_finished()
+        timestamp = _cached_get_timestamp_if_finished(job)
         queue.put([job.dirname, os.path.dirname(job.dirname), timestamp])
 
 
@@ -1124,6 +1196,10 @@ def parse_options():
             type=str,
             default=None,
     )
+    parser.add_option('-t', '--enable_timestamp_cache',
+                      dest='enable_timestamp_cache',
+                      action='store_true',
+                      help='Cache the finished timestamps from AFE.')
 
     options = parser.parse_args()[0]
     if options.process_all and options.process_hosts_only:
@@ -1157,6 +1233,11 @@ def main():
         offloader_type = 'jobs'
 
     _setup_logging(options, offloader_type)
+
+    if options.enable_timestamp_cache:
+        # Extend the cache expiry time by another 1% so the timstamps
+        # are available as the results are purged.
+        job_timestamp_cache.setup(options.age_to_delete * 1.01)
 
     # Nice our process (carried to subprocesses) so we don't overload
     # the system.
