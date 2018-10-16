@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/callback.h"
-
 #include "testbase.h"
 #include "utils.h"
 
@@ -25,7 +23,7 @@ class GLInterfaceTest : public TestBase {
 
  protected:
   // Callback for GL rendering function to be run before GLX/EGL calls.
-  base::Callback<void(void)> render_func_;
+  Callback render_func_;
   void SetupGLRendering();
 
  private:

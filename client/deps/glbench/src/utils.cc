@@ -7,15 +7,16 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+#include <gflags/gflags.h>
 
-#include "base/logging.h"
-
+#include "arraysize.h"
+#include "filepath.h"
 #include "glinterface.h"
 #include "main.h"
 #include "utils.h"
-
-using base::FilePath;
 
 const char* kGlesHeader =
     "#ifdef GL_ES\n"
@@ -24,7 +25,8 @@ const char* kGlesHeader =
 
 FilePath *g_base_path = new FilePath();
 double g_initial_temperature = -1000.0;
-const char* TEMPERATURE_SCRIPT_PATH = "/usr/local/autotest/bin/temperature.py";
+DEFINE_string(TEMPERATURE_SCRIPT_PATH, "/usr/local/autotest/bin/temperature.py",
+              "The path to temperature measurement executable.");
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
 void SetBasePathFromArgv0(const char* argv0, const char* relative) {
@@ -34,10 +36,6 @@ void SetBasePathFromArgv0(const char* argv0, const char* relative) {
   FilePath argv0_path = FilePath(argv0).DirName();
   FilePath base_path = relative ? argv0_path.Append(relative) : argv0_path;
   g_base_path = new FilePath(base_path);
-}
-
-const FilePath& GetBasePath() {
-  return *g_base_path;
 }
 
 void *MmapFile(const char* name, size_t* length) {
@@ -92,35 +90,30 @@ bool read_float_from_cmd_output(const char *command, double *value) {
   return true;
 }
 
-// Returns temperature at which CPU gets throttled.
-double get_temperature_critical() {
-  char command[1024];
-  sprintf(command, "%s %s", TEMPERATURE_SCRIPT_PATH, "--critical");
-  double temperature_Celsius = 0.0;
-  if (!read_float_from_cmd_output(command, &temperature_Celsius)) {
-    // 85'C is the minimum observed critical temperature so far.
-    printf("Warning: guessing critical temperature as 85'C.\n");
-    return 85.0;
-  }
-  // Simple sanity check for reasonable critical temperatures.
-  assert(temperature_Celsius >= 60.0);
-  assert(temperature_Celsius <= 150.0);
-  return temperature_Celsius;
+bool check_file_existence(const char *file_path, struct stat *buffer = NULL){
+  struct stat local_buf;
+  bool exist = stat(file_path, &local_buf) == 0;
+  if (buffer && exist)
+    memcpy(buffer, &local_buf, sizeof(local_buf));
+  return exist;
 }
 
+bool check_dir_existence(const char *file_path){
+  struct stat buffer;
+  bool exist = check_file_existence(file_path, &buffer);
+  if (!exist) return false;
+  return S_ISDIR(buffer.st_mode);
+}
 
 // Returns currently measured temperature.
 double get_temperature_input() {
-  char command[1024];
-  sprintf(command, "%s %s", TEMPERATURE_SCRIPT_PATH, "--maximum");
+  std::string command = FLAGS_TEMPERATURE_SCRIPT_PATH + "--maximum";
   double temperature_Celsius = -1000.0;
-  read_float_from_cmd_output(command, &temperature_Celsius);
-
+  read_float_from_cmd_output(command.c_str(), &temperature_Celsius);
   if (temperature_Celsius < 10.0 || temperature_Celsius > 150.0) {
     printf("Warning: ignoring temperature reading of %f'C.\n",
            temperature_Celsius);
   }
-
   return temperature_Celsius;
 }
 
@@ -152,6 +145,27 @@ double WaitForCoolMachine(double cold_temperature, double timeout,
   assert(wait_time >= 0);
   assert(wait_time < timeout + 5.0);
   return wait_time;
+}
+
+std::vector<std::string> SplitString(std::string &input, std::string delimiter, bool trim_space){
+  std::vector<std::string> result;
+  if (input.empty())
+    return result;
+  size_t start = 0;
+  while (start != std::string::npos) {
+    size_t end = input.find(delimiter, start);
+    std::string piece;
+    if (end == std::string::npos){
+      piece = input.substr(start);
+      start = end;
+    } else {
+      piece = input.substr(start, end-start);
+      start = end + 1;
+    }
+    trim(piece);
+    result.push_back(piece);
+  }
+  return result;
 }
 
 namespace glbench {

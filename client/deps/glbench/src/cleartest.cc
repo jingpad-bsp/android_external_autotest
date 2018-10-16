@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "main.h"
+#include "utils.h"
 #include "testbase.h"
 
 

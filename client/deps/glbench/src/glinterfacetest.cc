@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/bind.h"
+#include <functional>
 
 #include "glinterfacetest.h"
+#include "arraysize.h"
 
 namespace glbench {
 
@@ -68,8 +69,7 @@ bool GLInterfaceTest::Run() {
 
   // Run main test with simple GL commands.
   SetupGLRendering();
-  render_func_ = base::Bind(&GLInterfaceTest::RenderGLSimple,
-                            base::Unretained(this));
+  render_func_.Set(std::bind(&GLInterfaceTest::RenderGLSimple, this));
   RunTest(this, (test_name_base + "glsimple").c_str(), 1.0, g_width, g_height, false);
   CleanupGLRendering();
 
