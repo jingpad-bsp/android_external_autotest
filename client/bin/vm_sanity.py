@@ -31,11 +31,10 @@ class VMSanity(object):
 
 
   def __init__(self, count=1, run_cryptohome=True, run_incognito=True,
-               run_tast=True, run_screenlocker=True):
+               run_screenlocker=True):
     self.count = count
     self.run_cryptohome = run_cryptohome
     self.run_incognito = run_incognito
-    self.run_tast = run_tast
     self.run_screenlocker = run_screenlocker
 
 
@@ -49,8 +48,6 @@ class VMSanity(object):
         self.RunCryptohomeTest()
       if self.run_incognito:
         self.RunIncognitoTest()
-      if self.run_tast:
-        self.RunTastTest()
       if self.run_screenlocker:
         self.RunScreenlockTest()
 
@@ -103,14 +100,6 @@ class VMSanity(object):
       raise TestFail('Expected to NOT find a guest vault mounted.')
 
 
-  def RunTastTest(self):
-    """Run Tast tests."""
-    logging.info('RunTastTest')
-    tast_cmd = ('local_test_runner \'(!informational && !disabled && ' +
-                '("dep:chrome" || "dep:chrome_login"))\'')
-    utils.system(tast_cmd)
-
-
   def RunScreenlockTest(self):
     """Run a test that locks the screen."""
     logging.info('RunScreenlockTest')
@@ -141,8 +130,6 @@ class VMSanity(object):
                         help='Run Cryptohome test.')
     parser.add_argument('--run-incognito', default=False, action='store_true',
                         help='Run Incognito test.')
-    parser.add_argument('--run-tast', default=False, action='store_true',
-                        help='Run Tast test.')
     parser.add_argument('--run-screenlock', default=False, action='store_true',
                         help='Run Screenlock test.')
     return parser.parse_args(argv)
@@ -154,12 +141,11 @@ def main(argv):
 
     # Run all tests if none are specified.
     if opts.run_all or not (opts.run_cryptohome or opts.run_incognito or
-                            opts.run_tast or opts.run_screenlock):
-      opts.run_cryptohome = opts.run_incognito = True
-      opts.run_tast = opts.run_screen_lock = True
+                            opts.run_screenlock):
+      opts.run_cryptohome = opts.run_incognito = opts.run_screen_lock = True
 
     VMSanity(opts.count, opts.run_cryptohome, opts.run_incognito,
-             opts.run_tast, opts.run_screenlock).Run()
+             opts.run_screenlock).Run()
 
 
 if __name__ == '__main__':
