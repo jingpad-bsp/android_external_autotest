@@ -20,7 +20,7 @@ class SwapTest : public GLInterfaceTest {
 };
 
 bool SwapTest::TestFunc(uint64_t iterations) {
-  for (uint64_t i = 0 ; i < iterations; ++i) {
+  for (uint64_t i = 0; i < iterations; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();
     g_main_gl_interface->SwapBuffers();
@@ -32,4 +32,4 @@ TestBase* GetSwapTest() {
   return new SwapTest;
 }
 
-} // namespace glbench
+}  // namespace glbench
