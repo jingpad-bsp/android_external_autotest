@@ -109,6 +109,13 @@ class firmware_LockedME(test.test):
             raise error.TestNAError('This test is not applicable, '
                     'because an ARM device has been detected. '
                     'ARM devices do not have an ME (Management Engine)')
+
+        cpu_family = utils.get_cpu_soc_family()
+        if cpu_family == "amd":
+            raise error.TestNAError('This test is not applicable, '
+                    'because an AMD device has been detected. '
+                    'AMD devices do not have an ME (Management Engine)')
+
         # If sw wp is on, and the ME regions are unlocked, they won't be
         # writable so will appear locked.
         if self.determine_sw_wp_status():
