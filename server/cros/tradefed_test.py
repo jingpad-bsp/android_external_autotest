@@ -932,7 +932,7 @@ class TradefedTest(test.test):
         except (shutil.Error, OSError, IOError) as e:
             raise error.TestFail(
                 'Error: failed to copy test subplan %s to CTS bundle. %s' %
-                test_subplan_file, e)
+                (test_subplan_file, e))
 
     def _should_skip_test(self, _bundle):
         """Some tests are expected to fail and are skipped.
