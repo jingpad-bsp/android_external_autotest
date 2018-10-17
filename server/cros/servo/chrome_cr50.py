@@ -483,7 +483,7 @@ class ChromeCr50(chrome_ec.ChromeConsole):
             return self._servo.get('ccd_state') == 'on'
         else:
             result = self.send_command_retry_get_output('gpioget',
-                    ['(0|1)..CCD_MODE_L'])
+                    ['(0|1)[ \S]*CCD_MODE_L'])
             return not bool(int(result[0][1]))
 
 
