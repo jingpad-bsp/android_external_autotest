@@ -9,7 +9,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 
-# From <bits/socket.h> on Linux 3.2, EGLIBC 2.15.
+# From <include/linux/socket.h> on Linux 4.14.74.
 PROTOCOL_FAMILIES_STR = """
 #define PF_UNSPEC       0       /* Unspecified.  */
 #define PF_LOCAL        1       /* Local to host (pipes and file-domain).  */
@@ -52,7 +52,12 @@ PROTOCOL_FAMILIES_STR = """
 #define PF_CAIF         37      /* CAIF sockets.  */
 #define PF_ALG          38      /* Algorithm sockets.  */
 #define PF_NFC          39      /* NFC sockets.  */
-#define PF_MAX          40      /* For now...  */
+#define PF_VSOCK        40      /* vSockets.  */
+#define PF_KCM          41      /* Kernel Connection Multiplexor  */
+#define PF_QIPCRTR      42      /* Qualcomm IPC Router  */
+#define PF_SMC          43      /* smc sockets.  */
+#define PF_MAX          44      /* For now...  */
+
 """
 
 PROTOCOL_FAMILIES = dict([(int(line.split()[2]), line.split()[1])
@@ -67,7 +72,7 @@ class security_ProtocolFamilies(test.test):
     version = 1
     PF_BASELINE = ["PF_FILE", "PF_PACKET", "PF_INET", "PF_INET6", "PF_ROUTE",
                    "PF_LOCAL", "PF_NETLINK", "PF_UNIX", "PF_BLUETOOTH", "PF_ALG"]
-    PER_BOARD = {}
+    PER_BOARD = {"cheza" : ["PF_QIPCRTR"]}
 
 
     def pf_name(self, pfn):
@@ -111,7 +116,7 @@ class security_ProtocolFamilies(test.test):
 
         unexpected_protocol_families = []
 
-        # Protocol families currently go up to 40, but this way we make sure
+        # Protocol families currently go up to 44, but this way we make sure
         # to catch new families that might get added to the kernel.
         for pfn in range(256):
             pf_available = self.is_protocol_family_available(pfn)
