@@ -642,6 +642,8 @@ class Servo(object):
 
         @return: String of USB disk path (e.g. '/dev/sdb') or None.
         """
+        # Set up Servo's usb mux.
+        self.switch_usbkey('host')
         return self._server.probe_host_usb_dev(timeout) or None
 
 
