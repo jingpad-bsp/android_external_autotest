@@ -24,6 +24,8 @@ BINARY = 'video_encode_accelerator_unittest'
 DEFAULT_FRAME_RATE = 30
 # The ratio of |requested_subsequent_bit_rate| to |requested_bit_rate|.
 DEFAULT_SUBSEQUENT_BIT_RATE_RATIO = 2
+# The values of pixel formats //media/base/video_types.h.
+PIXEL_FORMAT_NV12 = 6
 
 def _remove_if_exists(filepath):
     try:
@@ -167,12 +169,20 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
         last_test_failure = None
         for (path, width, height, bit_rate, frame_rate, subsequent_bit_rate,
-             subsequent_frame_rate) in streams:
+             subsequent_frame_rate, pixel_format) in streams:
             # Skip the bitrate test if the board cannot switch bitrate.
             if subsequent_bit_rate is not None and not _can_switch_bitrate():
-              logging.info('Skip the bitrate switch test: %s => %s',
-                           bit_rate, subsequent_bit_rate)
-              continue
+                logging.info('Skip the bitrate switch test: %s => %s',
+                             bit_rate, subsequent_bit_rate)
+                continue
+
+            # TODO(crbug.com/894381): Remove this once VaapiVEA supports
+            # non I420 pixel format.
+            if pixel_format == PIXEL_FORMAT_NV12 and _run_on_intel_cpu():
+                # Skip NV12 input buffer case, VaapiVEA doesn't support YUV
+                # format except I420.
+                logging.info('Skip NV12 input buffer case.')
+                continue
 
             # Set the default value for None.
             frame_rate = frame_rate or DEFAULT_FRAME_RATE
@@ -192,7 +202,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
             test_stream_list = map(
                     str, [input_path, width, height, profile, output_path,
                           bit_rate, frame_rate, subsequent_bit_rate,
-                          subsequent_frame_rate])
+                          subsequent_frame_rate, pixel_format])
             cmd_line_list = [
                     '--test_stream_data="%s"' % ':'.join(test_stream_list),
                     '--ozone-platform=gbm',
