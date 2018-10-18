@@ -175,7 +175,8 @@ class EnterprisePolicyTest(test.test):
 
 
     def setup_case(self, user_policies={}, suggested_user_policies={},
-                   device_policies={}, skip_policy_value_verification=False,
+                   device_policies={}, extension_policies={},
+                   skip_policy_value_verification=False,
                    enroll=False, auto_login=True, auto_logout=True,
                    init_network_controller=False, extension_paths=[],
                    extra_chrome_flags=[]):
@@ -193,6 +194,7 @@ class EnterprisePolicyTest(test.test):
                 in name -> value format.
         @param device_policies: dict of device policies in
                 name -> value format.
+        @param extension_policies: dict of extension policies.
         @param skip_policy_value_verification: True if setup_case should not
                 verify that the correct policy value shows on policy page.
         @param enroll: True for enrollment instead of login.
@@ -210,7 +212,8 @@ class EnterprisePolicyTest(test.test):
 
         if self.dms_is_fake:
             self.fake_dm_server.setup_policy(self._make_json_blob(
-                user_policies, suggested_user_policies, device_policies))
+                user_policies, suggested_user_policies, device_policies,
+                extension_policies))
 
         self._create_chrome(enroll=enroll, auto_login=auto_login,
                             init_network_controller=init_network_controller,
@@ -222,10 +225,11 @@ class EnterprisePolicyTest(test.test):
         if not skip_policy_value_verification:
             self.verify_policy_stats(user_policies, suggested_user_policies,
                                      device_policies)
+            self.verify_extension_stats(extension_policies)
 
 
     def _make_json_blob(self, user_policies={}, suggested_user_policies={},
-                        device_policies={}):
+                        device_policies={}, extension_policies={}):
         """Create JSON policy blob from mandatory and suggested policies.
 
         For the status of a policy to be shown as "Not set" on the
@@ -235,6 +239,7 @@ class EnterprisePolicyTest(test.test):
         @param user_policies: mandatory user policies -> values.
         @param suggested user_policies: suggested user policies -> values.
         @param device_policies: mandatory device policies -> values.
+        @param extension_policies: extension policies.
 
         @returns: JSON policy blob to send to the fake DM server.
         """
@@ -242,6 +247,7 @@ class EnterprisePolicyTest(test.test):
         user_p = copy.deepcopy(user_policies)
         s_user_p = copy.deepcopy(suggested_user_policies)
         device_p = copy.deepcopy(device_policies)
+        extension_p = copy.deepcopy(extension_policies)
 
         # Replace all device policies with their FakeDMS-friendly names.
         fixed_device_p = {}
@@ -286,11 +292,83 @@ class EnterprisePolicyTest(test.test):
         if fixed_device_p:
             management_dict['google/chromeos/device'] = fixed_device_p
 
+        if extension_p:
+            management_dict['google/chrome/extension'] = extension_p
+
         logging.info('Created policy blob: %s', management_dict)
         return encode_json_string(management_dict)
 
 
-    def _get_policy_stats_shown(self, policy_tab, policy_name):
+    def _get_extension_policy_table(self, policy_tab, ext_id):
+        """
+        Find the policy table that matches the given extension ID.
+
+        The user and device policies are in table[0]. Extension policies are
+        in their own tables.
+
+        @param policy_tab: Tab displaying the policy page.
+        @param ext_id: Extension ID.
+
+        @returns: Index of the table in the DOM.
+        @raises error.TestError: if the table for the extension ID does
+            not exist.
+
+        """
+        table_index = policy_tab.EvaluateJavaScript("""
+            var table_index = -1
+            var tables = document.getElementsByClassName(
+                'policy-table-section');
+            for (var i = 1; i < tables.length; i++) {
+                var description = tables[i].querySelector('.table-description')
+                if (description !== null) {
+                    var table_id = description.innerText.split(': ').pop();
+                    if (table_id === '%s') {
+                        table_index = i;
+                        break;
+                    }
+                }
+            }
+            table_index;
+            """ % ext_id)
+        if table_index == -1:
+            raise error.TestError(
+                    'Policy table for extension %s does not exist. '
+                    'Make sure the extension is installed.' % ext_id)
+
+        return table_index
+
+
+    def verify_extension_stats(self, extension_policies):
+        """
+        Verify the extension policies match what is on chrome://policy.
+
+        @params extension_policies: the dictionary of extension IDs mapping
+            to download_url and secure_hash.
+        @raises error.TestError: if the shown values do not match what we are
+            expecting.
+        """
+        policy_tab = self.navigate_to_url(self.CHROME_POLICY_PAGE)
+
+        for id in extension_policies.keys():
+            table = self._get_extension_policy_table(policy_tab, id)
+            download_url = extension_policies[id]['download_url']
+            policy_file = os.path.join(self.enterprise_dir,
+                                       download_url.split('/')[-1])
+
+            with open(policy_file) as f:
+                policies = json.load(f)
+
+            for policy_name, settings in policies.items():
+                expected_value = settings['Value']
+                value_shown = self._get_policy_stats_shown(
+                        policy_tab, policy_name, table)['value']
+                self._compare_values(policy_name, expected_value, value_shown)
+
+        policy_tab.Close()
+
+
+    def _get_policy_stats_shown(self, policy_tab, policy_name,
+                                table_index=0):
         """Get the info shown for |policy_name| from the |policy_tab| page.
 
         Return a dict of stats for the policy given by |policy_name|, from
@@ -312,7 +390,7 @@ class EnterprisePolicyTest(test.test):
 
         row_values = policy_tab.EvaluateJavaScript('''
             var section = document.getElementsByClassName(
-                    "policy-table-section")[0];
+                    "policy-table-section")[%s];
             var table = section.getElementsByTagName('table')[0];
             rowValues = {};
             for (var i = 1, row; row = table.rows[i]; i++) {
@@ -337,7 +415,7 @@ class EnterprisePolicyTest(test.test):
                }
             }
             rowValues;
-        ''' % policy_name)
+        ''' % (table_index, policy_name))
 
         logging.debug('Policy %s row: %s', policy_name, row_values)
         if not row_values or len(row_values) < 6:
