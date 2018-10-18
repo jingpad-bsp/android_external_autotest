@@ -338,14 +338,27 @@ class EnterprisePolicyTest(test.test):
         return table_index
 
 
-    def verify_extension_stats(self, extension_policies):
+    def reload_policies(self):
+        """Force a policy fetch."""
+        policy_tab = self.navigate_to_url(self.CHROME_POLICY_PAGE)
+        reload_button = "document.querySelector('button#reload-policies')"
+        policy_tab.ExecuteJavaScript("%s.click()" % reload_button)
+        policy_tab.WaitForJavaScriptCondition("!%s.disabled" % reload_button,
+                                              timeout=1)
+        policy_tab.Close()
+
+
+    def verify_extension_stats(self, extension_policies, sensitive_fields=[]):
         """
         Verify the extension policies match what is on chrome://policy.
 
-        @params extension_policies: the dictionary of extension IDs mapping
+        @param extension_policies: the dictionary of extension IDs mapping
             to download_url and secure_hash.
+        @param sensitive_fields: list of fields that should have their value
+            censored.
         @raises error.TestError: if the shown values do not match what we are
             expecting.
+
         """
         policy_tab = self.navigate_to_url(self.CHROME_POLICY_PAGE)
 
@@ -362,6 +375,10 @@ class EnterprisePolicyTest(test.test):
                 expected_value = settings['Value']
                 value_shown = self._get_policy_stats_shown(
                         policy_tab, policy_name, table)['value']
+
+                if policy_name in sensitive_fields:
+                    expected_value = '********'
+
                 self._compare_values(policy_name, expected_value, value_shown)
 
         policy_tab.Close()
