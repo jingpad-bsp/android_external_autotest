@@ -127,7 +127,8 @@ class platform_AddPrinter(test.test):
 
         # Verify print request with a golden file.
         output = utils.system_output(
-            'cmp %s %s' % (self.printing_log_path, golden_file_path)
+            'cmp', ignore_status=True, retain_output=True,
+            args=(self.printing_log_path, golden_file_path)
         )
         if output:
             raise error.TestFail('ERROR: Printing request is not verified!')
