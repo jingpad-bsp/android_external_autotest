@@ -373,9 +373,11 @@ class power_LoadTest(arc.ArcTest):
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)
 
-            script_logging.set();
-            pagetime_tracking.set();
-            self._checkpoint_logger.checkpoint('loop%d' % (i), start_time)
+            script_logging.set()
+            pagetime_tracking.set()
+
+            self._log_loop_checkpoint(i, start_time, time.time())
+
             if self._verbose:
                 logging.debug('loop %d completed', i)
 
@@ -421,7 +423,7 @@ class power_LoadTest(arc.ArcTest):
 
 
         for task, tstart, tend in self._task_tracker:
-            self._checkpoint_logger.checkpoint(task, tstart, tend)
+            self._checkpoint_logger.checkpoint('_' + task, tstart, tend)
 
         keyvals = {}
         for log in self._meas_logs:
@@ -747,6 +749,31 @@ class power_LoadTest(arc.ArcTest):
         self._tmp_keyvals['percent_kbd_backlight'] = \
             self._keyboard_backlight.get_percent()
 
+    def _log_loop_checkpoint(self, loop, start, end):
+        loop_str = 'loop%d' % loop
+        self._checkpoint_logger.checkpoint(loop_str, start, end)
+
+        # Don't log section if we run custom tasks.
+        if self._tasks != '':
+            return
+
+        sections = {
+            'browsing' : (0, 0.6),
+            'email' : (0.6, 0.8),
+            'document' : (0.8, 0.9),
+            'video' : (0.9, 1),
+        }
+
+        duration = end - start
+
+        for section, fractions in sections.iteritems():
+            s_start, s_end = (start + duration * fraction
+                              for fraction in fractions)
+            self._checkpoint_logger.checkpoint(section, s_start, s_end)
+            loop_section = '_' + loop_str + '_' + section
+            self._checkpoint_logger.checkpoint(loop_section, s_start, s_end)
+
+
 def _extension_log_handler(handler, form, loop_number):
     """
     We use the httpd library to allow us to log whatever we
@@ -774,11 +801,11 @@ def _extension_page_time_info_handler(handler, form, loop_number,
     loadtime_measurements = []
     sorted_pagelt = []
     #show up to this number of slow page-loads
-    num_slow_page_loads = 5;
+    num_slow_page_loads = 5
 
     if not form:
         logging.debug("no page time information returned")
-        return;
+        return
 
     for field in form.keys():
         url = field[str.find(field, "http"):]  # remove unique url salt
