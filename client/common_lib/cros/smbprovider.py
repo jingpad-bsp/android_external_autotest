@@ -102,11 +102,13 @@ class SmbProvider(object):
         logging.info("Mounting: %s", mount_path)
 
         from directory_entry_pb2 import MountOptionsProto
+        from directory_entry_pb2 import MountConfigProto
 
         proto = MountOptionsProto()
         proto.path = mount_path
         proto.workgroup = workgroup
         proto.username = username
+        proto.mount_config.enable_ntlm = True
 
         with self.DataFd(password) as password_fd:
             return self._smbproviderd.Mount(_proto_to_blob(proto),
