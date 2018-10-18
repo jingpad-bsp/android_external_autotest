@@ -562,6 +562,10 @@
     "master_name": "ChromeOSPower"
   },
   {
+    "autotest_name": "tast.informational-chrome",
+    "master_name": "ChromeOSTastInformationalChrome"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.cros_ui_smoothness",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "cros_ui_smoothness"
