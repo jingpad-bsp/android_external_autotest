@@ -181,7 +181,7 @@ class enterprise_SmbProviderDaemon(test.test):
                                                   self.PASSWORD)
 
         if mount_id < 0 :
-            error.TestFail('Unexpected failure with mount id.')
+            raise error.TestFail('Unexpected failure with mount id.')
 
         self._check_result('Mount', error)
         return mount_id
@@ -261,9 +261,8 @@ class enterprise_SmbProviderDaemon(test.test):
         error, file_id = self._smbprovider.open_file(mount_id,
                                                      file_path,
                                                      writeable)
-
-        if not file_id:
-            error.TestFail('Unexpected file id failure.')
+        if file_id < 0:
+            raise error.TestFail('Unexpected file id failure.')
 
         self._check_result('Open File', error)
 
