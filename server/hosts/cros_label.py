@@ -458,20 +458,31 @@ class ArcLabel(base_label.BaseLabel):
 
 class CtsArchLabel(base_label.StringLabel):
     """Labels to determine the abi of the CTS bundle (arm or x86 only)."""
-    # TODO(ihf): create labels for ABIs supported by container like x86_64.
 
-    _NAME = ['cts_abi_arm', 'cts_abi_x86']
+    _NAME = ['cts_abi_arm', 'cts_abi_x86', 'cts_cpu_arm', 'cts_cpu_x86']
 
-    def _get_cts_abis(self, host):
+    def _get_cts_abis(self, arch):
         """Return supported CTS ABIs.
 
         @return List of supported CTS bundle ABIs.
         """
         cts_abis = {'x86_64': ['arm', 'x86'], 'arm': ['arm']}
-        return cts_abis.get(host.get_cpu_arch(), [])
+        return cts_abis.get(arch, [])
+
+    def _get_cts_cpus(self, arch):
+        """Return supported CTS native CPUs.
+
+        This is needed for CTS_Instant scheduling.
+        @return List of supported CTS native CPUs.
+        """
+        cts_cpus = {'x86_64': ['x86'], 'arm': ['arm']}
+        return cts_cpus.get(arch, [])
 
     def generate_labels(self, host):
-        return ['cts_abi_' + abi for abi in self._get_cts_abis(host)]
+        cpu_arch = host.get_cpu_arch()
+        abi_labels = ['cts_abi_' + abi for abi in self._get_cts_abis(cpu_arch)]
+        cpu_labels = ['cts_cpu_' + cpu for cpu in self._get_cts_cpus(cpu_arch)]
+        return abi_labels + cpu_labels
 
 
 class SparseCoverageLabel(base_label.StringLabel):
