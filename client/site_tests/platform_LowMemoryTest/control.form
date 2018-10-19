@@ -9,8 +9,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "client"
 DOC = """
 This is a low memory policy functional test. It creates several web page
-with random javascript data and a form with pending data. It failed if the
-oom-killer is invoked.
+with random javascript data and a form with pending data.
 """
 
 job.run_test('platform_LowMemoryTest', flavor='form')
