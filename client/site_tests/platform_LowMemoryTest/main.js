@@ -21,7 +21,7 @@ $(document).ready(function() {
   var allocMB = parseInt(url.searchParams.get("alloc"));
   if (isNaN(allocMB))
     allocMB = 800;
-  var randomRatio = parseInt(url.searchParams.get("ratio"));
+  var randomRatio = parseFloat(url.searchParams.get("ratio"));
   if (isNaN(randomRatio))
     randomRatio = 0.666
 
