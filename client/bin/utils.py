@@ -888,6 +888,15 @@ def get_disk_firmware_version(disk_name):
     return utils.system_output(cmd)
 
 
+def is_disk_nvme(disk_name):
+    """
+    Return true if disk is a nvme device, return false otherwise
+
+    @param disk_name: disk name to check
+    """
+    return re.match('/dev/nvme[0-9]+n[0-9]+', disk_name)
+
+
 def is_disk_scsi(disk_name):
     """
     Return true if disk is a scsi device, return false otherwise
@@ -946,6 +955,20 @@ def verify_hdparm_feature(disk_name, feature):
     else:
         raise error.TestFail('Error running command %s' % cmd)
 
+def get_nvme_id_ns_feature(disk_name, feature):
+    """
+    Return feature value for NVMe disk using nvme id-ns
+
+    @param disk_name: target disk
+    @param feature: output string of the feature
+    """
+    cmd = "nvme id-ns -n 1 %s | grep %s" % (disk_name, feature)
+    feat = utils.system_output(cmd, ignore_status=True)
+    if not feat:
+        return 'None'
+    start = feat.find(':')
+    value = feat[start+2:]
+    return value
 
 def get_storage_error_msg(disk_name, reason):
     """
