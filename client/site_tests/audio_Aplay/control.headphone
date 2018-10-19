@@ -1,13 +1,11 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = 'The Chromium OS Authors,chromeos-audio@google.com'
-NAME = 'audio_Aplay'
+NAME = 'audio_Aplay.headphone'
 ATTRIBUTES = "suite:kernel_per-build_regression"
-PURPOSE = """
-Test that simple Aplay with internal speaker succeeds. Used in other tests.
-"""
+PURPOSE = 'Test that simple Aplay with headphone succeeds. Used in other tests.'
 CRITERIA = """
 Check that the system plays...used in stress or after resume tests.
 """
@@ -15,9 +13,10 @@ TIME='SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "audio,qav"
 TEST_TYPE = 'client'
+DEPENDENCIES = 'audio_loopback_dongle'
 
 DOC = """
-Check that the system plays audio via internal speaker.
+Check that the system plays audio via headphone.
 """
 
-job.run_test('audio_Aplay')
+job.run_test('audio_Aplay', output_node="HEADPHONE")
