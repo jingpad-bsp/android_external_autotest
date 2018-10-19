@@ -609,14 +609,18 @@ class WiFiClient(site_linux_system.LinuxSystem):
           @return boolean representing whether the expected bss count matches
           how many in the scan match the given ssid
           """
-          scan_results = self.iw_runner.scan(
-                  self.wifi_if,
-                  frequencies=[],
-                  ssids=[ssid])
-          if scan_results is None:
-              return False
-          num_bss_actual = sum(ssid == bss.ssid for bss in scan_results)
-          return num_bss_expected == num_bss_actual
+          self.claim_wifi_if() # Stop shill/supplicant scans
+          try:
+            scan_results = self.iw_runner.scan(
+                    self.wifi_if,
+                    frequencies=[],
+                    ssids=[ssid])
+            if scan_results is None:
+                return False
+            num_bss_actual = sum(ssid == bss.ssid for bss in scan_results)
+            return num_bss_expected == num_bss_actual
+          finally:
+            self.release_wifi_if()
 
       utils.poll_for_condition(
               condition=are_all_bsses_discovered,
