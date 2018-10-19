@@ -1676,7 +1676,12 @@ class MeasurementLogger(threading.Thread):
 
         t = numpy.array(self.times)
         keyvals = {}
-        results  = []
+        results  = [('domain', 'mean', 'std', 'duration (s)', 'start ts',
+                     'end ts')]
+        # TODO(coconutruben): ensure that values is meaningful i.e. go through
+        # the Loggers and add a unit attribute to each so that the raw
+        # data is readable.
+        raw_results = [('domain', 'values (%s)' % mtype)]
 
         if not self.done:
             self.done = True
@@ -1727,33 +1732,40 @@ class MeasurementLogger(threading.Thread):
                 for tstart, tend in tlist:
                     result = result + (tend - tstart, tstart, tend)
                 results.append(result)
-                keyvals[prefix + '_' + mtype] = list(meas_array)
+                raw_results.append((prefix,) + tuple(meas_array.tolist()))
+
                 keyvals[prefix + '_' + mtype + '_avg'] = meas_mean
                 keyvals[prefix + '_' + mtype + '_cnt'] = meas_array.size
                 keyvals[prefix + '_' + mtype + '_max'] = meas_array.max()
                 keyvals[prefix + '_' + mtype + '_min'] = meas_array.min()
                 keyvals[prefix + '_' + mtype + '_std'] = meas_std
         self._results = results
+        self._raw_results = raw_results
         return keyvals
 
 
-    def save_results(self, resultsdir, fname=None):
+    def save_results(self, resultsdir, fname_prefix=None):
         """Save computed results in a nice tab-separated format.
         This is useful for long manual runs.
 
         Args:
             resultsdir: String, directory to write results to
-            fname: String name of file to write results to
+            fname_prefix: prefix to use for fname. If provided outfiles
+                          will be [fname]_[raw|summary].txt
         """
-        if not fname:
-            fname = 'meas_results_%.0f.txt' % time.time()
-        fname = os.path.join(resultsdir, fname)
-        with file(fname, 'wt') as f:
-            for row in self._results:
-                # First column is name, the rest are numbers. See _calc_power()
-                fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
-                line = '\t'.join(fmt_row)
-                f.write(line + '\n')
+        if not fname_prefix:
+          fname_prefix = 'meas_results_%.0f' % time.time()
+        fname = '%s_summary.txt' % fname_prefix
+        raw_fname = fname.replace('summary', 'raw')
+        for name, data in [(fname, self._results),
+                           (raw_fname, self._raw_results)]:
+          with open(os.path.join(resultsdir, name), 'wt') as f:
+              # First row contains the headers
+              f.write('%s\n' % '\t'.join(data[0]))
+              for row in data[1:]:
+                  # First column name, rest are numbers. See _calc_power()
+                  fmt_row = [row[0]] + ['%.2f' % x for x in row[1:]]
+                  f.write('%s\n' % '\t'.join(fmt_row))
 
 
 class CPUStatsLogger(MeasurementLogger):
@@ -1813,19 +1825,19 @@ class CPUStatsLogger(MeasurementLogger):
                     ret.append(wavg)
         return ret
 
-    def save_results(self, resultsdir, fname=None):
-        if not fname:
-            fname = 'cpu_results_%.0f.txt' % time.time()
-        super(CPUStatsLogger, self).save_results(resultsdir, fname)
+    def save_results(self, resultsdir, fname_prefix=None):
+        if not fname_prefix:
+            fname_prefix = 'cpu_results_%.0f' % time.time()
+        super(CPUStatsLogger, self).save_results(resultsdir, fname_prefix)
 
 
 class PowerLogger(MeasurementLogger):
     """Class to measure power consumption.
     """
-    def save_results(self, resultsdir, fname=None):
-        if not fname:
-            fname = 'power_results_%.0f.txt' % time.time()
-        super(PowerLogger, self).save_results(resultsdir, fname)
+    def save_results(self, resultsdir, fname_prefix=None):
+        if not fname_prefix:
+            fname_prefix = 'power_results_%.0f' % time.time()
+        super(PowerLogger, self).save_results(resultsdir, fname_prefix)
 
 
     def calc(self, mtype='pwr'):
@@ -1934,10 +1946,10 @@ class TempLogger(MeasurementLogger):
         super(TempLogger, self).__init__(measurements, seconds_period, checkpoint_logger)
 
 
-    def save_results(self, resultsdir, fname=None):
-        if not fname:
-            fname = 'temp_results_%.0f.txt' % time.time()
-        super(TempLogger, self).save_results(resultsdir, fname)
+    def save_results(self, resultsdir, fname_prefix=None):
+        if not fname_prefix:
+            fname_prefix = 'temp_results_%.0f' % time.time()
+        super(TempLogger, self).save_results(resultsdir, fname_prefix)
 
 
     def calc(self, mtype='temp'):
