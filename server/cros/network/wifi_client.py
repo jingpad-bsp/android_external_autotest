@@ -601,6 +601,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
       """
       # If the scan returns None, return 0, else return the matching count
+      num_bss_actual = 0
       def are_all_bsses_discovered():
           """Determine if all BSSes associated with the SSID from parent
           function are discovered in the scan
@@ -614,12 +615,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
                   ssids=[ssid])
           if scan_results is None:
               return False
-          return num_bss_expected == sum(
-                  ssid == bss.ssid for bss in scan_results)
+          num_bss_actual = sum(ssid == bss.ssid for bss in scan_results)
+          return num_bss_expected == num_bss_actual
 
       utils.poll_for_condition(
               condition=are_all_bsses_discovered,
-              exception=error.TestFail('Failed to discover all BSSes.'),
+              exception=error.TestFail('Failed to discover all BSSes. Found %d,'
+                                      ' wanted %d with SSID %s' %
+                                      (num_bss_actual, num_bss_expected, ssid)),
               timeout=timeout_seconds,
               sleep_interval=0.5)
 
