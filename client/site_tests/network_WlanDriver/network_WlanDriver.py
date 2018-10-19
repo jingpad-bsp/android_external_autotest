@@ -43,6 +43,7 @@ class network_WlanDriver(test.test):
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko'
             },
             'Intel 9260': {
+                    '4.4': 'wireless/iwl7000/iwlwifi/iwlwifi.ko',
                     '4.14': 'wireless/iwl7000/iwlwifi/iwlwifi.ko'
             },
             'Atheros AR9462': {
