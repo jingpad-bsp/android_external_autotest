@@ -21,7 +21,7 @@ from autotest_lib.server.cros.cfm.utils import bond_http_api
 _SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 900 # 15 minutes
-_BOT_PARTICIPANTS_COUNT = 20
+_BOT_PARTICIPANTS_COUNT = 10
 
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')

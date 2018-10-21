@@ -19,7 +19,7 @@ class PinWeaverNotAvailableError(CalledProcessError):
 
 def __check_pinweaver_client_present(client, message):
     cmd = 'which pinweaver_client'
-    run = client.run('which pinweaver_client')
+    run = client.run('which pinweaver_client', ignore_status=True)
     if run.exit_status != 0:  # pinweaver_client isn't present.
         raise PinWeaverNotAvailableError(run.exit_status, cmd, message);
 

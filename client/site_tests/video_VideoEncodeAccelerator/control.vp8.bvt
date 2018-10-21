@@ -26,10 +26,15 @@ This is a wrapper test for Chrome video_encode_accelerator_unittest.
 
 # Format of each stream:
 #   (path, width, height, requested_bit_rate, requested_frame_rate,
-#    requested_subsequent_bit_rate, requested_subsequent_frame_rate)
-# The last 3 parameters may be None, which means to set the default value.
+#    requested_subsequent_bit_rate, requested_subsequent_frame_rate,
+#    pixel_format)
+# requested_frame_rate, requested_subsequent_bit_rate and
+# requested_subsequent_frame_rate may be None, which means to set the default
+# value.
 streams = [('media/test/data/bear_320x192_40frames.yuv',
-            320, 192, 200000, None, None, None)]
+            320, 192, 200000, None, None, None, 1),
+            ('media/test/data/bear_320x192_40frames.nv12.yuv',
+            320, 192, 200000, None, None, None, 6)]
 
 args_dict = utils.args_to_dict(args)
 job.run_test('video_VideoEncodeAccelerator', in_cloud=False, streams=streams,
