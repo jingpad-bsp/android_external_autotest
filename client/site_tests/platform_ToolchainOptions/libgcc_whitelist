@@ -20,3 +20,7 @@
 /usr/bin/9s
 /usr/lib*/libqcow_utils.so
 /usr/lib64/libcrosvm_plugin.so
+# Remove these files after mesa is fixed to not need libgcc_s.
+# https://crbug.com/808264
+/usr/lib/dri/kms_swrast_dri.so
+/usr/lib/dri/swrast_dri.so
