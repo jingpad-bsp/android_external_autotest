@@ -407,8 +407,10 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
 
         # Pin the CfM from one bot so the device always sends HD.
         self.bond.ExecuteScript(
-            '@b%d pin_participant_by_name "Unknown (this room)"' % botIds[0],
-            meeting_code)
+            '@b%d pin_participant_by_name "Unknown"' % botIds[0], meeting_code)
+        # Explicitly request HD video from the CfM.
+        self.bond.ExecuteScript(
+            '@b%d set_resolution 1280 720' % botIds[0], meeting_code)
 
     def _start_philosopher_audio(self, bot_id, meeting_code):
         self.bond.ExecuteScript(
