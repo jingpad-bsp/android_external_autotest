@@ -104,3 +104,7 @@ bugreportd,657360,656367,Yes,Yes,Yes,No,No
 logd,656396,656396,Yes,Yes,Yes,No,No
 servicemanager,656360,656360,Yes,Yes,Yes,No,No
 surfaceflinger,656360,656363,Yes,Yes,Yes,No,No
+
+# Chrome OS one-off init scripts.
+# These are small setup scripts that don't spawn daemons and are short lived.
+activate_date.s,root,root,No,No,No,No,No
