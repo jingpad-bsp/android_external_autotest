@@ -1,7 +1,6 @@
 #!/usr/bin/python -u
 
 import collections
-import datetime
 import errno
 import fcntl
 import json
