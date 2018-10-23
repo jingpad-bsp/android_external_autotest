@@ -1,6 +1,7 @@
 import json
 import os
 
+from autotest_lib.server.hosts import file_store
 from autotest_lib.client.common_lib import utils
 from autotest_lib.tko import tast
 from autotest_lib.tko import utils as tko_utils
@@ -292,9 +293,16 @@ class test(object):
         @return A dictionary representing the host keyvals.
 
         """
+        keyval_path = os.path.join('host_keyvals', hostname)
         # The host keyval is <job_dir>/host_keyvals/<hostname> if it exists.
-        return test._parse_keyval(job_dir,
-                                  os.path.join('host_keyvals', hostname))
+        # Otherwise we're running on Skylab which uses hostinfo.
+        if not os.path.exists(keyval_path):
+            try:
+                return _parse_hostinfo_keyval(job_dir, hostname)
+            except Exception as e:
+                # If anything goes wrong, log it and just use the old flow.
+                tko_utils.dprint("tried using hostinfo: %s" % e)
+        return test._parse_keyval(job_dir, keyval_path)
 
 
     @staticmethod
@@ -309,6 +317,33 @@ class test(object):
         """
         # The job keyval is <job_dir>/keyval if it exists.
         return test._parse_keyval(job_dir, 'keyval')
+
+
+def _parse_hostinfo_keyval(job_dir, hostname):
+    """
+    Parse host keyvals from hostinfo.
+
+    @param job_dir: The string directory name of the associated job.
+    @param hostname: The string hostname.
+
+    @return A dictionary representing the host keyvals.
+
+    """
+    # The hostinfo path looks like:
+    # host_info_store/dir_e499300b-8bba-4ad3-a404-8c12a9367f17/
+    # chromeos6-row4-rack11-host6.store
+    #
+    # TODO(ayatane): We should pass hostinfo path explicitly.
+    subdir = 'host_info_store'
+    subdir = os.path.join(subdir, os.listdir(subdir)[0])
+    hostinfo_path = os.path.join(job_dir, subdir, hostname + '.store')
+    store = file_store.FileStore(hostinfo_path)
+    hostinfo = store.get()
+    # TODO(ayatane): Investigate if urllib.quote is better.
+    label_string = ','.join(label.replace(':', '%3A')
+                            for label in hostinfo.labels)
+    # TODO(ayatane): Check if host-platform is also needed.
+    return {'host-labels': label_string}
 
 
 class patch(object):

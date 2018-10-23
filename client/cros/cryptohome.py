@@ -785,8 +785,18 @@ class CryptohomeProxy(DBusClient):
         @param attrs: dict of install attributes.
         """
         take_tpm_ownership()
+        self.wait_for_install_attributes_ready()
         for key, value in attrs.items():
             if not self.__call(self.iface.InstallAttributesSet, key,
                                dbus.ByteArray(value + '\0')):
                 return False
         return self.__call(self.iface.InstallAttributesFinalize)
+
+    def wait_for_install_attributes_ready(self):
+        """Wait until install attributes are ready.
+        """
+        utils.poll_for_condition(
+            lambda: self.__call(self.iface.InstallAttributesIsReady),
+            timeout=300,
+            exception=error.TestError(
+                    'Timeout waiting for install attributes are ready'))
