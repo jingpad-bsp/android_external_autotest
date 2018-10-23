@@ -9,7 +9,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include <base/files/file_util.h>
 #include <gflags/gflags.h>
 
 #include "png_helper.h"

@@ -6,8 +6,6 @@
 // It uploads a series of textures initially.  On subsequent iterations, it uses
 // those uploaded textures to draw.
 
-#include "base/logging.h"
-
 #include "texturetest.h"
 #include "main.h"
 

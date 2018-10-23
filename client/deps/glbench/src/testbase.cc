@@ -9,8 +9,7 @@
 
 #include <memory>
 
-#include <base/files/file_util.h>
-
+#include "filepath.h"
 #include "glinterface.h"
 #include "md5.h"
 #include "png_helper.h"
@@ -101,9 +100,9 @@ void SaveImage(const char* name, const int width, const int height) {
   std::unique_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   // I really think we want to use outdir as a straight argument
-  base::FilePath dirname = base::FilePath(FLAGS_outdir);
-  base::CreateDirectory(dirname);
-  base::FilePath filename = dirname.Append(name);
+  FilePath dirname = FilePath(FLAGS_outdir);
+  CreateDirectory(dirname);
+  FilePath filename = dirname.Append(name);
   write_png_file(filename.value().c_str(),
                  pixels.get(), width, height);
 }
