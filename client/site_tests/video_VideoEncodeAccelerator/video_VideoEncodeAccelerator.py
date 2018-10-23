@@ -68,13 +68,20 @@ def _can_switch_bitrate():
     over some devices that do not run ARC++. Therefore we whitelist the boards
     that should pass the bitrate switch test. (crbug.com/890125)
     """
-    # All Intel chipset should be able to switch bitrate, so here we only list
-    # the non-intel device.
-    whitelist = [
-            # MTK8173
-            'elm', 'hana',
+    # Most Intel chipsets are able to switch bitrate except these two old
+    # chipsets, so we blacklist the devices.
+    intel_blacklist = [
+            # Rambi Bay Trial
+            'cranky', 'banjo', 'candy', 'clapper', 'enguarde', 'expresso',
+            'glimmer', 'gnawty', 'heli', 'hoofer', 'kip', 'kip14', 'ninja',
+            'orco', 'quawks', 'squawks', 'sumo', 'swanky', 'winky',
+
+            # Haswell
+            'falco', 'leon', 'mccloud', 'monroe', 'panther', 'peppy', 'tricky',
+            'wolf', 'zako',
     ]
-    return _run_on_intel_cpu() or utils.get_current_board() in whitelist
+    return (_run_on_intel_cpu() and
+            utils.get_current_board() not in intel_blacklist)
 
 
 def _can_encode_nv12():
@@ -250,6 +257,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 cmd_line_list.append('--gtest_filter="%s"' % applied_filter)
 
             cmd_line = ' '.join(cmd_line_list)
+            logging.debug('Executing with argument: %s', cmd_line)
             try:
                 self.run_chrome_test_binary(BINARY, cmd_line, as_chronos=False)
             except error.TestFail as test_failure:
