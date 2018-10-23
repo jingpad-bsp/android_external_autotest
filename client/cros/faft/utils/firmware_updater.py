@@ -342,7 +342,7 @@ class FirmwareUpdater(object):
                 chromeos-firmwareupdate-[append]. Use'chromeos-firmwareupdate'
                 if updater_append is None.
             mode: ex.'autoupdate', 'recovery', 'bootok', 'factory_install'...
-            options: ex. ['--noupdate_ec', '--force'] or [] for
+            options: ex. ['--host_only', '--force'] or [] for
                 no option.
         """
         if updater_append:
