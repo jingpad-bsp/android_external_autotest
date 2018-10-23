@@ -5,14 +5,15 @@
 #include <stdio.h>
 #include <sys/mman.h>
 
+#include <assert.h>
 #include <memory>
-
-#include "base/logging.h"
+#include <string.h>
 
 #include "main.h"
 #include "testbase.h"
 #include "utils.h"
 #include "yuv2rgb.h"
+#include "arraysize.h"
 
 namespace glbench {
 

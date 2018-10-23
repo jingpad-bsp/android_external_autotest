@@ -4,9 +4,8 @@
 
 #include <memory>
 
-#include "base/logging.h"
-
 #include "main.h"
+#include "utils.h"
 #include "testbase.h"
 
 

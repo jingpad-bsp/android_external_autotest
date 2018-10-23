@@ -5,8 +5,6 @@
 // This test evaluates the speed of updating a single texture and using it to
 // draw after each upload.
 
-#include "base/logging.h"
-
 #include "texturetest.h"
 #include "main.h"
 

@@ -5,8 +5,6 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 
-#include "base/logging.h"
-
 #include "glinterface.h"
 #include "main.h"
 #include "xlib_window.h"
