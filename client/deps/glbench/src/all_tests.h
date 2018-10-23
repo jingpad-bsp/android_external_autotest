@@ -20,6 +20,6 @@ TestBase* GetVaryingsAndDdxyShaderTest();
 TestBase* GetWindowManagerCompositingTest(bool scissor);
 TestBase* GetYuvToRgbTest();
 
-} // namespace glbench
+}  // namespace glbench
 
-#endif // BENCH_GL_ALL_TESTS_H_
+#endif  // BENCH_GL_ALL_TESTS_H_

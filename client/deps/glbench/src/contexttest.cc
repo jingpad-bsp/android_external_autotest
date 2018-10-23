@@ -40,7 +40,7 @@ bool ContextTest::TestFunc(uint64_t iterations) {
   SetupGLRendering();
   interface->MakeCurrent(main_context);
 
-  for (uint64_t i = 0 ; i < iterations; ++i) {
+  for (uint64_t i = 0; i < iterations; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();
     interface->MakeCurrent(IsEven(i) ? new_context : main_context);
@@ -55,4 +55,4 @@ TestBase* GetContextTest() {
   return new ContextTest;
 }
 
-} // namespace glbench
+}  // namespace glbench
