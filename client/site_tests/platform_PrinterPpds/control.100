@@ -12,7 +12,7 @@ cupstestppd, cups filters) for at least one of tested PPD files.
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
-ATTRIBUTES = "suite:bvt-perbuild"
+#ATTRIBUTES = ""
 JOB_RETRIES = 0
 
 DOC = """
