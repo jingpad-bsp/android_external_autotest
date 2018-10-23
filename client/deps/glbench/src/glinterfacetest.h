@@ -9,11 +9,12 @@ namespace glbench {
 
 class GLInterfaceTest : public TestBase {
  public:
-  GLInterfaceTest() : index_buffer_object_(0),
-               vertex_buffer_object_(0),
-               num_indices_(0),
-               shader_program_(0),
-               attribute_index_(0) {}
+  GLInterfaceTest()
+      : index_buffer_object_(0),
+        vertex_buffer_object_(0),
+        num_indices_(0),
+        shader_program_(0),
+        attribute_index_(0) {}
   virtual ~GLInterfaceTest() {}
   virtual bool TestFunc(uint64_t iterations) = 0;
   virtual bool Run();
@@ -41,4 +42,4 @@ class GLInterfaceTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(GLInterfaceTest);
 };
 
-} // namespace glbench
+}  // namespace glbench

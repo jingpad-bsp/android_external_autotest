@@ -27,10 +27,7 @@ class TextureTest : public TestBase {
   virtual const char* Name() const = 0;
   virtual const char* Unit() const { return "mtexel_sec"; }
 
-  enum UpdateFlavor {
-    TEX_IMAGE,
-    TEX_SUBIMAGE
-  };
+  enum UpdateFlavor { TEX_IMAGE, TEX_SUBIMAGE };
 
  protected:
   GLuint width_;
@@ -44,6 +41,6 @@ class TextureTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(TextureTest);
 };
 
-} // namespace glbench
+}  // namespace glbench
 
 #endif  // BENCH_GL_TEXTURETEST_H_

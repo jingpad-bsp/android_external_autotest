@@ -3,12 +3,10 @@
 // found in the LICENSE file.
 
 #include "main.h"
-#include "utils.h"
 #include "testbase.h"
-
+#include "utils.h"
 
 namespace glbench {
-
 
 class ClearTest : public TestBase {
  public:
@@ -25,7 +23,6 @@ class ClearTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(ClearTest);
 };
 
-
 bool ClearTest::TestFunc(uint64_t iterations) {
   GLbitfield mask = mask_;
   glClear(mask);
@@ -36,7 +33,6 @@ bool ClearTest::TestFunc(uint64_t iterations) {
   return true;
 }
 
-
 bool ClearTest::Run() {
   mask_ = GL_COLOR_BUFFER_BIT;
   RunTest(this, "clear_color", g_width * g_height, g_width, g_height, true);
@@ -45,22 +41,21 @@ bool ClearTest::Run() {
   RunTest(this, "clear_depth", g_width * g_height, g_width, g_height, true);
 
   mask_ = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
-  RunTest(this, "clear_colordepth",
-          g_width * g_height, g_width, g_height, true);
+  RunTest(this, "clear_colordepth", g_width * g_height, g_width, g_height,
+          true);
 
   mask_ = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-  RunTest(this, "clear_depthstencil",
-          g_width * g_height, g_width, g_height, true);
+  RunTest(this, "clear_depthstencil", g_width * g_height, g_width, g_height,
+          true);
 
   mask_ = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-  RunTest(this, "clear_colordepthstencil",
-          g_width * g_height, g_width, g_height, true);
+  RunTest(this, "clear_colordepthstencil", g_width * g_height, g_width,
+          g_height, true);
   return true;
 }
-
 
 TestBase* GetClearTest() {
   return new ClearTest;
 }
 
-} // namespace glbench
+}  // namespace glbench
