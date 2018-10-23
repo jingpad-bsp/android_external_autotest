@@ -4,8 +4,6 @@
 
 // This test evalutes the speed of uploading textures without actually drawing.
 
-#include "base/logging.h"
-
 #include "texturetest.h"
 #include "main.h"
 

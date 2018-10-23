@@ -8,10 +8,7 @@
 #include <string.h>
 #include <ctime>
 
-#include "base/logging.h"
-#include "base/strings/string_split.h"
-#include "base/strings/string_util.h"
-
+#include "arraysize.h"
 #include "glinterface.h"
 #include "main.h"
 #include "utils.h"
@@ -136,12 +133,8 @@ int main(int argc, char *argv[]) {
   if (!g_notemp)
     g_initial_temperature = GetMachineTemperature();
 
-  vector<string> enabled_tests =
-      base::SplitString(FLAGS_tests, ":", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
-  vector<string> disabled_tests =
-      base::SplitString(FLAGS_blacklist, ":", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  vector<string> enabled_tests = SplitString(FLAGS_tests, ":", true);
+  vector<string> disabled_tests = SplitString(FLAGS_blacklist, ":", true);
 
   glbench::TestBase* tests[] = {
     // Please add new tests at the end of this list as tests are known to bleed
