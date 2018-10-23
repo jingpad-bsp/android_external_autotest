@@ -318,7 +318,20 @@ class video_WebRtcPerf(test.test):
             time.sleep(MEASUREMENT_DURATION)
             power_logger.checkpoint('result', start_time)
             keyval = power_logger.calc()
-            return keyval['result_' + measurements[0].domain + '_pwr']
+            # save_results() will save <fname_prefix>_raw.txt and
+            # <fname_prefix>_summary.txt, where the former contains raw data.
+            fname_prefix = 'result_%.0f' % time.time()
+            power_logger.save_results(self.resultsdir, fname_prefix)
+            metric_name = 'result_' + measurements[0].domain
+            with open(os.path.join(
+                    self.resultsdir, fname_prefix + '_raw.txt')) as f:
+                for line in f.readlines():
+                    if line.startswith(metric_name):
+                        split_data = line.split('\t')
+                        # split_data[0] is metric_name, [1:] are raw data.
+                        return [float(data) for data in split_data[1:]]
+            # Return a list contains the average power only for fallback.
+            return [keyval[metric_name + '_pwr_avg']]
 
         return self.test_webrtc(local_path, get_power)
 
