@@ -8,7 +8,6 @@ import string
 
 from autotest_lib.server.cros.network import frame_sender
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import wifi_interface_claim_context
 from autotest_lib.server import site_linux_system
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
@@ -186,11 +185,13 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         # will prevent shill and wpa_supplicant from managing that interface.
         # So this test can have the sole ownership of the interface and can
         # perform scans without interference from shill and wpa_supplicant.
-        with wifi_interface_claim_context.WiFiInterfaceClaimContext(
-                self.context.client):
+        self.context.client.claim_wifi_if()
+        try:
             # Get channel dwell time for single-channel scan
             dwell_time = self._channel_dwell_time_test(True)
             logging.info('Channel dwell time for single-channel scan: %d ms',
                          dwell_time)
             self.write_perf_keyval(
                     {'dwell_time_single_channel_scan': dwell_time})
+        finally:
+            self.context.client.release_wifi_if()
