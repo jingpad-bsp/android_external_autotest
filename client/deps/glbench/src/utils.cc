@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <fcntl.h>
+#include <gflags/gflags.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
-#include <gflags/gflags.h>
 
 #include "arraysize.h"
 #include "filepath.h"
@@ -23,9 +23,10 @@ const char* kGlesHeader =
     "precision highp float;\n"
     "#endif\n";
 
-FilePath *g_base_path = new FilePath();
+FilePath* g_base_path = new FilePath();
 double g_initial_temperature = -1000.0;
-DEFINE_string(TEMPERATURE_SCRIPT_PATH, "/usr/local/autotest/bin/temperature.py",
+DEFINE_string(TEMPERATURE_SCRIPT_PATH,
+              "/usr/local/autotest/bin/temperature.py",
               "The path to temperature measurement executable.");
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
@@ -38,7 +39,7 @@ void SetBasePathFromArgv0(const char* argv0, const char* relative) {
   g_base_path = new FilePath(base_path);
 }
 
-void *MmapFile(const char* name, size_t* length) {
+void* MmapFile(const char* name, size_t* length) {
   FilePath filename = g_base_path->Append(name);
   int fd = open(filename.value().c_str(), O_RDONLY);
   if (fd == -1)
@@ -47,8 +48,8 @@ void *MmapFile(const char* name, size_t* length) {
   struct stat sb;
   CHECK(fstat(fd, &sb) != -1);
 
-  char *mmap_ptr = static_cast<char *>(
-    mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
+  char* mmap_ptr =
+      static_cast<char*>(mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
 
   close(fd);
 
@@ -58,8 +59,8 @@ void *MmapFile(const char* name, size_t* length) {
   return mmap_ptr;
 }
 
-bool read_int_from_file(FilePath filename, int *value) {
-  FILE *fd = fopen(filename.value().c_str(), "r");
+bool read_int_from_file(FilePath filename, int* value) {
+  FILE* fd = fopen(filename.value().c_str(), "r");
   if (!fd) {
     return false;
   }
@@ -67,30 +68,29 @@ bool read_int_from_file(FilePath filename, int *value) {
   if (count != 1) {
     printf("Error: could not read integer from file. (%s)\n",
            filename.value().c_str());
-    if(count != 1)
+    if (count != 1)
       return false;
   }
   fclose(fd);
   return true;
 }
 
-bool read_float_from_cmd_output(const char *command, double *value) {
-  FILE *fd = popen(command, "r");
+bool read_float_from_cmd_output(const char* command, double* value) {
+  FILE* fd = popen(command, "r");
   if (!fd) {
     printf("Error: could not popen command. (%s)\n", command);
     return false;
   }
   int count = fscanf(fd, "%lf", value);
   if (count != 1) {
-    printf("Error: could not read float from command output. (%s)\n",
-           command);
+    printf("Error: could not read float from command output. (%s)\n", command);
     return false;
   }
   pclose(fd);
   return true;
 }
 
-bool check_file_existence(const char *file_path, struct stat *buffer = NULL){
+bool check_file_existence(const char* file_path, struct stat* buffer = NULL) {
   struct stat local_buf;
   bool exist = stat(file_path, &local_buf) == 0;
   if (buffer && exist)
@@ -98,10 +98,11 @@ bool check_file_existence(const char *file_path, struct stat *buffer = NULL){
   return exist;
 }
 
-bool check_dir_existence(const char *file_path){
+bool check_dir_existence(const char* file_path) {
   struct stat buffer;
   bool exist = check_file_existence(file_path, &buffer);
-  if (!exist) return false;
+  if (!exist)
+    return false;
   return S_ISDIR(buffer.st_mode);
 }
 
@@ -127,8 +128,9 @@ double GetMachineTemperature() {
 }
 
 // Waits up to timeout seconds to reach cold_temperature in Celsius.
-double WaitForCoolMachine(double cold_temperature, double timeout,
-                          double *temperature) {
+double WaitForCoolMachine(double cold_temperature,
+                          double timeout,
+                          double* temperature) {
   // Integer times are in micro-seconds.
   uint64_t time_start = GetUTime();
   uint64_t time_now = time_start;
@@ -147,7 +149,9 @@ double WaitForCoolMachine(double cold_temperature, double timeout,
   return wait_time;
 }
 
-std::vector<std::string> SplitString(std::string &input, std::string delimiter, bool trim_space){
+std::vector<std::string> SplitString(std::string& input,
+                                     std::string delimiter,
+                                     bool trim_space) {
   std::vector<std::string> result;
   if (input.empty())
     return result;
@@ -155,11 +159,11 @@ std::vector<std::string> SplitString(std::string &input, std::string delimiter, 
   while (start != std::string::npos) {
     size_t end = input.find(delimiter, start);
     std::string piece;
-    if (end == std::string::npos){
+    if (end == std::string::npos) {
       piece = input.substr(start);
       start = end;
     } else {
-      piece = input.substr(start, end-start);
+      piece = input.substr(start, end - start);
       start = end + 1;
     }
     trim(piece);
@@ -178,35 +182,35 @@ GLuint SetupTexture(GLsizei size_log2) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  unsigned char *pixels = new unsigned char[size * size * 4];
+  unsigned char* pixels = new unsigned char[size * size * 4];
   if (!pixels)
     return 0;
 
   for (GLint level = 0; size > 0; level++, size /= 2) {
-    unsigned char *p = pixels;
+    unsigned char* p = pixels;
     for (int i = 0; i < size; i++) {
       for (int j = 0; j < size; j++) {
-        *p++ = level %3 != 0 ? (i ^ j) << level : 0;
-        *p++ = level %3 != 1 ? (i ^ j) << level : 0;
-        *p++ = level %3 != 2 ? (i ^ j) << level : 0;
+        *p++ = level % 3 != 0 ? (i ^ j) << level : 0;
+        *p++ = level % 3 != 1 ? (i ^ j) << level : 0;
+        *p++ = level % 3 != 2 ? (i ^ j) << level : 0;
         *p++ = 255;
       }
     }
     if (size == 1) {
-      unsigned char *p = pixels;
+      unsigned char* p = pixels;
       *p++ = 255;
       *p++ = 255;
       *p++ = 255;
       *p++ = 255;
     }
-    glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, size, size, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, size, size, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, pixels);
   }
   delete[] pixels;
   return name;
 }
 
-GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
+GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid* data) {
   GLuint buf = ~0;
   glGenBuffers(1, &buf);
   glBindBuffer(target, buf);
@@ -216,10 +220,13 @@ GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
 }
 
 // Generates a lattice symmetric around the origin (all quadrants).
-void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
-                   GLfloat size_x, GLfloat size_y, int width, int height)
-{
-  GLfloat *vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
+void CreateLattice(GLfloat** vertices,
+                   GLsizeiptr* size,
+                   GLfloat size_x,
+                   GLfloat size_y,
+                   int width,
+                   int height) {
+  GLfloat* vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
   GLfloat shift_x = size_x * width;
   GLfloat shift_y = size_y * height;
   for (int j = 0; j <= height; j++) {
@@ -234,14 +241,17 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 // Generates a mesh of 2*width*height triangles.  The ratio of front facing to
 // back facing triangles is culled_ratio/RAND_MAX.  Returns the number of
 // vertices in the mesh.
-int CreateMesh(GLushort **indices, GLsizeiptr *size,
-               int width, int height, int culled_ratio) {
+int CreateMesh(GLushort** indices,
+               GLsizeiptr* size,
+               int width,
+               int height,
+               int culled_ratio) {
   srand(0);
 
   // We use 16 bit indices for compatibility with GL ES
   CHECK(height * width + width + height <= 65535);
 
-  GLushort *iptr = *indices = new GLushort[2 * 3 * (width * height)];
+  GLushort* iptr = *indices = new GLushort[2 * 3 * (width * height)];
   const int swath_height = 4;
 
   CHECK(width % swath_height == 0 && height % swath_height == 0);
@@ -270,19 +280,18 @@ int CreateMesh(GLushort **indices, GLsizeiptr *size,
   return iptr - *indices;
 }
 
-static void print_info_log(int obj, bool shader)
-{
+static void print_info_log(int obj, bool shader) {
   char info_log[4096];
   int length;
 
   if (shader)
-    glGetShaderInfoLog(obj, sizeof(info_log)-1, &length, info_log);
+    glGetShaderInfoLog(obj, sizeof(info_log) - 1, &length, info_log);
   else
-    glGetProgramInfoLog(obj, sizeof(info_log)-1, &length, info_log);
+    glGetProgramInfoLog(obj, sizeof(info_log) - 1, &length, info_log);
 
-  char *p = info_log;
+  char* p = info_log;
   while (p < info_log + length) {
-    char *newline = strchr(p, '\n');
+    char* newline = strchr(p, '\n');
     if (newline)
       *newline = '\0';
     printf("# Info: glGet%sInfoLog: %s\n", shader ? "Shader" : "Program", p);
@@ -292,18 +301,15 @@ static void print_info_log(int obj, bool shader)
   }
 }
 
-static void print_shader_log(int shader)
-{
+static void print_shader_log(int shader) {
   print_info_log(shader, true);
 }
 
-static void print_program_log(int program)
-{
+static void print_program_log(int program) {
   print_info_log(program, false);
 }
 
-
-GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
+GLuint InitShaderProgram(const char* vertex_src, const char* fragment_src) {
   return InitShaderProgramWithHeader(NULL, vertex_src, fragment_src);
 }
 
@@ -311,9 +317,8 @@ GLuint InitShaderProgramWithHeader(const char* header,
                                    const char* vertex_src,
                                    const char* fragment_src) {
   const char* headers[] = {kGlesHeader, header};
-  return InitShaderProgramWithHeaders(headers,
-                                      arraysize(headers) - (header ? 0 : 1),
-                                      vertex_src, fragment_src);
+  return InitShaderProgramWithHeaders(
+      headers, arraysize(headers) - (header ? 0 : 1), vertex_src, fragment_src);
 }
 
 GLuint InitShaderProgramWithHeaders(const char** headers,
@@ -360,4 +365,4 @@ void ClearBuffers() {
   glClearColor(0, 0, 0.f, 1.f);
 }
 
-} // namespace glbench
+}  // namespace glbench
