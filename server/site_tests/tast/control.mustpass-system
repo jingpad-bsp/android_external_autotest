@@ -30,7 +30,7 @@ See http://go/tast-failures for information about investigating failures.
 def run(machine):
     job.run_test('tast',
                  host=hosts.create_host(machine),
-                 test_exprs=['(!informational && !disabled && '
+                 test_exprs=['(!disabled && !"group:*" && !informational && '
                              '!"dep:android" && '
                              '!"dep:chrome" && !"dep:chrome_login")'],
                  ignore_test_failures=False, max_run_sec=1200)
