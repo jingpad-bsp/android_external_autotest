@@ -5,8 +5,7 @@
 #ifndef BENCH_GL_TESTBASE_H_
 #define BENCH_GL_TESTBASE_H_
 
-#include "base/macros.h"
-
+#include <string.h>
 #include "main.h"
 
 #define DISABLE_SOME_TESTS_FOR_INTEL_DRIVER 1

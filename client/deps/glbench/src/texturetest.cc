@@ -3,10 +3,7 @@
 // found in the LICENSE file.
 
 #include "texturetest.h"
-
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
+#include "arraysize.h"
 
 namespace glbench {
 
@@ -90,7 +87,7 @@ bool TextureTest::Run() {
 
         std::string name = std::string(Name()) + "_" +
             kTexelFormatNames[fmt] + "_" + kFlavorNames[flavor] + "_" +
-            base::IntToString(sizes[j]);
+            IntToString(sizes[j]);
 
         width_ = height_ = sizes[j];
         const unsigned int buffer_size = width_ * height_ * texel_size;

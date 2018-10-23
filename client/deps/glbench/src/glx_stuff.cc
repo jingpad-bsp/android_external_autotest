@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include "base/logging.h"
-
 #include "glx_stuff.h"
 #include "main.h"
 #include "xlib_window.h"
