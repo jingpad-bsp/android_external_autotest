@@ -404,7 +404,6 @@ class UserCrashTest(crash_test.CrashTest):
         crash_contents = os.listdir(crash_dir)
         basename = os.path.basename(crasher_path or self._crasher_path)
 
-        breakpad_minidump = None
         crash_reporter_minidump = None
         crash_reporter_meta = None
         crash_reporter_log = None
@@ -438,13 +437,9 @@ class UserCrashTest(crash_test.CrashTest):
                                          'log files')
                 crash_reporter_log = os.path.join(crash_dir, filename)
             else:
-                # This appears to be a breakpad created minidump.
-                if not breakpad_minidump is None:
-                    raise error.TestFail('Breakpad wrote multiple minidumps')
-                breakpad_minidump = os.path.join(crash_dir, filename)
-
-        if breakpad_minidump:
-            raise error.TestFail('%s did generate breakpad minidump' % basename)
+                # Flag all unknown files.
+                raise error.TestFail('Crash reporter created an unknown file: '
+                                     '%s' % (filename,))
 
         if not crash_reporter_meta:
             raise error.TestFail('crash reporter did not generate meta')
