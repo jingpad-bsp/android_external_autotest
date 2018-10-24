@@ -500,6 +500,8 @@ class power_LoadTest(arc.ArcTest):
                                        units='minutes',
                                        higher_is_better=True)
 
+        minutes_battery_life_tested = keyvals['minutes_battery_life_tested']
+
         if not self._gaia_login:
             keyvals = dict(map(lambda (key, value):
                                ('INVALID_' + str(key), value), keyvals.items()))
@@ -516,6 +518,10 @@ class power_LoadTest(arc.ArcTest):
         for log in self._meas_logs:
             log.save_results(self.resultsdir)
         self._checkpoint_logger.save_checkpoint_data(self.resultsdir)
+
+        if minutes_battery_life_tested * 60 < self._loop_time :
+            logging.info('Data is less than 1 loop, skip sending to dashboard.')
+            return
         pdash = power_dashboard.PowerLoggerDashboard( \
                 self._plog, self.tagged_testname, self.resultsdir)
         pdash.upload()
@@ -757,18 +763,34 @@ class power_LoadTest(arc.ArcTest):
         if self._tasks != '':
             return
 
-        sections = {
-            'browsing' : (0, 0.6),
-            'email' : (0.6, 0.8),
-            'document' : (0.8, 0.9),
-            'video' : (0.9, 1),
-        }
+        sections = [
+            ('browsing', (0, 0.6)),
+            ('email', (0.6, 0.8)),
+            ('document', (0.8, 0.9)),
+            ('video', (0.9, 1)),
+        ]
 
-        duration = end - start
+        # Use start time from extension if found by look for google.com start.
+        goog_str = loop_str+ '_web_page_www.google.com'
+        for item, start_extension, _ in self._task_tracker:
+            if item == goog_str:
+                if start_extension >= start:
+                    start = start_extension
+                    break
+                logging.warn('Timestamp from extension (%.2f) is earlier than'
+                             'timestamp from autotest (%.2f).',
+                             start_extension, start)
 
-        for section, fractions in sections.iteritems():
+        # Use default loop duration for incomplete loop.
+        duration = max(end - start, self._loop_time)
+
+        for section, fractions in sections:
             s_start, s_end = (start + duration * fraction
                               for fraction in fractions)
+            if s_start > end:
+                break
+            if s_end > end:
+                s_end = end
             self._checkpoint_logger.checkpoint(section, s_start, s_end)
             loop_section = '_' + loop_str + '_' + section
             self._checkpoint_logger.checkpoint(loop_section, s_start, s_end)
