@@ -199,10 +199,6 @@ class PowerTelemetryLogger(object):
                         'ts', events_ts[event])
                 events_ts[event] = custom_test_events[event].get(
                         'ts', events_ts[event])
-                if events_ts[event]:
-                    # Adding a padding here because the timestamp of each data
-                    # point is taken at the end of its corresponding interval.
-                    events_ts[event] += self._interval / 2.0
 
             return (events_ts['start'], events_ts['end'])
 
@@ -337,7 +333,6 @@ class ServodTelemetryLogger(PowerTelemetryLogger):
         self._servo_host = config['servo_host']
         self._servo_port = config['servo_port']
         self._ina_rate = float(config.get('ina_rate', self.DEFAULT_INA_RATE))
-        self._interval = self._ina_rate
         self._vbat_rate = float(config.get('vbat_rate', self.DEFAULT_VBAT_RATE))
         self._pm = measure_power.PowerMeasurement(host=self._servo_host,
                                                   port=self._servo_port,
@@ -461,8 +456,10 @@ class PowerlogTelemetryLogger(PowerTelemetryLogger):
             return
 
         trimmed_log_dirs = list()
-        start_ts = start_ts if start_ts else 0
-        end_ts = end_ts if end_ts else time.time()
+        # Adding a padding to both start and end timestamp because the timestamp
+        # of each data point is taken at the end of its corresponding interval.
+        start_ts = start_ts + self._interval / 2 if start_ts else 0
+        end_ts = end_ts + self._interval / 2 if end_ts else time.time()
         for dirname in os.listdir(self._logdir):
             if dirname.startswith('sweetberry'):
                 sweetberry_ts = float(string.lstrip(dirname, 'sweetberry'))
