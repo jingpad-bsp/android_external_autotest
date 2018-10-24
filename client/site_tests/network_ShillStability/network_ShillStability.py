@@ -17,8 +17,8 @@ class network_ShillStability(test.test):
     """
     version = 1
 
-    SHILL_PID_CHECK_INTERVAL_SECONDS = 10
-    SHILL_PID_CHECK_DURATION_SECONDS = 90
+    SHILL_PID_CHECK_INTERVAL_SECONDS = 2
+    SHILL_PID_CHECK_DURATION_SECONDS = 20
 
     def _get_shill_pid(self):
         pids = utils.get_process_list('shill')
