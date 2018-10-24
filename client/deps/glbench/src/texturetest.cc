@@ -3,10 +3,7 @@
 // found in the LICENSE file.
 
 #include "texturetest.h"
-
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
+#include "arraysize.h"
 
 namespace glbench {
 
@@ -34,14 +31,13 @@ const char* kFragmentShader =
 bool TextureTest::Run() {
   // Two triangles that form one pixel at 0, 0.
   const GLfloat kVertices[8] = {
-    0.f, 0.f,
-    2.f / g_width, 0.f,
-    0.f, 2.f / g_height,
-    2.f / g_width, 2.f / g_height,
+      0.f,           0.f,
+      2.f / g_width, 0.f,
+      0.f,           2.f / g_height,
+      2.f / g_width, 2.f / g_height,
   };
   const GLfloat kTexCoords[8] = {
-    0.f, 0.f, 0.f, 0.f,
-    0.f, 0.f, 0.f, 0.f,
+      0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
   };
 
   program_ = InitShaderProgram(kVertexShader, kFragmentShader);
@@ -67,30 +63,30 @@ bool TextureTest::Run() {
 
   // Textures formats
   // TODO(djkurtz): Other formats such as GL_BGRA, GL_RGB, GL_BGR, ... ?
-  const GLenum kTexelFormats[] =
-     { GL_LUMINANCE, GL_RGBA }; // , GL_BGRA, GL_RGB, GL_BGR };
-  const unsigned int kTexelFormatSizes[] = { 1, 4 }; // , 4, 3, 3 };
-  const std::string kTexelFormatNames[] =
-      { "luminance", "rgba" }; // , "bgra", "rgb", "bgr" };
+  const GLenum kTexelFormats[] = {GL_LUMINANCE,
+                                  GL_RGBA};  // , GL_BGRA, GL_RGB, GL_BGR };
+  const unsigned int kTexelFormatSizes[] = {1, 4};  // , 4, 3, 3 };
+  const std::string kTexelFormatNames[] = {
+      "luminance", "rgba"};  // , "bgra", "rgb", "bgr" };
 
   // Texture upload commands
-  UpdateFlavor kFlavors[] = { TEX_IMAGE, TEX_SUBIMAGE };
-  const std::string kFlavorNames[] = { "teximage2d", "texsubimage2d" };
+  UpdateFlavor kFlavors[] = {TEX_IMAGE, TEX_SUBIMAGE};
+  const std::string kFlavorNames[] = {"teximage2d", "texsubimage2d"};
 
   for (unsigned int fmt = 0; fmt < arraysize(kTexelFormats); fmt++) {
     texel_gl_format_ = kTexelFormats[fmt];
     unsigned int texel_size = kTexelFormatSizes[fmt];
     for (unsigned int flavor = 0; flavor < arraysize(kFlavors); flavor++) {
       flavor_ = kFlavors[flavor];
-      const int sizes[] = { 32, 128, 256, 512, 768, 1024, 1536, 2048 };
+      const int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};
       for (unsigned int j = 0; j < arraysize(sizes); j++) {
         // In hasty mode only do at most 512x512 sized problems.
         if (g_hasty && sizes[j] > 512)
           continue;
 
-        std::string name = std::string(Name()) + "_" +
-            kTexelFormatNames[fmt] + "_" + kFlavorNames[flavor] + "_" +
-            base::IntToString(sizes[j]);
+        std::string name = std::string(Name()) + "_" + kTexelFormatNames[fmt] +
+                           "_" + kFlavorNames[flavor] + "_" +
+                           IntToString(sizes[j]);
 
         width_ = height_ = sizes[j];
         const unsigned int buffer_size = width_ * height_ * texel_size;
@@ -114,9 +110,11 @@ bool TextureTest::Run() {
         RunTest(this, name.c_str(), buffer_size, g_width, g_height, true);
         GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
-          printf("# GL error code %d after RunTest() with %dx%d %d-byte texture.\n",
-                 error, width_, height_, texel_size);
-       }
+          printf(
+              "# GL error code %d after RunTest() with %dx%d %d-byte "
+              "texture.\n",
+              error, width_, height_, texel_size);
+        }
       }
     }
   }
@@ -128,4 +126,4 @@ bool TextureTest::Run() {
   return true;
 }
 
-} // namespace glbench
+}  // namespace glbench

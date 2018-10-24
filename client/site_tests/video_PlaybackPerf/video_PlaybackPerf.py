@@ -246,9 +246,26 @@ class video_PlaybackPerf(test.test):
             time.sleep(MEASUREMENT_DURATION)
             power_logger.checkpoint('result', start_time)
             keyval = power_logger.calc()
-            keyval = {key: keyval[key]
-                      for key in keyval if key.endswith('_pwr')}
-            return keyval
+            # save_results() will save result_raw.txt and result_summary.txt,
+            # where the former contains raw data.
+            fname_prefix = 'result_%.0f' % time.time()
+            power_logger.save_results(self.resultsdir, fname_prefix)
+            pwrval = {}
+            for measurement in measurements:
+                metric_name = 'result_' + measurement.domain
+                # Use a list contains the average power only for fallback.
+                pwrval[metric_name + '_pwr'] = [
+                        keyval[metric_name + '_pwr_avg']]
+                with open(os.path.join(
+                        self.resultsdir, fname_prefix + '_raw.txt')) as f:
+                    for line in f.readlines():
+                        if line.startswith(metric_name):
+                            split_data = line.split('\t')
+                            # split_data[0] is metric_name, [1:] are raw data.
+                            pwrval[metric_name + '_pwr'] = [
+                                    float(data) for data in split_data[1:]]
+                            break
+            return pwrval
 
         return self.test_playback(local_path, get_power)
 

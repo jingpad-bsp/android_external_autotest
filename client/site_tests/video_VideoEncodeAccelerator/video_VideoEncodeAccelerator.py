@@ -7,6 +7,7 @@ import fnmatch
 import hashlib
 import logging
 import os
+import re
 import subprocess
 
 from autotest_lib.client.bin import utils
@@ -67,13 +68,53 @@ def _can_switch_bitrate():
     over some devices that do not run ARC++. Therefore we whitelist the boards
     that should pass the bitrate switch test. (crbug.com/890125)
     """
-    # All Intel chipset should be able to switch bitrate, so here we only list
-    # the non-intel device.
-    whitelist = [
-            # MTK8173
-            'elm', 'hana',
+    # Most Intel chipsets are able to switch bitrate except these two old
+    # chipsets, so we blacklist the devices.
+    intel_blacklist = [
+            # Rambi Bay Trial
+            'cranky', 'banjo', 'candy', 'clapper', 'enguarde', 'expresso',
+            'glimmer', 'gnawty', 'heli', 'hoofer', 'kip', 'kip14', 'ninja',
+            'orco', 'quawks', 'squawks', 'sumo', 'swanky', 'winky',
+
+            # Haswell
+            'falco', 'leon', 'mccloud', 'monroe', 'panther', 'peppy', 'tricky',
+            'wolf', 'zako',
     ]
-    return _run_on_intel_cpu() or utils.get_current_board() in whitelist
+    return (_run_on_intel_cpu() and
+            utils.get_current_board() not in intel_blacklist)
+
+
+def _can_encode_nv12():
+    """
+    Determine whether the board can encode NV12.
+
+    NV12 format is a mostly common input format driver supports in video
+    encoding.
+    There are devices that cannot encode NV12 input buffer because of chromium
+    code base or driver issue.
+    """
+
+    # TODO(crbug.com/894381): Remove this once VaapiVEA supports
+    # non I420 pixel format.
+    # Skip NV12 input buffer case, VaapiVEA doesn't support YUV
+    # format except I420.
+    if  _run_on_intel_cpu():
+        return False
+
+    # Although V4L2VEA supports NV12, some devices cannot encode NV12 probably
+    # due to a driver issue.
+    nv12_black_list = [
+        r'^daisy.*',
+        r'^nyan.*',
+        r'^peach.*',
+        r'^veyron.*',
+    ]
+
+    board = utils.get_current_board()
+    for p in nv12_black_list:
+        if re.match(p, board):
+            return False
+    return True
 
 
 class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
@@ -176,12 +217,8 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                              bit_rate, subsequent_bit_rate)
                 continue
 
-            # TODO(crbug.com/894381): Remove this once VaapiVEA supports
-            # non I420 pixel format.
-            if pixel_format == PIXEL_FORMAT_NV12 and _run_on_intel_cpu():
-                # Skip NV12 input buffer case, VaapiVEA doesn't support YUV
-                # format except I420.
-                logging.info('Skip NV12 input buffer case.')
+            if pixel_format == PIXEL_FORMAT_NV12 and not _can_encode_nv12():
+                logging.info('Skip the NV12 input buffer case.')
                 continue
 
             # Set the default value for None.
@@ -220,6 +257,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 cmd_line_list.append('--gtest_filter="%s"' % applied_filter)
 
             cmd_line = ' '.join(cmd_line_list)
+            logging.debug('Executing with argument: %s', cmd_line)
             try:
                 self.run_chrome_test_binary(BINARY, cmd_line, as_chronos=False)
             except error.TestFail as test_failure:

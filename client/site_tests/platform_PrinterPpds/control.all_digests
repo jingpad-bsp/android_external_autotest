@@ -14,6 +14,7 @@ by comparing digests).
 """
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
+ATTRIBUTES = "suite:cups_weekly"
 JOB_RETRIES = 0
 
 DOC = """
