@@ -7,6 +7,7 @@ import contextlib
 import ctypes
 import fcntl
 import glob
+import itertools
 import json
 import logging
 import math
@@ -28,6 +29,9 @@ BatteryDataReportType = enum.Enum('CHARGE', 'ENERGY')
 BATTERY_DATA_SCALE = 1e6
 # number of times to retry reading the battery in the case of bad data
 BATTERY_RETRY_COUNT = 3
+# default filename when saving CheckpointLogger data to file
+CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
+
 
 class DevStat(object):
     """
@@ -1420,21 +1424,23 @@ class CheckpointLogger(object):
         checkpoint
         checkblock
         save_checkpoint_data
+        load_checkpoint_data
 
     Static methods:
-        load_checkpoint_data
+        load_checkpoint_data_static
 
     Private attributes:
        _start_time: start timestamp for checkpoint logger
     """
-    CHECKPOINT_LOG_DEFAULT_FNAME = 'checkpoint_log.json'
 
     def __init__(self):
         self.checkpoint_data = collections.defaultdict(list)
+        self.start()
 
     # If multiple MeasurementLoggers call start() on the same CheckpointLogger,
     # the latest one will register start time.
     def start(self):
+        """Set start time for CheckpointLogger."""
         self._start_time = time.time()
 
     @contextlib.contextmanager
@@ -1498,8 +1504,30 @@ class CheckpointLogger(object):
         with file(fname, 'wt') as f:
             json.dump(self.checkpoint_data, f, indent=4, separators=(',', ': '))
 
+    def load_checkpoint_data(self, resultsdir,
+                             fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+        """Load checkpoint data.
+
+        Args:
+            resultsdir: String, directory to load results from
+            fname: String, name of file to load results from
+        """
+        fname = os.path.join(resultsdir, fname)
+        try:
+            with open(fname, 'r') as f:
+                self.checkpoint_data = json.load(f,
+                                                 object_hook=to_checkpoint_data)
+                # Set start time to the earliest start timestamp in file.
+                self._start_time = min(
+                        ts_pair[0] for ts_pair in itertools.chain.from_iterable(
+                                self.checkpoint_data.itervalues()))
+        except Exception as exc:
+            logging.warning('Failed to load checkpoint data from json file %s, '
+                            'see exception: %s', fname, exc)
+
     @staticmethod
-    def load_checkpoint_data(resultsdir, fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+    def load_checkpoint_data_static(resultsdir,
+                                    fname=CHECKPOINT_LOG_DEFAULT_FNAME):
         """Load checkpoint data.
 
         Args:
@@ -1510,6 +1538,35 @@ class CheckpointLogger(object):
         with file(fname, 'r') as f:
             checkpoint_data = json.load(f)
         return checkpoint_data
+
+
+def to_checkpoint_data(json_dict):
+    """Helper method to translate json object into CheckpointLogger format.
+
+    Args:
+        json_dict: a json object in the format of python dict
+    Returns:
+        a defaultdict in CheckpointLogger data format
+    """
+    checkpoint_data = collections.defaultdict(list)
+    for tname, tlist in json_dict.iteritems():
+        checkpoint_data[tname].extend([tuple(ts_pair) for ts_pair in tlist])
+    return checkpoint_data
+
+
+def get_checkpoint_logger_from_file(resultsdir,
+                                    fname=CHECKPOINT_LOG_DEFAULT_FNAME):
+    """Create a CheckpointLogger and load checkpoint data from file.
+
+    Args:
+        resultsdir: String, directory to load results from
+        fname: String, name of file to load results from
+    Returns:
+        CheckpointLogger with data from file
+    """
+    checkpoint_logger = CheckpointLogger()
+    checkpoint_logger.load_checkpoint_data(resultsdir, fname)
+    return checkpoint_logger
 
 
 class MeasurementLogger(threading.Thread):
