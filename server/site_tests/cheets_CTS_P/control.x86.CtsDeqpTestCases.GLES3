@@ -10,8 +10,9 @@ ATTRIBUTES = 'suite:cts_P'
 DEPENDENCIES = 'arc, cts_abi_x86'
 JOB_RETRIES = 1
 TEST_TYPE = 'server'
-TIME = 'MEDIUM'
+TIME = 'LONG'
 MAX_RESULT_SIZE_KB = 512000
+PRIORITY = 50
 DOC = 'Run module CtsDeqpTestCases.GLES3 of the Android Compatibility Test Suite (CTS) using x86 ABI in the ARC++ container.'
 
 def run_CTS(machine):
