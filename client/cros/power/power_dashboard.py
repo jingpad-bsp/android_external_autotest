@@ -4,6 +4,7 @@
 
 import collections
 import json
+import logging
 import numpy
 import operator
 import os
@@ -266,6 +267,9 @@ class BaseDashboard(object):
         """Upload powerlog to dashboard and save data to results directory.
         """
         raw_measurement = self._convert()
+        if raw_measurement is None:
+            return
+
         powerlog_dict = self._create_powerlog_dict(raw_measurement)
         if self._resultsdir is not None:
             self._save_json(powerlog_dict, self._resultsdir)
@@ -376,8 +380,12 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         power measurement dictionary.
 
         Return:
-            raw measurement dictionary
+            raw measurement dictionary or None if no readings
         """
+        if len(self._logger.readings) == 0:
+            logging.warn('No readings in logger ... ignoring')
+            return None
+
         power_dict = collections.defaultdict(dict, {
             'sample_count': len(self._logger.readings) - 1,
             'sample_duration': 0,
