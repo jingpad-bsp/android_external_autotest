@@ -83,12 +83,18 @@ class PowerTelemetryLoggerDashboard(ServerTestDashboard):
     """Dashboard class for power_telemetry_logger.PowerTelemetryLogger class.
     """
 
-    def __init__(self, logger, testname, host, start_ts, resultsdir=None,
-                 uploadurl=None, note=''):
+    def __init__(self, logger, testname, host, start_ts, checkpoint_logger,
+                 resultsdir=None, uploadurl=None, note=''):
         if uploadurl is None:
             uploadurl = 'http://chrome-power.appspot.com'
+        self._checkpoint_logger = checkpoint_logger
         super(PowerTelemetryLoggerDashboard, self).__init__(
                 logger, testname, host, start_ts, resultsdir, uploadurl, note)
+
+    def _create_checkpoint_dict(self):
+        """Create dictionary for checkpoint.
+        """
+        return self._checkpoint_logger.convert_relative(self._start_ts)
 
     def _convert(self):
         """
@@ -97,4 +103,5 @@ class PowerTelemetryLoggerDashboard(ServerTestDashboard):
         Returns:
             raw measurement dictionary
         """
+        self._tag_with_checkpoint(self._logger)
         return self._logger

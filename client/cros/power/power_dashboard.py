@@ -195,6 +195,62 @@ class BaseDashboard(object):
 
         _do_upload()
 
+    def _create_checkpoint_dict(self):
+        """Create dictionary for checkpoint.
+
+        @returns a dictionary of tags to their corresponding intervals in the
+                 following format:
+                 {
+                      tag1: [(start1, end1), (start2, end2), ...],
+                      tag2: [(start3, end3), (start4, end4), ...],
+                      ...
+                 }
+        """
+        raise NotImplementedError
+
+    def _tag_with_checkpoint(self, power_dict):
+        """Tag power_dict with checkpoint data.
+
+        This function translates the checkpoint intervals into a list of tags
+        for each data point.
+
+        @param power_dict: a dictionary with power data; assume this dictionary
+                           has attributes 'sample_count' and 'sample_duration'.
+        """
+        checkpoint_dict = self._create_checkpoint_dict()
+
+        # Create list of check point event tuple.
+        # Tuple format: (checkpoint_name:str, event_time:float, is_start:bool)
+        checkpoint_event_list = []
+        for name, intervals in checkpoint_dict.iteritems():
+            for start, finish in intervals:
+                checkpoint_event_list.append((name, start, True))
+                checkpoint_event_list.append((name, finish, False))
+
+        checkpoint_event_list = sorted(checkpoint_event_list,
+                                       key=operator.itemgetter(1))
+
+        # Add dummy check point at 1e9 seconds.
+        checkpoint_event_list.append(('dummy', 1e9, True))
+
+        interval_set = set()
+        event_index = 0
+        checkpoint_list = []
+        for i in range(power_dict['sample_count']):
+            curr_time = i * power_dict['sample_duration']
+
+            # Process every checkpoint event until current point of time
+            while checkpoint_event_list[event_index][1] <= curr_time:
+                name, _, is_start = checkpoint_event_list[event_index]
+                if is_start:
+                    interval_set.add(name)
+                else:
+                    interval_set.discard(name)
+                event_index += 1
+
+            checkpoint_list.append(list(interval_set))
+        power_dict['checkpoint'] = checkpoint_list
+
     def _convert(self):
         """Convert data from self._logger object to raw power measurement
         dictionary.
@@ -314,43 +370,6 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         """
         start_time = self._logger.times[0]
         return self._logger._checkpoint_logger.convert_relative(start_time)
-
-    def _tag_with_checkpoint(self, power_dict):
-        """Tag power_dict with checkpoint data.
-        """
-        checkpoint_dict = self._create_checkpoint_dict()
-
-        # Create list of check point event tuple.
-        # Tuple format: (checkpoint_name:str, event_time:float, is_start:bool)
-        checkpoint_event_list = []
-        for name, intervals in checkpoint_dict.iteritems():
-            for start, finish in intervals:
-                checkpoint_event_list.append((name, start, True))
-                checkpoint_event_list.append((name, finish, False))
-
-        checkpoint_event_list = sorted(checkpoint_event_list,
-                                       key=operator.itemgetter(1))
-
-        # Add dummy check point at 1e9 seconds.
-        checkpoint_event_list.append(('dummy', 1e9, True))
-
-        interval_set = set()
-        event_index = 0
-        checkpoint_list = []
-        for i in range(power_dict['sample_count']):
-            curr_time = i * power_dict['sample_duration']
-
-            # Process every checkpoint event until current point of time
-            while checkpoint_event_list[event_index][1] <= curr_time:
-                name, _, is_start = checkpoint_event_list[event_index]
-                if is_start:
-                    interval_set.add(name)
-                else:
-                    interval_set.discard(name)
-                event_index += 1
-
-            checkpoint_list.append(list(interval_set))
-        power_dict['checkpoint'] = checkpoint_list
 
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
