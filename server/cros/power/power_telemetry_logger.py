@@ -19,6 +19,7 @@ import time
 from servo import measure_power
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_telemetry_utils
 from autotest_lib.server.cros.power import power_dashboard
 
@@ -97,7 +98,9 @@ class PowerTelemetryLogger(object):
         logging.info('%s finishes.', self.__class__.__name__)
         start_ts, end_ts = self._get_client_test_ts(client_test_dir)
         loggers = self._load_and_trim_data(start_ts, end_ts)
-        self._upload_data(loggers)
+        checkpoint_logger = self._get_client_test_checkpoint_logger(
+                client_test_dir)
+        self._upload_data(loggers, checkpoint_logger)
 
     def _end_measurement(self):
         """End power telemetry devices."""
@@ -284,7 +287,13 @@ class PowerTelemetryLogger(object):
         raise NotImplementedError('Subclasses must implement '
                 '_load_and_trim_data and return a list of loggers.')
 
-    def _upload_data(self, loggers):
+    def _get_client_test_checkpoint_logger(self, client_test_dir):
+        client_test_resultsdir = os.path.join(client_test_dir, 'results')
+        checkpoint_logger = power_status.get_checkpoint_logger_from_file(
+                resultsdir=client_test_resultsdir)
+        return checkpoint_logger
+
+    def _upload_data(self, loggers, checkpoint_logger):
         """Upload the data to dashboard.
 
         @param loggers: a list of loggers, where each logger contains raw power
@@ -295,6 +304,7 @@ class PowerTelemetryLogger(object):
             pdash = power_dashboard.PowerTelemetryLoggerDashboard(
                     logger=logger, testname=self._tagged_testname,
                     host=self._host, start_ts=self._start_ts,
+                    checkpoint_logger=checkpoint_logger,
                     resultsdir=self._resultsdir,
                     uploadurl=self.DASHBOARD_UPLOAD_URL, note=self._note)
             pdash.upload()
