@@ -129,8 +129,11 @@ class BaseDashboard(object):
         if not os.path.exists(resultsdir):
             raise error.TestError('resultsdir %s does not exist.' % resultsdir)
         filename = os.path.join(resultsdir, filename)
+        json_str = json.dumps(powerlog_dict, indent=4, separators=(',', ': '),
+                              ensure_ascii=False)
+        json_str = utils.strip_non_printable(json_str)
         with file(filename, 'a') as f:
-            json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
+            f.write(json_str)
 
     def _save_html(self, powerlog_dict, resultsdir, filename='power_log.html'):
         """Convert powerlog dict to chart in HTML page and append to
@@ -186,7 +189,8 @@ class BaseDashboard(object):
             powerlog_dict: dictionary of power data
             uploadurl: url to upload the power data
         """
-        data_obj = {'data': json.dumps(powerlog_dict)}
+        json_str = json.dumps(powerlog_dict, ensure_ascii=False)
+        data_obj = {'data': utils.strip_non_printable(json_str)}
         encoded = urllib.urlencode(data_obj)
         req = urllib2.Request(uploadurl, encoded)
 

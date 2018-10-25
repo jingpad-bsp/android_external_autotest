@@ -22,6 +22,7 @@ import platform
 import re
 import shutil
 import signal
+import string
 import tempfile
 import time
 import uuid
@@ -2401,3 +2402,13 @@ def run_sql_cmd(server, user, password, command, database=''):
     # Set verbose to False so the command line won't be logged, as it includes
     # database credential.
     return utils.run(cmd, verbose=False).stdout
+
+
+def strip_non_printable(s):
+    """Strip non printable characters from string.
+
+    @param s: Input string
+
+    @return: The input string with only printable characters.
+    """
+    return ''.join(x for x in s if x in string.printable)
