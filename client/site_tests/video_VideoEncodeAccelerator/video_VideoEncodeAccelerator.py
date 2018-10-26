@@ -93,14 +93,6 @@ def _can_encode_nv12():
     There are devices that cannot encode NV12 input buffer because of chromium
     code base or driver issue.
     """
-
-    # TODO(crbug.com/894381): Remove this once VaapiVEA supports
-    # non I420 pixel format.
-    # Skip NV12 input buffer case, VaapiVEA doesn't support YUV
-    # format except I420.
-    if  _run_on_intel_cpu():
-        return False
-
     # Although V4L2VEA supports NV12, some devices cannot encode NV12 probably
     # due to a driver issue.
     nv12_black_list = [
