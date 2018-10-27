@@ -31,7 +31,7 @@ class UserCrashTest(crash_test.CrashTest):
     # Every crash report needs one of these to be valid.
     REPORT_REQUIRED_FILETYPES = {'meta'}
     # Reports might have these and that's OK!
-    REPORT_OPTIONAL_FILETYPES = {'dmp', 'log'}
+    REPORT_OPTIONAL_FILETYPES = {'dmp', 'log', 'proclog'}
 
 
     def setup(self):
