@@ -16,8 +16,7 @@ TEST_CLASS = "platform"
 JOB_RETRIES = 0
 
 DOC = """
-This is a test that downloads all available PPD files and for each one runs
-the following procedure:
+This is a test that for all available PPD files runs the following procedure:
 1. Add an Generic printer to CUPS server (user-provided ppd file).
 2. Print test PDF documents (from docs directory).
 3. Remove the printer.
@@ -25,6 +24,9 @@ When printing the PDF, the printing request sent to a printer is caught by
 a fake printer. All output documents are saved in the directory
 /tmp/PrinterPpds_outputs on the device. This test calculates also digests
 files and saves them in the same directory.
+When the CUPS server is patched and dumps executed pipelines in the /tmp
+directory, this test reruns the pipeline and saves also output from every
+step.
 See readme.txt for details.
 """
 
