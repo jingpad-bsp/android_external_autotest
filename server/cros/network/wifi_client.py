@@ -228,6 +228,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
         """@return Name of kernel module in use by this interface."""
         return self._interface.module_name
 
+    @property
+    def parent_device_name(self):
+        """
+        @return Path of the parent device for the net device"""
+        return self._interface.parent_device_name
 
     @property
     def wifi_if(self):
@@ -257,7 +262,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
     def wifi_phy_name(self):
         """@return wiphy name (e.g., 'phy0') or None"""
         return self._interface.wiphy_name
-
 
     @property
     def wifi_signal_level(self):
