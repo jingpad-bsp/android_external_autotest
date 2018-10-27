@@ -112,7 +112,7 @@ class audio_Aplay(test.test):
                 logging.debug("No internal speaker. Skipping the test.")
                 return
 
-        cras_utils.set_selected_output_nodes([output_node])
+        cras_utils.set_single_selected_output_node(output_node)
 
         cras_device_type = cras_utils.get_selected_output_device_type()
         logging.debug("Selected output device type=%s", cras_device_type)
