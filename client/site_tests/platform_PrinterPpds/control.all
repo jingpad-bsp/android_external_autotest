@@ -15,8 +15,7 @@ TEST_CLASS = "platform"
 JOB_RETRIES = 0
 
 DOC = """
-This is a test that downloads all available PPD files and for each one runs
-the following procedure:
+This is a test that for all available PPD files runs the following procedure:
 1. Add an Generic printer to CUPS server (user-provided ppd file).
 2. Print test PDF documents (from docs directory).
 3. Remove the printer.

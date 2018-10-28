@@ -28,6 +28,12 @@ class UserCrashTest(crash_test.CrashTest):
     """
 
 
+    # Every crash report needs one of these to be valid.
+    REPORT_REQUIRED_FILETYPES = {'meta'}
+    # Reports might have these and that's OK!
+    REPORT_OPTIONAL_FILETYPES = {'dmp', 'log', 'proclog'}
+
+
     def setup(self):
         """Copy the crasher source code under |srcdir| and build it."""
         src = os.path.join(os.path.dirname(__file__), 'crasher')
@@ -404,55 +410,59 @@ class UserCrashTest(crash_test.CrashTest):
         crash_contents = os.listdir(crash_dir)
         basename = os.path.basename(crasher_path or self._crasher_path)
 
-        breakpad_minidump = None
-        crash_reporter_minidump = None
-        crash_reporter_meta = None
-        crash_reporter_log = None
+        # A dict tracking files for each crash report.
+        crash_report_files = {}
 
         self._check_crash_directory_permissions(crash_dir)
 
         logging.debug('Contents in %s: %s', crash_dir, crash_contents)
 
+        # Variables and their typical contents:
+        # basename: crasher_nobreakpad
+        # filename: crasher_nobreakpad.20181023.135339.16890.dmp
+        # ext: dmp
         for filename in crash_contents:
             if filename.endswith('.core'):
                 # Ignore core files.  We'll test them later.
                 pass
-            elif (filename.startswith(basename) and
-                  filename.endswith('.dmp')):
-                # This appears to be a minidump created by the crash reporter.
-                if not crash_reporter_minidump is None:
-                    raise error.TestFail('Crash reporter wrote multiple '
-                                         'minidumps')
-                crash_reporter_minidump = os.path.join(
-                    self._canonicalize_crash_dir(crash_dir), filename)
-            elif (filename.startswith(basename) and
-                  filename.endswith('.meta')):
-                if not crash_reporter_meta is None:
-                    raise error.TestFail('Crash reporter wrote multiple '
-                                         'meta files')
-                crash_reporter_meta = os.path.join(crash_dir, filename)
-            elif (filename.startswith(basename) and
-                  filename.endswith('.log')):
-                if not crash_reporter_log is None:
-                    raise error.TestFail('Crash reporter wrote multiple '
-                                         'log files')
-                crash_reporter_log = os.path.join(crash_dir, filename)
+            elif filename.startswith(basename + '.'):
+                ext = filename.rsplit('.', 1)[1]
+                logging.debug('Found crash report file (%s): %s', ext, filename)
+                if ext in crash_report_files:
+                    raise error.TestFail(
+                            'Found multiple files with .%s: %s and %s' %
+                            (ext, filename, crash_report_files[ext]))
+                crash_report_files[ext] = filename
             else:
-                # This appears to be a breakpad created minidump.
-                if not breakpad_minidump is None:
-                    raise error.TestFail('Breakpad wrote multiple minidumps')
-                breakpad_minidump = os.path.join(crash_dir, filename)
+                # Flag all unknown files.
+                raise error.TestFail('Crash reporter created an unknown file: '
+                                     '%s' % (filename,))
 
-        if breakpad_minidump:
-            raise error.TestFail('%s did generate breakpad minidump' % basename)
+        # Make sure we generated the exact set of files we expected.
+        found_filetypes = set(crash_report_files.keys())
+        missing_filetypes = self.REPORT_REQUIRED_FILETYPES - found_filetypes
+        unknown_filetypes = (found_filetypes - self.REPORT_REQUIRED_FILETYPES -
+                             self.REPORT_OPTIONAL_FILETYPES)
+        if missing_filetypes:
+            raise error.TestFail('crash report is missing files: %s' % (
+                    ['.' + x for x in missing_filetypes],))
+        if unknown_filetypes:
+            raise error.TestFail('crash report includes unknown files: %s' % (
+                    [crash_report_files[x] for x in unknown_filetypes],))
 
-        if not crash_reporter_meta:
-            raise error.TestFail('crash reporter did not generate meta')
+        # Create full paths for the logging code below.
+        for key in (self.REPORT_REQUIRED_FILETYPES |
+                    self.REPORT_OPTIONAL_FILETYPES):
+            if key in crash_report_files:
+                crash_report_files[key] = os.path.join(
+                        crash_dir, crash_report_files[key])
+            else:
+                crash_report_files[key] = None
 
-        result['minidump'] = crash_reporter_minidump
+        result['minidump'] = crash_report_files['dmp']
         result['basename'] = basename
-        result['meta'] = crash_reporter_meta
-        result['log'] = crash_reporter_log
+        result['meta'] = crash_report_files['meta']
+        result['log'] = crash_report_files['log']
         return result
 
 

@@ -23,6 +23,7 @@ class MultithreadedProcessor():
         @param number_of_threads: number of threads used for parallelization.
                 This value must be larger than 0 and is usually NOT directly
                 related to the number of available cores.
+
         """
         assert number_of_threads > 0
         self._number_of_threads = number_of_threads

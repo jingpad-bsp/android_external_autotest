@@ -4,6 +4,7 @@
 
 import collections
 import json
+import logging
 import numpy
 import operator
 import os
@@ -128,8 +129,11 @@ class BaseDashboard(object):
         if not os.path.exists(resultsdir):
             raise error.TestError('resultsdir %s does not exist.' % resultsdir)
         filename = os.path.join(resultsdir, filename)
+        json_str = json.dumps(powerlog_dict, indent=4, separators=(',', ': '),
+                              ensure_ascii=False)
+        json_str = utils.strip_non_printable(json_str)
         with file(filename, 'a') as f:
-            json.dump(powerlog_dict, f, indent=4, separators=(',', ': '))
+            f.write(json_str)
 
     def _save_html(self, powerlog_dict, resultsdir, filename='power_log.html'):
         """Convert powerlog dict to chart in HTML page and append to
@@ -185,7 +189,8 @@ class BaseDashboard(object):
             powerlog_dict: dictionary of power data
             uploadurl: url to upload the power data
         """
-        data_obj = {'data': json.dumps(powerlog_dict)}
+        json_str = json.dumps(powerlog_dict, ensure_ascii=False)
+        data_obj = {'data': utils.strip_non_printable(json_str)}
         encoded = urllib.urlencode(data_obj)
         req = urllib2.Request(uploadurl, encoded)
 
@@ -194,6 +199,62 @@ class BaseDashboard(object):
             urllib2.urlopen(req)
 
         _do_upload()
+
+    def _create_checkpoint_dict(self):
+        """Create dictionary for checkpoint.
+
+        @returns a dictionary of tags to their corresponding intervals in the
+                 following format:
+                 {
+                      tag1: [(start1, end1), (start2, end2), ...],
+                      tag2: [(start3, end3), (start4, end4), ...],
+                      ...
+                 }
+        """
+        raise NotImplementedError
+
+    def _tag_with_checkpoint(self, power_dict):
+        """Tag power_dict with checkpoint data.
+
+        This function translates the checkpoint intervals into a list of tags
+        for each data point.
+
+        @param power_dict: a dictionary with power data; assume this dictionary
+                           has attributes 'sample_count' and 'sample_duration'.
+        """
+        checkpoint_dict = self._create_checkpoint_dict()
+
+        # Create list of check point event tuple.
+        # Tuple format: (checkpoint_name:str, event_time:float, is_start:bool)
+        checkpoint_event_list = []
+        for name, intervals in checkpoint_dict.iteritems():
+            for start, finish in intervals:
+                checkpoint_event_list.append((name, start, True))
+                checkpoint_event_list.append((name, finish, False))
+
+        checkpoint_event_list = sorted(checkpoint_event_list,
+                                       key=operator.itemgetter(1))
+
+        # Add dummy check point at 1e9 seconds.
+        checkpoint_event_list.append(('dummy', 1e9, True))
+
+        interval_set = set()
+        event_index = 0
+        checkpoint_list = []
+        for i in range(power_dict['sample_count']):
+            curr_time = i * power_dict['sample_duration']
+
+            # Process every checkpoint event until current point of time
+            while checkpoint_event_list[event_index][1] <= curr_time:
+                name, _, is_start = checkpoint_event_list[event_index]
+                if is_start:
+                    interval_set.add(name)
+                else:
+                    interval_set.discard(name)
+                event_index += 1
+
+            checkpoint_list.append(list(interval_set))
+        power_dict['checkpoint'] = checkpoint_list
 
     def _convert(self):
         """Convert data from self._logger object to raw power measurement
@@ -210,6 +271,9 @@ class BaseDashboard(object):
         """Upload powerlog to dashboard and save data to results directory.
         """
         raw_measurement = self._convert()
+        if raw_measurement is None:
+            return
+
         powerlog_dict = self._create_powerlog_dict(raw_measurement)
         if self._resultsdir is not None:
             self._save_json(powerlog_dict, self._resultsdir)
@@ -315,50 +379,17 @@ class MeasurementLoggerDashboard(ClientTestDashboard):
         start_time = self._logger.times[0]
         return self._logger._checkpoint_logger.convert_relative(start_time)
 
-    def _tag_with_checkpoint(self, power_dict):
-        """Tag power_dict with checkpoint data.
-        """
-        checkpoint_dict = self._create_checkpoint_dict()
-
-        # Create list of check point event tuple.
-        # Tuple format: (checkpoint_name:str, event_time:float, is_start:bool)
-        checkpoint_event_list = []
-        for name, intervals in checkpoint_dict.iteritems():
-            for start, finish in intervals:
-                checkpoint_event_list.append((name, start, True))
-                checkpoint_event_list.append((name, finish, False))
-
-        checkpoint_event_list = sorted(checkpoint_event_list,
-                                       key=operator.itemgetter(1))
-
-        # Add dummy check point at 1e9 seconds.
-        checkpoint_event_list.append(('dummy', 1e9, True))
-
-        interval_set = set()
-        event_index = 0
-        checkpoint_list = []
-        for i in range(power_dict['sample_count']):
-            curr_time = i * power_dict['sample_duration']
-
-            # Process every checkpoint event until current point of time
-            while checkpoint_event_list[event_index][1] <= curr_time:
-                name, _, is_start = checkpoint_event_list[event_index]
-                if is_start:
-                    interval_set.add(name)
-                else:
-                    interval_set.discard(name)
-                event_index += 1
-
-            checkpoint_list.append(list(interval_set))
-        power_dict['checkpoint'] = checkpoint_list
-
     def _convert(self):
         """Convert data from power_status.MeasurementLogger object to raw
         power measurement dictionary.
 
         Return:
-            raw measurement dictionary
+            raw measurement dictionary or None if no readings
         """
+        if len(self._logger.readings) == 0:
+            logging.warn('No readings in logger ... ignoring')
+            return None
+
         power_dict = collections.defaultdict(dict, {
             'sample_count': len(self._logger.readings) - 1,
             'sample_duration': 0,

@@ -19,6 +19,7 @@ import time
 from servo import measure_power
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.power import power_status
 from autotest_lib.client.cros.power import power_telemetry_utils
 from autotest_lib.server.cros.power import power_dashboard
 
@@ -97,7 +98,9 @@ class PowerTelemetryLogger(object):
         logging.info('%s finishes.', self.__class__.__name__)
         start_ts, end_ts = self._get_client_test_ts(client_test_dir)
         loggers = self._load_and_trim_data(start_ts, end_ts)
-        self._upload_data(loggers)
+        checkpoint_logger = self._get_client_test_checkpoint_logger(
+                client_test_dir)
+        self._upload_data(loggers, checkpoint_logger)
 
     def _end_measurement(self):
         """End power telemetry devices."""
@@ -196,10 +199,6 @@ class PowerTelemetryLogger(object):
                         'ts', events_ts[event])
                 events_ts[event] = custom_test_events[event].get(
                         'ts', events_ts[event])
-                if events_ts[event]:
-                    # Adding a padding here because the timestamp of each data
-                    # point is taken at the end of its corresponding interval.
-                    events_ts[event] += self._interval / 2.0
 
             return (events_ts['start'], events_ts['end'])
 
@@ -284,7 +283,13 @@ class PowerTelemetryLogger(object):
         raise NotImplementedError('Subclasses must implement '
                 '_load_and_trim_data and return a list of loggers.')
 
-    def _upload_data(self, loggers):
+    def _get_client_test_checkpoint_logger(self, client_test_dir):
+        client_test_resultsdir = os.path.join(client_test_dir, 'results')
+        checkpoint_logger = power_status.get_checkpoint_logger_from_file(
+                resultsdir=client_test_resultsdir)
+        return checkpoint_logger
+
+    def _upload_data(self, loggers, checkpoint_logger):
         """Upload the data to dashboard.
 
         @param loggers: a list of loggers, where each logger contains raw power
@@ -295,6 +300,7 @@ class PowerTelemetryLogger(object):
             pdash = power_dashboard.PowerTelemetryLoggerDashboard(
                     logger=logger, testname=self._tagged_testname,
                     host=self._host, start_ts=self._start_ts,
+                    checkpoint_logger=checkpoint_logger,
                     resultsdir=self._resultsdir,
                     uploadurl=self.DASHBOARD_UPLOAD_URL, note=self._note)
             pdash.upload()
@@ -327,7 +333,6 @@ class ServodTelemetryLogger(PowerTelemetryLogger):
         self._servo_host = config['servo_host']
         self._servo_port = config['servo_port']
         self._ina_rate = float(config.get('ina_rate', self.DEFAULT_INA_RATE))
-        self._interval = self._ina_rate
         self._vbat_rate = float(config.get('vbat_rate', self.DEFAULT_VBAT_RATE))
         self._pm = measure_power.PowerMeasurement(host=self._servo_host,
                                                   port=self._servo_port,
@@ -451,8 +456,10 @@ class PowerlogTelemetryLogger(PowerTelemetryLogger):
             return
 
         trimmed_log_dirs = list()
-        start_ts = start_ts if start_ts else 0
-        end_ts = end_ts if end_ts else time.time()
+        # Adding a padding to both start and end timestamp because the timestamp
+        # of each data point is taken at the end of its corresponding interval.
+        start_ts = start_ts + self._interval / 2 if start_ts else 0
+        end_ts = end_ts + self._interval / 2 if end_ts else time.time()
         for dirname in os.listdir(self._logdir):
             if dirname.startswith('sweetberry'):
                 sweetberry_ts = float(string.lstrip(dirname, 'sweetberry'))

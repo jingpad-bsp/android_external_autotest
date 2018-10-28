@@ -25,8 +25,10 @@ const char* kGlesHeader =
 
 FilePath* g_base_path = new FilePath();
 double g_initial_temperature = -1000.0;
+std::string autotest_temperature_script =
+    "/usr/local/autotest/bin/temperature.py";
 DEFINE_string(TEMPERATURE_SCRIPT_PATH,
-              "/usr/local/autotest/bin/temperature.py",
+              autotest_temperature_script,
               "The path to temperature measurement executable.");
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
@@ -108,7 +110,10 @@ bool check_dir_existence(const char* file_path) {
 
 // Returns currently measured temperature.
 double get_temperature_input() {
-  std::string command = FLAGS_TEMPERATURE_SCRIPT_PATH + "--maximum";
+  std::string command = FLAGS_TEMPERATURE_SCRIPT_PATH;
+  if (command == autotest_temperature_script) {
+    command += " --maximum";
+  }
   double temperature_Celsius = -1000.0;
   read_float_from_cmd_output(command.c_str(), &temperature_Celsius);
   if (temperature_Celsius < 10.0 || temperature_Celsius > 150.0) {

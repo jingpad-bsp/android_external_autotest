@@ -90,7 +90,7 @@ gsctool.add_argument('-s', '--systemdev', dest='systemdev', action='store_true')
 # return information about cr50 and should only have a nonzero exit status if
 # something went wrong.
 gsctool.add_argument('-b', '--binvers', '-f', '--fwver', '-i', '--board_id',
-                     '-r', '--rma_auth', '-F', '--factory',
+                     '-r', '--rma_auth', '-F', '--factory', '-m', '--tpm_mode',
                      dest='info_cmd', action='store_true')
 # upstart and post_reset will post resets instead of rebooting immediately
 gsctool.add_argument('-u', '--upstart', '-p', '--post_reset', dest='post_reset',
