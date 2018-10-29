@@ -502,11 +502,14 @@ class power_LoadTest(arc.ArcTest):
 
         minutes_battery_life_tested = keyvals['minutes_battery_life_tested']
 
+        # Avoid polluting the keyvals with non-core domains.
+        core_keyvals = {k: v for k, v in keyvals.iteritems()
+                        if not k.startswith('_')}
         if not self._gaia_login:
-            keyvals = dict(map(lambda (key, value):
-                               ('INVALID_' + str(key), value), keyvals.items()))
+          core_keyvals = {'INVALID_%s' % str(k): v for k, v in
+                          core_keyvals.iteritems()}
         else:
-            for key, value in keyvals.iteritems():
+            for key, value in core_keyvals.iteritems():
                 if key.startswith('percent_cpuidle') and \
                    key.endswith('C0_time'):
                     self.output_perf_value(description=key,
@@ -514,7 +517,7 @@ class power_LoadTest(arc.ArcTest):
                                            units='percent',
                                            higher_is_better=False)
 
-        self.write_perf_keyval(keyvals)
+        self.write_perf_keyval(core_keyvals)
         for log in self._meas_logs:
             log.save_results(self.resultsdir)
         self._checkpoint_logger.save_checkpoint_data(self.resultsdir)
