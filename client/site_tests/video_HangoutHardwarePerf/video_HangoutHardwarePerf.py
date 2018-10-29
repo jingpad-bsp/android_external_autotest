@@ -127,7 +127,7 @@ class PowerMeasurer(object):
         self._power_logger.checkpoint('result')
         keyval = self._power_logger.calc()
         logging.info(keyval)
-        return keyval['result_' + self._system_power.domain + '_pwr']
+        return keyval['result_' + self._system_power.domain + '_pwr_avg']
 
     def __exit__(self, type, value, tb):
         if self._backlight:
