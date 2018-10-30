@@ -254,6 +254,12 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
 
     @property
+    def wifi_phy_name(self):
+        """@return wiphy name (e.g., 'phy0') or None"""
+        return self._interface.wiphy_name
+
+
+    @property
     def wifi_signal_level(self):
         """Returns the signal level of this DUT's WiFi interface.
 
