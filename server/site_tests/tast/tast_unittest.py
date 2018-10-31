@@ -128,17 +128,23 @@ class TastTest(unittest.TestCase):
         ]
         run_args = list_args + ['resultsdir=' + self._test.resultsdir]
         test_list = json.dumps([t.test() for t in tests])
-        streamed_results = ''.join(
-                [json.dumps(t.test_result()) + '\n'
-                 for t in tests if t.start_time()])
-        results_path = os.path.join(self._test.resultsdir,
-                                    tast.tast._STREAMED_RESULTS_FILENAME)
-
+        run_files = {
+            self._results_path(): ''.join(
+                    [json.dumps(t.test_result()) + '\n'
+                     for t in tests if t.start_time()]),
+        }
         self._tast_commands = {
             'list': TastCommand(list_args, stdout=test_list),
-            'run': TastCommand(run_args, file_path=results_path,
-                               file_data=streamed_results),
+            'run': TastCommand(run_args, files_to_write=run_files),
         }
+
+    def _results_path(self):
+        """Returns the path where "tast run" writes streamed results.
+
+        @return Path to streamed results file.
+        """
+        return os.path.join(self._test.resultsdir,
+                            tast.tast._STREAMED_RESULTS_FILENAME)
 
     def _run_test(self, ignore_test_failures=False):
         """Writes fake_tast.py's configuration and runs the test.
@@ -277,6 +283,27 @@ class TastTest(unittest.TestCase):
         self.assertEqual(self._load_job_keyvals(),
                          {'tast_missing_test.0': 'pkg.Test3'})
 
+    def testRunError(self):
+        """Tests that a run error is reported for a non-finished test."""
+        tests = [TestInfo('pkg.Test1', 0, 2),
+                 TestInfo('pkg.Test2', 3, None),
+                 TestInfo('pkg.Test3', None, None)]
+        self._init_tast_commands(tests)
+
+        # Simulate the run being aborted due to a lost SSH connection.
+        path = os.path.join(self._test.resultsdir,
+                            tast.tast._RUN_ERROR_FILENAME)
+        msg = 'Lost SSH connection to DUT'
+        self._tast_commands['run'].files_to_write[path] = msg
+        self._tast_commands['run'].status = 1
+
+        self._run_test_for_failure([tests[1]], [tests[2]])
+        self.assertEqual(
+                status_string(get_status_entries_from_tests(tests[:2], msg)),
+                status_string(self._job.status_entries))
+        self.assertEqual(self._load_job_keyvals(),
+                         {'tast_missing_test.0': 'pkg.Test3'})
+
     def testNoTestsMatched(self):
         """Tests that an error is raised if no tests are matched."""
         self._init_tast_commands([])
@@ -327,7 +354,8 @@ class TastTest(unittest.TestCase):
         """Tests that an error is raised if the run command prints bad data."""
         tests = [TestInfo('pkg.Test1', 0, 1), TestInfo('pkg.Test2', None, None)]
         self._init_tast_commands(tests)
-        self._tast_commands['run'].file_data += 'not valid JSON data'
+        self._tast_commands['run'].files_to_write[self._results_path()] += \
+                'not valid JSON data'
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
@@ -337,7 +365,7 @@ class TastTest(unittest.TestCase):
         """Tests that an error is raised if no results file is written."""
         tests = [TestInfo('pkg.Test1', None, None)]
         self._init_tast_commands(tests)
-        self._tast_commands['run'].file_path = None
+        self._tast_commands['run'].files_to_write = {}
         with self.assertRaises(error.TestFail) as _:
             self._run_test()
         self.assertEqual(status_string(get_status_entries_from_tests(tests)),
@@ -349,7 +377,7 @@ class TastTest(unittest.TestCase):
         self._init_tast_commands(tests)
         FAILURE_MSG = "this is the failure"
         self._tast_commands['run'].status = 1
-        self._tast_commands['run'].file_path = None
+        self._tast_commands['run'].files_to_write = {}
         self._tast_commands['run'].stdout = 'blah blah\n%s\n' % FAILURE_MSG
 
         # The first line of the exception should include the last line of output
@@ -518,10 +546,12 @@ class TestInfo:
             'timeout': self._timeout_ns,
         }
 
-    def status_entries(self):
+    def status_entries(self, run_error_msg=None):
         """Returns expected base_job.status_log_entry objects for this test.
 
-        @return: list of Autotest base_job.status_log_entry objects.
+        @param run_error_msg: String containing run error message, or None if no
+            run error was encountered.
+        @return: List of Autotest base_job.status_log_entry objects.
         """
         # Deliberately-skipped tests shouldn't have status entries unless errors
         # were also reported.
@@ -556,6 +586,11 @@ class TestInfo:
             for e in self._errors:
                 entries.append(make(tast.tast._JOB_STATUS_FAIL, e[1], e[0]))
             if not self._end_time:
+                # If the test didn't finish, the run error (if any) should be
+                # included.
+                if run_error_msg:
+                    entries.append(make(tast.tast._JOB_STATUS_FAIL,
+                                        self._start_time, run_error_msg))
                 entries.append(make(tast.tast._JOB_STATUS_FAIL,
                                     self._start_time,
                                     tast.tast._TEST_DID_NOT_FINISH_MSG))
@@ -597,7 +632,7 @@ class TastCommand(object):
     """Args and behavior for fake_tast.py for a given command, e.g. "list"."""
 
     def __init__(self, required_args, status=0, stdout=None, stderr=None,
-                 file_path=None, file_data=None):
+                 files_to_write=None):
         """
         @param required_args: List of required args, each specified as
             'name=value'. Names correspond to argparse-provided names in
@@ -607,15 +642,14 @@ class TastCommand(object):
         @param status: Status code for fake_tast.py to return.
         @param stdout: Data to write to stdout.
         @param stderr: Data to write to stderr.
-        @param file_path: File to create before exiting.
-        @param file_data: Data to write to file_path.
+        @param files_to_write: Dict mapping from paths of files to write to
+            their contents, or None to not write any files.
         """
         self.required_args = required_args
         self.status = status
         self.stdout = stdout
         self.stderr = stderr
-        self.file_path = file_path
-        self.file_data = file_data
+        self.files_to_write = files_to_write if files_to_write else {}
 
 
 def to_rfc3339(t):
@@ -630,14 +664,16 @@ def to_rfc3339(t):
     return t.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def get_status_entries_from_tests(tests):
+def get_status_entries_from_tests(tests, run_error_msg=None):
     """Returns a flattened list of status entries from TestInfo objects.
 
     @param tests: List of TestInfo objects.
+    @param run_error_msg: String containing run error message, or None if no
+        run error was encountered.
     @return: Flattened list of base_job.status_log_entry objects produced by
         calling status_entries() on each TestInfo object.
     """
-    return sum([t.status_entries() for t in tests], [])
+    return sum([t.status_entries(run_error_msg) for t in tests], [])
 
 
 def status_string(entries):
