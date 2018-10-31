@@ -416,6 +416,7 @@ class firmware_Cr50DeviceState(Cr50Test):
             logging.info('Current setup only supports test with ccd %sabled.',
                     'en' if self.ccd_enabled else 'dis')
 
+        self.trigger_s0()
         if self.all_errors:
             raise error.TestFail('Unexpected Device State: %s' %
                     self.all_errors)
