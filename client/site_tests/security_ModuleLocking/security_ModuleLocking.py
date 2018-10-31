@@ -78,7 +78,8 @@ class security_ModuleLocking(test.test):
 
         @param module: name of module to locate
         """
-        ko = utils.system_output("find /lib/modules -name '%s.ko'" % (module))
+        ko = utils.system_output("find /lib/modules/$(uname -r) -name '%s.ko'" %
+                                 (module))
         return ko.splitlines()[0]
 
     def module_loads_outside_rootfs(self, module):
