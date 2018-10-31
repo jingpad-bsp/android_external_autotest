@@ -26,6 +26,7 @@ rma_auth
 -serialno
 shmem
 sleepmask
+(?P<prepvt>sn)?
 (?P<mp>-)?spihash
 sysinfo
 sysrst
