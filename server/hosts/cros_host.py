@@ -582,12 +582,34 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     exceptions that could be raised.
 
         """
+        def extract_from_tarball(tarball, dest_dir, image_candidates):
+            """Try extracting the image_candidates from the tarball.
+
+            @param tarball: The path of the tarball.
+            @param dest_path: The path of the destination.
+            @param image_candidates: A tuple of the paths of image candidates.
+
+            @return: The first path from the image candidates, which succeeds.
+            @raise: TestError if all the image candidates fail.
+            """
+            for image in image_candidates:
+                status = server_utils.system(
+                        ('tar xf %s -C %s %s' % (tarball, dest_dir, image)),
+                        timeout=60, ignore_status=True)
+                if status == 0:
+                    return image
+            raise error.TestError('Failed to extract the image from tarball')
+
+
         if not self.servo:
             raise error.TestError('Host %s does not have servo.' %
                                   self.hostname)
 
-        # Get the DUT board name from servod.
-        board = self.servo.get_board()
+        # Get the DUT board name from AFE.
+        info = self.host_info_store.get()
+        board = info.board
+        if board is None:
+            raise hosts.AutoservError('No board label found')
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
@@ -598,12 +620,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         self.hostname)
             logging.info('Will install firmware from build %s.', build)
 
-        config = FAFTConfig(board)
-        if config.use_u_boot:
-            ap_image = 'image-%s.bin' % board
-        else: # Depthcharge platform
-            ap_image = 'image.bin'
-        ec_image = 'ec.bin'
+        ap_image_without_board = 'image.bin'
+        ap_image_with_board = 'image-%s.bin' % board
+        ec_image_without_board = 'ec.bin'
+        ec_image_with_board = '%s/ec.bin' % board
         ds = dev_server.ImageServer.resolve(build, self.hostname)
         ds.stage_artifacts(build, ['firmware'])
 
@@ -614,18 +634,21 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             ds.download_file(fwurl, local_tarball)
 
             self._clear_fw_version_labels(rw_only)
+            config = FAFTConfig(board)
             if config.chrome_ec:
                 logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
-                server_utils.system('tar xf %s -C %s %s' %
-                                    (local_tarball, tmpd.name, ec_image),
-                                    timeout=60)
+                ec_image = extract_from_tarball(
+                        local_tarball,
+                        tmpd.name,
+                        (ec_image_without_board, ec_image_with_board))
                 self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
             else:
                 logging.info('Not a Chrome EC, ignore re-programing it')
             logging.info('Will re-program BIOS %snow', 'RW ' if rw_only else '')
-            server_utils.system('tar xf %s -C %s %s' %
-                                (local_tarball, tmpd.name, ap_image),
-                                timeout=60)
+            ap_image = extract_from_tarball(
+                    local_tarball,
+                    tmpd.name,
+                    (ap_image_without_board, ap_image_with_board))
             self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
