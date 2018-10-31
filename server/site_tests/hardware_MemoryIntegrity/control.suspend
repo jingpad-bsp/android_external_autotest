@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'hardware_MemoryIntegrity'
+NAME = 'hardware_MemoryIntegrity.suspend'
 AUTHOR = 'puthik'
 PURPOSE = 'Check memory integrity after long suspend'
 TIME = 'LENGTHY'
@@ -15,6 +15,7 @@ then after suspend for an hour, verify the integrity of that data.
 """
 
 def run_hardware_MemoryIntegrity(machine):
-    job.run_test('hardware_MemoryIntegrity', client_ip=machine)
+    job.run_test('hardware_MemoryIntegrity', client_ip=machine,
+                 tag=NAME.split('.')[1])
 
 job.parallel_simple(run_hardware_MemoryIntegrity, machines)
