@@ -763,14 +763,14 @@ class RPCFunctions(object):
 
     def _updater_run_autoupdate(self, append):
         """Run chromeos-firmwareupdate with autoupdate mode."""
-        options = ['--host_only', '--wp=1']
+        options = ['--noupdate_ec', '--wp=1']
         self._updater.run_firmwareupdate(mode='autoupdate',
                                          updater_append=append,
                                          options=options)
 
     def _updater_run_factory_install(self):
         """Run chromeos-firmwareupdate with factory_install mode."""
-        options = ['--host_only', '--wp=0']
+        options = ['--noupdate_ec', '--wp=0']
         self._updater.run_firmwareupdate(mode='factory_install',
                                          options=options)
 
@@ -781,7 +781,7 @@ class RPCFunctions(object):
 
     def _updater_run_recovery(self):
         """Run chromeos-firmwareupdate with recovery mode."""
-        options = ['--host_only', '--force', '--wp=1']
+        options = ['--noupdate_ec', '--nocheck_keys', '--force', '--wp=1']
         self._updater.run_firmwareupdate(mode='recovery',
                                          options=options)
 
