@@ -42,7 +42,13 @@ class graphics_Idle_P(graphics_utils.GraphicsTest):
         self.add_failures('graphics_Idle')
         with chrome.Chrome(
                 logged_in=True,
-                arc_mode=arc_mode):
+                arc_mode=arc_mode) as cr:
+            # The New Tab Page contains the Google doodle which can cause
+            # arbitrary side effects. Hide it by going to a neutral page.
+            if not cr.browser.tabs:
+                cr.browser.tabs.New()
+            tab = cr.browser.tabs[0]
+            tab.Navigate('chrome://version')
             # Try to protect against runaway previous tests.
             if not utils.wait_for_idle_cpu(60.0, 0.1):
                 logging.warning('Could not get idle CPU before running tests.')
