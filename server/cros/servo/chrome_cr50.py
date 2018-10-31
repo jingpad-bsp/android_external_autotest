@@ -145,6 +145,35 @@ class ChromeCr50(chrome_ec.ChromeConsole):
         return in_factory_mode, is_reset
 
 
+    def wp_is_reset(self):
+        """Returns True if wp is reset to follow batt pres at all times"""
+        follow_batt_pres, _, follow_batt_pres_atboot, _ = self.get_wp_state()
+        return follow_batt_pres and follow_batt_pres_atboot
+
+
+    def get_wp_state(self):
+        """Returns a tuple of the current write protect state.
+
+        The atboot setting cannot really be determined now if it is set to
+        follow battery presence. It is likely to remain the same after reboot,
+        but who knows. If the third element of the tuple is True, the last
+        element will not be that useful
+
+        Returns:
+            (True if current state is to follow batt presence,
+             True if write protect is enabled,
+             True if current state is to follow batt presence atboot,
+             True if write protect is enabled atboot)
+        """
+        rv = self.send_command_get_output('wp',
+                ['Flash WP: (forced )?(enabled|disabled).*at boot: (forced )?'
+                 '(follow|enabled|disabled)'])[0]
+        _, forced, enabled, _, atboot = rv
+        logging.debug(rv)
+        return (not forced, enabled =='enabled',
+                atboot == 'follow', atboot == 'enabled')
+
+
     def in_dev_mode(self):
         """Return True if cr50 thinks the device is in dev mode"""
         return 'dev_mode' in self.get_ccd_info()['TPM']
