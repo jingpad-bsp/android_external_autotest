@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import datetime
 import logging
+import multiprocessing
 import re
 
 import common
@@ -264,8 +265,47 @@ def parse_cf_text(path, text):
     test.text = text
     return test
 
+def parse_cf_text_process(data):
+    """Worker process for parsing control file text
 
-def parse_cf_text_many(control_file_texts, forgiving_error=False,
+    @param data: Tuple of path, text, forgiving_error, and test_args.
+
+    @returns: Tuple of the path and test ControlData
+
+    @raises ControlVariableException: If forgiving_error is false parsing
+                                      exceptions are raised instead of logged.
+    """
+    path, text, forgiving_error, test_args = data
+
+    if test_args:
+        text = tools.inject_vars(test_args, text)
+
+    try:
+        found_test = parse_cf_text(path, text)
+    except control_data.ControlVariableException, e:
+        if not forgiving_error:
+            msg = "Failed parsing %s\n%s" % (path, e)
+            raise control_data.ControlVariableException(msg)
+        logging.warning("Skipping %s\n%s", path, e)
+    except Exception, e:
+        logging.error("Bad %s\n%s", path, e)
+        import traceback
+        logging.error(traceback.format_exc())
+    else:
+        return (path, found_test)
+
+
+def get_process_limit():
+    """Limit the number of CPUs to use.
+
+    On a server many autotest instances can run in parallel. Avoid that
+    each of them requests all the CPUs at the same time causing a spike.
+    """
+    return min(8, multiprocessing.cpu_count())
+
+
+def parse_cf_text_many(control_file_texts,
+                       forgiving_error=False,
                        test_args=None):
     """Parse control file texts.
 
@@ -275,23 +315,22 @@ def parse_cf_text_many(control_file_texts, forgiving_error=False,
     @returns: a dictionary of ControlData objects
     """
     tests = {}
-    for path, text in control_file_texts:
-        if test_args:
-            text = tools.inject_vars(test_args, text)
 
-        try:
-            found_test = parse_cf_text(path, text)
-        except control_data.ControlVariableException, e:
-            if not forgiving_error:
-                msg = "Failed parsing %s\n%s" % (path, e)
-                raise control_data.ControlVariableException(msg)
-            logging.warning("Skipping %s\n%s", path, e)
-        except Exception, e:
-            logging.error("Bad %s\n%s", path, e)
-            import traceback
-            logging.error(traceback.format_exc())
-        else:
-            tests[path] = found_test
+    control_file_texts_all = list(control_file_texts)
+    if control_file_texts_all:
+        # Construct input data for worker processes. Each row contains the
+        # path, text, forgiving_error configuration, and test arguments.
+        paths, texts = zip(*control_file_texts_all)
+        worker_data = zip(paths, texts, [forgiving_error] * len(paths),
+                          [test_args] * len(paths))
+        pool = multiprocessing.Pool(processes=get_process_limit())
+        result_list = pool.map(parse_cf_text_process, worker_data)
+        pool.close()
+        pool.join()
+
+        # Convert [(path, test), ...] to {path: test, ...}
+        tests = dict(result_list)
+
     return tests
 
 
