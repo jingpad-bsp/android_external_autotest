@@ -35,9 +35,9 @@ from autotest_lib.server.cros.dynamic_suite import suite_common
 from autotest_lib.server.cros.dynamic_suite.comparators import StatusContains
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
+from autotest_lib.server.cros.dynamic_suite.fakes import FakeMultiprocessingPool
 from autotest_lib.server.cros.dynamic_suite.suite import RetryHandler
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
-
 
 class SuiteTest(mox.MoxTestBase):
     """Unit tests for dynamic_suite Suite class.
@@ -123,6 +123,11 @@ class SuiteTest(mox.MoxTestBase):
         if not already_stubbed:
             self.mox.StubOutWithMock(control_data, 'parse_control_string')
 
+        self.mox.StubOutWithMock(suite_common.multiprocessing, 'Pool')
+        suite_common.multiprocessing.Pool(
+            processes=suite_common.get_process_limit()).AndReturn(
+                FakeMultiprocessingPool())
+
         self.getter.get_control_file_list(
                 suite_name=suite_name).AndReturn(file_list)
         for file, data in files_to_parse.iteritems():
@@ -142,6 +147,12 @@ class SuiteTest(mox.MoxTestBase):
         """
         self.getter = self.mox.CreateMock(control_file_getter.DevServerGetter)
         self.mox.StubOutWithMock(control_data, 'parse_control_string')
+
+        self.mox.StubOutWithMock(suite_common.multiprocessing, 'Pool')
+        suite_common.multiprocessing.Pool(
+            processes=suite_common.get_process_limit()).AndReturn(
+                FakeMultiprocessingPool())
+
         suite_info = {}
         for k, v in self.files.iteritems():
             suite_info[k] = v.string
