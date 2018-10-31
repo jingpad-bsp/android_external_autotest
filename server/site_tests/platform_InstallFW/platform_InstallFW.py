@@ -33,12 +33,18 @@ class platform_InstallFW(test.test):
         # Install bios/ec on a client.
         if fw_type == "bios":
             if is_shellball:
-                host.run("sudo /bin/sh %s --mode recovery --host_only" % fw_dst)
+                host.run("sudo /bin/sh %s --mode recovery --update_main "
+                         "--noupdate_ec" % fw_dst)
             else:
-                host.run("sudo /usr/sbin/flashrom -p host -w %s" % fw_dst)
+                host.run("sudo /usr/sbin/flashrom -p host -w %s"
+                         % fw_dst)
         if fw_type == "ec":
-            assert not is_shellball, 'Shellball does not support EC update.'
-            host.run("sudo /usr/sbin/flashrom -p ec -w %s" % fw_dst)
+            if is_shellball:
+                host.run("sudo /bin/sh %s --mode recovery --update_ec "
+                         "--noupdate_main" % fw_dst)
+            else:
+                host.run("sudo /usr/sbin/flashrom -p ec -w %s"
+                         % fw_dst)
         # Reboot client after installing the binary.
         host.reboot()
         # Get the versions of BIOS and EC binaries.
