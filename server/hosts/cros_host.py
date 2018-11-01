@@ -230,7 +230,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         servo_attrs = (servo_host.SERVO_HOST_ATTR,
                        servo_host.SERVO_PORT_ATTR,
-                       servo_host.SERVO_BOARD_ATTR)
+                       servo_host.SERVO_BOARD_ATTR,
+                       servo_host.SERVO_MODEL_ATTR)
         servo_args = {key: args_dict[key]
                       for key in servo_attrs
                       if key in args_dict}
