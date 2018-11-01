@@ -488,11 +488,7 @@ class base_client_job(base_job.base_job):
             l = lambda : test.runtest(self, url, tag, args, dargs)
             pid = parallel.fork_start(self.resultdir, l)
 
-            if timeout:
-                logging.debug('Waiting for pid %d for %d seconds', pid, timeout)
-                parallel.fork_waitfor_timed(self.resultdir, pid, timeout)
-            else:
-                parallel.fork_waitfor(self.resultdir, pid)
+            self._forkwait(pid, timeout)
 
         except error.TestBaseException:
             # These are already classified with an error type (exit_status)
@@ -504,6 +500,19 @@ class base_client_job(base_job.base_job):
             # of phase into a TestError(TestBaseException) subclass that
             # reports them with their full stack trace.
             raise error.UnhandledTestError(e)
+
+    def _forkwait(self, pid, timeout=None):
+        """Wait for the given pid to complete
+
+        @param pid (int) process id to wait for
+        @param timeout (int) seconds to wait before timing out the process"""
+        if timeout:
+            logging.debug('Waiting for pid %d for %d seconds', pid, timeout)
+            parallel.fork_waitfor_timed(self.resultdir, pid, timeout)
+        else:
+            logging.debug('Waiting for pid %d', pid)
+            parallel.fork_waitfor(self.resultdir, pid)
+        logging.info('pid %d completed', pid)
 
 
     def _run_test_base(self, url, *args, **dargs):
@@ -811,7 +820,7 @@ class base_client_job(base_job.base_job):
 
 
     @_run_test_complete_on_exit
-    def parallel(self, *tasklist):
+    def parallel(self, *tasklist, **kwargs):
         """Run tasks in parallel"""
 
         pids = []
@@ -827,7 +836,9 @@ class base_client_job(base_job.base_job):
                     base_record_indent, namespace='client')
                 self.__class__._record_indent = proc_local
                 task[0](*task[1:])
-            pids.append(parallel.fork_start(self.resultdir, task_func))
+            forked_pid = parallel.fork_start(self.resultdir, task_func)
+            logging.info('Just forked pid %d', forked_pid)
+            pids.append(forked_pid)
 
         old_log_path = os.path.join(self.resultdir, old_log_filename)
         old_log = open(old_log_path, "a")
@@ -835,8 +846,9 @@ class base_client_job(base_job.base_job):
         for i, pid in enumerate(pids):
             # wait for the task to finish
             try:
-                parallel.fork_waitfor(self.resultdir, pid)
+                self._forkwait(pid, kwargs.get('timeout'))
             except Exception, e:
+                logging.info('pid %d completed with error', pid)
                 exceptions.append(e)
             # copy the logs from the subtask into the main log
             new_log_path = old_log_path + (".%d" % i)
