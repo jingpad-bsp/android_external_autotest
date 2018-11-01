@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime
-import glob
 import logging
 import os
 import time
@@ -13,7 +11,6 @@ from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import system_metrics_collector
 from autotest_lib.client.common_lib.cros.cfm.metrics import (
         media_metrics_collector)
-from autotest_lib.server.cros import cfm_jmidata_log_collector
 from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.utils import bond_http_api
 
@@ -26,11 +23,6 @@ _BOT_PARTICIPANTS_COUNT = 10
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')
 _VIDEO_NAME = 'crowd720_25frames.y4m'
-
-_BASE_DIR = '/home/chronos/user/Storage/ext/'
-_EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
-_JMI_DIR = '/0*/File\ System/000/t/00/*'
-_JMI_SOURCE_DIR = _BASE_DIR + _EXT_ID + _JMI_DIR
 
 
 class ParticipantCountMetric(system_metrics_collector.Metric):
@@ -63,14 +55,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     temperature data from the device under test."""
     version = 1
 
-    def start_hangout(self):
-        """Waits for the landing page and starts a hangout session."""
-        self.cfm_facade.wait_for_hangouts_telemetry_commands()
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        hangout_name = current_date + '-cfm-perf'
-        self.cfm_facade.start_new_hangout_session(hangout_name)
-
-
     def start_meeting(self):
         """Waits for the landing page and starts a meeting.
 
@@ -88,194 +72,157 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
             time.sleep(_MEASUREMENT_DURATION_SECONDS)
             self.metrics_collector.collect_snapshot()
-            if self.is_meeting:
-                # Media metrics collector is only available for Meet.
-                self.media_metrics_collector.collect_snapshot()
+            self.media_metrics_collector.collect_snapshot()
         self.metrics_collector.write_metrics(self.output_perf_value)
 
-    def _get_average(self, data_type, jmidata):
+    def _get_average(self, data_type):
         """Computes mean of a list of numbers.
 
         @param data_type: Type of data to be retrieved from jmi data log.
-        @param jmidata: Raw jmi data log to parse.
         @return Mean computed from the list of numbers.
         """
-        data = self._get_data_from_jmifile(data_type, jmidata)
+        data = self._get_jmi_data(data_type)
         if not data:
             return 0
         return float(sum(data)) / len(data)
 
 
-    def _get_max_value(self, data_type, jmidata):
+    def _get_max_value(self, data_type):
         """Computes maximum value of a list of numbers.
 
         @param data_type: Type of data to be retrieved from jmi data log.
-        @param jmidata: Raw jmi data log to parse.
         @return Maxium value from the list of numbers.
         """
-        data = self._get_data_from_jmifile(data_type, jmidata)
+        data = self._get_jmi_data(data_type)
         if not data:
             return 0
         return max(data)
 
 
-    def _get_sum(self, data_type, jmidata):
+    def _get_sum(self, data_type):
         """Computes sum of a list of numbers.
 
         @param data_type: Type of data to be retrieved from jmi data log.
-        @param jmidata: Raw jmi data log to parse.
         @return Sum computed from the list of numbers.
         """
-        data = self._get_data_from_jmifile(data_type, jmidata)
+        data = self._get_jmi_data(data_type)
         if not data:
             return 0
         return sum(data)
 
 
-    def _get_last_value(self, data_type, jmidata):
+    def _get_last_value(self, data_type):
         """Gets last value of a list of numbers.
 
         @param data_type: Type of data to be retrieved from jmi data log.
-        @param jmidata: Raw jmi data log to parse.
         @return The last value in the jmidata for the specified data_type. 0 if
                 there are no values in the jmidata for this data_type.
         """
-        data = self._get_data_from_jmifile(data_type, jmidata)
+        data = self._get_jmi_data(data_type)
         if not data:
             return 0
         return data[-1]
 
 
-    def _get_data_from_jmifile(self, data_type, jmidata):
-        """Gets data from jmidata log for given data type.
+    def _get_jmi_data(self, data_type):
+        """Gets jmi data for the given data type.
 
-        @param data_type: Type of data to be retrieved from jmi data log.
-        @param jmidata: Raw jmi data log to parse.
+        @param data_type: Type of data to be retrieved from jmi data logs.
         @return Data for given data type from jmidata log.
         """
-        if self.is_meeting:
-            try:
-                timestamped_values = self.media_metrics_collector.get_metric(
-                        data_type)
-            except KeyError:
-                # Ensure we always return at least one element, or perf uploads
-                # will be sad.
-                return [0]
-            # Strip timestamps.
-            values = [x[1] for x in timestamped_values]
-            # Each entry in values is a list, extract the raw values:
-            res = []
-            for value_list in values:
-                res.extend(value_list)
-            # Ensure we always return at least one element, or perf uploads will
-            # be sad.
-            return res or [0]
-        else:
-            return cfm_jmidata_log_collector.GetDataFromLogs(
-                    self, data_type, jmidata)
-
-
-    def _get_file_to_parse(self):
-        """Copy jmi logs from client to test's results directory.
-
-        @return The newest jmi log file.
-        """
-        self._host.get_file(_JMI_SOURCE_DIR, self.resultsdir)
-        source_jmi_files = self.resultsdir + '/0*'
-        if not source_jmi_files:
-            raise error.TestNAError('JMI data file not found.')
-        newest_file = max(glob.iglob(source_jmi_files), key=os.path.getctime)
-        return newest_file
+        try:
+            timestamped_values = self.media_metrics_collector.get_metric(
+                    data_type)
+        except KeyError:
+            # Ensure we always return at least one element, or perf uploads
+            # will be sad.
+            return [0]
+        # Strip timestamps.
+        values = [x[1] for x in timestamped_values]
+        # Each entry in values is a list, extract the raw values:
+        res = []
+        for value_list in values:
+            res.extend(value_list)
+        # Ensure we always return at least one element, or perf uploads will
+        # be sad.
+        return res or [0]
 
     def upload_jmidata(self):
         """
         Write jmidata results to results-chart.json file for Perf Dashboard.
         """
-        jmi_file = self._get_file_to_parse()
-        jmifile_to_parse = open(jmi_file, 'r')
-        jmidata = jmifile_to_parse.read()
-
         # Compute and save aggregated stats from JMI.
         self.output_perf_value(description='sum_vid_in_frames_decoded',
-                value=self._get_sum('frames_decoded', jmidata), units='frames',
+                value=self._get_sum('frames_decoded'), units='frames',
                 higher_is_better=True)
 
         self.output_perf_value(description='sum_vid_out_frames_encoded',
-                value=self._get_sum('frames_encoded', jmidata), units='frames',
+                value=self._get_sum('frames_encoded'), units='frames',
                 higher_is_better=True)
 
         self.output_perf_value(description='vid_out_adapt_changes',
-                value=self._get_last_value('adaptation_changes', jmidata),
+                value=self._get_last_value('adaptation_changes'),
                 units='count', higher_is_better=False)
 
         self.output_perf_value(description='video_out_encode_time',
-                value=self._get_data_from_jmifile(
-                        'average_encode_time', jmidata),
+                value=self._get_jmi_data('average_encode_time'),
                 units='ms', higher_is_better=False)
 
         self.output_perf_value(description='max_video_out_encode_time',
-                value=self._get_max_value('average_encode_time', jmidata),
+                value=self._get_max_value('average_encode_time'),
                 units='ms', higher_is_better=False)
 
         self.output_perf_value(description='vid_out_bandwidth_adapt',
-                value=self._get_average('bandwidth_adaptation', jmidata),
+                value=self._get_average('bandwidth_adaptation'),
                 units='bool', higher_is_better=False)
 
         self.output_perf_value(description='vid_out_cpu_adapt',
-                value=self._get_average('cpu_adaptation', jmidata),
+                value=self._get_average('cpu_adaptation'),
                 units='bool', higher_is_better=False)
 
         self.output_perf_value(description='video_in_res',
-                value=self._get_data_from_jmifile(
-                        'video_received_frame_height', jmidata),
+                value=self._get_jmi_data(
+                        'video_received_frame_height'),
                 units='px', higher_is_better=True)
 
         self.output_perf_value(description='video_out_res',
-                value=self._get_data_from_jmifile(
-                        'video_sent_frame_height', jmidata),
+                value=self._get_jmi_data('video_sent_frame_height'),
                 units='resolution', higher_is_better=True)
 
         self.output_perf_value(description='vid_in_framerate_decoded',
-                value=self._get_data_from_jmifile(
-                        'framerate_decoded', jmidata),
+                value=self._get_jmi_data('framerate_decoded'),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='vid_out_framerate_input',
-                value=self._get_data_from_jmifile(
-                        'framerate_outgoing', jmidata),
+                value=self._get_jmi_data('framerate_outgoing'),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='vid_in_framerate_to_renderer',
-                value=self._get_data_from_jmifile(
-                        'framerate_to_renderer', jmidata),
+                value=self._get_jmi_data('framerate_to_renderer'),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='vid_in_framerate_received',
-                value=self._get_data_from_jmifile(
-                        'framerate_received', jmidata),
+                value=self._get_jmi_data('framerate_received'),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='vid_out_framerate_sent',
-                value=self._get_data_from_jmifile('framerate_sent', jmidata),
+                value=self._get_jmi_data('framerate_sent'),
                 units='fps', higher_is_better=True)
 
         self.output_perf_value(description='vid_in_frame_width',
-                value=self._get_data_from_jmifile(
-                        'video_received_frame_width', jmidata),
+                value=self._get_jmi_data('video_received_frame_width'),
                 units='px', higher_is_better=True)
 
         self.output_perf_value(description='vid_out_frame_width',
-                value=self._get_data_from_jmifile(
-                        'video_sent_frame_width', jmidata),
+                value=self._get_jmi_data('video_sent_frame_width'),
                 units='px', higher_is_better=True)
 
         self.output_perf_value(description='vid_out_encode_cpu_usage',
-                value=self._get_data_from_jmifile(
-                        'video_encode_cpu_usage', jmidata),
+                value=self._get_jmi_data('video_encode_cpu_usage'),
                 units='percent', higher_is_better=False)
 
-        total_vid_packets_sent = self._get_sum('video_packets_sent', jmidata)
-        total_vid_packets_lost = self._get_sum('video_packets_lost', jmidata)
+        total_vid_packets_sent = self._get_sum('video_packets_sent')
+        total_vid_packets_lost = self._get_sum('video_packets_lost')
         lost_packet_percentage = float(total_vid_packets_lost)*100/ \
                                  float(total_vid_packets_sent) if \
                                  total_vid_packets_sent else 0
@@ -284,25 +231,21 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
                 value=lost_packet_percentage, units='percent',
                 higher_is_better=False)
         self.output_perf_value(description='cpu_usage_jmi',
-                value=self._get_data_from_jmifile('cpu_percent', jmidata),
+                value=self._get_jmi_data('cpu_percent'),
                 units='percent', higher_is_better=False)
         self.output_perf_value(description='renderer_cpu_usage',
-                value=self._get_data_from_jmifile(
-                    'renderer_cpu_percent', jmidata),
+                value=self._get_jmi_data('renderer_cpu_percent'),
                 units='percent', higher_is_better=False)
         self.output_perf_value(description='browser_cpu_usage',
-                value=self._get_data_from_jmifile(
-                        'browser_cpu_percent', jmidata),
+                value=self._get_jmi_data('browser_cpu_percent'),
                 units='percent', higher_is_better=False)
 
         self.output_perf_value(description='gpu_cpu_usage',
-                value=self._get_data_from_jmifile(
-                        'gpu_cpu_percent', jmidata),
+                value=self._get_jmi_data('gpu_cpu_percent'),
                 units='percent', higher_is_better=False)
 
         self.output_perf_value(description='active_streams',
-                value=self._get_data_from_jmifile(
-                        'num_active_vid_in_streams', jmidata),
+                value=self._get_jmi_data('num_active_vid_in_streams'),
                 units='count', higher_is_better=True)
 
     def _download_test_video(self):
@@ -365,24 +308,14 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         self.cfm_facade.restart_chrome_for_cfm(extra_chrome_args)
         self.bond = bond_http_api.BondHttpApi()
 
-    def run_once(self, is_meeting=False):
-        """Stays in a meeting/hangout and collects perf data."""
-        self.is_meeting = is_meeting
-        if is_meeting:
-            meeting_code = self.start_meeting()
-            logging.info('Started meeting "%s"', meeting_code)
-            self._add_bots(_BOT_PARTICIPANTS_COUNT, meeting_code)
-        else:
-            self.start_hangout()
+    def run_once(self):
+        """Stays in a meeting and collects perf data."""
+        meeting_code = self.start_meeting()
+        logging.info('Started meeting "%s"', meeting_code)
+        self._add_bots(_BOT_PARTICIPANTS_COUNT, meeting_code)
         self.cfm_facade.unmute_mic()
-
         self.collect_perf_data()
-
-        if is_meeting:
-            self.cfm_facade.end_meeting_session()
-        else:
-            self.cfm_facade.end_hangout_session()
-
+        self.cfm_facade.end_meeting_session()
         self.upload_jmidata()
 
     def _add_bots(self, bot_count, meeting_code):
