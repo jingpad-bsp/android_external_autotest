@@ -22,8 +22,6 @@ logs and uploads it to Google Cloud Storage as part of the test logs.
 
 def run_test(machine):
     host = hosts.create_host(machine)
-    job.run_test('enterprise_CFM_Perf', host=host, is_meeting=True,
-                 tag='meet_app')
+    job.run_test('enterprise_CFM_Perf', host=host, tag='meet_app')
 
 parallel_simple(run_test, machines)
-
