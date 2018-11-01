@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import subprocess
 
 from autotest_lib.client.bin import test, utils
@@ -24,11 +23,16 @@ class security_ProcessManagementPolicy(test.test):
     }
 
     def __init__(self, *args, **kwargs):
+        if utils.get_kernel_version() == "3.8.11":
+            raise error.TestNAError('Test is n/a for kernel 3.8.11')
         super(security_ProcessManagementPolicy,
             self).__init__(*args, **kwargs)
         self._failure = False
 
     def cleanup(self):
+        """
+        Clean up the test environment.
+        """
         super(security_ProcessManagementPolicy, self).cleanup()
 
     def _fail(self, msg):
