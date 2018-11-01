@@ -6,6 +6,7 @@ import logging, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.power import power_rapl
@@ -126,23 +127,22 @@ class graphics_VideoRenderingPower(graphics_utils.GraphicsTest):
 
                 measurements = power_logger.calc()
                 logging.debug(measurements)
-                measurements = {
-                    key: measurements[key]
-                    for key in measurements
-                    if key.endswith('_pwr_avg')
-                }
 
                 for category in sorted(measurements):
-                    description = '%s_%s_%s' % (
-                        video_short_name, test_name_and_flags[0], category)
-                    self.output_perf_value(
-                        description=description,
-                        value=measurements[category],
-                        units='W',
-                        higher_is_better=False,
-                        graph=GRAPH_NAME)
+                    if category.endswith('_pwr'):
+                        description = '%s_%s_%s' % (
+                            video_short_name, test_name_and_flags[0], category)
+                        self.output_perf_value(
+                            description=description,
+                            value=measurements[category],
+                            units='W',
+                            higher_is_better=False,
+                            graph=GRAPH_NAME)
 
-                    # write_perf_keyval() wants units (W) first in lowercase.
-                    self.write_perf_keyval({
-                        'w_' + description: measurements[category]
-                    })
+                    if category.endswith('_pwr_avg'):
+                        # write_perf_keyval() wants units (W) first in lowercase.
+                        description = '%s_%s_%s' % (
+                            video_short_name, test_name_and_flags[0], category)
+                        self.write_perf_keyval({
+                            'w_' + description: measurements[category]
+                        })
