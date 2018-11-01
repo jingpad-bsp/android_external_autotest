@@ -266,9 +266,10 @@ class _RestartServod(hosts.RepairAction):
                     'embedded Chrome OS.')
         host.run('stop servod PORT=%d || true' % host.servo_port)
         serial = 'SERIAL=%s' % host.servo_serial if host.servo_serial else ''
+        model = 'MODEL=%s' % host.servo_model if host.servo_model else ''
         if host.servo_board:
-            host.run('start servod BOARD=%s PORT=%d %s' %
-                     (host.servo_board, host.servo_port, serial))
+            host.run('start servod BOARD=%s %s PORT=%d %s' %
+                     (host.servo_board, model, host.servo_port, serial))
         else:
             # TODO(jrbarnette):  It remains to be seen whether
             # this action is the right thing to do...

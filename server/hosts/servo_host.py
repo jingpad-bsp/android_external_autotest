@@ -48,6 +48,8 @@ except ImportError:
 SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 SERVO_BOARD_ATTR = 'servo_board'
+# Model is inferred from host labels.
+SERVO_MODEL_ATTR = 'servo_model'
 SERVO_SERIAL_ATTR = 'servo_serial'
 SERVO_ATTR_KEYS = (
         SERVO_BOARD_ATTR,
@@ -83,7 +85,8 @@ class ServoHost(ssh_host.SSHHost):
 
     def _initialize(self, servo_host='localhost',
                     servo_port=DEFAULT_PORT, servo_board=None,
-                    servo_serial=None, is_in_lab=None, *args, **dargs):
+                    servo_model=None, servo_serial=None, is_in_lab=None,
+                    *args, **dargs):
         """Initialize a ServoHost instance.
 
         A ServoHost instance represents a host that controls a servo.
@@ -94,6 +97,7 @@ class ServoHost(ssh_host.SSHHost):
                            to the SERVOD_PORT environment variable if set,
                            otherwise 9999.
         @param servo_board: Board that the servo is connected to.
+        @param servo_model: Model that the servo is connected to.
         @param is_in_lab: True if the servo host is in Cros Lab. Default is set
                           to None, for which utils.host_is_in_lab_zone will be
                           called to check if the servo host is in Cros lab.
@@ -103,6 +107,7 @@ class ServoHost(ssh_host.SSHHost):
                                            *args, **dargs)
         self.servo_port = int(servo_port)
         self.servo_board = servo_board
+        self.servo_model = servo_model
         self.servo_serial = servo_serial
         self._servo = None
         self._repair_strategy = (
@@ -750,6 +755,8 @@ def get_servo_args_for_host(dut_host):
 
     if info.board:
         servo_args[SERVO_BOARD_ATTR] = _map_afe_board_to_servo_board(info.board)
+    if info.model:
+        servo_args[SERVO_MODEL_ATTR] = info.model
     return servo_args if SERVO_HOST_ATTR in servo_args else None
 
 
