@@ -54,13 +54,13 @@ def main():
     if cmd.get('stderr'):
         sys.stderr.write(cmd['stderr'])
 
-    if cmd.get('file_path'):
-        path = cmd['file_path']
-        dirname = os.path.dirname(path)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname, 0755)
-        with open(path, 'w') as f:
-            f.write(cmd['file_data'])
+    if cmd.get('files_to_write'):
+        for path, data in cmd['files_to_write'].iteritems():
+            dirname = os.path.dirname(path)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname, 0755)
+            with open(path, 'w') as f:
+                f.write(data)
 
     sys.exit(cmd.get('status'))
 
