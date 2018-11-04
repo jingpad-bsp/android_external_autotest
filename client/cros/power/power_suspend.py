@@ -97,6 +97,9 @@ class Suspender(object):
     # File read by powerd to decide on the state to suspend (mem or freeze).
     _SUSPEND_STATE_PREF_FILE = 'suspend_to_idle'
 
+    # (b/79442787) Ignore these uarch for s0ix residency counter checking
+    _IGNORE_S0IX_RESIDENCY_CHECK = ['Skylake']
+
     def __init__(self, logdir, method=sys_power.do_suspend,
                  throw=False, device_times=False, suspend_state=''):
         """
@@ -477,7 +480,6 @@ class Suspender(object):
         for retry in xrange(retries + 1):
             arc_logcat = utils.system_output(command, ignore_status=False)
             arc_logcat = arc_logcat.splitlines()
-            resume_ts = 0
             for line in arc_logcat:
                 match_resume = regex_resume.search(line)
                 # ARC logcat is cleared before suspend so the first ARC resume
@@ -581,9 +583,12 @@ class Suspender(object):
                 s0ix_residency_secs = \
                         self._s0ix_residency_stats.\
                                 get_accumulated_residency_secs()
+                cpu_uarch = utils.get_intel_cpu_uarch()
                 if not s0ix_residency_secs:
-                    raise sys_power.S0ixResidencyNotChanged(
-                        'S0ix residency did not change.')
+                    msg = 'S0ix residency did not change.'
+                    if cpu_uarch not in self._IGNORE_S0IX_RESIDENCY_CHECK:
+                        raise sys_power.S0ixResidencyNotChanged(msg)
+                    logging.warn(msg)
                 logging.info('S0ix residency : %d secs.', s0ix_residency_secs)
 
             successful_suspend = {

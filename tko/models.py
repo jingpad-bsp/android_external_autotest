@@ -335,15 +335,18 @@ def _parse_hostinfo_keyval(job_dir, hostname):
     #
     # TODO(ayatane): We should pass hostinfo path explicitly.
     subdir = 'host_info_store'
-    subdir = os.path.join(subdir, os.listdir(subdir)[0])
-    hostinfo_path = os.path.join(job_dir, subdir, hostname + '.store')
+    hostinfo_dir = os.path.join(job_dir, subdir)
+    hostinfo_path = os.path.join(hostinfo_dir, os.listdir(hostinfo_dir)[0],
+                                 hostname + '.store')
     store = file_store.FileStore(hostinfo_path)
     hostinfo = store.get()
     # TODO(ayatane): Investigate if urllib.quote is better.
     label_string = ','.join(label.replace(':', '%3A')
                             for label in hostinfo.labels)
-    # TODO(ayatane): Check if host-platform is also needed.
-    return {'host-labels': label_string}
+    return {
+            'host-labels': label_string,
+            'host-platform': hostinfo.model,
+    }
 
 
 class patch(object):

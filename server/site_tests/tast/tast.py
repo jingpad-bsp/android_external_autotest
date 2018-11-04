@@ -45,6 +45,10 @@ class tast(test.test):
     # newline-terminated JSON TestResult objects.
     _STREAMED_RESULTS_FILENAME = 'streamed_results.jsonl'
 
+    # Text file written by the tast command if a global error caused the test
+    # run to fail (e.g. SSH connection to DUT was lost).
+    _RUN_ERROR_FILENAME = 'run_error.txt'
+
     # Maximum number of failing and missing tests to include in error messages.
     _MAX_TEST_NAMES_IN_ERROR = 3
 
@@ -112,10 +116,13 @@ class tast(test.test):
         # src/platform/tast/src/chromiumos/tast/testing/test.go for details.
         self._tests_to_run = []
 
-        # List of JSON objects corresponding to tests from a Tast results.json
-        # file. See TestResult in
+        # List of JSON objects corresponding to tests from
+        # _STREAMED_RESULTS_FILENAME. See TestResult in
         # src/platform/tast/src/chromiumos/cmd/tast/run/results.go for details.
         self._test_results = []
+
+        # Error message read from _RUN_ERROR_FILENAME, if any.
+        self._run_error = None
 
         # The data dir can be missing if no remote tests registered data files,
         # but all other files must exist.
@@ -145,6 +152,7 @@ class tast(test.test):
             run_failed = True
             raise
         finally:
+            self._read_run_error()
             # Parse partial results even if the tast command didn't finish.
             self._parse_results(run_failed)
 
@@ -288,6 +296,14 @@ class tast(test.test):
         return min(total_ns / 1000000000 + tast._RUN_OVERHEAD_SEC,
                    self._max_run_sec)
 
+    def _read_run_error(self):
+        """Reads a global run error message written by the tast command."""
+        # The file is only written if a run error occurred.
+        path = os.path.join(self.resultsdir, self._RUN_ERROR_FILENAME)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                self._run_error = f.read().strip()
+
     def _parse_results(self, ignore_missing_file):
         """Parses results written by the tast command.
 
@@ -300,6 +316,9 @@ class tast(test.test):
             ignore_missing_file is False, or one or more tests failed and
             _ignore_test_failures is false.
         """
+        # The file may not exist if "tast run" failed to run. Tests that were
+        # seen from the earlier "tast list" command will be reported as having
+        # missing results.
         path = os.path.join(self.resultsdir, self._STREAMED_RESULTS_FILENAME)
         if not os.path.exists(path):
             if ignore_missing_file:
@@ -418,6 +437,12 @@ class tast(test.test):
                     self._log_test_event(self._JOB_STATUS_FAIL, name,
                                          error_time, err['reason'])
             if not test_finished:
+                # If a run-level error was encountered (e.g. the SSH connection
+                # to the DUT was lost), report it here to make it easier to see
+                # the reason why the test didn't finish.
+                if self._run_error:
+                    self._log_test_event(self._JOB_STATUS_FAIL, name,
+                                         start_time, self._run_error)
                 self._log_test_event(self._JOB_STATUS_FAIL, name, start_time,
                                      self._TEST_DID_NOT_FINISH_MSG)
                 end_time = start_time
