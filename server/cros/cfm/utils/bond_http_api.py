@@ -13,21 +13,19 @@ from oauth2client.client import GoogleCredentials
 
 
 _BOND_API_URL = 'https://bond-pa.sandbox.googleapis.com'
-_HANGOUTS_API_URL = 'https://www.googleapis.com/hangouts/v1_meetings/'
-_MEETINGS_API_URL = 'https://meetings.googleapis.com'
+_HANGOUTS_API_URL = 'https://www.googleapis.com/hangouts/v1_meetings_preprod/'
+_MEETINGS_API_URL = 'https://preprod-meetings.sandbox.googleapis.com'
 
 _TOKEN_TTL_SECONDS = 3500
 
 # See https://crbug.com/874835 for details on the credentials files.
 _SERVICE_CREDS_FILE = '/creds/service_accounts/bond_service_account.json'
-_BOT_CREDS_FILE = '/creds/service_accounts/bond_bot_credentials.json'
 
 
 class BondHttpApi(object):
   """Utility class for sending requests to BonD for bots."""
 
   def __init__(self):
-    self._bot_creds = self._GetBotCredentials()
     self._last_token_request_time = None
     self._last_token = None
 
@@ -41,6 +39,33 @@ class BondHttpApi(object):
             'Authorization': 'Bearer %s' % token
         })
     return json.loads(resp.text)["numOfAvailableWorkers"]
+
+  def CreateConference(self):
+    """Creates a conference.
+
+    Returns:
+      The meeting code of the created conference.
+    """
+    token = self._GetAccessToken()
+
+    request_data = {
+      'conference_type': 'THOR',
+      'backend_options': {
+        'mesi_apiary_url': _HANGOUTS_API_URL,
+        'mas_one_platform_url': _MEETINGS_API_URL
+      },
+    }
+
+    resp = requests.post(
+        '%s/v1/conferences:create' % _BOND_API_URL,
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer %s' % token,
+        },
+        data=json.dumps(request_data))
+    json_response = json.loads(resp.text)
+    logging.info("CreateConference response: %s", json_response)
+    return json_response["conference"]["conferenceCode"]
 
   def ExecuteScript(self, script, meeting_code):
     """Executes the specified script.
@@ -106,11 +131,7 @@ class BondHttpApi(object):
       'conference': {
         'conference_code': meeting_code
       },
-      'bot_type': "MEETINGS",
-      'authentication_options': {
-        'is_anonymous': False,
-        'oauth_credentials': self._bot_creds
-      }
+      'bot_type': "MEETINGS"
     }
 
     resp = requests.post(
@@ -136,10 +157,6 @@ class BondHttpApi(object):
 
   def _CreateApiCredentials(self):
     return GoogleCredentials.from_stream(_SERVICE_CREDS_FILE)
-
-  def _GetBotCredentials(self):
-    with open(_BOT_CREDS_FILE) as f:
-      return json.load(f)
 
   def _CheckTokenExpired(self):
     elapsed = datetime.now() - self._last_token_request_time
