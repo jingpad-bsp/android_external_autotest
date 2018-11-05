@@ -27,7 +27,6 @@ database.
 
 import argparse
 import logging
-import sys
 
 import common
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -111,7 +110,7 @@ class _VersionUpdater(object):
         @param old_default  The original default version.
         @param new_default  The new default version to be applied.
         """
-        logging.debug('Default %s -> %s' % (old_default, new_default))
+        logging.debug('Default %s -> %s', old_default, new_default)
 
     def _report_board_changed(self, board, old_version, new_version):
         """
@@ -368,7 +367,7 @@ def main():
     # TODO(crbug/888046) Make these arguments required once puppet is updated to
     # pass them in.
     parser.add_argument('--web',
-                        default=None,
+                        default='cautotest',
                         help='URL to the AFE to update.')
 
     arguments = parser.parse_args()
