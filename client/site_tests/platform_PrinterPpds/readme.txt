@@ -80,3 +80,4 @@ Others:
         done
   3. Run the following
         grep -o sDEVICE=[^\ ]*\  ./*.pdf/*.err[12345] | cut -d \= -f 2 | sort | uniq | tr -d ' ' | tr '\n' ','
+  4. Add to the list uniprint (it is not caught by the command above)

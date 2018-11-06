@@ -776,8 +776,6 @@ Genicom-LN45-Postscript.ppd.gz	a7714ea6b8d9cbf2b06f618ccc8b8711
 Genicom-ML450-Postscript.ppd.gz	a7714ea6b8d9cbf2b06f618ccc8b8711
 Genicom-microLaser_12-Postscript.ppd.gz	a7714ea6b8d9cbf2b06f618ccc8b8711
 Genicom-microLaser_210-Postscript.ppd.gz	a7714ea6b8d9cbf2b06f618ccc8b8711
-HP-CM8050_Color_MFP-Postscript.ppd.gz	af461adeb02cb7c414bffef66ad967f2
-HP-CM8060_Color_MFP-Postscript.ppd.gz	af461adeb02cb7c414bffef66ad967f2
 HP-DesignJet_100-cdnj500.ppd.gz	cfcd52ebd74b68b395f3db260f8eda58
 HP-DesignJet_100plus-cdnj500.ppd.gz	cfcd52ebd74b68b395f3db260f8eda58
 HP-DesignJet_1050C-Postscript.ppd.gz	af461adeb02cb7c414bffef66ad967f2
@@ -2202,7 +2200,6 @@ hplip-3.18.3-hp-designjet_z6100ps_42in_photo-ps.ppd.gz	b837cd8af4b9eba311ff88b1c
 hplip-3.18.3-hp-designjet_z6100ps_60in_photo-ps.ppd.gz	b837cd8af4b9eba311ff88b1c90744e7
 hplip-3.18.3-hp-designjet_z6600-postscript.ppd.gz	3791f6ef357d4013d48d3ac7017d52bf
 hplip-3.18.3-hp-designjet_z6800_photo-postscript.ppd.gz	3791f6ef357d4013d48d3ac7017d52bf
-hplip-3.18.3-hp-deskjet_d1600_series.ppd.gz	788c5059b0b2d4da91a752224bd385c1
 hplip-3.18.3-hp-pagewide_xl_4000ps-ps.ppd.gz	09331bb55a1947367626443d49abdfc7
 hplip-3.18.3-hp-pagewide_xl_4000ps_mfp-ps.ppd.gz	09331bb55a1947367626443d49abdfc7
 hplip-3.18.3-hp-pagewide_xl_4500ps-ps.ppd.gz	09331bb55a1947367626443d49abdfc7
