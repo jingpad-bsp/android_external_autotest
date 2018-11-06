@@ -9,8 +9,7 @@ NAME = "enterprise_CFM_SiSFwUpdater"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
-# TODO(crbug.com/818812) Enable once the test is fixed
-# ATTRIBUTES = "suite:hotrod"
+ATTRIBUTES = "suite:hotrod"
 TEST_TYPE = "server"
 JOB_RETRIES = 3
 DEPENDENCIES = "mimo"
