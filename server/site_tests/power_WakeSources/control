@@ -13,6 +13,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
 DEPENDENCIES = "servo, lucidsleep"
+ATTRIBUTES = "suite:power_build"
 
 DOC = """
 Tests the following
