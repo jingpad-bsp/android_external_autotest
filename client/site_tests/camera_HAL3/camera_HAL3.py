@@ -104,6 +104,7 @@ class camera_HAL3(test.test):
 
         with service_stopper.ServiceStopper([self.cros_camera_service]), \
                 self.set_test_config(test_config):
+            has_facing_option = False
             cmd = [binary_path]
             for option in options:
                 if 'gtest_filter' in option:
@@ -114,10 +115,15 @@ class camera_HAL3(test.test):
                             option += '*SensorOrientationTest/*'
                     if 'Camera3RecordingFixture' in filters.split('-')[0]:
                         cmd.append(self.get_recording_params())
+                elif 'camera_facing' in option:
+                    has_facing_option = True
                 cmd.append(option)
 
-            for camera_hal_path in camera_hal_paths:
-                logging.info('Run test with %r', camera_hal_path)
-                cmd.append('--camera_hal_path=%s' % camera_hal_path)
+            if has_facing_option:
                 utils.system(cmd, timeout=cmd_timeout)
-                cmd.pop()
+            else:
+                for camera_hal_path in camera_hal_paths:
+                    logging.info('Run test with %r', camera_hal_path)
+                    cmd.append('--camera_hal_path=%s' % camera_hal_path)
+                    utils.system(cmd, timeout=cmd_timeout)
+                    cmd.pop()
