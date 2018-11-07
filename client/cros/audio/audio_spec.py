@@ -58,7 +58,7 @@ def has_hotwording(board_name, model_name):
     @returns: True if the board has hotwording.
 
     """
-    if (board_name in ['samus', 'kevin', 'eve', 'pyro'] or
+    if (board_name in ['samus', 'kevin', 'eve', 'pyro', 'nami'] or
         model_name in ['nasher360']):
         return True
     return False
