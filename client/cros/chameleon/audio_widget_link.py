@@ -434,7 +434,7 @@ class HDMIWidgetLink(WidgetLink):
         """
         board = self._cros_host.get_board().split(':')[1]
         if board in ['peach_pit', 'peach_pi', 'daisy', 'daisy_spring',
-                     'daisy_skate', 'cyan', 'celes', 'nyan_big']:
+                     'daisy_skate', 'cyan', 'celes', 'nyan_big', 'lars']:
             logging.info('Need extra plug/unplug on board %s', board)
             for _ in xrange(3):
                 handler.plug()
