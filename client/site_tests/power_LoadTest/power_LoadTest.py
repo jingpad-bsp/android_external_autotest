@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import collections
+import json
 import logging
 import numpy
 import os
+import re
 import time
-import json
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -503,8 +504,11 @@ class power_LoadTest(arc.ArcTest):
         minutes_battery_life_tested = keyvals['minutes_battery_life_tested']
 
         # Avoid polluting the keyvals with non-core domains.
+        # - Minor checkpoints. (start with underscore)
+        # - Individual cpu / gpu frequency buckets. (regex '[cg]pu_\d{3,}')
+        matcher = re.compile(r'_.*|.*_[cg]pu_\d{3,}_.*')
         core_keyvals = {k: v for k, v in keyvals.iteritems()
-                        if not k.startswith('_')}
+                        if not matcher.match(k)}
         if not self._gaia_login:
           core_keyvals = {'INVALID_%s' % str(k): v for k, v in
                           core_keyvals.iteritems()}
