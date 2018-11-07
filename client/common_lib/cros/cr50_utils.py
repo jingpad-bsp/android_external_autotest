@@ -169,6 +169,9 @@ def FindVersion(output, arg):
         a tuple of the ro and rw versions
     """
     versions = re.search(VERSION_RE[arg], output)
+    if not versions:
+        raise Exception('Unable to determine version from: %s' % output)
+
     versions = versions.groupdict()
     ro = GetVersion(versions, RO)
     rw = GetVersion(versions, RW)
