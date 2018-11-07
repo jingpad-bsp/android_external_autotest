@@ -15,10 +15,10 @@ from autotest_lib.server.cros.cfm import cfm_base_test
 from autotest_lib.server.cros.cfm.utils import bond_http_api
 
 
-_SHORT_TIMEOUT = 5
-_MEASUREMENT_DURATION_SECONDS = 10
-_TOTAL_TEST_DURATION_SECONDS = 900 # 15 minutes
 _BOT_PARTICIPANTS_COUNT = 10
+_SHORT_TIMEOUT = 5
+_SINGLE_MEASUREMENT_DURATION_SECONDS = 10
+_TOTAL_TEST_DURATION_SECONDS = 15 * 60 # 15 minutes
 
 _DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
                   'chromiumos-test-assets-public/crowd/')
@@ -55,14 +55,6 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
     temperature data from the device under test."""
     version = 1
 
-    def start_meeting(self):
-        """Waits for the landing page and starts a meeting.
-
-        @return: The code for the started meeting.
-        """
-        self.cfm_facade.wait_for_meetings_landing_page()
-        return self.cfm_facade.start_meeting_session()
-
     def collect_perf_data(self):
         """
         Collects run time data from the DUT using system_metrics_collector.
@@ -70,7 +62,7 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         """
         start_time = time.time()
         while (time.time() - start_time) < _TOTAL_TEST_DURATION_SECONDS:
-            time.sleep(_MEASUREMENT_DURATION_SECONDS)
+            time.sleep(_SINGLE_MEASUREMENT_DURATION_SECONDS)
             self.metrics_collector.collect_snapshot()
             self.media_metrics_collector.collect_snapshot()
         self.metrics_collector.write_metrics(self.output_perf_value)
@@ -309,12 +301,18 @@ class enterprise_CFM_Perf(cfm_base_test.CfmBaseTest):
         self.bond = bond_http_api.BondHttpApi()
 
     def run_once(self):
-        """Stays in a meeting and collects perf data."""
-        meeting_code = self.start_meeting()
+        """Joins a meeting and collects perf data."""
+        self.cfm_facade.wait_for_meetings_landing_page()
+
+        meeting_code = self.bond.CreateConference()
         logging.info('Started meeting "%s"', meeting_code)
         self._add_bots(_BOT_PARTICIPANTS_COUNT, meeting_code)
+
+        self.cfm_facade.join_meeting_session(meeting_code)
         self.cfm_facade.unmute_mic()
+
         self.collect_perf_data()
+
         self.cfm_facade.end_meeting_session()
         self.upload_jmidata()
 
