@@ -20,7 +20,14 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
     NO_BGSCAN_SAMPLE_PERIOD_SECONDS = 10
     CONFIGURED_BGSCAN_INTERVAL_SECONDS = 7
     PING_INTERVAL_SECONDS = 0.1
-    LATENCY_MARGIN_MS = 200
+
+    # Dwell time for scanning is usually configured to be around 100 ms (some
+    # are higher, around 150 ms), since this is also the standard beacon
+    # interval.  Tolerate spikes in latency up to 250 ms as a way of asking
+    # that our PHY be servicing foreground traffic regularly during background
+    # scans.
+    # See also network_WiFi_OverlappingBSSScan for similar parameters.
+    LATENCY_MARGIN_MS = 250
     THRESHOLD_BASELINE_LATENCY_MS = 100
 
     def parse_additional_arguments(self, commandline_args, additional_params):
@@ -97,10 +104,6 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
                                  'background scans: %f' %
                                  result_no_bgscan.max_latency)
 
-        # Dwell time for scanning is usually configured to be around 100 ms,
-        # since this is also the standard beacon interval.  Tolerate spikes in
-        # latency up to 200 ms as a way of asking that our PHY be servicing
-        # foreground traffic regularly during background scans.
         if (result_bgscan.max_latency >
                 self.LATENCY_MARGIN_MS + result_no_bgscan.avg_latency):
             raise error.TestFail('Significant difference in rtt due to bgscan: '
