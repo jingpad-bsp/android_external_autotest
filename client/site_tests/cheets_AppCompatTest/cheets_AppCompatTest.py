@@ -182,9 +182,9 @@ class cheets_AppCompatTest(arc.ArcTest):
 
         """
         count = 0
-        while count < 30:
+        while count < 50:
             arc.adb_shell('am start %s' % self._PLAY_STORE_ACTIVITY)
-            time.sleep(1)
+            time.sleep(3)
             count += 1
 
 
