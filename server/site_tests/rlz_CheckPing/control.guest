@@ -9,6 +9,7 @@ TIME = "Short"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:bvt-perbuild"
 DOC = """
 This tests the CAF and CAI Rlz pings are sent on first use.
 """
