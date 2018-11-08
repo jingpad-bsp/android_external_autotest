@@ -149,8 +149,6 @@ class NanoOmahaDevserver(object):
             """Helper function for the OPTIONAL_ACTION_FLAGS parameter."""
             action_flags.append(
                     FLAG_TEMPLATE.substitute(key=key, value=value))
-        if self._is_delta:
-            add_action_flag('IsDeltaPayload', 'true')
         if self._critical:
             add_action_flag('deadline', 'now')
         if self._metadata_size:
