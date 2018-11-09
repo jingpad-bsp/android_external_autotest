@@ -562,6 +562,9 @@ class EnterprisePolicyTest(test.test):
                     wifi['Passphrase'] = SANITIZED_PASSWORD
                 if 'EAP' in wifi and 'Password' in wifi['EAP']:
                     wifi['EAP']['Password'] = SANITIZED_PASSWORD
+            for cert in sanitized_expected_value.get('Certificates', []):
+                if 'PKCS12' in cert:
+                    cert['PKCS12'] = SANITIZED_PASSWORD
 
         # Some managed policies have a default value when they are not set.
         # Replace these unset policies with their default value.
