@@ -2946,3 +2946,12 @@ def get_mount_info(process='self', mount_point=None):
                 yield MountInfo(root = mountinfo[3],
                                 mount_point = mountinfo[4],
                                 tags = tags)
+
+
+# Appended suffix for chart tablet naming convention in test lab
+CHART_ADDRESS_SUFFIX = '-tablet'
+
+
+def get_lab_chart_address(hostname):
+    """Convert lab DUT hostname to address of camera box chart tablet"""
+    return hostname + CHART_ADDRESS_SUFFIX if is_in_container() else None
