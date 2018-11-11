@@ -296,7 +296,8 @@ class test(object):
         keyval_path = os.path.join('host_keyvals', hostname)
         # The host keyval is <job_dir>/host_keyvals/<hostname> if it exists.
         # Otherwise we're running on Skylab which uses hostinfo.
-        if not os.path.exists(keyval_path):
+        if not os.path.exists(os.path.join(job_dir, keyval_path)):
+            tko_utils.dprint("trying to use hostinfo")
             try:
                 return _parse_hostinfo_keyval(job_dir, hostname)
             except Exception as e:
