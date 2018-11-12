@@ -36,7 +36,6 @@ class autoupdate_CannedOmahaUpdate(test.test):
         @param allow_failure: True if we dont raise an error on failure.
 
         """
-        utils.run('restart update-engine')
         self._omaha.start()
         try:
             utils.run('update_engine_client -update -omaha_url=' +
