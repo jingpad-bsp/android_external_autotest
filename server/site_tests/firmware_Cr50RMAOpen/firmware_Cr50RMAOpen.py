@@ -28,6 +28,9 @@ class firmware_Cr50RMAOpen(Cr50Test):
     """
     version = 1
 
+    # Tuple representing WP state when it is force disabled
+    WP_PERMANENTLY_DISABLED = (False, False, False, False)
+
     # Various Error Messages from the command line and AP RMA failures
     MISMATCH_CLI = 'Auth code does not match.'
     MISMATCH_AP = 'rma unlock failed, code 6'
@@ -69,19 +72,11 @@ class firmware_Cr50RMAOpen(Cr50Test):
         if self.host.run('rma_reset -h', ignore_status=True).exit_status == 127:
             raise error.TestNAError('Cannot test RMA open without rma_reset')
 
-        # Attempt to disable factory mode. If factory mode isn't enabled this
-        # will fail. Ignore the exit status no matter what. Init will make sure
-        # all capabilities are set to default before running the test.
-        logging.info(cr50_utils.GSCTool(self.host, ['-a', '-F', 'disable'],
-                ignore_status=True))
         # Disable all capabilities at the start of the test. Go ahead and enable
         # testlab mode if it isn't enabled.
-        if not self.ccd_lockout:
-            self.fast_open(enable_testlab=True)
-            self.cr50.send_command('ccd reset')
-            self.cr50.set_ccd_level('lock')
-            self.check_ccd_cap_settings(False)
-
+        self.fast_open(enable_testlab=True)
+        self.cr50.send_command('ccd reset')
+        self.cr50.set_ccd_level('lock')
         # Make sure all capabilities are set to default.
         try:
             self.check_ccd_cap_settings(False)
@@ -89,6 +84,11 @@ class firmware_Cr50RMAOpen(Cr50Test):
             raise error.TestError('Could not disable rma mode')
 
         self.is_prod_mp = self.get_prod_mp_status()
+
+
+    def tpm_is_enabled(self):
+        """TPM is disabled if the tpm version cant be retrieved"""
+        return not self.host.run('tpm_version', ignore_status=True).exit_status
 
 
     def get_prod_mp_status(self):
@@ -123,10 +123,10 @@ class firmware_Cr50RMAOpen(Cr50Test):
         logging.info(stdout)
         # rma_reset generates authcodes with the test key. MP images should use
         # prod keys. Make sure prod signed MP images aren't using the test key.
-        self.prod_keyid = 'Unsupported' in stdout
-        if self.is_prod_mp and not self.prod_keyid:
+        self.prod_rma_key = 'Unsupported' in stdout
+        if self.is_prod_mp and not self.prod_rma_key:
             raise error.TestFail('MP image cannot use test key')
-        return re.search('Authcode: +(\S+)', stdout).group(1), self.prod_keyid
+        return re.search('Authcode: +(\S+)', stdout).group(1), self.prod_rma_key
 
 
     def rma_cli(self, authcode='', disable=False, expected_exit_status=SUCCESS):
@@ -199,6 +199,16 @@ class firmware_Cr50RMAOpen(Cr50Test):
         return result.stdout
 
 
+    def fake_rma_open(self):
+        """Use individual commands to enter the same state as factory mode"""
+        self.cr50.send_command('ccd testlab open')
+        self.cr50.send_command('ccd reset factory')
+        self.cr50.send_command('wp disable atboot')
+        # TODO(b/119626285): Change the command to use --tpm_mode instead of -m
+        # once --tpm_mode can process the 'disable' arg correctly.
+        cr50_utils.GSCTool(self.host, ['gsctool', '--any', '-m', 'disable'])
+
+
     def check_ccd_cap_settings(self, rma_opened):
         """Verify the ccd capability permissions match the RMA state
 
@@ -245,24 +255,75 @@ class firmware_Cr50RMAOpen(Cr50Test):
         # Attempt RMA open with the given authcode
         auth_func(authcode=authcode, expected_exit_status=exit_status)
 
-        # Make sure capabilities are in the correct state.
-        self.check_ccd_cap_settings(not unsupported_key)
+        # Make sure ccd is in the proper state. If the RMA key is prod, the test
+        # wont be able to generate the authcode and ccd should still be reset.
+        # It should not be in factory mode.
+        if unsupported_key:
+            self.confirm_ccd_is_reset()
+        else:
+            self.confirm_ccd_is_in_factory_mode()
 
-        # Force enable write protect, so we can make sure it's reset after RMA
-        # disable
-        if not unsupported_key:
-            logging.info(self.cr50.send_command_get_output('wp enable',
-                    ['wp.*>']))
+        self.host.reboot()
+
+        if not self.tpm_is_enabled():
+            raise error.TestFail('TPM was not reenabled after reboot')
 
         # Run RMA disable to reset the capabilities.
         self.rma_ap(disable=True, expected_exit_status=exit_status)
 
+        self.confirm_ccd_is_reset()
+
+
+    def confirm_ccd_is_in_factory_mode(self):
+        """Check wp and capabilities to confirm cr50 is in factory mode"""
+        # The open process takes some time to complete. Wait for it.
+        time.sleep(self.CHALLENGE_INTERVAL)
+
+        if self.tpm_is_enabled():
+            raise error.TestFail('TPM was not disabled after RMA open')
+
+        if self.cr50.get_wp_state() != self.WP_PERMANENTLY_DISABLED:
+            raise error.TestFail('HW WP was not disabled after RMA open')
+
+        # Make sure capabilities are all set to Always
+        self.check_ccd_cap_settings(True)
+
+
+    def confirm_ccd_is_reset(self):
+        """Check wp and capabilities to confirm ccd has been reset"""
+        # The open process takes some time to complete. Wait for it.
+        time.sleep(self.CHALLENGE_INTERVAL)
+
+        if not self.tpm_is_enabled():
+            raise error.TestFail('TPM is disabled')
+
         # Confirm write protect has been reset to follow battery presence. The
         # WP state may be enabled or disabled. The state just can't be forced.
-        logging.info(self.cr50.send_command_get_output('wp',
-                ['Flash WP: (enabled|disabled)']))
+        if not self.cr50.wp_is_reset():
+            raise error.TestFail('Factory mode disable did not reset HW WP')
+
         # Make sure capabilities have been reset
         self.check_ccd_cap_settings(False)
+
+
+    def verify_basic_factory_disable(self):
+        """Verify RMA disable works.
+
+        The RMA open process may not be able to be automated, because it
+        requires phyiscal presence and access to the server. This uses console
+        commands to enter the same state as factory mode and then verifies
+        rma disable resets all of that.
+        """
+        self.fake_rma_open()
+
+        self.confirm_ccd_is_in_factory_mode()
+
+        self.host.reboot()
+
+        # Run RMA disable to reset the capabilities.
+        self.rma_ap(disable=True)
+
+        self.confirm_ccd_is_reset()
 
 
     def rate_limit_check(self, rma_func1, rma_func2):
@@ -289,7 +350,7 @@ class firmware_Cr50RMAOpen(Cr50Test):
         rma_func2()
 
 
-    def challenge_reset(self, rma_func1, rma_func2):
+    def old_authcodes_are_invalid(self, rma_func1, rma_func2):
         """Verify a response for a previous challenge can't be used again
 
         Generate 2 challenges. Verify only the authcode from the second
@@ -300,19 +361,32 @@ class firmware_Cr50RMAOpen(Cr50Test):
             rma_func2: the method to generate the second challenge
         """
         time.sleep(self.CHALLENGE_INTERVAL)
-        challenge1 = rma_func1()
-        authcode1 = self.generate_response(challenge1)[0]
+        old_challenge = rma_func1()
 
         time.sleep(self.CHALLENGE_INTERVAL)
-        challenge2 = rma_func2()
-        authcode2 = self.generate_response(challenge2)[0]
+        active_challenge = rma_func2()
 
-        rma_func1(authcode1, expected_exit_status=self.UPDATE_ERROR)
-        rma_func1(authcode2)
+        invalid_authcode = self.generate_response(old_challenge)[0]
+        valid_authcode = self.generate_response(active_challenge)[0]
 
-        time.sleep(self.SHORT_WAIT)
+        # Use the old authcode
+        rma_func1(invalid_authcode, expected_exit_status=self.UPDATE_ERROR)
+        # make sure factory mode is still disabled
+        self.confirm_ccd_is_reset()
+
+        # Use the authcode generated with the most recent challenge.
+        rma_func1(valid_authcode)
+        # Make sure factory mode has been enabled now that the test has used the
+        # correct authcode.
+        self.confirm_ccd_is_in_factory_mode()
+
+        # Reboot the AP to reenable the TPM
+        self.host.reboot()
 
         self.rma_ap(disable=True)
+
+        # Verify rma disable disabled factory mode
+        self.confirm_ccd_is_reset()
 
 
     def verify_interface_combinations(self, test_func):
@@ -334,11 +408,13 @@ class firmware_Cr50RMAOpen(Cr50Test):
 
     def run_once(self):
         """Verify Cr50 RMA behavior"""
+        self.verify_basic_factory_disable()
+
         self.verify_interface_combinations(self.rate_limit_check)
 
         self.verify_interface_combinations(self.rma_open)
 
         # We can only do RMA unlock with test keys, so this won't be useful
         # to run unless the Cr50 image is using test keys.
-        if not self.prod_keyid:
-            self.verify_interface_combinations(self.challenge_reset)
+        if not self.prod_rma_key:
+            self.verify_interface_combinations(self.old_authcodes_are_invalid)
