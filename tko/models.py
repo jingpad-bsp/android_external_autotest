@@ -331,14 +331,11 @@ def _parse_hostinfo_keyval(job_dir, hostname):
 
     """
     # The hostinfo path looks like:
-    # host_info_store/dir_e499300b-8bba-4ad3-a404-8c12a9367f17/
-    # chromeos6-row4-rack11-host6.store
+    # host_info_store/chromeos6-row4-rack11-host6.store
     #
     # TODO(ayatane): We should pass hostinfo path explicitly.
     subdir = 'host_info_store'
-    hostinfo_dir = os.path.join(job_dir, subdir)
-    hostinfo_path = os.path.join(hostinfo_dir, os.listdir(hostinfo_dir)[0],
-                                 hostname + '.store')
+    hostinfo_path = os.path.join(job_dir, subdir, hostname + '.store')
     store = file_store.FileStore(hostinfo_path)
     hostinfo = store.get()
     # TODO(ayatane): Investigate if urllib.quote is better.
