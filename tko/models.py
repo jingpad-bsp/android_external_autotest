@@ -341,10 +341,7 @@ def _parse_hostinfo_keyval(job_dir, hostname):
     # TODO(ayatane): Investigate if urllib.quote is better.
     label_string = ','.join(label.replace(':', '%3A')
                             for label in hostinfo.labels)
-    return {
-            'host-labels': label_string,
-            'host-platform': hostinfo.model,
-    }
+    return {'labels': label_string, 'platform': hostinfo.model}
 
 
 class patch(object):
