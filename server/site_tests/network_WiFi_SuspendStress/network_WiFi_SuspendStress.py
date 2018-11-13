@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros import stress
 from autotest_lib.server.cros.network import wifi_cell_test_base
@@ -70,3 +71,12 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
                     units='seconds',
                     higher_is_better=False,
                     graph=router_conf.perf_loggable_description)
+
+            # Explicitly disconnect and clear the shill profile, in case
+            # we're running another configuration after this. Especially on
+            # Hidden tests, the DUT may still think it can connect to
+            # previously-discovered networks, causing extra connection failures
+            # and delays along the way.
+            self.context.client.shill.disconnect(client_conf.ssid)
+            if not self.context.client.shill.init_test_network_state():
+                raise error.TestError('Failed to set up shill profile.')
