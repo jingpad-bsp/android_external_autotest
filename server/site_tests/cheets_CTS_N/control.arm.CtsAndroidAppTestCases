@@ -22,7 +22,7 @@ def run_CTS(machine):
         iterations=1,
         max_retry=3,
         needs_push_media=False,
-        tag='CtsAndroidAppTestCases',
+        tag='arm.CtsAndroidAppTestCases',
         test_name='cheets_CTS_N.arm.CtsAndroidAppTestCases',
         run_template=['run', 'commandAndExit', 'cts', '--module', 'CtsAndroidAppTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info'],
         retry_template=['run', 'commandAndExit', 'cts', '--module', 'CtsAndroidAppTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info', '--retry', '{session_id}'],
