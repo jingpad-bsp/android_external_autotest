@@ -22,7 +22,7 @@ def run_CTS(machine):
         iterations=1,
         max_retry=3,
         needs_push_media=False,
-        tag='CtsVoiceSettingsTestCases',
+        tag='arm.CtsVoiceSettingsTestCases',
         test_name='cheets_CTS_N.arm.CtsVoiceSettingsTestCases',
         run_template=['run', 'commandAndExit', 'cts', '--module', 'CtsVoiceSettingsTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info'],
         retry_template=['run', 'commandAndExit', 'cts', '--module', 'CtsVoiceSettingsTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info', '--retry', '{session_id}'],
