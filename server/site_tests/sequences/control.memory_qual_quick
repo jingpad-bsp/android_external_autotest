@@ -33,6 +33,11 @@ CLIENT_TESTS= [
         'tag' : 'quick', 'num_suspends' : 2}),
 ]
 
+CLIENT_X86_TESTS= [
+    ('hardware_UnsafeMemory', {
+        'tag' : 'quick', 'sec' : 30}),
+]
+
 SERVER_TESTS= [
     ('hardware_MemoryIntegrity', {
         'tag' : 'quick', 'seconds' : 30, 'suspend': False}),
@@ -41,6 +46,8 @@ SERVER_TESTS= [
 def run_client_test(machine):
     client = hosts.create_host(machine)
     client_at = autotest.Autotest(client)
+    if client.get_arch() in ('i386', 'i686', 'x86_64'):
+        CLIENT_TESTS += CLIENT_X86_TESTS
     for test, argv in CLIENT_TESTS:
         client.reboot()
         client_at.run_test(test, **argv)
