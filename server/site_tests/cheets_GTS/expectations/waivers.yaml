@@ -6,3 +6,5 @@ com.google.android.watchlist.gts.NetworkWatchlistTest#testNetworkWatchlistReport
 com.google.android.security.gts.SELinuxHostTest#testNoExemptionsForSystemWritesMntVendor: [P]
 com.google.android.gts.backup.SettingsBackupAllowedKeysHostSideTest#testNonAospSettingsKeysNamespaced: [P]
 com.google.android.gts.backup.WifiSettingsBackupHostSideTest#testWifiBackup: [P]
+com.google.android.gts.security.AttestationRootHostTest#testEcAttestationChain: [nocturne, grunt]
+com.google.android.gts.security.AttestationRootHostTest#testRsaAttestationChain: [nocturne, grunt]
