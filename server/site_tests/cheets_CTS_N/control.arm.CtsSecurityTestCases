@@ -23,7 +23,7 @@ def run_CTS(machine):
         iterations=1,
         max_retry=3,
         needs_push_media=False,
-        tag='CtsSecurityTestCases',
+        tag='arm.CtsSecurityTestCases',
         test_name='cheets_CTS_N.arm.CtsSecurityTestCases',
         run_template=['run', 'commandAndExit', 'cts', '--module', 'CtsSecurityTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info'],
         retry_template=['run', 'commandAndExit', 'cts', '--module', 'CtsSecurityTestCases', '--disable-reboot', '--logcat-on-failure', '--skip-device-info', '--retry', '{session_id}'],
