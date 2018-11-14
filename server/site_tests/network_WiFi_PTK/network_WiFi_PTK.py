@@ -57,8 +57,8 @@ class network_WiFi_PTK(wifi_cell_test_base.WiFiCellTestBase):
         self.output_perf_value(description='Network_wifi_PTK_PingLoss',
                 value=ping_result.loss, units='percent', higher_is_better=False)
         if ping_result.loss > self.PING_LOSS_THRESHOLD:
-            raise error.TestNAError('Lost ping packets %r percentage.' %
-                                    ping_result.loss)
+            raise error.TestFail('Lost ping packets %r percentage.' %
+                                 ping_result.loss)
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
         self.context.capture_host.stop_capture()
