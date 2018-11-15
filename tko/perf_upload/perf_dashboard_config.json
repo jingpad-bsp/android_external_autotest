@@ -69,10 +69,6 @@
     "dashboard_test_name": "cheets_StartAndroid"
   },
   {
-    "autotest_name": "enterprise_CFM_Perf",
-    "master_name": "ChromeOS_Enterprise"
-  },
-  {
     "autotest_name": "enterprise_CFM_Perf.meet_app",
     "master_name": "ChromeOS_Enterprise"
   },
