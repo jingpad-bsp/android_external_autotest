@@ -318,12 +318,6 @@ def _validate_set_mapping(arguments):
     if not arguments.type:
         raise _CommandError('The -t/--type option is required to assign a '
                             'version')
-    if arguments.type == _FirmwareVersionMapHandler.TYPE:
-        msg = ('Cannot assign %s versions directly; '
-               'must assign the %s version instead.')
-        descriptions = (_FirmwareVersionMapHandler.DESCRIPTION,
-                        _CrOSVersionMapHandler.DESCRIPTION)
-        raise _CommandError(msg % descriptions)
 
 
 def set_mapping(afe, image_type, key, version, dry_run):
