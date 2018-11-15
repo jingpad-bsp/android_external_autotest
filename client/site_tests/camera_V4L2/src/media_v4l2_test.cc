@@ -236,7 +236,7 @@ bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
         (timestamps[i] - timestamps[i - 1]) / 1000000.f;
     if (frame_duration_ms > slop_max_frame_duration_ms ||
         frame_duration_ms < slop_min_frame_duration_ms) {
-      printf("[Error] Frame duration %f out of frame rate bounds [%f,%f]\n",
+      printf("[Warning] Frame duration %f out of frame rate bounds [%f,%f]\n",
           frame_duration_ms, slop_min_frame_duration_ms,
           slop_max_frame_duration_ms);
       return false;
@@ -299,6 +299,8 @@ bool TestResolutions(const std::string& dev_name,
   uint32_t buffers = 4;
   uint32_t time_to_capture = 3;
   uint32_t skip_frames = 0;
+  bool pass = true;
+
   V4L2Device::IOMethod io = V4L2Device::IO_METHOD_MMAP;
   std::unique_ptr<V4L2Device> device(
       new V4L2Device(dev_name.c_str(), buffers));
@@ -344,15 +346,8 @@ bool TestResolutions(const std::string& dev_name,
       required_resolutions.push_back(*cropping_resolution);
     } else if (max_resolution.width >= 1920 && max_resolution.height >= 1200) {
       printf("[Error] Can not find cropping resolution.\n");
-      return false;
+      pass = false;
     }
-  }
-
-  v4l2_streamparm param;
-  if (!device->GetParam(&param)) {
-    printf("[Error] Can not get stream param on device '%s'\n",
-        dev_name.c_str());
-    return false;
   }
 
   for (const auto& test_resolution : required_resolutions) {
@@ -367,7 +362,8 @@ bool TestResolutions(const std::string& dev_name,
     if (test_format == nullptr) {
       printf("[Error] %dx%d not found in %s\n", test_resolution.width,
           test_resolution.height, dev_name.c_str());
-      return false;
+      pass = false;
+      continue;
     }
 
     bool frame_rate_30_supported = false;
@@ -382,11 +378,17 @@ bool TestResolutions(const std::string& dev_name,
       printf("[Error] Cannot test 30 fps for %dx%d (%08X) failed in %s\n",
           test_format->width, test_format->height, test_format->fourcc,
           dev_name.c_str());
-      return false;
+      pass = false;
     }
 
     for (const auto& constant_framerate : constant_framerate_setting) {
       int retry_count = 0;
+
+      if (!frame_rate_30_supported && constant_framerate ==
+          V4L2Device::ENABLE_CONSTANT_FRAMERATE) {
+        continue;
+      }
+
       for (retry_count = 0; retry_count < kMaxRetryTimes; retry_count++) {
         if (RunTest(device.get(), io, buffers, time_to_capture,
               test_format->width, test_format->height, test_format->fourcc,
@@ -394,23 +396,27 @@ bool TestResolutions(const std::string& dev_name,
           printf("[Error] Could not capture frames for %dx%d (%08X) in %s\n",
               test_format->width, test_format->height, test_format->fourcc,
               dev_name.c_str());
-          return false;
+          pass = false;
+          break;
         }
 
         // Make sure the driver didn't adjust the format.
         v4l2_format fmt;
         if (!device->GetV4L2Format(&fmt)) {
-          return false;
-        }
-        if (test_format->width != fmt.fmt.pix.width ||
-            test_format->height != fmt.fmt.pix.height ||
-            test_format->fourcc != fmt.fmt.pix.pixelformat ||
-            std::fabs(kFrameRate - device->GetFrameRate()) >
-                std::numeric_limits<float>::epsilon()) {
-          printf("[Error] Capture test %dx%d (%08X) %.2f fps failed in %s\n",
-              test_format->width, test_format->height, test_format->fourcc,
-              kFrameRate, dev_name.c_str());
-          return false;
+          pass = false;
+          break;
+        } else {
+          if (test_format->width != fmt.fmt.pix.width ||
+              test_format->height != fmt.fmt.pix.height ||
+              test_format->fourcc != fmt.fmt.pix.pixelformat ||
+              std::fabs(kFrameRate - device->GetFrameRate()) >
+                  std::numeric_limits<float>::epsilon()) {
+            printf("[Error] Capture test %dx%d (%08X) %.2f fps failed in %s\n",
+                test_format->width, test_format->height, test_format->fourcc,
+                kFrameRate, dev_name.c_str());
+            pass = false;
+            break;
+          }
         }
 
         if (constant_framerate != V4L2Device::ENABLE_CONSTANT_FRAMERATE) {
@@ -423,14 +429,14 @@ bool TestResolutions(const std::string& dev_name,
         // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
         // The actual fps will be 29.66 or 30.33.
         if (fabsf(actual_fps - kFrameRate) > 1) {
-          printf("[Error] Capture test %dx%d (%08X) failed with fps %.2f in "
+          printf("[Warning] Capture test %dx%d (%08X) failed with fps %.2f in "
                  "%s\n", test_format->width, test_format->height,
                  test_format->fourcc, actual_fps, dev_name.c_str());
           continue;
         }
 
         if (!CheckConstantFramerate(device->GetFrameTimestamps(), kFrameRate)) {
-          printf("[Error] Capture test %dx%d (%08X) failed and didn't meet "
+          printf("[Warning] Capture test %dx%d (%08X) failed and didn't meet "
                  "constant framerate in %s\n", test_format->width,
                  test_format->height, test_format->fourcc, dev_name.c_str());
           continue;
@@ -440,12 +446,12 @@ bool TestResolutions(const std::string& dev_name,
       if (retry_count == kMaxRetryTimes) {
         printf("[Error] Cannot meet constant framerate requirement %d times\n",
                kMaxRetryTimes);
-        return false;
+        pass = false;
       }
     }
   }
   device->CloseDevice();
-  return true;
+  return pass;
 }
 
 bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
