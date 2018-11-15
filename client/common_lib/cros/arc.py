@@ -251,7 +251,7 @@ def adb_reboot():
     You must connect first.
     """
     old_pid = get_container_pid()
-    logging.info('Trying to reboot PID:%s' % old_pid)
+    logging.info('Trying to reboot PID:%s', old_pid)
     adb_cmd('reboot', ignore_status=True)
     # Ensure that the old container is no longer booted
     utils.poll_for_condition(
@@ -330,13 +330,33 @@ def get_sdcard_pid():
     return utils.read_one_line(_SDCARD_PID_PATH)
 
 
-def get_removable_media_pid():
-    """Returns the PID of the arc-removable-media FUSE daemon."""
-    job_pid = get_job_pid('arc-removable-media')
+def _get_removable_media_pid_internal(job_name):
+    """Returns the PID of the arc-removable-media* FUSE daemon."""
+    job_pid = get_job_pid(job_name)
     # |job_pid| is the minijail process, obtain the PID of the process running
     # inside the mount namespace.
     # FUSE process is the only process running as chronos in the session.
     return utils.system_output('pgrep -u chronos -s %s' % job_pid)
+
+
+def get_removable_media_pid():
+    """Returns the PID of the arc-removable-media FUSE daemon."""
+    return _get_removable_media_pid_internal('arc-removable-media')
+
+
+def get_removable_media_default_pid():
+    """Returns the PID of the arc-removable-media-default FUSE daemon."""
+    return _get_removable_media_pid_internal('arc-removable-media-default')
+
+
+def get_removable_media_read_pid():
+    """Returns the PID of the arc-removable-media-read FUSE daemon."""
+    return _get_removable_media_pid_internal('arc-removable-media-read')
+
+
+def get_removable_media_write_pid():
+    """Returns the PID of the arc-removable-media-write FUSE daemon."""
+    return _get_removable_media_pid_internal('arc-removable-media-write')
 
 
 def get_obb_mounter_pid():
@@ -506,7 +526,7 @@ def _is_in_installed_packages_list(package, option=None):
     ret = package_entry in packages
 
     if not ret:
-        logging.info('Could not find "%s" in %s' %
+        logging.info('Could not find "%s" in %s',
                      (package_entry, str(packages)))
     return ret
 
@@ -761,7 +781,7 @@ class ArcTest(test.test):
             for apk in apks:
                 logging.info('Installing %s', apk)
                 out = adb_install('%s/%s' % (apk_path, apk))
-                logging.info('Install apk output: %s' % str(out))
+                logging.info('Install apk output: %s', str(out))
             # Verify if package(s) are installed correctly
             if not full_pkg_names:
                 raise error.TestError('Package names of apks expected')
