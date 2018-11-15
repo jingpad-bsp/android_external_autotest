@@ -943,8 +943,10 @@ class GraphicsKernelMemory(object):
         'memory': ['/sys/class/misc/mali0/device/memory',
                    '/sys/class/misc/mali0/device/gpu_memory'],
     }
-    mediatek_fields = {}  # TODO(crosbug.com/p/58189) add nodes
-    # TODO Add memory nodes once the GPU patches landed.
+    mediatek_fields = {}
+    # TODO(crosbug.com/p/58189) Add mediatek GPU memory nodes
+    qualcomm_fields = {}
+    # TODO(b/119269602) Add qualcomm GPU memory nodes once GPU patches land
     rockchip_fields = {}
     tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
@@ -963,6 +965,7 @@ class GraphicsKernelMemory(object):
         'exynos5': exynos_fields,
         'i915': i915_fields,
         'mediatek': mediatek_fields,
+        'qualcomm': qualcomm_fields,
         'rockchip': rockchip_fields,
         'tegra': tegra_fields,
         'virtio': virtio_fields,
