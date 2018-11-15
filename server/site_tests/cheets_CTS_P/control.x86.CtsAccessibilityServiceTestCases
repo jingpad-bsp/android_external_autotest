@@ -31,6 +31,6 @@ def run_CTS(machine):
         bundle='x86',
         warn_on_test_retry=False,
         retry_manual_tests=True,
-        timeout=3600)
+        timeout=10800)
 
 parallel_simple(run_CTS, machines)
